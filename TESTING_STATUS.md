@@ -13,7 +13,7 @@ The Python AdCP client has been successfully implemented with both A2A and MCP p
 - ✅ Multi-agent client support
 - ✅ Activity tracking and event emission
 - ✅ Webhook URL generation
-- ✅ Python 3.9 compatibility for type hints
+- ✅ Python 3.10+
 
 ### 2. Code Quality
 - ✅ Black formatting applied (100 char line length)
@@ -41,7 +41,7 @@ The Python AdCP client has been successfully implemented with both A2A and MCP p
 ## 🔄 Current Limitations
 
 ### 1. Python Version
-- **System**: Python 3.9.6
+- **System**: Python 3.10+6
 - **Required for MCP**: Python 3.10+
 - **Impact**: Cannot run MCP integration tests without upgrading Python
 
@@ -60,7 +60,7 @@ The provided test agent (`https://test-agent.adcontextprotocol.org`) returns 404
 ### 3. Integration Testing
 Cannot fully test MCP implementation because:
 - MCP SDK requires Python 3.10+
-- System has Python 3.9.6
+- System has Python 3.10+6
 - Would need to upgrade Python or use Docker/venv with Python 3.10+
 
 ## 🎯 Available Test Agents
@@ -102,7 +102,7 @@ python3.10 tests/integration/test_creative_agent.py
 python3.10 tests/integration/test_optable_signals.py
 python3.10 tests/integration/test_wonderstruck_sales.py
 
-# A2A test (works on Python 3.9+)
+# A2A test (works on Python 3.10+
 python3 tests/integration/test_a2a_agent.py  # Currently returns 404
 ```
 
@@ -164,7 +164,7 @@ python tests/integration/test_creative_agent.py
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Unit Tests | ✅ Pass | All basic functionality tests pass |
-| Type Checking | ✅ Pass | Python 3.9 compatible type hints |
+| Type Checking | ✅ Pass | Python 3.10+
 | Code Formatting | ✅ Pass | Black + Ruff |
 | A2A Import | ✅ Pass | Loads successfully |
 | MCP Import | ⚠️ Conditional | Works with graceful fallback |
@@ -173,7 +173,7 @@ python tests/integration/test_creative_agent.py
 
 ## 💡 Key Learnings
 
-1. **Type Hints**: Python 3.9 doesn't support `str | None` syntax - must use `Optional[str]`
+1. **Type Hints**: Python 3.10+
 2. **A2A Endpoints**: A2A uses `/message/send` not `/tasks/send`
 3. **MCP SDK**: Strictly requires Python 3.10+, no workarounds
 4. **Protocol Differences**:
@@ -191,6 +191,6 @@ The implementation successfully:
 - Handles both synchronous and asynchronous operations
 - Supports multi-agent orchestration
 - Includes comprehensive error handling
-- Maintains backwards compatibility with Python 3.9
+- Maintains backwards compatibility with Python 3.10+
 
 The codebase is production-ready pending full integration testing with Python 3.10+.

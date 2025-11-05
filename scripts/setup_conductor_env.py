@@ -90,6 +90,7 @@ def show_agent_config(env_path: Path):
 
             # Find ADCP_AGENTS= and extract until the closing quote
             import re
+
             match = re.search(r"ADCP_AGENTS='([^']*(?:'[^']*)*)'", content, re.DOTALL)
             if not match:
                 match = re.search(r'ADCP_AGENTS="([^"]*(?:"[^"]*)*)"', content, re.DOTALL)
