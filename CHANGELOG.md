@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/adcontextprotocol/adcp-client-python/compare/v0.1.0...v0.1.1) (2025-11-05)
+
+
+### Bug Fixes
+
+* remove deprecated package-name parameter from release-please config ([28d8154](https://github.com/adcontextprotocol/adcp-client-python/commit/28d8154a8185e6c841804b39e7381f6bb22bde03))
+
 ## 0.1.0 (2025-11-05)
 
 
