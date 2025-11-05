@@ -31,7 +31,7 @@ If you don't have a PyPI account:
 2. Navigate to **Settings → Secrets and variables → Actions**
 3. Click **"New repository secret"**
 4. Configure:
-   - **Name**: `PYPI_API_TOKEN`
+   - **Name**: `PYPY_API_TOKEN`
    - **Secret**: Paste your `pypi-...` token
 5. Click **"Add secret"**
 
@@ -168,7 +168,7 @@ python -m twine upload dist/*
 
 **Solution**:
 1. Generate new token on PyPI
-2. Update `PYPI_API_TOKEN` secret in GitHub
+2. Update `PYPY_API_TOKEN` secret in GitHub
 3. Re-run the workflow
 
 ### Build fails
@@ -194,7 +194,7 @@ python -m twine check dist/*
 
 **Solution**: First token must have "Entire account" scope. After first successful publish:
 1. Create new token with project scope limited to `adcp`
-2. Update `PYPI_API_TOKEN` in GitHub Secrets
+2. Update `PYPY_API_TOKEN` in GitHub Secrets
 
 ## Advanced Configuration
 
@@ -204,13 +204,13 @@ Test publishing without affecting production:
 
 1. Create TestPyPI account: https://test.pypi.org/
 2. Generate token on TestPyPI
-3. Add as `TEST_PYPI_API_TOKEN` secret
+3. Add as `TEST_PYPY_API_TOKEN` secret
 4. Add workflow step:
    ```yaml
    - name: Publish to TestPyPI
      env:
        TWINE_USERNAME: __token__
-       TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+       TWINE_PASSWORD: ${{ secrets.TEST_PYPY_API_TOKEN }}
        TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
      run: twine upload dist/*
    ```
@@ -271,10 +271,10 @@ A: Use pre-release version in `pyproject.toml`: `0.1.0a1`, `0.1.0b2`, `0.1.0rc1`
 
 ## Current Status
 
-- ✅ Package name `adcp` is available on PyPI
-- ✅ Package builds successfully (`twine check` passes)
-- ✅ GitHub Actions workflow configured
-- ⏳ Waiting for `PYPI_API_TOKEN` secret
-- ⏳ Waiting for first release
+- ✅ Package published to PyPI: https://pypi.org/project/adcp/
+- ✅ Latest version: 0.1.2
+- ✅ GitHub Actions workflow configured and working
+- ✅ `PYPY_API_TOKEN` secret configured with project-scoped token
+- ✅ Automated releases working via Release Please
 
-**Next Step**: Add `PYPI_API_TOKEN` secret to GitHub, then merge to main!
+**Installation**: `pip install adcp`
