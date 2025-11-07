@@ -20,10 +20,13 @@ def parse_mcp_content(content: list[dict[str, Any]], response_type: type[T]) -> 
     MCP tools return content as a list of content items:
     [{"type": "text", "text": "..."}, {"type": "resource", ...}]
 
+    The MCP adapter is responsible for serializing MCP SDK Pydantic objects
+    to plain dicts before calling this function.
+
     For AdCP, we expect JSON data in text content items.
 
     Args:
-        content: MCP content array
+        content: MCP content array (list of plain dicts)
         response_type: Expected Pydantic model type
 
     Returns:
