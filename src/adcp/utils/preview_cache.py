@@ -74,7 +74,11 @@ class PreviewURLGenerator:
 
         try:
             request = PreviewCreativeRequest(
-                format_id=format_id, creative_manifest=manifest, inputs=None, template_id=None, context=None
+                format_id=format_id,
+                creative_manifest=manifest,
+                inputs=None,
+                template_id=None,
+                context=None
             )
             result = await self.creative_agent_client.preview_creative(request)
 
