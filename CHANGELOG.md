@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v1.4.1...v1.5.0) (2025-11-13)
+
+
+### Features
+
+* generate type adcp context field ([38600f2](https://github.com/adcontextprotocol/adcp-client-python/commit/38600f2f10a922efb3d9e05b81e37bafe219baa9))
+* generate type adcp context field ([92e90c9](https://github.com/adcontextprotocol/adcp-client-python/commit/92e90c96f5d757d119cc6e3ddb7f77078f8e979c))
+
 ## [1.4.1](https://github.com/adcontextprotocol/adcp-client-python/compare/v1.4.0...v1.4.1) (2025-11-11)
 
 
