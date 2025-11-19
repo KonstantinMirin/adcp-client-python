@@ -48,6 +48,12 @@ from adcp.types._generated import (
     # DAAST assets
     DaastAsset1,
     DaastAsset2,
+    # Deployment types
+    Deployment1,
+    Deployment2,
+    # Destination types
+    Destination1,
+    Destination2,
     # Preview creative requests
     PreviewCreativeRequest1,
     PreviewCreativeRequest2,
@@ -83,6 +89,21 @@ from adcp.types.generated_poc.create_media_buy_response import (
     Package as CreatedPackageInternal,
 )
 from adcp.types.generated_poc.package import Package as FullPackageInternal
+
+# Import PublisherProperties types and related types from product module
+from adcp.types.generated_poc.product import (
+    PropertyId,
+    PropertyTag,
+)
+from adcp.types.generated_poc.product import (
+    PublisherProperties as PublisherPropertiesInternal,
+)
+from adcp.types.generated_poc.product import (
+    PublisherProperties4 as PublisherPropertiesByIdInternal,
+)
+from adcp.types.generated_poc.product import (
+    PublisherProperties5 as PublisherPropertiesByTagInternal,
+)
 
 # ============================================================================
 # RESPONSE TYPE ALIASES - Success/Error Discriminated Unions
@@ -253,6 +274,213 @@ Fields: buyer_ref, package_id only
 """
 
 # ============================================================================
+# PUBLISHER PROPERTIES ALIASES - Selection Type Discriminated Unions
+# ============================================================================
+# The AdCP schemas define PublisherProperties as a discriminated union with
+# three variants based on the `selection_type` field:
+#
+# 1. All Properties (selection_type='all'):
+#    - Includes all properties from the publisher
+#    - Only requires publisher_domain
+#
+# 2. By ID (selection_type='by_id'):
+#    - Specific properties selected by property_id
+#    - Requires publisher_domain + property_ids array
+#
+# 3. By Tag (selection_type='by_tag'):
+#    - Properties selected by tags
+#    - Requires publisher_domain + property_tags array
+#
+# These semantic aliases match the discriminator values and make code more
+# readable when constructing or pattern-matching publisher properties.
+
+PublisherPropertiesAll = PublisherPropertiesInternal
+"""Publisher properties covering all properties from the publisher.
+
+This variant uses selection_type='all' and includes all properties listed
+in the publisher's adagents.json file.
+
+Fields:
+- publisher_domain: Domain where adagents.json is hosted
+- selection_type: Literal['all']
+
+Example:
+    ```python
+    from adcp import PublisherPropertiesAll
+
+    props = PublisherPropertiesAll(
+        publisher_domain="example.com",
+        selection_type="all"
+    )
+    ```
+"""
+
+PublisherPropertiesById = PublisherPropertiesByIdInternal
+"""Publisher properties selected by specific property IDs.
+
+This variant uses selection_type='by_id' and specifies an explicit list
+of property IDs from the publisher's adagents.json file.
+
+Fields:
+- publisher_domain: Domain where adagents.json is hosted
+- selection_type: Literal['by_id']
+- property_ids: List of PropertyId (non-empty)
+
+Example:
+    ```python
+    from adcp import PublisherPropertiesById, PropertyId
+
+    props = PublisherPropertiesById(
+        publisher_domain="example.com",
+        selection_type="by_id",
+        property_ids=[PropertyId("homepage"), PropertyId("sports_section")]
+    )
+    ```
+"""
+
+PublisherPropertiesByTag = PublisherPropertiesByTagInternal
+"""Publisher properties selected by tags.
+
+This variant uses selection_type='by_tag' and specifies property tags.
+The product covers all properties in the publisher's adagents.json that
+have these tags.
+
+Fields:
+- publisher_domain: Domain where adagents.json is hosted
+- selection_type: Literal['by_tag']
+- property_tags: List of PropertyTag (non-empty)
+
+Example:
+    ```python
+    from adcp import PublisherPropertiesByTag, PropertyTag
+
+    props = PublisherPropertiesByTag(
+        publisher_domain="example.com",
+        selection_type="by_tag",
+        property_tags=[PropertyTag("premium"), PropertyTag("video")]
+    )
+    ```
+"""
+
+# ============================================================================
+# DEPLOYMENT & DESTINATION ALIASES - Signal Deployment Type Discriminated Unions
+# ============================================================================
+# The AdCP schemas define Deployment and Destination as discriminated unions
+# with two variants based on the `type` field:
+#
+# Deployment (where a signal is activated):
+# - Platform (type='platform'): DSP platform with platform ID
+# - Agent (type='agent'): Sales agent with agent URL
+#
+# Destination (where a signal can be activated):
+# - Platform (type='platform'): Target DSP platform
+# - Agent (type='agent'): Target sales agent
+#
+# These are used in GetSignalsResponse to describe signal availability and
+# activation status across different advertising platforms and agents.
+
+PlatformDeployment = Deployment1
+"""Signal deployment to a DSP platform.
+
+This variant uses type='platform' for platform-based signal deployments
+like The Trade Desk, Amazon DSP, etc.
+
+Fields:
+- type: Literal['platform']
+- platform: Platform identifier (e.g., 'the-trade-desk')
+- account: Optional account identifier
+- is_live: Whether signal is currently active
+- deployed_at: Activation timestamp if live
+- activation_key: Targeting key if live and accessible
+- estimated_activation_duration_minutes: Time to complete activation
+
+Example:
+    ```python
+    from adcp import PlatformDeployment
+
+    deployment = PlatformDeployment(
+        type="platform",
+        platform="the-trade-desk",
+        account="advertiser-123",
+        is_live=True,
+        deployed_at=datetime.now(timezone.utc)
+    )
+    ```
+"""
+
+AgentDeployment = Deployment2
+"""Signal deployment to a sales agent.
+
+This variant uses type='agent' for agent-based signal deployments
+using agent URLs.
+
+Fields:
+- type: Literal['agent']
+- agent_url: URL identifying the destination agent
+- account: Optional account identifier
+- is_live: Whether signal is currently active
+- deployed_at: Activation timestamp if live
+- activation_key: Targeting key if live and accessible
+- estimated_activation_duration_minutes: Time to complete activation
+
+Example:
+    ```python
+    from adcp import AgentDeployment
+
+    deployment = AgentDeployment(
+        type="agent",
+        agent_url="https://agent.example.com",
+        is_live=False,
+        estimated_activation_duration_minutes=30.0
+    )
+    ```
+"""
+
+PlatformDestination = Destination1
+"""Available signal destination on a DSP platform.
+
+This variant uses type='platform' for platform-based signal destinations.
+
+Fields:
+- type: Literal['platform']
+- platform: Platform identifier (e.g., 'the-trade-desk', 'amazon-dsp')
+- account: Optional account identifier on the platform
+
+Example:
+    ```python
+    from adcp import PlatformDestination
+
+    destination = PlatformDestination(
+        type="platform",
+        platform="the-trade-desk",
+        account="advertiser-123"
+    )
+    ```
+"""
+
+AgentDestination = Destination2
+"""Available signal destination via a sales agent.
+
+This variant uses type='agent' for agent-based signal destinations.
+
+Fields:
+- type: Literal['agent']
+- agent_url: URL identifying the destination agent
+- account: Optional account identifier on the agent
+
+Example:
+    ```python
+    from adcp import AgentDestination
+
+    destination = AgentDestination(
+        type="agent",
+        agent_url="https://agent.example.com",
+        account="partner-456"
+    )
+    ```
+"""
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -300,4 +528,17 @@ __all__ = [
     # Package type aliases
     "CreatedPackageReference",
     "Package",
+    # Publisher properties types
+    "PropertyId",
+    "PropertyTag",
+    # Publisher properties aliases
+    "PublisherPropertiesAll",
+    "PublisherPropertiesById",
+    "PublisherPropertiesByTag",
+    # Deployment aliases
+    "PlatformDeployment",
+    "AgentDeployment",
+    # Destination aliases
+    "PlatformDestination",
+    "AgentDestination",
 ]

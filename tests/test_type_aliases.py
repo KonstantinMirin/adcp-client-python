@@ -396,3 +396,270 @@ def test_stable_package_export_is_full_package():
     assert "budget" in stable_fields
     assert "pricing_option_id" in stable_fields
     assert "product_id" in stable_fields
+
+
+def test_publisher_properties_aliases_imports():
+    """Test that PublisherProperties aliases can be imported."""
+    from adcp import (
+        PropertyId,
+        PropertyTag,
+        PublisherPropertiesAll,
+        PublisherPropertiesById,
+        PublisherPropertiesByTag,
+    )
+    from adcp.types.aliases import (
+        PropertyId as AliasPropertyId,
+    )
+    from adcp.types.aliases import (
+        PropertyTag as AliasPropertyTag,
+    )
+    from adcp.types.aliases import (
+        PublisherPropertiesAll as AliasPublisherPropertiesAll,
+    )
+    from adcp.types.aliases import (
+        PublisherPropertiesById as AliasPublisherPropertiesById,
+    )
+    from adcp.types.aliases import (
+        PublisherPropertiesByTag as AliasPublisherPropertiesByTag,
+    )
+
+    # Verify all import paths work
+    assert PropertyId is AliasPropertyId
+    assert PropertyTag is AliasPropertyTag
+    assert PublisherPropertiesAll is AliasPublisherPropertiesAll
+    assert PublisherPropertiesById is AliasPublisherPropertiesById
+    assert PublisherPropertiesByTag is AliasPublisherPropertiesByTag
+
+
+def test_publisher_properties_aliases_point_to_correct_types():
+    """Test that PublisherProperties aliases point to the correct generated types."""
+    from adcp import PublisherPropertiesAll, PublisherPropertiesById, PublisherPropertiesByTag
+    from adcp.types.generated_poc.product import (
+        PublisherProperties,
+        PublisherProperties4,
+        PublisherProperties5,
+    )
+
+    # Verify aliases point to correct types
+    assert PublisherPropertiesAll is PublisherProperties
+    assert PublisherPropertiesById is PublisherProperties4
+    assert PublisherPropertiesByTag is PublisherProperties5
+
+    # Verify they're different types
+    assert PublisherPropertiesAll is not PublisherPropertiesById
+    assert PublisherPropertiesAll is not PublisherPropertiesByTag
+    assert PublisherPropertiesById is not PublisherPropertiesByTag
+
+
+def test_publisher_properties_aliases_have_correct_discriminators():
+    """Test that PublisherProperties aliases have the correct discriminator values."""
+    from adcp import PublisherPropertiesAll, PublisherPropertiesById, PublisherPropertiesByTag
+
+    # Check that discriminator field has correct literal type
+    all_selection_type = PublisherPropertiesAll.__annotations__["selection_type"]
+    by_id_selection_type = PublisherPropertiesById.__annotations__["selection_type"]
+    by_tag_selection_type = PublisherPropertiesByTag.__annotations__["selection_type"]
+
+    # Verify the annotations contain Literal types
+    assert "selection_type" in PublisherPropertiesAll.__annotations__
+    assert "selection_type" in PublisherPropertiesById.__annotations__
+    assert "selection_type" in PublisherPropertiesByTag.__annotations__
+
+
+def test_publisher_properties_aliases_can_instantiate():
+    """Test that PublisherProperties aliases can be used to create instances."""
+    from adcp import (
+        PropertyId,
+        PropertyTag,
+        PublisherPropertiesAll,
+        PublisherPropertiesById,
+        PublisherPropertiesByTag,
+    )
+
+    # Create PublisherPropertiesAll
+    props_all = PublisherPropertiesAll(
+        publisher_domain="example.com", selection_type="all"
+    )
+    assert props_all.publisher_domain == "example.com"
+    assert props_all.selection_type == "all"
+
+    # Create PublisherPropertiesById
+    props_by_id = PublisherPropertiesById(
+        publisher_domain="example.com",
+        selection_type="by_id",
+        property_ids=[PropertyId("homepage"), PropertyId("sports")],
+    )
+    assert props_by_id.publisher_domain == "example.com"
+    assert props_by_id.selection_type == "by_id"
+    assert len(props_by_id.property_ids) == 2
+
+    # Create PublisherPropertiesByTag
+    props_by_tag = PublisherPropertiesByTag(
+        publisher_domain="example.com",
+        selection_type="by_tag",
+        property_tags=[PropertyTag("premium"), PropertyTag("video")],
+    )
+    assert props_by_tag.publisher_domain == "example.com"
+    assert props_by_tag.selection_type == "by_tag"
+    assert len(props_by_tag.property_tags) == 2
+
+
+def test_publisher_properties_aliases_in_exports():
+    """Test that PublisherProperties aliases are properly exported."""
+    import adcp
+    import adcp.types.aliases as aliases_module
+
+    # Check main package exports
+    assert hasattr(adcp, "PropertyId")
+    assert hasattr(adcp, "PropertyTag")
+    assert hasattr(adcp, "PublisherPropertiesAll")
+    assert hasattr(adcp, "PublisherPropertiesById")
+    assert hasattr(adcp, "PublisherPropertiesByTag")
+
+    assert "PropertyId" in adcp.__all__
+    assert "PropertyTag" in adcp.__all__
+    assert "PublisherPropertiesAll" in adcp.__all__
+    assert "PublisherPropertiesById" in adcp.__all__
+    assert "PublisherPropertiesByTag" in adcp.__all__
+
+    # Check aliases module exports
+    assert hasattr(aliases_module, "PropertyId")
+    assert hasattr(aliases_module, "PropertyTag")
+    assert hasattr(aliases_module, "PublisherPropertiesAll")
+    assert hasattr(aliases_module, "PublisherPropertiesById")
+    assert hasattr(aliases_module, "PublisherPropertiesByTag")
+
+    assert "PropertyId" in aliases_module.__all__
+    assert "PropertyTag" in aliases_module.__all__
+    assert "PublisherPropertiesAll" in aliases_module.__all__
+    assert "PublisherPropertiesById" in aliases_module.__all__
+    assert "PublisherPropertiesByTag" in aliases_module.__all__
+
+
+def test_property_id_and_tag_are_root_models():
+    """Test that PropertyId and PropertyTag are properly constrained string types."""
+    from adcp import PropertyId, PropertyTag
+
+    # Create valid PropertyId and PropertyTag
+    prop_id = PropertyId("my_property_id")
+    prop_tag = PropertyTag("premium")
+
+    # Verify they are created successfully
+    assert prop_id.root == "my_property_id"
+    assert prop_tag.root == "premium"
+
+    # PropertyTag should be a subclass of PropertyId
+    assert issubclass(PropertyTag, PropertyId)
+
+
+def test_deployment_aliases_imports():
+    """Test that Deployment aliases can be imported."""
+    from adcp import AgentDeployment, PlatformDeployment
+    from adcp.types.aliases import AgentDeployment as AliasAgentDeployment
+    from adcp.types.aliases import PlatformDeployment as AliasPlatformDeployment
+
+    # Verify all import paths work
+    assert PlatformDeployment is AliasPlatformDeployment
+    assert AgentDeployment is AliasAgentDeployment
+
+
+def test_deployment_aliases_point_to_correct_types():
+    """Test that Deployment aliases point to the correct generated types."""
+    from adcp import AgentDeployment, PlatformDeployment
+    from adcp.types.generated_poc.deployment import Deployment1, Deployment2
+
+    # Verify aliases point to correct types
+    assert PlatformDeployment is Deployment1
+    assert AgentDeployment is Deployment2
+
+    # Verify they're different types
+    assert PlatformDeployment is not AgentDeployment
+
+
+def test_deployment_aliases_can_instantiate():
+    """Test that Deployment aliases can be used to create instances."""
+    from adcp import AgentDeployment, PlatformDeployment
+    from datetime import datetime, timezone
+
+    # Create PlatformDeployment
+    platform_deployment = PlatformDeployment(
+        type="platform", platform="the-trade-desk", is_live=True
+    )
+    assert platform_deployment.type == "platform"
+    assert platform_deployment.platform == "the-trade-desk"
+    assert platform_deployment.is_live is True
+
+    # Create AgentDeployment
+    agent_deployment = AgentDeployment(
+        type="agent", agent_url="https://agent.example.com", is_live=False
+    )
+    assert agent_deployment.type == "agent"
+    assert str(agent_deployment.agent_url) == "https://agent.example.com/"
+    assert agent_deployment.is_live is False
+
+
+def test_destination_aliases_imports():
+    """Test that Destination aliases can be imported."""
+    from adcp import AgentDestination, PlatformDestination
+    from adcp.types.aliases import AgentDestination as AliasAgentDestination
+    from adcp.types.aliases import PlatformDestination as AliasPlatformDestination
+
+    # Verify all import paths work
+    assert PlatformDestination is AliasPlatformDestination
+    assert AgentDestination is AliasAgentDestination
+
+
+def test_destination_aliases_point_to_correct_types():
+    """Test that Destination aliases point to the correct generated types."""
+    from adcp import AgentDestination, PlatformDestination
+    from adcp.types.generated_poc.destination import Destination1, Destination2
+
+    # Verify aliases point to correct types
+    assert PlatformDestination is Destination1
+    assert AgentDestination is Destination2
+
+    # Verify they're different types
+    assert PlatformDestination is not AgentDestination
+
+
+def test_destination_aliases_can_instantiate():
+    """Test that Destination aliases can be used to create instances."""
+    from adcp import AgentDestination, PlatformDestination
+
+    # Create PlatformDestination
+    platform_dest = PlatformDestination(type="platform", platform="amazon-dsp")
+    assert platform_dest.type == "platform"
+    assert platform_dest.platform == "amazon-dsp"
+
+    # Create AgentDestination
+    agent_dest = AgentDestination(type="agent", agent_url="https://agent.example.com")
+    assert agent_dest.type == "agent"
+    assert str(agent_dest.agent_url) == "https://agent.example.com/"
+
+
+def test_deployment_destination_aliases_in_exports():
+    """Test that Deployment and Destination aliases are properly exported."""
+    import adcp
+    import adcp.types.aliases as aliases_module
+
+    # Check main package exports
+    assert hasattr(adcp, "PlatformDeployment")
+    assert hasattr(adcp, "AgentDeployment")
+    assert hasattr(adcp, "PlatformDestination")
+    assert hasattr(adcp, "AgentDestination")
+
+    assert "PlatformDeployment" in adcp.__all__
+    assert "AgentDeployment" in adcp.__all__
+    assert "PlatformDestination" in adcp.__all__
+    assert "AgentDestination" in adcp.__all__
+
+    # Check aliases module exports
+    assert hasattr(aliases_module, "PlatformDeployment")
+    assert hasattr(aliases_module, "AgentDeployment")
+    assert hasattr(aliases_module, "PlatformDestination")
+    assert hasattr(aliases_module, "AgentDestination")
+
+    assert "PlatformDeployment" in aliases_module.__all__
+    assert "AgentDeployment" in aliases_module.__all__
+    assert "PlatformDestination" in aliases_module.__all__
+    assert "AgentDestination" in aliases_module.__all__
