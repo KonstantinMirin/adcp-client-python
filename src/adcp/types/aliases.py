@@ -31,7 +31,6 @@ immediately rather than at runtime when users try to use the aliases.
 
 from __future__ import annotations
 
-# Import all generated types that need semantic aliases
 from adcp.types._generated import (
     # Activation responses
     ActivateSignalResponse1,
@@ -64,6 +63,9 @@ from adcp.types._generated import (
     PreviewRender1,
     PreviewRender2,
     PreviewRender3,
+    # Publisher properties types
+    PropertyId,
+    PropertyTag,
     # Performance feedback responses
     ProvidePerformanceFeedbackResponse1,
     ProvidePerformanceFeedbackResponse2,
@@ -83,26 +85,23 @@ from adcp.types._generated import (
     VastAsset1,
     VastAsset2,
 )
+from adcp.types._generated import (
+    PublisherPropertySelector1 as PublisherPropertiesInternal,
+)
+from adcp.types._generated import (
+    PublisherPropertySelector2 as PublisherPropertiesByIdInternal,
+)
+from adcp.types._generated import (
+    PublisherPropertySelector3 as PublisherPropertiesByTagInternal,
+)
 
-# Import Package types directly from their modules to avoid collision issues
-from adcp.types.generated_poc.create_media_buy_response import (
-    Package as CreatedPackageInternal,
+# Import all generated types that need semantic aliases
+from adcp.types._generated import (
+    # Package types (from name collision resolution)
+    _PackageFromCreateMediaBuyResponse as CreatedPackageInternal,
 )
-from adcp.types.generated_poc.package import Package as FullPackageInternal
-
-# Import PublisherProperties types and related types from product module
-from adcp.types.generated_poc.product import (
-    PropertyId,
-    PropertyTag,
-)
-from adcp.types.generated_poc.product import (
-    PublisherProperties as PublisherPropertiesInternal,
-)
-from adcp.types.generated_poc.product import (
-    PublisherProperties4 as PublisherPropertiesByIdInternal,
-)
-from adcp.types.generated_poc.product import (
-    PublisherProperties5 as PublisherPropertiesByTagInternal,
+from adcp.types._generated import (
+    _PackageFromPackage as FullPackageInternal,
 )
 
 # ============================================================================
