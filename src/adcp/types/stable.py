@@ -29,10 +29,9 @@ from adcp.types._generated import (
     AggregatedTotals,
     # Assets
     Asset,
+    AssetContentType,  # New from PR #222: consolidated asset content types
     AssetSelectors,
     AssetsRequired,
-    AssetType,
-    AssetTypeSchema,
     AssignedPackage,
     Assignments,
     AudioAsset,
@@ -51,7 +50,6 @@ from adcp.types._generated import (
     CoBranding,
     Colors,
     Contact,
-    ContentLength,
     Country,
     # Pricing options
     CpcPricingOption,
@@ -78,25 +76,23 @@ from adcp.types._generated import (
     DeliveryMetrics,
     DeliveryType,
     Details,
-    Dimensions,
     Direction,
     Disclaimer,
     Domain,
     DomainBreakdown,
     DoohMetrics,
-    Duration,
     Embedding,
     Error,
     FeedbackSource,
     FeedFormat,
     FieldModel,
-    FileSize,
     Filters,
     FlatRatePricingOption,
     Fonts,
     Format,
     FormatCard,
     FormatCardDetailed,
+    FormatCategory,  # New from PR #222: format categories (display, video, native, etc.)
     FormatId,
     FormatType,
     FrequencyCap,
@@ -170,7 +166,6 @@ from adcp.types._generated import (
     PublisherDomain,
     PublisherIdentifierTypes,
     PushNotificationConfig,
-    Quality,
     QuartileData,
     QuerySummary,
     Render,
@@ -180,7 +175,6 @@ from adcp.types._generated import (
     ReportingWebhook,
     Request,
     RequestedMetric,
-    Requirements,
     Response,
     ResponseType,
     Responsive,
@@ -228,10 +222,10 @@ from adcp.types._generated import (
     WebhookAsset,
     WebhookPayload,
 )
-
-# Import all generated types from internal consolidated module
-# Import Package from _generated (uses qualified name to avoid collision)
-from adcp.types._generated import _PackageFromPackage as Package
+from adcp.types._generated import (
+    # PR #223 unified responses, no more collision
+    _PackageFromPackage as Package,
+)
 
 # Note: BrandManifest is currently split into BrandManifest1/2 due to upstream schema
 # using anyOf incorrectly. This will be fixed upstream to create a single BrandManifest type.
@@ -239,6 +233,11 @@ from adcp.types._generated import _PackageFromPackage as Package
 
 # Note: BrandManifest is now a single clean type
 # Re-export BrandManifest directly (no alias needed)
+
+# Backward compatibility notes:
+# - AssetType is maintained as an alias to AssetContentType for backward compatibility
+# - Will be removed in 3.0.0
+# - Package collision resolved by PR #223 (unified responses)
 
 # Re-export all stable types
 __all__ = [
@@ -293,8 +292,9 @@ __all__ = [
     # Domain types
     "Asset",
     "AssetSelectors",
-    "AssetType",
-    "AssetTypeSchema",
+    "AssetContentType",  # New canonical name from PR #222
+    "AssetType",  # Deprecated alias for AssetContentType
+    "FormatCategory",  # New from PR #222
     "AssetsRequired",
     "AssignedPackage",
     "Assignments",
@@ -369,18 +369,14 @@ __all__ = [
     "VcpmFixedRatePricingOption",
     # Status enums & simple types
     "CatalogType",
-    "ContentLength",
     "Country",
     "CreativeStatus",
     "DaastVersion",
     "DeliverTo",
     "DeliveryType",
-    "Dimensions",
     "Direction",
-    "Duration",
     "FeedbackSource",
     "FieldModel",
-    "FileSize",
     "FormatType",
     "FrequencyCap",
     "FrequencyCapScope",
@@ -403,7 +399,6 @@ __all__ = [
     "PropertyType",
     "PublisherDomain",
     "PublisherIdentifierTypes",
-    "Quality",
     "ResponseType",
     "Responsive",
     "SignalType",
@@ -434,7 +429,6 @@ __all__ = [
     "ReportingPeriod",
     "ReportingWebhook",
     "RequestedMetric",
-    "Requirements",
     "Scheme",
     "Security",
     # Assets
@@ -450,3 +444,6 @@ __all__ = [
     "WebhookAsset",
     "WebhookPayload",
 ]
+
+# Deprecated aliases for backward compatibility - will be removed in 3.0.0
+AssetType = AssetContentType  # Use AssetContentType instead

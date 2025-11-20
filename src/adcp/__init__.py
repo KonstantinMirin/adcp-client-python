@@ -108,6 +108,8 @@ from adcp.types.stable import (
     # Audience & Targeting
     ActivateSignalRequest,
     ActivateSignalResponse,
+    # Type enums from PR #222
+    AssetContentType,
     # Core domain types
     BrandManifest,
     # Creative Operations
@@ -131,6 +133,7 @@ from adcp.types.stable import (
     Error,
     FlatRatePricingOption,
     Format,
+    FormatCategory,
     FormatId,
     GetMediaBuyDeliveryRequest,
     GetMediaBuyDeliveryResponse,
@@ -218,6 +221,9 @@ __all__ = [
     "Error",
     "Format",
     "FormatId",
+    # New type enums from PR #222
+    "AssetContentType",
+    "FormatCategory",
     "Product",
     "Property",
     # Core domain types (from stable API)
