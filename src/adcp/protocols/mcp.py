@@ -9,13 +9,15 @@ from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-# ExceptionGroup is available in Python 3.11+
-# In 3.11+, it's a built-in type. For 3.10, we need to handle its absence.
+# ExceptionGroup and BaseExceptionGroup are available in Python 3.11+
+# In 3.11+, they're built-in types. For 3.10, we need to handle their absence.
 try:
     _ExceptionGroup: type[BaseException] | None = ExceptionGroup  # type: ignore[name-defined]
+    _BaseExceptionGroup: type[BaseException] | None = BaseExceptionGroup  # type: ignore[name-defined]
 except NameError:
     # Python 3.10 - ExceptionGroup doesn't exist
     _ExceptionGroup = None
+    _BaseExceptionGroup = None
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +84,44 @@ class MCPAdapter(ProtocolAdapter):
                     logger.debug(f"MCP session cleanup cancelled {context}")
                     return
 
-                # Handle ExceptionGroup from task group failures (Python 3.11+)
-                if _ExceptionGroup is not None and isinstance(
-                    cleanup_error, _ExceptionGroup
-                ):
-                    for exc in cleanup_error.exceptions:  # type: ignore[attr-defined]
-                        self._log_cleanup_error(exc, context)
+                # Handle ExceptionGroup/BaseExceptionGroup from task group failures (Python 3.11+)
+                # ExceptionGroup: for Exception subclasses (e.g., HTTPStatusError)
+                # BaseExceptionGroup: for BaseException subclasses (e.g., CancelledError)
+                # We need both because CancelledError is a BaseException, not an Exception
+                is_exception_group = (
+                    _ExceptionGroup is not None and isinstance(cleanup_error, _ExceptionGroup)
+                ) or (
+                    _BaseExceptionGroup is not None
+                    and isinstance(cleanup_error, _BaseExceptionGroup)
+                )
+
+                if is_exception_group:
+                    # Check if all exceptions in the group are CancelledError
+                    # If so, treat the entire group as a cancellation
+                    all_cancelled = all(
+                        isinstance(exc, asyncio.CancelledError)
+                        for exc in cleanup_error.exceptions  # type: ignore[attr-defined]
+                    )
+                    if all_cancelled:
+                        logger.debug(f"MCP session cleanup cancelled {context}")
+                        return
+
+                    # Mixed group: skip CancelledErrors and log real errors
+                    exceptions = cleanup_error.exceptions  # type: ignore[attr-defined]
+                    cancelled_errors = [
+                        exc for exc in exceptions if isinstance(exc, asyncio.CancelledError)
+                    ]
+                    cancelled_count = len(cancelled_errors)
+                    if cancelled_count > 0:
+                        logger.debug(
+                            f"Skipping {cancelled_count} CancelledError(s) "
+                            f"in mixed exception group {context}"
+                        )
+
+                    # Log each non-cancelled exception individually
+                    for exc in exceptions:
+                        if not isinstance(exc, asyncio.CancelledError):
+                            self._log_cleanup_error(exc, context)
                 else:
                     self._log_cleanup_error(cleanup_error, context)
 
@@ -102,7 +136,9 @@ class MCPAdapter(ProtocolAdapter):
             and ("cancel scope" in exc_str or "async context" in exc_str)
         ) or (
             # HTTP errors during cleanup (if httpx is available)
-            HTTPX_AVAILABLE and HTTPStatusError is not None and isinstance(exc, HTTPStatusError)
+            HTTPX_AVAILABLE
+            and HTTPStatusError is not None
+            and isinstance(exc, HTTPStatusError)
         )
 
         if is_known_cleanup_error:
