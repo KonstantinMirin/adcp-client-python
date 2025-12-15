@@ -275,6 +275,9 @@ from adcp.types.aliases import (
 # Users should import TaskStatus from adcp.types.core directly if they need the core enum
 from adcp.types.core import AgentConfig, Protocol, TaskResult, WebhookMetadata
 
+# Re-export webhook payload type for webhook handling
+from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
+
 # Backward compatibility aliases
 AssetType = AssetContentType  # Use AssetContentType instead
 
@@ -486,6 +489,8 @@ __all__ = [
     "Protocol",
     "TaskResult",
     "WebhookMetadata",
+    # Webhook types
+    "McpWebhookPayload",
     # Semantic aliases for discriminated unions
     "ActivateSignalErrorResponse",
     "ActivateSignalSuccessResponse",

@@ -170,6 +170,7 @@ from adcp.types.aliases import (
     UrlPreviewRender,
     UrlVastAsset,
 )
+from adcp.types import McpWebhookPayload
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus, WebhookMetadata
 from adcp.validation import (
     ValidationError,
@@ -177,6 +178,11 @@ from adcp.validation import (
     validate_agent_authorization,
     validate_product,
     validate_publisher_properties_item,
+)
+from adcp.webhooks import (
+    create_a2a_webhook_payload,
+    create_mcp_webhook_payload,
+    get_adcp_signed_headers_for_webhook,
 )
 
 __version__ = "2.13.0"
@@ -215,6 +221,11 @@ __all__ = [
     "TaskResult",
     "TaskStatus",
     "WebhookMetadata",
+    # Webhook utilities
+    "create_mcp_webhook_payload",
+    "create_a2a_webhook_payload",
+    "get_adcp_signed_headers_for_webhook",
+    "McpWebhookPayload",
     # Common request/response types (re-exported for convenience)
     "CreateMediaBuyRequest",
     "CreateMediaBuyResponse",
