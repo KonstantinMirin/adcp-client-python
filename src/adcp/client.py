@@ -11,9 +11,11 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
+from a2a.types import Task, TaskStatusUpdateEvent
 from pydantic import BaseModel
 
 from adcp.exceptions import ADCPWebhookSignatureError
+from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
 from adcp.protocols.a2a import A2AAdapter
 from adcp.protocols.base import ProtocolAdapter
 from adcp.protocols.mcp import MCPAdapter
@@ -45,7 +47,6 @@ from adcp.types import (
     SyncCreativesResponse,
     UpdateMediaBuyRequest,
     UpdateMediaBuyResponse,
-    WebhookPayload,
 )
 from adcp.types.core import (
     Activity,
@@ -832,15 +833,36 @@ class ADCPClient:
 
         return hmac.compare_digest(signature, expected_signature)
 
-    def _parse_webhook_result(self, webhook: WebhookPayload) -> TaskResult[Any]:
+    def _parse_webhook_result(
+        self,
+        task_id: str,
+        task_type: str,
+        operation_id: str,
+        status: GeneratedTaskStatus,
+        result: Any,
+        timestamp: datetime | str,
+        message: str | None,
+        context_id: str | None,
+    ) -> TaskResult[AdcpAsyncResponseData]:
         """
-        Parse webhook payload into typed TaskResult based on task_type.
+        Parse webhook data into typed TaskResult based on task_type.
 
         Args:
-            webhook: Validated webhook payload
+            task_id: Unique identifier for this task
+            task_type: Task type from application routing (e.g., "get_products")
+            operation_id: Operation identifier from application routing
+            status: Current task status
+            result: Task-specific payload (AdCP response data)
+            timestamp: ISO 8601 timestamp when webhook was generated
+            message: Human-readable summary of task state
+            context_id: Session/conversation identifier
 
         Returns:
             TaskResult with task-specific typed response data
+
+        Note:
+            This method works with both MCP and A2A protocols by accepting
+            protocol-agnostic parameters rather than protocol-specific objects.
         """
         from adcp.utils.response_parser import parse_json_or_text
 
@@ -859,21 +881,20 @@ class ADCPClient:
         }
 
         # Handle completed tasks with result parsing
-
-        if webhook.status == GeneratedTaskStatus.completed and webhook.result is not None:
-            response_type = response_type_map.get(webhook.task_type.value)
+        if status == GeneratedTaskStatus.completed and result is not None:
+            response_type = response_type_map.get(task_type)
             if response_type:
                 try:
-                    parsed_result: Any = parse_json_or_text(webhook.result, response_type)
-                    return TaskResult[Any](
+                    parsed_result: Any = parse_json_or_text(result, response_type)
+                    return TaskResult[AdcpAsyncResponseData](
                         status=TaskStatus.COMPLETED,
                         data=parsed_result,
                         success=True,
                         metadata={
-                            "task_id": webhook.task_id,
-                            "operation_id": webhook.operation_id,
-                            "timestamp": webhook.timestamp,
-                            "message": webhook.message,
+                            "task_id": task_id,
+                            "operation_id": operation_id,
+                            "timestamp": timestamp,
+                            "message": message,
                         },
                     )
                 except ValueError as e:
@@ -881,8 +902,7 @@ class ADCPClient:
                     # Fall through to untyped result
 
         # Handle failed, input-required, or unparseable results
-        # Convert webhook status to core TaskStatus enum
-        # Map generated enum values to core enum values
+        # Convert status to core TaskStatus enum
         status_map = {
             GeneratedTaskStatus.completed: TaskStatus.COMPLETED,
             GeneratedTaskStatus.submitted: TaskStatus.SUBMITTED,
@@ -890,39 +910,45 @@ class ADCPClient:
             GeneratedTaskStatus.failed: TaskStatus.FAILED,
             GeneratedTaskStatus.input_required: TaskStatus.NEEDS_INPUT,
         }
-        task_status = status_map.get(webhook.status, TaskStatus.FAILED)
+        task_status = status_map.get(status, TaskStatus.FAILED)
 
-        return TaskResult[Any](
+        # Extract error message from result.errors if present
+        error_message: str | None = None
+        if result is not None and hasattr(result, "errors"):
+            errors = getattr(result, "errors", None)
+            if errors and len(errors) > 0:
+                first_error = errors[0]
+                if hasattr(first_error, "message"):
+                    error_message = first_error.message
+
+        return TaskResult[AdcpAsyncResponseData](
             status=task_status,
-            data=webhook.result,
-            success=webhook.status == GeneratedTaskStatus.completed,
-            error=webhook.error if isinstance(webhook.error, str) else None,
+            data=result,
+            success=status == GeneratedTaskStatus.completed,
+            error=error_message,
             metadata={
-                "task_id": webhook.task_id,
-                "operation_id": webhook.operation_id,
-                "timestamp": webhook.timestamp,
-                "message": webhook.message,
-                "context_id": webhook.context_id,
-                "progress": webhook.progress,
+                "task_id": task_id,
+                "operation_id": operation_id,
+                "timestamp": timestamp,
+                "message": message,
+                "context_id": context_id,
             },
         )
 
-    async def handle_webhook(
+    async def _handle_mcp_webhook(
         self,
         payload: dict[str, Any],
-        signature: str | None = None,
-    ) -> TaskResult[Any]:
+        task_type: str,
+        operation_id: str,
+        signature: str | None,
+    ) -> TaskResult[AdcpAsyncResponseData]:
         """
-        Handle incoming webhook and return typed result.
-
-        This method:
-        1. Verifies webhook signature (if provided)
-        2. Validates payload against WebhookPayload schema
-        3. Parses task-specific result data into typed response
-        4. Emits activity for monitoring
+        Handle MCP webhook delivered via HTTP POST.
 
         Args:
             payload: Webhook payload dict
+            task_type: Task type from application routing
+            operation_id: Operation identifier from application routing
             signature: Optional HMAC-SHA256 signature for verification
 
         Returns:
@@ -930,13 +956,10 @@ class ADCPClient:
 
         Raises:
             ADCPWebhookSignatureError: If signature verification fails
-            ValidationError: If payload doesn't match WebhookPayload schema
-
-        Example:
-            >>> result = await client.handle_webhook(payload, signature)
-            >>> if result.success and isinstance(result.data, GetProductsResponse):
-            >>>     print(f"Found {len(result.data.products)} products")
+            ValidationError: If payload doesn't match McpWebhookPayload schema
         """
+        from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
+
         # Verify signature before processing
         if signature and not self._verify_webhook_signature(payload, signature):
             logger.warning(
@@ -944,23 +967,276 @@ class ADCPClient:
             )
             raise ADCPWebhookSignatureError("Invalid webhook signature")
 
-        # Validate and parse webhook payload
-        webhook = WebhookPayload.model_validate(payload)
+        # Validate and parse MCP webhook payload
+        webhook = McpWebhookPayload.model_validate(payload)
 
         # Emit activity for monitoring
         self._emit_activity(
             Activity(
                 type=ActivityType.WEBHOOK_RECEIVED,
-                operation_id=webhook.operation_id or "unknown",
+                operation_id=operation_id,
                 agent_id=self.agent_config.id,
-                task_type=webhook.task_type.value,
+                task_type=task_type,
                 timestamp=datetime.now(timezone.utc).isoformat(),
-                metadata={"payload": payload},
+                metadata={"payload": payload, "protocol": "mcp"},
             )
         )
 
-        # Parse and return typed result
-        return self._parse_webhook_result(webhook)
+        # Extract fields and parse result
+        return self._parse_webhook_result(
+            task_id=webhook.task_id,
+            task_type=task_type,
+            operation_id=operation_id,
+            status=webhook.status,
+            result=webhook.result,
+            timestamp=webhook.timestamp,
+            message=webhook.message,
+            context_id=webhook.context_id,
+        )
+
+    async def _handle_a2a_webhook(
+        self, payload: Task | TaskStatusUpdateEvent, task_type: str, operation_id: str
+    ) -> TaskResult[AdcpAsyncResponseData]:
+        """
+        Handle A2A webhook delivered through Task or TaskStatusUpdateEvent.
+
+        Per A2A specification:
+        - Terminated statuses (completed, failed): Payload is Task with artifacts[].parts[]
+        - Intermediate statuses (working, input-required, submitted): Payload is TaskStatusUpdateEvent
+          with status.message.parts[]
+
+        Args:
+            payload: A2A Task or TaskStatusUpdateEvent object
+            task_type: Task type from application routing
+            operation_id: Operation identifier from application routing
+
+        Returns:
+            TaskResult with parsed task-specific response data
+
+        Note:
+            Signature verification is NOT applicable for A2A webhooks
+            as they arrive through authenticated A2A connections, not HTTP.
+        """
+        from a2a.types import DataPart, TextPart
+
+        adcp_data: Any = None
+        text_message: str | None = None
+        task_id: str
+        context_id: str | None
+        status_state: str
+        timestamp: datetime | str
+
+        # Type detection and extraction based on payload type
+        if isinstance(payload, TaskStatusUpdateEvent):
+            # Intermediate status: Extract from status.message.parts[]
+            task_id = payload.task_id
+            context_id = payload.context_id
+            status_state = payload.status.state if payload.status else "failed"
+            timestamp = (
+                payload.status.timestamp
+                if payload.status and payload.status.timestamp
+                else datetime.now(timezone.utc)
+            )
+
+            # Extract from status.message.parts[]
+            if payload.status and payload.status.message and payload.status.message.parts:
+                # Extract DataPart for structured AdCP payload
+                data_parts = [
+                    p.root
+                    for p in payload.status.message.parts
+                    if isinstance(p.root, DataPart)
+                ]
+                if data_parts:
+                    # Use last DataPart as authoritative
+                    last_data_part = data_parts[-1]
+                    adcp_data = last_data_part.data
+
+                    # Unwrap {"response": {...}} wrapper if present (ADK pattern)
+                    if isinstance(adcp_data, dict) and "response" in adcp_data:
+                        if len(adcp_data) == 1:
+                            adcp_data = adcp_data["response"]
+                        else:
+                            adcp_data = adcp_data["response"]
+
+                # Extract TextPart for human-readable message
+                for part in payload.status.message.parts:
+                    if isinstance(part.root, TextPart):
+                        text_message = part.root.text
+                        break
+
+        else:
+            # Terminated status (Task): Extract from artifacts[].parts[]
+            task_id = payload.id
+            context_id = payload.context_id
+            status_state = payload.status.state if payload.status else "failed"
+            timestamp = (
+                payload.status.timestamp
+                if payload.status and payload.status.timestamp
+                else datetime.now(timezone.utc)
+            )
+
+            # Extract from task.artifacts[].parts[]
+            # Following A2A spec: use last artifact, last DataPart is authoritative
+            if payload.artifacts:
+                # Use last artifact (most recent in streaming scenarios)
+                target_artifact = payload.artifacts[-1]
+
+                if target_artifact.parts:
+                    # Extract DataPart for structured AdCP payload
+                    data_parts = [
+                        p.root
+                        for p in target_artifact.parts
+                        if isinstance(p.root, DataPart)
+                    ]
+                    if data_parts:
+                        # Use last DataPart as authoritative
+                        last_data_part = data_parts[-1]
+                        adcp_data = last_data_part.data
+
+                        # Unwrap {"response": {...}} wrapper if present (ADK pattern)
+                        if isinstance(adcp_data, dict) and "response" in adcp_data:
+                            if len(adcp_data) == 1:
+                                adcp_data = adcp_data["response"]
+                            else:
+                                adcp_data = adcp_data["response"]
+
+                    # Extract TextPart for human-readable message
+                    for part in target_artifact.parts:
+                        if isinstance(part.root, TextPart):
+                            text_message = part.root.text
+                            break
+
+        # Map A2A status.state to GeneratedTaskStatus enum
+        status_map = {
+            "completed": GeneratedTaskStatus.completed,
+            "submitted": GeneratedTaskStatus.submitted,
+            "working": GeneratedTaskStatus.working,
+            "failed": GeneratedTaskStatus.failed,
+            "input-required": GeneratedTaskStatus.input_required,
+            "input_required": GeneratedTaskStatus.input_required,  # Handle both formats
+        }
+        mapped_status = status_map.get(status_state, GeneratedTaskStatus.failed)
+
+        # Emit activity for monitoring
+        self._emit_activity(
+            Activity(
+                type=ActivityType.WEBHOOK_RECEIVED,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type=task_type,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                metadata={
+                    "task_id": task_id,
+                    "protocol": "a2a",
+                    "payload_type": (
+                        "TaskStatusUpdateEvent"
+                        if isinstance(payload, TaskStatusUpdateEvent)
+                        else "Task"
+                    ),
+                },
+            )
+        )
+
+        # Parse and return typed result by passing extracted fields directly
+        return self._parse_webhook_result(
+            task_id=task_id,
+            task_type=task_type,
+            operation_id=operation_id,
+            status=mapped_status,
+            result=adcp_data,
+            timestamp=timestamp,
+            message=text_message,
+            context_id=context_id,
+        )
+
+    async def handle_webhook(
+        self,
+        payload: dict[str, Any] | Task | TaskStatusUpdateEvent,
+        task_type: str,
+        operation_id: str,
+        signature: str | None = None,
+    ) -> TaskResult[AdcpAsyncResponseData]:
+        """
+        Handle incoming webhook and return typed result.
+
+        This method provides a unified interface for handling webhooks from both
+        MCP and A2A protocols:
+
+        - MCP Webhooks: HTTP POST with dict payload, optional HMAC signature
+        - A2A Webhooks: Task or TaskStatusUpdateEvent objects based on status
+
+        The method automatically detects the protocol type and routes to the
+        appropriate handler. Both protocols return a consistent TaskResult
+        structure with typed AdCP response data.
+
+        Args:
+            payload: Webhook payload - one of:
+                - dict[str, Any]: MCP webhook payload from HTTP POST
+                - Task: A2A webhook for terminated statuses (completed, failed)
+                - TaskStatusUpdateEvent: A2A webhook for intermediate statuses
+                  (working, input-required, submitted)
+            task_type: Task type from application routing (e.g., "get_products").
+                Applications should extract this from URL routing pattern:
+                /webhook/{task_type}/{agent_id}/{operation_id}
+            operation_id: Operation identifier from application routing.
+                Used to correlate webhook notifications with original task submission.
+            signature: Optional HMAC-SHA256 signature for MCP webhook verification.
+                Ignored for A2A webhooks (they use authenticated connections).
+
+        Returns:
+            TaskResult with parsed task-specific response data. The structure
+            is identical regardless of protocol.
+
+        Raises:
+            ADCPWebhookSignatureError: If MCP signature verification fails
+            ValidationError: If MCP payload doesn't match WebhookPayload schema
+
+        Note:
+            task_type and operation_id were deprecated from the webhook payload
+            per AdCP specification. Applications must extract these from URL
+            routing and pass them explicitly.
+
+        Examples:
+            MCP webhook (HTTP endpoint):
+            >>> @app.post("/webhook/{task_type}/{agent_id}/{operation_id}")
+            >>> async def webhook_handler(task_type: str, operation_id: str, request: Request):
+            >>>     payload = await request.json()
+            >>>     signature = request.headers.get("X-Signature")
+            >>>     result = await client.handle_webhook(
+            >>>         payload, task_type, operation_id, signature
+            >>>     )
+            >>>     if result.success:
+            >>>         print(f"Task completed: {result.data}")
+
+            A2A webhook with Task (terminated status):
+            >>> async def on_task_completed(task: Task):
+            >>>     # Extract task_type and operation_id from your app's task tracking
+            >>>     task_type = your_task_registry.get_type(task.id)
+            >>>     operation_id = your_task_registry.get_operation_id(task.id)
+            >>>     result = await client.handle_webhook(
+            >>>         task, task_type, operation_id
+            >>>     )
+            >>>     if result.success:
+            >>>         print(f"Task completed: {result.data}")
+
+            A2A webhook with TaskStatusUpdateEvent (intermediate status):
+            >>> async def on_task_update(event: TaskStatusUpdateEvent):
+            >>>     # Extract task_type and operation_id from your app's task tracking
+            >>>     task_type = your_task_registry.get_type(event.task_id)
+            >>>     operation_id = your_task_registry.get_operation_id(event.task_id)
+            >>>     result = await client.handle_webhook(
+            >>>         event, task_type, operation_id
+            >>>     )
+            >>>     if result.status == GeneratedTaskStatus.working:
+            >>>         print(f"Task still working: {result.metadata.get('message')}")
+        """
+        # Detect protocol type and route to appropriate handler
+        if isinstance(payload, (Task, TaskStatusUpdateEvent)):
+            # A2A webhook (Task or TaskStatusUpdateEvent)
+            return await self._handle_a2a_webhook(payload, task_type, operation_id)
+        else:
+            # MCP webhook (dict payload)
+            return await self._handle_mcp_webhook(payload, task_type, operation_id, signature)
 
 
 class ADCPMultiAgentClient:

@@ -140,7 +140,6 @@ from adcp.types._generated import (
     ProductCardDetailed,
     ProductCatalog,
     ProductFilters,
-    Progress,
     PromotedOfferings,
     PromotedProducts,
     Property,
@@ -194,7 +193,6 @@ from adcp.types._generated import (
     VideoAsset,
     ViewThreshold,
     WebhookAsset,
-    WebhookPayload,
     WebhookResponseType,
 )
 from adcp.types._generated import (
@@ -325,7 +323,6 @@ __all__ = [
     "MediaBuyDelivery",
     "PreviewCreativeRequest",
     "PreviewCreativeResponse",
-    "Progress",
     "ProtocolEnvelope",
     "ProtocolResponse",
     "ProvidePerformanceFeedbackRequest",
@@ -484,7 +481,6 @@ __all__ = [
     "UrlAsset",
     "VideoAsset",
     "WebhookAsset",
-    "WebhookPayload",
     # Core types
     "AgentConfig",
     "Protocol",
