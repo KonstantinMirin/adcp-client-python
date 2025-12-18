@@ -983,8 +983,10 @@ class ADCPClient:
         from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
 
         # Verify signature before processing (requires both signature and timestamp)
-        if signature and timestamp and not self._verify_webhook_signature(
-            payload, signature, timestamp
+        if (
+            signature
+            and timestamp
+            and not self._verify_webhook_signature(payload, signature, timestamp)
         ):
             logger.warning(
                 f"Webhook signature verification failed for agent {self.agent_config.id}"
