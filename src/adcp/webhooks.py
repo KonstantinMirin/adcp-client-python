@@ -28,7 +28,7 @@ from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseD
 def create_mcp_webhook_payload(
     task_id: str,
     status: GeneratedTaskStatus,
-    result: AdcpAsyncResponseData | dict[str, Any],
+    result: AdcpAsyncResponseData | dict[str, Any] | None = None,
     timestamp: datetime | None = None,
     task_type: str | None = None,
     operation_id: str | None = None,
