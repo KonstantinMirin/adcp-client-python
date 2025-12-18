@@ -45,6 +45,7 @@
         "media_buy_id",
         "buyer_ref"
       ],
+      "title": "UpdateMediaBuySuccess",
       "type": "object"
     },
     {
@@ -88,6 +89,7 @@
       "required": [
         "errors"
       ],
+      "title": "UpdateMediaBuyError",
       "type": "object"
     }
   ],

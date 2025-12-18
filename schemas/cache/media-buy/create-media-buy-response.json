@@ -43,6 +43,7 @@
         "buyer_ref",
         "packages"
       ],
+      "title": "CreateMediaBuySuccess",
       "type": "object"
     },
     {
@@ -86,6 +87,7 @@
       "required": [
         "errors"
       ],
+      "title": "CreateMediaBuyError",
       "type": "object"
     }
   ],
