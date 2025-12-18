@@ -812,13 +812,23 @@ class ADCPClient:
         """Async context manager exit."""
         await self.close()
 
-    def _verify_webhook_signature(self, payload: dict[str, Any], signature: str) -> bool:
+    def _verify_webhook_signature(
+        self, payload: dict[str, Any], signature: str, timestamp: str
+    ) -> bool:
         """
         Verify HMAC-SHA256 signature of webhook payload.
 
+        The verification algorithm matches get_adcp_signed_headers_for_webhook:
+        1. Constructs message as "{timestamp}.{json_payload}"
+        2. JSON-serializes payload with compact separators
+        3. UTF-8 encodes the message
+        4. HMAC-SHA256 signs with the shared secret
+        5. Compares against the provided signature (with "sha256=" prefix stripped)
+
         Args:
             payload: Webhook payload dict
-            signature: Signature to verify
+            signature: Signature to verify (with or without "sha256=" prefix)
+            timestamp: ISO 8601 timestamp from X-AdCP-Timestamp header
 
         Returns:
             True if signature is valid, False otherwise
@@ -826,9 +836,19 @@ class ADCPClient:
         if not self.webhook_secret:
             return True
 
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+        # Strip "sha256=" prefix if present
+        if signature.startswith("sha256="):
+            signature = signature[7:]
+
+        # Serialize payload to JSON with consistent formatting (matches signing)
+        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode("utf-8")
+
+        # Construct signed message: timestamp.payload (matches get_adcp_signed_headers_for_webhook)
+        signed_message = f"{timestamp}.{payload_bytes.decode('utf-8')}"
+
+        # Generate expected signature
         expected_signature = hmac.new(
-            self.webhook_secret.encode("utf-8"), payload_bytes, hashlib.sha256
+            self.webhook_secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
         return hmac.compare_digest(signature, expected_signature)
@@ -941,6 +961,7 @@ class ADCPClient:
         task_type: str,
         operation_id: str,
         signature: str | None,
+        timestamp: str | None = None,
     ) -> TaskResult[AdcpAsyncResponseData]:
         """
         Handle MCP webhook delivered via HTTP POST.
@@ -949,7 +970,8 @@ class ADCPClient:
             payload: Webhook payload dict
             task_type: Task type from application routing
             operation_id: Operation identifier from application routing
-            signature: Optional HMAC-SHA256 signature for verification
+            signature: Optional HMAC-SHA256 signature for verification (X-AdCP-Signature header)
+            timestamp: Optional timestamp for signature verification (X-AdCP-Timestamp header)
 
         Returns:
             TaskResult with parsed task-specific response data
@@ -960,8 +982,10 @@ class ADCPClient:
         """
         from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
 
-        # Verify signature before processing
-        if signature and not self._verify_webhook_signature(payload, signature):
+        # Verify signature before processing (requires both signature and timestamp)
+        if signature and timestamp and not self._verify_webhook_signature(
+            payload, signature, timestamp
+        ):
             logger.warning(
                 f"Webhook signature verification failed for agent {self.agent_config.id}"
             )
@@ -1151,6 +1175,7 @@ class ADCPClient:
         task_type: str,
         operation_id: str,
         signature: str | None = None,
+        timestamp: str | None = None,
     ) -> TaskResult[AdcpAsyncResponseData]:
         """
         Handle incoming webhook and return typed result.
@@ -1176,8 +1201,10 @@ class ADCPClient:
                 /webhook/{task_type}/{agent_id}/{operation_id}
             operation_id: Operation identifier from application routing.
                 Used to correlate webhook notifications with original task submission.
-            signature: Optional HMAC-SHA256 signature for MCP webhook verification.
-                Ignored for A2A webhooks (they use authenticated connections).
+            signature: Optional HMAC-SHA256 signature for MCP webhook verification
+                (X-AdCP-Signature header). Ignored for A2A webhooks.
+            timestamp: Optional timestamp for MCP webhook signature verification
+                (X-AdCP-Timestamp header). Required when signature is provided.
 
         Returns:
             TaskResult with parsed task-specific response data. The structure
@@ -1197,9 +1224,10 @@ class ADCPClient:
             >>> @app.post("/webhook/{task_type}/{agent_id}/{operation_id}")
             >>> async def webhook_handler(task_type: str, operation_id: str, request: Request):
             >>>     payload = await request.json()
-            >>>     signature = request.headers.get("X-Signature")
+            >>>     signature = request.headers.get("X-AdCP-Signature")
+            >>>     timestamp = request.headers.get("X-AdCP-Timestamp")
             >>>     result = await client.handle_webhook(
-            >>>         payload, task_type, operation_id, signature
+            >>>         payload, task_type, operation_id, signature, timestamp
             >>>     )
             >>>     if result.success:
             >>>         print(f"Task completed: {result.data}")
@@ -1232,7 +1260,9 @@ class ADCPClient:
             return await self._handle_a2a_webhook(payload, task_type, operation_id)
         else:
             # MCP webhook (dict payload)
-            return await self._handle_mcp_webhook(payload, task_type, operation_id, signature)
+            return await self._handle_mcp_webhook(
+                payload, task_type, operation_id, signature, timestamp
+            )
 
 
 class ADCPMultiAgentClient:

@@ -168,19 +168,26 @@ class TestMCPWebhooks:
             },
         }
 
-        # Generate valid signature
+        # Generate valid signature using {timestamp}.{payload} format
+        # (matching get_adcp_signed_headers_for_webhook)
         import hashlib
         import hmac
 
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode(
+        header_timestamp = "2025-01-15T10:00:00Z"
+        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode(
             "utf-8"
         )
+        signed_message = f"{header_timestamp}.{payload_bytes.decode('utf-8')}"
         signature = hmac.new(
-            "test_secret".encode("utf-8"), payload_bytes, hashlib.sha256
+            "test_secret".encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
         result = await self.client.handle_webhook(
-            payload, task_type="create_media_buy", operation_id="op_333", signature=signature
+            payload,
+            task_type="create_media_buy",
+            operation_id="op_333",
+            signature=signature,
+            timestamp=header_timestamp,
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -206,6 +213,7 @@ class TestMCPWebhooks:
                 task_type="create_media_buy",
                 operation_id="op_444",
                 signature="invalid_signature",
+                timestamp="2025-01-15T10:00:00Z",
             )
 
     @pytest.mark.asyncio
