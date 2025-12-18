@@ -380,7 +380,6 @@ def create_a2a_webhook_payload(
         context_id: Session/conversation identifier (required by A2A protocol)
         timestamp: When the webhook was generated (defaults to current UTC time)
         result: Task-specific payload (AdCP response data)
-        message: Human-readable summary of task state
 
     Returns:
         Task object for terminated statuses, TaskStatusUpdateEvent for intermediate statuses
