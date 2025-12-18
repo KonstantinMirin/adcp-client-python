@@ -17,7 +17,7 @@ from a2a.types import (
     Task,
     TaskState,
     TaskStatus,
-    TaskStatusUpdateEvent
+    TaskStatusUpdateEvent,
 )
 
 from adcp.types import GeneratedTaskStatus
@@ -125,10 +125,7 @@ def create_mcp_webhook_payload(
 
 
 def get_adcp_signed_headers_for_webhook(
-    headers: dict[str, Any],
-    secret: str,
-    timestamp: str,
-    payload: dict[str, Any] | AdCPBaseModel
+    headers: dict[str, Any], secret: str, timestamp: str, payload: dict[str, Any] | AdCPBaseModel
 ) -> dict[str, Any]:
     """
     Generate AdCP-compliant signed headers for webhook delivery.
@@ -211,9 +208,7 @@ def get_adcp_signed_headers_for_webhook(
 
     # Serialize payload to JSON with consistent formatting
     # Note: sort_keys=False for performance (key order doesn't affect signature)
-    payload_bytes = json.dumps(payload_dict, separators=(",", ":"), sort_keys=False).encode(
-        "utf-8"
-    )
+    payload_bytes = json.dumps(payload_dict, separators=(",", ":"), sort_keys=False).encode("utf-8")
 
     # Construct signed message: timestamp.payload
     # Including timestamp prevents replay attacks
@@ -221,9 +216,7 @@ def get_adcp_signed_headers_for_webhook(
 
     # Generate HMAC-SHA256 signature over timestamp + payload
     signature_hex = hmac.new(
-        secret.encode("utf-8"),
-        signed_message.encode("utf-8"),
-        hashlib.sha256
+        secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
     ).hexdigest()
 
     # Add AdCP-compliant signature headers
@@ -498,7 +491,9 @@ def create_a2a_webhook_payload(
         else:
             message_obj = None
 
-        task_status = TaskStatus(state=task_state_enum, timestamp=timestamp_str, message=message_obj)
+        task_status = TaskStatus(
+            state=task_state_enum, timestamp=timestamp_str, message=message_obj
+        )
 
         return TaskStatusUpdateEvent(
             task_id=task_id,

@@ -1042,9 +1042,7 @@ class ADCPClient:
             if payload.status and payload.status.message and payload.status.message.parts:
                 # Extract DataPart for structured AdCP payload
                 data_parts = [
-                    p.root
-                    for p in payload.status.message.parts
-                    if isinstance(p.root, DataPart)
+                    p.root for p in payload.status.message.parts if isinstance(p.root, DataPart)
                 ]
                 if data_parts:
                     # Use last DataPart as authoritative
@@ -1084,9 +1082,7 @@ class ADCPClient:
                 if target_artifact.parts:
                     # Extract DataPart for structured AdCP payload
                     data_parts = [
-                        p.root
-                        for p in target_artifact.parts
-                        if isinstance(p.root, DataPart)
+                        p.root for p in target_artifact.parts if isinstance(p.root, DataPart)
                     ]
                     if data_parts:
                         # Use last DataPart as authoritative
