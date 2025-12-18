@@ -101,6 +101,7 @@ from adcp.types import (
     ListCreativeFormatsResponse,
     ListCreativesRequest,
     ListCreativesResponse,
+    McpWebhookPayload,
     MediaBuy,
     MediaBuyStatus,
     Package,
@@ -170,7 +171,6 @@ from adcp.types.aliases import (
     UrlPreviewRender,
     UrlVastAsset,
 )
-from adcp.types import McpWebhookPayload
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus, WebhookMetadata
 from adcp.validation import (
     ValidationError,

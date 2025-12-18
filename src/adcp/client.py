@@ -15,7 +15,6 @@ from a2a.types import Task, TaskStatusUpdateEvent
 from pydantic import BaseModel
 
 from adcp.exceptions import ADCPWebhookSignatureError
-from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
 from adcp.protocols.a2a import A2AAdapter
 from adcp.protocols.base import ProtocolAdapter
 from adcp.protocols.mcp import MCPAdapter
@@ -56,6 +55,7 @@ from adcp.types.core import (
     TaskResult,
     TaskStatus,
 )
+from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
 from adcp.utils.operation_id import create_operation_id
 
 logger = logging.getLogger(__name__)
@@ -1028,8 +1028,8 @@ class ADCPClient:
 
         Per A2A specification:
         - Terminated statuses (completed, failed): Payload is Task with artifacts[].parts[]
-        - Intermediate statuses (working, input-required, submitted): Payload is TaskStatusUpdateEvent
-          with status.message.parts[]
+        - Intermediate statuses (working, input-required, submitted):
+        Payload is TaskStatusUpdateEvent with status.message.parts[]
 
         Args:
             payload: A2A Task or TaskStatusUpdateEvent object

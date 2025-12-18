@@ -156,7 +156,7 @@ def get_adcp_signed_headers_for_webhook(
 
     Examples:
         Sign and send an MCP webhook:
-        >>> from adcp.webhooks import create_mcp_webhook_payload, get_adcp_signed_headers_for_webhook
+        >>> from adcp.webhooks import create_mcp_webhook_payload get_adcp_signed_headers_for_webhook
         >>> from datetime import datetime, timezone
         >>>
         >>> payload = create_mcp_webhook_payload(
@@ -270,7 +270,13 @@ def extract_webhook_result_data(webhook_payload: dict[str, Any]) -> AdcpAsyncRes
         ...         {
         ...             "artifact_id": "artifact_456",
         ...             "parts": [
-        ...                 {"data": {"media_buy_id": "mb_456", "buyer_ref": "ref_456", "packages": []}}
+        ...                 {
+        ...                     "data": {
+        ...                         "media_buy_id": "mb_456",
+        ...                         "buyer_ref": "ref_456",
+        ...                         "packages": []
+        ...                     }
+        ...                 }
         ...             ]
         ...         }
         ...     ]
