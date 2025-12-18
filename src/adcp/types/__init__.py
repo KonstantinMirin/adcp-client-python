@@ -257,6 +257,7 @@ from adcp.types.aliases import (
     # Sync responses
     SyncCreativesErrorResponse,
     SyncCreativesSuccessResponse,
+    SyncCreativeResult,
     # Text subassets
     TextSubAsset,
     # Update media buy variants
@@ -529,6 +530,7 @@ __all__ = [
     "PublisherPropertiesByTag",
     "SyncCreativesErrorResponse",
     "SyncCreativesSuccessResponse",
+    "SyncCreativeResult",
     "TextSubAsset",
     "UpdateMediaBuyErrorResponse",
     "UpdateMediaBuyPackagesRequest",

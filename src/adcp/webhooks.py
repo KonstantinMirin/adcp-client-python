@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 from a2a.types import (
     Artifact,
@@ -17,19 +17,20 @@ from a2a.types import (
     Task,
     TaskState,
     TaskStatus,
-    TaskStatusUpdateEvent,
+    TaskStatusUpdateEvent
 )
 
 from adcp.types import GeneratedTaskStatus
+from adcp.types.base import AdCPBaseModel
 from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
 
 
 def create_mcp_webhook_payload(
     task_id: str,
-    task_type: str,
     status: GeneratedTaskStatus,
+    result: AdcpAsyncResponseData | dict[str, Any],
     timestamp: datetime | None = None,
-    result: AdcpAsyncResponseData | dict[str, Any] | None = None,
+    task_type: str | None = None,
     operation_id: str | None = None,
     message: str | None = None,
     context_id: str | None = None,
@@ -43,8 +44,8 @@ def create_mcp_webhook_payload(
 
     Args:
         task_id: Unique identifier for the task
-        task_type: Type of AdCP operation (e.g., "get_products", "create_media_buy")
         status: Current task status
+        task_type: Optionally type of AdCP operation (e.g., "get_products", "create_media_buy")
         timestamp: When the webhook was generated (defaults to current UTC time)
         result: Task-specific payload (AdCP response data)
         operation_id: Publisher-defined operation identifier (deprecated from payload,
@@ -102,7 +103,11 @@ def create_mcp_webhook_payload(
 
     # Add optional fields only if provided
     if result is not None:
-        payload["result"] = result
+        # Convert Pydantic model to dict if needed for JSON serialization
+        if hasattr(result, "model_dump"):
+            payload["result"] = result.model_dump(mode="json")
+        else:
+            payload["result"] = result
 
     if operation_id is not None:
         payload["operation_id"] = operation_id
@@ -120,7 +125,10 @@ def create_mcp_webhook_payload(
 
 
 def get_adcp_signed_headers_for_webhook(
-    headers: dict[str, Any], secret: str, timestamp: str, payload: dict[str, Any]
+    headers: dict[str, Any],
+    secret: str,
+    timestamp: str,
+    payload: dict[str, Any] | AdCPBaseModel
 ) -> dict[str, Any]:
     """
     Generate AdCP-compliant signed headers for webhook delivery.
@@ -144,7 +152,7 @@ def get_adcp_signed_headers_for_webhook(
         headers: Existing headers dictionary to add signature headers to
         secret: Shared secret key for HMAC signing
         timestamp: ISO 8601 timestamp string (e.g., "2025-01-15T10:00:00Z")
-        payload: Webhook payload dictionary (will be JSON-serialized)
+        payload: Webhook payload (dict or Pydantic model - will be JSON-serialized)
 
     Returns:
         The modified headers dictionary with signature headers added
@@ -181,10 +189,29 @@ def get_adcp_signed_headers_for_webhook(
             "X-AdCP-Signature": "sha256=a1b2c3...",
             "X-AdCP-Timestamp": "2025-01-15T10:00:00Z"
         }
+
+        Sign with Pydantic model directly:
+        >>> from adcp import GetMediaBuyDeliveryResponse
+        >>> from datetime import datetime, timezone
+        >>>
+        >>> response: GetMediaBuyDeliveryResponse = ...  # From API call
+        >>> headers = {"Content-Type": "application/json"}
+        >>> timestamp = datetime.now(timezone.utc).isoformat()
+        >>> signed_headers = get_adcp_signed_headers_for_webhook(
+        ...     headers, secret="my-webhook-secret", timestamp=timestamp, payload=response
+        ... )
+        >>> # Pydantic model is automatically converted to dict for signing
     """
+    # Convert Pydantic model to dict if needed
+    # All AdCP types inherit from AdCPBaseModel (Pydantic BaseModel)
+    if hasattr(payload, "model_dump"):
+        payload_dict = payload.model_dump(mode="json")
+    else:
+        payload_dict = payload
+
     # Serialize payload to JSON with consistent formatting
     # Note: sort_keys=False for performance (key order doesn't affect signature)
-    payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode(
+    payload_bytes = json.dumps(payload_dict, separators=(",", ":"), sort_keys=False).encode(
         "utf-8"
     )
 
@@ -206,13 +233,142 @@ def get_adcp_signed_headers_for_webhook(
     return headers
 
 
+def extract_webhook_result_data(webhook_payload: dict[str, Any]) -> AdcpAsyncResponseData | None:
+    """
+    Extract result data from webhook payload (MCP or A2A format).
+
+    This utility function handles webhook payloads from both MCP and A2A protocols,
+    extracting the result data regardless of the webhook format. Useful for quick
+    inspection, logging, or custom webhook routing logic without requiring full
+    client initialization.
+
+    Protocol Detection:
+    - A2A Task: Has "artifacts" field (terminated statuses: completed, failed)
+    - A2A TaskStatusUpdateEvent: Has nested "status.message" structure (intermediate statuses)
+    - MCP: Has "result" field directly
+
+    Args:
+        webhook_payload: Raw webhook dictionary from HTTP request (JSON-deserialized)
+
+    Returns:
+        AdcpAsyncResponseData union type containing the extracted AdCP response, or None
+        if no result present. For A2A webhooks, unwraps data from artifacts/message parts
+        structure. For MCP webhooks, returns the result field directly.
+
+    Examples:
+        Extract from MCP webhook:
+        >>> mcp_payload = {
+        ...     "task_id": "task_123",
+        ...     "task_type": "create_media_buy",
+        ...     "status": "completed",
+        ...     "timestamp": "2025-01-15T10:00:00Z",
+        ...     "result": {"media_buy_id": "mb_123", "buyer_ref": "ref_123", "packages": []}
+        ... }
+        >>> result = extract_webhook_result_data(mcp_payload)
+        >>> print(result["media_buy_id"])
+        mb_123
+
+        Extract from A2A Task webhook:
+        >>> a2a_task_payload = {
+        ...     "id": "task_456",
+        ...     "context_id": "ctx_456",
+        ...     "status": {"state": "completed", "timestamp": "2025-01-15T10:00:00Z"},
+        ...     "artifacts": [
+        ...         {
+        ...             "artifact_id": "artifact_456",
+        ...             "parts": [
+        ...                 {"data": {"media_buy_id": "mb_456", "buyer_ref": "ref_456", "packages": []}}
+        ...             ]
+        ...         }
+        ...     ]
+        ... }
+        >>> result = extract_webhook_result_data(a2a_task_payload)
+        >>> print(result["media_buy_id"])
+        mb_456
+
+        Extract from A2A TaskStatusUpdateEvent webhook:
+        >>> a2a_event_payload = {
+        ...     "task_id": "task_789",
+        ...     "context_id": "ctx_789",
+        ...     "status": {
+        ...         "state": "working",
+        ...         "timestamp": "2025-01-15T10:00:00Z",
+        ...         "message": {
+        ...             "message_id": "msg_789",
+        ...             "role": "agent",
+        ...             "parts": [
+        ...                 {"data": {"current_step": "processing", "percentage": 50}}
+        ...             ]
+        ...         }
+        ...     },
+        ...     "final": False
+        ... }
+        >>> result = extract_webhook_result_data(a2a_event_payload)
+        >>> print(result["percentage"])
+        50
+
+        Handle webhook with no result:
+        >>> empty_payload = {"task_id": "task_000", "status": "working", "timestamp": "..."}
+        >>> result = extract_webhook_result_data(empty_payload)
+        >>> print(result)
+        None
+    """
+    # Detect A2A Task format (has "artifacts" field)
+    if "artifacts" in webhook_payload:
+        # Extract from task.artifacts[].parts[]
+        artifacts = webhook_payload.get("artifacts", [])
+        if not artifacts:
+            return None
+
+        # Use last artifact (most recent)
+        target_artifact = artifacts[-1]
+        parts = target_artifact.get("parts", [])
+        if not parts:
+            return None
+
+        # Find DataPart (skip TextPart)
+        for part in parts:
+            # Check if this part has "data" field (DataPart)
+            if "data" in part:
+                data = part["data"]
+                # Unwrap {"response": {...}} wrapper if present (A2A convention)
+                if isinstance(data, dict) and "response" in data and len(data) == 1:
+                    return cast(AdcpAsyncResponseData, data["response"])
+                return cast(AdcpAsyncResponseData, data)
+
+        return None
+
+    # Detect A2A TaskStatusUpdateEvent format (has nested "status.message")
+    status = webhook_payload.get("status")
+    if isinstance(status, dict):
+        message = status.get("message")
+        if isinstance(message, dict):
+            # Extract from status.message.parts[]
+            parts = message.get("parts", [])
+            if not parts:
+                return None
+
+            # Find DataPart
+            for part in parts:
+                if "data" in part:
+                    data = part["data"]
+                    # Unwrap {"response": {...}} wrapper if present
+                    if isinstance(data, dict) and "response" in data and len(data) == 1:
+                        return cast(AdcpAsyncResponseData, data["response"])
+                    return cast(AdcpAsyncResponseData, data)
+
+            return None
+
+    # MCP format: result field directly
+    return cast(AdcpAsyncResponseData | None, webhook_payload.get("result"))
+
+
 def create_a2a_webhook_payload(
     task_id: str,
     status: GeneratedTaskStatus,
     context_id: str,
+    result: AdcpAsyncResponseData | dict[str, Any],
     timestamp: datetime | None = None,
-    result: AdcpAsyncResponseData | dict[str, Any] | None = None,
-    message: str | None = None,
 ) -> Task | TaskStatusUpdateEvent:
     """
     Create A2A webhook payload (Task or TaskStatusUpdateEvent).
@@ -293,16 +449,15 @@ def create_a2a_webhook_payload(
     # Build parts for the message/artifact
     parts: list[Part] = []
 
-    # Add DataPart if result provided
-    if result is not None:
-        # Convert AdcpAsyncResponseData to dict if it's a Pydantic model
-        if hasattr(result, "model_dump"):
-            result_dict: dict[str, Any] = result.model_dump(mode="json")
-        else:
-            result_dict = result
+    # Add DataPart
+    # Convert AdcpAsyncResponseData to dict if it's a Pydantic model
+    if hasattr(result, "model_dump"):
+        result_dict: dict[str, Any] = result.model_dump(mode="json")
+    else:
+        result_dict = result
 
-        data_part = DataPart(data=result_dict)
-        parts.append(Part(root=data_part))
+    data_part = DataPart(data=result_dict)
+    parts.append(Part(root=data_part))
 
     # Determine if this is a terminated status (Task) or intermediate (TaskStatusUpdateEvent)
     is_terminated = status in [GeneratedTaskStatus.completed, GeneratedTaskStatus.failed]

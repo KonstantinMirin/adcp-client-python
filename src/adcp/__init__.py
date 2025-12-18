@@ -182,6 +182,7 @@ from adcp.validation import (
 from adcp.webhooks import (
     create_a2a_webhook_payload,
     create_mcp_webhook_payload,
+    extract_webhook_result_data,
     get_adcp_signed_headers_for_webhook,
 )
 
@@ -225,6 +226,7 @@ __all__ = [
     "create_mcp_webhook_payload",
     "create_a2a_webhook_payload",
     "get_adcp_signed_headers_for_webhook",
+    "extract_webhook_result_data",
     "McpWebhookPayload",
     # Common request/response types (re-exported for convenience)
     "CreateMediaBuyRequest",

@@ -106,6 +106,11 @@ from adcp.types._generated import (
 # Import Package from _generated (still uses qualified name for internal reasons)
 from adcp.types._generated import _PackageFromPackage as Package
 
+# Import nested types that aren't exported by _generated but are useful for type hints
+from adcp.types.generated_poc.media_buy.sync_creatives_response import (
+    Creative as SyncCreativeResultInternal,
+)
+
 # ============================================================================
 # RESPONSE TYPE ALIASES - Success/Error Discriminated Unions
 # ============================================================================
@@ -147,6 +152,23 @@ SyncCreativesSuccessResponse = SyncCreativesResponse1
 
 SyncCreativesErrorResponse = SyncCreativesResponse2
 """Error response - sync operation failed."""
+
+# Sync Creative Result (nested type from SyncCreativesResponse1.creatives[])
+SyncCreativeResult = SyncCreativeResultInternal
+"""Result of syncing a single creative - indicates action taken (created, updated, failed, etc.)
+
+This is the item type from SyncCreativesSuccessResponse.creatives[]. In TypeScript, this would be:
+    type SyncCreativeResult = SyncCreativesSuccessResponse["creatives"][number]
+
+Example usage:
+    from adcp import SyncCreativeResult, SyncCreativesSuccessResponse
+
+    def process_result(result: SyncCreativeResult) -> None:
+        if result.action == "created":
+            print(f"Created creative {result.creative_id}")
+        elif result.action == "failed":
+            print(f"Failed: {result.errors}")
+"""
 
 # Update Media Buy Response Variants
 UpdateMediaBuySuccessResponse = UpdateMediaBuyResponse1
@@ -716,6 +738,7 @@ __all__ = [
     # Sync creatives responses
     "SyncCreativesSuccessResponse",
     "SyncCreativesErrorResponse",
+    "SyncCreativeResult",
     # Update media buy requests
     "UpdateMediaBuyPackagesRequest",
     "UpdateMediaBuyPropertiesRequest",

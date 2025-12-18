@@ -12,6 +12,7 @@ from a2a.types import Artifact, DataPart, Message, Part, Role, Task, TaskState, 
 from adcp.client import ADCPClient
 from adcp.exceptions import ADCPWebhookSignatureError
 from adcp.types.core import AgentConfig, Protocol, TaskStatus
+from adcp.webhooks import extract_webhook_result_data
 
 
 class TestMCPWebhooks:
@@ -743,3 +744,282 @@ class TestUnifiedInterface:
         assert mcp_result.status == a2a_result.status
         assert mcp_result.data is not None
         assert a2a_result.data is not None
+
+
+class TestExtractWebhookResultData:
+    """Test extract_webhook_result_data utility function."""
+
+    def test_extract_from_mcp_webhook(self):
+        """Test extracting result from MCP webhook payload."""
+        mcp_payload = {
+            "task_id": "task_123",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {
+                "media_buy_id": "mb_123",
+                "buyer_ref": "ref_123",
+                "packages": []
+            },
+        }
+
+        result = extract_webhook_result_data(mcp_payload)
+
+        assert result is not None
+        assert result["media_buy_id"] == "mb_123"
+        assert result["buyer_ref"] == "ref_123"
+        assert result["packages"] == []
+
+    def test_extract_from_a2a_task_webhook(self):
+        """Test extracting result from A2A Task webhook payload."""
+        media_buy_data = {
+            "media_buy_id": "mb_456",
+            "buyer_ref": "ref_456",
+            "packages": []
+        }
+
+        task = Task(
+            id="task_456",
+            context_id="ctx_456",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[
+                Artifact(
+                    artifact_id="artifact_456",
+                    parts=[
+                        Part(root=DataPart(data=media_buy_data)),
+                        Part(root=TextPart(text="Media buy created")),
+                    ]
+                )
+            ],
+        )
+
+        # Convert to dict (simulating JSON deserialization)
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        assert result is not None
+        assert result["media_buy_id"] == "mb_456"
+        assert result["buyer_ref"] == "ref_456"
+
+    def test_extract_from_a2a_taskstatusupdateevent_webhook(self):
+        """Test extracting result from A2A TaskStatusUpdateEvent webhook payload."""
+        progress_data = {
+            "current_step": "fetching_inventory",
+            "percentage": 50,
+        }
+
+        event = TaskStatusUpdateEvent(
+            task_id="task_777",
+            context_id="ctx_777",
+            status=A2ATaskStatus(
+                state=TaskState.working,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                message=Message(
+                    message_id="msg_777",
+                    role=Role.agent,
+                    parts=[
+                        Part(root=DataPart(data=progress_data)),
+                        Part(root=TextPart(text="Processing...")),
+                    ],
+                ),
+            ),
+            final=False,
+        )
+
+        # Convert to dict (simulating JSON deserialization)
+        event_dict = event.model_dump(mode='json')
+        result = extract_webhook_result_data(event_dict)
+
+        assert result is not None
+        assert result["current_step"] == "fetching_inventory"
+        assert result["percentage"] == 50
+
+    def test_extract_from_a2a_with_response_wrapper(self):
+        """Test extracting result from A2A payload with {"response": {...}} wrapper."""
+        wrapped_data = {
+            "response": {
+                "media_buy_id": "mb_789",
+                "buyer_ref": "ref_789",
+                "packages": []
+            }
+        }
+
+        task = Task(
+            id="task_789",
+            context_id="ctx_789",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[
+                Artifact(
+                    artifact_id="artifact_789",
+                    parts=[Part(root=DataPart(data=wrapped_data))]
+                )
+            ],
+        )
+
+        # Convert to dict
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        # Should unwrap the response wrapper
+        assert result is not None
+        assert "response" not in result  # Unwrapped
+        assert result["media_buy_id"] == "mb_789"
+
+    def test_extract_from_mcp_with_null_result(self):
+        """Test extracting from MCP webhook with None result."""
+        mcp_payload = {
+            "task_id": "task_111",
+            "task_type": "create_media_buy",
+            "status": "working",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": None,
+        }
+
+        result = extract_webhook_result_data(mcp_payload)
+
+        assert result is None
+
+    def test_extract_from_a2a_with_empty_artifacts(self):
+        """Test extracting from A2A Task with empty artifacts array."""
+        task = Task(
+            id="task_222",
+            context_id="ctx_222",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[],
+        )
+
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        assert result is None
+
+    def test_extract_from_a2a_with_no_data_part(self):
+        """Test extracting from A2A Task with only TextPart (no DataPart)."""
+        task = Task(
+            id="task_333",
+            context_id="ctx_333",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[
+                Artifact(
+                    artifact_id="artifact_333",
+                    parts=[Part(root=TextPart(text="Only text, no data"))]
+                )
+            ],
+        )
+
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        assert result is None
+
+    def test_extract_from_a2a_with_multiple_artifacts(self):
+        """Test extracting from A2A Task with multiple artifacts (should use last)."""
+        old_data = {"media_buy_id": "mb_old"}
+        new_data = {"media_buy_id": "mb_new"}
+
+        task = Task(
+            id="task_444",
+            context_id="ctx_444",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[
+                Artifact(
+                    artifact_id="artifact_old",
+                    parts=[Part(root=DataPart(data=old_data))]
+                ),
+                Artifact(
+                    artifact_id="artifact_new",
+                    parts=[Part(root=DataPart(data=new_data))]
+                ),
+            ],
+        )
+
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        # Should use last artifact
+        assert result is not None
+        assert result["media_buy_id"] == "mb_new"
+
+    def test_extract_from_a2a_taskstatusupdateevent_with_no_message(self):
+        """Test extracting from A2A TaskStatusUpdateEvent with no status.message."""
+        event = TaskStatusUpdateEvent(
+            task_id="task_555",
+            context_id="ctx_555",
+            status=A2ATaskStatus(
+                state=TaskState.working,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                message=None,
+            ),
+            final=False,
+        )
+
+        event_dict = event.model_dump(mode='json')
+        result = extract_webhook_result_data(event_dict)
+
+        assert result is None
+
+    def test_extract_from_mcp_with_missing_result_field(self):
+        """Test extracting from MCP webhook without result field."""
+        mcp_payload = {
+            "task_id": "task_666",
+            "task_type": "create_media_buy",
+            "status": "working",
+            "timestamp": "2025-01-15T10:00:00Z",
+            # No result field
+        }
+
+        result = extract_webhook_result_data(mcp_payload)
+
+        assert result is None
+
+    def test_extract_from_a2a_with_nested_response_wrapper(self):
+        """Test that only single-key {"response": {...}} wrapper is unwrapped."""
+        # Data with response wrapper but also other keys (should NOT unwrap)
+        data_with_extra_keys = {
+            "response": {"media_buy_id": "mb_777"},
+            "other_key": "value"
+        }
+
+        task = Task(
+            id="task_777",
+            context_id="ctx_777",
+            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            artifacts=[
+                Artifact(
+                    artifact_id="artifact_777",
+                    parts=[Part(root=DataPart(data=data_with_extra_keys))]
+                )
+            ],
+        )
+
+        task_dict = task.model_dump(mode='json')
+        result = extract_webhook_result_data(task_dict)
+
+        # Should NOT unwrap (has multiple keys)
+        assert result is not None
+        assert "response" in result
+        assert "other_key" in result
+
+    def test_extract_from_mcp_with_error_response(self):
+        """Test extracting from MCP webhook with error response."""
+        mcp_payload = {
+            "task_id": "task_888",
+            "task_type": "create_media_buy",
+            "status": "failed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {
+                "errors": [
+                    {
+                        "code": "INTERNAL_ERROR",
+                        "message": "Database connection failed",
+                    }
+                ]
+            },
+        }
+
+        result = extract_webhook_result_data(mcp_payload)
+
+        assert result is not None
+        assert "errors" in result
+        assert len(result["errors"]) == 1
+        assert result["errors"][0]["code"] == "INTERNAL_ERROR"
