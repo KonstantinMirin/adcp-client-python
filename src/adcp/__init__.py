@@ -101,6 +101,7 @@ from adcp.types import (
     ListCreativeFormatsResponse,
     ListCreativesRequest,
     ListCreativesResponse,
+    McpWebhookPayload,
     MediaBuy,
     MediaBuyStatus,
     Package,
@@ -178,6 +179,12 @@ from adcp.validation import (
     validate_product,
     validate_publisher_properties_item,
 )
+from adcp.webhooks import (
+    create_a2a_webhook_payload,
+    create_mcp_webhook_payload,
+    extract_webhook_result_data,
+    get_adcp_signed_headers_for_webhook,
+)
 
 __version__ = "2.13.0"
 
@@ -215,6 +222,12 @@ __all__ = [
     "TaskResult",
     "TaskStatus",
     "WebhookMetadata",
+    # Webhook utilities
+    "create_mcp_webhook_payload",
+    "create_a2a_webhook_payload",
+    "get_adcp_signed_headers_for_webhook",
+    "extract_webhook_result_data",
+    "McpWebhookPayload",
     # Common request/response types (re-exported for convenience)
     "CreateMediaBuyRequest",
     "CreateMediaBuyResponse",

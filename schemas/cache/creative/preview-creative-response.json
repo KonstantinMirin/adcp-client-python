@@ -84,6 +84,7 @@
         "previews",
         "expires_at"
       ],
+      "title": "PreviewCreativeSingleResponse",
       "type": "object"
     },
     {
@@ -114,7 +115,8 @@
                 },
                 "required": [
                   "response"
-                ]
+                ],
+                "title": "PreviewBatchResultSuccess"
               },
               {
                 "properties": {
@@ -125,7 +127,8 @@
                 },
                 "required": [
                   "error"
-                ]
+                ],
+                "title": "PreviewBatchResultError"
               }
             ],
             "properties": {
@@ -233,6 +236,7 @@
         "response_type",
         "results"
       ],
+      "title": "PreviewCreativeBatchResponse",
       "type": "object"
     }
   ],

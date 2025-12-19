@@ -16,11 +16,9 @@ from adcp.types import aliases  # noqa: F401
 
 # Import all types from generated code
 from adcp.types._generated import (
-    # Core request/response types
     ActivateSignalRequest,
     ActivateSignalResponse,
     AggregatedTotals,
-    # Assets
     Asset,
     AssetContentType,
     AssetSelectors,
@@ -41,7 +39,6 @@ from adcp.types._generated import (
     Colors,
     Contact,
     Country,
-    # Pricing options
     CpcPricingOption,
     CpcvPricingOption,
     CpmAuctionPricingOption,
@@ -59,7 +56,6 @@ from adcp.types._generated import (
     CreativeFilters,
     CreativeManifest,
     CreativePolicy,
-    # Enums and constants
     CreativeStatus,
     CssAsset,
     DaastTrackingEvent,
@@ -140,7 +136,6 @@ from adcp.types._generated import (
     ProductCardDetailed,
     ProductCatalog,
     ProductFilters,
-    Progress,
     PromotedOfferings,
     PromotedProducts,
     Property,
@@ -194,79 +189,56 @@ from adcp.types._generated import (
     VideoAsset,
     ViewThreshold,
     WebhookAsset,
-    WebhookPayload,
     WebhookResponseType,
 )
-from adcp.types._generated import (
-    TaskStatus as GeneratedTaskStatus,
-)
-from adcp.types._generated import (
-    _PackageFromPackage as Package,
-)
+from adcp.types._generated import TaskStatus as GeneratedTaskStatus
+from adcp.types._generated import _PackageFromPackage as Package
 
 # Import semantic aliases for discriminated unions
 from adcp.types.aliases import (
-    # Activation responses
     ActivateSignalErrorResponse,
     ActivateSignalSuccessResponse,
-    # Agent deployment aliases
     AgentDeployment,
     AgentDestination,
-    # Authorized agent variants
     AuthorizedAgent,
     AuthorizedAgentsByInlineProperties,
     AuthorizedAgentsByPropertyId,
     AuthorizedAgentsByPropertyTag,
     AuthorizedAgentsByPublisherProperties,
-    # Preview/render aliases
     BothPreviewRender,
-    # Build creative responses
     BuildCreativeErrorResponse,
     BuildCreativeSuccessResponse,
-    # Create media buy responses
     CreateMediaBuyErrorResponse,
     CreateMediaBuySuccessResponse,
-    # Deployment union
     Deployment,
-    # Destination union
     Destination,
-    # Preview renders
     HtmlPreviewRender,
-    # Asset aliases
     InlineDaastAsset,
     InlineVastAsset,
-    # SubAsset aliases
     MediaSubAsset,
-    # Platform deployment
     PlatformDeployment,
     PlatformDestination,
-    # Preview requests
     PreviewCreativeFormatRequest,
     PreviewCreativeInteractiveResponse,
     PreviewCreativeManifestRequest,
     PreviewCreativeStaticResponse,
-    # Publisher property selectors
     PropertyId,
     PropertyIdActivationKey,
     PropertyTag,
     PropertyTagActivationKey,
     ProvidePerformanceFeedbackErrorResponse,
     ProvidePerformanceFeedbackSuccessResponse,
-    # Publisher properties variants
     PublisherPropertiesAll,
     PublisherPropertiesById,
     PublisherPropertiesByTag,
-    # Sync responses
+    SyncCreativeResult,
     SyncCreativesErrorResponse,
     SyncCreativesSuccessResponse,
-    # Text subassets
     TextSubAsset,
-    # Update media buy variants
     UpdateMediaBuyErrorResponse,
     UpdateMediaBuyPackagesRequest,
     UpdateMediaBuyPropertiesRequest,
     UpdateMediaBuySuccessResponse,
-    # URL aliases
     UrlDaastAsset,
     UrlPreviewRender,
     UrlVastAsset,
@@ -276,6 +248,9 @@ from adcp.types.aliases import (
 # Note: We don't import TaskStatus here to avoid shadowing GeneratedTaskStatus
 # Users should import TaskStatus from adcp.types.core directly if they need the core enum
 from adcp.types.core import AgentConfig, Protocol, TaskResult, WebhookMetadata
+
+# Re-export webhook payload type for webhook handling
+from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
 
 # Backward compatibility aliases
 AssetType = AssetContentType  # Use AssetContentType instead
@@ -325,7 +300,6 @@ __all__ = [
     "MediaBuyDelivery",
     "PreviewCreativeRequest",
     "PreviewCreativeResponse",
-    "Progress",
     "ProtocolEnvelope",
     "ProtocolResponse",
     "ProvidePerformanceFeedbackRequest",
@@ -484,12 +458,13 @@ __all__ = [
     "UrlAsset",
     "VideoAsset",
     "WebhookAsset",
-    "WebhookPayload",
     # Core types
     "AgentConfig",
     "Protocol",
     "TaskResult",
     "WebhookMetadata",
+    # Webhook types
+    "McpWebhookPayload",
     # Semantic aliases for discriminated unions
     "ActivateSignalErrorResponse",
     "ActivateSignalSuccessResponse",
@@ -528,6 +503,7 @@ __all__ = [
     "PublisherPropertiesByTag",
     "SyncCreativesErrorResponse",
     "SyncCreativesSuccessResponse",
+    "SyncCreativeResult",
     "TextSubAsset",
     "UpdateMediaBuyErrorResponse",
     "UpdateMediaBuyPackagesRequest",

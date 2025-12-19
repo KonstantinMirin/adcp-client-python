@@ -87,13 +87,15 @@ class PreviewURLGenerator:
                 first_render = preview.renders[0] if preview.renders else None
 
                 if first_render:
-                    has_url = hasattr(first_render, "preview_url")
-                    preview_url = str(first_render.preview_url) if has_url else None
+                    # PreviewRender is a RootModel, access attributes via .root
+                    render = first_render.root
+                    has_url = hasattr(render, "preview_url")
+                    preview_url = str(render.preview_url) if has_url else None
                     preview_data = {
                         "preview_id": preview.preview_id,
                         "preview_url": preview_url,
-                        "preview_html": getattr(first_render, "preview_html", None),
-                        "render_id": first_render.render_id,
+                        "preview_html": getattr(render, "preview_html", None),
+                        "render_id": render.render_id,
                         "input": preview.input.model_dump(),
                         "expires_at": str(result.data.expires_at),
                     }

@@ -25,6 +25,7 @@
       "required": [
         "creative_manifest"
       ],
+      "title": "BuildCreativeSuccess",
       "type": "object"
     },
     {
@@ -54,6 +55,7 @@
       "required": [
         "errors"
       ],
+      "title": "BuildCreativeError",
       "type": "object"
     }
   ],

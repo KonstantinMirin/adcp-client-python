@@ -1,38 +1,43 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "allOf": [
-    {
-      "$ref": "../../core/dimensions.json"
-    },
-    {
-      "additionalProperties": false,
-      "properties": {
-        "bitrate_kbps": {
-          "description": "Video bitrate in kilobits per second",
-          "minimum": 1,
-          "type": "integer"
-        },
-        "duration_ms": {
-          "description": "Video duration in milliseconds",
-          "minimum": 1,
-          "type": "integer"
-        },
-        "format": {
-          "description": "Video file format (mp4, webm, mov, etc.)",
-          "type": "string"
-        },
-        "url": {
-          "description": "URL to the video asset",
-          "format": "uri",
-          "type": "string"
-        }
-      },
-      "required": [
-        "url"
-      ],
-      "type": "object"
-    }
-  ],
+  "additionalProperties": false,
   "description": "Video asset with URL and specifications",
-  "title": "Video Asset"
+  "properties": {
+    "bitrate_kbps": {
+      "description": "Video bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "duration_ms": {
+      "description": "Video duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "format": {
+      "description": "Video file format (mp4, webm, mov, etc.)",
+      "type": "string"
+    },
+    "height": {
+      "description": "Height in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "url": {
+      "description": "URL to the video asset",
+      "format": "uri",
+      "type": "string"
+    },
+    "width": {
+      "description": "Width in pixels",
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "url",
+    "width",
+    "height"
+  ],
+  "title": "Video Asset",
+  "type": "object"
 }

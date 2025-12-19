@@ -171,7 +171,6 @@ def generate_types(input_dir: Path):
         "--target-python-version",
         "3.10",
         "--use-annotated",
-        "--collapse-root-models",
         "--reuse-model",
         "--set-default-enum-member",
         "--enum-field-as-literal",
