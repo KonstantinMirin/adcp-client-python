@@ -32,8 +32,70 @@ def print_json(data: Any) -> None:
         print(json.dumps(data, indent=2, default=str))
 
 
+def _check_deprecated_fields(data: Any) -> None:
+    """Check response data for deprecated fields and emit warnings to stderr.
+
+    Uses Pydantic's Field(deprecated=True) metadata to generically detect
+    any deprecated fields that are populated in the response.
+    """
+    from pydantic import BaseModel
+
+    deprecated_found: set[str] = set()
+
+    def _find_deprecated_fields(obj: Any, visited: set[int] | None = None) -> None:
+        """Recursively find deprecated fields that are populated."""
+        if obj is None:
+            return
+
+        # Prevent infinite recursion on circular references
+        if visited is None:
+            visited = set()
+        obj_id = id(obj)
+        if obj_id in visited:
+            return
+        visited.add(obj_id)
+
+        # Check Pydantic models for deprecated fields
+        if isinstance(obj, BaseModel):
+            for field_name, field_info in obj.model_fields.items():
+                if field_info.deprecated:
+                    value = getattr(obj, field_name, None)
+                    if value is not None:
+                        deprecated_found.add(field_name)
+
+            # Recursively check field values
+            for field_name in obj.model_fields:
+                value = getattr(obj, field_name, None)
+                if value is not None:
+                    _find_deprecated_fields(value, visited)
+
+        # Check lists
+        elif isinstance(obj, list):
+            for item in obj:
+                _find_deprecated_fields(item, visited)
+
+        # Check dicts
+        elif isinstance(obj, dict):
+            for value in obj.values():
+                _find_deprecated_fields(value, visited)
+
+    _find_deprecated_fields(data)
+
+    if deprecated_found:
+        fields_list = ", ".join(f"'{f}'" for f in sorted(deprecated_found))
+        print(
+            f"\n⚠️  Warning: Response contains deprecated field(s): {fields_list}\n"
+            "   See field descriptions or AdCP spec for migration details.\n",
+            file=sys.stderr,
+        )
+
+
 def print_result(result: Any, json_output: bool = False) -> None:
     """Print result in formatted or JSON mode."""
+    # Check for deprecated fields and warn (to stderr, so JSON output isn't affected)
+    if result.success and result.data:
+        _check_deprecated_fields(result.data)
+
     if json_output:
         # Match JavaScript client: output just the data for scripting
         if result.success and result.data:

@@ -399,25 +399,45 @@ def _create_sample_manifest_for_format(fmt: Format) -> CreativeManifest | None:
         Sample CreativeManifest, or None if unable to create one
     """
     from adcp.types import CreativeManifest
+    from adcp.utils.format_assets import get_required_assets
 
-    if not fmt.assets_required:
+    required_assets = get_required_assets(fmt)
+    if not required_assets:
         return None
 
     assets: dict[str, Any] = {}
 
-    for asset in fmt.assets_required:
+    for asset in required_assets:
         if isinstance(asset, dict):
+            # Handle dict input
             asset_id = asset.get("asset_id")
             asset_type = asset.get("asset_type")
 
             if asset_id:
                 assets[asset_id] = _create_sample_asset(asset_type)
         else:
-            # Handle Pydantic model
-            asset_id = asset.asset_id
-            has_value = hasattr(asset.asset_type, "value")
-            asset_type = asset.asset_type.value if has_value else str(asset.asset_type)
-            assets[asset_id] = _create_sample_asset(asset_type)
+            # Handle Pydantic model - check for individual vs repeatable_group
+            item_type = getattr(asset, "item_type", "individual")
+
+            if item_type == "individual":
+                asset_id = asset.asset_id
+                has_value = hasattr(asset.asset_type, "value")
+                asset_type = asset.asset_type.value if has_value else str(asset.asset_type)
+                assets[asset_id] = _create_sample_asset(asset_type)
+            elif item_type == "repeatable_group":
+                # For repeatable groups, create sample assets for each asset in the group
+                group_assets = getattr(asset, "assets", [])
+                for group_asset in group_assets:
+                    if isinstance(group_asset, dict):
+                        asset_id = group_asset.get("asset_id")
+                        asset_type = group_asset.get("asset_type")
+                    else:
+                        asset_id = group_asset.asset_id
+                        has_value = hasattr(group_asset.asset_type, "value")
+                        asset_type = group_asset.asset_type.value if has_value else str(group_asset.asset_type)
+
+                    if asset_id:
+                        assets[asset_id] = _create_sample_asset(asset_type)
 
     if not assets:
         return None

@@ -141,7 +141,7 @@ def test_product_has_expected_public_fields():
 
 
 def test_format_has_expected_public_fields():
-    """Format type from public API has expected fields."""
+    """Format type from public API has expected fields (backward compatibility)."""
     from adcp import Format
 
     expected_fields = [
@@ -155,6 +155,16 @@ def test_format_has_expected_public_fields():
     model_fields = Format.model_fields
     for field_name in expected_fields:
         assert field_name in model_fields, f"Format missing field: {field_name}"
+
+
+def test_format_has_new_assets_field():
+    """Format type has new assets field (v2.6+)."""
+    from adcp import Format
+
+    model_fields = Format.model_fields
+    # New field added in v2.6
+    assert "assets" in model_fields, "Format missing new 'assets' field"
+    # Note: assets_required is deprecated and may be removed in future versions
 
 
 def test_pricing_options_are_discriminated_by_is_fixed():
