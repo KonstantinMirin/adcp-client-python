@@ -277,6 +277,7 @@ class Format(AdCPBaseModel):
     assets_required: Annotated[
         list[AssetsRequired | AssetsRequired1] | None,
         Field(
+            deprecated=True,
             description="DEPRECATED: Use 'assets' instead. Array of required assets or asset groups for this format. Each asset is identified by its asset_id, which must be used as the key in creative manifests. Can contain individual assets or repeatable asset sequences (e.g., carousel products, slideshow frames). This field is maintained for backward compatibility; new implementations should use 'assets' with the 'required' boolean on each asset."
         ),
     ] = None

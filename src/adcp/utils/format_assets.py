@@ -216,13 +216,9 @@ def has_assets(format: Format) -> bool:
 
 def _is_required(asset: FormatAsset) -> bool:
     """Check if an asset is required."""
-    if isinstance(asset, dict):
-        return asset.get("required", False) is True
     return getattr(asset, "required", False) is True
 
 
 def _get_item_type(asset: FormatAsset) -> str:
     """Get the item_type of an asset."""
-    if isinstance(asset, dict):
-        return asset.get("item_type", "individual")
     return getattr(asset, "item_type", "individual")

@@ -57,15 +57,25 @@ def _check_deprecated_fields(data: Any) -> None:
 
         # Check Pydantic models for deprecated fields
         if isinstance(obj, BaseModel):
-            for field_name, field_info in obj.model_fields.items():
+            import warnings
+
+            # Access model_fields from the class, not the instance (Pydantic v2.11+)
+            model_fields = type(obj).model_fields
+
+            for field_name, field_info in model_fields.items():
                 if field_info.deprecated:
-                    value = getattr(obj, field_name, None)
+                    # Suppress default Pydantic's DeprecationWarning when accessing deprecated fields
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", DeprecationWarning)
+                        value = getattr(obj, field_name, None)
                     if value is not None:
                         deprecated_found.add(field_name)
 
             # Recursively check field values
-            for field_name in obj.model_fields:
-                value = getattr(obj, field_name, None)
+            for field_name in model_fields:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    value = getattr(obj, field_name, None)
                 if value is not None:
                     _find_deprecated_fields(value, visited)
 

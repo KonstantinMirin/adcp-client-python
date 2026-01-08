@@ -109,6 +109,31 @@ class TestNormalizeAssetsRequired:
         # normalize_assets_required returns Pydantic models
         assert normalized[0].requirements == {"width": 300, "height": 250}
 
+    def test_normalizes_repeatable_groups(self):
+        """Should normalize repeatable groups with required=True."""
+        assets_required = [
+            {
+                "asset_group_id": "products",
+                "item_type": "repeatable_group",
+                "min_count": 2,
+                "max_count": 10,
+                "assets": [
+                    {
+                        "asset_id": "product_img",
+                        "asset_type": "image",
+                        "item_type": "individual",
+                        "required": True,
+                    },
+                ],
+            },
+        ]
+        normalized = normalize_assets_required(assets_required)
+        assert len(normalized) == 1
+        assert normalized[0].required is True
+        assert normalized[0].asset_group_id == "products"
+        assert normalized[0].min_count == 2
+        assert normalized[0].max_count == 10
+
 
 class TestGetRequiredAssets:
     """Tests for get_required_assets() utility."""

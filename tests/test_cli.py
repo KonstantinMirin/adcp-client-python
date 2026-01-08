@@ -359,3 +359,72 @@ class TestSpecialCharactersInPayload:
         payload = '{"path": "C:\\\\Users\\\\test"}'
         result = load_payload(payload)
         assert result["path"] == "C:\\Users\\test"
+
+
+class TestDeprecatedFieldWarnings:
+    """Tests for deprecated field warning functionality."""
+
+    def test_check_deprecated_fields_warns_on_assets_required(self, capsys):
+        """Should warn when response contains deprecated assets_required field."""
+        from adcp.__main__ import _check_deprecated_fields
+        from adcp import Format, FormatId, FormatCategory
+
+        fmt = Format(
+            format_id=FormatId(agent_url="https://test.com", id="test"),
+            name="Test",
+            type=FormatCategory.display,
+            assets_required=[
+                {"asset_id": "img", "asset_type": "image", "item_type": "individual"},
+            ],
+        )
+
+        _check_deprecated_fields(fmt)
+        captured = capsys.readouterr()
+        assert "deprecated" in captured.err.lower()
+        assert "assets_required" in captured.err
+
+    def test_check_deprecated_fields_no_warning_for_new_assets(self, capsys):
+        """Should not warn when using new assets field."""
+        from adcp.__main__ import _check_deprecated_fields
+        from adcp import Format, FormatId, FormatCategory
+
+        fmt = Format(
+            format_id=FormatId(agent_url="https://test.com", id="test"),
+            name="Test",
+            type=FormatCategory.display,
+            assets=[
+                {"asset_id": "img", "asset_type": "image", "item_type": "individual", "required": True},
+            ],
+        )
+
+        _check_deprecated_fields(fmt)
+        captured = capsys.readouterr()
+        assert "deprecated" not in captured.err.lower()
+
+    def test_check_deprecated_fields_handles_none(self, capsys):
+        """Should handle None input gracefully."""
+        from adcp.__main__ import _check_deprecated_fields
+
+        _check_deprecated_fields(None)
+        captured = capsys.readouterr()
+        assert captured.err == ""
+
+    def test_check_deprecated_fields_handles_list(self, capsys):
+        """Should check items in a list."""
+        from adcp.__main__ import _check_deprecated_fields
+        from adcp import Format, FormatId, FormatCategory
+
+        formats = [
+            Format(
+                format_id=FormatId(agent_url="https://test.com", id="test"),
+                name="Test",
+                type=FormatCategory.display,
+                assets_required=[
+                    {"asset_id": "img", "asset_type": "image", "item_type": "individual"},
+                ],
+            ),
+        ]
+
+        _check_deprecated_fields(formats)
+        captured = capsys.readouterr()
+        assert "assets_required" in captured.err
