@@ -19,7 +19,7 @@ from ..enums import creative_sort_field, sort_direction
 class FieldModel(Enum):
     creative_id = 'creative_id'
     name = 'name'
-    format_ = 'format'
+    format = 'format'
     status = 'status'
     created_date = 'created_date'
     updated_date = 'updated_date'
