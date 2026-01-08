@@ -433,8 +433,10 @@ def _create_sample_manifest_for_format(fmt: Format) -> CreativeManifest | None:
                         asset_type = group_asset.get("asset_type")
                     else:
                         asset_id = group_asset.asset_id
-                        has_value = hasattr(group_asset.asset_type, "value")
-                        asset_type = group_asset.asset_type.value if has_value else str(group_asset.asset_type)
+                        if hasattr(group_asset.asset_type, "value"):
+                            asset_type = group_asset.asset_type.value
+                        else:
+                            asset_type = str(group_asset.asset_type)
 
                     if asset_id:
                         assets[asset_id] = _create_sample_asset(asset_type)

@@ -27,12 +27,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Union
 
+from adcp.types.generated_poc.core.format import Assets as AssetsModel
+from adcp.types.generated_poc.core.format import Assets1 as Assets1Model
+
 if TYPE_CHECKING:
     from adcp.types.generated_poc.core.format import Assets, Assets1, Format
-
-# Import at runtime for model creation
-from adcp.types.generated_poc.core.format import Assets as AssetsModel, Assets1 as Assets1Model
-
 
 # Type alias for any format asset (individual or repeatable group)
 FormatAsset = Union["Assets", "Assets1"]
@@ -74,8 +73,9 @@ def get_format_assets(format: Format) -> list[FormatAsset]:
 def normalize_assets_required(assets_required: list[Any]) -> list[FormatAsset]:
     """Convert deprecated assets_required to new assets format.
 
-    All assets in assets_required are required by definition (that's why they were in that array).
-    The new `assets` field has an explicit `required: boolean` to allow both required AND optional assets.
+    All assets in assets_required are required by definition (that's why they were in
+    that array). The new `assets` field has an explicit `required: boolean` to allow
+    both required AND optional assets.
 
     Args:
         assets_required: The deprecated assets_required array
