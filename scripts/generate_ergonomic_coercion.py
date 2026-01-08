@@ -326,7 +326,6 @@ def generate_code() -> str:
         '    coerce_to_model,',
         ')',
         '',
-        '# Import types that need coercion',
     ]
 
     # Add core imports
@@ -357,7 +356,6 @@ def generate_code() -> str:
     lines.append(')')
 
     # Add response type imports
-    lines.append('# Response types')
     lines.append('from adcp.types.generated_poc.media_buy.create_media_buy_response import (')
     lines.append('    CreateMediaBuyResponse1,')
     lines.append(')')
