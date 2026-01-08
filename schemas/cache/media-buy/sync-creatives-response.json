@@ -3,7 +3,7 @@
   "description": "Response from creative sync operation. Returns either per-creative results (best-effort processing) OR operation-level errors (complete failure). This enforces atomic semantics at the operation level while allowing per-item failures within successful operations.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Success response - sync operation processed creatives (may include per-item failures)",
       "not": {
         "required": [
@@ -17,7 +17,7 @@
         "creatives": {
           "description": "Results for each creative processed. Items with action='failed' indicate per-item validation/processing failures, not operation-level failures.",
           "items": {
-            "additionalProperties": false,
+            "additionalProperties": true,
             "properties": {
               "action": {
                 "$ref": "../enums/creative-action.json",
@@ -31,7 +31,7 @@
                 "type": "array"
               },
               "assignment_errors": {
-                "additionalProperties": false,
+                "additionalProperties": true,
                 "description": "Assignment errors by package ID (only present when assignment failures occurred)",
                 "patternProperties": {
                   "^[a-zA-Z0-9_-]+$": {
@@ -104,7 +104,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Error response - operation failed completely, no creatives were processed",
       "not": {
         "anyOf": [

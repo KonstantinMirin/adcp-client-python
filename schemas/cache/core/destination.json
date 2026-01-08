@@ -3,7 +3,7 @@
   "description": "A deployment target where signals can be activated (DSP, sales agent, etc.)",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "account": {
           "description": "Optional account identifier on the platform",
@@ -25,7 +25,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "account": {
           "description": "Optional account identifier on the agent",

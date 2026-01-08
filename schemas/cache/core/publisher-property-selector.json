@@ -6,7 +6,7 @@
   },
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Select all properties from the publisher domain",
       "properties": {
         "publisher_domain": {
@@ -27,7 +27,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Select specific properties by ID",
       "properties": {
         "property_ids": {
@@ -57,7 +57,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Select properties by tag membership",
       "properties": {
         "property_tags": {

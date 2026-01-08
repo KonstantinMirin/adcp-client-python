@@ -34,7 +34,7 @@ def get_target_adcp_version() -> str:
     Returns:
         AdCP version string (e.g., "v1", "v2")
     """
-    version_file = Path(__file__).parent.parent / "ADCP_VERSION"
+    version_file = Path(__file__).parent.parent / "src" / "adcp" / "ADCP_VERSION"
     if version_file.exists():
         return version_file.read_text().strip()
     return "v1"  # Fallback

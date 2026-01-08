@@ -3,7 +3,7 @@
   "description": "Response payload for provide_performance_feedback task. Returns either success confirmation OR error information, never both.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Success response - feedback received and processed",
       "not": {
         "required": [
@@ -30,7 +30,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Error response - feedback rejected or could not be processed",
       "not": {
         "required": [

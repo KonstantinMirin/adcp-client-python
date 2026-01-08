@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request parameters for querying creative assets from the centralized library with filtering, sorting, and pagination",
   "examples": [
     {
@@ -94,7 +94,7 @@
       "type": "boolean"
     },
     "pagination": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Pagination parameters",
       "properties": {
         "limit": {
@@ -114,7 +114,7 @@
       "type": "object"
     },
     "sort": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Sorting parameters",
       "properties": {
         "direction": {

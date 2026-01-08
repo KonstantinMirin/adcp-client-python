@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Cost Per Point (Gross Rating Point) fixed-rate pricing for TV and audio campaigns requiring demographic measurement",
   "properties": {
     "currency": {
@@ -25,7 +25,7 @@
       "type": "number"
     },
     "parameters": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "CPP-specific parameters for demographic targeting and GRP requirements",
       "properties": {
         "demographic": {

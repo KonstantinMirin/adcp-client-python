@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request parameters for discovering signals based on description",
   "properties": {
     "context": {
       "$ref": "../core/context.json"
     },
     "deliver_to": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Deployment targets where signals need to be activated",
       "properties": {
         "countries": {

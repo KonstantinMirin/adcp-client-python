@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Response payload for list_creative_formats task from creative agent - returns full format definitions",
   "properties": {
     "context": {

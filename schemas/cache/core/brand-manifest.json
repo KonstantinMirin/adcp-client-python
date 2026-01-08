@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Standardized brand information manifest for creative generation and media buying. Enables low-friction creative workflows by providing brand context that can be easily cached and shared across requests.",
   "examples": [
     {
@@ -117,7 +117,7 @@
     "assets": {
       "description": "Brand asset library with explicit assets and tags. Assets are referenced inline with URLs pointing to CDN-hosted files.",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "asset_id": {
             "description": "Unique identifier for this asset",
@@ -336,7 +336,7 @@
       "type": "string"
     },
     "product_catalog": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Product catalog information for e-commerce advertisers. Enables SKU-level creative generation and product selection.",
       "properties": {
         "categories": {

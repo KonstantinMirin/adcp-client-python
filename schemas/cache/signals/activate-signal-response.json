@@ -3,7 +3,7 @@
   "description": "Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Success response - signal activated successfully to one or more deployment targets",
       "not": {
         "required": [
@@ -32,7 +32,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Error response - operation failed, signal not activated",
       "not": {
         "required": [

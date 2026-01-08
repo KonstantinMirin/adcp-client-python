@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Cost Per View (at publisher-defined threshold) fixed-rate pricing for video/audio",
   "properties": {
     "currency": {
@@ -25,7 +25,7 @@
       "type": "number"
     },
     "parameters": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "CPV-specific parameters defining the view threshold",
       "properties": {
         "view_threshold": {
@@ -37,7 +37,7 @@
               "type": "number"
             },
             {
-              "additionalProperties": false,
+              "additionalProperties": true,
               "description": "Time-based view threshold for CPV pricing",
               "properties": {
                 "duration_seconds": {

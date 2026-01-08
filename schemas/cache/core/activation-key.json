@@ -3,7 +3,7 @@
   "description": "Universal identifier for using a signal on a destination platform. Can be either a segment ID or a key-value pair depending on the platform's targeting mechanism.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "segment_id": {
           "description": "The platform-specific segment identifier to use in campaign targeting",
@@ -21,7 +21,7 @@
       ]
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "key": {
           "description": "The targeting parameter key",

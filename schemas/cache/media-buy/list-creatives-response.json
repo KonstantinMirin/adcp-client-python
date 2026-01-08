@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Response from creative library query with filtered results, metadata, and optional enriched data",
   "examples": [
     {
@@ -114,7 +114,7 @@
     "creatives": {
       "description": "Array of creative assets matching the query",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "assets": {
             "description": "Assets for this creative, keyed by asset_role",
@@ -160,13 +160,13 @@
             "type": "object"
           },
           "assignments": {
-            "additionalProperties": false,
+            "additionalProperties": true,
             "description": "Current package assignments (included when include_assignments=true)",
             "properties": {
               "assigned_packages": {
                 "description": "List of packages this creative is assigned to",
                 "items": {
-                  "additionalProperties": false,
+                  "additionalProperties": true,
                   "properties": {
                     "assigned_date": {
                       "description": "When this assignment was created",
@@ -229,7 +229,7 @@
             "type": "string"
           },
           "performance": {
-            "additionalProperties": false,
+            "additionalProperties": true,
             "description": "Aggregated performance metrics (included when include_performance=true)",
             "properties": {
               "clicks": {
@@ -311,7 +311,7 @@
       "$ref": "../core/ext.json"
     },
     "format_summary": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Breakdown of creatives by format type",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": {
@@ -323,7 +323,7 @@
       "type": "object"
     },
     "pagination": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Pagination information for navigating results",
       "properties": {
         "current_page": {
@@ -359,7 +359,7 @@
       "type": "object"
     },
     "query_summary": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Summary of the query that was executed",
       "properties": {
         "filters_applied": {
@@ -399,7 +399,7 @@
       "type": "object"
     },
     "status_summary": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Breakdown of creatives by status",
       "properties": {
         "approved": {

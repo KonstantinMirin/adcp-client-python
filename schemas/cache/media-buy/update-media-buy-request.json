@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request parameters for updating campaign and package settings",
   "oneOf": [
     {
@@ -37,7 +37,7 @@
     "packages": {
       "description": "Package-specific updates",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "oneOf": [
           {
             "required": [

@@ -1,12 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "An advertising property that can be validated via adagents.json",
   "properties": {
     "identifiers": {
       "description": "Array of identifiers for this property",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "type": {
             "$ref": "../enums/identifier-types.json",

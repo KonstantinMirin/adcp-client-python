@@ -31,7 +31,7 @@
       "type": "number"
     },
     "dooh_metrics": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "DOOH-specific metrics (only included for DOOH campaigns)",
       "properties": {
         "calculation_notes": {
@@ -62,7 +62,7 @@
         "venue_breakdown": {
           "description": "Per-venue performance breakdown",
           "items": {
-            "additionalProperties": false,
+            "additionalProperties": true,
             "properties": {
               "impressions": {
                 "description": "Impressions delivered at this venue",
