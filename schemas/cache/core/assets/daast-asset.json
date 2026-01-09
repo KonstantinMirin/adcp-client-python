@@ -3,7 +3,7 @@
   "description": "DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "companion_ads": {
           "description": "Whether companion display ads are included",
@@ -43,7 +43,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "companion_ads": {
           "description": "Whether companion display ads are included",

@@ -172,6 +172,17 @@ from adcp.types.aliases import (
     UrlVastAsset,
 )
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus, WebhookMetadata
+from adcp.utils import (
+    get_asset_count,
+    get_format_assets,
+    get_individual_assets,
+    get_optional_assets,
+    get_repeatable_groups,
+    get_required_assets,
+    has_assets,
+    normalize_assets_required,
+    uses_deprecated_assets_field,
+)
 from adcp.validation import (
     ValidationError,
     validate_adagents,
@@ -333,6 +344,16 @@ __all__ = [
     "validate_agent_authorization",
     "validate_product",
     "validate_publisher_properties_item",
+    # Format asset utilities
+    "get_format_assets",
+    "normalize_assets_required",
+    "get_required_assets",
+    "get_optional_assets",
+    "get_individual_assets",
+    "get_repeatable_groups",
+    "uses_deprecated_assets_field",
+    "get_asset_count",
+    "has_assets",
     # Generated types modules
     "generated",
     "aliases",

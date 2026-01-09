@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Optional geographic refinements for media buys. Most targeting should be expressed in the brief and handled by the publisher. These fields are primarily for geographic restrictions (RCT testing, regulatory compliance).",
   "properties": {
     "axe_exclude_segment": {

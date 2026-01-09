@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Creative asset for upload to library - supports static assets, generative formats, and third-party snippets",
   "properties": {
     "approved": {
@@ -8,7 +8,7 @@
       "type": "boolean"
     },
     "assets": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Assets required by the format, keyed by asset_role",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": {
@@ -62,7 +62,7 @@
     "inputs": {
       "description": "Preview contexts for generative formats - defines what scenarios to generate previews for",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "context_description": {
             "description": "Natural language description of the context for AI-generated content",

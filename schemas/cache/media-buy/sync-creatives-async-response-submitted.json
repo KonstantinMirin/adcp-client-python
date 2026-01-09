@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Payload acknowledging sync_creatives task is queued for processing.",
   "properties": {
     "context": {

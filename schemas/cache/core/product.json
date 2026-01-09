@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Represents available advertising inventory",
   "properties": {
     "brief_relevance": {
@@ -82,7 +82,7 @@
       "type": "array"
     },
     "product_card": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Optional standard visual card (300x400px) for displaying this product in user interfaces. Can be rendered via preview_creative or pre-generated.",
       "properties": {
         "format_id": {
@@ -102,7 +102,7 @@
       "type": "object"
     },
     "product_card_detailed": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Optional detailed card with carousel and full specifications. Provides rich product presentation similar to media kit pages.",
       "properties": {
         "format_id": {

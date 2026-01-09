@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Frequency capping settings for package-level application",
   "properties": {
     "suppress_minutes": {

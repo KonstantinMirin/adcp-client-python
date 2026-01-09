@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request parameters for syncing creative assets with upsert semantics - supports bulk operations, scoped updates, and assignment management",
   "examples": [
     {
@@ -114,7 +114,7 @@
   ],
   "properties": {
     "assignments": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Optional bulk assignment of creatives to packages",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": {

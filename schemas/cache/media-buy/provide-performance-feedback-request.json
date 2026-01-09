@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request payload for provide_performance_feedback task",
   "oneOf": [
     {
@@ -41,7 +41,7 @@
       "description": "Source of the performance data"
     },
     "measurement_period": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Time period for performance measurement",
       "properties": {
         "end": {

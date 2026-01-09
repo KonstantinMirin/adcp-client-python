@@ -3,7 +3,7 @@
   "description": "Response payload for create_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the media buy is either fully created or not created at all.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Success response - media buy created successfully",
       "not": {
         "required": [
@@ -47,7 +47,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Error response - operation failed, no media buy created",
       "not": {
         "anyOf": [

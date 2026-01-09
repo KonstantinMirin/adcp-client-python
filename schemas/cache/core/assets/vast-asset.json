@@ -3,7 +3,7 @@
   "description": "VAST (Video Ad Serving Template) tag for third-party video ad serving",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "delivery_type": {
           "const": "url",
@@ -43,7 +43,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "content": {
           "description": "Inline VAST XML content",

@@ -473,7 +473,7 @@ def test_create_sample_manifest_for_format():
 
 
 def test_create_sample_manifest_for_format_no_assets():
-    """Test creating sample manifest for a format without assets."""
+    """Test creating sample manifest for a format without assets (backward compat)."""
     format_id = make_format_id("display_300x250")
     fmt = Format(
         format_id=format_id,
@@ -485,3 +485,55 @@ def test_create_sample_manifest_for_format_no_assets():
 
     manifest = _create_sample_manifest_for_format(fmt)
     assert manifest is None
+
+
+# New tests for v2.6+ assets field
+
+
+def test_create_sample_manifest_for_format_with_new_assets_field():
+    """Test creating sample manifest using new assets field (v2.6+)."""
+    format_id = make_format_id("display_300x250")
+    fmt = Format(
+        format_id=format_id,
+        name="Display 300x250",
+        description="Standard banner",
+        type="display",
+        assets=[
+            {"asset_id": "banner_image", "asset_type": "image", "item_type": "individual", "required": True},
+            {"asset_id": "logo", "asset_type": "image", "item_type": "individual", "required": False},
+            {"asset_id": "cta_url", "asset_type": "url", "item_type": "individual", "required": True},
+        ],
+    )
+
+    manifest = _create_sample_manifest_for_format(fmt)
+    assert manifest is not None
+    # Only required assets should be in the sample manifest
+    assert "banner_image" in manifest.assets
+    assert "cta_url" in manifest.assets
+    # Optional asset should NOT be included
+    assert "logo" not in manifest.assets
+
+
+def test_create_sample_manifest_prefers_assets_over_assets_required():
+    """Test that new assets field takes precedence over deprecated assets_required."""
+    format_id = make_format_id("display_300x250")
+    fmt = Format(
+        format_id=format_id,
+        name="Display 300x250",
+        description="Standard banner",
+        type="display",
+        # Both fields present - should prefer assets
+        assets=[
+            {"asset_id": "new_image", "asset_type": "image", "item_type": "individual", "required": True},
+        ],
+        assets_required=[
+            {"asset_id": "old_image", "asset_type": "image", "item_type": "individual"},
+        ],
+    )
+
+    manifest = _create_sample_manifest_for_format(fmt)
+    assert manifest is not None
+    # Should use new assets field
+    assert "new_image" in manifest.assets
+    # Should NOT use deprecated assets_required
+    assert "old_image" not in manifest.assets

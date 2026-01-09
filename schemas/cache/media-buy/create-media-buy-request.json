@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Request parameters for creating a media buy",
   "properties": {
     "brand_manifest": {
@@ -34,48 +34,80 @@
       "type": "string"
     },
     "reporting_webhook": {
-      "allOf": [
-        {
-          "$ref": "../core/push-notification-config.json"
-        },
-        {
-          "description": "Optional webhook configuration for automated reporting delivery. Uses push_notification_config structure with additional reporting-specific fields.",
+      "$comment": "Fields url, token, and authentication mirror push-notification-config.json. Inlined here because allOf + additionalProperties:false doesn't work in JSON Schema (additionalProperties can't see $ref properties). See CLAUDE.md 'Avoiding allOf with additionalProperties'.",
+      "additionalProperties": true,
+      "description": "Optional webhook configuration for automated reporting delivery. Combines push_notification_config structure with reporting-specific fields.",
+      "properties": {
+        "authentication": {
+          "additionalProperties": false,
+          "description": "Authentication configuration for webhook delivery (A2A-compatible)",
           "properties": {
-            "reporting_frequency": {
-              "description": "Frequency for automated reporting delivery. Must be supported by all products in the media buy.",
-              "enum": [
-                "hourly",
-                "daily",
-                "monthly"
-              ],
+            "credentials": {
+              "description": "Credentials for authentication. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
+              "minLength": 32,
               "type": "string"
             },
-            "requested_metrics": {
-              "description": "Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included. Must be subset of product's available_metrics.",
+            "schemes": {
+              "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for signature verification (recommended for production)",
               "items": {
-                "enum": [
-                  "impressions",
-                  "spend",
-                  "clicks",
-                  "ctr",
-                  "video_completions",
-                  "completion_rate",
-                  "conversions",
-                  "viewability",
-                  "engagement_rate"
-                ],
-                "type": "string"
+                "$ref": "../enums/auth-scheme.json"
               },
-              "type": "array",
-              "uniqueItems": true
+              "maxItems": 1,
+              "minItems": 1,
+              "type": "array"
             }
           },
           "required": [
-            "reporting_frequency"
+            "schemes",
+            "credentials"
           ],
           "type": "object"
+        },
+        "reporting_frequency": {
+          "description": "Frequency for automated reporting delivery. Must be supported by all products in the media buy.",
+          "enum": [
+            "hourly",
+            "daily",
+            "monthly"
+          ],
+          "type": "string"
+        },
+        "requested_metrics": {
+          "description": "Optional list of metrics to include in webhook notifications. If omitted, all available metrics are included. Must be subset of product's available_metrics.",
+          "items": {
+            "enum": [
+              "impressions",
+              "spend",
+              "clicks",
+              "ctr",
+              "video_completions",
+              "completion_rate",
+              "conversions",
+              "viewability",
+              "engagement_rate"
+            ],
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "token": {
+          "description": "Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.",
+          "minLength": 16,
+          "type": "string"
+        },
+        "url": {
+          "description": "Webhook endpoint URL for reporting notifications",
+          "format": "uri",
+          "type": "string"
         }
-      ]
+      },
+      "required": [
+        "url",
+        "authentication",
+        "reporting_frequency"
+      ],
+      "type": "object"
     },
     "start_time": {
       "$ref": "../core/start-timing.json"

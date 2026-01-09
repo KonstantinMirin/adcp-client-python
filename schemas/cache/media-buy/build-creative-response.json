@@ -3,7 +3,7 @@
   "description": "Response containing the transformed or generated creative manifest, ready for use with preview_creative or sync_creatives. Returns either the complete creative manifest OR error information, never both.",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Success response - creative manifest generated successfully",
       "not": {
         "required": [
@@ -29,7 +29,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Error response - creative generation failed",
       "not": {
         "required": [

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Complete offering specification combining brand manifest, product selectors, and asset filters. Provides all context needed for creative generation about what is being promoted.",
   "examples": [
     {
@@ -27,7 +27,7 @@
   ],
   "properties": {
     "asset_selectors": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Selectors to choose specific assets from the brand manifest",
       "properties": {
         "asset_types": {
@@ -74,7 +74,7 @@
     "offerings": {
       "description": "Inline offerings for campaigns without a product catalog. Each offering has a name, description, and associated assets.",
       "items": {
-        "additionalProperties": false,
+        "additionalProperties": true,
         "properties": {
           "assets": {
             "description": "Assets specific to this offering",

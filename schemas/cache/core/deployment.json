@@ -3,7 +3,7 @@
   "description": "A signal deployment to a specific deployment target with activation status and key",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "account": {
           "description": "Account identifier if applicable",
@@ -45,7 +45,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "account": {
           "description": "Account identifier if applicable",

@@ -3,7 +3,7 @@
   "description": "A single rendered piece of a creative preview with discriminated output format",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "URL-only preview format",
       "properties": {
         "dimensions": {
@@ -74,7 +74,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "HTML-only preview format",
       "properties": {
         "dimensions": {
@@ -144,7 +144,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "description": "Both URL and HTML preview format",
       "properties": {
         "dimensions": {

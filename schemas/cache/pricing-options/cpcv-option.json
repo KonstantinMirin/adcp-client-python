@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Cost Per Completed View (100% video/audio completion) fixed-rate pricing",
   "properties": {
     "currency": {

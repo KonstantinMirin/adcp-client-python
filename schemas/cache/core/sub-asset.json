@@ -3,7 +3,7 @@
   "description": "Sub-asset for multi-asset creative formats, including carousel images and native ad template variables",
   "oneOf": [
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "asset_id": {
           "description": "Unique identifier for the asset within the creative",
@@ -33,7 +33,7 @@
       "type": "object"
     },
     {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "asset_id": {
           "description": "Unique identifier for the asset within the creative",

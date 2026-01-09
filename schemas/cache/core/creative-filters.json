@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "description": "Filter criteria for querying creative assets from the centralized library",
   "properties": {
     "assigned_to_package": {
