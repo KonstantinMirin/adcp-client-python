@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.18.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v2.17.0...v2.18.0) (2026-01-09)
+
+
+### Features
+
+* add deprecated field metadata injection and CLI warnings ([8947090](https://github.com/adcontextprotocol/adcp-client-python/commit/89470901617eece1bb9e6bb3ca6d78d69b4d0813))
+* add format asset utilities and deprecation warnings for assets_required migration ([c3c379a](https://github.com/adcontextprotocol/adcp-client-python/commit/c3c379aaf47a62be29e310de5df59299ab5983c0))
+* upgrade to AdCP protocol 2.6.0 ([245a7d3](https://github.com/adcontextprotocol/adcp-client-python/commit/245a7d3dd40d139e52da336305d4c82db23726b4))
+
+
+### Bug Fixes
+
+* rename format_ to format in FieldModel enum ([1a6ab9a](https://github.com/adcontextprotocol/adcp-client-python/commit/1a6ab9a1528da3c37e7dce8b7ad72cfd416c190b))
+* resolve import sorting lint error in generated _ergonomic.py ([45350d1](https://github.com/adcontextprotocol/adcp-client-python/commit/45350d1a33b8fe6823b883bccb5bff07d388f596))
+* resolve linter errors (import sorting, line length) ([4a53e33](https://github.com/adcontextprotocol/adcp-client-python/commit/4a53e33dd34254b34a39737bba9e0ea0c6b9960c))
+* shorten comment line to pass lint ([7a2e30e](https://github.com/adcontextprotocol/adcp-client-python/commit/7a2e30ed4b9ab5ef6141662356196e9f7bc0b8c7))
+
 ## [2.17.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v2.16.0...v2.17.0) (2025-12-30)
 
 
