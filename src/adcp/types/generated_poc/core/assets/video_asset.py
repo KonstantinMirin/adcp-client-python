@@ -12,17 +12,17 @@ from pydantic import AnyUrl, ConfigDict, Field
 
 class VideoAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     bitrate_kbps: Annotated[
-        int | None, Field(description='Video bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Video bitrate in kilobits per second", ge=1)
     ] = None
     duration_ms: Annotated[
-        int | None, Field(description='Video duration in milliseconds', ge=1)
+        int | None, Field(description="Video duration in milliseconds", ge=1)
     ] = None
-    format: Annotated[str | None, Field(description='Video file format (mp4, webm, mov, etc.)')] = (
+    format: Annotated[str | None, Field(description="Video file format (mp4, webm, mov, etc.)")] = (
         None
     )
-    height: Annotated[int, Field(description='Height in pixels', ge=1)]
-    url: Annotated[AnyUrl, Field(description='URL to the video asset')]
-    width: Annotated[int, Field(description='Width in pixels', ge=1)]
+    height: Annotated[int, Field(description="Height in pixels", ge=1)]
+    url: Annotated[AnyUrl, Field(description="URL to the video asset")]
+    width: Annotated[int, Field(description="Width in pixels", ge=1)]

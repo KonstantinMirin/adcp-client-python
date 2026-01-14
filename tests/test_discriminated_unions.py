@@ -819,8 +819,8 @@ class TestPropertyTagSharedSchema:
         # The shared schema is the canonical definition in core/
         assert PropertyTag is property_tag.PropertyTag
 
-        # Both adagents.py and publisher_property_selector.py should import from core.property_tag module
-        # (not define their own)
+        # Both adagents.py and publisher_property_selector.py should import from
+        # core.property_tag module (not define their own)
         import inspect
 
         import adcp.types.generated_poc.adagents as adagents_module

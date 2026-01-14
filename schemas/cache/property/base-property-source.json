@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A source of properties for a property list. Supports three selection patterns: publisher with tags, publisher with property IDs, or direct identifiers.",
+  "discriminator": {
+    "propertyName": "selection_type"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "description": "Select properties from a publisher by tag membership",
+      "properties": {
+        "publisher_domain": {
+          "description": "Domain where publisher's adagents.json is hosted (e.g., 'raptive.com')",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        },
+        "selection_type": {
+          "const": "publisher_tags",
+          "description": "Discriminator indicating selection by property tags within a publisher",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Property tags from the publisher's adagents.json. Selects all properties with these tags.",
+          "items": {
+            "$ref": "../core/property-tag.json"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "selection_type",
+        "publisher_domain",
+        "tags"
+      ],
+      "title": "Publisher Tags Source",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "description": "Select specific properties from a publisher by ID",
+      "properties": {
+        "property_ids": {
+          "description": "Specific property IDs from the publisher's adagents.json",
+          "items": {
+            "$ref": "../core/property-id.json"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "publisher_domain": {
+          "description": "Domain where publisher's adagents.json is hosted (e.g., 'raptive.com')",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        },
+        "selection_type": {
+          "const": "publisher_ids",
+          "description": "Discriminator indicating selection by specific property IDs within a publisher",
+          "type": "string"
+        }
+      },
+      "required": [
+        "selection_type",
+        "publisher_domain",
+        "property_ids"
+      ],
+      "title": "Publisher Property IDs Source",
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "description": "Select properties by direct identifiers (domains, app IDs, etc.) without publisher context",
+      "properties": {
+        "identifiers": {
+          "description": "Direct property identifiers (domains, app IDs, etc.)",
+          "items": {
+            "$ref": "../core/identifier.json"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "selection_type": {
+          "const": "identifiers",
+          "description": "Discriminator indicating selection by direct identifiers",
+          "type": "string"
+        }
+      },
+      "required": [
+        "selection_type",
+        "identifiers"
+      ],
+      "title": "Direct Identifiers Source",
+      "type": "object"
+    }
+  ],
+  "title": "Base Property Source"
+}

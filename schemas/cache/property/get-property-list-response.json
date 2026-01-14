@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Response payload for get_property_list task. Returns identifiers only (not full property objects or scores). Consumers should cache the resolved identifiers and refresh based on cache_valid_until.",
+  "properties": {
+    "cache_valid_until": {
+      "description": "Cache expiration timestamp. Re-fetch the list after this time to get updated identifiers.",
+      "format": "date-time",
+      "type": "string"
+    },
+    "coverage_gaps": {
+      "additionalProperties": {
+        "items": {
+          "$ref": "../core/identifier.json"
+        },
+        "type": "array"
+      },
+      "description": "Properties included in the list despite missing feature data. Only present when a feature_requirement has if_not_covered='include'. Maps feature_id to list of identifiers not covered for that feature.",
+      "type": "object"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "identifiers": {
+      "description": "Resolved identifiers that passed filters (if resolve=true). Cache these locally for real-time use.",
+      "items": {
+        "$ref": "../core/identifier.json"
+      },
+      "type": "array"
+    },
+    "list": {
+      "$ref": "property-list.json",
+      "description": "The property list metadata (always returned)"
+    },
+    "pagination": {
+      "additionalProperties": false,
+      "description": "Pagination information",
+      "properties": {
+        "cursor": {
+          "description": "Cursor for next page",
+          "type": "string"
+        },
+        "has_more": {
+          "description": "Whether more results are available",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "resolved_at": {
+      "description": "When the list was resolved",
+      "format": "date-time",
+      "type": "string"
+    },
+    "returned_count": {
+      "description": "Number of identifiers returned in this response",
+      "type": "integer"
+    },
+    "total_count": {
+      "description": "Total number of identifiers in resolved list",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "list"
+  ],
+  "title": "Get Property List Response",
+  "type": "object"
+}

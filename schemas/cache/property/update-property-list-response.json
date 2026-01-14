@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Response payload for update_property_list task",
+  "properties": {
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "list": {
+      "$ref": "property-list.json",
+      "description": "The updated property list"
+    }
+  },
+  "required": [
+    "list"
+  ],
+  "title": "Update Property List Response",
+  "type": "object"
+}

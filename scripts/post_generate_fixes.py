@@ -219,7 +219,7 @@ def add_deprecated_field_metadata():
                 continue
 
             # Find the Field( after this field definition
-            field_section = content[field_start:field_start + 500]
+            field_section = content[field_start : field_start + 500]
             if "deprecated=True" in field_section.split("] = ")[0]:
                 continue  # Already fixed
 
@@ -232,9 +232,13 @@ def add_deprecated_field_metadata():
                 # Insert deprecated=True after Field(
                 insert_pos = match.end()
                 # Check what comes after - if it's description=, add before it
-                after_match = content[insert_pos:insert_pos + 50]
+                after_match = content[insert_pos : insert_pos + 50]
                 if after_match.strip().startswith("description="):
-                    new_content = content[:insert_pos] + "deprecated=True,\n            " + content[insert_pos:]
+                    new_content = (
+                        content[:insert_pos]
+                        + "deprecated=True,\n            "
+                        + content[insert_pos:]
+                    )
                 else:
                     new_content = content[:insert_pos] + "deprecated=True, " + content[insert_pos:]
 

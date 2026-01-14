@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Request parameters for retrieving a property list with resolved identifiers",
+  "properties": {
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "cursor": {
+      "description": "Pagination cursor for large result sets",
+      "type": "string"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "list_id": {
+      "description": "ID of the property list to retrieve",
+      "type": "string"
+    },
+    "max_results": {
+      "description": "Maximum identifiers to return (for large lists)",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "resolve": {
+      "default": true,
+      "description": "Whether to apply filters and return resolved identifiers (default: true)",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "list_id"
+  ],
+  "title": "Get Property List Request",
+  "type": "object"
+}

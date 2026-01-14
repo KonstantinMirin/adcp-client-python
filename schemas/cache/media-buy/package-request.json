@@ -43,8 +43,18 @@
       "minItems": 1,
       "type": "array"
     },
+    "impressions": {
+      "description": "Impression goal for this package",
+      "minimum": 0,
+      "type": "number"
+    },
     "pacing": {
       "$ref": "../enums/pacing.json"
+    },
+    "paused": {
+      "default": false,
+      "description": "Whether this package should be created in a paused state. Paused packages do not deliver impressions. Defaults to false.",
+      "type": "boolean"
     },
     "pricing_option_id": {
       "description": "ID of the selected pricing option from the product's pricing_options array",

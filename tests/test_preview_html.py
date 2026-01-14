@@ -499,9 +499,24 @@ def test_create_sample_manifest_for_format_with_new_assets_field():
         description="Standard banner",
         type="display",
         assets=[
-            {"asset_id": "banner_image", "asset_type": "image", "item_type": "individual", "required": True},
-            {"asset_id": "logo", "asset_type": "image", "item_type": "individual", "required": False},
-            {"asset_id": "cta_url", "asset_type": "url", "item_type": "individual", "required": True},
+            {
+                "asset_id": "banner_image",
+                "asset_type": "image",
+                "item_type": "individual",
+                "required": True,
+            },
+            {
+                "asset_id": "logo",
+                "asset_type": "image",
+                "item_type": "individual",
+                "required": False,
+            },
+            {
+                "asset_id": "cta_url",
+                "asset_type": "url",
+                "item_type": "individual",
+                "required": True,
+            },
         ],
     )
 
@@ -524,7 +539,12 @@ def test_create_sample_manifest_prefers_assets_over_assets_required():
         type="display",
         # Both fields present - should prefer assets
         assets=[
-            {"asset_id": "new_image", "asset_type": "image", "item_type": "individual", "required": True},
+            {
+                "asset_id": "new_image",
+                "asset_type": "image",
+                "item_type": "individual",
+                "required": True,
+            },
         ],
         assets_required=[
             {"asset_id": "old_image", "asset_type": "image", "item_type": "individual"},

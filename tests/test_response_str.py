@@ -117,9 +117,7 @@ class TestListCreativesResponseMessage:
 
     def test_singular_creative(self):
         """Single creative uses singular form."""
-        response = ListCreativesResponse.model_construct(
-            creatives=[{"creative_id": "c1"}]
-        )
+        response = ListCreativesResponse.model_construct(creatives=[{"creative_id": "c1"}])
         assert response.summary() == "Found 1 creative in the system."
 
     def test_multiple_creatives(self):
@@ -222,9 +220,7 @@ class TestActivateSignalResponseMessage:
 
     def test_success(self):
         """Success message is simple confirmation."""
-        response = ActivateSignalResponse1.model_construct(
-            activation_status="active"
-        )
+        response = ActivateSignalResponse1.model_construct(activation_status="active")
         assert response.summary() == "Signal activated successfully."
 
     def test_error(self):
@@ -317,9 +313,7 @@ class TestProvidePerformanceFeedbackResponseMessage:
 
     def test_success(self):
         """Success message is simple confirmation."""
-        response = ProvidePerformanceFeedbackResponse1.model_construct(
-            acknowledged=True
-        )
+        response = ProvidePerformanceFeedbackResponse1.model_construct(acknowledged=True)
         assert response.summary() == "Performance feedback recorded successfully."
 
     def test_error(self):

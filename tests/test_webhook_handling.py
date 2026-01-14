@@ -4,10 +4,22 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
 
 import pytest
-from a2a.types import Artifact, DataPart, Message, Part, Role, Task, TaskState, TaskStatus as A2ATaskStatus, TaskStatusUpdateEvent, TextPart
+from a2a.types import (
+    Artifact,
+    DataPart,
+    Message,
+    Part,
+    Role,
+    Task,
+    TaskState,
+    TaskStatusUpdateEvent,
+    TextPart,
+)
+from a2a.types import (
+    TaskStatus as A2ATaskStatus,
+)
 
 from adcp.client import ADCPClient
 from adcp.exceptions import ADCPWebhookSignatureError
@@ -35,11 +47,7 @@ class TestMCPWebhooks:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "media_buy_id": "mb_123",
-                "buyer_ref": "ref_123",
-                "packages": []
-            },
+            "result": {"media_buy_id": "mb_123", "buyer_ref": "ref_123", "packages": []},
             "message": "Media buy created successfully",
         }
 
@@ -61,9 +69,7 @@ class TestMCPWebhooks:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "errors": [{"code": "NOT_FOUND", "message": "No matching inventory"}]
-            },
+            "result": {"errors": [{"code": "NOT_FOUND", "message": "No matching inventory"}]},
             "message": "No matching inventory found",
         }
 
@@ -161,11 +167,7 @@ class TestMCPWebhooks:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "media_buy_id": "mb_333",
-                "buyer_ref": "ref_333",
-                "packages": []
-            },
+            "result": {"media_buy_id": "mb_333", "buyer_ref": "ref_333", "packages": []},
         }
 
         # Generate valid signature using {timestamp}.{payload} format
@@ -174,12 +176,10 @@ class TestMCPWebhooks:
         import hmac
 
         header_timestamp = "2025-01-15T10:00:00Z"
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode(
-            "utf-8"
-        )
+        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode("utf-8")
         signed_message = f"{header_timestamp}.{payload_bytes.decode('utf-8')}"
         signature = hmac.new(
-            "test_secret".encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
         result = await self.client.handle_webhook(
@@ -200,11 +200,7 @@ class TestMCPWebhooks:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "media_buy_id": "mb_444",
-                "buyer_ref": "ref_444",
-                "packages": []
-            },
+            "result": {"media_buy_id": "mb_444", "buyer_ref": "ref_444", "packages": []},
         }
 
         with pytest.raises(ADCPWebhookSignatureError):
@@ -246,23 +242,21 @@ class TestA2AWebhooks:
     @pytest.mark.asyncio
     async def test_a2a_webhook_completed_success(self):
         """Test A2A Task with completed status and valid AdCP payload."""
-        media_buy_data = {
-            "media_buy_id": "mb_123",
-            "buyer_ref": "ref_123",
-            "packages": []
-        }
+        media_buy_data = {"media_buy_id": "mb_123", "buyer_ref": "ref_123", "packages": []}
 
         task = Task(
             id="task_123",
             context_id="ctx_456",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="artifact_123",
                     parts=[
                         Part(root=DataPart(data=media_buy_data)),
                         Part(root=TextPart(text="Media buy created")),
-                    ]
+                    ],
                 )
             ],
         )
@@ -287,12 +281,11 @@ class TestA2AWebhooks:
         task = Task(
             id="task_456",
             context_id="ctx_789",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
-                Artifact(
-                    artifact_id="test_artifact",
-                    parts=[Part(root=DataPart(data=error_data))]
-                )
+                Artifact(artifact_id="test_artifact", parts=[Part(root=DataPart(data=error_data))])
             ],
         )
 
@@ -321,13 +314,11 @@ class TestA2AWebhooks:
             status=A2ATaskStatus(state="failed", timestamp=datetime.now(timezone.utc).isoformat()),
             artifacts=[
                 Artifact(
-
                     artifact_id="test_artifact",
-
                     parts=[
                         Part(root=DataPart(data=error_data)),
                         Part(root=TextPart(text="Task failed due to internal error")),
-                    ]
+                    ],
                 )
             ],
         )
@@ -352,7 +343,7 @@ class TestA2AWebhooks:
                     artifact_id="test_artifact",
                     parts=[
                         Part(root=TextPart(text="Processing request...")),
-                    ]
+                    ],
                 )
             ],
         )
@@ -379,13 +370,11 @@ class TestA2AWebhooks:
             ),
             artifacts=[
                 Artifact(
-
                     artifact_id="test_artifact",
-
                     parts=[
                         Part(root=DataPart(data=input_data)),
                         Part(root=TextPart(text="Campaign budget $150K requires VP approval")),
-                    ]
+                    ],
                 )
             ],
         )
@@ -404,7 +393,9 @@ class TestA2AWebhooks:
         task = Task(
             id="task_333",
             context_id="ctx_444",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[],  # Empty artifacts
         )
 
@@ -421,15 +412,13 @@ class TestA2AWebhooks:
         task = Task(
             id="task_444",
             context_id="ctx_555",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
-
                     artifact_id="test_artifact",
-
-                    parts=[
-                        Part(root=TextPart(text="Only text, no data"))  # Only TextPart
-                    ]
+                    parts=[Part(root=TextPart(text="Only text, no data"))],  # Only TextPart
                 )
             ],
         )
@@ -450,11 +439,12 @@ class TestA2AWebhooks:
         task = Task(
             id="task_555",
             context_id="ctx_666",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
-                    artifact_id="test_artifact",
-                    parts=[Part(root=DataPart(data=minimal_data))]
+                    artifact_id="test_artifact", parts=[Part(root=DataPart(data=minimal_data))]
                 )
             ],
         )
@@ -590,17 +580,23 @@ class TestA2AWebhooks:
         task = Task(
             id="task_666",
             context_id="ctx_777",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="test_artifact",
                     parts=[
-                        Part(root=DataPart(data={
-                            "media_buy_id": "mb_666",
-                            "buyer_ref": "ref_666",
-                            "packages": []
-                        }))
-                    ]
+                        Part(
+                            root=DataPart(
+                                data={
+                                    "media_buy_id": "mb_666",
+                                    "buyer_ref": "ref_666",
+                                    "packages": [],
+                                }
+                            )
+                        )
+                    ],
                 )
             ],
         )
@@ -642,11 +638,7 @@ class TestUnifiedInterface:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "media_buy_id": "mb_mcp",
-                "buyer_ref": "ref_mcp",
-                "packages": []
-            },
+            "result": {"media_buy_id": "mb_mcp", "buyer_ref": "ref_mcp", "packages": []},
         }
 
         result = await self.mcp_client.handle_webhook(
@@ -662,15 +654,23 @@ class TestUnifiedInterface:
         task = Task(
             id="task_a2a",
             context_id="ctx_a2a",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="test_artifact",
-                    parts=[Part(root=DataPart(data={
-                        "media_buy_id": "mb_a2a",
-                        "buyer_ref": "ref_a2a",
-                        "packages": []
-                    }))]
+                    parts=[
+                        Part(
+                            root=DataPart(
+                                data={
+                                    "media_buy_id": "mb_a2a",
+                                    "buyer_ref": "ref_a2a",
+                                    "packages": [],
+                                }
+                            )
+                        )
+                    ],
                 )
             ],
         )
@@ -710,11 +710,7 @@ class TestUnifiedInterface:
     @pytest.mark.asyncio
     async def test_consistent_result_format(self):
         """Verify MCP and A2A return identical TaskResult structure."""
-        media_buy_data = {
-            "media_buy_id": "mb_test",
-            "buyer_ref": "ref_test",
-            "packages": []
-        }
+        media_buy_data = {"media_buy_id": "mb_test", "buyer_ref": "ref_test", "packages": []}
 
         # MCP webhook
         mcp_payload = {
@@ -729,13 +725,12 @@ class TestUnifiedInterface:
         a2a_task = Task(
             id="task_2",
             context_id="ctx_2",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
-                    artifact_id="test_artifact",
-                    parts=[
-                        Part(root=DataPart(data=media_buy_data))
-                    ]
+                    artifact_id="test_artifact", parts=[Part(root=DataPart(data=media_buy_data))]
                 )
             ],
         )
@@ -764,11 +759,7 @@ class TestExtractWebhookResultData:
             "task_type": "create_media_buy",
             "status": "completed",
             "timestamp": "2025-01-15T10:00:00Z",
-            "result": {
-                "media_buy_id": "mb_123",
-                "buyer_ref": "ref_123",
-                "packages": []
-            },
+            "result": {"media_buy_id": "mb_123", "buyer_ref": "ref_123", "packages": []},
         }
 
         result = extract_webhook_result_data(mcp_payload)
@@ -780,29 +771,27 @@ class TestExtractWebhookResultData:
 
     def test_extract_from_a2a_task_webhook(self):
         """Test extracting result from A2A Task webhook payload."""
-        media_buy_data = {
-            "media_buy_id": "mb_456",
-            "buyer_ref": "ref_456",
-            "packages": []
-        }
+        media_buy_data = {"media_buy_id": "mb_456", "buyer_ref": "ref_456", "packages": []}
 
         task = Task(
             id="task_456",
             context_id="ctx_456",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="artifact_456",
                     parts=[
                         Part(root=DataPart(data=media_buy_data)),
                         Part(root=TextPart(text="Media buy created")),
-                    ]
+                    ],
                 )
             ],
         )
 
         # Convert to dict (simulating JSON deserialization)
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         assert result is not None
@@ -835,7 +824,7 @@ class TestExtractWebhookResultData:
         )
 
         # Convert to dict (simulating JSON deserialization)
-        event_dict = event.model_dump(mode='json')
+        event_dict = event.model_dump(mode="json")
         result = extract_webhook_result_data(event_dict)
 
         assert result is not None
@@ -845,27 +834,22 @@ class TestExtractWebhookResultData:
     def test_extract_from_a2a_with_response_wrapper(self):
         """Test extracting result from A2A payload with {"response": {...}} wrapper."""
         wrapped_data = {
-            "response": {
-                "media_buy_id": "mb_789",
-                "buyer_ref": "ref_789",
-                "packages": []
-            }
+            "response": {"media_buy_id": "mb_789", "buyer_ref": "ref_789", "packages": []}
         }
 
         task = Task(
             id="task_789",
             context_id="ctx_789",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
-                Artifact(
-                    artifact_id="artifact_789",
-                    parts=[Part(root=DataPart(data=wrapped_data))]
-                )
+                Artifact(artifact_id="artifact_789", parts=[Part(root=DataPart(data=wrapped_data))])
             ],
         )
 
         # Convert to dict
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         # Should unwrap the response wrapper
@@ -892,11 +876,13 @@ class TestExtractWebhookResultData:
         task = Task(
             id="task_222",
             context_id="ctx_222",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[],
         )
 
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         assert result is None
@@ -906,16 +892,18 @@ class TestExtractWebhookResultData:
         task = Task(
             id="task_333",
             context_id="ctx_333",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="artifact_333",
-                    parts=[Part(root=TextPart(text="Only text, no data"))]
+                    parts=[Part(root=TextPart(text="Only text, no data"))],
                 )
             ],
         )
 
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         assert result is None
@@ -928,20 +916,16 @@ class TestExtractWebhookResultData:
         task = Task(
             id="task_444",
             context_id="ctx_444",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
-                Artifact(
-                    artifact_id="artifact_old",
-                    parts=[Part(root=DataPart(data=old_data))]
-                ),
-                Artifact(
-                    artifact_id="artifact_new",
-                    parts=[Part(root=DataPart(data=new_data))]
-                ),
+                Artifact(artifact_id="artifact_old", parts=[Part(root=DataPart(data=old_data))]),
+                Artifact(artifact_id="artifact_new", parts=[Part(root=DataPart(data=new_data))]),
             ],
         )
 
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         # Should use last artifact
@@ -961,7 +945,7 @@ class TestExtractWebhookResultData:
             final=False,
         )
 
-        event_dict = event.model_dump(mode='json')
+        event_dict = event.model_dump(mode="json")
         result = extract_webhook_result_data(event_dict)
 
         assert result is None
@@ -983,24 +967,23 @@ class TestExtractWebhookResultData:
     def test_extract_from_a2a_with_nested_response_wrapper(self):
         """Test that only single-key {"response": {...}} wrapper is unwrapped."""
         # Data with response wrapper but also other keys (should NOT unwrap)
-        data_with_extra_keys = {
-            "response": {"media_buy_id": "mb_777"},
-            "other_key": "value"
-        }
+        data_with_extra_keys = {"response": {"media_buy_id": "mb_777"}, "other_key": "value"}
 
         task = Task(
             id="task_777",
             context_id="ctx_777",
-            status=A2ATaskStatus(state="completed", timestamp=datetime.now(timezone.utc).isoformat()),
+            status=A2ATaskStatus(
+                state="completed", timestamp=datetime.now(timezone.utc).isoformat()
+            ),
             artifacts=[
                 Artifact(
                     artifact_id="artifact_777",
-                    parts=[Part(root=DataPart(data=data_with_extra_keys))]
+                    parts=[Part(root=DataPart(data=data_with_extra_keys))],
                 )
             ],
         )
 
-        task_dict = task.model_dump(mode='json')
+        task_dict = task.model_dump(mode="json")
         result = extract_webhook_result_data(task_dict)
 
         # Should NOT unwrap (has multiple keys)

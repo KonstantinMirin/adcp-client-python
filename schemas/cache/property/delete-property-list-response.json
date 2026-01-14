@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Response payload for delete_property_list task",
+  "properties": {
+    "deleted": {
+      "description": "Whether the list was successfully deleted",
+      "type": "boolean"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "list_id": {
+      "description": "ID of the deleted list",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deleted",
+    "list_id"
+  ],
+  "title": "Delete Property List Response",
+  "type": "object"
+}

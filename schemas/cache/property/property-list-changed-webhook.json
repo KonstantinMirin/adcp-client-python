@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Webhook notification sent when a property list's resolved properties change. Contains a summary only - recipients must call get_property_list to retrieve the updated properties. This keeps payloads small and avoids redundant data transfer.",
+  "properties": {
+    "cache_valid_until": {
+      "description": "When the consumer should refresh from the governance agent",
+      "format": "date-time",
+      "type": "string"
+    },
+    "change_summary": {
+      "additionalProperties": false,
+      "description": "Summary of changes to the resolved list",
+      "properties": {
+        "properties_added": {
+          "description": "Number of properties added since last resolution",
+          "type": "integer"
+        },
+        "properties_removed": {
+          "description": "Number of properties removed since last resolution",
+          "type": "integer"
+        },
+        "total_properties": {
+          "description": "Total properties in the resolved list",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "event": {
+      "const": "property_list_changed",
+      "description": "The event type",
+      "type": "string"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "list_id": {
+      "description": "ID of the property list that changed",
+      "type": "string"
+    },
+    "list_name": {
+      "description": "Name of the property list",
+      "type": "string"
+    },
+    "resolved_at": {
+      "description": "When the list was re-resolved",
+      "format": "date-time",
+      "type": "string"
+    },
+    "signature": {
+      "description": "Cryptographic signature of the webhook payload, signed with the agent's private key. Recipients MUST verify this signature.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "event",
+    "list_id",
+    "resolved_at",
+    "signature"
+  ],
+  "title": "Property List Changed Webhook",
+  "type": "object"
+}

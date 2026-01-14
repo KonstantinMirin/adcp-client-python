@@ -1,12 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
-  "description": "Extension metadata for agent cards (MCP and A2A) declaring AdCP version and supported protocol domains",
+  "description": "Parameters for declaring AdCP support in agent discovery. For A2A, use in extensions[].params. For MCP, use in _meta['adcontextprotocol.org'].",
   "properties": {
     "adcp_version": {
-      "description": "Semantic version of the AdCP specification this agent implements (e.g., '2.4.0')",
+      "description": "Semantic version of the AdCP specification this agent implements (e.g., '2.5.0'). Extension schemas are versioned along with the AdCP spec.",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "type": "string"
+    },
+    "extensions_supported": {
+      "description": "Typed extensions this agent supports. Each extension has a formal schema in /schemas/extensions/. Extension version is determined by adcp_version.",
+      "items": {
+        "description": "Extension namespace (e.g., 'sustainability'). Must be lowercase alphanumeric with underscores.",
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
     },
     "protocols_supported": {
       "description": "AdCP protocol domains supported by this agent. At least one must be specified.",
@@ -27,6 +37,6 @@
     "adcp_version",
     "protocols_supported"
   ],
-  "title": "AdCP Agent Card Extension",
+  "title": "AdCP Agent Card Extension Params",
   "type": "object"
 }

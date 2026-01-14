@@ -218,6 +218,81 @@
         "name": "Example Third-Party Sales Agent"
       },
       "last_updated": "2025-01-10T17:00:00Z"
+    },
+    {
+      "$schema": "/schemas/2.6.0/adagents.json",
+      "authorized_agents": [
+        {
+          "authorization_type": "property_tags",
+          "authorized_for": "All news properties",
+          "property_tags": [
+            "news"
+          ],
+          "url": "https://sales.news.example.com"
+        }
+      ],
+      "contact": {
+        "domain": "news.example.com",
+        "email": "adops@news.example.com",
+        "name": "Premium News Publisher"
+      },
+      "last_updated": "2025-01-10T18:00:00Z",
+      "properties": [
+        {
+          "identifiers": [
+            {
+              "type": "domain",
+              "value": "news.example.com"
+            }
+          ],
+          "name": "News Example",
+          "property_type": "website",
+          "publisher_domain": "news.example.com",
+          "tags": [
+            "premium",
+            "news"
+          ]
+        }
+      ],
+      "property_features": [
+        {
+          "features": [
+            "carbon_score",
+            "sustainability_grade"
+          ],
+          "name": "Scope3",
+          "publisher_id": "pub_news_12345",
+          "url": "https://api.scope3.com"
+        },
+        {
+          "features": [
+            "tag_certified_against_fraud",
+            "tag_brand_safety_certified"
+          ],
+          "name": "TAG",
+          "url": "https://api.tagtoday.net"
+        },
+        {
+          "features": [
+            "gdpr_compliant",
+            "tcf_registered",
+            "ccpa_compliant"
+          ],
+          "name": "OneTrust",
+          "publisher_id": "ot_news_67890",
+          "url": "https://api.onetrust.com"
+        }
+      ],
+      "tags": {
+        "news": {
+          "description": "News and journalism content",
+          "name": "News Properties"
+        },
+        "premium": {
+          "description": "High-quality, brand-safe properties",
+          "name": "Premium Properties"
+        }
+      }
     }
   ],
   "oneOf": [
@@ -458,6 +533,42 @@
             "$ref": "core/property.json"
           },
           "minItems": 1,
+          "type": "array"
+        },
+        "property_features": {
+          "description": "[AdCP 3.0] Optional list of agents that provide property feature data (certifications, scores, compliance status). Used for discovery - actual data comes from querying the agent's get_property_features task.",
+          "items": {
+            "additionalProperties": true,
+            "properties": {
+              "features": {
+                "description": "Feature IDs this agent provides (e.g., 'carbon_score', 'tag_certified_against_fraud'). Use list_property_features on the agent for full definitions.",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "name": {
+                "description": "Human-readable name of the vendor/agent (e.g., 'Scope3', 'TAG', 'OneTrust')",
+                "type": "string"
+              },
+              "publisher_id": {
+                "description": "Optional publisher identifier at this agent (for lookup)",
+                "type": "string"
+              },
+              "url": {
+                "description": "The agent's API endpoint URL (must implement get_property_features)",
+                "format": "uri",
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "name",
+              "features"
+            ],
+            "type": "object"
+          },
           "type": "array"
         },
         "tags": {
