@@ -39,8 +39,6 @@ from adcp.types.coercion import (
     coerce_to_enum_list,
     coerce_to_model,
 )
-
-# Import types that need coercion
 from adcp.types.generated_poc.core.context import ContextObject
 from adcp.types.generated_poc.core.creative_asset import CreativeAsset
 from adcp.types.generated_poc.core.creative_assignment import CreativeAssignment
@@ -57,8 +55,6 @@ from adcp.types.generated_poc.enums.sort_direction import SortDirection
 from adcp.types.generated_poc.media_buy.create_media_buy_request import (
     CreateMediaBuyRequest,
 )
-
-# Response types
 from adcp.types.generated_poc.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1,
 )

@@ -320,9 +320,7 @@ def test_list_creative_formats_request_has_filter_params():
     ]
 
     for field_name in expected_fields:
-        assert field_name in model_fields, (
-            f"ListCreativeFormatsRequest missing field: {field_name}"
-        )
+        assert field_name in model_fields, f"ListCreativeFormatsRequest missing field: {field_name}"
 
 
 def test_list_creative_formats_request_filter_params_types():

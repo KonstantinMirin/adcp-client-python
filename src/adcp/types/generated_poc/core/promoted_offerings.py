@@ -14,28 +14,28 @@ from . import brand_manifest_ref, promoted_products
 
 
 class AssetType(Enum):
-    image = 'image'
-    video = 'video'
-    audio = 'audio'
-    vast = 'vast'
-    daast = 'daast'
-    text = 'text'
-    url = 'url'
-    html = 'html'
-    css = 'css'
-    javascript = 'javascript'
-    webhook = 'webhook'
+    image = "image"
+    video = "video"
+    audio = "audio"
+    vast = "vast"
+    daast = "daast"
+    text = "text"
+    url = "url"
+    html = "html"
+    css = "css"
+    javascript = "javascript"
+    webhook = "webhook"
 
 
 class AssetSelectors(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     asset_types: Annotated[
         list[AssetType] | None, Field(description="Filter by asset type (e.g., ['image', 'video'])")
     ] = None
     exclude_tags: Annotated[
-        list[str] | None, Field(description='Exclude assets with these tags')
+        list[str] | None, Field(description="Exclude assets with these tags")
     ] = None
     tags: Annotated[
         list[str] | None,
@@ -45,10 +45,10 @@ class AssetSelectors(AdCPBaseModel):
 
 class Offering(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     assets: Annotated[
-        list[dict[str, Any]] | None, Field(description='Assets specific to this offering')
+        list[dict[str, Any]] | None, Field(description="Assets specific to this offering")
     ] = None
     description: Annotated[str | None, Field(description="Description of what's being offered")] = (
         None
@@ -60,27 +60,27 @@ class Offering(AdCPBaseModel):
 
 class PromotedOfferings(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     asset_selectors: Annotated[
         AssetSelectors | None,
-        Field(description='Selectors to choose specific assets from the brand manifest'),
+        Field(description="Selectors to choose specific assets from the brand manifest"),
     ] = None
     brand_manifest: Annotated[
         brand_manifest_ref.BrandManifestReference,
         Field(
-            description='Brand information manifest containing assets, themes, and guidelines. Can be provided inline or as a URL reference to a hosted manifest.'
+            description="Brand information manifest containing assets, themes, and guidelines. Can be provided inline or as a URL reference to a hosted manifest."
         ),
     ]
     offerings: Annotated[
         list[Offering] | None,
         Field(
-            description='Inline offerings for campaigns without a product catalog. Each offering has a name, description, and associated assets.'
+            description="Inline offerings for campaigns without a product catalog. Each offering has a name, description, and associated assets."
         ),
     ] = None
     product_selectors: Annotated[
         promoted_products.PromotedProducts | None,
         Field(
-            description='Selectors to choose which products/offerings from the brand manifest product catalog to promote'
+            description="Selectors to choose which products/offerings from the brand manifest product catalog to promote"
         ),
     ] = None

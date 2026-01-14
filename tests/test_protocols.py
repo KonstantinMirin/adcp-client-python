@@ -8,12 +8,12 @@ from a2a.types import (
     AgentCard,
     Artifact,
     DataPart,
-    Message,
     SendMessageSuccessResponse,
     Task,
-    TaskState,
-    TaskStatus as A2ATaskStatus,
     TextPart,
+)
+from a2a.types import (
+    TaskStatus as A2ATaskStatus,
 )
 
 from adcp.protocols.a2a import A2AAdapter
@@ -843,4 +843,3 @@ class TestMCPAdapter:
         mock_exit_stack.aclose.assert_called_once()
         assert adapter._exit_stack is None
         assert adapter._session is None
-

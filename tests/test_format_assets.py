@@ -4,19 +4,18 @@ These utilities provide backward-compatible access to format assets,
 handling the migration from deprecated `assets_required` to new `assets` field.
 """
 
-import pytest
 
-from adcp import Format, FormatId, FormatCategory
+from adcp import Format, FormatCategory, FormatId
 from adcp.utils.format_assets import (
-    get_format_assets,
-    normalize_assets_required,
-    get_required_assets,
-    get_optional_assets,
-    get_individual_assets,
-    get_repeatable_groups,
-    uses_deprecated_assets_field,
     get_asset_count,
+    get_format_assets,
+    get_individual_assets,
+    get_optional_assets,
+    get_repeatable_groups,
+    get_required_assets,
     has_assets,
+    normalize_assets_required,
+    uses_deprecated_assets_field,
 )
 
 
@@ -45,7 +44,12 @@ class TestGetFormatAssets:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "new_img", "asset_type": "image", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "new_img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
             ],
             assets_required=[
                 {"asset_id": "old_img", "asset_type": "image", "item_type": "individual"},
@@ -145,9 +149,24 @@ class TestGetRequiredAssets:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "required_img", "asset_type": "image", "item_type": "individual", "required": True},
-                {"asset_id": "optional_logo", "asset_type": "image", "item_type": "individual", "required": False},
-                {"asset_id": "required_url", "asset_type": "url", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "required_img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
+                {
+                    "asset_id": "optional_logo",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": False,
+                },
+                {
+                    "asset_id": "required_url",
+                    "asset_type": "url",
+                    "item_type": "individual",
+                    "required": True,
+                },
             ],
         )
         required = get_required_assets(fmt)
@@ -182,8 +201,18 @@ class TestGetOptionalAssets:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "required_img", "asset_type": "image", "item_type": "individual", "required": True},
-                {"asset_id": "optional_logo", "asset_type": "image", "item_type": "individual", "required": False},
+                {
+                    "asset_id": "required_img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
+                {
+                    "asset_id": "optional_logo",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": False,
+                },
             ],
         )
         optional = get_optional_assets(fmt)
@@ -214,7 +243,12 @@ class TestGetIndividualAssets:
             name="Carousel",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "headline", "asset_type": "text", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "headline",
+                    "asset_type": "text",
+                    "item_type": "individual",
+                    "required": True,
+                },
                 {
                     "asset_group_id": "product",
                     "item_type": "repeatable_group",
@@ -240,7 +274,12 @@ class TestGetRepeatableGroups:
             name="Carousel",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "headline", "asset_type": "text", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "headline",
+                    "asset_type": "text",
+                    "item_type": "individual",
+                    "required": True,
+                },
                 {
                     "asset_group_id": "product",
                     "item_type": "repeatable_group",
@@ -278,7 +317,12 @@ class TestUsesDeprecatedAssetsField:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "img", "asset_type": "image", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
             ],
         )
         assert uses_deprecated_assets_field(fmt) is False
@@ -303,8 +347,18 @@ class TestGetAssetCount:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "img1", "asset_type": "image", "item_type": "individual", "required": True},
-                {"asset_id": "img2", "asset_type": "image", "item_type": "individual", "required": False},
+                {
+                    "asset_id": "img1",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
+                {
+                    "asset_id": "img2",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": False,
+                },
             ],
         )
         assert get_asset_count(fmt) == 2
@@ -329,7 +383,12 @@ class TestHasAssets:
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "img", "asset_type": "image", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
             ],
         )
         assert has_assets(fmt) is True
@@ -350,16 +409,17 @@ class TestPublicImports:
     def test_can_import_from_adcp(self):
         """Should be able to import utilities from main adcp package."""
         from adcp import (
-            get_format_assets,
-            get_required_assets,
-            get_optional_assets,
-            get_individual_assets,
-            get_repeatable_groups,
-            uses_deprecated_assets_field,
-            normalize_assets_required,
             get_asset_count,
+            get_format_assets,
+            get_individual_assets,
+            get_optional_assets,
+            get_repeatable_groups,
+            get_required_assets,
             has_assets,
+            normalize_assets_required,
+            uses_deprecated_assets_field,
         )
+
         # All should be callable
         assert callable(get_format_assets)
         assert callable(get_required_assets)

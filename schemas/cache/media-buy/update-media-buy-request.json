@@ -87,6 +87,11 @@
             "maxItems": 100,
             "type": "array"
           },
+          "impressions": {
+            "description": "Updated impression goal for this package",
+            "minimum": 0,
+            "type": "number"
+          },
           "pacing": {
             "$ref": "../enums/pacing.json"
           },

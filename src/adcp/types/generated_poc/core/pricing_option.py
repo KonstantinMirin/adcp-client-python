@@ -45,7 +45,7 @@ class PricingOption(
         | cpp_option.CppPricingOption
         | flat_rate_option.FlatRatePricingOption,
         Field(
-            description='A pricing model option offered by a publisher for a product. Each pricing model has its own schema with model-specific requirements.',
-            title='Pricing Option',
+            description="A pricing model option offered by a publisher for a product. Each pricing model has its own schema with model-specific requirements.",
+            title="Pricing Option",
         ),
     ]

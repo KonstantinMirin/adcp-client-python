@@ -366,8 +366,8 @@ class TestDeprecatedFieldWarnings:
 
     def test_check_deprecated_fields_warns_on_assets_required(self, capsys):
         """Should warn when response contains deprecated assets_required field."""
+        from adcp import Format, FormatCategory, FormatId
         from adcp.__main__ import _check_deprecated_fields
-        from adcp import Format, FormatId, FormatCategory
 
         fmt = Format(
             format_id=FormatId(agent_url="https://test.com", id="test"),
@@ -385,15 +385,20 @@ class TestDeprecatedFieldWarnings:
 
     def test_check_deprecated_fields_no_warning_for_new_assets(self, capsys):
         """Should not warn when using new assets field."""
+        from adcp import Format, FormatCategory, FormatId
         from adcp.__main__ import _check_deprecated_fields
-        from adcp import Format, FormatId, FormatCategory
 
         fmt = Format(
             format_id=FormatId(agent_url="https://test.com", id="test"),
             name="Test",
             type=FormatCategory.display,
             assets=[
-                {"asset_id": "img", "asset_type": "image", "item_type": "individual", "required": True},
+                {
+                    "asset_id": "img",
+                    "asset_type": "image",
+                    "item_type": "individual",
+                    "required": True,
+                },
             ],
         )
 
@@ -411,8 +416,8 @@ class TestDeprecatedFieldWarnings:
 
     def test_check_deprecated_fields_handles_list(self, capsys):
         """Should check items in a list."""
+        from adcp import Format, FormatCategory, FormatId
         from adcp.__main__ import _check_deprecated_fields
-        from adcp import Format, FormatId, FormatCategory
 
         formats = [
             Format(

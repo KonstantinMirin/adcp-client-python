@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Defines a feature that a governance agent can evaluate for properties. Used in list_property_features to advertise agent capabilities.",
+  "properties": {
+    "allowed_values": {
+      "description": "For categorical features, the set of valid values",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "coverage": {
+      "additionalProperties": false,
+      "description": "What this feature covers (empty arrays = all)",
+      "properties": {
+        "countries": {
+          "description": "Countries where this feature is available",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "property_types": {
+          "description": "Property types this feature applies to",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "description": {
+      "description": "Description of what this feature measures or represents",
+      "type": "string"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "feature_id": {
+      "description": "Unique identifier for this feature (e.g., 'consent_quality', 'carbon_score', 'coppa_certified')",
+      "type": "string"
+    },
+    "methodology_url": {
+      "description": "URL to documentation explaining how this feature is calculated/measured",
+      "format": "uri",
+      "type": "string"
+    },
+    "methodology_version": {
+      "description": "Version identifier for the methodology (for audit trails)",
+      "type": "string"
+    },
+    "name": {
+      "description": "Human-readable name for the feature",
+      "type": "string"
+    },
+    "range": {
+      "additionalProperties": false,
+      "description": "For quantitative features, the valid range of values",
+      "properties": {
+        "max": {
+          "description": "Maximum value",
+          "type": "number"
+        },
+        "min": {
+          "description": "Minimum value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "type": "object"
+    },
+    "type": {
+      "description": "The type of values this feature produces: binary (true/false), quantitative (numeric range), categorical (enumerated values)",
+      "enum": [
+        "binary",
+        "quantitative",
+        "categorical"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "feature_id",
+    "name",
+    "type",
+    "methodology_url"
+  ],
+  "title": "Property Feature Definition",
+  "type": "object"
+}

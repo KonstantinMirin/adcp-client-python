@@ -20,12 +20,12 @@ from . import package_request
 
 class Authentication(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     credentials: Annotated[
         str,
         Field(
-            description='Credentials for authentication. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.',
+            description="Credentials for authentication. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
             min_length=32,
         ),
     ]
@@ -40,35 +40,35 @@ class Authentication(AdCPBaseModel):
 
 
 class ReportingFrequency(Enum):
-    hourly = 'hourly'
-    daily = 'daily'
-    monthly = 'monthly'
+    hourly = "hourly"
+    daily = "daily"
+    monthly = "monthly"
 
 
 class RequestedMetric(Enum):
-    impressions = 'impressions'
-    spend = 'spend'
-    clicks = 'clicks'
-    ctr = 'ctr'
-    video_completions = 'video_completions'
-    completion_rate = 'completion_rate'
-    conversions = 'conversions'
-    viewability = 'viewability'
-    engagement_rate = 'engagement_rate'
+    impressions = "impressions"
+    spend = "spend"
+    clicks = "clicks"
+    ctr = "ctr"
+    video_completions = "video_completions"
+    completion_rate = "completion_rate"
+    conversions = "conversions"
+    viewability = "viewability"
+    engagement_rate = "engagement_rate"
 
 
 class ReportingWebhook(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     authentication: Annotated[
         Authentication,
-        Field(description='Authentication configuration for webhook delivery (A2A-compatible)'),
+        Field(description="Authentication configuration for webhook delivery (A2A-compatible)"),
     ]
     reporting_frequency: Annotated[
         ReportingFrequency,
         Field(
-            description='Frequency for automated reporting delivery. Must be supported by all products in the media buy.'
+            description="Frequency for automated reporting delivery. Must be supported by all products in the media buy."
         ),
     ]
     requested_metrics: Annotated[
@@ -80,37 +80,37 @@ class ReportingWebhook(AdCPBaseModel):
     token: Annotated[
         str | None,
         Field(
-            description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.',
+            description="Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.",
             min_length=16,
         ),
     ] = None
-    url: Annotated[AnyUrl, Field(description='Webhook endpoint URL for reporting notifications')]
+    url: Annotated[AnyUrl, Field(description="Webhook endpoint URL for reporting notifications")]
 
 
 class CreateMediaBuyRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     brand_manifest: Annotated[
         brand_manifest_ref.BrandManifestReference,
         Field(
-            description='Brand information manifest serving as the namespace and identity for this media buy. Provides brand context, assets, and product catalog. Can be provided inline or as a URL reference to a hosted manifest. Can be cached and reused across multiple requests.'
+            description="Brand information manifest serving as the namespace and identity for this media buy. Provides brand context, assets, and product catalog. Can be provided inline or as a URL reference to a hosted manifest. Can be cached and reused across multiple requests."
         ),
     ]
     buyer_ref: Annotated[str, Field(description="Buyer's reference identifier for this media buy")]
     context: context_1.ContextObject | None = None
     end_time: Annotated[
-        AwareDatetime, Field(description='Campaign end date/time in ISO 8601 format')
+        AwareDatetime, Field(description="Campaign end date/time in ISO 8601 format")
     ]
     ext: ext_1.ExtensionObject | None = None
     packages: Annotated[
-        list[package_request.PackageRequest], Field(description='Array of package configurations')
+        list[package_request.PackageRequest], Field(description="Array of package configurations")
     ]
-    po_number: Annotated[str | None, Field(description='Purchase order number for tracking')] = None
+    po_number: Annotated[str | None, Field(description="Purchase order number for tracking")] = None
     reporting_webhook: Annotated[
         ReportingWebhook | None,
         Field(
-            description='Optional webhook configuration for automated reporting delivery. Combines push_notification_config structure with reporting-specific fields.'
+            description="Optional webhook configuration for automated reporting delivery. Combines push_notification_config structure with reporting-specific fields."
         ),
     ] = None
     start_time: start_timing.StartTiming

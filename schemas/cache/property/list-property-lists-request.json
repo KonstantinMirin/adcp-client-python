@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Request parameters for listing property lists",
+  "properties": {
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "cursor": {
+      "description": "Pagination cursor",
+      "type": "string"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    },
+    "max_results": {
+      "default": 100,
+      "description": "Maximum lists to return",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "name_contains": {
+      "description": "Filter to lists whose name contains this string",
+      "type": "string"
+    },
+    "principal": {
+      "description": "Filter to lists owned by this principal",
+      "type": "string"
+    }
+  },
+  "title": "List Property Lists Request",
+  "type": "object"
+}
