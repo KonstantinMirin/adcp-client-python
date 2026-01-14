@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.19.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v2.18.0...v2.19.0) (2026-01-14)
+
+
+### Features
+
+* fix PackageRequest schema inconsistency in adcp ([de2b4bf](https://github.com/adcontextprotocol/adcp-client-python/commit/de2b4bf144d2fc698410714cd0365eb99b427562))
+* sync schemas with ADCP 2.6 package updates ([a6c55db](https://github.com/adcontextprotocol/adcp-client-python/commit/a6c55dbe269010909a19fb0ef8cff4652d68aca0))
+
 ## [2.18.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v2.17.0...v2.18.0) (2026-01-09)
 
 

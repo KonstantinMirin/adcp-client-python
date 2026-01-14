@@ -197,7 +197,7 @@ from adcp.webhooks import (
     get_adcp_signed_headers_for_webhook,
 )
 
-__version__ = "2.18.0"
+__version__ = "2.19.0"
 
 
 def get_adcp_version() -> str:
