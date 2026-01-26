@@ -1,0 +1,31 @@
+{
+  "$id": "/schemas/3.0.0-beta.1/content-standards/update-content-standards-response.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Response from updating a content standards configuration",
+  "properties": {
+    "conflicting_standards_id": {
+      "description": "If scope change conflicts with another configuration, the ID of the conflicting standards",
+      "type": "string"
+    },
+    "context": {
+      "$ref": "/schemas/3.0.0-beta.1/core/context.json"
+    },
+    "errors": {
+      "description": "Errors that occurred during the update",
+      "items": {
+        "$ref": "/schemas/3.0.0-beta.1/core/error.json"
+      },
+      "type": "array"
+    },
+    "ext": {
+      "$ref": "/schemas/3.0.0-beta.1/core/ext.json"
+    },
+    "standards_id": {
+      "description": "ID of the updated standards configuration",
+      "type": "string"
+    }
+  },
+  "title": "Update Content Standards Response",
+  "type": "object"
+}

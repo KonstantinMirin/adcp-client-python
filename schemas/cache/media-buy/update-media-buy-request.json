@@ -1,4 +1,5 @@
 {
+  "$id": "/schemas/3.0.0-beta.1/media-buy/update-media-buy-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for updating campaign and package settings",
@@ -20,7 +21,7 @@
       "type": "string"
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/3.0.0-beta.1/core/context.json"
     },
     "end_time": {
       "description": "New end date/time in ISO 8601 format",
@@ -28,7 +29,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/3.0.0-beta.1/core/ext.json"
     },
     "media_buy_id": {
       "description": "Publisher's ID of the media buy to update",
@@ -37,77 +38,7 @@
     "packages": {
       "description": "Package-specific updates",
       "items": {
-        "additionalProperties": true,
-        "oneOf": [
-          {
-            "required": [
-              "package_id"
-            ]
-          },
-          {
-            "required": [
-              "buyer_ref"
-            ]
-          }
-        ],
-        "properties": {
-          "bid_price": {
-            "description": "Updated bid price for auction-based pricing options (only applies when pricing_option is auction-based)",
-            "minimum": 0,
-            "type": "number"
-          },
-          "budget": {
-            "description": "Updated budget allocation for this package in the currency specified by the pricing option",
-            "minimum": 0,
-            "type": "number"
-          },
-          "buyer_ref": {
-            "description": "Buyer's reference for the package to update",
-            "type": "string"
-          },
-          "creative_assignments": {
-            "description": "Full creative assignment objects with weights and placement targeting (alternative to creative_ids - provides granular control over weights and placement targeting). Uses replacement semantics like creative_ids.",
-            "items": {
-              "$ref": "../core/creative-assignment.json"
-            },
-            "type": "array"
-          },
-          "creative_ids": {
-            "description": "Update creative assignments (references existing library creatives)",
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "creatives": {
-            "description": "Full creative objects to upload and assign to this package (alternative to creative_ids - creatives will be added to library). Supports both static and generative creatives.",
-            "items": {
-              "$ref": "../core/creative-asset.json"
-            },
-            "maxItems": 100,
-            "type": "array"
-          },
-          "impressions": {
-            "description": "Updated impression goal for this package",
-            "minimum": 0,
-            "type": "number"
-          },
-          "pacing": {
-            "$ref": "../enums/pacing.json"
-          },
-          "package_id": {
-            "description": "Publisher's ID of package to update",
-            "type": "string"
-          },
-          "paused": {
-            "description": "Pause/resume specific package (true = paused, false = active)",
-            "type": "boolean"
-          },
-          "targeting_overlay": {
-            "$ref": "../core/targeting.json"
-          }
-        },
-        "type": "object"
+        "$ref": "/schemas/3.0.0-beta.1/media-buy/package-update.json"
       },
       "type": "array"
     },
@@ -116,11 +47,15 @@
       "type": "boolean"
     },
     "push_notification_config": {
-      "$ref": "../core/push-notification-config.json",
-      "description": "Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time."
+      "$ref": "/schemas/3.0.0-beta.1/core/push-notification-config.json",
+      "description": "Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time. This is separate from reporting_webhook which configures ongoing campaign reporting."
+    },
+    "reporting_webhook": {
+      "$ref": "/schemas/3.0.0-beta.1/core/reporting-webhook.json",
+      "description": "Optional webhook configuration for automated reporting delivery. Updates the reporting configuration for this media buy."
     },
     "start_time": {
-      "$ref": "../core/start-timing.json"
+      "$ref": "/schemas/3.0.0-beta.1/core/start-timing.json"
     }
   },
   "title": "Update Media Buy Request",

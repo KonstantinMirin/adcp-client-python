@@ -35,9 +35,6 @@ from adcp.types._generated import (
     # Activation responses
     ActivateSignalResponse1,
     ActivateSignalResponse2,
-    # Activation keys
-    ActivationKey1,
-    ActivationKey2,
     # Authorized agents
     AuthorizedAgents,
     AuthorizedAgents1,
@@ -64,10 +61,10 @@ from adcp.types._generated import (
     # Preview creative responses
     PreviewCreativeResponse1,
     PreviewCreativeResponse2,
-    # Preview renders
-    PreviewRender1,
-    PreviewRender2,
-    PreviewRender3,
+    # Preview renders (discriminated union by output_format)
+    PreviewRender1,  # output_format='url'
+    PreviewRender2,  # output_format='html'
+    PreviewRender3,  # output_format='both'
     # Publisher properties types
     PropertyId,
     PropertyTag,
@@ -198,12 +195,11 @@ UpdateMediaBuyPropertiesRequest = UpdateMediaBuyRequest2
 # ============================================================================
 # ACTIVATION KEY ALIASES
 # ============================================================================
-
-PropertyIdActivationKey = ActivationKey1
-"""Activation key using property_id for identification."""
-
-PropertyTagActivationKey = ActivationKey2
-"""Activation key using property_tags for identification."""
+# Note: Activation key schema changed from property_id/property_tag variants
+# to segment_id/key_value variants. Import directly from _generated:
+#   from adcp.types._generated import ActivationKey1 as SegmentIdActivationKey
+#   from adcp.types._generated import ActivationKey2 as KeyValueActivationKey
+# These will be added once the types are regenerated with proper schema.
 
 # ============================================================================
 # PREVIEW/RENDER TYPE ALIASES
@@ -216,15 +212,15 @@ PreviewCreativeStaticResponse = PreviewCreativeResponse1
 PreviewCreativeInteractiveResponse = PreviewCreativeResponse2
 """Preview response with interactive renders (iframe embedding)."""
 
-# Preview Render Variants (discriminated by output_format)
+# Preview Render Aliases (discriminated union by output_format)
 UrlPreviewRender = PreviewRender1
-"""Preview render with output_format='url' - provides preview_url for iframe embedding."""
+"""Preview render with output_format='url' and preview_url for iframe embedding."""
 
 HtmlPreviewRender = PreviewRender2
-"""Preview render with output_format='html' - provides preview_html for direct embedding."""
+"""Preview render with output_format='html' and preview_html for direct embedding."""
 
 BothPreviewRender = PreviewRender3
-"""Preview render with output_format='both' - provides both preview_url and preview_html."""
+"""Preview render with output_format='both' and both preview_url and preview_html."""
 
 # ============================================================================
 # ASSET TYPE ALIASES - Delivery & Kind Discriminated Unions
@@ -700,9 +696,6 @@ __all__ = [
     # Activation responses
     "ActivateSignalSuccessResponse",
     "ActivateSignalErrorResponse",
-    # Activation keys
-    "PropertyIdActivationKey",
-    "PropertyTagActivationKey",
     # Asset type aliases
     "BothPreviewRender",
     "HtmlPreviewRender",

@@ -67,11 +67,10 @@ from adcp.types import (
     # Creative Operations
     BuildCreativeRequest,
     BuildCreativeResponse,
-    # Pricing options (all 9 types for product creation)
+    # Pricing options (all types for product creation)
     CpcPricingOption,
     CpcvPricingOption,
-    CpmAuctionPricingOption,
-    CpmFixedRatePricingOption,
+    CpmPricingOption,
     CppPricingOption,
     CpvPricingOption,
     # Media Buy Operations
@@ -121,8 +120,7 @@ from adcp.types import (
     SyncCreativesResponse,
     UpdateMediaBuyRequest,
     UpdateMediaBuyResponse,
-    VcpmAuctionPricingOption,
-    VcpmFixedRatePricingOption,
+    VcpmPricingOption,
     aliases,
 )
 
@@ -152,9 +150,7 @@ from adcp.types.aliases import (
     PreviewCreativeManifestRequest,
     PreviewCreativeStaticResponse,
     PropertyId,
-    PropertyIdActivationKey,
     PropertyTag,
-    PropertyTagActivationKey,
     ProvidePerformanceFeedbackErrorResponse,
     ProvidePerformanceFeedbackSuccessResponse,
     PublisherPropertiesAll,
@@ -291,14 +287,12 @@ __all__ = [
     # Pricing-related types
     "CpcPricingOption",
     "CpcvPricingOption",
-    "CpmAuctionPricingOption",
-    "CpmFixedRatePricingOption",
+    "CpmPricingOption",
     "CppPricingOption",
     "CpvPricingOption",
     "FlatRatePricingOption",
     "PriceGuidance",
-    "VcpmAuctionPricingOption",
-    "VcpmFixedRatePricingOption",
+    "VcpmPricingOption",
     # Configuration types
     "PushNotificationConfig",
     # Adagents validation
@@ -379,9 +373,7 @@ __all__ = [
     "PreviewCreativeStaticResponse",
     "PreviewCreativeInteractiveResponse",
     "PropertyId",
-    "PropertyIdActivationKey",
     "PropertyTag",
-    "PropertyTagActivationKey",
     "ProvidePerformanceFeedbackSuccessResponse",
     "ProvidePerformanceFeedbackErrorResponse",
     "PublisherPropertiesAll",

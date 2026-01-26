@@ -1,4 +1,5 @@
 {
+  "$id": "/schemas/3.0.0-beta.1/media-buy/list-creatives-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response from creative library query with filtered results, metadata, and optional enriched data",
@@ -69,9 +70,8 @@
               "assigned_packages": [
                 {
                   "assigned_date": "2024-01-16T09:00:00Z",
-                  "package_id": "pkg_ctv_001",
-                  "package_name": "CTV Prime Time",
-                  "status": "active"
+                  "buyer_ref": "ctv_prime_time_q1",
+                  "package_id": "pkg_ctv_001"
                 }
               ],
               "assignment_count": 2
@@ -109,7 +109,7 @@
   ],
   "properties": {
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/3.0.0-beta.1/core/context.json"
     },
     "creatives": {
       "description": "Array of creative assets matching the query",
@@ -122,37 +122,37 @@
               "^[a-zA-Z0-9_-]+$": {
                 "oneOf": [
                   {
-                    "$ref": "../core/assets/image-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/image-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/video-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/video-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/audio-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/audio-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/text-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/text-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/html-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/html-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/css-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/css-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/javascript-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/javascript-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/vast-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/vast-asset.json"
                   },
                   {
-                    "$ref": "../core/assets/daast-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/daast-asset.json"
                   },
                   {
-                    "$ref": "../core/promoted-offerings.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/promoted-offerings.json"
                   },
                   {
-                    "$ref": "../core/assets/url-asset.json"
+                    "$ref": "/schemas/3.0.0-beta.1/core/assets/url-asset.json"
                   }
                 ]
               }
@@ -173,28 +173,18 @@
                       "format": "date-time",
                       "type": "string"
                     },
+                    "buyer_ref": {
+                      "description": "Buyer's reference identifier for this package",
+                      "type": "string"
+                    },
                     "package_id": {
                       "description": "Package identifier",
-                      "type": "string"
-                    },
-                    "package_name": {
-                      "description": "Human-readable package name",
-                      "type": "string"
-                    },
-                    "status": {
-                      "description": "Status of this specific assignment",
-                      "enum": [
-                        "active",
-                        "paused",
-                        "ended"
-                      ],
                       "type": "string"
                     }
                   },
                   "required": [
                     "package_id",
-                    "assigned_date",
-                    "status"
+                    "assigned_date"
                   ],
                   "type": "object"
                 },
@@ -221,7 +211,7 @@
             "type": "string"
           },
           "format_id": {
-            "$ref": "../core/format-id.json",
+            "$ref": "/schemas/3.0.0-beta.1/core/format-id.json",
             "description": "Format identifier specifying which format this creative conforms to"
           },
           "name": {
@@ -272,13 +262,13 @@
             "type": "object"
           },
           "status": {
-            "$ref": "../enums/creative-status.json",
+            "$ref": "/schemas/3.0.0-beta.1/enums/creative-status.json",
             "description": "Current approval status of the creative"
           },
           "sub_assets": {
             "description": "Sub-assets for multi-asset formats (included when include_sub_assets=true)",
             "items": {
-              "$ref": "../core/sub-asset.json"
+              "$ref": "/schemas/3.0.0-beta.1/core/sub-asset.json"
             },
             "type": "array"
           },
@@ -308,7 +298,7 @@
       "type": "array"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/3.0.0-beta.1/core/ext.json"
     },
     "format_summary": {
       "additionalProperties": true,
@@ -378,7 +368,7 @@
           "description": "Sort order that was applied",
           "properties": {
             "direction": {
-              "$ref": "../enums/sort-direction.json"
+              "$ref": "/schemas/3.0.0-beta.1/enums/sort-direction.json"
             },
             "field": {
               "type": "string"
@@ -414,6 +404,11 @@
         },
         "pending_review": {
           "description": "Number of creatives pending review",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "processing": {
+          "description": "Number of creatives being processed",
           "minimum": 0,
           "type": "integer"
         },

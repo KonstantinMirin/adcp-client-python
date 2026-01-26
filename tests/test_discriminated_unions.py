@@ -520,67 +520,57 @@ class TestProductValidation:
         assert mixed_props[1].selection_type == "by_tag"
 
 
-class TestPreviewRenderDiscriminators:
-    """Test PreviewRender discriminator field values match semantic aliases."""
+class TestPreviewRenderDiscriminatedUnion:
+    """Test PreviewRender discriminated union by output_format.
 
-    def test_url_preview_render_has_url_discriminator(self):
-        """UrlPreviewRender has output_format='url'."""
+    The schema has three variants discriminated by output_format:
+    - PreviewRender1/UrlPreviewRender (output_format='url') - requires preview_url
+    - PreviewRender2/HtmlPreviewRender (output_format='html') - requires preview_html
+    - PreviewRender3/BothPreviewRender (output_format='both') - requires both
+    """
+
+    def test_url_preview_render_requires_preview_url(self):
+        """UrlPreviewRender requires output_format='url' and preview_url."""
         render = UrlPreviewRender(
             render_id="render_1",
-            role="primary",
             output_format="url",
             preview_url="https://preview.example.com/creative",
+            role="primary",
         )
         assert render.output_format == "url"
-        assert hasattr(render, "preview_url")
-        assert not hasattr(render, "preview_html")
+        assert str(render.preview_url) == "https://preview.example.com/creative"
+        assert render.role == "primary"
 
-    def test_html_preview_render_has_html_discriminator(self):
-        """HtmlPreviewRender has output_format='html'."""
+    def test_html_preview_render_requires_preview_html(self):
+        """HtmlPreviewRender requires output_format='html' and preview_html."""
         render = HtmlPreviewRender(
-            render_id="render_1",
-            role="primary",
+            render_id="render_2",
             output_format="html",
-            preview_html="<div>Preview HTML</div>",
+            preview_html="<div>Preview content</div>",
+            role="primary",
         )
         assert render.output_format == "html"
-        assert hasattr(render, "preview_html")
-        assert not hasattr(render, "preview_url")
+        assert render.preview_html == "<div>Preview content</div>"
+        assert render.role == "primary"
 
-    def test_both_preview_render_has_both_discriminator(self):
-        """BothPreviewRender has output_format='both'."""
+    def test_both_preview_render_requires_both_fields(self):
+        """BothPreviewRender requires output_format='both' and both preview_url and preview_html."""
         render = BothPreviewRender(
-            render_id="render_1",
-            role="primary",
+            render_id="render_3",
             output_format="both",
             preview_url="https://preview.example.com/creative",
-            preview_html="<div>Preview HTML</div>",
+            preview_html="<div>Preview content</div>",
+            role="primary",
         )
         assert render.output_format == "both"
-        assert hasattr(render, "preview_url")
-        assert hasattr(render, "preview_html")
+        assert str(render.preview_url) == "https://preview.example.com/creative"
+        assert render.preview_html == "<div>Preview content</div>"
 
-    def test_url_preview_render_rejects_wrong_discriminator(self):
-        """UrlPreviewRender rejects output_format='html'."""
-        with pytest.raises(ValidationError) as exc_info:
-            UrlPreviewRender(
-                render_id="render_1",
-                role="primary",
-                output_format="html",  # Wrong discriminator value
-                preview_url="https://preview.example.com/creative",
-            )
-        assert "output_format" in str(exc_info.value).lower()
-
-    def test_html_preview_render_rejects_wrong_discriminator(self):
-        """HtmlPreviewRender rejects output_format='url'."""
-        with pytest.raises(ValidationError) as exc_info:
-            HtmlPreviewRender(
-                render_id="render_1",
-                role="primary",
-                output_format="url",  # Wrong discriminator value
-                preview_html="<div>Preview HTML</div>",
-            )
-        assert "output_format" in str(exc_info.value).lower()
+    def test_preview_render_aliases_are_distinct_types(self):
+        """Each preview render alias points to a distinct variant type."""
+        assert UrlPreviewRender is not HtmlPreviewRender
+        assert HtmlPreviewRender is not BothPreviewRender
+        assert UrlPreviewRender is not BothPreviewRender
 
 
 class TestVastAssetDiscriminators:

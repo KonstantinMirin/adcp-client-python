@@ -1,0 +1,76 @@
+{
+  "$id": "/schemas/3.0.0-beta.1/pricing-options/cpm-option.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Cost Per Mille (cost per 1,000 impressions) pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+  "properties": {
+    "currency": {
+      "description": "ISO 4217 currency code",
+      "examples": [
+        "USD",
+        "EUR",
+        "GBP",
+        "JPY"
+      ],
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "fixed_price": {
+      "description": "Fixed price per unit. If present, this is fixed pricing. If absent, auction-based.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "floor_price": {
+      "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "min_spend_per_package": {
+      "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+      "minimum": 0,
+      "type": "number"
+    },
+    "price_guidance": {
+      "description": "Optional pricing guidance for auction-based bidding. Helps buyers calibrate bids with historical percentiles.",
+      "properties": {
+        "p25": {
+          "description": "25th percentile winning price",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p50": {
+          "description": "Median winning price",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p75": {
+          "description": "75th percentile winning price",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p90": {
+          "description": "90th percentile winning price",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "pricing_model": {
+      "const": "cpm",
+      "description": "Cost per 1,000 impressions",
+      "type": "string"
+    },
+    "pricing_option_id": {
+      "description": "Unique identifier for this pricing option within the product",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "pricing_model",
+    "currency"
+  ],
+  "title": "CPM Pricing Option",
+  "type": "object"
+}

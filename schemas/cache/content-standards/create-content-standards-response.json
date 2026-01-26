@@ -1,0 +1,61 @@
+{
+  "$id": "/schemas/3.0.0-beta.1/content-standards/create-content-standards-response.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Response payload for creating a content standards configuration",
+  "oneOf": [
+    {
+      "description": "Success response - returns the created standards identifier",
+      "properties": {
+        "context": {
+          "$ref": "/schemas/3.0.0-beta.1/core/context.json"
+        },
+        "errors": {
+          "description": "Field must not be present in success response",
+          "not": {}
+        },
+        "ext": {
+          "$ref": "/schemas/3.0.0-beta.1/core/ext.json"
+        },
+        "standards_id": {
+          "description": "Unique identifier for the created standards configuration",
+          "type": "string"
+        }
+      },
+      "required": [
+        "standards_id"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "Error response",
+      "properties": {
+        "conflicting_standards_id": {
+          "description": "If the error is a scope conflict, the ID of the existing standards that conflict",
+          "type": "string"
+        },
+        "context": {
+          "$ref": "/schemas/3.0.0-beta.1/core/context.json"
+        },
+        "errors": {
+          "items": {
+            "$ref": "/schemas/3.0.0-beta.1/core/error.json"
+          },
+          "type": "array"
+        },
+        "ext": {
+          "$ref": "/schemas/3.0.0-beta.1/core/ext.json"
+        },
+        "standards_id": {
+          "description": "Field must not be present in error response",
+          "not": {}
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Create Content Standards Response",
+  "type": "object"
+}
