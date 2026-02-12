@@ -137,7 +137,6 @@ async def test_all_client_methods():
     assert hasattr(client, "sync_creatives")
     assert hasattr(client, "list_creatives")
     assert hasattr(client, "get_media_buy_delivery")
-    assert hasattr(client, "list_accounts")
     assert hasattr(client, "get_signals")
     assert hasattr(client, "activate_signal")
     assert hasattr(client, "provide_performance_feedback")
@@ -145,6 +144,32 @@ async def test_all_client_methods():
     assert hasattr(client, "create_media_buy")
     assert hasattr(client, "update_media_buy")
     assert hasattr(client, "build_creative")
+    assert hasattr(client, "list_accounts")
+    assert hasattr(client, "sync_accounts")
+    assert hasattr(client, "log_event")
+    assert hasattr(client, "sync_event_sources")
+    assert hasattr(client, "get_creative_delivery")
+    # V3 Protocol Discovery
+    assert hasattr(client, "get_adcp_capabilities")
+    # V3 Content Standards
+    assert hasattr(client, "create_content_standards")
+    assert hasattr(client, "get_content_standards")
+    assert hasattr(client, "list_content_standards")
+    assert hasattr(client, "update_content_standards")
+    assert hasattr(client, "calibrate_content")
+    assert hasattr(client, "validate_content_delivery")
+    assert hasattr(client, "get_media_buy_artifacts")
+    # V3 Sponsored Intelligence
+    assert hasattr(client, "si_get_offering")
+    assert hasattr(client, "si_initiate_session")
+    assert hasattr(client, "si_send_message")
+    assert hasattr(client, "si_terminate_session")
+    # V3 Governance (Property Lists)
+    assert hasattr(client, "create_property_list")
+    assert hasattr(client, "get_property_list")
+    assert hasattr(client, "list_property_lists")
+    assert hasattr(client, "update_property_list")
+    assert hasattr(client, "delete_property_list")
 
 
 @pytest.mark.parametrize(
@@ -152,10 +177,31 @@ async def test_all_client_methods():
     [
         ("get_products", "GetProductsRequest", {}),
         ("list_creative_formats", "ListCreativeFormatsRequest", {}),
-        ("sync_creatives", "SyncCreativesRequest", {"creatives": []}),
+        (
+            "sync_creatives",
+            "SyncCreativesRequest",
+            {
+                "creatives": [
+                    {
+                        "creative_id": "test",
+                        "name": "Test",
+                        "format_id": {
+                            "id": "fmt-1",
+                            "agent_url": "https://agent.example.com/",
+                        },
+                        "assets": {
+                            "slot1": {
+                                "content": "hello",
+                                "asset_content_type": "text",
+                                "name": "headline",
+                            }
+                        },
+                    }
+                ]
+            },
+        ),
         ("list_creatives", "ListCreativesRequest", {}),
         ("get_media_buy_delivery", "GetMediaBuyDeliveryRequest", {}),
-        ("list_accounts", "ListAccountsRequest", {}),
         (
             "get_signals",
             "GetSignalsRequest",
@@ -186,6 +232,45 @@ async def test_all_client_methods():
                 },
                 "performance_index": 0.5,
             },
+        ),
+        ("list_accounts", "ListAccountsRequest", {}),
+        (
+            "sync_accounts",
+            "SyncAccountsRequest",
+            {
+                "accounts": [
+                    {
+                        "account_id": "acct-1",
+                        "brand_id": "test_brand",
+                        "house": "example.com",
+                        "name": "Test Account",
+                    }
+                ]
+            },
+        ),
+        (
+            "log_event",
+            "LogEventRequest",
+            {
+                "event_source_id": "src-1",
+                "events": [
+                    {
+                        "event_id": "evt-1",
+                        "event_type": "purchase",
+                        "event_time": "2024-01-01T00:00:00Z",
+                    }
+                ],
+            },
+        ),
+        (
+            "sync_event_sources",
+            "SyncEventSourcesRequest",
+            {"account_id": "acct-1"},
+        ),
+        (
+            "get_creative_delivery",
+            "GetCreativeDeliveryRequest",
+            {"media_buy_ids": ["mb-1"]},
         ),
         # Note: preview_creative, create_media_buy, update_media_buy, and build_creative
         # are tested separately with full request validation since their schemas are complex

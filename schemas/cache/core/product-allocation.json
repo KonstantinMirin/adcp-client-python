@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-beta.2/core/product-allocation.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A budget allocation for a specific product within a proposal. Percentages across all allocations in a proposal should sum to 100.",
@@ -10,8 +9,20 @@
       "minimum": 0,
       "type": "number"
     },
+    "daypart_targets": {
+      "description": "Recommended time windows for this allocation in spot-plan proposals.",
+      "items": {
+        "$ref": "daypart-target.json"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
     "ext": {
-      "$ref": "/schemas/3.0.0-beta.2/core/ext.json"
+      "$ref": "ext.json"
+    },
+    "forecast": {
+      "$ref": "delivery-forecast.json",
+      "description": "Forecasted delivery metrics for this allocation"
     },
     "pricing_option_id": {
       "description": "Recommended pricing option ID from the product's pricing_options array",
