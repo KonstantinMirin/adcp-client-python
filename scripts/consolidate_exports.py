@@ -193,6 +193,22 @@ def generate_consolidated_exports() -> str:
 
     lines.extend(alias_lines)
 
+    # Add backwards-compat stub for BrandManifest (removed from upstream schemas in latest).
+    # Kept as a permissive model so existing code importing it continues to work.
+    compat_lines = [
+        "",
+        "# Backwards-compat: BrandManifest was removed from upstream schemas.",
+        "# Kept as a permissive model so existing code importing it continues to work.",
+        "from adcp.types.base import AdCPBaseModel as _AdCPBaseModel",
+        "from pydantic import ConfigDict as _ConfigDict",
+        "",
+        "class BrandManifest(_AdCPBaseModel):",
+        '    model_config = _ConfigDict(extra="allow")',
+        "",
+    ]
+    lines.extend(compat_lines)
+    all_exports_with_aliases = all_exports_with_aliases | {"BrandManifest"}
+
     # Format __all__ list with proper line breaks (max 100 chars per line)
     exports_list = sorted(list(all_exports_with_aliases))
     all_lines = ["", "# Explicit exports", "__all__ = ["]
@@ -226,14 +242,12 @@ def generate_consolidated_exports() -> str:
     rebuild_lines = [
         "",
         "# Rebuild models with forward references",
-        "# This must happen AFTER all imports to resolve module-qualified type references",
-        "# like brand_manifest.BrandManifest used in generated code",
+        "# This must happen AFTER all imports to resolve forward reference chains",
         "",
         "# Import individual modules needed for rebuilding",
         "from adcp.types import generated_poc",
         "",
         "# Rebuild models that reference other models via forward refs",
-        "BrandManifest.model_rebuild()",
         "PromotedOfferings.model_rebuild()",
         "CreativeManifest.model_rebuild()",
         "PreviewCreativeRequest1.model_rebuild()",
@@ -259,21 +273,25 @@ def main():
     print(f"\nWriting {OUTPUT_FILE}...")
     OUTPUT_FILE.write_text(content)
 
-    # Run black to format the generated file
+    # Run black to format the generated file.
+    # Try uv run first (works in the project virtualenv), then fall back to sys.executable.
     print("Formatting with black...")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "black", str(OUTPUT_FILE), "--quiet"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            print("✓ Formatted with black")
-        else:
-            print(f"⚠ Black formatting had issues: {result.stderr}")
-    except Exception as e:
-        print(f"⚠ Could not run black (not critical): {e}")
+    black_commands = [
+        ["uv", "run", "black", str(OUTPUT_FILE), "--quiet"],
+        [sys.executable, "-m", "black", str(OUTPUT_FILE), "--quiet"],
+    ]
+    formatted = False
+    for cmd in black_commands:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            if result.returncode == 0:
+                print("✓ Formatted with black")
+                formatted = True
+                break
+        except FileNotFoundError:
+            continue
+    if not formatted:
+        print("⚠ Could not format with black (not installed)")
 
     print("✓ Successfully generated consolidated exports")
     export_count = len(
