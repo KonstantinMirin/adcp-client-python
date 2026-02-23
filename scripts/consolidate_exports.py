@@ -47,6 +47,7 @@ def extract_exports_from_module(module_path: Path) -> set[str]:
 
 def generate_consolidated_exports() -> str:
     """Generate the consolidated exports file content."""
+
     # Discover all modules recursively (including subdirectories)
     # Process enums/ first so canonical enum definitions take priority over inline duplicates
     def _module_sort_key(p: Path) -> tuple[int, str]:
@@ -69,7 +70,11 @@ def generate_consolidated_exports() -> str:
     # Special handling for known collisions
     # We need BOTH versions of these types available, so import them with qualified names
     known_collisions = {
-        "Package": {"package", "create_media_buy_response"},
+        "Package": {"package", "create_media_buy_response", "get_media_buys_response"},
+        # DeliveryStatus appears in get_media_buy_delivery_response (5 values) and
+        # get_media_buys_response (6 values, adds not_delivering). Export both with
+        # qualified names so aliases.py can re-export the superset as the canonical one.
+        "DeliveryStatus": {"get_media_buy_delivery_response", "get_media_buys_response"},
         # Note: "Catalog" also collides between core.catalog and media_buy.sync_catalogs_response.
         # We intentionally let core.catalog win (first-seen, since core/ sorts before media_buy/).
         # The response-level Catalog is imported directly in aliases.py as SyncCatalogResult.
@@ -186,6 +191,14 @@ def generate_consolidated_exports() -> str:
     aliases = {}
     if "AdvertisingChannels" in all_exports:
         aliases["Channels"] = "AdvertisingChannels"
+    # Package from get_media_buys_response is a distinct enriched view with creative approvals
+    # and delivery snapshots. Export as MediaBuyPackage to avoid collision with core Package.
+    if "_PackageFromGetMediaBuysResponse" in all_exports:
+        aliases["MediaBuyPackage"] = "_PackageFromGetMediaBuysResponse"
+    # DeliveryStatus from get_media_buys_response is a superset (adds not_delivering).
+    # Export as the canonical DeliveryStatus so users can compare against all values.
+    if "_DeliveryStatusFromGetMediaBuysResponse" in all_exports:
+        aliases["DeliveryStatus"] = "_DeliveryStatusFromGetMediaBuysResponse"
 
     all_exports_with_aliases = all_exports | set(aliases.keys())
 
@@ -256,7 +269,15 @@ def generate_consolidated_exports() -> str:
     }
 
     # Format __all__ list with proper line breaks (max 100 chars per line)
-    exports_list = sorted(list(all_exports_with_aliases))
+    # Exclude private names that are alias targets (internal intermediates only).
+    # Private names that external modules import (e.g., _PackageFromPackage used by aliases.py)
+    # must remain in __all__ so mypy allows the import.
+    internal_alias_targets = {v for v in aliases.values() if v.startswith("_")}
+    exports_list = sorted(
+        name
+        for name in all_exports_with_aliases
+        if not name.startswith("_") or name not in internal_alias_targets
+    )
     all_lines = ["", "# Explicit exports", "__all__ = ["]
 
     current_line = "    "

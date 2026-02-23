@@ -15,10 +15,15 @@ def test_core_domain_types_are_exported():
         "Product",
         "Format",
         "MediaBuy",
+        "MediaBuyPackage",
         "Property",
         "BrandManifest",
         "Creative",
+        "CreativeApproval",
+        "DeliveryStatus",
         "Package",
+        "Snapshot",
+        "SnapshotUnavailableReason",
     ]
 
     for type_name in core_types:
@@ -37,6 +42,8 @@ def test_request_response_types_are_exported():
         "ListCreativeFormatsResponse",
         "BuildCreativeRequest",
         "BuildCreativeResponse",
+        "GetMediaBuysRequest",
+        "GetMediaBuysResponse",
     ]
 
     for type_name in api_types:
