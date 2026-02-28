@@ -20,9 +20,9 @@
   ],
   "description": "Request parameters for retrieving creative delivery data including variant-level metrics from a creative agent. At least one scoping filter (media_buy_ids, media_buy_buyer_refs, or creative_ids) is required.",
   "properties": {
-    "account_id": {
-      "description": "Account context for routing and scoping. Limits results to creatives within this account. Optional if the agent has a single account or can determine routing from the media buy identifiers.",
-      "type": "string"
+    "account": {
+      "$ref": "../core/account-ref.json",
+      "description": "Account for routing and scoping. Limits results to creatives within this account."
     },
     "context": {
       "$ref": "../core/context.json"
@@ -65,24 +65,8 @@
       "type": "array"
     },
     "pagination": {
-      "additionalProperties": true,
-      "description": "Pagination parameters for the creatives array in the response. When omitted, the agent returns all matching creatives.",
-      "properties": {
-        "limit": {
-          "default": 50,
-          "description": "Maximum number of creatives to return",
-          "maximum": 100,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "offset": {
-          "default": 0,
-          "description": "Number of creatives to skip",
-          "minimum": 0,
-          "type": "integer"
-        }
-      },
-      "type": "object"
+      "$ref": "../core/pagination-request.json",
+      "description": "Pagination parameters for the creatives array in the response. Uses cursor-based pagination consistent with other list operations."
     },
     "start_date": {
       "description": "Start date for delivery period (YYYY-MM-DD). Interpreted in the platform's reporting timezone.",

@@ -32,20 +32,30 @@ immediately rather than at runtime when users try to use the aliases.
 from __future__ import annotations
 
 from adcp.types._generated import (
+    # Account reference variants
+    AccountReference1,
+    AccountReference2,
     # Activation responses
     ActivateSignalResponse1,
     ActivateSignalResponse2,
+    # Activation key variants
+    ActivationKey1,
+    ActivationKey2,
     # Authorized agents
     AuthorizedAgents,
     AuthorizedAgents1,
     AuthorizedAgents2,
     AuthorizedAgents3,
+    AuthorizedAgents4,
+    AuthorizedAgents5,
     # Build creative responses
     BuildCreativeResponse1,
     BuildCreativeResponse2,
     # Calibrate content responses
     CalibrateContentResponse1,
     CalibrateContentResponse2,
+    ConsentBasis,
+    CpaPricingOption,
     CpcPricingOption,
     CpcvPricingOption,
     CpmPricingOption,
@@ -67,6 +77,9 @@ from adcp.types._generated import (
     Destination1,
     Destination2,
     FlatRatePricingOption,
+    # Get account financials responses
+    GetAccountFinancialsResponse1,
+    GetAccountFinancialsResponse2,
     # Content standards get responses
     GetContentStandardsResponse1,
     GetContentStandardsResponse2,
@@ -74,9 +87,19 @@ from adcp.types._generated import (
     GetCreativeDeliveryRequest1,
     GetCreativeDeliveryRequest2,
     GetCreativeDeliveryRequest3,
+    # Get creative features responses
+    GetCreativeFeaturesResponse1,
+    GetCreativeFeaturesResponse2,
     # Media buy artifacts responses
     GetMediaBuyArtifactsResponse1,
     GetMediaBuyArtifactsResponse2,
+    # Get products request variants
+    GetProductsRequest1,
+    GetProductsRequest2,
+    GetProductsRequest3,
+    # Get signals request variants
+    GetSignalsRequest1,
+    GetSignalsRequest2,
     # Content standards list responses
     ListContentStandardsResponse1,
     ListContentStandardsResponse2,
@@ -86,9 +109,11 @@ from adcp.types._generated import (
     # Preview creative requests
     PreviewCreativeRequest1,
     PreviewCreativeRequest2,
+    PreviewCreativeRequest3,
     # Preview creative responses
     PreviewCreativeResponse1,
     PreviewCreativeResponse2,
+    PreviewCreativeResponse3,
     # Preview renders (discriminated union by output_format)
     PreviewRender1,  # output_format='url'
     PreviewRender2,  # output_format='html'
@@ -96,15 +121,28 @@ from adcp.types._generated import (
     # Publisher properties types
     PropertyId,
     PropertyTag,
+    # Performance feedback requests
+    ProvidePerformanceFeedbackRequest1,
+    ProvidePerformanceFeedbackRequest2,
     # Performance feedback responses
     ProvidePerformanceFeedbackResponse1,
     ProvidePerformanceFeedbackResponse2,
+    # Signal pricing option variants
+    SignalPricingOption5,
+    SignalPricingOption6,
+    SignalPricingOption7,
+    # SI send message request variants
+    SiSendMessageRequest1,
+    SiSendMessageRequest2,
     # SubAssets
     SubAsset1,
     SubAsset2,
     # Sync accounts responses
     SyncAccountsResponse1,
     SyncAccountsResponse2,
+    # Sync audiences responses
+    SyncAudiencesResponse1,
+    SyncAudiencesResponse2,
     # Sync catalogs responses
     SyncCatalogsResponse1,
     SyncCatalogsResponse2,
@@ -114,6 +152,10 @@ from adcp.types._generated import (
     # Sync event sources responses
     SyncEventSourcesResponse1,
     SyncEventSourcesResponse2,
+    TimeBasedPricingOption,
+    # Update content standards responses
+    UpdateContentStandardsResponse1,
+    UpdateContentStandardsResponse2,
     # Update media buy requests
     UpdateMediaBuyRequest1,
     UpdateMediaBuyRequest2,
@@ -128,6 +170,9 @@ from adcp.types._generated import (
     VastAsset2,
     VcpmPricingOption,
 )
+
+# CatalogFieldBinding1 = catalog_group binding; give it a semantic name.
+from adcp.types._generated import CatalogFieldBinding1 as CatalogGroupBinding
 from adcp.types._generated import (
     PublisherPropertySelector1 as PublisherPropertiesInternal,
 )
@@ -144,6 +189,17 @@ from adcp.types._generated import (
 # Import Package from _generated (still uses qualified name for internal reasons)
 from adcp.types._generated import _PackageFromPackage as Package
 
+# Status name collides across many modules. Preserve backward compat by importing
+# the specific variant that was exported on main (media buy delivery status).
+from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+    Status as MediaBuyDeliveryStatus,
+)
+
+# Audience name collides in _generated (delivery breakdown wins over sync request)
+from adcp.types.generated_poc.media_buy.sync_audiences_request import (
+    Audience as SyncAudiencesAudienceInternal,
+)
+
 # Import nested types that aren't exported by _generated but are useful for type hints
 from adcp.types.generated_poc.media_buy.sync_catalogs_response import (
     Catalog as SyncCatalogResultInternal,
@@ -151,6 +207,57 @@ from adcp.types.generated_poc.media_buy.sync_catalogs_response import (
 from adcp.types.generated_poc.media_buy.sync_creatives_response import (
     Creative as SyncCreativeResultInternal,
 )
+
+# ============================================================================
+# ACCOUNT REFERENCE ALIASES - Identification Method Discriminated Unions
+# ============================================================================
+# AccountReference is a discriminated union with two identification methods:
+#
+# 1. By seller-assigned ID (account_id):
+#    - Use when the buyer manages accounts via list_accounts or sync_accounts
+#    - Requires seller-assigned account_id string
+#
+# 2. By natural key (brand + operator):
+#    - Use when the seller resolves accounts internally from brand identity
+#    - Requires brand reference + operator domain
+
+AccountReferenceById = AccountReference1
+"""Account reference using a seller-assigned account ID.
+
+Use when the buyer manages accounts (e.g., picked from list_accounts or
+sync_accounts). The account_id must match one returned by the seller.
+
+Fields:
+- account_id: Seller-assigned account identifier
+
+Example:
+    ```python
+    from adcp import AccountReferenceById
+
+    account = AccountReferenceById(account_id="acc_acme_001")
+    ```
+"""
+
+AccountReferenceByNaturalKey = AccountReference2
+"""Account reference using brand + operator natural key.
+
+Use when the seller resolves accounts internally from brand identity.
+The seller looks up the account based on the brand/operator combination.
+
+Fields:
+- brand: BrandReference identifying the advertiser
+- operator: Domain of the entity operating on the brand's behalf
+
+Example:
+    ```python
+    from adcp import AccountReferenceByNaturalKey
+
+    account = AccountReferenceByNaturalKey(
+        brand={"domain": "acme-corp.com"},
+        operator="acme-corp.com"
+    )
+    ```
+"""
 
 # ============================================================================
 # RESPONSE TYPE ALIASES - Success/Error Discriminated Unions
@@ -291,6 +398,13 @@ CreateContentStandardsSuccessResponse = CreateContentStandardsResponse1
 CreateContentStandardsErrorResponse = CreateContentStandardsResponse2
 """Error response - content standards creation failed."""
 
+# Update Content Standards Response Variants
+UpdateContentStandardsSuccessResponse = UpdateContentStandardsResponse1
+"""Success response - content standards updated, returns standards_id."""
+
+UpdateContentStandardsErrorResponse = UpdateContentStandardsResponse2
+"""Error response - content standards update failed, includes errors."""
+
 # Get Media Buy Artifacts Response Variants
 GetMediaBuyArtifactsSuccessResponse = GetMediaBuyArtifactsResponse1
 """Success response - media buy artifacts retrieved."""
@@ -305,16 +419,67 @@ UpdateMediaBuySuccessResponse = UpdateMediaBuyResponse1
 UpdateMediaBuyErrorResponse = UpdateMediaBuyResponse2
 """Error response - media buy update failed, no changes applied."""
 
+# Get Account Financials Response Variants
+GetAccountFinancialsSuccessResponse = GetAccountFinancialsResponse1
+"""Success response - account financials retrieved."""
+
+GetAccountFinancialsErrorResponse = GetAccountFinancialsResponse2
+"""Error response - account financials retrieval failed."""
+
+# Sync Audiences Response Variants
+SyncAudiencesSuccessResponse = SyncAudiencesResponse1
+"""Success response - audiences synced successfully."""
+
+SyncAudiencesErrorResponse = SyncAudiencesResponse2
+"""Error response - audiences sync failed."""
+
+# Get Creative Features Response Variants
+GetCreativeFeaturesSuccessResponse = GetCreativeFeaturesResponse1
+"""Success response - creative features retrieved."""
+
+GetCreativeFeaturesErrorResponse = GetCreativeFeaturesResponse2
+"""Error response - creative features retrieval failed."""
+
 # ============================================================================
 # REQUEST TYPE ALIASES - Operation Variants
 # ============================================================================
 
 # Preview Creative Request Variants
-PreviewCreativeFormatRequest = PreviewCreativeRequest1
-"""Preview request using format_id to identify creative format."""
+PreviewCreativeSingleRequest = PreviewCreativeRequest1
+"""Single preview request with creative_manifest and optional format_id - request_type='single'."""
 
-PreviewCreativeManifestRequest = PreviewCreativeRequest2
-"""Preview request using creative_manifest_url to identify creative."""
+PreviewCreativeBatchRequest = PreviewCreativeRequest2
+"""Batch preview request with array of requests (1-50) - request_type='batch'."""
+
+PreviewCreativeVariantRequest = PreviewCreativeRequest3
+"""Variant preview request using variant_id - request_type='variant'."""
+
+
+# Get Products Request Variants
+GetProductsRefineRequest = GetProductsRequest3
+"""Get products request in refine mode - buying_mode='refine'.
+
+Used to iterate on previous product results with refinement actions
+(include, omit, more_like_this) at request, product, or proposal scope.
+
+Example:
+    ```python
+    from adcp import GetProductsRefineRequest
+
+    request = GetProductsRefineRequest(
+        buying_mode="refine",
+        account={"account_id": "acc_123"},
+        refine=[{"action": "more_like_this", "product_id": "prod_456"}]
+    )
+    ```
+"""
+
+# Performance Feedback Request Variants
+ProvidePerformanceFeedbackByMediaBuyRequest = ProvidePerformanceFeedbackRequest1
+"""Performance feedback request identified by media_buy_id (required)."""
+
+ProvidePerformanceFeedbackByBuyerRefRequest = ProvidePerformanceFeedbackRequest2
+"""Performance feedback request identified by buyer_ref (required)."""
 
 # Update Media Buy Request Variants
 UpdateMediaBuyPackagesRequest = UpdateMediaBuyRequest1
@@ -333,25 +498,51 @@ GetCreativeDeliveryByBuyerRefRequest = GetCreativeDeliveryRequest2
 GetCreativeDeliveryByCreativeRequest = GetCreativeDeliveryRequest3
 """Request creative delivery by creative_ids."""
 
+# Get Products Request Variants (by buying_mode)
+GetProductsBriefRequest = GetProductsRequest1
+"""Get products in brief mode - buying_mode='brief', requires brief text."""
+
+GetProductsWholesaleRequest = GetProductsRequest2
+"""Get products in wholesale mode - buying_mode='wholesale', raw inventory."""
+
+# Get Signals Request Variants
+GetSignalsDiscoveryRequest = GetSignalsRequest1
+"""Discover signals by natural language spec - signal_spec required."""
+
+GetSignalsLookupRequest = GetSignalsRequest2
+"""Look up signals by IDs - signal_ids required."""
+
+# SI Send Message Request Variants
+SiSendTextMessageRequest = SiSendMessageRequest1
+"""Send a text message to the brand agent - message required."""
+
+SiSendActionResponseRequest = SiSendMessageRequest2
+"""Send an action response to the brand agent - action_response required."""
+
 # ============================================================================
 # ACTIVATION KEY ALIASES
 # ============================================================================
-# Note: Activation key schema changed from property_id/property_tag variants
-# to segment_id/key_value variants. Import directly from _generated:
-#   from adcp.types._generated import ActivationKey1 as SegmentIdActivationKey
-#   from adcp.types._generated import ActivationKey2 as KeyValueActivationKey
-# These will be added once the types are regenerated with proper schema.
+
+SegmentIdActivationKey = ActivationKey1
+"""Activation key using segment ID targeting - type='segment_id'."""
+
+KeyValueActivationKey = ActivationKey2
+"""Activation key using key-value pair targeting - type='key_value'."""
 
 # ============================================================================
 # PREVIEW/RENDER TYPE ALIASES
 # ============================================================================
 
 # Preview Creative Response Variants
-PreviewCreativeStaticResponse = PreviewCreativeResponse1
-"""Preview response with static renders (image/HTML snapshots)."""
+PreviewCreativeSingleResponse = PreviewCreativeResponse1
+"""Single preview response with previews array and expires_at - response_type='single'."""
 
-PreviewCreativeInteractiveResponse = PreviewCreativeResponse2
-"""Preview response with interactive renders (iframe embedding)."""
+PreviewCreativeBatchResponse = PreviewCreativeResponse2
+"""Batch preview response with results array - response_type='batch'."""
+
+PreviewCreativeVariantResponse = PreviewCreativeResponse3
+"""Variant preview response with variant_id and rendered pieces - response_type='variant'."""
+
 
 # Preview Render Aliases (discriminated union by output_format)
 UrlPreviewRender = PreviewRender1
@@ -745,6 +936,32 @@ Example:
     ```
 """
 
+AuthorizedAgentsBySignalId = AuthorizedAgents4
+"""Authorized agent for specific signal IDs.
+
+This variant uses authorization_type='signal_ids' for agents authorized
+to resell specific signals identified by their IDs.
+
+Fields:
+- authorization_type: Literal['signal_ids']
+- authorized_for: Human-readable description of signals authorization
+- signal_ids: List of SignalId (non-empty)
+- url: Authorized signals agent's API endpoint URL
+"""
+
+AuthorizedAgentsBySignalTag = AuthorizedAgents5
+"""Authorized agent for signals matching tags.
+
+This variant uses authorization_type='signal_tags' for agents authorized
+to resell signals identified by matching tags.
+
+Fields:
+- authorization_type: Literal['signal_tags']
+- authorized_for: Human-readable description of signals authorization
+- signal_tags: List of SignalTag (non-empty)
+- url: Authorized signals agent's API endpoint URL
+"""
+
 # ============================================================================
 # UNION TYPE ALIASES - For Type Hints and Pattern Matching
 # ============================================================================
@@ -790,6 +1007,8 @@ AuthorizedAgent = (
     | AuthorizedAgentsByPropertyTag
     | AuthorizedAgentsByInlineProperties
     | AuthorizedAgentsByPublisherProperties
+    | AuthorizedAgentsBySignalId
+    | AuthorizedAgentsBySignalTag
 )
 """Union type for all authorized agent variants.
 
@@ -830,6 +1049,50 @@ Example:
 """
 
 # ============================================================================
+# SIGNAL PRICING OPTION ALIASES - Pricing Model Discriminated Unions
+# ============================================================================
+# SignalPricingOption is a discriminated union with three pricing models.
+# Variants 5/6/7 combine the model-specific fields with pricing_option_id.
+
+CpmSignalPricingOption = SignalPricingOption5
+"""Signal pricing option with model='cpm' - fixed cost per thousand impressions."""
+
+PercentOfMediaSignalPricingOption = SignalPricingOption6
+"""Signal pricing option with model='percent_of_media' - percentage of media spend."""
+
+FlatFeeSignalPricingOption = SignalPricingOption7
+"""Signal pricing option with model='flat_fee' - fixed charge per reporting period."""
+
+# ============================================================================
+# SYNC AUDIENCES INPUT ALIASES
+# ============================================================================
+# The Audience input type for SyncAudiencesRequest is exported here following
+# the same pattern as SyncCreativeResult and SyncCatalogResult.
+
+SyncAudiencesAudience = SyncAudiencesAudienceInternal
+"""Audience segment payload for SyncAudiencesRequest.audiences[].
+
+Required: audience_id (buyer's identifier for the audience).
+Optional: name, consent_basis, add (AudienceMember items), remove, delete.
+
+Example:
+    ```python
+    from adcp import SyncAudiencesAudience, SyncAudiencesRequest
+
+    request = SyncAudiencesRequest(
+        account={"account_id": "acc_123"},
+        audiences=[
+            SyncAudiencesAudience(
+                audience_id="seg_456",
+                name="High-value customers",
+                consent_basis="consent"
+            )
+        ]
+    )
+    ```
+"""
+
+# ============================================================================
 # PRICING OPTION UNION TYPE - For Type Hints Without RootModel Wrapper
 # ============================================================================
 # The generated PricingOption is a RootModel wrapper that mypy doesn't recognize
@@ -843,7 +1106,9 @@ PricingOption = (
     | CpcvPricingOption
     | CpvPricingOption
     | CppPricingOption
+    | CpaPricingOption
     | FlatRatePricingOption
+    | TimeBasedPricingOption
 )
 """Union type for all pricing option variants.
 
@@ -880,6 +1145,12 @@ Example:
 # ============================================================================
 
 __all__ = [
+    # Account reference variants
+    "AccountReferenceById",
+    "AccountReferenceByNaturalKey",
+    # Activation key variants
+    "SegmentIdActivationKey",
+    "KeyValueActivationKey",
     # Activation responses
     "ActivateSignalSuccessResponse",
     "ActivateSignalErrorResponse",
@@ -898,6 +1169,8 @@ __all__ = [
     "AuthorizedAgentsByPropertyTag",
     "AuthorizedAgentsByInlineProperties",
     "AuthorizedAgentsByPublisherProperties",
+    "AuthorizedAgentsBySignalId",
+    "AuthorizedAgentsBySignalTag",
     # Authorized agent union
     "AuthorizedAgent",
     # Build creative responses
@@ -909,6 +1182,8 @@ __all__ = [
     # Content standards responses
     "CreateContentStandardsSuccessResponse",
     "CreateContentStandardsErrorResponse",
+    "UpdateContentStandardsSuccessResponse",
+    "UpdateContentStandardsErrorResponse",
     "GetContentStandardsSuccessResponse",
     "GetContentStandardsErrorResponse",
     "ListContentStandardsSuccessResponse",
@@ -930,11 +1205,26 @@ __all__ = [
     "ProvidePerformanceFeedbackSuccessResponse",
     "ProvidePerformanceFeedbackErrorResponse",
     # Preview creative requests
-    "PreviewCreativeFormatRequest",
-    "PreviewCreativeManifestRequest",
+    "PreviewCreativeSingleRequest",
+    "PreviewCreativeBatchRequest",
+    "PreviewCreativeVariantRequest",
     # Preview creative responses
-    "PreviewCreativeStaticResponse",
-    "PreviewCreativeInteractiveResponse",
+    "PreviewCreativeSingleResponse",
+    "PreviewCreativeBatchResponse",
+    "PreviewCreativeVariantResponse",
+    # Get products request variants
+    "GetProductsBriefRequest",
+    "GetProductsWholesaleRequest",
+    "GetProductsRefineRequest",
+    # Get signals request variants
+    "GetSignalsDiscoveryRequest",
+    "GetSignalsLookupRequest",
+    # Performance feedback request variants
+    "ProvidePerformanceFeedbackByMediaBuyRequest",
+    "ProvidePerformanceFeedbackByBuyerRefRequest",
+    # SI send message request variants
+    "SiSendTextMessageRequest",
+    "SiSendActionResponseRequest",
     # Sync accounts responses
     "SyncAccountsSuccessResponse",
     "SyncAccountsErrorResponse",
@@ -958,6 +1248,15 @@ __all__ = [
     # Validate content delivery responses
     "ValidateContentDeliverySuccessResponse",
     "ValidateContentDeliveryErrorResponse",
+    # Get account financials responses
+    "GetAccountFinancialsSuccessResponse",
+    "GetAccountFinancialsErrorResponse",
+    # Sync audiences responses
+    "SyncAudiencesSuccessResponse",
+    "SyncAudiencesErrorResponse",
+    # Get creative features responses
+    "GetCreativeFeaturesSuccessResponse",
+    "GetCreativeFeaturesErrorResponse",
     # Package type aliases
     "Package",
     # Publisher properties types
@@ -981,4 +1280,15 @@ __all__ = [
     "Destination",
     # Pricing option union
     "PricingOption",
+    # Signal pricing option variants
+    "CpmSignalPricingOption",
+    "FlatFeeSignalPricingOption",
+    "PercentOfMediaSignalPricingOption",
+    # Sync audiences input type
+    "SyncAudiencesAudience",
+    "ConsentBasis",
+    # Status (backward compat - delivery status, not invoice status)
+    "MediaBuyDeliveryStatus",
+    # Catalog field binding semantic alias
+    "CatalogGroupBinding",
 ]

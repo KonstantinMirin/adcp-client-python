@@ -1,64 +1,67 @@
 {
-  "$id": "/schemas/latest/core/creative-asset.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Creative asset for upload to library - supports static assets, generative formats, and third-party snippets",
   "properties": {
     "assets": {
       "additionalProperties": true,
-      "description": "Assets required by the format, keyed by asset_role",
+      "description": "Assets required by the format, keyed by asset_id",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": {
-          "oneOf": [
+        "^[a-z0-9_]+$": {
+          "anyOf": [
             {
-              "$ref": "/schemas/latest/core/assets/image-asset.json"
+              "$ref": "assets/image-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/video-asset.json"
+              "$ref": "assets/video-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/audio-asset.json"
+              "$ref": "assets/audio-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/text-asset.json"
+              "$ref": "assets/vast-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/html-asset.json"
+              "$ref": "assets/text-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/css-asset.json"
+              "$ref": "assets/url-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/javascript-asset.json"
+              "$ref": "assets/html-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/vast-asset.json"
+              "$ref": "assets/javascript-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/daast-asset.json"
+              "$ref": "assets/webhook-asset.json"
             },
             {
-              "$ref": "/schemas/latest/core/assets/url-asset.json"
+              "$ref": "assets/css-asset.json"
+            },
+            {
+              "$ref": "assets/daast-asset.json"
+            },
+            {
+              "$ref": "assets/markdown-asset.json"
+            },
+            {
+              "$ref": "assets/brief-asset.json"
+            },
+            {
+              "$ref": "assets/catalog-asset.json"
             }
           ]
         }
       },
       "type": "object"
     },
-    "catalogs": {
-      "description": "Catalogs this creative renders. Each entry satisfies one of the format's catalog_requirements, matched by type. Each catalog can be inline (with items), a reference to a synced catalog (by catalog_id), or a URL to an external feed.",
-      "items": {
-        "$ref": "/schemas/latest/core/catalog.json"
-      },
-      "minItems": 1,
-      "type": "array"
-    },
     "creative_id": {
       "description": "Unique identifier for the creative",
       "type": "string"
     },
     "format_id": {
-      "$ref": "/schemas/latest/core/format-id.json",
+      "$ref": "format-id.json",
       "description": "Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
     },
     "inputs": {
@@ -101,8 +104,12 @@
       "minItems": 1,
       "type": "array"
     },
+    "provenance": {
+      "$ref": "provenance.json",
+      "description": "Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
+    },
     "status": {
-      "$ref": "/schemas/latest/enums/creative-status.json",
+      "$ref": "../enums/creative-status.json",
       "description": "For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state)."
     },
     "tags": {

@@ -28,6 +28,13 @@
       "items": {
         "additionalProperties": true,
         "properties": {
+          "categories": {
+            "description": "Valid values for categorical signals. Present when value_type is 'categorical'. Buyers must use one of these values in SignalTargeting.values.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "coverage_percentage": {
             "description": "Percentage of audience coverage",
             "maximum": 100,
@@ -53,24 +60,30 @@
             "description": "Human-readable signal name",
             "type": "string"
           },
-          "pricing": {
-            "additionalProperties": true,
-            "description": "Pricing information",
+          "pricing_options": {
+            "description": "Pricing options available for this signal. The buyer selects one and passes its pricing_option_id in report_usage for billing verification.",
+            "items": {
+              "$ref": "../core/signal-pricing-option.json"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "range": {
+            "additionalProperties": false,
+            "description": "Valid range for numeric signals. Present when value_type is 'numeric'.",
             "properties": {
-              "cpm": {
-                "description": "Cost per thousand impressions",
-                "minimum": 0,
+              "max": {
+                "description": "Maximum value (inclusive)",
                 "type": "number"
               },
-              "currency": {
-                "description": "Currency code",
-                "pattern": "^[A-Z]{3}$",
-                "type": "string"
+              "min": {
+                "description": "Minimum value (inclusive)",
+                "type": "number"
               }
             },
             "required": [
-              "cpm",
-              "currency"
+              "min",
+              "max"
             ],
             "type": "object"
           },
@@ -99,7 +112,7 @@
           "data_provider",
           "coverage_percentage",
           "deployments",
-          "pricing"
+          "pricing_options"
         ],
         "type": "object"
       },

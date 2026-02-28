@@ -13,38 +13,35 @@
       ]
     }
   ],
-  "description": "Request parameters for discovering signals. Use signal_spec for natural language discovery, signal_ids for exact lookups, or both (signal_ids take precedence for exact matches, signal_spec provides additional discovery context).",
+  "description": "Request parameters for discovering and refining signals. Use signal_spec for natural language discovery, signal_ids for exact lookups, or both to refine previous results (signal_ids anchor the starting set, signal_spec guides adjustments).",
   "properties": {
+    "account": {
+      "$ref": "../core/account-ref.json",
+      "description": "Account for this request. When provided, the signals agent returns per-account pricing options if configured."
+    },
+    "buyer_campaign_ref": {
+      "description": "The buyer's campaign reference. Used to correlate signal discovery with subsequent report_usage calls.",
+      "type": "string"
+    },
     "context": {
       "$ref": "../core/context.json"
     },
-    "deliver_to": {
-      "additionalProperties": true,
-      "description": "Deployment targets where signals need to be activated",
-      "properties": {
-        "countries": {
-          "description": "Countries where signals will be used (ISO codes)",
-          "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "deployments": {
-          "description": "List of deployment targets (DSPs, sales agents, etc.). If the authenticated caller matches one of these deployment targets, activation keys will be included in the response.",
-          "items": {
-            "$ref": "../core/destination.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        }
+    "countries": {
+      "description": "Countries where signals will be used (ISO 3166-1 alpha-2 codes). When omitted, no geographic filter is applied.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
       },
-      "required": [
-        "deployments",
-        "countries"
-      ],
-      "type": "object"
+      "minItems": 1,
+      "type": "array"
+    },
+    "destinations": {
+      "description": "Filter signals to those activatable on specific agents/platforms. When omitted, returns all signals available on the current agent. If the authenticated caller matches one of these destinations, activation keys will be included in the response.",
+      "items": {
+        "$ref": "../core/destination.json"
+      },
+      "minItems": 1,
+      "type": "array"
     },
     "ext": {
       "$ref": "../core/ext.json"
@@ -61,7 +58,7 @@
       "$ref": "../core/pagination-request.json"
     },
     "signal_ids": {
-      "description": "Specific signals to look up by data provider and ID. Returns exact matches from the data provider's catalog. Takes precedence over signal_spec when both are provided.",
+      "description": "Specific signals to look up by data provider and ID. Returns exact matches from the data provider's catalog. When combined with signal_spec, these signals anchor the starting set and signal_spec guides adjustments.",
       "items": {
         "$ref": "../core/signal-id.json"
       },
@@ -73,9 +70,6 @@
       "type": "string"
     }
   },
-  "required": [
-    "deliver_to"
-  ],
   "title": "Get Signals Request",
   "type": "object"
 }

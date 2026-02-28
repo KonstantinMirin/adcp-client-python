@@ -155,12 +155,12 @@ def test_catalog_offering_type_inline():
 
 
 def test_sync_catalogs_request_basic():
-    """SyncCatalogsRequest accepts account_id with catalogs array."""
+    """SyncCatalogsRequest accepts account with catalogs array."""
     from adcp import SyncCatalogsRequest
 
     req = SyncCatalogsRequest.model_validate(
         {
-            "account_id": "acct_123",
+            "account": {"account_id": "acct_123"},
             "catalogs": [
                 {
                     "type": "product",
@@ -172,7 +172,7 @@ def test_sync_catalogs_request_basic():
             ],
         }
     )
-    assert req.account_id == "acct_123"
+    assert req.account.root.account_id == "acct_123"
     assert req.catalogs is not None
     assert len(req.catalogs) == 1
 
@@ -181,8 +181,8 @@ def test_sync_catalogs_request_discovery_only():
     """SyncCatalogsRequest accepts discovery-only mode (no catalogs)."""
     from adcp import SyncCatalogsRequest
 
-    req = SyncCatalogsRequest.model_validate({"account_id": "acct_123"})
-    assert req.account_id == "acct_123"
+    req = SyncCatalogsRequest.model_validate({"account": {"account_id": "acct_123"}})
+    assert req.account.root.account_id == "acct_123"
     assert req.catalogs is None
 
 
@@ -317,84 +317,6 @@ def test_catalog_type_not_signal_catalog_type():
     assert CatalogType is not SignalCatalogType
     assert CatalogType.offering.value == "offering"
     assert SignalCatalogType.marketplace.value == "marketplace"
-
-
-def test_creative_catalogs_field_accepts_list():
-    """Creative in list_creatives_response accepts catalogs as a non-empty list."""
-    from adcp import Catalog
-    from adcp.types.generated_poc.media_buy.list_creatives_response import Creative as ListCreative
-
-    creative = ListCreative.model_validate(
-        {
-            "creative_id": "c1",
-            "name": "Test Creative",
-            "created_date": "2026-01-01T00:00:00Z",
-            "updated_date": "2026-01-01T00:00:00Z",
-            "format_id": {"agent_url": "https://creative.adcontextprotocol.org", "id": "banner"},
-            "status": "approved",
-            "catalogs": [{"type": "product", "catalog_id": "feed-1"}],
-        }
-    )
-    assert creative.catalogs is not None
-    assert len(creative.catalogs) == 1
-    assert isinstance(creative.catalogs[0], Catalog)
-
-
-def test_creative_catalogs_field_rejects_empty_list():
-    """Creative in list_creatives_response rejects empty catalogs list (min_length=1)."""
-    from adcp.types.generated_poc.media_buy.list_creatives_response import Creative as ListCreative
-
-    with pytest.raises(ValidationError):
-        ListCreative.model_validate(
-            {
-                "creative_id": "c1",
-                "name": "Test Creative",
-                "created_date": "2026-01-01T00:00:00Z",
-                "updated_date": "2026-01-01T00:00:00Z",
-                "format_id": {
-                    "agent_url": "https://creative.adcontextprotocol.org",
-                    "id": "banner",
-                },
-                "status": "approved",
-                "catalogs": [],
-            }
-        )
-
-
-def test_creative_asset_catalogs_field():
-    """CreativeAsset accepts catalogs as a non-empty list."""
-    from adcp import Catalog
-    from adcp.types import CreativeAsset
-
-    asset = CreativeAsset.model_validate(
-        {
-            "creative_id": "c1",
-            "name": "Test Creative",
-            "format_id": {"agent_url": "https://creative.adcontextprotocol.org", "id": "banner"},
-            "assets": {},
-            "catalogs": [{"type": "product", "catalog_id": "feed-1"}],
-        }
-    )
-    assert asset.catalogs is not None
-    assert len(asset.catalogs) == 1
-    assert isinstance(asset.catalogs[0], Catalog)
-
-
-def test_creative_manifest_catalogs_field():
-    """CreativeManifest accepts catalogs as a non-empty list."""
-    from adcp import Catalog
-    from adcp.types import CreativeManifest
-
-    manifest = CreativeManifest.model_validate(
-        {
-            "format_id": {"agent_url": "https://creative.adcontextprotocol.org", "id": "banner"},
-            "assets": {},
-            "catalogs": [{"type": "offering", "items": [{"offering_id": "o1", "name": "Deal"}]}],
-        }
-    )
-    assert manifest.catalogs is not None
-    assert len(manifest.catalogs) == 1
-    assert isinstance(manifest.catalogs[0], Catalog)
 
 
 def test_universal_macro_catalog_values():

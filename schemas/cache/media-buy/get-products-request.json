@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/latest/media-buy/get-products-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "dependencies": {
@@ -7,46 +6,225 @@
       "brand"
     ]
   },
-  "description": "Request parameters for discovering available advertising products",
+  "description": "Request parameters for discovering or refining advertising products. buying_mode declares the buyer's intent: 'brief' for curated discovery, 'wholesale' for raw catalog access, or 'refine' to iterate on known products and proposals.",
+  "oneOf": [
+    {
+      "properties": {
+        "buying_mode": {
+          "const": "brief"
+        },
+        "refine": false
+      },
+      "required": [
+        "buying_mode",
+        "brief"
+      ]
+    },
+    {
+      "properties": {
+        "brief": false,
+        "buying_mode": {
+          "const": "wholesale"
+        },
+        "refine": false
+      },
+      "required": [
+        "buying_mode"
+      ]
+    },
+    {
+      "properties": {
+        "brief": false,
+        "buying_mode": {
+          "const": "refine"
+        }
+      },
+      "required": [
+        "buying_mode",
+        "refine"
+      ]
+    }
+  ],
   "properties": {
-    "account_id": {
-      "description": "Account ID for product lookup. Required when the seller declares account.required_for_products = true in capabilities. Returns products with pricing specific to this account's rate card.",
-      "type": "string"
+    "account": {
+      "$ref": "../core/account-ref.json",
+      "description": "Account for product lookup. Returns products with pricing specific to this account's rate card."
     },
     "brand": {
-      "$ref": "/schemas/latest/core/brand-ref.json",
+      "$ref": "../core/brand-ref.json",
       "description": "Brand reference for product discovery context. Resolved to full brand identity at execution time."
     },
     "brief": {
-      "description": "Natural language description of campaign requirements.",
+      "description": "Natural language description of campaign requirements. Required when buying_mode is 'brief'. Must not be provided when buying_mode is 'wholesale' or 'refine'.",
       "type": "string"
     },
     "buyer_campaign_ref": {
       "description": "Buyer's campaign reference label. Groups related discovery and buy operations under a single campaign for CRM and ad server correlation (e.g., 'NovaDrink_Meals_Q2').",
       "type": "string"
     },
+    "buying_mode": {
+      "description": "Declares buyer intent for this request. 'brief': publisher curates product recommendations from the provided brief. 'wholesale': buyer requests raw inventory to apply their own audiences \u2014 brief must not be provided, and proposals are omitted. 'refine': iterate on products and proposals from a previous get_products response using the refine array of change requests.",
+      "enum": [
+        "brief",
+        "wholesale",
+        "refine"
+      ],
+      "type": "string"
+    },
     "catalog": {
-      "$ref": "/schemas/latest/core/catalog.json",
+      "$ref": "../core/catalog.json",
       "description": "Catalog of items the buyer wants to promote. The seller matches catalog items against its inventory and returns products where matches exist. Supports all catalog types: a job catalog finds job ad products, a product catalog finds sponsored product slots. Reference a synced catalog by catalog_id, or provide inline items."
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
+    },
+    "fields": {
+      "description": "Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed (e.g., just IDs and pricing for comparison). Required fields (product_id, name) are always included regardless of selection.",
+      "items": {
+        "enum": [
+          "product_id",
+          "name",
+          "description",
+          "publisher_properties",
+          "channels",
+          "format_ids",
+          "placements",
+          "delivery_type",
+          "pricing_options",
+          "forecast",
+          "outcome_measurement",
+          "delivery_measurement",
+          "reporting_capabilities",
+          "creative_policy",
+          "catalog_types",
+          "metric_optimization",
+          "conversion_tracking",
+          "data_provider_signals",
+          "max_optimization_goals",
+          "catalog_match",
+          "brief_relevance",
+          "expires_at",
+          "product_card",
+          "product_card_detailed"
+        ],
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
     },
     "filters": {
-      "$ref": "/schemas/latest/core/product-filters.json"
+      "$ref": "../core/product-filters.json"
     },
     "pagination": {
-      "$ref": "/schemas/latest/core/pagination-request.json"
+      "$ref": "../core/pagination-request.json"
     },
     "property_list": {
-      "$ref": "/schemas/latest/core/property-list-ref.json",
+      "$ref": "../core/property-list-ref.json",
       "description": "[AdCP 3.0] Reference to an externally managed property list. When provided, the sales agent should filter products to only those available on properties in the list."
+    },
+    "refine": {
+      "description": "Array of change requests for iterating on products and proposals from a previous get_products response. Each entry declares a scope (request, product, or proposal) and what the buyer is asking for. Only valid when buying_mode is 'refine'. The seller responds to each entry via refinement_applied in the response, matched by position.",
+      "items": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "ask": {
+                "description": "What the buyer is asking for at the request level (e.g., 'more video options and less display', 'suggest how to combine these products').",
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "const": "request",
+                "description": "Change scoped to the overall request \u2014 direction for the selection as a whole.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "ask"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "'include': return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned).",
+                "enum": [
+                  "include",
+                  "omit",
+                  "more_like_this"
+                ],
+                "type": "string"
+              },
+              "ask": {
+                "description": "What the buyer is asking for on this product. For 'include': specific changes to request (e.g., 'add 16:9 format'). For 'more_like_this': what 'similar' means (e.g., 'same audience but video format'). Ignored when action is 'omit'.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "description": "Product ID from a previous get_products response.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "const": "product",
+                "description": "Change scoped to a specific product.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "id",
+              "action"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "description": "'include': return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response.",
+                "enum": [
+                  "include",
+                  "omit"
+                ],
+                "type": "string"
+              },
+              "ask": {
+                "description": "What the buyer is asking for on this proposal (e.g., 'shift more budget toward video', 'reduce total by 10%'). Ignored when action is 'omit'.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "description": "Proposal ID from a previous get_products response.",
+                "minLength": 1,
+                "type": "string"
+              },
+              "scope": {
+                "const": "proposal",
+                "description": "Change scoped to a specific proposal.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "scope",
+              "id",
+              "action"
+            ]
+          }
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
     }
   },
-  "required": [],
+  "required": [
+    "buying_mode"
+  ],
   "title": "Get Products Request",
   "type": "object"
 }
