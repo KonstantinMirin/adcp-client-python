@@ -175,7 +175,7 @@ class TestMCPWebhooks:
         import hashlib
         import hmac
 
-        header_timestamp = "2025-01-15T10:00:00Z"
+        header_timestamp = "1773185740"
         payload_json = json.dumps(payload)
         signed_message = f"{header_timestamp}.{payload_json}"
         signature = hmac.new(
@@ -188,6 +188,39 @@ class TestMCPWebhooks:
             operation_id="op_333",
             signature=signature,
             timestamp=header_timestamp,
+        )
+
+        assert result.status == TaskStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_signature_verification_with_raw_body(self):
+        """Test signature verification using raw body bytes (cross-language safe)."""
+        payload = {
+            "task_id": "task_333b",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_333b", "buyer_ref": "ref_333b", "packages": []},
+        }
+
+        import hashlib
+        import hmac
+
+        header_timestamp = "1773185740"
+        # Simulate raw body from a different serializer (e.g., compact JSON from JS)
+        raw_body = json.dumps(payload, separators=(",", ":"))
+        signed_message = f"{header_timestamp}.{raw_body}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        result = await self.client.handle_webhook(
+            payload,
+            task_type="create_media_buy",
+            operation_id="op_333b",
+            signature=signature,
+            timestamp=header_timestamp,
+            raw_body=raw_body,
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -209,7 +242,7 @@ class TestMCPWebhooks:
                 task_type="create_media_buy",
                 operation_id="op_444",
                 signature="invalid_signature",
-                timestamp="2025-01-15T10:00:00Z",
+                timestamp="1773185740",
             )
 
     @pytest.mark.asyncio
