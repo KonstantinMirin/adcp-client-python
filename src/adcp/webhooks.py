@@ -140,7 +140,7 @@ def get_adcp_signed_headers_for_webhook(
 
     The signing algorithm:
     1. Constructs message as "{timestamp}.{json_payload}"
-    2. JSON-serializes payload with compact separators (no sorted keys for performance)
+    2. JSON-serializes payload with default separators (matches wire format from json= kwarg)
     3. UTF-8 encodes the message
     4. HMAC-SHA256 signs with the shared secret
     5. Hex-encodes and prefixes with "sha256="
@@ -206,9 +206,9 @@ def get_adcp_signed_headers_for_webhook(
     else:
         payload_dict = payload
 
-    # Serialize payload to JSON with consistent formatting
-    # Note: sort_keys=False for performance (key order doesn't affect signature)
-    payload_bytes = json.dumps(payload_dict, separators=(",", ":"), sort_keys=False).encode("utf-8")
+    # Serialize payload to JSON with default formatting (matches what json= kwarg sends on the wire)
+    # This aligns with the JS reference implementation's JSON.stringify() behavior
+    payload_bytes = json.dumps(payload_dict).encode("utf-8")
 
     # Construct signed message: timestamp.payload
     # Including timestamp prevents replay attacks

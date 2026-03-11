@@ -176,8 +176,8 @@ class TestMCPWebhooks:
         import hmac
 
         header_timestamp = "2025-01-15T10:00:00Z"
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode("utf-8")
-        signed_message = f"{header_timestamp}.{payload_bytes.decode('utf-8')}"
+        payload_json = json.dumps(payload)
+        signed_message = f"{header_timestamp}.{payload_json}"
         signature = hmac.new(
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()

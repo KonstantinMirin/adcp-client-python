@@ -1900,7 +1900,7 @@ class ADCPClient:
 
         The verification algorithm matches get_adcp_signed_headers_for_webhook:
         1. Constructs message as "{timestamp}.{json_payload}"
-        2. JSON-serializes payload with compact separators
+        2. JSON-serializes payload with default separators (matches wire format)
         3. UTF-8 encodes the message
         4. HMAC-SHA256 signs with the shared secret
         5. Compares against the provided signature (with "sha256=" prefix stripped)
@@ -1920,8 +1920,8 @@ class ADCPClient:
         if signature.startswith("sha256="):
             signature = signature[7:]
 
-        # Serialize payload to JSON with consistent formatting (matches signing)
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode("utf-8")
+        # Serialize payload to JSON with default formatting (matches signing and wire format)
+        payload_bytes = json.dumps(payload).encode("utf-8")
 
         # Construct signed message: timestamp.payload (matches get_adcp_signed_headers_for_webhook)
         signed_message = f"{timestamp}.{payload_bytes.decode('utf-8')}"
