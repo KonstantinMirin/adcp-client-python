@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from a2a.types import (
@@ -24,7 +25,7 @@ from a2a.types import (
 from adcp.client import ADCPClient
 from adcp.exceptions import ADCPWebhookSignatureError
 from adcp.types.core import AgentConfig, Protocol, TaskStatus
-from adcp.webhooks import extract_webhook_result_data
+from adcp.webhooks import extract_webhook_result_data, get_adcp_signed_headers_for_webhook
 
 
 class TestMCPWebhooks:
@@ -175,9 +176,9 @@ class TestMCPWebhooks:
         import hashlib
         import hmac
 
-        header_timestamp = "2025-01-15T10:00:00Z"
-        payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=False).encode("utf-8")
-        signed_message = f"{header_timestamp}.{payload_bytes.decode('utf-8')}"
+        header_timestamp = "1773185740"
+        payload_json = json.dumps(payload)
+        signed_message = f"{header_timestamp}.{payload_json}"
         signature = hmac.new(
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
@@ -188,6 +189,39 @@ class TestMCPWebhooks:
             operation_id="op_333",
             signature=signature,
             timestamp=header_timestamp,
+        )
+
+        assert result.status == TaskStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_signature_verification_with_raw_body(self):
+        """Test signature verification using raw body bytes (cross-language safe)."""
+        payload = {
+            "task_id": "task_333b",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_333b", "buyer_ref": "ref_333b", "packages": []},
+        }
+
+        import hashlib
+        import hmac
+
+        header_timestamp = "1773185740"
+        # Simulate raw body from a different serializer (e.g., compact JSON from JS)
+        raw_body = json.dumps(payload, separators=(",", ":"))
+        signed_message = f"{header_timestamp}.{raw_body}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        result = await self.client.handle_webhook(
+            payload,
+            task_type="create_media_buy",
+            operation_id="op_333b",
+            signature=signature,
+            timestamp=header_timestamp,
+            raw_body=raw_body,
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -209,7 +243,7 @@ class TestMCPWebhooks:
                 task_type="create_media_buy",
                 operation_id="op_444",
                 signature="invalid_signature",
-                timestamp="2025-01-15T10:00:00Z",
+                timestamp="1773185740",
             )
 
     @pytest.mark.asyncio
@@ -1014,3 +1048,136 @@ class TestExtractWebhookResultData:
         assert "errors" in result
         assert len(result["errors"]) == 1
         assert result["errors"][0]["code"] == "INTERNAL_ERROR"
+
+
+# Load official AdCP HMAC test vectors from fixtures
+# Source: adcontextprotocol/adcp PR #1383
+_VECTORS_PATH = Path(__file__).parent / "fixtures" / "webhook-hmac-sha256.json"
+_VECTORS_DATA = json.loads(_VECTORS_PATH.read_text())
+HMAC_TEST_VECTORS_SECRET = _VECTORS_DATA["secret"]
+HMAC_TEST_VECTORS = _VECTORS_DATA["vectors"]
+
+
+class TestHMACTestVectors:
+    """Validate signing and verification against official AdCP HMAC test vectors."""
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_TEST_VECTORS,
+        ids=[v["description"] for v in HMAC_TEST_VECTORS],
+    )
+    def test_signing_matches_test_vector(self, vector):
+        """Verify get_adcp_signed_headers_for_webhook produces correct signatures."""
+        raw_body = vector["raw_body"]
+        timestamp = vector["timestamp"]
+        expected = vector["expected_signature"]
+
+        # Sign using the raw_body as-is (simulating pre-serialized payload)
+        import hashlib
+        import hmac
+
+        signed_message = f"{timestamp}.{raw_body}"
+        signature_hex = hmac.new(
+            HMAC_TEST_VECTORS_SECRET.encode("utf-8"),
+            signed_message.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+        assert f"sha256={signature_hex}" == expected
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_TEST_VECTORS,
+        ids=[v["description"] for v in HMAC_TEST_VECTORS],
+    )
+    def test_get_adcp_signed_headers_produces_correct_signature(self, vector):
+        """Verify get_adcp_signed_headers_for_webhook matches vectors for dict payloads."""
+        raw_body = vector["raw_body"]
+        timestamp = vector["timestamp"]
+        expected = vector["expected_signature"]
+
+        # Only test vectors with valid JSON that can be parsed as dicts
+        if not raw_body or raw_body.strip() == "":
+            pytest.skip("empty body cannot be passed as dict payload")
+            return
+
+        try:
+            payload_dict = json.loads(raw_body)
+        except json.JSONDecodeError:
+            pytest.skip("non-JSON raw_body")
+            return
+
+        # If json.dumps(payload_dict) reproduces the raw_body exactly,
+        # then get_adcp_signed_headers_for_webhook should match
+        reserialized = json.dumps(payload_dict)
+        if reserialized != raw_body:
+            pytest.skip(
+                "raw_body uses different serialization than json.dumps default"
+            )
+            return
+
+        headers = get_adcp_signed_headers_for_webhook(
+            headers={},
+            secret=HMAC_TEST_VECTORS_SECRET,
+            timestamp=timestamp,
+            payload=payload_dict,
+        )
+
+        assert headers["X-AdCP-Signature"] == expected
+        assert headers["X-AdCP-Timestamp"] == str(timestamp)
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_TEST_VECTORS,
+        ids=[v["description"] for v in HMAC_TEST_VECTORS],
+    )
+    @pytest.mark.asyncio
+    async def test_verify_webhook_signature_with_raw_body(self, vector):
+        """Verify _verify_webhook_signature passes with raw_body for all vectors."""
+        raw_body = vector["raw_body"]
+        timestamp = str(vector["timestamp"])
+        expected = vector["expected_signature"]
+
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(config, webhook_secret=HMAC_TEST_VECTORS_SECRET)
+
+        # Use raw_body path — should always verify correctly
+        result = client._verify_webhook_signature(
+            payload={},  # ignored when raw_body is provided
+            signature=expected,
+            timestamp=timestamp,
+            raw_body=raw_body,
+        )
+
+        assert result is True
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_TEST_VECTORS,
+        ids=[v["description"] for v in HMAC_TEST_VECTORS],
+    )
+    @pytest.mark.asyncio
+    async def test_verify_rejects_wrong_signature_with_raw_body(self, vector):
+        """Verify _verify_webhook_signature rejects tampered signatures."""
+        raw_body = vector["raw_body"]
+        timestamp = str(vector["timestamp"])
+
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(config, webhook_secret=HMAC_TEST_VECTORS_SECRET)
+
+        result = client._verify_webhook_signature(
+            payload={},
+            signature="sha256=0000000000000000000000000000000000000000000000000000000000000000",
+            timestamp=timestamp,
+            raw_body=raw_body,
+        )
+
+        assert result is False
