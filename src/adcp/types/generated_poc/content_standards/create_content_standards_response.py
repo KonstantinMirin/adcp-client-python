@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import Field, RootModel
+from pydantic import Field
 
 from ..core import context as context_1
 from ..core import error
@@ -34,19 +34,4 @@ class CreateContentStandardsResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class CreateContentStandardsResponse(
-    RootModel[CreateContentStandardsResponse1 | CreateContentStandardsResponse2]
-):
-    root: Annotated[
-        CreateContentStandardsResponse1 | CreateContentStandardsResponse2,
-        Field(
-            description='Response payload for creating a content standards configuration',
-            title='Create Content Standards Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+CreateContentStandardsResponse = CreateContentStandardsResponse1 | CreateContentStandardsResponse2

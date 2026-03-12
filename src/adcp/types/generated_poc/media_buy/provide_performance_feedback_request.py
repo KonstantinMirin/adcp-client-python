@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import datetime_range
@@ -102,19 +102,4 @@ class ProvidePerformanceFeedbackRequest2(AdCPBaseModel):
     ]
 
 
-class ProvidePerformanceFeedbackRequest(
-    RootModel[ProvidePerformanceFeedbackRequest1 | ProvidePerformanceFeedbackRequest2]
-):
-    root: Annotated[
-        ProvidePerformanceFeedbackRequest1 | ProvidePerformanceFeedbackRequest2,
-        Field(
-            description='Request payload for provide_performance_feedback task',
-            title='Provide Performance Feedback Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+ProvidePerformanceFeedbackRequest = ProvidePerformanceFeedbackRequest1 | ProvidePerformanceFeedbackRequest2

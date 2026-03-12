@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AwareDatetime, ConfigDict, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import ext as ext_1
@@ -105,17 +105,4 @@ class UpdateMediaBuyRequest2(AdCPBaseModel):
     start_time: start_timing.StartTiming | None = None
 
 
-class UpdateMediaBuyRequest(RootModel[UpdateMediaBuyRequest1 | UpdateMediaBuyRequest2]):
-    root: Annotated[
-        UpdateMediaBuyRequest1 | UpdateMediaBuyRequest2,
-        Field(
-            description='Request parameters for updating campaign and package settings',
-            title='Update Media Buy Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+UpdateMediaBuyRequest = UpdateMediaBuyRequest1 | UpdateMediaBuyRequest2

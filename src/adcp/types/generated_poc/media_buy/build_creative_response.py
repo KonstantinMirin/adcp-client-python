@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import creative_manifest as creative_manifest_1
@@ -45,17 +45,4 @@ class BuildCreativeResponse1(AdCPBaseModel):
     ] = None
 
 
-class BuildCreativeResponse(RootModel[BuildCreativeResponse1 | BuildCreativeResponse2]):
-    root: Annotated[
-        BuildCreativeResponse1 | BuildCreativeResponse2,
-        Field(
-            description='Response containing the transformed or generated creative manifest, ready for use with preview_creative or sync_creatives. Returns either the complete creative manifest OR error information, never both.',
-            title='Build Creative Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+BuildCreativeResponse = BuildCreativeResponse1 | BuildCreativeResponse2

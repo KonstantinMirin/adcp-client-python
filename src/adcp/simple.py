@@ -20,7 +20,10 @@ Usage:
 
 from __future__ import annotations
 
+from types import UnionType
 from typing import TYPE_CHECKING, Any
+
+from pydantic import TypeAdapter
 
 from adcp.exceptions import ADCPSimpleAPIError
 from adcp.types import (
@@ -63,6 +66,13 @@ from adcp.types import (
 
 if TYPE_CHECKING:
     from adcp.client import ADCPClient
+
+
+def _make_request(request_type: type, kwargs: dict[str, Any]) -> Any:
+    """Create a request instance, handling both classes and Union type aliases."""
+    if isinstance(request_type, UnionType):
+        return TypeAdapter(request_type).validate_python(kwargs)
+    return request_type(**kwargs)
 
 
 class SimpleAPI:
@@ -116,7 +126,7 @@ class SimpleAPI:
             )
             print(f"Found {len(products.products)} products")
         """
-        request = GetProductsRequest(**kwargs)
+        request = _make_request(GetProductsRequest, kwargs)
         result = await self._client.get_products(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -176,7 +186,7 @@ class SimpleAPI:
             )
             print(f"Preview: {preview.previews[0]}")
         """
-        request = PreviewCreativeRequest(**kwargs)
+        request = _make_request(PreviewCreativeRequest, kwargs)
         result = await self._client.preview_creative(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -330,7 +340,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = ProvidePerformanceFeedbackRequest(**kwargs)
+        request = _make_request(ProvidePerformanceFeedbackRequest, kwargs)
         result = await self._client.provide_performance_feedback(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -395,7 +405,7 @@ class SimpleAPI:
             )
             print(f"Updated media buy: {updated.media_buy_id}")
         """
-        request = UpdateMediaBuyRequest(**kwargs)
+        request = _make_request(UpdateMediaBuyRequest, kwargs)
         result = await self._client.update_media_buy(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -553,7 +563,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = GetCreativeDeliveryRequest(**kwargs)
+        request = _make_request(GetCreativeDeliveryRequest, kwargs)
         result = await self._client.get_creative_delivery(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(

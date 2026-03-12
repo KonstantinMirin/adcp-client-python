@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Annotated, Any, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import account_ref, brand_ref
 from ..core import catalog as catalog_1
@@ -304,19 +304,4 @@ class GetProductsRequest3(AdCPBaseModel):
     ]
 
 
-class GetProductsRequest(
-    RootModel[GetProductsRequest1 | GetProductsRequest2 | GetProductsRequest3]
-):
-    root: Annotated[
-        GetProductsRequest1 | GetProductsRequest2 | GetProductsRequest3,
-        Field(
-            description="Request parameters for discovering or refining advertising products. buying_mode declares the buyer's intent: 'brief' for curated discovery, 'wholesale' for raw catalog access, or 'refine' to iterate on known products and proposals.",
-            title='Get Products Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+GetProductsRequest = GetProductsRequest1 | GetProductsRequest2 | GetProductsRequest3

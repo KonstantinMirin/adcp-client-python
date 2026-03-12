@@ -45,7 +45,7 @@ async def test_get_products_simple_api():
         # Verify the underlying call was made correctly
         test_agent.get_products.assert_called_once()
         call_args = test_agent.get_products.call_args[0][0]
-        assert call_args.root.brief == "Coffee subscription service"
+        assert call_args.brief == "Coffee subscription service"
 
 
 @pytest.mark.asyncio

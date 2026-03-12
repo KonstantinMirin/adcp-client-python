@@ -838,3 +838,83 @@ class TestPropertyTagSharedSchema:
         # Pattern validation should work
         with pytest.raises(ValidationError):
             PropertyTag("Invalid-Tag")  # Hyphens not allowed in property tags
+
+
+class TestRootModelUnwrapForSubclassing:
+    """Test that unwrapped RootModel unions support consumer subclassing.
+
+    See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
+
+    Pydantic 2 forbids model_config overrides on RootModel subclasses.
+    By unwrapping select RootModel unions to plain Union type aliases,
+    consumers can subclass the individual variants with custom model_config.
+    """
+
+    def test_get_signals_request_is_union_alias(self):
+        """GetSignalsRequest should be a Union type alias, not a RootModel class."""
+        import types
+
+        from adcp.types import GetSignalsRequest
+
+        assert isinstance(GetSignalsRequest, types.UnionType)
+
+    def test_create_media_buy_response_is_union_alias(self):
+        """CreateMediaBuyResponse should be a Union type alias, not a RootModel class."""
+        import types
+
+        from adcp.types import CreateMediaBuyResponse
+
+        assert isinstance(CreateMediaBuyResponse, types.UnionType)
+
+    def test_subclass_get_signals_request_variant_with_extra_forbid(self):
+        """Consumer can subclass GetSignalsRequest variant with extra='forbid'."""
+        from pydantic import ConfigDict
+
+        from adcp.types._generated import GetSignalsRequest1
+
+        class MyGetSignalsRequest(GetSignalsRequest1):
+            model_config = ConfigDict(extra="forbid")
+
+        req = MyGetSignalsRequest(signal_spec="test signals")
+        assert req.signal_spec == "test signals"
+
+        # extra='forbid' should reject unknown fields
+        with pytest.raises(ValidationError):
+            MyGetSignalsRequest(
+                signal_spec="test",
+                unknown_field="should fail",
+            )
+
+    def test_subclass_create_media_buy_response_variant_with_extra_forbid(self):
+        """Consumer can subclass CreateMediaBuyResponse variant with extra='forbid'."""
+        from pydantic import ConfigDict
+
+        class MySuccessResponse(CreateMediaBuySuccessResponse):
+            model_config = ConfigDict(extra="forbid")
+
+        resp = MySuccessResponse(
+            media_buy_id="mb_123",
+            buyer_ref="ref_456",
+            packages=[],
+        )
+        assert resp.media_buy_id == "mb_123"
+
+        # extra='forbid' should reject unknown fields
+        with pytest.raises(ValidationError):
+            MySuccessResponse(
+                media_buy_id="mb_123",
+                buyer_ref="ref_456",
+                packages=[],
+                unknown_field="should fail",
+            )
+
+    def test_type_adapter_validates_get_signals_request_union(self):
+        """TypeAdapter can validate dicts against GetSignalsRequest union."""
+        from pydantic import TypeAdapter
+
+        from adcp.types import GetSignalsRequest
+        from adcp.types._generated import GetSignalsRequest1
+
+        adapter = TypeAdapter(GetSignalsRequest)
+        result = adapter.validate_python({"signal_spec": "test signals"})
+        assert isinstance(result, GetSignalsRequest1)

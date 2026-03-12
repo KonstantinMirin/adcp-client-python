@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
 from pydantic import ConfigDict, Field, RootModel
@@ -124,17 +124,4 @@ class GetSignalsRequest2(AdCPBaseModel):
     ] = None
 
 
-class GetSignalsRequest(RootModel[GetSignalsRequest1 | GetSignalsRequest2]):
-    root: Annotated[
-        GetSignalsRequest1 | GetSignalsRequest2,
-        Field(
-            description='Request parameters for discovering and refining signals. Use signal_spec for natural language discovery, signal_ids for exact lookups, or both to refine previous results (signal_ids anchor the starting set, signal_spec guides adjustments).',
-            title='Get Signals Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+GetSignalsRequest = GetSignalsRequest1 | GetSignalsRequest2

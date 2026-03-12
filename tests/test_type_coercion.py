@@ -9,7 +9,7 @@ Reference: https://github.com/adcontextprotocol/adcp-client-python/issues/102
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types import (
     AssetContentType,
@@ -121,11 +121,11 @@ class TestDictToModelCoercion:
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
-        req = GetProductsRequest.model_validate(
+        req = TypeAdapter(GetProductsRequest).validate_python(
             {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
-        assert isinstance(req.root.context, ContextObject)
-        assert req.root.context.key == "value"
+        assert isinstance(req.context, ContextObject)
+        assert req.context.key == "value"
 
 
 class TestFieldModelStringCoercion:

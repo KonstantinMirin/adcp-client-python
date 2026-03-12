@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated, Literal
+from typing import Annotated, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import creative_manifest as creative_manifest_1
@@ -174,20 +174,4 @@ class PreviewCreativeRequest2(AdCPBaseModel):
     ]
 
 
-class PreviewCreativeRequest(
-    RootModel[PreviewCreativeRequest1 | PreviewCreativeRequest2 | PreviewCreativeRequest3]
-):
-    root: Annotated[
-        PreviewCreativeRequest1 | PreviewCreativeRequest2 | PreviewCreativeRequest3,
-        Field(
-            discriminator='request_type',
-            description='Request to generate previews of one or more creative manifests. Accepts either a single creative request or an array of requests for batch processing.',
-            title='Preview Creative Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+PreviewCreativeRequest = PreviewCreativeRequest1 | PreviewCreativeRequest2 | PreviewCreativeRequest3

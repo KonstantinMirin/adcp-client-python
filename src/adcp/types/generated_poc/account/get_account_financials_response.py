@@ -6,10 +6,10 @@ from __future__ import annotations
 
 from datetime import date as date_aliased
 from enum import Enum
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import account_ref
 from ..core import context as context_1
@@ -139,78 +139,4 @@ class GetAccountFinancialsResponse1(AdCPBaseModel):
     ]
 
 
-class GetAccountFinancialsResponse(
-    RootModel[GetAccountFinancialsResponse1 | GetAccountFinancialsResponse2]
-):
-    root: Annotated[
-        GetAccountFinancialsResponse1 | GetAccountFinancialsResponse2,
-        Field(
-            description='Financial status for an operator-billed account. Returns spend summary, credit/balance status, payment status, and invoice history. The level of detail varies by seller — only account, currency, and period are guaranteed on success.',
-            examples=[
-                {
-                    'data': {
-                        'account': {'account_id': 'acc_acme_001'},
-                        'credit': {
-                            'available_credit': 54770.0,
-                            'credit_limit': 100000.0,
-                            'utilization_percent': 45.23,
-                        },
-                        'currency': 'USD',
-                        'invoices': [
-                            {
-                                'amount': 38500.0,
-                                'due_date': '2026-02-28',
-                                'invoice_id': 'inv_2026_01',
-                                'paid_date': '2026-02-15',
-                                'period': {'end': '2026-01-31', 'start': '2026-01-01'},
-                                'status': 'paid',
-                            }
-                        ],
-                        'payment_status': 'current',
-                        'payment_terms': 'net_30',
-                        'period': {'end': '2026-02-28', 'start': '2026-02-01'},
-                        'spend': {'media_buy_count': 3, 'total_spend': 45230.0},
-                        'timezone': 'America/New_York',
-                    },
-                    'description': 'Credit account — current, with invoice history',
-                },
-                {
-                    'data': {
-                        'account': {
-                            'brand': {'domain': 'acme-corp.com'},
-                            'operator': 'acme-corp.com',
-                        },
-                        'balance': {
-                            'available': 1800.0,
-                            'last_top_up': {'amount': 10000.0, 'date': '2026-02-01'},
-                        },
-                        'currency': 'USD',
-                        'payment_status': 'current',
-                        'payment_terms': 'prepay',
-                        'period': {'end': '2026-02-28', 'start': '2026-02-01'},
-                        'spend': {'media_buy_count': 2, 'total_spend': 8200.0},
-                        'timezone': 'America/Los_Angeles',
-                    },
-                    'description': 'Prepay account with low balance',
-                },
-                {
-                    'data': {
-                        'errors': [
-                            {
-                                'code': 'UNSUPPORTED_FEATURE',
-                                'message': "Financial data is not available for agent-billed accounts. The agent's own billing system is the source of truth.",
-                            }
-                        ]
-                    },
-                    'description': 'Agent-billed account — not supported',
-                },
-            ],
-            title='Get Account Financials Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+GetAccountFinancialsResponse = GetAccountFinancialsResponse1 | GetAccountFinancialsResponse2

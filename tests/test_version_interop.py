@@ -9,6 +9,7 @@ These tests verify the SDK handles version mismatches gracefully when:
 from __future__ import annotations
 
 import pytest
+from pydantic import TypeAdapter
 
 from adcp.types.core import TaskStatus
 
@@ -156,25 +157,25 @@ class TestHandlerVersionInterop:
             """Test implementation of ContentStandardsHandler."""
 
             async def handle_create_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_get_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_list_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_update_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_calibrate_content(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_validate_content_delivery(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
             async def handle_get_media_buy_artifacts(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
 
         handler = TestCSHandler()
 

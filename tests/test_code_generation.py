@@ -62,3 +62,45 @@ def test_format_type_structure():
     assert "format_id" in model_fields
     assert "name" in model_fields
     assert "description" in model_fields
+
+
+def test_no_request_response_rootmodels():
+    """Guard: Request/Response types must NOT be RootModel classes.
+
+    Pydantic 2 forbids model_config overrides on RootModel subclasses,
+    which blocks consumers who subclass library types with extra='forbid'
+    or custom fields. All Request/Response union types should be unwrapped
+    to plain Union type aliases in post_generate_fixes.py.
+
+    If this test fails after a schema update, add the new type to
+    _UNWRAP_TO_UNION in scripts/post_generate_fixes.py.
+
+    See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
+    """
+    import types as builtin_types
+
+    from pydantic import RootModel
+
+    from adcp.types import _generated as gen
+
+    # Scan all exported Request/Response types
+    rootmodel_violations = []
+    for name in dir(gen):
+        if not (name.endswith("Request") or name.endswith("Response")):
+            continue
+        obj = getattr(gen, name)
+        # Skip Union type aliases (these are the correctly unwrapped ones)
+        if isinstance(obj, builtin_types.UnionType):
+            continue
+        # Skip non-classes
+        if not isinstance(obj, type):
+            continue
+        # Flag RootModel subclasses wrapping unions (the problematic pattern)
+        if issubclass(obj, RootModel):
+            rootmodel_violations.append(name)
+
+    assert rootmodel_violations == [], (
+        f"These Request/Response types are RootModel classes, which blocks "
+        f"consumer subclassing. Add them to _UNWRAP_TO_UNION in "
+        f"scripts/post_generate_fixes.py: {rootmodel_violations}"
+    )

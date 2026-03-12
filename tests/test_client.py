@@ -1,6 +1,7 @@
 """Tests for ADCPClient."""
 
 import pytest
+from pydantic import TypeAdapter
 
 from adcp import ADCPClient, ADCPMultiAgentClient
 from adcp.types import AgentConfig, Protocol
@@ -107,7 +108,7 @@ async def test_get_products():
             client.adapter, "_parse_response", return_value=mock_parsed_result
         ) as mock_parse,
     ):
-        request = GetProductsRequest.model_validate(
+        request = TypeAdapter(GetProductsRequest).validate_python(
             {"buying_mode": "brief", "brief": "test campaign"}
         )
         result = await client.get_products(request)
@@ -301,8 +302,14 @@ async def test_method_calls_correct_tool_name(method_name, request_class, reques
     client = ADCPClient(config)
 
     # Create request instance with required fields
+    # Some types are Union aliases (not callable) after RootModel unwrap (#155)
+    import types
+
     request_cls = getattr(gen, request_class)
-    request = request_cls(**request_data)
+    if isinstance(request_cls, types.UnionType):
+        request = TypeAdapter(request_cls).validate_python(request_data)
+    else:
+        request = request_cls(**request_data)
 
     mock_result = TaskResult(
         status=TaskStatus.COMPLETED,
@@ -357,7 +364,7 @@ async def test_multi_agent_parallel_execution():
             client.agents["agent2"].adapter, "get_products", return_value=mock_result
         ) as mock2,
     ):
-        request = GetProductsRequest.model_validate({"buying_mode": "wholesale"})
+        request = TypeAdapter(GetProductsRequest).validate_python({"buying_mode": "wholesale"})
         results = await client.get_products(request)
 
         # Verify both agents' get_products method was called

@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import account_ref
 from ..core import context as context_1
@@ -201,21 +201,4 @@ class GetCreativeDeliveryRequest3(AdCPBaseModel):
     ] = None
 
 
-class GetCreativeDeliveryRequest(
-    RootModel[
-        GetCreativeDeliveryRequest1 | GetCreativeDeliveryRequest2 | GetCreativeDeliveryRequest3
-    ]
-):
-    root: Annotated[
-        GetCreativeDeliveryRequest1 | GetCreativeDeliveryRequest2 | GetCreativeDeliveryRequest3,
-        Field(
-            description='Request parameters for retrieving creative delivery data including variant-level metrics from a creative agent. At least one scoping filter (media_buy_ids, media_buy_buyer_refs, or creative_ids) is required.',
-            title='Get Creative Delivery Request',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+GetCreativeDeliveryRequest = GetCreativeDeliveryRequest1 | GetCreativeDeliveryRequest2 | GetCreativeDeliveryRequest3

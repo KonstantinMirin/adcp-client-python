@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -65,17 +65,4 @@ class LogEventResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class LogEventResponse(RootModel[LogEventResponse1 | LogEventResponse2]):
-    root: Annotated[
-        LogEventResponse1 | LogEventResponse2,
-        Field(
-            description='Response from event logging operation. Returns either event processing results OR operation-level errors.',
-            title='Log Event Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+LogEventResponse = LogEventResponse1 | LogEventResponse2

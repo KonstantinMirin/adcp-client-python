@@ -6,6 +6,7 @@ Tests against live reference agents to ensure the SDK works correctly:
 """
 
 import pytest
+from pydantic import TypeAdapter
 
 from adcp import ADCPClient
 from adcp.types import (
@@ -33,7 +34,7 @@ class TestTestAgent:
         )
 
         async with ADCPClient(config) as client:
-            request = GetProductsRequest(brief="Coffee brands")
+            request = TypeAdapter(GetProductsRequest).validate_python({"brief": "Coffee brands", "buying_mode": "brief"})
             result = await client.get_products(request)
 
             assert result.success, f"Failed to get products: {result.error}"
@@ -52,7 +53,7 @@ class TestTestAgent:
         )
 
         async with ADCPClient(config) as client:
-            request = GetProductsRequest(brief="Coffee brands")
+            request = TypeAdapter(GetProductsRequest).validate_python({"brief": "Coffee brands", "buying_mode": "brief"})
             result = await client.get_products(request)
 
             assert result.success, f"Failed to get products: {result.error}"
@@ -65,7 +66,7 @@ class TestTestAgent:
     async def test_protocol_equivalence(self):
         """Test that both protocols return similar results for the same request."""
         brief = "Television advertising"
-        request = GetProductsRequest(brief=brief)
+        request = TypeAdapter(GetProductsRequest).validate_python({"brief": brief, "buying_mode": "brief"})
 
         # Test with MCP
         mcp_config = AgentConfig(
@@ -145,7 +146,7 @@ class TestTestAgent:
         # Should raise an exception for invalid endpoint
         with pytest.raises(Exception):
             async with ADCPClient(config) as client:
-                request = GetProductsRequest(brief="test")
+                request = TypeAdapter(GetProductsRequest).validate_python({"brief": "test", "buying_mode": "brief"})
                 await client.get_products(request)
 
     @pytest.mark.integration
@@ -162,7 +163,7 @@ class TestTestAgent:
         # Should raise an exception for invalid endpoint
         with pytest.raises(Exception):
             async with ADCPClient(config) as client:
-                request = GetProductsRequest(brief="test")
+                request = TypeAdapter(GetProductsRequest).validate_python({"brief": "test", "buying_mode": "brief"})
                 await client.get_products(request)
 
 

@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import Field, RootModel
+from pydantic import Field
 
 from ..core import context as context_1
 from ..core import error
@@ -64,17 +64,4 @@ class CalibrateContentResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class CalibrateContentResponse(RootModel[CalibrateContentResponse1 | CalibrateContentResponse2]):
-    root: Annotated[
-        CalibrateContentResponse1 | CalibrateContentResponse2,
-        Field(
-            description='Response payload with verdict and detailed explanations for collaborative calibration',
-            title='Calibrate Content Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+CalibrateContentResponse = CalibrateContentResponse1 | CalibrateContentResponse2
