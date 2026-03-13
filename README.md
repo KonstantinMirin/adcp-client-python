@@ -33,7 +33,8 @@ from adcp.testing import test_agent
 
 # Zero configuration - just import and call with kwargs!
 products = await test_agent.simple.get_products(
-    brief='Coffee subscription service for busy professionals'
+    brief='Coffee subscription service for busy professionals',
+    buying_mode='brief',
 )
 
 print(f"Found {len(products.products)} products")
@@ -48,7 +49,7 @@ print(f"Found {len(products.products)} products")
 from adcp.testing import test_agent
 
 # Kwargs and direct return - raises on error
-products = await test_agent.simple.get_products(brief='Coffee brands')
+products = await test_agent.simple.get_products(brief='Coffee brands', buying_mode='brief')
 print(products.products[0].name)
 ```
 
@@ -58,7 +59,7 @@ from adcp.testing import test_agent
 from adcp import GetProductsRequest
 
 # Explicit request objects and TaskResult wrapper
-request = GetProductsRequest(brief='Coffee brands')
+request = GetProductsRequest(brief='Coffee brands', buying_mode='brief')
 result = await test_agent.get_products(request)
 
 if result.success and result.data:
@@ -124,7 +125,7 @@ async with ADCPMultiAgentClient(
 ) as client:
     # Execute operation - library handles operation IDs, webhook URLs, context management
     agent = client.agent("agent_x")
-    request = GetProductsRequest(brief="Coffee brands")
+    request = GetProductsRequest(brief="Coffee brands", buying_mode="brief")
     result = await agent.get_products(request)
 
     # Check result
@@ -166,23 +167,23 @@ from adcp import GetProductsRequest, PreviewCreativeRequest
 
 # 1. Single agent with authentication (MCP)
 result = await test_agent.get_products(
-    GetProductsRequest(brief="Coffee brands")
+    GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 )
 
 # 2. Single agent with authentication (A2A)
 result = await test_agent_a2a.get_products(
-    GetProductsRequest(brief="Coffee brands")
+    GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 )
 
 # 3. Single agent WITHOUT authentication (MCP)
 # Useful for testing unauthenticated behavior
 result = await test_agent_no_auth.get_products(
-    GetProductsRequest(brief="Coffee brands")
+    GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 )
 
 # 4. Single agent WITHOUT authentication (A2A)
 result = await test_agent_a2a_no_auth.get_products(
-    GetProductsRequest(brief="Coffee brands")
+    GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 )
 
 # 5. Creative agent (preview functionality, no auth required)
@@ -194,7 +195,7 @@ result = await creative_agent.preview_creative(
 
 # 6. Multi-agent (parallel execution with both protocols)
 results = await test_agent_client.get_products(
-    GetProductsRequest(brief="Coffee brands")
+    GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 )
 
 # 7. Custom configuration
@@ -231,7 +232,7 @@ from adcp import (
 )
 
 # All methods require typed request objects
-request = GetProductsRequest(brief="Coffee brands", max_results=10)
+request = GetProductsRequest(brief="Coffee brands", buying_mode="brief", max_results=10)
 result = await agent.get_products(request)
 # result: TaskResult[GetProductsResponse]
 
@@ -300,7 +301,7 @@ Execute across multiple agents simultaneously:
 from adcp import GetProductsRequest
 
 # Parallel execution across all agents
-request = GetProductsRequest(brief="Coffee brands")
+request = GetProductsRequest(brief="Coffee brands", buying_mode="brief")
 results = await client.get_products(request)
 
 for result in results:
@@ -357,7 +358,7 @@ agent_config = AgentConfig(
     debug=True  # Enable debug mode
 )
 
-result = await client.agent("agent_x").get_products(brief="Coffee brands")
+result = await client.agent("agent_x").get_products(brief="Coffee brands", buying_mode="brief")
 
 # Access debug information
 if result.debug_info:
@@ -388,7 +389,7 @@ from adcp import ADCPClient, AgentConfig, GetProductsRequest
 # Recommended: Automatic cleanup with context manager
 config = AgentConfig(id="agent_x", agent_uri="https://...", protocol="a2a")
 async with ADCPClient(config) as client:
-    request = GetProductsRequest(brief="Coffee brands")
+    request = GetProductsRequest(brief="Coffee brands", buying_mode="brief")
     result = await client.get_products(request)
     # Connection automatically closed on exit
 
@@ -433,7 +434,7 @@ from adcp.exceptions import (
 )
 
 try:
-    result = await client.agent("agent_x").get_products(brief="Coffee")
+    result = await client.agent("agent_x").get_products(brief="Coffee", buying_mode="brief")
 except ADCPAuthenticationError as e:
     # Exception includes agent context and helpful suggestions
     print(f"Auth failed for {e.agent_id}: {e.message}")
@@ -495,7 +496,7 @@ async with ADCPClient(config) as client:
 
     # 2. Discover available products
     products_result = await client.get_products(
-        GetProductsRequest(brief="Premium video inventory for coffee brand")
+        GetProductsRequest(brief="Premium video inventory for coffee brand", buying_mode="brief")
     )
 
     if products_result.success:
@@ -618,7 +619,8 @@ async with ADCPMultiAgentClient(
     # 1. Get products from sales agent
     sales_agent = client.agent("sales")
     products = await sales_agent.simple.get_products(
-        brief="Premium video inventory"
+        brief="Premium video inventory",
+        buying_mode="brief",
     )
 
     # 2. Get creative formats from creative agent

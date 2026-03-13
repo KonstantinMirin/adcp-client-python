@@ -1,7 +1,6 @@
 """Tests for ADCP server framework."""
 
 import pytest
-from pydantic import TypeAdapter
 
 from adcp.server import (
     ADCPHandler,
@@ -35,6 +34,7 @@ from adcp.types import (
     UpdatePropertyListResponse,
     ValidateContentDeliveryResponse,
 )
+from tests.conftest import validate_union
 
 
 class TestNotSupported:
@@ -128,25 +128,43 @@ class TestContentStandardsHandler:
 
         class ConcreteCSHandler(ContentStandardsHandler):
             async def handle_create_content_standards(self, request, context=None):
-                return TypeAdapter(CreateContentStandardsResponse).validate_python({"standards_id": "test"})
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_get_content_standards(self, request, context=None):
-                return TypeAdapter(GetContentStandardsResponse).validate_python({"standards_id": "test"})
+                return validate_union(GetContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_list_content_standards(self, request, context=None):
-                return TypeAdapter(ListContentStandardsResponse).validate_python({"standards": []})
+                return validate_union(ListContentStandardsResponse, {"standards": []})
 
             async def handle_update_content_standards(self, request, context=None):
-                return TypeAdapter(UpdateContentStandardsResponse).validate_python({"standards_id": "test", "success": True})
+                return validate_union(
+                    UpdateContentStandardsResponse,
+                    {"standards_id": "test", "success": True},
+                )
 
             async def handle_calibrate_content(self, request, context=None):
-                return TypeAdapter(CalibrateContentResponse).validate_python({"verdict": "pass"})
+                return validate_union(
+                    CalibrateContentResponse, {"verdict": "pass"}
+                )
 
             async def handle_validate_content_delivery(self, request, context=None):
-                return TypeAdapter(ValidateContentDeliveryResponse).validate_python({"results": [], "summary": {"total_records": 0, "passed_records": 0, "failed_records": 0}})
+                return validate_union(
+                    ValidateContentDeliveryResponse,
+                    {
+                        "results": [],
+                        "summary": {
+                            "total_records": 0,
+                            "passed_records": 0,
+                            "failed_records": 0,
+                        },
+                    },
+                )
 
             async def handle_get_media_buy_artifacts(self, request, context=None):
-                return TypeAdapter(GetMediaBuyArtifactsResponse).validate_python({"artifacts": [], "media_buy_id": "test"})
+                return validate_union(
+                    GetMediaBuyArtifactsResponse,
+                    {"artifacts": [], "media_buy_id": "test"},
+                )
 
         return ConcreteCSHandler()
 

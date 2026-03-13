@@ -14,6 +14,7 @@ handled by datamodel-code-generator directly:
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -340,6 +341,9 @@ def unwrap_rootmodel_unions():
     Consumers that subclass library types cannot extend RootModel subclasses
     because Pydantic 2 forbids model_config overrides on RootModel.
 
+    Uses AST to find class definitions instead of regex, which avoids issues
+    with nested brackets in base class annotations.
+
     Replaces:
         class TypeName(RootModel[Variant1 | Variant2]):
             root: Annotated[Variant1 | Variant2, Field(...)]
@@ -347,6 +351,11 @@ def unwrap_rootmodel_unions():
 
     With:
         TypeName = Variant1 | Variant2
+
+    Note: The types in _UNWRAP_TO_UNION are all Request/Response types whose
+    root: fields had no meaningful Field(description=..., examples=[...])
+    metadata. Value-type RootModels that carry rich metadata are intentionally
+    excluded and keep the RootModel wrapper + __getattr__ proxy.
     """
     unwrapped_count = 0
 
@@ -354,37 +363,59 @@ def unwrap_rootmodel_unions():
         with open(py_file) as f:
             content = f.read()
 
-        original = content
+        if "RootModel[" not in content:
+            continue
 
-        for type_name in _UNWRAP_TO_UNION:
-            # Match both single-line and multi-line class declarations:
-            #   class TypeName(RootModel[Variant1 | Variant2]):
-            #   class TypeName(\n    RootModel[Variant1 | Variant2 | Variant3]\n):
-            class_pattern = rf"class {type_name}\([^)]*RootModel\[([^\]]+)\][^)]*\):"
-            match = re.search(class_pattern, content)
-            if not match:
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            continue
+
+        original = content
+        lines = content.split("\n")
+
+        # Collect classes to unwrap (process in reverse order to preserve line numbers)
+        replacements: list[tuple[int, int, str, str]] = []  # (start_line, end_line, name, union_types)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef) or node.name not in _UNWRAP_TO_UNION:
+                continue
+            if not node.end_lineno:
                 continue
 
-            union_types = match.group(1).strip()
-            class_start = match.start()
+            # Find the RootModel[...] base class using AST source segments
+            for base in node.bases:
+                base_src = ast.get_source_segment(content, base)
+                if not base_src or "RootModel[" not in base_src:
+                    continue
 
-            # Find the end of the class body: from after the declaration line(s),
-            # consume all indented or empty lines.
-            pos = match.end()
-            while pos < len(content):
-                line_end = content.find("\n", pos)
-                if line_end == -1:
-                    pos = len(content)
-                    break
-                line = content[pos:line_end]
-                if line and not line[0].isspace():
-                    break
-                pos = line_end + 1
-            class_end = pos
+                # Extract union type from RootModel[...] using bracket depth
+                # to handle nested generics like RootModel[list[X] | Y]
+                bracket_start = base_src.index("RootModel[") + len("RootModel[")
+                depth = 1
+                pos = bracket_start
+                while pos < len(base_src) and depth > 0:
+                    if base_src[pos] == "[":
+                        depth += 1
+                    elif base_src[pos] == "]":
+                        depth -= 1
+                    pos += 1
+                bracket_end = pos - 1  # position of the matching ]
+                union_types = base_src[bracket_start:bracket_end].strip()
 
-            # Replace the class with a type alias
-            content = content[:class_start] + f"{type_name} = {union_types}\n" + content[class_end:]
+                replacements.append((node.lineno, node.end_lineno, node.name, union_types))
+                break
+
+        if not replacements:
+            continue
+
+        # Apply replacements in reverse line order to preserve indices
+        for start_line, end_line, type_name, union_types in sorted(replacements, reverse=True):
+            # Replace lines (1-indexed to 0-indexed)
+            lines[start_line - 1 : end_line] = [f"{type_name} = {union_types}"]
             unwrapped_count += 1
+
+        content = "\n".join(lines)
 
         if content != original:
             # Remove RootModel from imports if no longer used as a base class
@@ -392,16 +423,12 @@ def unwrap_rootmodel_unions():
                 content = re.sub(r",\s*RootModel", "", content)
                 content = re.sub(r"RootModel,\s*", "", content)
 
-            # Remove unused Any import if __getattr__ proxy was the only user
-            if "Any" not in content.split("import")[-1] or (
-                "Any" in content and "-> Any" not in content and ": Any" not in content
-            ):
-                # Check if Any is actually used anywhere besides the import
-                import_line_end = content.find("\n", content.find("from typing import"))
-                after_imports = content[import_line_end:] if import_line_end > 0 else ""
-                if "Any" not in after_imports:
-                    content = re.sub(r"Any,\s*", "", content)
-                    content = re.sub(r",\s*Any", "", content)
+            # Remove unused Any import if no longer referenced in code body
+            import_line_end = content.find("\n", content.find("from typing import"))
+            after_imports = content[import_line_end:] if import_line_end > 0 else ""
+            if "Any" not in after_imports:
+                content = re.sub(r"Any,\s*", "", content)
+                content = re.sub(r",\s*Any", "", content)
 
             with open(py_file, "w") as f:
                 f.write(content)
@@ -421,8 +448,6 @@ def add_rootmodel_getattr_proxy():
 
     See: https://github.com/adcontextprotocol/adcp-client-python/issues/145
     """
-    import ast
-
     fixed_count = 0
 
     for py_file in OUTPUT_DIR.rglob("*.py"):

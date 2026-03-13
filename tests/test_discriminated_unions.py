@@ -910,11 +910,9 @@ class TestRootModelUnwrapForSubclassing:
 
     def test_type_adapter_validates_get_signals_request_union(self):
         """TypeAdapter can validate dicts against GetSignalsRequest union."""
-        from pydantic import TypeAdapter
-
         from adcp.types import GetSignalsRequest
         from adcp.types._generated import GetSignalsRequest1
+        from tests.conftest import validate_union
 
-        adapter = TypeAdapter(GetSignalsRequest)
-        result = adapter.validate_python({"signal_spec": "test signals"})
+        result = validate_union(GetSignalsRequest, {"signal_spec": "test signals"})
         assert isinstance(result, GetSignalsRequest1)

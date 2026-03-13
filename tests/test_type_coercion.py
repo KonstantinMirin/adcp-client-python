@@ -9,7 +9,7 @@ Reference: https://github.com/adcontextprotocol/adcp-client-python/issues/102
 from __future__ import annotations
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from adcp.types import (
     AssetContentType,
@@ -25,6 +25,7 @@ from adcp.types.generated_poc.enums.creative_sort_field import CreativeSortField
 from adcp.types.generated_poc.enums.sort_direction import SortDirection
 from adcp.types.generated_poc.media_buy.list_creatives_request import Field1 as FieldModel
 from adcp.types.generated_poc.media_buy.list_creatives_request import Sort
+from tests.conftest import validate_union
 
 
 class TestEnumStringCoercion:
@@ -121,7 +122,7 @@ class TestDictToModelCoercion:
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
-        req = TypeAdapter(GetProductsRequest).validate_python(
+        req = validate_union(GetProductsRequest,
             {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
         assert isinstance(req.context, ContextObject)

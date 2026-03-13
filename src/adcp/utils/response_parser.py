@@ -35,18 +35,15 @@ def _validate_union_type(data: dict[str, Any], response_type: type[T]) -> T:
     is_union = origin is Union or str(type(response_type).__name__) == "UnionType"
 
     if is_union:
-        # Get union args - works for both typing.Union and types.UnionType
+        # get_args() handles both typing.Union and types.UnionType (Python 3.10+)
         args = get_args(response_type)
-        if not args:  # types.UnionType case
-            # For types.UnionType, we need to access __args__ directly
-            args = getattr(response_type, "__args__", ())
 
         errors = []
         for variant in args:
             try:
                 return cast(T, variant.model_validate(data))
             except ValidationError as e:
-                errors.append((variant.__name__, e))
+                errors.append((getattr(variant, "__name__", str(variant)), e))
                 continue
 
         # If we get here, none of the variants worked
@@ -104,8 +101,9 @@ def parse_mcp_content(content: list[dict[str, Any]], response_type: type[T]) -> 
                 # Not JSON, try next item
                 continue
             except ValidationError as e:
+                type_name = getattr(response_type, "__name__", str(response_type))
                 logger.warning(
-                    f"MCP content doesn't match expected schema {response_type.__name__}: {e}"
+                    f"MCP content doesn't match expected schema {type_name}: {e}"
                 )
                 raise ValueError(f"MCP response doesn't match expected schema: {e}") from e
         elif item.get("type") == "resource":
@@ -122,8 +120,9 @@ def parse_mcp_content(content: list[dict[str, Any]], response_type: type[T]) -> 
     if len(content_preview) > 500:
         content_preview = content_preview[:500] + "..."
 
+    type_name = getattr(response_type, "__name__", str(response_type))
     raise ValueError(
-        f"No valid {response_type.__name__} data found in MCP content. "
+        f"No valid {type_name} data found in MCP content. "
         f"Content types: {[item.get('type') for item in content]}. "
         f"Content preview:\n{content_preview}"
     )

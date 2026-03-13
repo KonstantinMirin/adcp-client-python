@@ -9,7 +9,7 @@ This example shows how to:
 
 import asyncio
 
-from adcp import ADCPClient
+from adcp import ADCPClient, GetProductsRequest
 from adcp.types import AgentConfig, Protocol
 
 
@@ -32,7 +32,9 @@ async def main():
     ) as client:
         # Call get_products
         print("Fetching products...")
-        result = await client.get_products(brief="Coffee brands targeting millennials")
+        result = await client.get_products(
+            GetProductsRequest(brief="Coffee brands targeting millennials", buying_mode="brief")
+        )
 
         # Handle result
         if result.status == "completed":
