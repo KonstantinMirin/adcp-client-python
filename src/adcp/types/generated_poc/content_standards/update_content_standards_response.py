@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated, Literal
+from typing import Annotated, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -44,19 +44,4 @@ class UpdateContentStandardsResponse2(AdCPBaseModel):
     success: Annotated[Literal[False], Field(description='Indicates the update failed')]
 
 
-class UpdateContentStandardsResponse(
-    RootModel[UpdateContentStandardsResponse1 | UpdateContentStandardsResponse2]
-):
-    root: Annotated[
-        UpdateContentStandardsResponse1 | UpdateContentStandardsResponse2,
-        Field(
-            description='Response from updating a content standards configuration',
-            title='Update Content Standards Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+UpdateContentStandardsResponse = UpdateContentStandardsResponse1 | UpdateContentStandardsResponse2

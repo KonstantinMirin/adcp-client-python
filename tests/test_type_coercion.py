@@ -25,6 +25,7 @@ from adcp.types.generated_poc.enums.creative_sort_field import CreativeSortField
 from adcp.types.generated_poc.enums.sort_direction import SortDirection
 from adcp.types.generated_poc.media_buy.list_creatives_request import Field1 as FieldModel
 from adcp.types.generated_poc.media_buy.list_creatives_request import Sort
+from tests.conftest import validate_union
 
 
 class TestEnumStringCoercion:
@@ -121,11 +122,11 @@ class TestDictToModelCoercion:
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
-        req = GetProductsRequest.model_validate(
+        req = validate_union(GetProductsRequest,
             {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
-        assert isinstance(req.root.context, ContextObject)
-        assert req.root.context.key == "value"
+        assert isinstance(req.context, ContextObject)
+        assert req.context.key == "value"
 
 
 class TestFieldModelStringCoercion:

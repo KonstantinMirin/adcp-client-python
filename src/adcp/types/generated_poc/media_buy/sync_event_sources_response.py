@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -124,17 +124,4 @@ class SyncEventSourcesResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncEventSourcesResponse(RootModel[SyncEventSourcesResponse1 | SyncEventSourcesResponse2]):
-    root: Annotated[
-        SyncEventSourcesResponse1 | SyncEventSourcesResponse2,
-        Field(
-            description='Response from event source sync operation. Returns either per-source results OR operation-level errors.',
-            title='Sync Event Sources Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+SyncEventSourcesResponse = SyncEventSourcesResponse1 | SyncEventSourcesResponse2

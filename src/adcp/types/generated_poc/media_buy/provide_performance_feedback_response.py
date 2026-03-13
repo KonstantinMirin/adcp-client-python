@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated, Literal
+from typing import Annotated, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -45,19 +45,4 @@ class ProvidePerformanceFeedbackResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class ProvidePerformanceFeedbackResponse(
-    RootModel[ProvidePerformanceFeedbackResponse1 | ProvidePerformanceFeedbackResponse2]
-):
-    root: Annotated[
-        ProvidePerformanceFeedbackResponse1 | ProvidePerformanceFeedbackResponse2,
-        Field(
-            description='Response payload for provide_performance_feedback task. Returns either success confirmation OR error information, never both.',
-            title='Provide Performance Feedback Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+ProvidePerformanceFeedbackResponse = ProvidePerformanceFeedbackResponse1 | ProvidePerformanceFeedbackResponse2

@@ -9,10 +9,12 @@ handled by datamodel-code-generator directly:
 2. Fixes self-referential RootModel type annotations
 3. Fixes BrandManifest forward references
 4. Adds deprecated=True to fields marked deprecated in JSON schema
+5. Unwraps specified RootModel unions to plain Union type aliases (#155)
 """
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -295,6 +297,148 @@ def fix_constr_type_annotations():
         print("  No constr(pattern=...) annotations needed fixing")
 
 
+# Types to unwrap from RootModel to Union type alias.
+# ALL Request/Response types are unwrapped so consumers can subclass them
+# with model_config overrides (extra='forbid', custom validators, etc.).
+# Value-type RootModels (PricingOption, Destination, etc.) keep the RootModel
+# wrapper + __getattr__ proxy since nobody subclasses them.
+# See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
+_UNWRAP_TO_UNION: set[str] = {
+    "ActivateSignalResponse",
+    "BuildCreativeResponse",
+    "CalibrateContentResponse",
+    "CreateContentStandardsResponse",
+    "CreateMediaBuyResponse",
+    "GetAccountFinancialsResponse",
+    "GetContentStandardsResponse",
+    "GetCreativeDeliveryRequest",
+    "GetCreativeFeaturesResponse",
+    "GetMediaBuyArtifactsResponse",
+    "GetProductsRequest",
+    "GetSignalsRequest",
+    "ListContentStandardsResponse",
+    "LogEventResponse",
+    "PreviewCreativeRequest",
+    "PreviewCreativeResponse",
+    "ProvidePerformanceFeedbackRequest",
+    "ProvidePerformanceFeedbackResponse",
+    "SiSendMessageRequest",
+    "SyncAccountsResponse",
+    "SyncAudiencesResponse",
+    "SyncCatalogsResponse",
+    "SyncCreativesResponse",
+    "SyncEventSourcesResponse",
+    "UpdateContentStandardsResponse",
+    "UpdateMediaBuyRequest",
+    "UpdateMediaBuyResponse",
+    "ValidateContentDeliveryResponse",
+}
+
+
+def unwrap_rootmodel_unions():
+    """Unwrap specified RootModel unions to plain Union type aliases.
+
+    Consumers that subclass library types cannot extend RootModel subclasses
+    because Pydantic 2 forbids model_config overrides on RootModel.
+
+    Uses AST to find class definitions instead of regex, which avoids issues
+    with nested brackets in base class annotations.
+
+    Replaces:
+        class TypeName(RootModel[Variant1 | Variant2]):
+            root: Annotated[Variant1 | Variant2, Field(...)]
+            def __getattr__(self, name): ...
+
+    With:
+        TypeName = Variant1 | Variant2
+
+    Note: The types in _UNWRAP_TO_UNION are all Request/Response types whose
+    root: fields had no meaningful Field(description=..., examples=[...])
+    metadata. Value-type RootModels that carry rich metadata are intentionally
+    excluded and keep the RootModel wrapper + __getattr__ proxy.
+    """
+    unwrapped_count = 0
+
+    for py_file in OUTPUT_DIR.rglob("*.py"):
+        with open(py_file) as f:
+            content = f.read()
+
+        if "RootModel[" not in content:
+            continue
+
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            continue
+
+        original = content
+        lines = content.split("\n")
+
+        # Collect classes to unwrap (process in reverse order to preserve line numbers)
+        replacements: list[tuple[int, int, str, str]] = []  # (start_line, end_line, name, union_types)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef) or node.name not in _UNWRAP_TO_UNION:
+                continue
+            if not node.end_lineno:
+                continue
+
+            # Find the RootModel[...] base class using AST source segments
+            for base in node.bases:
+                base_src = ast.get_source_segment(content, base)
+                if not base_src or "RootModel[" not in base_src:
+                    continue
+
+                # Extract union type from RootModel[...] using bracket depth
+                # to handle nested generics like RootModel[list[X] | Y]
+                bracket_start = base_src.index("RootModel[") + len("RootModel[")
+                depth = 1
+                pos = bracket_start
+                while pos < len(base_src) and depth > 0:
+                    if base_src[pos] == "[":
+                        depth += 1
+                    elif base_src[pos] == "]":
+                        depth -= 1
+                    pos += 1
+                bracket_end = pos - 1  # position of the matching ]
+                union_types = base_src[bracket_start:bracket_end].strip()
+
+                replacements.append((node.lineno, node.end_lineno, node.name, union_types))
+                break
+
+        if not replacements:
+            continue
+
+        # Apply replacements in reverse line order to preserve indices
+        for start_line, end_line, type_name, union_types in sorted(replacements, reverse=True):
+            # Replace lines (1-indexed to 0-indexed)
+            lines[start_line - 1 : end_line] = [f"{type_name} = {union_types}"]
+            unwrapped_count += 1
+
+        content = "\n".join(lines)
+
+        if content != original:
+            # Remove RootModel from imports if no longer used as a base class
+            if not re.search(r"\(RootModel\[", content):
+                content = re.sub(r",\s*RootModel", "", content)
+                content = re.sub(r"RootModel,\s*", "", content)
+
+            # Remove unused Any import if no longer referenced in code body
+            import_line_end = content.find("\n", content.find("from typing import"))
+            after_imports = content[import_line_end:] if import_line_end > 0 else ""
+            if "Any" not in after_imports:
+                content = re.sub(r"Any,\s*", "", content)
+                content = re.sub(r",\s*Any", "", content)
+
+            with open(py_file, "w") as f:
+                f.write(content)
+
+    if unwrapped_count > 0:
+        print(f"  Unwrapped {unwrapped_count} RootModel union(s) to type aliases")
+    else:
+        print("  No RootModel unions needed unwrapping")
+
+
 def add_rootmodel_getattr_proxy():
     """Add __getattr__ delegation to RootModel union types.
 
@@ -304,8 +448,6 @@ def add_rootmodel_getattr_proxy():
 
     See: https://github.com/adcontextprotocol/adcp-client-python/issues/145
     """
-    import ast
-
     fixed_count = 0
 
     for py_file in OUTPUT_DIR.rglob("*.py"):
@@ -379,6 +521,7 @@ def main():
     fix_preview_creative_request_discriminator()
     add_deprecated_field_metadata()
     fix_constr_type_annotations()
+    unwrap_rootmodel_unions()
     add_rootmodel_getattr_proxy()
 
     print("\n✓ Post-generation fixes complete\n")

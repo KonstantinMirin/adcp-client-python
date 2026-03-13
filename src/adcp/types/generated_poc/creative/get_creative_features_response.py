@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AnyUrl, Field, RootModel
+from pydantic import AnyUrl, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -36,19 +36,4 @@ class GetCreativeFeaturesResponse1(AdCPBaseModel):
     ]
 
 
-class GetCreativeFeaturesResponse(
-    RootModel[GetCreativeFeaturesResponse1 | GetCreativeFeaturesResponse2]
-):
-    root: Annotated[
-        GetCreativeFeaturesResponse1 | GetCreativeFeaturesResponse2,
-        Field(
-            description="Response payload for the get_creative_features task. Returns scored feature values from the governance agent's evaluation of the submitted creative manifest.",
-            title='Get Creative Features Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+GetCreativeFeaturesResponse = GetCreativeFeaturesResponse1 | GetCreativeFeaturesResponse2

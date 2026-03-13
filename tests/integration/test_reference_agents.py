@@ -14,6 +14,7 @@ from adcp.types import (
     ListCreativeFormatsRequest,
     Protocol,
 )
+from tests.conftest import validate_union
 
 
 class TestTestAgent:
@@ -33,7 +34,9 @@ class TestTestAgent:
         )
 
         async with ADCPClient(config) as client:
-            request = GetProductsRequest(brief="Coffee brands")
+            request = validate_union(
+                GetProductsRequest, {"brief": "Coffee brands", "buying_mode": "brief"}
+            )
             result = await client.get_products(request)
 
             assert result.success, f"Failed to get products: {result.error}"
@@ -52,7 +55,9 @@ class TestTestAgent:
         )
 
         async with ADCPClient(config) as client:
-            request = GetProductsRequest(brief="Coffee brands")
+            request = validate_union(
+                GetProductsRequest, {"brief": "Coffee brands", "buying_mode": "brief"}
+            )
             result = await client.get_products(request)
 
             assert result.success, f"Failed to get products: {result.error}"
@@ -65,7 +70,7 @@ class TestTestAgent:
     async def test_protocol_equivalence(self):
         """Test that both protocols return similar results for the same request."""
         brief = "Television advertising"
-        request = GetProductsRequest(brief=brief)
+        request = validate_union(GetProductsRequest, {"brief": brief, "buying_mode": "brief"})
 
         # Test with MCP
         mcp_config = AgentConfig(
@@ -107,7 +112,9 @@ class TestTestAgent:
 
         async with ADCPClient(config) as client:
             # Simple API doesn't require wrapping in request object
-            result = await client.simple.get_products(brief="Digital advertising")
+            result = await client.simple.get_products(
+                brief="Digital advertising", buying_mode="brief"
+            )
 
             assert result is not None
             assert hasattr(result, "products")
@@ -125,7 +132,9 @@ class TestTestAgent:
 
         async with ADCPClient(config) as client:
             # Simple API doesn't require wrapping in request object
-            result = await client.simple.get_products(brief="Digital advertising")
+            result = await client.simple.get_products(
+                brief="Digital advertising", buying_mode="brief"
+            )
 
             assert result is not None
             assert hasattr(result, "products")
@@ -145,7 +154,9 @@ class TestTestAgent:
         # Should raise an exception for invalid endpoint
         with pytest.raises(Exception):
             async with ADCPClient(config) as client:
-                request = GetProductsRequest(brief="test")
+                request = validate_union(
+                    GetProductsRequest, {"brief": "test", "buying_mode": "brief"}
+                )
                 await client.get_products(request)
 
     @pytest.mark.integration
@@ -162,7 +173,9 @@ class TestTestAgent:
         # Should raise an exception for invalid endpoint
         with pytest.raises(Exception):
             async with ADCPClient(config) as client:
-                request = GetProductsRequest(brief="test")
+                request = validate_union(
+                    GetProductsRequest, {"brief": "test", "buying_mode": "brief"}
+                )
                 await client.get_products(request)
 
 

@@ -137,6 +137,18 @@ Wrong order creates invalid escape sequences!
 - Use real Pydantic validation in tests
 - Mock external services, not internal logic
 
+## Pre-Commit Checks
+
+Run these three checks locally before every commit — they mirror CI exactly:
+
+```bash
+ruff check src/           # Linter
+mypy src/adcp/            # Type checker
+pytest tests/ -v          # Tests
+```
+
+All three must pass. CI runs them across Python 3.10–3.13; locally running on your current version catches most issues.
+
 ## Additional Important Reminders
 
 **NEVER**:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from adcp.types.core import TaskStatus
+from tests.conftest import validate_union
 
 # V3-only tools that don't exist in V2.5
 V3_ONLY_TOOLS = [
@@ -156,25 +157,25 @@ class TestHandlerVersionInterop:
             """Test implementation of ContentStandardsHandler."""
 
             async def handle_create_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_get_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_list_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_update_content_standards(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_calibrate_content(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_validate_content_delivery(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
             async def handle_get_media_buy_artifacts(self, request, context=None):
-                return CreateContentStandardsResponse()
+                return validate_union(CreateContentStandardsResponse, {"standards_id": "test"})
 
         handler = TestCSHandler()
 

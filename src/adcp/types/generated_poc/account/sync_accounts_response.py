@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, RootModel
+from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field
 
 from ..core import brand_ref
 from ..core import context as context_1
@@ -149,84 +149,4 @@ class SyncAccountsResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncAccountsResponse(RootModel[SyncAccountsResponse1 | SyncAccountsResponse2]):
-    root: Annotated[
-        SyncAccountsResponse1 | SyncAccountsResponse2,
-        Field(
-            description='Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.',
-            examples=[
-                {
-                    'data': {
-                        'accounts': [
-                            {
-                                'account_scope': 'operator_brand',
-                                'action': 'created',
-                                'billing': 'operator',
-                                'brand': {'brand_id': 'spark', 'domain': 'nova-brands.com'},
-                                'name': 'Spark (via Pinnacle)',
-                                'operator': 'pinnacle-media.com',
-                                'status': 'active',
-                            },
-                            {
-                                'account_scope': 'operator_brand',
-                                'action': 'created',
-                                'billing': 'operator',
-                                'brand': {'brand_id': 'glow', 'domain': 'nova-brands.com'},
-                                'name': 'Glow',
-                                'operator': 'pinnacle-media.com',
-                                'setup': {
-                                    'expires_at': '2026-03-10T00:00:00Z',
-                                    'message': 'Complete advertiser registration and credit application',
-                                    'url': 'https://seller.example.com/advertiser-onboard',
-                                },
-                                'status': 'pending_approval',
-                            },
-                        ]
-                    },
-                    'description': 'Mixed results — one active, one pending approval',
-                },
-                {
-                    'data': {
-                        'accounts': [
-                            {
-                                'action': 'created',
-                                'brand': {'brand_id': 'clearance', 'domain': 'acme-corp.com'},
-                                'operator': 'acme-corp.com',
-                                'status': 'rejected',
-                                'warnings': [
-                                    'Account request declined: advertiser category not accepted on this platform.'
-                                ],
-                            }
-                        ]
-                    },
-                    'description': 'Rejected account — no account_id assigned',
-                },
-                {
-                    'data': {
-                        'accounts': [
-                            {
-                                'action': 'failed',
-                                'brand': {'domain': 'acme-corp.com'},
-                                'errors': [
-                                    {
-                                        'code': 'BILLING_NOT_SUPPORTED',
-                                        'message': 'Operator billing is not supported. This seller only accepts agent billing.',
-                                    }
-                                ],
-                                'operator': 'acme-corp.com',
-                                'status': 'rejected',
-                            }
-                        ]
-                    },
-                    'description': 'Unsupported billing — seller rejects the request',
-                },
-            ],
-            title='Sync Accounts Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+SyncAccountsResponse = SyncAccountsResponse1 | SyncAccountsResponse2

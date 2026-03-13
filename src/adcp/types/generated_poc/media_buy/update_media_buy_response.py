@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AwareDatetime, ConfigDict, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -49,17 +49,4 @@ class UpdateMediaBuyResponse1(AdCPBaseModel):
     ] = None
 
 
-class UpdateMediaBuyResponse(RootModel[UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2]):
-    root: Annotated[
-        UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2,
-        Field(
-            description='Response payload for update_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - updates are either fully applied or not applied at all.',
-            title='Update Media Buy Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2

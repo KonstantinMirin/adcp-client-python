@@ -23,6 +23,7 @@ async def demo_simple_api():
     # Simple kwargs-based call, direct data return
     products = await test_agent.simple.get_products(
         brief="Coffee subscription service for busy professionals",
+        buying_mode="brief",
     )
 
     print(f"Found {len(products.products)} products")
@@ -64,6 +65,7 @@ async def demo_standard_api_comparison():
     # Standard API: More verbose but full control over error handling
     request = GetProductsRequest(
         brief="Coffee subscription service for busy professionals",
+        buying_mode="brief",
     )
 
     result = await test_agent.get_products(request)
@@ -97,14 +99,14 @@ async def demo_production_client():
 
     # Both APIs available
     print("Standard API:")
-    result = await client.get_products(GetProductsRequest(brief="Test"))
+    result = await client.get_products(GetProductsRequest(brief="Test", buying_mode="brief"))
     print(f"  Result type: {type(result).__name__}")
     print(f"  Has .success: {hasattr(result, 'success')}")
     print(f"  Has .data: {hasattr(result, 'data')}\n")
 
     print("Simple API:")
     try:
-        products = await client.simple.get_products(brief="Test")
+        products = await client.simple.get_products(brief="Test", buying_mode="brief")
         print(f"  Result type: {type(products).__name__}")
         print(f"  Direct access to .products: {hasattr(products, 'products')}")
     except Exception as e:
@@ -121,12 +123,12 @@ def demo_sync_usage():
     print("  import asyncio")
     print("  from adcp.testing import test_agent")
     print()
-    print("  products = asyncio.run(test_agent.simple.get_products(brief='Coffee'))")
+    print("  products = asyncio.run(test_agent.simple.get_products(brief='Coffee', buying_mode='brief'))")
     print("  print(f'Found {len(products.products)} products')")
     print()
     print("  # Or create an async function and run it:")
     print("  async def my_function():")
-    print("      products = await test_agent.simple.get_products(brief='Coffee')")
+    print("      products = await test_agent.simple.get_products(brief='Coffee', buying_mode='brief')")
     print("      return products")
     print()
     print("  result = asyncio.run(my_function())")

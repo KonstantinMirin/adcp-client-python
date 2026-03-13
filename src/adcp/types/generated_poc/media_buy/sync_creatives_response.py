@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, RootModel, StringConstraints
+from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, StringConstraints
 
 from ..core import account as account_1
 from ..core import context as context_1
@@ -103,17 +103,4 @@ class SyncCreativesResponse1(AdCPBaseModel):
     ] = None
 
 
-class SyncCreativesResponse(RootModel[SyncCreativesResponse1 | SyncCreativesResponse2]):
-    root: Annotated[
-        SyncCreativesResponse1 | SyncCreativesResponse2,
-        Field(
-            description='Response from creative sync operation. Returns either per-creative results (best-effort processing) OR operation-level errors (complete failure). This enforces atomic semantics at the operation level while allowing per-item failures within successful operations.',
-            title='Sync Creatives Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+SyncCreativesResponse = SyncCreativesResponse1 | SyncCreativesResponse2

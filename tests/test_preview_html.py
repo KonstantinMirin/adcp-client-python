@@ -24,6 +24,7 @@ from adcp.utils.preview_cache import (
     _create_sample_asset,
     _create_sample_manifest_for_format,
 )
+from tests.conftest import validate_union
 
 
 def make_format_id(id_str: str) -> FormatId:
@@ -309,7 +310,7 @@ async def test_get_products_with_preview_urls():
                     "_parse_response",
                     return_value=mock_preview_parsed_result,
                 ):
-                    request = GetProductsRequest.model_validate(
+                    request = validate_union(GetProductsRequest,
                         {"buying_mode": "brief", "brief": "test campaign"}
                     )
                     result = await client.get_products(
@@ -338,7 +339,7 @@ async def test_get_products_without_creative_client_raises_error():
     client = ADCPClient(config)
 
     with pytest.raises(ValueError, match="creative_agent_client is required"):
-        request = GetProductsRequest.model_validate(
+        request = validate_union(GetProductsRequest,
             {"buying_mode": "brief", "brief": "test campaign"}
         )
         await client.get_products(request, fetch_previews=True)

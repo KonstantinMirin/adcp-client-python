@@ -4,10 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import deployment, error
@@ -45,17 +45,4 @@ class ActivateSignalResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class ActivateSignalResponse(RootModel[ActivateSignalResponse1 | ActivateSignalResponse2]):
-    root: Annotated[
-        ActivateSignalResponse1 | ActivateSignalResponse2,
-        Field(
-            description='Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.',
-            title='Activate Signal Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+ActivateSignalResponse = ActivateSignalResponse1 | ActivateSignalResponse2

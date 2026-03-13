@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Any, Annotated, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, RootModel
+from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import creative_manifest, error
@@ -193,19 +193,4 @@ class PreviewCreativeResponse3(AdCPBaseModel):
     variant_id: Annotated[str, Field(description='Platform-assigned variant identifier')]
 
 
-class PreviewCreativeResponse(
-    RootModel[PreviewCreativeResponse1 | PreviewCreativeResponse2 | PreviewCreativeResponse3]
-):
-    root: Annotated[
-        PreviewCreativeResponse1 | PreviewCreativeResponse2 | PreviewCreativeResponse3,
-        Field(
-            description='Response containing preview links for one or more creatives. Format matches the request: single preview response for single requests, batch results for batch requests.',
-            title='Preview Creative Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+PreviewCreativeResponse = PreviewCreativeResponse1 | PreviewCreativeResponse2 | PreviewCreativeResponse3

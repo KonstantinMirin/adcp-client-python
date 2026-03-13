@@ -9,18 +9,21 @@ Usage:
     client = ADCPClient(config)
 
     # Standard API: full control
-    result = await client.get_products(GetProductsRequest(brief="Coffee"))
+    result = await client.get_products(GetProductsRequest(brief="Coffee", buying_mode="brief"))
     if result.success:
         print(result.data.products)
 
     # Simple API: ergonomic
-    products = await client.simple.get_products(brief="Coffee")
+    products = await client.simple.get_products(brief="Coffee", buying_mode="brief")
     print(products.products)
 """
 
 from __future__ import annotations
 
+from types import UnionType
 from typing import TYPE_CHECKING, Any
+
+from pydantic import TypeAdapter
 
 from adcp.exceptions import ADCPSimpleAPIError
 from adcp.types import (
@@ -63,6 +66,30 @@ from adcp.types import (
 
 if TYPE_CHECKING:
     from adcp.client import ADCPClient
+
+
+_adapter_cache: dict[type | UnionType, TypeAdapter[Any]] = {}
+
+
+def _get_adapter(tp: type | UnionType) -> TypeAdapter[Any]:
+    """Get or create a cached TypeAdapter for the given type.
+
+    Uses a plain dict rather than lru_cache because UnionType is not
+    hashable in all Python versions for lru_cache, but works as a dict key.
+    """
+    try:
+        return _adapter_cache[tp]
+    except KeyError:
+        adapter: TypeAdapter[Any] = TypeAdapter(tp)
+        _adapter_cache[tp] = adapter
+        return adapter
+
+
+def _make_request(request_type: type | UnionType, kwargs: dict[str, Any]) -> Any:
+    """Create a request instance, handling both classes and Union type aliases."""
+    if isinstance(request_type, UnionType):
+        return _get_adapter(request_type).validate_python(kwargs)
+    return request_type(**kwargs)
 
 
 class SimpleAPI:
@@ -112,11 +139,12 @@ class SimpleAPI:
 
         Example:
             products = await client.simple.get_products(
-                brief='Coffee subscription service'
+                brief='Coffee subscription service',
+                buying_mode='brief',
             )
             print(f"Found {len(products.products)} products")
         """
-        request = GetProductsRequest(**kwargs)
+        request = _make_request(GetProductsRequest, kwargs)
         result = await self._client.get_products(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -145,7 +173,7 @@ class SimpleAPI:
             formats = await client.simple.list_creative_formats()
             print(f"Found {len(formats.formats)} formats")
         """
-        request = ListCreativeFormatsRequest(**kwargs)
+        request = _make_request(ListCreativeFormatsRequest, kwargs)
         result = await self._client.list_creative_formats(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -176,7 +204,7 @@ class SimpleAPI:
             )
             print(f"Preview: {preview.previews[0]}")
         """
-        request = PreviewCreativeRequest(**kwargs)
+        request = _make_request(PreviewCreativeRequest, kwargs)
         result = await self._client.preview_creative(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -201,7 +229,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = SyncCreativesRequest(**kwargs)
+        request = _make_request(SyncCreativesRequest, kwargs)
         result = await self._client.sync_creatives(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -226,7 +254,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = ListCreativesRequest(**kwargs)
+        request = _make_request(ListCreativesRequest, kwargs)
         result = await self._client.list_creatives(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -251,7 +279,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = GetMediaBuyDeliveryRequest(**kwargs)
+        request = _make_request(GetMediaBuyDeliveryRequest, kwargs)
         result = await self._client.get_media_buy_delivery(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -305,7 +333,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = ActivateSignalRequest(**kwargs)
+        request = _make_request(ActivateSignalRequest, kwargs)
         result = await self._client.activate_signal(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -330,7 +358,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = ProvidePerformanceFeedbackRequest(**kwargs)
+        request = _make_request(ProvidePerformanceFeedbackRequest, kwargs)
         result = await self._client.provide_performance_feedback(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -363,7 +391,7 @@ class SimpleAPI:
             )
             print(f"Created media buy: {media_buy.media_buy_id}")
         """
-        request = CreateMediaBuyRequest(**kwargs)
+        request = _make_request(CreateMediaBuyRequest, kwargs)
         result = await self._client.create_media_buy(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -395,7 +423,7 @@ class SimpleAPI:
             )
             print(f"Updated media buy: {updated.media_buy_id}")
         """
-        request = UpdateMediaBuyRequest(**kwargs)
+        request = _make_request(UpdateMediaBuyRequest, kwargs)
         result = await self._client.update_media_buy(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -428,7 +456,7 @@ class SimpleAPI:
             )
             print(f"Built creative: {creative.assets[0].url}")
         """
-        request = BuildCreativeRequest(**kwargs)
+        request = _make_request(BuildCreativeRequest, kwargs)
         result = await self._client.build_creative(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -453,7 +481,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = ListAccountsRequest(**kwargs)
+        request = _make_request(ListAccountsRequest, kwargs)
         result = await self._client.list_accounts(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -478,7 +506,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = SyncAccountsRequest(**kwargs)
+        request = _make_request(SyncAccountsRequest, kwargs)
         result = await self._client.sync_accounts(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -503,7 +531,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = LogEventRequest(**kwargs)
+        request = _make_request(LogEventRequest, kwargs)
         result = await self._client.log_event(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -528,7 +556,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = SyncEventSourcesRequest(**kwargs)
+        request = _make_request(SyncEventSourcesRequest, kwargs)
         result = await self._client.sync_event_sources(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(
@@ -553,7 +581,7 @@ class SimpleAPI:
         Raises:
             Exception: If the request fails
         """
-        request = GetCreativeDeliveryRequest(**kwargs)
+        request = _make_request(GetCreativeDeliveryRequest, kwargs)
         result = await self._client.get_creative_delivery(request)
         if not result.success or not result.data:
             raise ADCPSimpleAPIError(

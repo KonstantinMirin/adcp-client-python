@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Annotated
+from typing import Annotated
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AwareDatetime, ConfigDict, Field, RootModel
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from ..core import context as context_1
 from ..core import error
@@ -120,17 +120,4 @@ class SyncAudiencesResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncAudiencesResponse(RootModel[SyncAudiencesResponse1 | SyncAudiencesResponse2]):
-    root: Annotated[
-        SyncAudiencesResponse1 | SyncAudiencesResponse2,
-        Field(
-            description='Response from audience sync operation. Returns either per-audience results OR operation-level errors.',
-            title='Sync Audiences Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+SyncAudiencesResponse = SyncAudiencesResponse1 | SyncAudiencesResponse2

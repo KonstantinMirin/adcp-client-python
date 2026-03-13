@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Annotated, Any
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import Field, RootModel
+from pydantic import Field
 
 from ..core import context as context_1
 from ..core import error
@@ -67,19 +67,4 @@ class ValidateContentDeliveryResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-class ValidateContentDeliveryResponse(
-    RootModel[ValidateContentDeliveryResponse1 | ValidateContentDeliveryResponse2]
-):
-    root: Annotated[
-        ValidateContentDeliveryResponse1 | ValidateContentDeliveryResponse2,
-        Field(
-            description='Response payload with per-record verdicts and optional feature breakdown',
-            title='Validate Content Delivery Response',
-        ),
-    ]
-
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
-            raise AttributeError(name)
-        return getattr(self.root, name)
+ValidateContentDeliveryResponse = ValidateContentDeliveryResponse1 | ValidateContentDeliveryResponse2

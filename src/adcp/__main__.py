@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+from pydantic import TypeAdapter
+
 from adcp.client import ADCPClient
 from adcp.config import (
     CONFIG_FILE,
@@ -157,10 +159,10 @@ async def execute_tool(
 _NO_REQUEST_TOOLS = frozenset({"list_tools", "get_info"})
 
 # Cached dispatch table (initialized on first use)
-_dispatch_table: dict[str, tuple[str, type | None]] | None = None
+_dispatch_table: dict[str, tuple[str, TypeAdapter[Any] | None]] | None = None
 
 
-def _get_dispatch_table() -> dict[str, tuple[str, type | None]]:
+def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
     """Get the tool dispatch table, initializing types on first access.
 
     This function fails fast with a clear error if types can't be imported.
@@ -178,66 +180,72 @@ def _get_dispatch_table() -> dict[str, tuple[str, type | None]]:
             f"Try running 'scripts/generate_types.py' to regenerate types. Error: {e}"
         ) from e
 
+    def _ta(tp: Any) -> TypeAdapter[Any]:
+        return TypeAdapter(tp)
+
     _dispatch_table = {
         # Protocol introspection (no request type needed)
         "list_tools": ("list_tools", None),
         "get_info": ("get_info", None),
         # Core catalog
-        "get_products": ("get_products", gen.GetProductsRequest),
-        "list_creative_formats": ("list_creative_formats", gen.ListCreativeFormatsRequest),
-        "preview_creative": ("preview_creative", gen.PreviewCreativeRequest),
-        "build_creative": ("build_creative", gen.BuildCreativeRequest),
-        "sync_creatives": ("sync_creatives", gen.SyncCreativesRequest),
-        "list_creatives": ("list_creatives", gen.ListCreativesRequest),
+        "get_products": ("get_products", _ta(gen.GetProductsRequest)),
+        "list_creative_formats": ("list_creative_formats", _ta(gen.ListCreativeFormatsRequest)),
+        "preview_creative": ("preview_creative", _ta(gen.PreviewCreativeRequest)),
+        "build_creative": ("build_creative", _ta(gen.BuildCreativeRequest)),
+        "sync_creatives": ("sync_creatives", _ta(gen.SyncCreativesRequest)),
+        "list_creatives": ("list_creatives", _ta(gen.ListCreativesRequest)),
         # Media buy
-        "create_media_buy": ("create_media_buy", gen.CreateMediaBuyRequest),
-        "update_media_buy": ("update_media_buy", gen.UpdateMediaBuyRequest),
-        "get_media_buy_delivery": ("get_media_buy_delivery", gen.GetMediaBuyDeliveryRequest),
+        "create_media_buy": ("create_media_buy", _ta(gen.CreateMediaBuyRequest)),
+        "update_media_buy": ("update_media_buy", _ta(gen.UpdateMediaBuyRequest)),
+        "get_media_buy_delivery": ("get_media_buy_delivery", _ta(gen.GetMediaBuyDeliveryRequest)),
         # Signals
-        "get_signals": ("get_signals", gen.GetSignalsRequest),
-        "activate_signal": ("activate_signal", gen.ActivateSignalRequest),
+        "get_signals": ("get_signals", _ta(gen.GetSignalsRequest)),
+        "activate_signal": ("activate_signal", _ta(gen.ActivateSignalRequest)),
         "provide_performance_feedback": (
             "provide_performance_feedback",
-            gen.ProvidePerformanceFeedbackRequest,
+            _ta(gen.ProvidePerformanceFeedbackRequest),
         ),
         # Accounts
-        "list_accounts": ("list_accounts", gen.ListAccountsRequest),
-        "sync_accounts": ("sync_accounts", gen.SyncAccountsRequest),
+        "list_accounts": ("list_accounts", _ta(gen.ListAccountsRequest)),
+        "sync_accounts": ("sync_accounts", _ta(gen.SyncAccountsRequest)),
         # Events
-        "log_event": ("log_event", gen.LogEventRequest),
-        "sync_event_sources": ("sync_event_sources", gen.SyncEventSourcesRequest),
+        "log_event": ("log_event", _ta(gen.LogEventRequest)),
+        "sync_event_sources": ("sync_event_sources", _ta(gen.SyncEventSourcesRequest)),
         # Creative Delivery
-        "get_creative_delivery": ("get_creative_delivery", gen.GetCreativeDeliveryRequest),
+        "get_creative_delivery": ("get_creative_delivery", _ta(gen.GetCreativeDeliveryRequest)),
         # V3 Protocol Discovery
-        "get_adcp_capabilities": ("get_adcp_capabilities", gen.GetAdcpCapabilitiesRequest),
+        "get_adcp_capabilities": ("get_adcp_capabilities", _ta(gen.GetAdcpCapabilitiesRequest)),
         # V3 Content Standards
         "create_content_standards": (
             "create_content_standards",
-            gen.CreateContentStandardsRequest,
+            _ta(gen.CreateContentStandardsRequest),
         ),
-        "get_content_standards": ("get_content_standards", gen.GetContentStandardsRequest),
-        "list_content_standards": ("list_content_standards", gen.ListContentStandardsRequest),
+        "get_content_standards": ("get_content_standards", _ta(gen.GetContentStandardsRequest)),
+        "list_content_standards": ("list_content_standards", _ta(gen.ListContentStandardsRequest)),
         "update_content_standards": (
             "update_content_standards",
-            gen.UpdateContentStandardsRequest,
+            _ta(gen.UpdateContentStandardsRequest),
         ),
-        "calibrate_content": ("calibrate_content", gen.CalibrateContentRequest),
+        "calibrate_content": ("calibrate_content", _ta(gen.CalibrateContentRequest)),
         "validate_content_delivery": (
             "validate_content_delivery",
-            gen.ValidateContentDeliveryRequest,
+            _ta(gen.ValidateContentDeliveryRequest),
         ),
-        "get_media_buy_artifacts": ("get_media_buy_artifacts", gen.GetMediaBuyArtifactsRequest),
+        "get_media_buy_artifacts": (
+            "get_media_buy_artifacts",
+            _ta(gen.GetMediaBuyArtifactsRequest),
+        ),
         # V3 Sponsored Intelligence
-        "si_get_offering": ("si_get_offering", gen.SiGetOfferingRequest),
-        "si_initiate_session": ("si_initiate_session", gen.SiInitiateSessionRequest),
-        "si_send_message": ("si_send_message", gen.SiSendMessageRequest),
-        "si_terminate_session": ("si_terminate_session", gen.SiTerminateSessionRequest),
+        "si_get_offering": ("si_get_offering", _ta(gen.SiGetOfferingRequest)),
+        "si_initiate_session": ("si_initiate_session", _ta(gen.SiInitiateSessionRequest)),
+        "si_send_message": ("si_send_message", _ta(gen.SiSendMessageRequest)),
+        "si_terminate_session": ("si_terminate_session", _ta(gen.SiTerminateSessionRequest)),
         # V3 Governance (Property Lists)
-        "create_property_list": ("create_property_list", gen.CreatePropertyListRequest),
-        "get_property_list": ("get_property_list", gen.GetPropertyListRequest),
-        "list_property_lists": ("list_property_lists", gen.ListPropertyListsRequest),
-        "update_property_list": ("update_property_list", gen.UpdatePropertyListRequest),
-        "delete_property_list": ("delete_property_list", gen.DeletePropertyListRequest),
+        "create_property_list": ("create_property_list", _ta(gen.CreatePropertyListRequest)),
+        "get_property_list": ("get_property_list", _ta(gen.GetPropertyListRequest)),
+        "list_property_lists": ("list_property_lists", _ta(gen.ListPropertyListsRequest)),
+        "update_property_list": ("update_property_list", _ta(gen.UpdatePropertyListRequest)),
+        "delete_property_list": ("delete_property_list", _ta(gen.DeletePropertyListRequest)),
     }
 
     return _dispatch_table
@@ -309,7 +317,7 @@ async def _dispatch_tool(client: ADCPClient, tool_name: str, payload: dict[str, 
                 error=f"Failed to get agent info: {e}",
             )
 
-    # Type guard - request_type should be initialized by this point for methods that need it
+    # Type guard - adapter should be initialized by this point for methods that need it
     if request_type is None:
         return TaskResult(
             status=TaskStatus.FAILED,
@@ -319,7 +327,7 @@ async def _dispatch_tool(client: ADCPClient, tool_name: str, payload: dict[str, 
 
     # Validate and invoke
     try:
-        request = request_type(**payload)
+        request = request_type.validate_python(payload)
         return await method(request)
     except ValidationError as e:
         # User-friendly error for invalid payloads

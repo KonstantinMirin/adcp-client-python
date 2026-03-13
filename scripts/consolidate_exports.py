@@ -373,10 +373,10 @@ def generate_consolidated_exports() -> str:
         "from adcp.types import generated_poc  # noqa: F401",
         "",
         "# Rebuild models that reference other models via forward refs",
+        "# Note: only call model_rebuild() on actual classes, not Union type aliases",
         "CreativeManifest.model_rebuild()",
         "PreviewCreativeRequest1.model_rebuild()",
         "PreviewCreativeRequest2.model_rebuild()",
-        "PreviewCreativeRequest.model_rebuild()",
         "",
     ]
     lines.extend(rebuild_lines)

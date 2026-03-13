@@ -125,7 +125,11 @@ class PreviewURLGenerator:
         Returns:
             List of preview data dicts (or None for failures), in same order as requests
         """
+        from pydantic import TypeAdapter
+
         from adcp.types import PreviewCreativeRequest
+
+        _pcr_adapter: TypeAdapter[Any] = TypeAdapter(PreviewCreativeRequest)
 
         if not requests:
             return []
@@ -167,11 +171,11 @@ class PreviewURLGenerator:
                 chunk_requests = uncached_requests[chunk_start:chunk_end]
                 chunk_indices = uncached_indices[chunk_start:chunk_end]
 
-                batch_request = PreviewCreativeRequest(
-                    requests=chunk_requests,
-                    output_format=output_format,  # type: ignore[arg-type]
-                    context=None,
-                )
+                batch_request = _pcr_adapter.validate_python({
+                    "requests": chunk_requests,
+                    "output_format": output_format,
+                    "context": None,
+                })
                 result = await self.creative_agent_client.preview_creative(batch_request)
 
                 if result.success and result.data and result.data.results:
