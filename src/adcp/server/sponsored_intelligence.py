@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext, not_supported
 from adcp.types import (
@@ -23,6 +23,8 @@ from adcp.types import (
     SiTerminateSessionRequest,
     SiTerminateSessionResponse,
 )
+
+_si_send_message_adapter: TypeAdapter[Any] = TypeAdapter(SiSendMessageRequest)
 
 
 class SponsoredIntelligenceHandler(ADCPHandler):
@@ -120,7 +122,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
             Message response with AI-generated content, or error response
         """
         try:
-            request = SiSendMessageRequest.model_validate(params)
+            request = _si_send_message_adapter.validate_python(params)
         except ValidationError as e:
             return NotImplementedResponse(
                 supported=False,
