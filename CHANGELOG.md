@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.9.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.8.0...v3.9.0) (2026-03-13)
+
+
+### Features
+
+* add RootModel __getattr__ proxy and minimal sales agent example ([#150](https://github.com/adcontextprotocol/adcp-client-python/issues/150)) ([f1c3990](https://github.com/adcontextprotocol/adcp-client-python/commit/f1c39902eada08c3dc0ff9128649a8fde6d2b49a)), closes [#145](https://github.com/adcontextprotocol/adcp-client-python/issues/145) [#148](https://github.com/adcontextprotocol/adcp-client-python/issues/148)
+
+
+### Bug Fixes
+
+* add raw_body support for verification and use Unix timestamps ([4a663e5](https://github.com/adcontextprotocol/adcp-client-python/commit/4a663e5406bbf2ce533842fdd74c749a79f802d1)), closes [#151](https://github.com/adcontextprotocol/adcp-client-python/issues/151)
+* set AdCPBaseModel extra='ignore' and remove obsolete generate_models.py ([#157](https://github.com/adcontextprotocol/adcp-client-python/issues/157)) ([21077d9](https://github.com/adcontextprotocol/adcp-client-python/commit/21077d91136088ad170a81800dd2446925f20591))
+* unwrap RootModel unions for consumer subclassing ([#156](https://github.com/adcontextprotocol/adcp-client-python/issues/156)) ([8fd7b92](https://github.com/adcontextprotocol/adcp-client-python/commit/8fd7b92bbd13c9d5922fd40dea51cc37c155a776))
+* use default JSON separators for webhook HMAC signing ([2223f6e](https://github.com/adcontextprotocol/adcp-client-python/commit/2223f6ed5a2d32cdc000a273f591d30e3cfe2e65))
+* use default JSON separators for webhook HMAC signing ([0dd495f](https://github.com/adcontextprotocol/adcp-client-python/commit/0dd495fd83c0c0d4df99fe794d878d0f98735cc8)), closes [#151](https://github.com/adcontextprotocol/adcp-client-python/issues/151)
+
 ## [3.8.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.7.0...v3.8.0) (2026-03-01)
 
 
