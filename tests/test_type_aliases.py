@@ -810,32 +810,31 @@ def test_destination_union_contains_all_variants():
     assert union_args == expected_variants
 
 
-def test_get_signals_request_is_union_not_root_model():
-    """GetSignalsRequest is a plain union alias, not a RootModel.
+def test_get_signals_request_is_base_model_not_root_model():
+    """GetSignalsRequest is a regular BaseModel class after schema flattening.
 
-    This allows consumers to subclass GetSignalsRequest1 or GetSignalsRequest2
+    This allows consumers to subclass GetSignalsRequest directly
     with custom model_config (e.g. extra='forbid' in CI, extra='ignore' in prod).
     See: https://github.com/adcontextprotocol/adcp-client-python/issues/138
     """
-    import types
-
-    from pydantic import RootModel
+    from pydantic import BaseModel, RootModel
 
     from adcp import GetSignalsRequest
 
-    # Must be a union, not a RootModel subclass
-    assert isinstance(GetSignalsRequest, types.UnionType)
-    assert not (isinstance(GetSignalsRequest, type) and issubclass(GetSignalsRequest, RootModel))
+    # Must be a class (BaseModel subclass), not a UnionType or RootModel
+    assert isinstance(GetSignalsRequest, type)
+    assert issubclass(GetSignalsRequest, BaseModel)
+    assert not issubclass(GetSignalsRequest, RootModel)
 
 
-def test_get_signals_request_union_contains_variants():
-    """GetSignalsRequest union contains the two concrete variants."""
-    from typing import get_args
-
+def test_get_signals_request_aliases_point_to_same_class():
+    """GetSignalsDiscoveryRequest and GetSignalsLookupRequest are aliases to GetSignalsRequest."""
     from adcp import GetSignalsDiscoveryRequest, GetSignalsLookupRequest, GetSignalsRequest
 
-    union_args = set(get_args(GetSignalsRequest))
-    assert union_args == {GetSignalsDiscoveryRequest, GetSignalsLookupRequest}
+    # After schema flattening, the discovery/lookup variants are both
+    # aliases to the single GetSignalsRequest class
+    assert GetSignalsDiscoveryRequest is GetSignalsRequest
+    assert GetSignalsLookupRequest is GetSignalsRequest
 
 
 def test_get_signals_request_variants_are_subclassable():

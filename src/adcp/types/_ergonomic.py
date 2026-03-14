@@ -75,10 +75,7 @@ from adcp.types.generated_poc.media_buy.list_creatives_request import (
     Sort,
 )
 from adcp.types.generated_poc.media_buy.package_request import PackageRequest
-from adcp.types.generated_poc.media_buy.package_update import (
-    PackageUpdate1,
-    PackageUpdate2,
-)
+from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
 from adcp.types.generated_poc.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1,
 )
@@ -317,13 +314,13 @@ def _apply_coercion() -> None:
     )
     CreateMediaBuyRequest.model_rebuild(force=True)
 
-    # Apply coercion to PackageUpdate1
+    # Apply coercion to PackageUpdate
     # - creative_assignments: list[CreativeAssignment] (accepts subclass instances)
     # - creatives: list[CreativeAsset] (accepts subclass instances)
     # - ext: ExtensionObject | dict | None
     # - pacing: Pacing | str | None
     _patch_field_annotation(
-        PackageUpdate1,
+        PackageUpdate,
         "creative_assignments",
         Annotated[
             list[CreativeAssignment] | None,
@@ -331,7 +328,7 @@ def _apply_coercion() -> None:
         ],
     )
     _patch_field_annotation(
-        PackageUpdate1,
+        PackageUpdate,
         "creatives",
         Annotated[
             list[CreativeAsset] | None,
@@ -339,49 +336,16 @@ def _apply_coercion() -> None:
         ],
     )
     _patch_field_annotation(
-        PackageUpdate1,
+        PackageUpdate,
         "ext",
         Annotated[ExtensionObject | None, BeforeValidator(coerce_to_model(ExtensionObject))],
     )
     _patch_field_annotation(
-        PackageUpdate1,
+        PackageUpdate,
         "pacing",
         Annotated[Pacing | None, BeforeValidator(coerce_to_enum(Pacing))],
     )
-    PackageUpdate1.model_rebuild(force=True)
-
-    # Apply coercion to PackageUpdate2
-    # - creative_assignments: list[CreativeAssignment] (accepts subclass instances)
-    # - creatives: list[CreativeAsset] (accepts subclass instances)
-    # - ext: ExtensionObject | dict | None
-    # - pacing: Pacing | str | None
-    _patch_field_annotation(
-        PackageUpdate2,
-        "creative_assignments",
-        Annotated[
-            list[CreativeAssignment] | None,
-            BeforeValidator(coerce_subclass_list(CreativeAssignment)),
-        ],
-    )
-    _patch_field_annotation(
-        PackageUpdate2,
-        "creatives",
-        Annotated[
-            list[CreativeAsset] | None,
-            BeforeValidator(coerce_subclass_list(CreativeAsset)),
-        ],
-    )
-    _patch_field_annotation(
-        PackageUpdate2,
-        "ext",
-        Annotated[ExtensionObject | None, BeforeValidator(coerce_to_model(ExtensionObject))],
-    )
-    _patch_field_annotation(
-        PackageUpdate2,
-        "pacing",
-        Annotated[Pacing | None, BeforeValidator(coerce_to_enum(Pacing))],
-    )
-    PackageUpdate2.model_rebuild(force=True)
+    PackageUpdate.model_rebuild(force=True)
 
     # Apply coercion to GetProductsResponse
     # - context: ContextObject | dict | None

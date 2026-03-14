@@ -70,6 +70,63 @@ def rewrite_refs(obj, current_schema_rel_path: Path):
     return obj
 
 
+def flatten_validation_oneof(schema: dict) -> dict:
+    """Flatten anyOf/oneOf that only express required-field constraints.
+
+    JSON Schema uses anyOf/oneOf with required-only branches to express
+    "at least one of these field groups must be set." datamodel-code-generator
+    misinterprets this as a type union, generating separate variant classes
+    (e.g., FrequencyCap1, FrequencyCap2, FrequencyCap3) plus a RootModel wrapper.
+
+    This function detects the pattern and removes the anyOf/oneOf, keeping
+    only the intersection of required fields so a single class is generated.
+
+    Follow-up to #155: enables consumer subclassing without RootModel or
+    Union type alias barriers.
+    """
+    if "properties" not in schema:
+        return schema
+
+    branch_key = None
+    branches = None
+    for key in ("anyOf", "oneOf"):
+        if key in schema:
+            branch_key = key
+            branches = schema[key]
+            break
+
+    if not branches:
+        return schema
+
+    # All branches must contain only 'required' (and optionally 'not')
+    if not all(set(b.keys()) <= {"required", "not"} for b in branches):
+        return schema
+
+    # All branches are required-only — this is a validation constraint, not a type union
+    # Compute the intersection of required fields (fields required in ALL branches)
+    branch_required = [set(b.get("required", [])) for b in branches]
+    always_required = set.intersection(*branch_required) if branch_required else set()
+
+    # Include any top-level required fields
+    top_required = set(schema.get("required", []))
+    always_required |= top_required
+
+    title = schema.get("title", "unknown")
+    branch_count = len(branches)
+
+    # Remove the anyOf/oneOf
+    del schema[branch_key]
+
+    # Set required to the intersection (or remove if empty)
+    if always_required:
+        schema["required"] = sorted(always_required)
+    elif "required" in schema:
+        del schema["required"]
+
+    print(f"    flattened {branch_key} ({branch_count} branches) in {title}")
+    return schema
+
+
 def flatten_schemas():
     """
     Copy schemas to temp directory, preserving directory structure.
@@ -112,6 +169,9 @@ def flatten_schemas():
 
         # Rewrite $ref paths: convert absolute paths to relative, hyphens to underscores
         schema = rewrite_refs(schema, rel_path)
+
+        # Flatten validation-only anyOf/oneOf into single-class schemas
+        schema = flatten_validation_oneof(schema)
 
         with open(output_file, "w") as f:
             json.dump(schema, f, indent=2)
@@ -361,6 +421,16 @@ def main():
         restore_unchanged_files()
 
         # Generate ergonomic coercion module (type coercion for better API ergonomics)
+        # Reset _ergonomic.py first — the old version may import variant classes
+        # that no longer exist after schema flattening (e.g., PackageUpdate1).
+        ergonomic_file = REPO_ROOT / "src" / "adcp" / "types" / "_ergonomic.py"
+        if ergonomic_file.exists():
+            ergonomic_file.write_text(
+                '"""Auto-generated ergonomic coercion — regenerating..."""\n'
+                "\ndef apply_ergonomic_coercion() -> None:\n"
+                "    pass\n"
+            )
+
         ergonomic_script = REPO_ROOT / "scripts" / "generate_ergonomic_coercion.py"
         if ergonomic_script.exists():
             print("\nGenerating ergonomic coercion module...")

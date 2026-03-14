@@ -341,7 +341,7 @@ class TestListVariance:
         from pydantic import Field
 
         from adcp.types import CreativeAsset, FormatId
-        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate1
+        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
 
         class ExtendedCreative(CreativeAsset):
             internal_id: str | None = Field(None, exclude=True)
@@ -355,7 +355,7 @@ class TestListVariance:
         )
 
         # No cast() needed!
-        package_update = PackageUpdate1(
+        package_update = PackageUpdate(
             package_id="pkg1",
             creatives=[creative],  # type: ignore[list-item]
         )

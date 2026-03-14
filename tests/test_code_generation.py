@@ -104,3 +104,123 @@ def test_no_request_response_rootmodels():
         f"consumer subclassing. Add them to _UNWRAP_TO_UNION in "
         f"scripts/post_generate_fixes.py: {rootmodel_violations}"
     )
+
+
+# ============================================================================
+# Consumer subclassability contract
+# ============================================================================
+# Types that downstream consumers (e.g., sales agents) are known to subclass.
+# These MUST remain concrete BaseModel classes — never Union aliases, never
+# RootModels. If the upstream spec changes one of these into a oneOf union,
+# it must be flattened (via flatten_validation_oneof in generate_types.py)
+# or otherwise kept as a single subclassable class.
+#
+# Adding a type here is a stability promise to consumers.
+# See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
+
+_SUBCLASSABLE_CONTRACT: list[str] = [
+    # Request types
+    "ActivateSignalRequest",
+    "CreateMediaBuyRequest",
+    "GetCreativeDeliveryRequest",
+    "GetMediaBuyDeliveryRequest",
+    "GetSignalsRequest",
+    "ListCreativeFormatsRequest",
+    "ListCreativesRequest",
+    "PackageRequest",
+    "ProvidePerformanceFeedbackRequest",
+    "SiSendMessageRequest",
+    "SyncCreativesRequest",
+    "UpdateMediaBuyRequest",
+    # Response types
+    "GetCreativeDeliveryResponse",
+    "GetMediaBuyDeliveryResponse",
+    "GetSignalsResponse",
+    "ListCreativeFormatsResponse",
+    "ListCreativesResponse",
+    # Core value types
+    "CreativePolicy",
+    "Format",
+    "FrequencyCap",
+    "MediaBuy",
+    "PackageUpdate",
+    "Product",
+    "Signal",
+    "SignalFilters",
+    "Targeting",
+]
+
+
+def test_consumer_subclassability_contract():
+    """Guard: consumer-facing types must be subclassable BaseModel classes.
+
+    Downstream consumers (sales agents, campaign managers, etc.) subclass
+    library types to add internal fields, override nested types, customize
+    serialization, and add validators. If a type in the contract list stops
+    being a concrete, subclassable BaseModel class, those consumers break.
+
+    This test catches three failure modes:
+    1. Type became a Union alias (types.UnionType) — can't subclass
+    2. Type became a RootModel — Pydantic forbids model_config overrides
+    3. Subclassing with extra fields or model_config actually fails
+
+    If this test fails after a schema update:
+    - For validation-only oneOf: add flattening in generate_types.py
+    - For genuine unions: ensure the type consumers need is a named variant
+    - Update _SUBCLASSABLE_CONTRACT if the type was intentionally removed
+    """
+    import types as builtin_types
+
+    from pydantic import BaseModel, ConfigDict, RootModel
+
+    from adcp.types import _generated as gen
+
+    failures = []
+    for type_name in _SUBCLASSABLE_CONTRACT:
+        obj = getattr(gen, type_name, None)
+
+        if obj is None:
+            failures.append(f"{type_name}: not found in _generated")
+            continue
+
+        if isinstance(obj, builtin_types.UnionType):
+            failures.append(
+                f"{type_name}: is a Union type alias, not a class — "
+                f"consumers cannot subclass it"
+            )
+            continue
+
+        if not isinstance(obj, type):
+            failures.append(f"{type_name}: not a class ({type(obj).__name__})")
+            continue
+
+        if issubclass(obj, RootModel):
+            failures.append(
+                f"{type_name}: is a RootModel — Pydantic forbids "
+                f"model_config overrides on RootModel subclasses"
+            )
+            continue
+
+        if not issubclass(obj, BaseModel):
+            failures.append(f"{type_name}: not a BaseModel subclass")
+            continue
+
+        # Verify subclassing actually works
+        try:
+            subclass = type(
+                f"Consumer{type_name}",
+                (obj,),
+                {
+                    "model_config": ConfigDict(extra="forbid"),
+                    "__annotations__": {"_internal_field": str},
+                },
+            )
+            # Verify the subclass is valid
+            assert issubclass(subclass, obj)
+        except Exception as exc:
+            failures.append(f"{type_name}: subclassing failed — {exc}")
+
+    assert failures == [], (
+        "Consumer subclassability contract violated:\n"
+        + "\n".join(f"  - {f}" for f in failures)
+    )

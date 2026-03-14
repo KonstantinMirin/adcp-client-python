@@ -83,10 +83,8 @@ from adcp.types._generated import (
     # Content standards get responses
     GetContentStandardsResponse1,
     GetContentStandardsResponse2,
-    # Creative delivery requests
-    GetCreativeDeliveryRequest1,
-    GetCreativeDeliveryRequest2,
-    GetCreativeDeliveryRequest3,
+    # Single-class request types (flattened from validation-only oneOf)
+    GetCreativeDeliveryRequest,
     # Get creative features responses
     GetCreativeFeaturesResponse1,
     GetCreativeFeaturesResponse2,
@@ -97,9 +95,7 @@ from adcp.types._generated import (
     GetProductsRequest1,
     GetProductsRequest2,
     GetProductsRequest3,
-    # Get signals request variants
-    GetSignalsRequest1,
-    GetSignalsRequest2,
+    GetSignalsRequest,
     # Content standards list responses
     ListContentStandardsResponse1,
     ListContentStandardsResponse2,
@@ -121,9 +117,7 @@ from adcp.types._generated import (
     # Publisher properties types
     PropertyId,
     PropertyTag,
-    # Performance feedback requests
-    ProvidePerformanceFeedbackRequest1,
-    ProvidePerformanceFeedbackRequest2,
+    ProvidePerformanceFeedbackRequest,
     # Performance feedback responses
     ProvidePerformanceFeedbackResponse1,
     ProvidePerformanceFeedbackResponse2,
@@ -131,9 +125,7 @@ from adcp.types._generated import (
     SignalPricingOption5,
     SignalPricingOption6,
     SignalPricingOption7,
-    # SI send message request variants
-    SiSendMessageRequest1,
-    SiSendMessageRequest2,
+    SiSendMessageRequest,
     # SubAssets
     SubAsset1,
     SubAsset2,
@@ -156,9 +148,7 @@ from adcp.types._generated import (
     # Update content standards responses
     UpdateContentStandardsResponse1,
     UpdateContentStandardsResponse2,
-    # Update media buy requests
-    UpdateMediaBuyRequest1,
-    UpdateMediaBuyRequest2,
+    UpdateMediaBuyRequest,
     # Update media buy responses
     UpdateMediaBuyResponse1,
     UpdateMediaBuyResponse2,
@@ -474,29 +464,29 @@ Example:
     ```
 """
 
-# Performance Feedback Request Variants
-ProvidePerformanceFeedbackByMediaBuyRequest = ProvidePerformanceFeedbackRequest1
-"""Performance feedback request identified by media_buy_id (required)."""
+# Performance Feedback Request Aliases (backward compat — now a single class)
+ProvidePerformanceFeedbackByMediaBuyRequest = ProvidePerformanceFeedbackRequest
+"""Performance feedback request — use media_buy_id or buyer_ref field."""
 
-ProvidePerformanceFeedbackByBuyerRefRequest = ProvidePerformanceFeedbackRequest2
-"""Performance feedback request identified by buyer_ref (required)."""
+ProvidePerformanceFeedbackByBuyerRefRequest = ProvidePerformanceFeedbackRequest
+"""Performance feedback request — use media_buy_id or buyer_ref field."""
 
-# Update Media Buy Request Variants
-UpdateMediaBuyPackagesRequest = UpdateMediaBuyRequest1
-"""Update request modifying packages in the media buy."""
+# Update Media Buy Request Aliases (backward compat — now a single class)
+UpdateMediaBuyPackagesRequest = UpdateMediaBuyRequest
+"""Update media buy request — use media_buy_id or buyer_ref field."""
 
-UpdateMediaBuyPropertiesRequest = UpdateMediaBuyRequest2
-"""Update request modifying media buy properties (not packages)."""
+UpdateMediaBuyPropertiesRequest = UpdateMediaBuyRequest
+"""Update media buy request — use media_buy_id or buyer_ref field."""
 
-# Get Creative Delivery Request Variants
-GetCreativeDeliveryByMediaBuyRequest = GetCreativeDeliveryRequest1
-"""Request creative delivery by media_buy_ids."""
+# Get Creative Delivery Request Aliases (backward compat — now a single class)
+GetCreativeDeliveryByMediaBuyRequest = GetCreativeDeliveryRequest
+"""Request creative delivery — use media_buy_ids, media_buy_buyer_refs, or creative_ids."""
 
-GetCreativeDeliveryByBuyerRefRequest = GetCreativeDeliveryRequest2
-"""Request creative delivery by media_buy_buyer_refs."""
+GetCreativeDeliveryByBuyerRefRequest = GetCreativeDeliveryRequest
+"""Request creative delivery — use media_buy_ids, media_buy_buyer_refs, or creative_ids."""
 
-GetCreativeDeliveryByCreativeRequest = GetCreativeDeliveryRequest3
-"""Request creative delivery by creative_ids."""
+GetCreativeDeliveryByCreativeRequest = GetCreativeDeliveryRequest
+"""Request creative delivery — use media_buy_ids, media_buy_buyer_refs, or creative_ids."""
 
 # Get Products Request Variants (by buying_mode)
 GetProductsBriefRequest = GetProductsRequest1
@@ -505,22 +495,19 @@ GetProductsBriefRequest = GetProductsRequest1
 GetProductsWholesaleRequest = GetProductsRequest2
 """Get products in wholesale mode - buying_mode='wholesale', raw inventory."""
 
-# Get Signals Request Variants
-GetSignalsRequest = GetSignalsRequest1 | GetSignalsRequest2
-"""Union of GetSignalsRequest variants. Use instead of the RootModel wrapper."""
+# Get Signals Request Aliases (backward compat — now a single class)
+GetSignalsDiscoveryRequest = GetSignalsRequest
+"""Get signals request — use signal_spec and/or signal_ids fields."""
 
-GetSignalsDiscoveryRequest = GetSignalsRequest1
-"""Discover signals by natural language spec - signal_spec required."""
+GetSignalsLookupRequest = GetSignalsRequest
+"""Get signals request — use signal_spec and/or signal_ids fields."""
 
-GetSignalsLookupRequest = GetSignalsRequest2
-"""Look up signals by IDs - signal_ids required."""
+# SI Send Message Request Aliases (backward compat — now a single class)
+SiSendTextMessageRequest = SiSendMessageRequest
+"""Send message request — use message and/or action_response fields."""
 
-# SI Send Message Request Variants
-SiSendTextMessageRequest = SiSendMessageRequest1
-"""Send a text message to the brand agent - message required."""
-
-SiSendActionResponseRequest = SiSendMessageRequest2
-"""Send an action response to the brand agent - action_response required."""
+SiSendActionResponseRequest = SiSendMessageRequest
+"""Send message request — use message and/or action_response fields."""
 
 # ============================================================================
 # ACTIVATION KEY ALIASES
