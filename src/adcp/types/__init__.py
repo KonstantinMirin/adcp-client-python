@@ -390,6 +390,7 @@ from adcp.types.aliases import (
     FlatFeeSignalPricingOption,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
+    GetBrandIdentityField,
     GetContentStandardsErrorResponse,
     GetContentStandardsSuccessResponse,
     GetCreativeDeliveryByBuyerRefRequest,
@@ -400,6 +401,7 @@ from adcp.types.aliases import (
     GetMediaBuyArtifactsErrorResponse,
     GetMediaBuyArtifactsSuccessResponse,
     GetProductsBriefRequest,
+    GetProductsField,
     GetProductsRefineRequest,
     GetProductsWholesaleRequest,
     GetSignalsDiscoveryRequest,
@@ -481,6 +483,9 @@ from adcp.types.core import (
     WebhookMetadata,
 )
 
+# Deprecated: types removed from _generated.py but classes still exist in generated_poc
+from adcp.types.generated_poc.brand import Disclaimer, ProductCatalog
+
 # Status: _generated picks invoice status (get_account_financials_response) due to
 # alphabetical module sort. Import the delivery status variant directly for backward compat.
 from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (  # noqa: E501
@@ -489,6 +494,11 @@ from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
 
 # Semantic aliases for auto-generated field enum names
 ListCreativesField = Field1
+
+# FieldModel: _generated picks brand.get_brand_identity_request.FieldModel due to
+# alphabetical module sort. Override to preserve backward compat with the original
+# get_products_request variant (which the generator renamed to Field1 in that module).
+FieldModel = GetProductsField  # type: ignore[misc,assignment]  # noqa: F811
 
 # Backward compatibility aliases
 AssetType = AssetContentType  # Use AssetContentType instead
@@ -503,6 +513,35 @@ VcpmFixedRatePricingOption = VcpmPricingOption
 # Activation key schema change: property_id/property_tag → segment_id/key_value
 PropertyIdActivationKey = SegmentIdActivationKey
 PropertyTagActivationKey = KeyValueActivationKey
+
+# Deprecated: types removed from upstream schemas entirely
+# Performance was removed; PerformanceFeedback is the replacement
+Performance = PerformanceFeedback
+
+# MediaSubAsset (SubAsset1) and TextSubAsset (SubAsset2) were removed from the
+# upstream schema with no replacement. These stubs exist only to provide a clear
+# error message for code that still references them.
+
+
+class MediaSubAsset:
+    """Removed from ADCP schema. Previously SubAsset with asset_kind='media'."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        raise TypeError(
+            "MediaSubAsset was removed from the ADCP schema. "
+            "There is no direct replacement."
+        )
+
+
+class TextSubAsset:
+    """Removed from ADCP schema. Previously SubAsset with asset_kind='text'."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        raise TypeError(
+            "TextSubAsset was removed from the ADCP schema. "
+            "There is no direct replacement."
+        )
+
 
 # Preview alias renames: format/manifest → single/batch/variant discriminator
 PreviewCreativeFormatRequest = PreviewCreativeSingleRequest
@@ -739,6 +778,8 @@ __all__ = [
     "LandingPageRequirement",
     "Logo",
     "ListCreativesField",
+    "GetProductsField",
+    "GetBrandIdentityField",
     "MediaBuy",
     "MediaBuyPackage",
     "MediaChannel",
@@ -1011,6 +1052,12 @@ __all__ = [
     "ListAuthorizedPropertiesRequest",
     "ListAuthorizedPropertiesResponse",
     "PackageStatus",
+    # Backward compat: types removed from exports (deprecated)
+    "Disclaimer",
+    "MediaSubAsset",
+    "Performance",
+    "ProductCatalog",
+    "TextSubAsset",
     # Submodules for advanced use:
     "generated",
     "aliases",

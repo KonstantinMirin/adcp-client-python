@@ -197,7 +197,7 @@ class TestContentStandardsHandler:
 
         result = await handler.si_get_offering({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Sponsored Intelligence" in result.reason
+        assert "Content Standards" in result.reason
 
     @pytest.mark.asyncio
     async def test_signal_methods_return_not_supported(self):
@@ -220,7 +220,7 @@ class TestContentStandardsHandler:
 
         result = await handler.create_property_list({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Governance" in result.reason
+        assert "Content Standards" in result.reason
 
         result = await handler.list_property_lists({})
         assert isinstance(result, NotImplementedResponse)
@@ -274,7 +274,7 @@ class TestSponsoredIntelligenceHandler:
 
         result = await handler.create_content_standards({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Content Standards" in result.reason
+        assert "Sponsored Intelligence" in result.reason
 
         result = await handler.calibrate_content({})
         assert isinstance(result, NotImplementedResponse)
@@ -286,7 +286,7 @@ class TestSponsoredIntelligenceHandler:
 
         result = await handler.create_property_list({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Governance" in result.reason
+        assert "Sponsored Intelligence" in result.reason
 
         result = await handler.list_property_lists({})
         assert isinstance(result, NotImplementedResponse)
@@ -369,7 +369,7 @@ class TestGovernanceHandler:
 
         result = await handler.create_content_standards({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Content Standards" in result.reason
+        assert "Governance" in result.reason
 
         result = await handler.calibrate_content({})
         assert isinstance(result, NotImplementedResponse)
@@ -412,7 +412,7 @@ class TestGovernanceHandler:
 
         result = await handler.si_get_offering({})
         assert isinstance(result, NotImplementedResponse)
-        assert "Sponsored Intelligence" in result.reason
+        assert "Governance" in result.reason
 
     @pytest.mark.asyncio
     async def test_get_creative_features_validates(self):

@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 
-from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext, not_supported
+from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
 from adcp.types import (
     CheckGovernanceRequest,
     CheckGovernanceResponse,
@@ -36,6 +36,8 @@ from adcp.types import (
     UpdatePropertyListResponse,
 )
 
+# GetPlanAuditLogsRequest is a Union type alias (not a class), so it has no
+# .model_validate(). TypeAdapter handles Union validation correctly.
 _audit_logs_adapter: TypeAdapter[GetPlanAuditLogsRequest] = TypeAdapter(GetPlanAuditLogsRequest)
 
 
@@ -50,7 +52,7 @@ class GovernanceHandler(ADCPHandler):
     error handling automatically.
 
     Non-governance operations (get_products, create_media_buy, etc.)
-    return 'not supported'.
+    return 'not supported' via the base class.
 
     Example:
         class MyGovernanceHandler(GovernanceHandler):
@@ -64,6 +66,8 @@ class GovernanceHandler(ADCPHandler):
                 # ...
                 return CreatePropertyListResponse(list=PropertyList(...))
     """
+
+    _agent_type: str = "Governance agents"
 
     # ========================================================================
     # Governance Operations - Override base class with validation
@@ -157,13 +161,6 @@ class GovernanceHandler(ADCPHandler):
         """Create a property list for governance filtering.
 
         Validates params and delegates to handle_create_property_list.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Response with created property list metadata, or error response
         """
         try:
             request = CreatePropertyListRequest.model_validate(params)
@@ -183,13 +180,6 @@ class GovernanceHandler(ADCPHandler):
         """Get a property list with optional resolution.
 
         Validates params and delegates to handle_get_property_list.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Response with list metadata and optionally resolved identifiers
         """
         try:
             request = GetPropertyListRequest.model_validate(params)
@@ -209,13 +199,6 @@ class GovernanceHandler(ADCPHandler):
         """List property lists.
 
         Validates params and delegates to handle_list_property_lists.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Response with array of property list metadata
         """
         try:
             request = ListPropertyListsRequest.model_validate(params)
@@ -235,13 +218,6 @@ class GovernanceHandler(ADCPHandler):
         """Update a property list.
 
         Validates params and delegates to handle_update_property_list.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Response with updated property list
         """
         try:
             request = UpdatePropertyListRequest.model_validate(params)
@@ -261,13 +237,6 @@ class GovernanceHandler(ADCPHandler):
         """Delete a property list.
 
         Validates params and delegates to handle_delete_property_list.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Response confirming deletion
         """
         try:
             request = DeletePropertyListRequest.model_validate(params)
@@ -334,17 +303,7 @@ class GovernanceHandler(ADCPHandler):
         request: CreatePropertyListRequest,
         context: ToolContext | None = None,
     ) -> CreatePropertyListResponse:
-        """Handle create property list request.
-
-        Must be implemented by Governance agents.
-
-        Args:
-            request: Validated property list creation request
-            context: Optional tool context
-
-        Returns:
-            Response with created property list metadata
-        """
+        """Handle create property list request."""
         ...
 
     @abstractmethod
@@ -353,20 +312,7 @@ class GovernanceHandler(ADCPHandler):
         request: GetPropertyListRequest,
         context: ToolContext | None = None,
     ) -> GetPropertyListResponse:
-        """Handle get property list request.
-
-        Must be implemented by Governance agents.
-
-        When resolve=true, evaluates filters and returns matching property
-        identifiers. Otherwise returns only metadata.
-
-        Args:
-            request: Validated request with list_id and optional resolve flag
-            context: Optional tool context
-
-        Returns:
-            Response with list metadata and optionally resolved identifiers
-        """
+        """Handle get property list request."""
         ...
 
     @abstractmethod
@@ -375,17 +321,7 @@ class GovernanceHandler(ADCPHandler):
         request: ListPropertyListsRequest,
         context: ToolContext | None = None,
     ) -> ListPropertyListsResponse:
-        """Handle list property lists request.
-
-        Must be implemented by Governance agents.
-
-        Args:
-            request: Validated request with optional filtering and pagination
-            context: Optional tool context
-
-        Returns:
-            Response with array of property list metadata
-        """
+        """Handle list property lists request."""
         ...
 
     @abstractmethod
@@ -394,17 +330,7 @@ class GovernanceHandler(ADCPHandler):
         request: UpdatePropertyListRequest,
         context: ToolContext | None = None,
     ) -> UpdatePropertyListResponse:
-        """Handle update property list request.
-
-        Must be implemented by Governance agents.
-
-        Args:
-            request: Validated request with list_id and updates
-            context: Optional tool context
-
-        Returns:
-            Response with updated property list
-        """
+        """Handle update property list request."""
         ...
 
     @abstractmethod
@@ -413,241 +339,5 @@ class GovernanceHandler(ADCPHandler):
         request: DeletePropertyListRequest,
         context: ToolContext | None = None,
     ) -> DeletePropertyListResponse:
-        """Handle delete property list request.
-
-        Must be implemented by Governance agents.
-
-        Args:
-            request: Validated request with list_id
-            context: Optional tool context
-
-        Returns:
-            Response confirming deletion
-        """
+        """Handle delete property list request."""
         ...
-
-    # ========================================================================
-    # Non-Governance Operations - Return 'not supported'
-    # ========================================================================
-
-    async def get_products(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported(
-            "get_products is not supported by Governance agents. "
-            "This agent manages property lists for filtering, not product catalogs."
-        )
-
-    async def list_creative_formats(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("list_creative_formats is not supported by Governance agents.")
-
-    async def sync_creatives(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("sync_creatives is not supported by Governance agents.")
-
-    async def list_creatives(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("list_creatives is not supported by Governance agents.")
-
-    async def build_creative(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("build_creative is not supported by Governance agents.")
-
-    async def preview_creative(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("preview_creative is not supported by Governance agents.")
-
-    async def get_creative_delivery(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_creative_delivery is not supported by Governance agents.")
-
-    async def create_media_buy(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported(
-            "create_media_buy is not supported by Governance agents. "
-            "This agent manages property lists, not media buying."
-        )
-
-    async def update_media_buy(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("update_media_buy is not supported by Governance agents.")
-
-    async def get_media_buy_delivery(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_media_buy_delivery is not supported by Governance agents.")
-
-    async def get_signals(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_signals is not supported by Governance agents.")
-
-    async def activate_signal(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("activate_signal is not supported by Governance agents.")
-
-    async def provide_performance_feedback(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("provide_performance_feedback is not supported by Governance agents.")
-
-    async def list_accounts(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("list_accounts is not supported by Governance agents.")
-
-    async def sync_accounts(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("sync_accounts is not supported by Governance agents.")
-
-    async def log_event(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("log_event is not supported by Governance agents.")
-
-    async def sync_event_sources(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("sync_event_sources is not supported by Governance agents.")
-
-    # ========================================================================
-    # RC2 Operations - Not supported
-    # ========================================================================
-
-    async def get_media_buys(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_media_buys is not supported by Governance agents.")
-
-    async def get_account_financials(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_account_financials is not supported by Governance agents.")
-
-    async def report_usage(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("report_usage is not supported by Governance agents.")
-
-    async def sync_audiences(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("sync_audiences is not supported by Governance agents.")
-
-    async def sync_catalogs(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("sync_catalogs is not supported by Governance agents.")
-
-    # ========================================================================
-    # V3 Content Standards - Not supported
-    # ========================================================================
-
-    async def create_content_standards(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported(
-            "create_content_standards is not supported by Governance agents. "
-            "Use a Content Standards agent for content calibration."
-        )
-
-    async def get_content_standards(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_content_standards is not supported by Governance agents.")
-
-    async def list_content_standards(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("list_content_standards is not supported by Governance agents.")
-
-    async def update_content_standards(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("update_content_standards is not supported by Governance agents.")
-
-    async def calibrate_content(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("calibrate_content is not supported by Governance agents.")
-
-    async def validate_content_delivery(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("validate_content_delivery is not supported by Governance agents.")
-
-    async def get_media_buy_artifacts(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("get_media_buy_artifacts is not supported by Governance agents.")
-
-    # ========================================================================
-    # V3 Sponsored Intelligence - Not supported
-    # ========================================================================
-
-    async def si_get_offering(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported(
-            "si_get_offering is not supported by Governance agents. "
-            "Use a Sponsored Intelligence agent for SI operations."
-        )
-
-    async def si_initiate_session(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("si_initiate_session is not supported by Governance agents.")
-
-    async def si_send_message(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("si_send_message is not supported by Governance agents.")
-
-    async def si_terminate_session(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Governance agents."""
-        return not_supported("si_terminate_session is not supported by Governance agents.")

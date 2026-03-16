@@ -1044,6 +1044,33 @@ FlatFeeSignalPricingOption = SignalPricingOption7
 """Signal pricing option with model='flat_fee' - fixed charge per reporting period."""
 
 # ============================================================================
+# FIELD ENUM ALIASES - Disambiguating FieldModel Name Collision
+# ============================================================================
+# The code generator produces FieldModel in both get_products_request and
+# get_brand_identity_request. The generator renamed the get_products_request
+# variant to Field1, but _generated.py imports Field1 from tasks_list_request
+# (alphabetical wins), so the get_products version is not reachable via
+# _generated at all. Import it directly from its source module.
+
+from adcp.types.generated_poc.media_buy.get_products_request import (
+    Field1 as GetProductsFieldInternal,
+)
+
+GetProductsField = GetProductsFieldInternal
+"""Field enum for GetProductsRequest - controls which product fields are returned.
+
+Values include product_id, name, description, pricing_options, placements, etc.
+"""
+
+from adcp.types._generated import FieldModel as GetBrandIdentityFieldInternal
+
+GetBrandIdentityField = GetBrandIdentityFieldInternal
+"""Field enum for GetBrandIdentityRequest - controls which brand identity fields are returned.
+
+Values include description, industry, logos, colors, fonts, tone, tagline, etc.
+"""
+
+# ============================================================================
 # SYNC AUDIENCES INPUT ALIASES
 # ============================================================================
 # The Audience input type for SyncAudiencesRequest is exported here following
@@ -1269,4 +1296,7 @@ __all__ = [
     "MediaBuyDeliveryStatus",
     # Catalog field binding semantic alias
     "CatalogGroupBinding",
+    # Field enum disambiguation aliases
+    "GetProductsField",
+    "GetBrandIdentityField",
 ]

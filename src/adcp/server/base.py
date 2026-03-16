@@ -68,7 +68,14 @@ class ADCPHandler(ABC):
     For protocol-specific handlers, use:
     - ContentStandardsHandler: For content standards agents
     - SponsoredIntelligenceHandler: For sponsored intelligence agents
+    - GovernanceHandler: For governance agents
     """
+
+    _agent_type: str = "this agent"
+
+    def _not_supported(self, operation: str) -> NotImplementedResponse:
+        """Create a not-supported response that includes the agent type."""
+        return not_supported(f"{operation} is not supported by {self._agent_type}")
 
     # ========================================================================
     # Core Catalog Operations
@@ -79,7 +86,7 @@ class ADCPHandler(ABC):
 
         Override this to provide product catalog functionality.
         """
-        return not_supported("get_products is not implemented by this agent")
+        return self._not_supported("get_products")
 
     async def list_creative_formats(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -88,7 +95,7 @@ class ADCPHandler(ABC):
 
         Override this to provide creative format information.
         """
-        return not_supported("list_creative_formats is not implemented by this agent")
+        return self._not_supported("list_creative_formats")
 
     # ========================================================================
     # Creative Operations
@@ -101,7 +108,7 @@ class ADCPHandler(ABC):
 
         Override this to handle creative synchronization.
         """
-        return not_supported("sync_creatives is not implemented by this agent")
+        return self._not_supported("sync_creatives")
 
     async def list_creatives(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -110,7 +117,7 @@ class ADCPHandler(ABC):
 
         Override this to list synced creatives.
         """
-        return not_supported("list_creatives is not implemented by this agent")
+        return self._not_supported("list_creatives")
 
     async def build_creative(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -119,7 +126,7 @@ class ADCPHandler(ABC):
 
         Override this to build creatives from assets.
         """
-        return not_supported("build_creative is not implemented by this agent")
+        return self._not_supported("build_creative")
 
     async def preview_creative(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -128,7 +135,7 @@ class ADCPHandler(ABC):
 
         Override this to provide creative preview functionality.
         """
-        return not_supported("preview_creative is not implemented by this agent")
+        return self._not_supported("preview_creative")
 
     async def get_creative_delivery(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -137,7 +144,7 @@ class ADCPHandler(ABC):
 
         Override this to provide functionality.
         """
-        return not_supported("get_creative_delivery is not implemented by this agent")
+        return self._not_supported("get_creative_delivery")
 
     # ========================================================================
     # Media Buy Operations
@@ -150,7 +157,7 @@ class ADCPHandler(ABC):
 
         Override this to handle media buy creation.
         """
-        return not_supported("create_media_buy is not implemented by this agent")
+        return self._not_supported("create_media_buy")
 
     async def update_media_buy(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -159,7 +166,7 @@ class ADCPHandler(ABC):
 
         Override this to handle media buy updates.
         """
-        return not_supported("update_media_buy is not implemented by this agent")
+        return self._not_supported("update_media_buy")
 
     async def get_media_buy_delivery(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -168,7 +175,7 @@ class ADCPHandler(ABC):
 
         Override this to provide delivery reporting.
         """
-        return not_supported("get_media_buy_delivery is not implemented by this agent")
+        return self._not_supported("get_media_buy_delivery")
 
     async def get_media_buys(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -177,7 +184,7 @@ class ADCPHandler(ABC):
 
         Override this to provide media buy listing functionality.
         """
-        return not_supported("get_media_buys is not implemented by this agent")
+        return self._not_supported("get_media_buys")
 
     # ========================================================================
     # Signal Operations
@@ -188,7 +195,7 @@ class ADCPHandler(ABC):
 
         Override this to provide signal catalog.
         """
-        return not_supported("get_signals is not implemented by this agent")
+        return self._not_supported("get_signals")
 
     async def activate_signal(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -197,7 +204,7 @@ class ADCPHandler(ABC):
 
         Override this to handle signal activation.
         """
-        return not_supported("activate_signal is not implemented by this agent")
+        return self._not_supported("activate_signal")
 
     # ========================================================================
     # Feedback Operations
@@ -210,7 +217,7 @@ class ADCPHandler(ABC):
 
         Override this to handle performance feedback ingestion.
         """
-        return not_supported("provide_performance_feedback is not implemented by this agent")
+        return self._not_supported("provide_performance_feedback")
 
     # ========================================================================
     # Account Operations
@@ -223,7 +230,7 @@ class ADCPHandler(ABC):
 
         Override this to provide functionality.
         """
-        return not_supported("list_accounts is not implemented by this agent")
+        return self._not_supported("list_accounts")
 
     async def sync_accounts(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -232,7 +239,7 @@ class ADCPHandler(ABC):
 
         Override this to provide functionality.
         """
-        return not_supported("sync_accounts is not implemented by this agent")
+        return self._not_supported("sync_accounts")
 
     async def get_account_financials(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -241,7 +248,7 @@ class ADCPHandler(ABC):
 
         Override this to provide account financial reporting.
         """
-        return not_supported("get_account_financials is not implemented by this agent")
+        return self._not_supported("get_account_financials")
 
     async def report_usage(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -250,7 +257,7 @@ class ADCPHandler(ABC):
 
         Override this to ingest account usage.
         """
-        return not_supported("report_usage is not implemented by this agent")
+        return self._not_supported("report_usage")
 
     # ========================================================================
     # Event Operations
@@ -261,7 +268,7 @@ class ADCPHandler(ABC):
 
         Override this to provide functionality.
         """
-        return not_supported("log_event is not implemented by this agent")
+        return self._not_supported("log_event")
 
     async def sync_event_sources(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -270,7 +277,7 @@ class ADCPHandler(ABC):
 
         Override this to provide functionality.
         """
-        return not_supported("sync_event_sources is not implemented by this agent")
+        return self._not_supported("sync_event_sources")
 
     async def sync_audiences(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -279,7 +286,7 @@ class ADCPHandler(ABC):
 
         Override this to provide audience synchronization.
         """
-        return not_supported("sync_audiences is not implemented by this agent")
+        return self._not_supported("sync_audiences")
 
     async def sync_catalogs(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -288,7 +295,7 @@ class ADCPHandler(ABC):
 
         Override this to provide catalog synchronization.
         """
-        return not_supported("sync_catalogs is not implemented by this agent")
+        return self._not_supported("sync_catalogs")
 
     # ========================================================================
     # V3 Protocol Discovery
@@ -301,7 +308,7 @@ class ADCPHandler(ABC):
 
         Override this to advertise your agent's capabilities.
         """
-        return not_supported("get_adcp_capabilities is not implemented by this agent")
+        return self._not_supported("get_adcp_capabilities")
 
     # ========================================================================
     # V3 Content Standards Operations
@@ -314,7 +321,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("create_content_standards is not implemented by this agent")
+        return self._not_supported("create_content_standards")
 
     async def get_content_standards(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -323,7 +330,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("get_content_standards is not implemented by this agent")
+        return self._not_supported("get_content_standards")
 
     async def list_content_standards(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -332,7 +339,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("list_content_standards is not implemented by this agent")
+        return self._not_supported("list_content_standards")
 
     async def update_content_standards(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -341,7 +348,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("update_content_standards is not implemented by this agent")
+        return self._not_supported("update_content_standards")
 
     async def calibrate_content(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -350,7 +357,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("calibrate_content is not implemented by this agent")
+        return self._not_supported("calibrate_content")
 
     async def validate_content_delivery(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -359,7 +366,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("validate_content_delivery is not implemented by this agent")
+        return self._not_supported("validate_content_delivery")
 
     async def get_media_buy_artifacts(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -368,7 +375,7 @@ class ADCPHandler(ABC):
 
         Override this in ContentStandardsHandler subclasses.
         """
-        return not_supported("get_media_buy_artifacts is not implemented by this agent")
+        return self._not_supported("get_media_buy_artifacts")
 
     # ========================================================================
     # V3 Sponsored Intelligence Operations
@@ -381,7 +388,7 @@ class ADCPHandler(ABC):
 
         Override this in SponsoredIntelligenceHandler subclasses.
         """
-        return not_supported("si_get_offering is not implemented by this agent")
+        return self._not_supported("si_get_offering")
 
     async def si_initiate_session(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -390,7 +397,7 @@ class ADCPHandler(ABC):
 
         Override this in SponsoredIntelligenceHandler subclasses.
         """
-        return not_supported("si_initiate_session is not implemented by this agent")
+        return self._not_supported("si_initiate_session")
 
     async def si_send_message(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -399,7 +406,7 @@ class ADCPHandler(ABC):
 
         Override this in SponsoredIntelligenceHandler subclasses.
         """
-        return not_supported("si_send_message is not implemented by this agent")
+        return self._not_supported("si_send_message")
 
     async def si_terminate_session(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -408,7 +415,7 @@ class ADCPHandler(ABC):
 
         Override this in SponsoredIntelligenceHandler subclasses.
         """
-        return not_supported("si_terminate_session is not implemented by this agent")
+        return self._not_supported("si_terminate_session")
 
     # ========================================================================
     # V3 Governance Operations
@@ -421,7 +428,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("get_creative_features is not implemented by this agent")
+        return self._not_supported("get_creative_features")
 
     async def sync_plans(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -430,7 +437,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("sync_plans is not implemented by this agent")
+        return self._not_supported("sync_plans")
 
     async def check_governance(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -439,7 +446,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("check_governance is not implemented by this agent")
+        return self._not_supported("check_governance")
 
     async def report_plan_outcome(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -448,7 +455,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("report_plan_outcome is not implemented by this agent")
+        return self._not_supported("report_plan_outcome")
 
     async def get_plan_audit_logs(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -457,7 +464,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("get_plan_audit_logs is not implemented by this agent")
+        return self._not_supported("get_plan_audit_logs")
 
     async def create_property_list(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -466,7 +473,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("create_property_list is not implemented by this agent")
+        return self._not_supported("create_property_list")
 
     async def get_property_list(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -475,7 +482,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("get_property_list is not implemented by this agent")
+        return self._not_supported("get_property_list")
 
     async def list_property_lists(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -484,7 +491,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("list_property_lists is not implemented by this agent")
+        return self._not_supported("list_property_lists")
 
     async def update_property_list(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -493,7 +500,7 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("update_property_list is not implemented by this agent")
+        return self._not_supported("update_property_list")
 
     async def delete_property_list(
         self, params: dict[str, Any], context: ToolContext | None = None
@@ -502,4 +509,4 @@ class ADCPHandler(ABC):
 
         Override this in GovernanceHandler subclasses.
         """
-        return not_supported("delete_property_list is not implemented by this agent")
+        return self._not_supported("delete_property_list")

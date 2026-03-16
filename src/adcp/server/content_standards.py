@@ -1,7 +1,7 @@
 """Content Standards protocol handler.
 
 Provides a base class for implementing Content Standards agents.
-Non-Content-Standards operations return 'not supported' by default.
+Non-Content-Standards operations return 'not supported' via the base class.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext, not_supported
+from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
 from adcp.types import (
     CalibrateContentRequest,
     CalibrateContentResponse,
@@ -40,7 +40,7 @@ class ContentStandardsHandler(ADCPHandler):
     error handling automatically.
 
     Non-Content-Standards operations (get_products, create_media_buy, etc.)
-    return 'not supported'.
+    return 'not supported' via the base class.
 
     Example:
         class MyContentStandardsHandler(ContentStandardsHandler):
@@ -52,6 +52,8 @@ class ContentStandardsHandler(ADCPHandler):
                 # Your implementation
                 return CreateContentStandardsResponse(...)
     """
+
+    _agent_type: str = "Content Standards agents"
 
     # ========================================================================
     # Content Standards Operations - Override base class with validation
@@ -65,13 +67,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Create content standards configuration.
 
         Validates params and delegates to handle_create_content_standards.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Content standards creation response, or error response
         """
         try:
             request = CreateContentStandardsRequest.model_validate(params)
@@ -91,13 +86,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Get content standards configuration.
 
         Validates params and delegates to handle_get_content_standards.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Content standards response, or error response
         """
         try:
             request = GetContentStandardsRequest.model_validate(params)
@@ -117,13 +105,6 @@ class ContentStandardsHandler(ADCPHandler):
         """List content standards configurations.
 
         Validates params and delegates to handle_list_content_standards.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            List of content standards, or error response
         """
         try:
             request = ListContentStandardsRequest.model_validate(params)
@@ -143,13 +124,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Update content standards configuration.
 
         Validates params and delegates to handle_update_content_standards.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Updated content standards response, or error response
         """
         try:
             request = UpdateContentStandardsRequest.model_validate(params)
@@ -169,13 +143,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Calibrate content against standards.
 
         Validates params and delegates to handle_calibrate_content.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Calibration response with scores and feedback, or error response
         """
         try:
             request = CalibrateContentRequest.model_validate(params)
@@ -195,13 +162,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Validate content delivery against standards.
 
         Validates params and delegates to handle_validate_content_delivery.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Validation response, or error response
         """
         try:
             request = ValidateContentDeliveryRequest.model_validate(params)
@@ -221,13 +181,6 @@ class ContentStandardsHandler(ADCPHandler):
         """Get artifacts associated with a media buy.
 
         Validates params and delegates to handle_get_media_buy_artifacts.
-
-        Args:
-            params: Request parameters as dict
-            context: Optional tool context
-
-        Returns:
-            Media buy artifacts response, or error response
         """
         try:
             request = GetMediaBuyArtifactsRequest.model_validate(params)
@@ -249,17 +202,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: CreateContentStandardsRequest,
         context: ToolContext | None = None,
     ) -> CreateContentStandardsResponse:
-        """Handle create content standards request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated content standards creation request
-            context: Optional tool context
-
-        Returns:
-            Content standards creation response
-        """
+        """Handle create content standards request."""
         ...
 
     @abstractmethod
@@ -268,17 +211,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: GetContentStandardsRequest,
         context: ToolContext | None = None,
     ) -> GetContentStandardsResponse:
-        """Handle get content standards request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated content standards retrieval request
-            context: Optional tool context
-
-        Returns:
-            Content standards response
-        """
+        """Handle get content standards request."""
         ...
 
     @abstractmethod
@@ -287,17 +220,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: ListContentStandardsRequest,
         context: ToolContext | None = None,
     ) -> ListContentStandardsResponse:
-        """Handle list content standards request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated list content standards request
-            context: Optional tool context
-
-        Returns:
-            List of content standards
-        """
+        """Handle list content standards request."""
         ...
 
     @abstractmethod
@@ -306,17 +229,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: UpdateContentStandardsRequest,
         context: ToolContext | None = None,
     ) -> UpdateContentStandardsResponse:
-        """Handle update content standards request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated content standards update request
-            context: Optional tool context
-
-        Returns:
-            Updated content standards response
-        """
+        """Handle update content standards request."""
         ...
 
     @abstractmethod
@@ -325,17 +238,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: CalibrateContentRequest,
         context: ToolContext | None = None,
     ) -> CalibrateContentResponse:
-        """Handle calibrate content request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated calibration request with content to evaluate
-            context: Optional tool context
-
-        Returns:
-            Calibration response with scores and feedback
-        """
+        """Handle calibrate content request."""
         ...
 
     @abstractmethod
@@ -344,17 +247,7 @@ class ContentStandardsHandler(ADCPHandler):
         request: ValidateContentDeliveryRequest,
         context: ToolContext | None = None,
     ) -> ValidateContentDeliveryResponse:
-        """Handle validate content delivery request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated request with delivery data
-            context: Optional tool context
-
-        Returns:
-            Validation response
-        """
+        """Handle validate content delivery request."""
         ...
 
     @abstractmethod
@@ -363,265 +256,5 @@ class ContentStandardsHandler(ADCPHandler):
         request: GetMediaBuyArtifactsRequest,
         context: ToolContext | None = None,
     ) -> GetMediaBuyArtifactsResponse:
-        """Handle get media buy artifacts request.
-
-        Must be implemented by Content Standards agents.
-
-        Args:
-            request: Validated artifacts retrieval request
-            context: Optional tool context
-
-        Returns:
-            Media buy artifacts response
-        """
+        """Handle get media buy artifacts request."""
         ...
-
-    # ========================================================================
-    # Non-Content-Standards Operations - Return 'not supported'
-    # ========================================================================
-
-    async def get_products(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported(
-            "get_products is not supported by Content Standards agents. "
-            "This agent handles content calibration and validation, not product catalog operations."
-        )
-
-    async def list_creative_formats(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("list_creative_formats is not supported by Content Standards agents.")
-
-    async def sync_creatives(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_creatives is not supported by Content Standards agents.")
-
-    async def list_creatives(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("list_creatives is not supported by Content Standards agents.")
-
-    async def build_creative(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("build_creative is not supported by Content Standards agents.")
-
-    async def preview_creative(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("preview_creative is not supported by Content Standards agents.")
-
-    async def get_creative_delivery(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_creative_delivery is not supported by Content Standards agents.")
-
-    async def create_media_buy(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported(
-            "create_media_buy is not supported by Content Standards agents. "
-            "This agent handles content calibration and validation, not media buying."
-        )
-
-    async def update_media_buy(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("update_media_buy is not supported by Content Standards agents.")
-
-    async def get_media_buy_delivery(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_media_buy_delivery is not supported by Content Standards agents.")
-
-    async def get_signals(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_signals is not supported by Content Standards agents.")
-
-    async def activate_signal(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("activate_signal is not supported by Content Standards agents.")
-
-    async def provide_performance_feedback(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported(
-            "provide_performance_feedback is not supported by Content Standards agents."
-        )
-
-    async def list_accounts(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("list_accounts is not supported by Content Standards agents.")
-
-    async def sync_accounts(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_accounts is not supported by Content Standards agents.")
-
-    async def log_event(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("log_event is not supported by Content Standards agents.")
-
-    async def sync_event_sources(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_event_sources is not supported by Content Standards agents.")
-
-    # ========================================================================
-    # RC2 Operations - Not supported
-    # ========================================================================
-
-    async def get_media_buys(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_media_buys is not supported by Content Standards agents.")
-
-    async def get_account_financials(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_account_financials is not supported by Content Standards agents.")
-
-    async def report_usage(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("report_usage is not supported by Content Standards agents.")
-
-    async def sync_audiences(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_audiences is not supported by Content Standards agents.")
-
-    async def sync_catalogs(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_catalogs is not supported by Content Standards agents.")
-
-    # ========================================================================
-    # V3 Sponsored Intelligence - Not supported
-    # ========================================================================
-
-    async def si_get_offering(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported(
-            "si_get_offering is not supported by Content Standards agents. "
-            "Use a Sponsored Intelligence agent for SI operations."
-        )
-
-    async def si_initiate_session(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("si_initiate_session is not supported by Content Standards agents.")
-
-    async def si_send_message(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("si_send_message is not supported by Content Standards agents.")
-
-    async def si_terminate_session(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("si_terminate_session is not supported by Content Standards agents.")
-
-    # ========================================================================
-    # V3 Governance - Not supported
-    # ========================================================================
-
-    async def get_creative_features(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_creative_features is not supported by Content Standards agents.")
-
-    async def sync_plans(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("sync_plans is not supported by Content Standards agents.")
-
-    async def check_governance(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("check_governance is not supported by Content Standards agents.")
-
-    async def report_plan_outcome(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("report_plan_outcome is not supported by Content Standards agents.")
-
-    async def get_plan_audit_logs(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_plan_audit_logs is not supported by Content Standards agents.")
-
-    # ========================================================================
-    # V3 Governance (Property Lists) - Not supported
-    # ========================================================================
-
-    async def create_property_list(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported(
-            "create_property_list is not supported by Content Standards agents. "
-            "Use a Governance agent for property list operations."
-        )
-
-    async def get_property_list(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("get_property_list is not supported by Content Standards agents.")
-
-    async def list_property_lists(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("list_property_lists is not supported by Content Standards agents.")
-
-    async def update_property_list(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("update_property_list is not supported by Content Standards agents.")
-
-    async def delete_property_list(
-        self, params: dict[str, Any], context: ToolContext | None = None
-    ) -> NotImplementedResponse:
-        """Not supported by Content Standards agents."""
-        return not_supported("delete_property_list is not supported by Content Standards agents.")
