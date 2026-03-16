@@ -126,9 +126,6 @@ from adcp.types._generated import (
     SignalPricingOption6,
     SignalPricingOption7,
     SiSendMessageRequest,
-    # SubAssets
-    SubAsset1,
-    SubAsset2,
     # Sync accounts responses
     SyncAccountsResponse1,
     SyncAccountsResponse2,
@@ -178,6 +175,9 @@ from adcp.types._generated import (
 # No more separate reference type needed
 # Import Package from _generated (still uses qualified name for internal reasons)
 from adcp.types._generated import _PackageFromPackage as Package
+from adcp.types.generated_poc.creative.sync_creatives_response import (
+    Creative as SyncCreativeResultInternal,
+)
 
 # Status name collides across many modules. Preserve backward compat by importing
 # the specific variant that was exported on main (media buy delivery status).
@@ -193,9 +193,6 @@ from adcp.types.generated_poc.media_buy.sync_audiences_request import (
 # Import nested types that aren't exported by _generated but are useful for type hints
 from adcp.types.generated_poc.media_buy.sync_catalogs_response import (
     Catalog as SyncCatalogResultInternal,
-)
-from adcp.types.generated_poc.media_buy.sync_creatives_response import (
-    Creative as SyncCreativeResultInternal,
 )
 
 # ============================================================================
@@ -561,13 +558,6 @@ UrlDaastAsset = DaastAsset1
 
 InlineDaastAsset = DaastAsset2
 """DAAST asset with inline XML content - delivery_type='inline'."""
-
-# SubAsset Variants (discriminated by asset_kind)
-MediaSubAsset = SubAsset1
-"""SubAsset for media content (images, videos) - asset_kind='media', provides content_uri."""
-
-TextSubAsset = SubAsset2
-"""SubAsset for text content (headlines, body text) - asset_kind='text', provides content."""
 
 # ============================================================================
 # PACKAGE TYPE ALIASES - Resolving Type Name Collisions
@@ -1149,8 +1139,6 @@ __all__ = [
     "HtmlPreviewRender",
     "InlineDaastAsset",
     "InlineVastAsset",
-    "MediaSubAsset",
-    "TextSubAsset",
     "UrlDaastAsset",
     "UrlPreviewRender",
     "UrlVastAsset",

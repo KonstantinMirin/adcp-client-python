@@ -1,122 +1,107 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-send-message-response.json",
+  "title": "SI Send Message Response",
   "description": "Brand agent's response to a user message",
+  "type": "object",
   "properties": {
-    "errors": {
-      "items": {
-        "$ref": "../core/error.json"
-      },
-      "type": "array"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "handoff": {
-      "additionalProperties": true,
-      "description": "Handoff request when session_status is pending_handoff",
-      "properties": {
-        "context_for_checkout": {
-          "additionalProperties": true,
-          "description": "Context to pass to ACP for seamless checkout",
-          "properties": {
-            "applied_offers": {
-              "description": "Offer IDs that were applied during the conversation",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "conversation_summary": {
-              "description": "Summary of the conversation leading to purchase",
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "intent": {
-          "additionalProperties": true,
-          "description": "For transaction handoffs: what the user wants to purchase",
-          "properties": {
-            "action": {
-              "description": "The commerce action (e.g., 'purchase')",
-              "type": "string"
-            },
-            "price": {
-              "description": "Price information",
-              "properties": {
-                "amount": {
-                  "type": "number"
-                },
-                "currency": {
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            },
-            "product": {
-              "description": "Product details for checkout",
-              "type": "object"
-            }
-          },
-          "type": "object"
-        },
-        "type": {
-          "description": "Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)",
-          "enum": [
-            "transaction",
-            "complete"
-          ],
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "mcp_resource_uri": {
-      "description": "MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)",
-      "type": "string"
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier"
     },
     "response": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Brand agent's response",
       "properties": {
         "message": {
-          "description": "Conversational message from brand agent",
-          "type": "string"
+          "type": "string",
+          "description": "Conversational message from brand agent"
         },
         "surface": {
-          "$ref": "../a2ui/surface.json",
+          "$ref": "/schemas/3.0.0-rc.2/a2ui/surface.json",
           "description": "A2UI surface with interactive components"
         },
         "ui_elements": {
-          "deprecated": true,
-          "description": "Visual components to render (DEPRECATED: use surface instead)",
+          "type": "array",
           "items": {
-            "$ref": "si-ui-element.json"
+            "$ref": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-ui-element.json"
           },
-          "type": "array"
+          "description": "Visual components to render (DEPRECATED: use surface instead)",
+          "deprecated": true
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "session_id": {
-      "description": "Session identifier",
-      "type": "string"
+    "mcp_resource_uri": {
+      "type": "string",
+      "description": "MCP resource URI for hosts with MCP Apps support (e.g., ui://si/session-abc123)"
     },
     "session_status": {
-      "description": "Current session status",
-      "enum": [
-        "active",
-        "pending_handoff",
-        "complete"
-      ],
-      "type": "string"
+      "type": "string",
+      "enum": ["active", "pending_handoff", "complete"],
+      "description": "Current session status"
+    },
+    "handoff": {
+      "type": "object",
+      "description": "Handoff request when session_status is pending_handoff",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["transaction", "complete"],
+          "description": "Type of handoff: transaction (ready for ACP checkout) or complete (conversation done)"
+        },
+        "intent": {
+          "type": "object",
+          "description": "For transaction handoffs: what the user wants to purchase",
+          "properties": {
+            "action": {
+              "type": "string",
+              "description": "The commerce action (e.g., 'purchase')"
+            },
+            "product": {
+              "type": "object",
+              "description": "Product details for checkout"
+            },
+            "price": {
+              "type": "object",
+              "description": "Price information",
+              "properties": {
+                "amount": { "type": "number" },
+                "currency": { "type": "string" }
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "context_for_checkout": {
+          "type": "object",
+          "description": "Context to pass to ACP for seamless checkout",
+          "properties": {
+            "conversation_summary": {
+              "type": "string",
+              "description": "Summary of the conversation leading to purchase"
+            },
+            "applied_offers": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Offer IDs that were applied during the conversation"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "/schemas/3.0.0-rc.2/core/error.json"
+      }
+    },
+    "ext": {
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "required": [
-    "session_id",
-    "session_status"
-  ],
-  "title": "SI Send Message Response",
-  "type": "object"
+  "required": ["session_id", "session_status"],
+  "additionalProperties": true
 }

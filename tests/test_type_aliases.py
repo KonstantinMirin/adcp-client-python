@@ -20,8 +20,6 @@ from adcp import (
     HtmlPreviewRender,
     InlineDaastAsset,
     InlineVastAsset,
-    MediaSubAsset,
-    TextSubAsset,
     UrlDaastAsset,
     UrlPreviewRender,
     UrlVastAsset,
@@ -199,9 +197,6 @@ def test_all_asset_type_aliases_exported():
         # DAAST assets
         "UrlDaastAsset",
         "InlineDaastAsset",
-        # SubAssets
-        "MediaSubAsset",
-        "TextSubAsset",
     ]
 
     import adcp.types.aliases as aliases_module
@@ -214,13 +209,13 @@ def test_all_asset_type_aliases_exported():
 def test_discriminated_union_aliases_point_to_correct_types():
     """Test that discriminated union aliases point to the correct generated types."""
     from adcp.types._generated import (
+        CreativeItem1,
+        CreativeItem2,
         DaastAsset1,
         DaastAsset2,
         PreviewRender1,
         PreviewRender2,
         PreviewRender3,
-        SubAsset1,
-        SubAsset2,
         VastAsset1,
         VastAsset2,
     )
@@ -238,9 +233,6 @@ def test_discriminated_union_aliases_point_to_correct_types():
     assert UrlDaastAsset is DaastAsset1
     assert InlineDaastAsset is DaastAsset2
 
-    # SubAssets
-    assert MediaSubAsset is SubAsset1
-    assert TextSubAsset is SubAsset2
 
 
 def test_semantic_aliases_can_be_imported_from_main_package():
@@ -256,12 +248,6 @@ def test_semantic_aliases_can_be_imported_from_main_package():
     )
     from adcp import (
         InlineVastAsset as MainInlineVastAsset,
-    )
-    from adcp import (
-        MediaSubAsset as MainMediaSubAsset,
-    )
-    from adcp import (
-        TextSubAsset as MainTextSubAsset,
     )
     from adcp import (
         UrlDaastAsset as MainUrlDaastAsset,
@@ -281,8 +267,6 @@ def test_semantic_aliases_can_be_imported_from_main_package():
     assert MainInlineVastAsset is InlineVastAsset
     assert MainUrlDaastAsset is UrlDaastAsset
     assert MainInlineDaastAsset is InlineDaastAsset
-    assert MainMediaSubAsset is MediaSubAsset
-    assert MainTextSubAsset is TextSubAsset
 
 
 def test_stable_package_export_is_full_package():

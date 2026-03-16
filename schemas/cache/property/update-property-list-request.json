@@ -1,50 +1,49 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "$id": "/schemas/3.0.0-rc.2/property/update-property-list-request.json",
+  "title": "Update Property List Request",
   "description": "Request parameters for updating an existing property list",
+  "type": "object",
   "properties": {
-    "base_properties": {
-      "description": "Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).",
-      "items": {
-        "$ref": "base-property-source.json"
-      },
-      "type": "array"
-    },
-    "brand": {
-      "$ref": "../core/brand-ref.json",
-      "description": "Update brand reference. Resolved to full brand identity at execution time."
-    },
-    "context": {
-      "$ref": "../core/context.json"
-    },
-    "description": {
-      "description": "New description",
-      "type": "string"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "filters": {
-      "$ref": "property-list-filters.json",
-      "description": "Complete replacement for the filters (not a patch)"
-    },
     "list_id": {
-      "description": "ID of the property list to update",
-      "type": "string"
+      "type": "string",
+      "description": "ID of the property list to update"
     },
     "name": {
-      "description": "New name for the list",
-      "type": "string"
+      "type": "string",
+      "description": "New name for the list"
+    },
+    "description": {
+      "type": "string",
+      "description": "New description"
+    },
+    "base_properties": {
+      "type": "array",
+      "description": "Complete replacement for the base properties list (not a patch). Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers).",
+      "items": {
+        "$ref": "/schemas/3.0.0-rc.2/property/base-property-source.json"
+      }
+    },
+    "filters": {
+      "$ref": "/schemas/3.0.0-rc.2/property/property-list-filters.json",
+      "description": "Complete replacement for the filters (not a patch)"
+    },
+    "brand": {
+      "$ref": "/schemas/3.0.0-rc.2/core/brand-ref.json",
+      "description": "Update brand reference. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
-      "description": "Update the webhook URL for list change notifications (set to empty string to remove)",
+      "type": "string",
       "format": "uri",
-      "type": "string"
+      "description": "Update the webhook URL for list change notifications (set to empty string to remove)"
+    },
+    "context": {
+      "$ref": "/schemas/3.0.0-rc.2/core/context.json"
+    },
+    "ext": {
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "required": [
-    "list_id"
-  ],
-  "title": "Update Property List Request",
-  "type": "object"
+  "required": ["list_id"],
+  "additionalProperties": false
 }

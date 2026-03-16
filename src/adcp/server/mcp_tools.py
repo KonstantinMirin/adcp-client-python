@@ -137,6 +137,19 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["media_buy_id"],
         },
     },
+    {
+        "name": "get_media_buys",
+        "description": "List media buys with status and optional delivery snapshots",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "media_buy_ids": {"type": "array", "items": {"type": "string"}},
+                "buyer_refs": {"type": "array", "items": {"type": "string"}},
+                "pagination": {"type": "object"},
+            },
+        },
+    },
     # Signal Operations
     {
         "name": "get_signals",
@@ -184,6 +197,29 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["accounts"],
         },
     },
+    {
+        "name": "get_account_financials",
+        "description": "Get account financials",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "date_range": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "report_usage",
+        "description": "Report usage for billing or metering",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "usage": {"type": "array"},
+            },
+            "required": ["usage"],
+        },
+    },
     # Event Operations
     {
         "name": "log_event",
@@ -205,6 +241,30 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "event_sources": {"type": "array"},
             },
             "required": ["event_sources"],
+        },
+    },
+    {
+        "name": "sync_audiences",
+        "description": "Sync audiences",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "audiences": {"type": "array"},
+            },
+            "required": ["audiences"],
+        },
+    },
+    {
+        "name": "sync_catalogs",
+        "description": "Sync catalogs",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "catalogs": {"type": "array"},
+            },
+            "required": ["catalogs"],
         },
     },
     # Feedback Operations
@@ -308,6 +368,78 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "media_buy_id": {"type": "string"},
             },
             "required": ["media_buy_id"],
+        },
+    },
+    # V3 Governance
+    {
+        "name": "get_creative_features",
+        "description": "Evaluate governance features for a creative",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "creative_manifest": {"type": "object"},
+                "account": {"type": "object"},
+                "context": {"type": "object"},
+            },
+            "required": ["creative_manifest"],
+        },
+    },
+    {
+        "name": "sync_plans",
+        "description": "Sync campaign governance plans",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plans": {"type": "array"},
+            },
+            "required": ["plans"],
+        },
+    },
+    {
+        "name": "check_governance",
+        "description": "Check an action against campaign governance",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_id": {"type": "string"},
+                "buyer_campaign_ref": {"type": "string"},
+                "binding": {"type": "string"},
+                "caller": {"type": "string"},
+                "tool": {"type": "string"},
+                "payload": {"type": "object"},
+                "governance_context": {"type": "object"},
+            },
+            "required": ["plan_id", "buyer_campaign_ref", "binding", "caller"],
+        },
+    },
+    {
+        "name": "report_plan_outcome",
+        "description": "Report the outcome of a governed action",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_id": {"type": "string"},
+                "buyer_campaign_ref": {"type": "string"},
+                "outcome": {"type": "string"},
+                "check_id": {"type": "string"},
+                "seller_response": {"type": "object"},
+                "delivery": {"type": "object"},
+                "error": {"type": "object"},
+            },
+            "required": ["plan_id", "buyer_campaign_ref", "outcome"],
+        },
+    },
+    {
+        "name": "get_plan_audit_logs",
+        "description": "Retrieve governance audit logs for one or more plans",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_ids": {"type": "array", "items": {"type": "string"}},
+                "portfolio_plan_ids": {"type": "array", "items": {"type": "string"}},
+                "buyer_campaign_ref": {"type": "string"},
+                "include_entries": {"type": "boolean"},
+            },
         },
     },
     # V3 Sponsored Intelligence

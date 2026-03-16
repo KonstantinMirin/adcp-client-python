@@ -150,6 +150,16 @@ class ProtocolAdapter(ABC):
         pass
 
     @abstractmethod
+    async def sync_audiences(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync audiences."""
+        pass
+
+    @abstractmethod
+    async def sync_catalogs(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync catalogs."""
+        pass
+
+    @abstractmethod
     async def create_media_buy(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Create media buy."""
         pass
@@ -182,6 +192,16 @@ class ProtocolAdapter(ABC):
     @abstractmethod
     async def sync_accounts(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Sync accounts."""
+        pass
+
+    @abstractmethod
+    async def get_account_financials(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get account financials."""
+        pass
+
+    @abstractmethod
+    async def report_usage(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Report account usage."""
         pass
 
     @abstractmethod
@@ -265,6 +285,35 @@ class ProtocolAdapter(ABC):
     @abstractmethod
     async def get_media_buy_artifacts(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Get artifacts associated with a media buy."""
+        pass
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance
+    # ========================================================================
+
+    @abstractmethod
+    async def get_creative_features(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Evaluate governance features for a creative."""
+        pass
+
+    @abstractmethod
+    async def sync_plans(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync campaign governance plans."""
+        pass
+
+    @abstractmethod
+    async def check_governance(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Check an action against campaign governance."""
+        pass
+
+    @abstractmethod
+    async def report_plan_outcome(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Report the outcome of a governed action."""
+        pass
+
+    @abstractmethod
+    async def get_plan_audit_logs(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Retrieve governance audit logs for plans."""
         pass
 
     # ========================================================================

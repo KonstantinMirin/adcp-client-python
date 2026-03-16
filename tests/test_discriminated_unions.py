@@ -15,8 +15,6 @@ from adcp import (
     HtmlPreviewRender,
     InlineDaastAsset,
     InlineVastAsset,
-    MediaSubAsset,
-    TextSubAsset,
     UrlDaastAsset,
     UrlPreviewRender,
     UrlVastAsset,
@@ -657,56 +655,6 @@ class TestDaastAssetDiscriminators:
         assert "delivery_type" in str(exc_info.value).lower()
 
 
-class TestSubAssetDiscriminators:
-    """Test SubAsset discriminator field values match semantic aliases."""
-
-    def test_media_sub_asset_has_media_discriminator(self):
-        """MediaSubAsset has asset_kind='media'."""
-        asset = MediaSubAsset(
-            asset_id="asset_1",
-            asset_type="logo",
-            asset_kind="media",
-            content_uri="https://cdn.example.com/logo.png",
-        )
-        assert asset.asset_kind == "media"
-        assert hasattr(asset, "content_uri")
-        assert not hasattr(asset, "content")
-
-    def test_text_sub_asset_has_text_discriminator(self):
-        """TextSubAsset has asset_kind='text'."""
-        asset = TextSubAsset(
-            asset_id="asset_2",
-            asset_type="headline",
-            asset_kind="text",
-            content="Buy Now!",
-        )
-        assert asset.asset_kind == "text"
-        assert hasattr(asset, "content")
-        assert not hasattr(asset, "content_uri")
-
-    def test_media_sub_asset_rejects_wrong_discriminator(self):
-        """MediaSubAsset rejects asset_kind='text'."""
-        with pytest.raises(ValidationError) as exc_info:
-            MediaSubAsset(
-                asset_id="asset_1",
-                asset_type="logo",
-                asset_kind="text",  # Wrong discriminator value
-                content_uri="https://cdn.example.com/logo.png",
-            )
-        assert "asset_kind" in str(exc_info.value).lower()
-
-    def test_text_sub_asset_rejects_wrong_discriminator(self):
-        """TextSubAsset rejects asset_kind='media'."""
-        with pytest.raises(ValidationError) as exc_info:
-            TextSubAsset(
-                asset_id="asset_2",
-                asset_type="headline",
-                asset_kind="media",  # Wrong discriminator value
-                content="Buy Now!",
-            )
-        assert "asset_kind" in str(exc_info.value).lower()
-
-
 class TestSemanticAliasDiscriminatorRoundtrips:
     """Test that semantic aliases serialize/deserialize with correct discriminators."""
 
@@ -733,33 +681,6 @@ class TestSemanticAliasDiscriminatorRoundtrips:
         parsed = UrlVastAsset.model_validate_json(json_str)
         assert parsed.delivery_type == "url"
         assert parsed.url == original.url
-
-    def test_media_sub_asset_roundtrip(self):
-        """MediaSubAsset roundtrips with asset_kind='media'."""
-        original = MediaSubAsset(
-            asset_id="asset_1",
-            asset_type="logo",
-            asset_kind="media",
-            content_uri="https://cdn.example.com/logo.png",
-        )
-        json_str = original.model_dump_json()
-        parsed = MediaSubAsset.model_validate_json(json_str)
-        assert parsed.asset_kind == "media"
-        assert parsed.content_uri == original.content_uri
-
-    def test_text_sub_asset_roundtrip(self):
-        """TextSubAsset roundtrips with asset_kind='text'."""
-        original = TextSubAsset(
-            asset_id="asset_2",
-            asset_type="headline",
-            asset_kind="text",
-            content="Buy Now!",
-        )
-        json_str = original.model_dump_json()
-        parsed = TextSubAsset.model_validate_json(json_str)
-        assert parsed.asset_kind == "text"
-        assert parsed.content == original.content
-
 
 class TestPropertyTagSharedSchema:
     """Test that PropertyTag uses shared schema definition.

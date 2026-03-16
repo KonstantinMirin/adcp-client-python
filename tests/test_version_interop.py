@@ -25,6 +25,12 @@ V3_ONLY_TOOLS = [
     "calibrate_content",
     "validate_content_delivery",
     "get_media_buy_artifacts",
+    # Governance
+    "get_creative_features",
+    "sync_plans",
+    "check_governance",
+    "report_plan_outcome",
+    "get_plan_audit_logs",
     # Sponsored Intelligence
     "si_get_offering",
     "si_initiate_session",
@@ -102,9 +108,8 @@ class TestVersionInterop:
 
         dispatch_table = _get_dispatch_table()
 
-        # 2 introspection (list_tools, get_info) + 12 V2 core + 1 V3 discovery + 17 V3 protocol
-        # = 32 total (approximately)
-        assert len(dispatch_table) >= 30, "Dispatch table should have at least 30 tools"
+        # 2 introspection (list_tools, get_info) + V2 core + V3 discovery/protocol tools
+        assert len(dispatch_table) >= 35, "Dispatch table should have at least 35 tools"
 
     @pytest.mark.asyncio
     async def test_cli_dispatch_unknown_tool_error(self):
@@ -142,6 +147,9 @@ class TestHandlerVersionInterop:
         assert isinstance(result, NotImplementedResponse)
 
         result = await handler.si_get_offering({})
+        assert isinstance(result, NotImplementedResponse)
+
+        result = await handler.sync_plans({})
         assert isinstance(result, NotImplementedResponse)
 
         result = await handler.create_property_list({})

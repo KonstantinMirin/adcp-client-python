@@ -18,18 +18,23 @@ from adcp.server import (
 from adcp.server.proposal import proposals_not_supported
 from adcp.types import (
     CalibrateContentResponse,
+    CheckGovernanceResponse,
     CreateContentStandardsResponse,
     CreatePropertyListResponse,
     DeletePropertyListResponse,
     GetContentStandardsResponse,
+    GetCreativeFeaturesResponse,
     GetMediaBuyArtifactsResponse,
+    GetPlanAuditLogsResponse,
     GetPropertyListResponse,
     ListContentStandardsResponse,
     ListPropertyListsResponse,
+    ReportPlanOutcomeResponse,
     SiGetOfferingResponse,
     SiInitiateSessionResponse,
     SiSendMessageResponse,
     SiTerminateSessionResponse,
+    SyncPlansResponse,
     UpdateContentStandardsResponse,
     UpdatePropertyListResponse,
     ValidateContentDeliveryResponse,
@@ -210,6 +215,9 @@ class TestContentStandardsHandler:
         """Test governance methods are stubbed as not supported."""
         handler = self.create_concrete_handler()
 
+        result = await handler.sync_plans({})
+        assert isinstance(result, NotImplementedResponse)
+
         result = await handler.create_property_list({})
         assert isinstance(result, NotImplementedResponse)
         assert "Governance" in result.reason
@@ -291,20 +299,49 @@ class TestGovernanceHandler:
         """Create a concrete handler for testing."""
 
         class ConcreteGovHandler(GovernanceHandler):
+            async def handle_get_creative_features(self, request, context=None):
+                return validate_union(GetCreativeFeaturesResponse, {"results": []})
+
+            async def handle_sync_plans(self, request, context=None):
+                return SyncPlansResponse(plans=[])
+
+            async def handle_check_governance(self, request, context=None):
+                return CheckGovernanceResponse(
+                    check_id="chk_123",
+                    status="approved",
+                    binding="proposed",
+                    plan_id="plan_123",
+                    buyer_campaign_ref="campaign_123",
+                    explanation="Approved",
+                )
+
+            async def handle_report_plan_outcome(self, request, context=None):
+                return ReportPlanOutcomeResponse(
+                    outcome_id="out_123",
+                    status="accepted",
+                )
+
+            async def handle_get_plan_audit_logs(self, request, context=None):
+                return GetPlanAuditLogsResponse(plans=[])
+
             async def handle_create_property_list(self, request, context=None):
-                return CreatePropertyListResponse()
+                return CreatePropertyListResponse.model_construct()
 
             async def handle_get_property_list(self, request, context=None):
-                return GetPropertyListResponse()
+                from adcp.types.generated_poc.property.property_list import PropertyList
+
+                return GetPropertyListResponse(
+                    list=PropertyList(list_id="pl-1", name="test"),
+                )
 
             async def handle_list_property_lists(self, request, context=None):
                 return ListPropertyListsResponse(lists=[])
 
             async def handle_update_property_list(self, request, context=None):
-                return UpdatePropertyListResponse()
+                return UpdatePropertyListResponse.model_construct()
 
             async def handle_delete_property_list(self, request, context=None):
-                return DeletePropertyListResponse()
+                return DeletePropertyListResponse(deleted=True, list_id="pl-1")
 
         return ConcreteGovHandler()
 
@@ -338,6 +375,37 @@ class TestGovernanceHandler:
         assert isinstance(result, NotImplementedResponse)
 
     @pytest.mark.asyncio
+    async def test_campaign_governance_methods_validate(self):
+        """Test campaign governance methods are wired through the handler."""
+        handler = self.create_concrete_handler()
+
+        result = await handler.sync_plans({"plans": []})
+        assert isinstance(result, SyncPlansResponse)
+
+        result = await handler.check_governance(
+            {
+                "plan_id": "plan_123",
+                "buyer_campaign_ref": "campaign_123",
+                "binding": "proposed",
+                "caller": "https://buyer.example.com",
+            }
+        )
+        assert isinstance(result, CheckGovernanceResponse)
+
+        result = await handler.report_plan_outcome(
+            {
+                "plan_id": "plan_123",
+                "buyer_campaign_ref": "campaign_123",
+                "outcome": "completed",
+                "seller_response": {},
+            }
+        )
+        assert isinstance(result, ReportPlanOutcomeResponse)
+
+        result = await handler.get_plan_audit_logs({"plan_ids": ["plan_123"]})
+        assert isinstance(result, GetPlanAuditLogsResponse)
+
+    @pytest.mark.asyncio
     async def test_si_methods_return_not_supported(self):
         """Test SI methods are stubbed as not supported."""
         handler = self.create_concrete_handler()
@@ -345,6 +413,83 @@ class TestGovernanceHandler:
         result = await handler.si_get_offering({})
         assert isinstance(result, NotImplementedResponse)
         assert "Sponsored Intelligence" in result.reason
+
+    @pytest.mark.asyncio
+    async def test_get_creative_features_validates(self):
+        """Test get_creative_features happy path through the handler."""
+        handler = self.create_concrete_handler()
+        result = await handler.get_creative_features(
+            {
+                "creative_manifest": {
+                    "creative_id": "cr-1",
+                    "name": "Test",
+                    "format_id": {"id": "fmt-1", "agent_url": "https://a.example.com/"},
+                    "assets": {},
+                },
+            }
+        )
+        assert not isinstance(result, NotImplementedResponse)
+
+    @pytest.mark.asyncio
+    async def test_property_list_delegation(self):
+        """Test property list methods validate and delegate to handlers."""
+        handler = self.create_concrete_handler()
+
+        result = await handler.create_property_list({"name": "test"})
+        assert isinstance(result, CreatePropertyListResponse)
+
+        result = await handler.get_property_list({"list_id": "pl-1"})
+        assert isinstance(result, GetPropertyListResponse)
+
+        result = await handler.list_property_lists({})
+        assert isinstance(result, ListPropertyListsResponse)
+
+        result = await handler.update_property_list({"list_id": "pl-1"})
+        assert isinstance(result, UpdatePropertyListResponse)
+
+        result = await handler.delete_property_list({"list_id": "pl-1"})
+        assert isinstance(result, DeletePropertyListResponse)
+
+    @pytest.mark.asyncio
+    async def test_validation_error_returns_error_response(self):
+        """Test that invalid params return VALIDATION_ERROR, not exceptions."""
+        handler = self.create_concrete_handler()
+
+        # check_governance requires plan_id, buyer_campaign_ref, binding, caller
+        result = await handler.check_governance({"invalid_field": True})
+        assert isinstance(result, NotImplementedResponse)
+        assert result.error is not None
+        assert result.error.code == "VALIDATION_ERROR"
+
+    @pytest.mark.asyncio
+    async def test_get_plan_audit_logs_validation_error(self):
+        """Test TypeAdapter validation error path for request type."""
+        handler = self.create_concrete_handler()
+
+        # plan_ids must be a list, not a string
+        result = await handler.get_plan_audit_logs({"plan_ids": "not_a_list"})
+        assert isinstance(result, NotImplementedResponse)
+        assert result.error is not None
+        assert result.error.code == "VALIDATION_ERROR"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "get_media_buys",
+            "get_account_financials",
+            "report_usage",
+            "sync_audiences",
+            "sync_catalogs",
+        ],
+    )
+    async def test_rc2_tasks_return_not_supported(self, method_name):
+        """Test RC2 tasks are stubbed as not supported."""
+        handler = self.create_concrete_handler()
+        method = getattr(handler, method_name)
+        result = await method({})
+        assert isinstance(result, NotImplementedResponse)
+        assert "Governance" in result.reason
 
 
 class TestProposalBuilder:

@@ -747,3 +747,721 @@ class TestRegistryError:
 
     def test_max_bulk_domains_constant(self):
         assert MAX_BULK_DOMAINS == 100
+
+
+# ========================================================================
+# Policy Registry Tests
+# ========================================================================
+
+from adcp.registry import MAX_BULK_POLICIES
+from adcp.types.core import (
+    Policy,
+    PolicyExemplar,
+    PolicyExemplars,
+    PolicyHistory,
+    PolicyRevision,
+    PolicySummary,
+)
+
+POLICY_SUMMARY_DATA = {
+    "policy_id": "gdpr_consent",
+    "version": "1.0.0",
+    "name": "GDPR Consent Requirements",
+    "description": "Requirements for valid consent under GDPR",
+    "category": "regulation",
+    "enforcement": "must",
+    "jurisdictions": ["EU", "EEA"],
+    "region_aliases": {"EU": ["DE", "FR", "IT"]},
+    "verticals": ["finance", "healthcare"],
+    "channels": ["display", "video"],
+    "governance_domains": ["campaign", "creative"],
+    "effective_date": "2025-05-25",
+    "sunset_date": None,
+    "source_url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+    "source_name": "EUR-Lex",
+    "source_type": "registry",
+    "review_status": "approved",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-06-01T00:00:00Z",
+}
+
+POLICY_DATA = {
+    **POLICY_SUMMARY_DATA,
+    "policy": "Data subjects must provide freely given, specific, informed consent.",
+    "guidance": "Consent must be obtained before processing personal data.",
+    "exemplars": {
+        "pass": [
+            {
+                "scenario": "Clear opt-in checkbox with explanation",
+                "explanation": "User actively consents with full information",
+            }
+        ],
+        "fail": [
+            {
+                "scenario": "Pre-checked consent box",
+                "explanation": "Pre-checked boxes do not constitute valid consent",
+            }
+        ],
+    },
+    "ext": {"custom_field": "custom_value"},
+}
+
+POLICY_HISTORY_DATA = {
+    "policy_id": "gdpr_consent",
+    "total": 2,
+    "revisions": [
+        {
+            "revision_number": 2,
+            "editor_name": "Pinnacle Media",
+            "edit_summary": "Clarified consent requirements for minors",
+            "is_rollback": False,
+            "created_at": "2025-06-01T00:00:00Z",
+        },
+        {
+            "revision_number": 1,
+            "editor_name": "Registry",
+            "edit_summary": "Initial policy creation",
+            "is_rollback": False,
+            "created_at": "2025-01-01T00:00:00Z",
+        },
+    ],
+}
+
+
+class TestListPolicies:
+    """Test policy listing."""
+
+    @pytest.mark.asyncio
+    async def test_lists_policies(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, {"policies": [POLICY_SUMMARY_DATA]})
+        )
+
+        rc = RegistryClient(client=mock_client)
+        policies = await rc.list_policies()
+
+        assert len(policies) == 1
+        assert isinstance(policies[0], PolicySummary)
+        assert policies[0].policy_id == "gdpr_consent"
+        assert policies[0].enforcement == "must"
+
+    @pytest.mark.asyncio
+    async def test_empty_policy_list(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, {"policies": []})
+        )
+
+        rc = RegistryClient(client=mock_client)
+        policies = await rc.list_policies()
+        assert policies == []
+
+    @pytest.mark.asyncio
+    async def test_missing_policies_key_returns_empty_list(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {}))
+
+        rc = RegistryClient(client=mock_client)
+        policies = await rc.list_policies()
+        assert policies == []
+
+    @pytest.mark.asyncio
+    async def test_sends_correct_params(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, {"policies": []})
+        )
+
+        rc = RegistryClient(
+            base_url="https://test.example.com",
+            client=mock_client,
+            user_agent="test-agent",
+        )
+        await rc.list_policies(
+            search="gdpr",
+            category="regulation",
+            enforcement="must",
+            jurisdiction="EU",
+            vertical="finance",
+            domain="campaign",
+            limit=10,
+            offset=5,
+        )
+
+        mock_client.get.assert_called_once_with(
+            "https://test.example.com/api/policies/registry",
+            params={
+                "limit": 10,
+                "offset": 5,
+                "search": "gdpr",
+                "category": "regulation",
+                "enforcement": "must",
+                "jurisdiction": "EU",
+                "vertical": "finance",
+                "domain": "campaign",
+            },
+            headers={"User-Agent": "test-agent"},
+            timeout=10.0,
+        )
+
+    @pytest.mark.asyncio
+    async def test_omits_none_params(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, {"policies": []})
+        )
+
+        rc = RegistryClient(client=mock_client)
+        await rc.list_policies(category="standard")
+
+        call_args = mock_client.get.call_args
+        params = call_args.kwargs["params"]
+        assert "search" not in params
+        assert "jurisdiction" not in params
+        assert params["category"] == "standard"
+
+    @pytest.mark.asyncio
+    async def test_raises_on_server_error(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(500))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.list_policies()
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_raises_on_timeout(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=httpx.ReadTimeout("timeout"))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError, match="timed out"):
+            await rc.list_policies()
+
+
+class TestResolvePolicy:
+    """Test single policy resolution."""
+
+    @pytest.mark.asyncio
+    async def test_resolves_known_policy(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(200, POLICY_DATA))
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.resolve_policy("gdpr_consent")
+
+        assert result is not None
+        assert isinstance(result, Policy)
+        assert result.policy_id == "gdpr_consent"
+        assert result.enforcement == "must"
+        assert "freely given" in result.policy
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_404(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(404, {"error": "Policy not found"})
+        )
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.resolve_policy("unknown_policy")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_null_body(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(200, None))
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.resolve_policy("empty")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_sends_correct_params(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(404))
+
+        rc = RegistryClient(
+            base_url="https://test.example.com",
+            client=mock_client,
+            user_agent="test-agent",
+        )
+        await rc.resolve_policy("gdpr_consent", version="1.0.0")
+
+        mock_client.get.assert_called_once_with(
+            "https://test.example.com/api/policies/resolve",
+            params={"policy_id": "gdpr_consent", "version": "1.0.0"},
+            headers={"User-Agent": "test-agent"},
+            timeout=10.0,
+        )
+
+    @pytest.mark.asyncio
+    async def test_omits_version_when_none(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(404))
+
+        rc = RegistryClient(client=mock_client)
+        await rc.resolve_policy("gdpr_consent")
+
+        call_args = mock_client.get.call_args
+        params = call_args.kwargs["params"]
+        assert "version" not in params
+
+    @pytest.mark.asyncio
+    async def test_raises_on_server_error(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(500))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.resolve_policy("gdpr_consent")
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_raises_on_timeout(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=httpx.ReadTimeout("timeout"))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError, match="timed out"):
+            await rc.resolve_policy("gdpr_consent")
+
+    @pytest.mark.asyncio
+    async def test_raises_on_invalid_response_data(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, {"unexpected": "data"})
+        )
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError, match="invalid response"):
+            await rc.resolve_policy("gdpr_consent")
+
+
+class TestResolvePolicies:
+    """Test bulk policy resolution."""
+
+    @pytest.mark.asyncio
+    async def test_resolves_multiple_policies(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=_mock_response(
+                200,
+                {
+                    "results": {
+                        "gdpr_consent": POLICY_DATA,
+                        "unknown_policy": None,
+                    }
+                },
+            )
+        )
+
+        rc = RegistryClient(client=mock_client)
+        results = await rc.resolve_policies(["gdpr_consent", "unknown_policy"])
+
+        assert len(results) == 2
+        assert isinstance(results["gdpr_consent"], Policy)
+        assert results["unknown_policy"] is None
+
+    @pytest.mark.asyncio
+    async def test_empty_list_returns_empty_dict(self):
+        rc = RegistryClient(client=MagicMock())
+        results = await rc.resolve_policies([])
+        assert results == {}
+
+    @pytest.mark.asyncio
+    async def test_auto_chunks_over_limit(self):
+        policy_ids = [f"policy_{i}" for i in range(150)]
+
+        call_count = 0
+
+        async def mock_post(url, json, headers, timeout):
+            nonlocal call_count
+            call_count += 1
+            chunk_ids = json["policy_ids"]
+            results = {pid: None for pid in chunk_ids}
+            return _mock_response(200, {"results": results})
+
+        mock_client = MagicMock()
+        mock_client.post = mock_post
+
+        rc = RegistryClient(client=mock_client)
+        results = await rc.resolve_policies(policy_ids)
+
+        assert call_count == 2  # 100 + 50
+        assert len(results) == 150
+
+    @pytest.mark.asyncio
+    async def test_policy_absent_from_response_defaults_to_none(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=_mock_response(
+                200, {"results": {"gdpr_consent": POLICY_DATA}}
+            )
+        )
+
+        rc = RegistryClient(client=mock_client)
+        results = await rc.resolve_policies(["gdpr_consent", "other_policy"])
+
+        assert isinstance(results["gdpr_consent"], Policy)
+        assert results["other_policy"] is None
+
+    @pytest.mark.asyncio
+    async def test_raises_on_server_error(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=_mock_response(500))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.resolve_policies(["gdpr_consent"])
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_chunk_failure_propagates(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=_mock_response(503))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.resolve_policies([f"policy_{i}" for i in range(150)])
+        assert exc_info.value.status_code == 503
+
+
+class TestPolicyHistory:
+    """Test policy history retrieval."""
+
+    @pytest.mark.asyncio
+    async def test_retrieves_history(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(
+            return_value=_mock_response(200, POLICY_HISTORY_DATA)
+        )
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.policy_history("gdpr_consent")
+
+        assert result is not None
+        assert isinstance(result, PolicyHistory)
+        assert result.policy_id == "gdpr_consent"
+        assert result.total == 2
+        assert len(result.revisions) == 2
+        assert result.revisions[0].revision_number == 2
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_404(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(404))
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.policy_history("unknown_policy")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_sends_correct_params(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(404))
+
+        rc = RegistryClient(
+            base_url="https://test.example.com",
+            client=mock_client,
+            user_agent="test-agent",
+        )
+        await rc.policy_history("gdpr_consent", limit=10, offset=5)
+
+        mock_client.get.assert_called_once_with(
+            "https://test.example.com/api/policies/history",
+            params={"policy_id": "gdpr_consent", "limit": 10, "offset": 5},
+            headers={"User-Agent": "test-agent"},
+            timeout=10.0,
+        )
+
+    @pytest.mark.asyncio
+    async def test_raises_on_server_error(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(return_value=_mock_response(500))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.policy_history("gdpr_consent")
+        assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_raises_on_timeout(self):
+        mock_client = MagicMock()
+        mock_client.get = AsyncMock(side_effect=httpx.ReadTimeout("timeout"))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError, match="timed out"):
+            await rc.policy_history("gdpr_consent")
+
+
+class TestSavePolicy:
+    """Test policy save (authenticated)."""
+
+    @pytest.mark.asyncio
+    async def test_saves_policy(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "message": "Policy created",
+                    "policy_id": "my_policy",
+                    "revision_number": 1,
+                },
+            )
+        )
+
+        rc = RegistryClient(client=mock_client)
+        result = await rc.save_policy(
+            policy_id="my_policy",
+            version="1.0.0",
+            name="My Policy",
+            category="standard",
+            enforcement="should",
+            policy="Ads should not appear next to violent content.",
+            auth_token="sk_test_123",
+        )
+
+        assert result["success"] is True
+        assert result["policy_id"] == "my_policy"
+
+    @pytest.mark.asyncio
+    async def test_sends_auth_header(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=_mock_response(
+                200,
+                {"success": True, "message": "ok", "policy_id": "x", "revision_number": 1},
+            )
+        )
+
+        rc = RegistryClient(client=mock_client)
+        await rc.save_policy(
+            policy_id="x",
+            version="1.0.0",
+            name="X",
+            category="standard",
+            enforcement="should",
+            policy="text",
+            auth_token="sk_secret_key",
+        )
+
+        call_args = mock_client.post.call_args
+        headers = call_args.kwargs["headers"]
+        assert headers["Authorization"] == "Bearer sk_secret_key"
+
+    @pytest.mark.asyncio
+    async def test_sends_optional_fields(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(
+            return_value=_mock_response(
+                200,
+                {"success": True, "message": "ok", "policy_id": "x", "revision_number": 1},
+            )
+        )
+
+        rc = RegistryClient(client=mock_client)
+        await rc.save_policy(
+            policy_id="x",
+            version="1.0.0",
+            name="X",
+            category="regulation",
+            enforcement="must",
+            policy="text",
+            auth_token="sk_key",
+            jurisdictions=["US"],
+            governance_domains=["campaign"],
+            guidance="Some guidance",
+        )
+
+        call_args = mock_client.post.call_args
+        body = call_args.kwargs["json"]
+        assert body["jurisdictions"] == ["US"]
+        assert body["governance_domains"] == ["campaign"]
+        assert body["guidance"] == "Some guidance"
+        assert "channels" not in body  # None values omitted
+
+    @pytest.mark.asyncio
+    async def test_raises_on_401(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=_mock_response(401))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.save_policy(
+                policy_id="x", version="1.0.0", name="X",
+                category="standard", enforcement="should", policy="text",
+                auth_token="bad_token",
+            )
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_raises_on_409(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=_mock_response(409))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError) as exc_info:
+            await rc.save_policy(
+                policy_id="gdpr_consent", version="1.0.0", name="X",
+                category="regulation", enforcement="must", policy="text",
+                auth_token="sk_key",
+            )
+        assert exc_info.value.status_code == 409
+
+    @pytest.mark.asyncio
+    async def test_raises_on_timeout(self):
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=httpx.ReadTimeout("timeout"))
+
+        rc = RegistryClient(client=mock_client)
+        with pytest.raises(RegistryError, match="timed out"):
+            await rc.save_policy(
+                policy_id="x", version="1.0.0", name="X",
+                category="standard", enforcement="should", policy="text",
+                auth_token="sk_key",
+            )
+
+
+class TestPolicyTypes:
+    """Test policy Pydantic models."""
+
+    def test_policy_summary_validates(self):
+        summary = PolicySummary.model_validate(POLICY_SUMMARY_DATA)
+        assert summary.policy_id == "gdpr_consent"
+        assert summary.category == "regulation"
+        assert summary.jurisdictions == ["EU", "EEA"]
+        assert summary.region_aliases == {"EU": ["DE", "FR", "IT"]}
+
+    def test_policy_summary_defaults(self):
+        minimal = {
+            "policy_id": "test",
+            "version": "1.0.0",
+            "name": "Test",
+            "category": "standard",
+            "enforcement": "should",
+        }
+        summary = PolicySummary.model_validate(minimal)
+        assert summary.jurisdictions == []
+        assert summary.region_aliases == {}
+        assert summary.verticals == []
+        assert summary.governance_domains == []
+        assert summary.channels is None
+        assert summary.description is None
+        assert summary.effective_date is None
+
+    def test_policy_validates_with_exemplars(self):
+        policy = Policy.model_validate(POLICY_DATA)
+        assert policy.policy_id == "gdpr_consent"
+        assert "freely given" in policy.policy
+        assert policy.exemplars is not None
+        assert len(policy.exemplars.pass_) == 1
+        assert len(policy.exemplars.fail) == 1
+        assert policy.exemplars.pass_[0].scenario == "Clear opt-in checkbox with explanation"
+        assert policy.exemplars.fail[0].scenario == "Pre-checked consent box"
+
+    def test_policy_without_exemplars(self):
+        data = {
+            **POLICY_SUMMARY_DATA,
+            "policy": "Some policy text.",
+        }
+        policy = Policy.model_validate(data)
+        assert policy.exemplars is None
+        assert policy.guidance is None
+
+    def test_policy_history_validates(self):
+        history = PolicyHistory.model_validate(POLICY_HISTORY_DATA)
+        assert history.policy_id == "gdpr_consent"
+        assert history.total == 2
+        assert len(history.revisions) == 2
+
+    def test_policy_revision_validates(self):
+        rev = PolicyRevision.model_validate(POLICY_HISTORY_DATA["revisions"][0])
+        assert rev.revision_number == 2
+        assert rev.editor_name == "Pinnacle Media"
+        assert rev.is_rollback is False
+        assert rev.rolled_back_to is None
+
+    def test_policy_revision_with_rollback(self):
+        data = {
+            "revision_number": 3,
+            "editor_name": "Admin",
+            "edit_summary": "Rolled back to revision 1",
+            "is_rollback": True,
+            "rolled_back_to": 1,
+            "created_at": "2025-07-01T00:00:00Z",
+        }
+        rev = PolicyRevision.model_validate(data)
+        assert rev.is_rollback is True
+        assert rev.rolled_back_to == 1
+
+    def test_policy_exemplar_validates(self):
+        exemplar = PolicyExemplar.model_validate(
+            {"scenario": "Test scenario", "explanation": "Test explanation"}
+        )
+        assert exemplar.scenario == "Test scenario"
+
+    def test_policy_exemplars_pass_alias(self):
+        """The 'pass' field uses alias since 'pass' is a Python keyword."""
+        exemplars = PolicyExemplars.model_validate({
+            "pass": [{"scenario": "ok", "explanation": "fine"}],
+            "fail": [{"scenario": "bad", "explanation": "not fine"}],
+        })
+        assert len(exemplars.pass_) == 1
+        assert len(exemplars.fail) == 1
+
+    def test_policy_summary_extra_fields_preserved(self):
+        data = {**POLICY_SUMMARY_DATA, "extra_field": "extra_value"}
+        summary = PolicySummary.model_validate(data)
+        assert summary.extra_field == "extra_value"  # type: ignore[attr-defined]
+
+
+class TestPolicyExports:
+    """Test that policy types are exported correctly."""
+
+    def test_policy_exported_from_types(self):
+        import adcp.types
+
+        assert adcp.types.Policy is Policy
+
+    def test_policy_summary_exported_from_types(self):
+        import adcp.types
+
+        assert adcp.types.PolicySummary is PolicySummary
+
+    def test_policy_history_exported_from_types(self):
+        import adcp.types
+
+        assert adcp.types.PolicyHistory is PolicyHistory
+
+    def test_policy_revision_exported_from_types(self):
+        import adcp.types
+
+        assert adcp.types.PolicyRevision is PolicyRevision
+
+    def test_policy_exemplar_exported_from_types(self):
+        import adcp.types
+
+        assert adcp.types.PolicyExemplar is PolicyExemplar
+
+    def test_policy_exported_from_root(self):
+        import adcp
+
+        assert adcp.Policy is Policy
+
+    def test_policy_summary_exported_from_root(self):
+        import adcp
+
+        assert adcp.PolicySummary is PolicySummary
+
+    def test_policy_history_exported_from_root(self):
+        import adcp
+
+        assert adcp.PolicyHistory is PolicyHistory
+
+    def test_max_bulk_policies_constant(self):
+        assert MAX_BULK_POLICIES == 100

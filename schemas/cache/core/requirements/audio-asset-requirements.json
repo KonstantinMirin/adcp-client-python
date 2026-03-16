@@ -1,67 +1,59 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/core/requirements/audio-asset-requirements.json",
+  "title": "Audio Asset Requirements",
   "description": "Requirements for audio creative assets.",
+  "type": "object",
   "properties": {
-    "channels": {
-      "description": "Accepted audio channel configurations",
-      "items": {
-        "enum": [
-          "mono",
-          "stereo"
-        ],
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "formats": {
-      "description": "Accepted audio file formats",
-      "items": {
-        "enum": [
-          "mp3",
-          "aac",
-          "wav",
-          "ogg",
-          "flac"
-        ],
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "max_bitrate_kbps": {
-      "description": "Maximum audio bitrate in kilobits per second",
+    "min_duration_ms": {
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
+      "description": "Minimum duration in milliseconds"
     },
     "max_duration_ms": {
-      "description": "Maximum duration in milliseconds",
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
+      "description": "Maximum duration in milliseconds"
+    },
+    "formats": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["mp3", "aac", "wav", "ogg", "flac"]
+      },
+      "description": "Accepted audio file formats"
     },
     "max_file_size_kb": {
-      "description": "Maximum file size in kilobytes",
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
-    },
-    "min_bitrate_kbps": {
-      "description": "Minimum audio bitrate in kilobits per second",
-      "minimum": 1,
-      "type": "integer"
-    },
-    "min_duration_ms": {
-      "description": "Minimum duration in milliseconds",
-      "minimum": 1,
-      "type": "integer"
+      "description": "Maximum file size in kilobytes"
     },
     "sample_rates": {
-      "description": "Accepted sample rates in Hz (e.g., [44100, 48000])",
+      "type": "array",
       "items": {
-        "minimum": 1,
-        "type": "integer"
+        "type": "integer",
+        "minimum": 1
       },
-      "type": "array"
+      "description": "Accepted sample rates in Hz (e.g., [44100, 48000])"
+    },
+    "channels": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["mono", "stereo"]
+      },
+      "description": "Accepted audio channel configurations"
+    },
+    "min_bitrate_kbps": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Minimum audio bitrate in kilobits per second"
+    },
+    "max_bitrate_kbps": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum audio bitrate in kilobits per second"
     }
   },
-  "title": "Audio Asset Requirements",
-  "type": "object"
+  "additionalProperties": true
 }

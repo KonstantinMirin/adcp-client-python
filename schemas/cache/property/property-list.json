@@ -1,69 +1,67 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "$id": "/schemas/3.0.0-rc.2/property/property-list.json",
+  "title": "Property List",
   "description": "A managed property list with optional filters for dynamic evaluation. Lists are resolved at setup time and cached by orchestrators/sellers for real-time use.",
+  "type": "object",
   "properties": {
-    "base_properties": {
-      "description": "Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.",
-      "items": {
-        "$ref": "base-property-source.json"
-      },
-      "type": "array"
-    },
-    "brand": {
-      "$ref": "../core/brand-ref.json",
-      "description": "Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time."
-    },
-    "cache_duration_hours": {
-      "default": 24,
-      "description": "Recommended cache duration for resolved list. Consumers should re-fetch after this period.",
-      "minimum": 1,
-      "type": "integer"
-    },
-    "created_at": {
-      "description": "When the list was created",
-      "format": "date-time",
-      "type": "string"
-    },
-    "description": {
-      "description": "Description of the list's purpose",
-      "type": "string"
-    },
-    "filters": {
-      "$ref": "property-list-filters.json",
-      "description": "Dynamic filters applied when resolving the list"
-    },
     "list_id": {
-      "description": "Unique identifier for this property list",
-      "type": "string"
+      "type": "string",
+      "description": "Unique identifier for this property list"
     },
     "name": {
-      "description": "Human-readable name for the list",
-      "type": "string"
+      "type": "string",
+      "description": "Human-readable name for the list"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the list's purpose"
     },
     "principal": {
-      "description": "Principal identity that owns this list",
-      "type": "string"
+      "type": "string",
+      "description": "Principal identity that owns this list"
     },
-    "property_count": {
-      "description": "Number of properties in the resolved list (at time of last resolution)",
-      "type": "integer"
+    "base_properties": {
+      "type": "array",
+      "description": "Array of property sources to evaluate. Each entry is a discriminated union: publisher_tags (publisher_domain + tags), publisher_ids (publisher_domain + property_ids), or identifiers (direct identifiers). If omitted, queries the agent's entire property database.",
+      "items": {
+        "$ref": "/schemas/3.0.0-rc.2/property/base-property-source.json"
+      }
     },
-    "updated_at": {
-      "description": "When the list was last modified",
-      "format": "date-time",
-      "type": "string"
+    "filters": {
+      "$ref": "/schemas/3.0.0-rc.2/property/property-list-filters.json",
+      "description": "Dynamic filters applied when resolving the list"
+    },
+    "brand": {
+      "$ref": "/schemas/3.0.0-rc.2/core/brand-ref.json",
+      "description": "Brand reference used to automatically apply appropriate rules. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
-      "description": "URL to receive notifications when the resolved list changes",
+      "type": "string",
       "format": "uri",
-      "type": "string"
+      "description": "URL to receive notifications when the resolved list changes"
+    },
+    "cache_duration_hours": {
+      "type": "integer",
+      "description": "Recommended cache duration for resolved list. Consumers should re-fetch after this period.",
+      "minimum": 1,
+      "default": 24
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the list was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the list was last modified"
+    },
+    "property_count": {
+      "type": "integer",
+      "description": "Number of properties in the resolved list (at time of last resolution)"
     }
   },
-  "required": [
-    "list_id",
-    "name"
-  ],
-  "title": "Property List",
-  "type": "object"
+  "required": ["list_id", "name"],
+  "additionalProperties": false
 }

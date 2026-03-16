@@ -491,6 +491,40 @@ class ContentStandardsHandler(ADCPHandler):
         return not_supported("sync_event_sources is not supported by Content Standards agents.")
 
     # ========================================================================
+    # RC2 Operations - Not supported
+    # ========================================================================
+
+    async def get_media_buys(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("get_media_buys is not supported by Content Standards agents.")
+
+    async def get_account_financials(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("get_account_financials is not supported by Content Standards agents.")
+
+    async def report_usage(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("report_usage is not supported by Content Standards agents.")
+
+    async def sync_audiences(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("sync_audiences is not supported by Content Standards agents.")
+
+    async def sync_catalogs(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("sync_catalogs is not supported by Content Standards agents.")
+
+    # ========================================================================
     # V3 Sponsored Intelligence - Not supported
     # ========================================================================
 
@@ -520,6 +554,40 @@ class ContentStandardsHandler(ADCPHandler):
     ) -> NotImplementedResponse:
         """Not supported by Content Standards agents."""
         return not_supported("si_terminate_session is not supported by Content Standards agents.")
+
+    # ========================================================================
+    # V3 Governance - Not supported
+    # ========================================================================
+
+    async def get_creative_features(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("get_creative_features is not supported by Content Standards agents.")
+
+    async def sync_plans(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("sync_plans is not supported by Content Standards agents.")
+
+    async def check_governance(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("check_governance is not supported by Content Standards agents.")
+
+    async def report_plan_outcome(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("report_plan_outcome is not supported by Content Standards agents.")
+
+    async def get_plan_audit_logs(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Content Standards agents."""
+        return not_supported("get_plan_audit_logs is not supported by Content Standards agents.")
 
     # ========================================================================
     # V3 Governance (Property Lists) - Not supported

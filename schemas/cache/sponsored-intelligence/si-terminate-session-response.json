@@ -1,70 +1,63 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-terminate-session-response.json",
+  "title": "SI Terminate Session Response",
   "description": "Confirmation of session termination",
+  "type": "object",
   "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Terminated session identifier"
+    },
+    "terminated": {
+      "type": "boolean",
+      "description": "Whether session was successfully terminated"
+    },
     "acp_handoff": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "ACP checkout handoff data (for handoff_transaction)",
       "properties": {
-        "checkout_token": {
-          "description": "Token for ACP checkout flow",
-          "type": "string"
-        },
         "checkout_url": {
-          "description": "ACP checkout initiation URL",
+          "type": "string",
           "format": "uri",
-          "type": "string"
+          "description": "ACP checkout initiation URL"
+        },
+        "checkout_token": {
+          "type": "string",
+          "description": "Token for ACP checkout flow"
         },
         "product": {
-          "description": "Product details for checkout",
-          "type": "object"
+          "type": "object",
+          "description": "Product details for checkout"
         }
       },
-      "type": "object"
-    },
-    "errors": {
-      "items": {
-        "$ref": "../core/error.json"
-      },
-      "type": "array"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
+      "additionalProperties": true
     },
     "follow_up": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Suggested follow-up actions",
       "properties": {
         "action": {
-          "enum": [
-            "save_for_later",
-            "set_reminder",
-            "subscribe_updates",
-            "none"
-          ],
-          "type": "string"
+          "type": "string",
+          "enum": ["save_for_later", "set_reminder", "subscribe_updates", "none"]
         },
         "data": {
-          "description": "Data for follow-up action",
-          "type": "object"
+          "type": "object",
+          "description": "Data for follow-up action"
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "session_id": {
-      "description": "Terminated session identifier",
-      "type": "string"
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "/schemas/3.0.0-rc.2/core/error.json"
+      }
     },
-    "terminated": {
-      "description": "Whether session was successfully terminated",
-      "type": "boolean"
+    "ext": {
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "required": [
-    "session_id",
-    "terminated"
-  ],
-  "title": "SI Terminate Session Response",
-  "type": "object"
+  "required": ["session_id", "terminated"],
+  "additionalProperties": true
 }

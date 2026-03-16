@@ -240,3 +240,84 @@ class ResolvedProperty(BaseModel):
     authorized_agents: list[dict[str, Any]]
     properties: list[dict[str, Any]]
     verified: bool
+
+
+# ========================================================================
+# Policy Registry Types
+# ========================================================================
+
+
+class PolicyExemplar(BaseModel):
+    """A pass/fail scenario used to calibrate governance agent interpretation."""
+
+    model_config = ConfigDict(extra="allow")
+
+    scenario: str
+    explanation: str
+
+
+class PolicyExemplars(BaseModel):
+    """Collection of pass/fail exemplars for a policy."""
+
+    model_config = ConfigDict(extra="allow")
+
+    pass_: list[PolicyExemplar] = Field(default_factory=list, alias="pass")
+    fail: list[PolicyExemplar] = Field(default_factory=list)
+
+
+class PolicySummary(BaseModel):
+    """Summary of a governance policy from the registry."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    policy_id: str
+    version: str
+    name: str
+    description: str | None = None
+    category: str
+    enforcement: str
+    jurisdictions: list[str] = Field(default_factory=list)
+    region_aliases: dict[str, list[str]] = Field(default_factory=dict)
+    verticals: list[str] = Field(default_factory=list)
+    channels: list[str] | None = None
+    governance_domains: list[str] = Field(default_factory=list)
+    effective_date: str | None = None
+    sunset_date: str | None = None
+    source_url: str | None = None
+    source_name: str | None = None
+    source_type: str | None = None
+    review_status: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class Policy(PolicySummary):
+    """Full governance policy including policy text and calibration exemplars."""
+
+    policy: str
+    guidance: str | None = None
+    exemplars: PolicyExemplars | None = None
+    ext: dict[str, Any] | None = None
+
+
+class PolicyRevision(BaseModel):
+    """A single revision in a policy's edit history."""
+
+    model_config = ConfigDict(extra="allow")
+
+    revision_number: int
+    editor_name: str
+    edit_summary: str
+    is_rollback: bool
+    rolled_back_to: int | None = None
+    created_at: str
+
+
+class PolicyHistory(BaseModel):
+    """Edit history for a policy."""
+
+    model_config = ConfigDict(extra="allow")
+
+    policy_id: str
+    total: int
+    revisions: list[PolicyRevision] = Field(default_factory=list)

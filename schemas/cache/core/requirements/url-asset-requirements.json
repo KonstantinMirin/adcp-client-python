@@ -1,49 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/core/requirements/url-asset-requirements.json",
+  "title": "URL Asset Requirements",
   "description": "Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.",
+  "type": "object",
   "properties": {
-    "allowed_domains": {
-      "description": "List of allowed domains for the URL",
-      "items": {
-        "format": "hostname",
-        "type": "string"
-      },
-      "type": "array"
-    },
-    "macro_support": {
-      "description": "Whether the URL supports macro substitution (e.g., ${CACHEBUSTER})",
-      "type": "boolean"
-    },
-    "max_length": {
-      "description": "Maximum URL length in characters",
-      "minimum": 1,
-      "type": "integer"
+    "role": {
+      "type": "string",
+      "enum": ["clickthrough", "landing_page", "impression_tracker", "click_tracker", "viewability_tracker", "third_party_tracker"],
+      "description": "Standard role for this URL asset. Use this to constrain which purposes are valid for this URL slot. Complements asset_role (which is a human-readable label) by providing a machine-readable enum."
     },
     "protocols": {
-      "description": "Allowed URL protocols. HTTPS is recommended for all ad URLs.",
+      "type": "array",
       "items": {
-        "enum": [
-          "https",
-          "http"
-        ],
-        "type": "string"
+        "type": "string",
+        "enum": ["https", "http"]
       },
-      "type": "array"
+      "description": "Allowed URL protocols. HTTPS is recommended for all ad URLs."
     },
-    "role": {
-      "description": "Standard role for this URL asset. Use this to constrain which purposes are valid for this URL slot. Complements asset_role (which is a human-readable label) by providing a machine-readable enum.",
-      "enum": [
-        "clickthrough",
-        "landing_page",
-        "impression_tracker",
-        "click_tracker",
-        "viewability_tracker",
-        "third_party_tracker"
-      ],
-      "type": "string"
+    "allowed_domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "hostname"
+      },
+      "description": "List of allowed domains for the URL"
+    },
+    "max_length": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum URL length in characters"
+    },
+    "macro_support": {
+      "type": "boolean",
+      "description": "Whether the URL supports macro substitution (e.g., ${CACHEBUSTER})"
     }
   },
-  "title": "URL Asset Requirements",
-  "type": "object"
+  "additionalProperties": true
 }

@@ -1,107 +1,128 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/3.0.0-rc.2/core/async-response-data.json",
+  "title": "AdCP Async Response Data",
+  "description": "Union of all possible data payloads for async task webhook responses. For completed/failed statuses, use the main task response schema. For working/input-required/submitted, use the status-specific schemas.",
   "anyOf": [
     {
-      "$ref": "../media-buy/get-products-response.json",
+      "title": "GetProductsResponse",
       "description": "Response for completed or failed get_products",
-      "title": "GetProductsResponse"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/get-products-response.json"
     },
     {
-      "$ref": "../media-buy/get-products-async-response-working.json",
+      "title": "GetProductsAsyncWorking",
       "description": "Progress data for working get_products",
-      "title": "GetProductsAsyncWorking"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/get-products-async-response-working.json"
     },
     {
-      "$ref": "../media-buy/get-products-async-response-input-required.json",
+      "title": "GetProductsAsyncInputRequired",
       "description": "Input requirements for get_products needing clarification",
-      "title": "GetProductsAsyncInputRequired"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/get-products-async-response-input-required.json"
     },
     {
-      "$ref": "../media-buy/get-products-async-response-submitted.json",
+      "title": "GetProductsAsyncSubmitted",
       "description": "Acknowledgment for submitted get_products (custom curation)",
-      "title": "GetProductsAsyncSubmitted"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/get-products-async-response-submitted.json"
     },
     {
-      "$ref": "../media-buy/create-media-buy-response.json",
+      "title": "CreateMediaBuyResponse",
       "description": "Response for completed or failed create_media_buy",
-      "title": "CreateMediaBuyResponse"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/create-media-buy-response.json"
     },
     {
-      "$ref": "../media-buy/create-media-buy-async-response-working.json",
+      "title": "CreateMediaBuyAsyncWorking",
       "description": "Progress data for working create_media_buy",
-      "title": "CreateMediaBuyAsyncWorking"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/create-media-buy-async-response-working.json"
     },
     {
-      "$ref": "../media-buy/create-media-buy-async-response-input-required.json",
+      "title": "CreateMediaBuyAsyncInputRequired",
       "description": "Input requirements for create_media_buy needing user input",
-      "title": "CreateMediaBuyAsyncInputRequired"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/create-media-buy-async-response-input-required.json"
     },
     {
-      "$ref": "../media-buy/create-media-buy-async-response-submitted.json",
+      "title": "CreateMediaBuyAsyncSubmitted",
       "description": "Acknowledgment for submitted create_media_buy",
-      "title": "CreateMediaBuyAsyncSubmitted"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/create-media-buy-async-response-submitted.json"
     },
     {
-      "$ref": "../media-buy/update-media-buy-response.json",
+      "title": "UpdateMediaBuyResponse",
       "description": "Response for completed or failed update_media_buy",
-      "title": "UpdateMediaBuyResponse"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/update-media-buy-response.json"
     },
     {
-      "$ref": "../media-buy/update-media-buy-async-response-working.json",
+      "title": "UpdateMediaBuyAsyncWorking",
       "description": "Progress data for working update_media_buy",
-      "title": "UpdateMediaBuyAsyncWorking"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/update-media-buy-async-response-working.json"
     },
     {
-      "$ref": "../media-buy/update-media-buy-async-response-input-required.json",
+      "title": "UpdateMediaBuyAsyncInputRequired",
       "description": "Input requirements for update_media_buy needing user input",
-      "title": "UpdateMediaBuyAsyncInputRequired"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/update-media-buy-async-response-input-required.json"
     },
     {
-      "$ref": "../media-buy/update-media-buy-async-response-submitted.json",
+      "title": "UpdateMediaBuyAsyncSubmitted",
       "description": "Acknowledgment for submitted update_media_buy",
-      "title": "UpdateMediaBuyAsyncSubmitted"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/update-media-buy-async-response-submitted.json"
     },
     {
-      "$ref": "../media-buy/sync-creatives-response.json",
+      "title": "BuildCreativeResponse",
+      "description": "Response for completed or failed build_creative",
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/build-creative-response.json"
+    },
+    {
+      "title": "BuildCreativeAsyncWorking",
+      "description": "Progress data for working build_creative",
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/build-creative-async-response-working.json"
+    },
+    {
+      "title": "BuildCreativeAsyncInputRequired",
+      "description": "Input requirements for build_creative needing user input",
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/build-creative-async-response-input-required.json"
+    },
+    {
+      "title": "BuildCreativeAsyncSubmitted",
+      "description": "Acknowledgment for submitted build_creative",
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/build-creative-async-response-submitted.json"
+    },
+    {
+      "title": "SyncCreativesResponse",
       "description": "Response for completed or failed sync_creatives",
-      "title": "SyncCreativesResponse"
+      "$ref": "/schemas/3.0.0-rc.2/creative/sync-creatives-response.json"
     },
     {
-      "$ref": "../media-buy/sync-creatives-async-response-working.json",
+      "title": "SyncCreativesAsyncWorking",
       "description": "Progress data for working sync_creatives",
-      "title": "SyncCreativesAsyncWorking"
+      "$ref": "/schemas/3.0.0-rc.2/creative/sync-creatives-async-response-working.json"
     },
     {
-      "$ref": "../media-buy/sync-creatives-async-response-input-required.json",
+      "title": "SyncCreativesAsyncInputRequired",
       "description": "Input requirements for sync_creatives needing user input",
-      "title": "SyncCreativesAsyncInputRequired"
+      "$ref": "/schemas/3.0.0-rc.2/creative/sync-creatives-async-response-input-required.json"
     },
     {
-      "$ref": "../media-buy/sync-creatives-async-response-submitted.json",
+      "title": "SyncCreativesAsyncSubmitted",
       "description": "Acknowledgment for submitted sync_creatives",
-      "title": "SyncCreativesAsyncSubmitted"
+      "$ref": "/schemas/3.0.0-rc.2/creative/sync-creatives-async-response-submitted.json"
     },
     {
-      "$ref": "../media-buy/sync-catalogs-response.json",
+      "title": "SyncCatalogsResponse",
       "description": "Response for completed or failed sync_catalogs",
-      "title": "SyncCatalogsResponse"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/sync-catalogs-response.json"
     },
     {
-      "$ref": "../media-buy/sync-catalogs-async-response-working.json",
+      "title": "SyncCatalogsAsyncWorking",
       "description": "Progress data for working sync_catalogs",
-      "title": "SyncCatalogsAsyncWorking"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/sync-catalogs-async-response-working.json"
     },
     {
-      "$ref": "../media-buy/sync-catalogs-async-response-input-required.json",
+      "title": "SyncCatalogsAsyncInputRequired",
       "description": "Input requirements for sync_catalogs needing buyer input",
-      "title": "SyncCatalogsAsyncInputRequired"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/sync-catalogs-async-response-input-required.json"
     },
     {
-      "$ref": "../media-buy/sync-catalogs-async-response-submitted.json",
+      "title": "SyncCatalogsAsyncSubmitted",
       "description": "Acknowledgment for submitted sync_catalogs",
-      "title": "SyncCatalogsAsyncSubmitted"
+      "$ref": "/schemas/3.0.0-rc.2/media-buy/sync-catalogs-async-response-submitted.json"
     }
-  ],
-  "description": "Union of all possible data payloads for async task webhook responses. For completed/failed statuses, use the main task response schema. For working/input-required/submitted, use the status-specific schemas.",
-  "title": "AdCP Async Response Data"
+  ]
 }

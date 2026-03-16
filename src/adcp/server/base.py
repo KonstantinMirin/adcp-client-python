@@ -170,6 +170,15 @@ class ADCPHandler(ABC):
         """
         return not_supported("get_media_buy_delivery is not implemented by this agent")
 
+    async def get_media_buys(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Get media buys with status and optional delivery snapshots.
+
+        Override this to provide media buy listing functionality.
+        """
+        return not_supported("get_media_buys is not implemented by this agent")
+
     # ========================================================================
     # Signal Operations
     # ========================================================================
@@ -225,6 +234,24 @@ class ADCPHandler(ABC):
         """
         return not_supported("sync_accounts is not implemented by this agent")
 
+    async def get_account_financials(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Get account financials.
+
+        Override this to provide account financial reporting.
+        """
+        return not_supported("get_account_financials is not implemented by this agent")
+
+    async def report_usage(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Report account usage.
+
+        Override this to ingest account usage.
+        """
+        return not_supported("report_usage is not implemented by this agent")
+
     # ========================================================================
     # Event Operations
     # ========================================================================
@@ -244,6 +271,24 @@ class ADCPHandler(ABC):
         Override this to provide functionality.
         """
         return not_supported("sync_event_sources is not implemented by this agent")
+
+    async def sync_audiences(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Sync audiences.
+
+        Override this to provide audience synchronization.
+        """
+        return not_supported("sync_audiences is not implemented by this agent")
+
+    async def sync_catalogs(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Sync catalogs.
+
+        Override this to provide catalog synchronization.
+        """
+        return not_supported("sync_catalogs is not implemented by this agent")
 
     # ========================================================================
     # V3 Protocol Discovery
@@ -366,8 +411,53 @@ class ADCPHandler(ABC):
         return not_supported("si_terminate_session is not implemented by this agent")
 
     # ========================================================================
-    # V3 Governance (Property Lists) Operations
+    # V3 Governance Operations
     # ========================================================================
+
+    async def get_creative_features(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Evaluate governance features for a creative.
+
+        Override this in GovernanceHandler subclasses.
+        """
+        return not_supported("get_creative_features is not implemented by this agent")
+
+    async def sync_plans(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Sync campaign governance plans.
+
+        Override this in GovernanceHandler subclasses.
+        """
+        return not_supported("sync_plans is not implemented by this agent")
+
+    async def check_governance(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Check an action against campaign governance.
+
+        Override this in GovernanceHandler subclasses.
+        """
+        return not_supported("check_governance is not implemented by this agent")
+
+    async def report_plan_outcome(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Report the outcome of a governed action.
+
+        Override this in GovernanceHandler subclasses.
+        """
+        return not_supported("report_plan_outcome is not implemented by this agent")
+
+    async def get_plan_audit_logs(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Retrieve governance audit logs for plans.
+
+        Override this in GovernanceHandler subclasses.
+        """
+        return not_supported("get_plan_audit_logs is not implemented by this agent")
 
     async def create_property_list(
         self, params: dict[str, Any], context: ToolContext | None = None

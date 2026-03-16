@@ -46,7 +46,7 @@ RESPONSE_TYPES_TO_ANALYZE = [
 
 # Nested types that also need coercion
 NESTED_TYPES_TO_ANALYZE = [
-    ("Sort", "media_buy.list_creatives_request"),
+    ("Sort", "creative.list_creatives_request"),
     ("GetProductsRequest1", "media_buy.get_products_request"),
     ("GetProductsRequest2", "media_buy.get_products_request"),
     ("GetProductsRequest3", "media_buy.get_products_request"),
@@ -208,6 +208,20 @@ def get_import_path(cls) -> str:
     return module
 
 
+def get_symbol_name(cls) -> str:
+    """Get the symbol name to use in generated code.
+
+    Some generated modules now expose colliding enum names like Field1 in
+    multiple namespaces. Give those stable aliases in the generated module.
+    """
+    path = get_import_path(cls)
+    if path == "media_buy.get_products_request" and cls.__name__ == "Field1":
+        return "GetProductsField"
+    if path == "creative.list_creatives_request" and cls.__name__ == "Field1":
+        return "ListCreativesField"
+    return cls.__name__
+
+
 def generate_code() -> str:
     """Generate the _ergonomic.py module content."""
     # Import all the types we need to analyze
@@ -217,6 +231,7 @@ def generate_code() -> str:
         GetMediaBuyDeliveryResponse,
     )
     from adcp.types.generated_poc.media_buy.get_products_request import (
+        Field1 as GetProductsField,
         GetProductsRequest1,
         GetProductsRequest2,
         GetProductsRequest3,
@@ -230,8 +245,12 @@ def generate_code() -> str:
     from adcp.types.generated_poc.media_buy.list_creative_formats_response import (
         ListCreativeFormatsResponse,
     )
-    from adcp.types.generated_poc.media_buy.list_creatives_request import ListCreativesRequest, Sort
-    from adcp.types.generated_poc.media_buy.list_creatives_response import ListCreativesResponse
+    from adcp.types.generated_poc.creative.list_creatives_request import (
+        Field1 as ListCreativesField,
+        ListCreativesRequest,
+        Sort,
+    )
+    from adcp.types.generated_poc.creative.list_creatives_response import ListCreativesResponse
     from adcp.types.generated_poc.media_buy.package_request import PackageRequest
     from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
 
@@ -283,7 +302,7 @@ def generate_code() -> str:
             enum_imports.append((cls.__name__, path))
         elif path.startswith("core."):
             core_imports.append((cls.__name__, path))
-        elif path.startswith("media_buy."):
+        elif path.startswith("media_buy.") or path.startswith("creative."):
             request_imports.append((cls.__name__, path))
 
     # Always include these core types
@@ -361,7 +380,7 @@ def generate_code() -> str:
     lines.append("    CreateMediaBuyRequest,")
     lines.append(")")
     lines.append("from adcp.types.generated_poc.media_buy.get_products_request import (")
-    lines.append("    FieldModel,")
+    lines.append("    Field1 as GetProductsField,")
     lines.append("    GetProductsRequest1,")
     lines.append("    GetProductsRequest2,")
     lines.append("    GetProductsRequest3,")
@@ -369,8 +388,8 @@ def generate_code() -> str:
     lines.append("from adcp.types.generated_poc.media_buy.list_creative_formats_request import (")
     lines.append("    ListCreativeFormatsRequest,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.list_creatives_request import (")
-    lines.append("    Field1,")
+    lines.append("from adcp.types.generated_poc.creative.list_creatives_request import (")
+    lines.append("    Field1 as ListCreativesField,")
     lines.append("    ListCreativesRequest,")
     lines.append("    Sort,")
     lines.append(")")
@@ -393,7 +412,7 @@ def generate_code() -> str:
     lines.append("    CreativeAgent,")
     lines.append("    ListCreativeFormatsResponse,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.list_creatives_response import (")
+    lines.append("from adcp.types.generated_poc.creative.list_creatives_response import (")
     lines.append("    Creative,")
     lines.append("    ListCreativesResponse,")
     lines.append(")")
@@ -438,10 +457,12 @@ def generate_code() -> str:
         field_comments = []
         for c in coercions:
             if c["type"] == "enum":
-                field_comments.append(f'{c["field"]}: {c["target_class"].__name__} | str | None')
+                target = get_symbol_name(c["target_class"])
+                field_comments.append(f'{c["field"]}: {target} | str | None')
             elif c["type"] == "enum_list":
+                target = get_symbol_name(c["target_class"])
                 field_comments.append(
-                    f'{c["field"]}: list[{c["target_class"].__name__} | str] | None'
+                    f'{c["field"]}: list[{target} | str] | None'
                 )
             elif c["type"] == "context":
                 field_comments.append(f'{c["field"]}: ContextObject | dict | None')
@@ -460,7 +481,7 @@ def generate_code() -> str:
         for c in coercions:
             field = c["field"]
             if c["type"] == "enum":
-                target = c["target_class"].__name__
+                target = get_symbol_name(c["target_class"])
                 lines.append("    _patch_field_annotation(")
                 lines.append(f"        {type_name},")
                 lines.append(f'        "{field}",')
@@ -469,7 +490,7 @@ def generate_code() -> str:
                 )
                 lines.append("    )")
             elif c["type"] == "enum_list":
-                target = c["target_class"].__name__
+                target = get_symbol_name(c["target_class"])
                 lines.append("    _patch_field_annotation(")
                 lines.append(f"        {type_name},")
                 lines.append(f'        "{field}",')

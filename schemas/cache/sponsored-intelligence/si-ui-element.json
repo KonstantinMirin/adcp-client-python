@@ -1,339 +1,190 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-ui-element.json",
+  "title": "SI UI Element",
+  "description": "Standard visual component that brand returns and host renders",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["text", "link", "image", "product_card", "carousel", "action_button", "app_handoff", "integration_actions"],
+      "description": "Component type"
+    },
+    "data": {
+      "type": "object",
+      "description": "Component-specific data",
+      "additionalProperties": true
+    }
+  },
+  "required": ["type"],
   "additionalProperties": true,
   "allOf": [
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "text"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "text" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "message": {
-                "description": "Text message content",
-                "type": "string"
-              }
+              "message": { "type": "string", "description": "Text message content" }
             },
-            "required": [
-              "message"
-            ],
-            "type": "object"
+            "required": ["message"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "link"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "link" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "label": {
-                "description": "Link text",
-                "type": "string"
-              },
-              "preview": {
-                "description": "Show link preview",
-                "type": "boolean"
-              },
-              "url": {
-                "description": "Link URL",
-                "format": "uri",
-                "type": "string"
-              }
+              "url": { "type": "string", "format": "uri", "description": "Link URL" },
+              "label": { "type": "string", "description": "Link text" },
+              "preview": { "type": "boolean", "description": "Show link preview" }
             },
-            "required": [
-              "url",
-              "label"
-            ],
-            "type": "object"
+            "required": ["url", "label"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "image"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "image" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "alt": {
-                "description": "Alt text",
-                "type": "string"
-              },
-              "caption": {
-                "description": "Image caption",
-                "type": "string"
-              },
-              "url": {
-                "description": "Image URL",
-                "format": "uri",
-                "type": "string"
-              }
+              "url": { "type": "string", "format": "uri", "description": "Image URL" },
+              "alt": { "type": "string", "description": "Alt text" },
+              "caption": { "type": "string", "description": "Image caption" }
             },
-            "required": [
-              "url",
-              "alt"
-            ],
-            "type": "object"
+            "required": ["url", "alt"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "product_card"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "product_card" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "badge": {
-                "description": "Badge text (e.g., 'Free Upgrade')",
-                "type": "string"
-              },
+              "title": { "type": "string", "description": "Product title" },
+              "subtitle": { "type": "string", "description": "Product subtitle" },
+              "price": { "type": "string", "description": "Price display string" },
+              "image_url": { "type": "string", "format": "uri", "description": "Product image" },
+              "description": { "type": "string", "description": "Product description" },
+              "badge": { "type": "string", "description": "Badge text (e.g., 'Free Upgrade')" },
               "cta": {
+                "type": "object",
                 "properties": {
-                  "action": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "description": {
-                "description": "Product description",
-                "type": "string"
-              },
-              "image_url": {
-                "description": "Product image",
-                "format": "uri",
-                "type": "string"
-              },
-              "price": {
-                "description": "Price display string",
-                "type": "string"
-              },
-              "subtitle": {
-                "description": "Product subtitle",
-                "type": "string"
-              },
-              "title": {
-                "description": "Product title",
-                "type": "string"
+                  "label": { "type": "string" },
+                  "action": { "type": "string" }
+                }
               }
             },
-            "required": [
-              "title",
-              "price"
-            ],
-            "type": "object"
+            "required": ["title", "price"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "carousel"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "carousel" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
+              "title": { "type": "string", "description": "Carousel title" },
               "items": {
+                "type": "array",
                 "description": "Carousel items (product cards or images)",
-                "items": {
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "title": {
-                "description": "Carousel title",
-                "type": "string"
+                "items": { "type": "object" }
               }
             },
-            "required": [
-              "items"
-            ],
-            "type": "object"
+            "required": ["items"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "action_button"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "action_button" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "action": {
-                "description": "Action identifier (e.g., 'acp_checkout')",
-                "type": "string"
-              },
-              "label": {
-                "description": "Button label",
-                "type": "string"
-              },
-              "payload": {
-                "description": "Action payload",
-                "type": "object"
-              }
+              "label": { "type": "string", "description": "Button label" },
+              "action": { "type": "string", "description": "Action identifier (e.g., 'acp_checkout')" },
+              "payload": { "type": "object", "description": "Action payload" }
             },
-            "required": [
-              "label",
-              "action"
-            ],
-            "type": "object"
+            "required": ["label", "action"]
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "app_handoff"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "app_handoff" } } },
       "then": {
         "properties": {
           "apps": {
-            "additionalProperties": {
-              "properties": {
-                "app_id": {
-                  "type": "string"
-                },
-                "deep_link": {
-                  "type": "string"
-                },
-                "url": {
-                  "format": "uri",
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            },
+            "type": "object",
             "description": "Platform-specific app handoff targets",
-            "type": "object"
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "app_id": { "type": "string" },
+                "deep_link": { "type": "string" },
+                "url": { "type": "string", "format": "uri" }
+              }
+            }
           }
         }
       }
     },
     {
-      "if": {
-        "properties": {
-          "type": {
-            "const": "integration_actions"
-          }
-        }
-      },
+      "if": { "properties": { "type": { "const": "integration_actions" } } },
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
               "actions": {
+                "type": "array",
                 "description": "Available integration actions",
                 "items": {
+                  "type": "object",
                   "properties": {
-                    "highlighted": {
-                      "description": "Whether this action should be visually emphasized",
-                      "type": "boolean"
+                    "type": {
+                      "type": "string",
+                      "enum": ["mcp", "a2a"],
+                      "description": "Integration type"
                     },
                     "label": {
-                      "description": "User-facing button label",
-                      "type": "string"
+                      "type": "string",
+                      "description": "User-facing button label"
                     },
-                    "type": {
-                      "description": "Integration type",
-                      "enum": [
-                        "mcp",
-                        "a2a"
-                      ],
-                      "type": "string"
+                    "highlighted": {
+                      "type": "boolean",
+                      "description": "Whether this action should be visually emphasized"
                     },
                     "url": {
-                      "description": "URL for the integration endpoint",
+                      "type": "string",
                       "format": "uri",
-                      "type": "string"
+                      "description": "URL for the integration endpoint"
                     }
                   },
-                  "required": [
-                    "type",
-                    "label"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
+                  "required": ["type", "label"]
+                }
               }
             },
-            "required": [
-              "actions"
-            ],
-            "type": "object"
+            "required": ["actions"]
           }
         }
       }
     }
-  ],
-  "description": "Standard visual component that brand returns and host renders",
-  "properties": {
-    "data": {
-      "additionalProperties": true,
-      "description": "Component-specific data",
-      "type": "object"
-    },
-    "type": {
-      "description": "Component type",
-      "enum": [
-        "text",
-        "link",
-        "image",
-        "product_card",
-        "carousel",
-        "action_button",
-        "app_handoff",
-        "integration_actions"
-      ],
-      "type": "string"
-    }
-  },
-  "required": [
-    "type"
-  ],
-  "title": "SI UI Element",
-  "type": "object"
+  ]
 }

@@ -9,22 +9,34 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext, not_supported
 from adcp.types import (
+    CheckGovernanceRequest,
+    CheckGovernanceResponse,
     CreatePropertyListRequest,
     CreatePropertyListResponse,
     DeletePropertyListRequest,
     DeletePropertyListResponse,
     Error,
+    GetCreativeFeaturesRequest,
+    GetCreativeFeaturesResponse,
+    GetPlanAuditLogsRequest,
+    GetPlanAuditLogsResponse,
     GetPropertyListRequest,
     GetPropertyListResponse,
     ListPropertyListsRequest,
     ListPropertyListsResponse,
+    ReportPlanOutcomeRequest,
+    ReportPlanOutcomeResponse,
+    SyncPlansRequest,
+    SyncPlansResponse,
     UpdatePropertyListRequest,
     UpdatePropertyListResponse,
 )
+
+_audit_logs_adapter: TypeAdapter[GetPlanAuditLogsRequest] = TypeAdapter(GetPlanAuditLogsRequest)
 
 
 class GovernanceHandler(ADCPHandler):
@@ -56,6 +68,86 @@ class GovernanceHandler(ADCPHandler):
     # ========================================================================
     # Governance Operations - Override base class with validation
     # ========================================================================
+
+    async def get_creative_features(
+        self,
+        params: dict[str, Any],
+        context: ToolContext | None = None,
+    ) -> GetCreativeFeaturesResponse | NotImplementedResponse:
+        """Evaluate governance features for a creative manifest."""
+        try:
+            request = GetCreativeFeaturesRequest.model_validate(params)
+        except ValidationError as e:
+            return NotImplementedResponse(
+                supported=False,
+                reason=f"Invalid request: {e}",
+                error=Error(code="VALIDATION_ERROR", message=str(e)),
+            )
+        return await self.handle_get_creative_features(request, context)
+
+    async def sync_plans(
+        self,
+        params: dict[str, Any],
+        context: ToolContext | None = None,
+    ) -> SyncPlansResponse | NotImplementedResponse:
+        """Sync campaign governance plans to the agent."""
+        try:
+            request = SyncPlansRequest.model_validate(params)
+        except ValidationError as e:
+            return NotImplementedResponse(
+                supported=False,
+                reason=f"Invalid request: {e}",
+                error=Error(code="VALIDATION_ERROR", message=str(e)),
+            )
+        return await self.handle_sync_plans(request, context)
+
+    async def check_governance(
+        self,
+        params: dict[str, Any],
+        context: ToolContext | None = None,
+    ) -> CheckGovernanceResponse | NotImplementedResponse:
+        """Check whether a proposed or committed action complies with plan governance."""
+        try:
+            request = CheckGovernanceRequest.model_validate(params)
+        except ValidationError as e:
+            return NotImplementedResponse(
+                supported=False,
+                reason=f"Invalid request: {e}",
+                error=Error(code="VALIDATION_ERROR", message=str(e)),
+            )
+        return await self.handle_check_governance(request, context)
+
+    async def report_plan_outcome(
+        self,
+        params: dict[str, Any],
+        context: ToolContext | None = None,
+    ) -> ReportPlanOutcomeResponse | NotImplementedResponse:
+        """Report the outcome of a previously governed action."""
+        try:
+            request = ReportPlanOutcomeRequest.model_validate(params)
+        except ValidationError as e:
+            return NotImplementedResponse(
+                supported=False,
+                reason=f"Invalid request: {e}",
+                error=Error(code="VALIDATION_ERROR", message=str(e)),
+            )
+        return await self.handle_report_plan_outcome(request, context)
+
+    async def get_plan_audit_logs(
+        self,
+        params: dict[str, Any],
+        context: ToolContext | None = None,
+    ) -> GetPlanAuditLogsResponse | NotImplementedResponse:
+        """Retrieve governance audit logs for one or more plans."""
+        try:
+            request = _audit_logs_adapter.validate_python(params)
+        except ValidationError as e:
+            return NotImplementedResponse(
+                supported=False,
+                reason=f"Invalid request: {e}",
+                error=Error(code="VALIDATION_ERROR", message=str(e)),
+            )
+        return await self.handle_get_plan_audit_logs(request, context)
 
     async def create_property_list(
         self,
@@ -190,6 +282,51 @@ class GovernanceHandler(ADCPHandler):
     # ========================================================================
     # Abstract handlers - Implement these in subclasses
     # ========================================================================
+
+    @abstractmethod
+    async def handle_get_creative_features(
+        self,
+        request: GetCreativeFeaturesRequest,
+        context: ToolContext | None = None,
+    ) -> GetCreativeFeaturesResponse:
+        """Handle creative feature evaluation."""
+        ...
+
+    @abstractmethod
+    async def handle_sync_plans(
+        self,
+        request: SyncPlansRequest,
+        context: ToolContext | None = None,
+    ) -> SyncPlansResponse:
+        """Handle campaign governance plan sync."""
+        ...
+
+    @abstractmethod
+    async def handle_check_governance(
+        self,
+        request: CheckGovernanceRequest,
+        context: ToolContext | None = None,
+    ) -> CheckGovernanceResponse:
+        """Handle a governance check request."""
+        ...
+
+    @abstractmethod
+    async def handle_report_plan_outcome(
+        self,
+        request: ReportPlanOutcomeRequest,
+        context: ToolContext | None = None,
+    ) -> ReportPlanOutcomeResponse:
+        """Handle reporting of a governed action outcome."""
+        ...
+
+    @abstractmethod
+    async def handle_get_plan_audit_logs(
+        self,
+        request: GetPlanAuditLogsRequest,
+        context: ToolContext | None = None,
+    ) -> GetPlanAuditLogsResponse:
+        """Handle retrieval of governance audit logs."""
+        ...
 
     @abstractmethod
     async def handle_create_property_list(
@@ -400,6 +537,40 @@ class GovernanceHandler(ADCPHandler):
     ) -> NotImplementedResponse:
         """Not supported by Governance agents."""
         return not_supported("sync_event_sources is not supported by Governance agents.")
+
+    # ========================================================================
+    # RC2 Operations - Not supported
+    # ========================================================================
+
+    async def get_media_buys(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Governance agents."""
+        return not_supported("get_media_buys is not supported by Governance agents.")
+
+    async def get_account_financials(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Governance agents."""
+        return not_supported("get_account_financials is not supported by Governance agents.")
+
+    async def report_usage(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Governance agents."""
+        return not_supported("report_usage is not supported by Governance agents.")
+
+    async def sync_audiences(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Governance agents."""
+        return not_supported("sync_audiences is not supported by Governance agents.")
+
+    async def sync_catalogs(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> NotImplementedResponse:
+        """Not supported by Governance agents."""
+        return not_supported("sync_catalogs is not supported by Governance agents.")
 
     # ========================================================================
     # V3 Content Standards - Not supported

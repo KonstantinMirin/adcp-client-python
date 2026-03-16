@@ -1,48 +1,47 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-initiate-session-response.json",
+  "title": "SI Initiate Session Response",
   "description": "Brand agent's response to session initiation",
+  "type": "object",
   "properties": {
-    "errors": {
-      "description": "Errors during session initiation",
-      "items": {
-        "$ref": "../core/error.json"
-      },
-      "type": "array"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "negotiated_capabilities": {
-      "$ref": "si-capabilities.json",
-      "description": "Intersection of brand and host capabilities for this session"
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier for subsequent messages"
     },
     "response": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Brand agent's initial response",
       "properties": {
         "message": {
-          "description": "Conversational message from brand agent",
-          "type": "string"
+          "type": "string",
+          "description": "Conversational message from brand agent"
         },
         "ui_elements": {
-          "description": "Visual components to render",
+          "type": "array",
           "items": {
-            "$ref": "si-ui-element.json"
+            "$ref": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-ui-element.json"
           },
-          "type": "array"
+          "description": "Visual components to render"
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "session_id": {
-      "description": "Unique session identifier for subsequent messages",
-      "type": "string"
+    "negotiated_capabilities": {
+      "$ref": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-capabilities.json",
+      "description": "Intersection of brand and host capabilities for this session"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "/schemas/3.0.0-rc.2/core/error.json"
+      },
+      "description": "Errors during session initiation"
+    },
+    "ext": {
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "required": [
-    "session_id"
-  ],
-  "title": "SI Initiate Session Response",
-  "type": "object"
+  "required": ["session_id"],
+  "additionalProperties": true
 }
