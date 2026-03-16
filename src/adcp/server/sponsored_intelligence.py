@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
 from adcp.types import (
@@ -23,10 +23,6 @@ from adcp.types import (
     SiTerminateSessionRequest,
     SiTerminateSessionResponse,
 )
-
-# SiSendMessageRequest is a Union type alias (not a class), so it has no
-# .model_validate(). TypeAdapter handles Union validation correctly.
-_si_send_message_adapter: TypeAdapter[SiSendMessageRequest] = TypeAdapter(SiSendMessageRequest)
 
 
 class SponsoredIntelligenceHandler(ADCPHandler):
@@ -105,7 +101,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
         Validates params and delegates to handle_si_send_message.
         """
         try:
-            request = _si_send_message_adapter.validate_python(params)
+            request = SiSendMessageRequest.model_validate(params)
         except ValidationError as e:
             return NotImplementedResponse(
                 supported=False,

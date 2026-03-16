@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 import httpx
@@ -336,7 +337,7 @@ class RegistryClient:
             RegistryError: On HTTP or parsing errors.
             ValueError: If slug contains path-traversal characters.
         """
-        if not slug or "/" in slug or "\\" in slug:
+        if not slug or not re.fullmatch(r"[a-zA-Z0-9_-]+", slug):
             raise ValueError(f"Invalid member slug: {slug!r}")
         client = await self._get_client()
         try:

@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Any
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 
 from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
 from adcp.types import (
@@ -35,10 +35,6 @@ from adcp.types import (
     UpdatePropertyListRequest,
     UpdatePropertyListResponse,
 )
-
-# GetPlanAuditLogsRequest is a Union type alias (not a class), so it has no
-# .model_validate(). TypeAdapter handles Union validation correctly.
-_audit_logs_adapter: TypeAdapter[GetPlanAuditLogsRequest] = TypeAdapter(GetPlanAuditLogsRequest)
 
 
 class GovernanceHandler(ADCPHandler):
@@ -144,7 +140,7 @@ class GovernanceHandler(ADCPHandler):
     ) -> GetPlanAuditLogsResponse | NotImplementedResponse:
         """Retrieve governance audit logs for one or more plans."""
         try:
-            request = _audit_logs_adapter.validate_python(params)
+            request = GetPlanAuditLogsRequest.model_validate(params)
         except ValidationError as e:
             return NotImplementedResponse(
                 supported=False,
