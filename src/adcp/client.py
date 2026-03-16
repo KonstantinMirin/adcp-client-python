@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import os
+import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -224,6 +225,7 @@ class ADCPClient:
         webhook_url_template: str | None = None,
         webhook_secret: str | None = None,
         on_activity: Callable[[Activity], None] | None = None,
+        webhook_timestamp_tolerance: int = 300,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -234,11 +236,15 @@ class ADCPClient:
                 {task_type}, {operation_id}
             webhook_secret: Secret for webhook signature verification
             on_activity: Callback for activity events
+            webhook_timestamp_tolerance: Maximum age (in seconds) for webhook
+                timestamps. Webhooks with timestamps older than this or more than
+                this far in the future are rejected. Defaults to 300 (5 minutes).
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
         self.webhook_secret = webhook_secret
         self.on_activity = on_activity
+        self.webhook_timestamp_tolerance = webhook_timestamp_tolerance
 
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
@@ -2285,6 +2291,15 @@ class ADCPClient:
         """
         if not self.webhook_secret:
             return True
+
+        # Reject stale or future timestamps to prevent replay attacks
+        try:
+            ts = int(timestamp)
+        except (ValueError, TypeError):
+            return False
+        now = int(time.time())
+        if abs(now - ts) > self.webhook_timestamp_tolerance:
+            return False
 
         # Strip "sha256=" prefix if present
         if signature.startswith("sha256="):

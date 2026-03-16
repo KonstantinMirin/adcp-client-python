@@ -70,6 +70,49 @@ def test_mcp_tool_definitions_cover_schema_index():
     assert missing == []
 
 
+def test_tool_filtering_by_handler_type():
+    """Specialized handlers get only their tools plus protocol discovery."""
+    from adcp.server.mcp_tools import ADCP_TOOL_DEFINITIONS, get_tools_for_handler
+
+    all_tool_names = {tool["name"] for tool in ADCP_TOOL_DEFINITIONS}
+
+    # GovernanceHandler: governance tools + protocol discovery
+    gov_tools = {t["name"] for t in get_tools_for_handler("GovernanceHandler")}
+    assert gov_tools == {
+        "get_creative_features", "sync_plans", "check_governance",
+        "report_plan_outcome", "get_plan_audit_logs",
+        "create_property_list", "get_property_list", "list_property_lists",
+        "update_property_list", "delete_property_list",
+        "get_adcp_capabilities",
+    }
+
+    # ContentStandardsHandler: content standards tools + protocol discovery
+    cs_tools = {t["name"] for t in get_tools_for_handler("ContentStandardsHandler")}
+    assert cs_tools == {
+        "create_content_standards", "get_content_standards",
+        "list_content_standards", "update_content_standards",
+        "calibrate_content", "validate_content_delivery",
+        "get_media_buy_artifacts",
+        "get_adcp_capabilities",
+    }
+
+    # SponsoredIntelligenceHandler: SI tools + protocol discovery
+    si_tools = {t["name"] for t in get_tools_for_handler("SponsoredIntelligenceHandler")}
+    assert si_tools == {
+        "si_get_offering", "si_initiate_session",
+        "si_send_message", "si_terminate_session",
+        "get_adcp_capabilities",
+    }
+
+    # ADCPHandler: all tools (no filtering)
+    adcp_tools = {t["name"] for t in get_tools_for_handler("ADCPHandler")}
+    assert adcp_tools == all_tool_names
+
+    # Unknown handler: all tools (no filtering)
+    unknown_tools = {t["name"] for t in get_tools_for_handler("SomeCustomHandler")}
+    assert unknown_tools == all_tool_names
+
+
 def _collect_all_properties(schema: dict[str, Any]) -> set[str]:
     """Extract all top-level property names from a JSON schema.
 

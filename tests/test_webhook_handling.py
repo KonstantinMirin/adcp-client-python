@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -176,7 +177,7 @@ class TestMCPWebhooks:
         import hashlib
         import hmac
 
-        header_timestamp = "1773185740"
+        header_timestamp = str(int(time.time()))
         payload_json = json.dumps(payload)
         signed_message = f"{header_timestamp}.{payload_json}"
         signature = hmac.new(
@@ -207,7 +208,7 @@ class TestMCPWebhooks:
         import hashlib
         import hmac
 
-        header_timestamp = "1773185740"
+        header_timestamp = str(int(time.time()))
         # Simulate raw body from a different serializer (e.g., compact JSON from JS)
         raw_body = json.dumps(payload, separators=(",", ":"))
         signed_message = f"{header_timestamp}.{raw_body}"
@@ -243,7 +244,100 @@ class TestMCPWebhooks:
                 task_type="create_media_buy",
                 operation_id="op_444",
                 signature="invalid_signature",
-                timestamp="1773185740",
+                timestamp=str(int(time.time())),
+            )
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_timestamp_valid(self):
+        """Test that a webhook with a current timestamp passes verification."""
+        import hashlib
+        import hmac
+
+        payload = {
+            "task_id": "task_ts1",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_ts1", "buyer_ref": "ref_ts1", "packages": []},
+        }
+
+        header_timestamp = str(int(time.time()))
+        payload_json = json.dumps(payload)
+        signed_message = f"{header_timestamp}.{payload_json}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        result = await self.client.handle_webhook(
+            payload,
+            task_type="create_media_buy",
+            operation_id="op_ts1",
+            signature=signature,
+            timestamp=header_timestamp,
+        )
+
+        assert result.status == TaskStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_stale_timestamp_rejected(self):
+        """Test that a webhook with a timestamp older than 5 minutes is rejected."""
+        import hashlib
+        import hmac
+
+        payload = {
+            "task_id": "task_ts2",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_ts2", "buyer_ref": "ref_ts2", "packages": []},
+        }
+
+        # Timestamp 10 minutes in the past
+        header_timestamp = str(int(time.time()) - 600)
+        payload_json = json.dumps(payload)
+        signed_message = f"{header_timestamp}.{payload_json}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        with pytest.raises(ADCPWebhookSignatureError):
+            await self.client.handle_webhook(
+                payload,
+                task_type="create_media_buy",
+                operation_id="op_ts2",
+                signature=signature,
+                timestamp=header_timestamp,
+            )
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_future_timestamp_rejected(self):
+        """Test that a webhook with a timestamp more than 5 minutes in the future is rejected."""
+        import hashlib
+        import hmac
+
+        payload = {
+            "task_id": "task_ts3",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_ts3", "buyer_ref": "ref_ts3", "packages": []},
+        }
+
+        # Timestamp 10 minutes in the future
+        header_timestamp = str(int(time.time()) + 600)
+        payload_json = json.dumps(payload)
+        signed_message = f"{header_timestamp}.{payload_json}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        with pytest.raises(ADCPWebhookSignatureError):
+            await self.client.handle_webhook(
+                payload,
+                task_type="create_media_buy",
+                operation_id="op_ts3",
+                signature=signature,
+                timestamp=header_timestamp,
             )
 
     @pytest.mark.asyncio
@@ -1143,7 +1237,12 @@ class TestHMACTestVectors:
             agent_uri="https://test.example.com",
             protocol=Protocol.MCP,
         )
-        client = ADCPClient(config, webhook_secret=HMAC_TEST_VECTORS_SECRET)
+        # Use large tolerance so test vectors with historical timestamps pass
+        client = ADCPClient(
+            config,
+            webhook_secret=HMAC_TEST_VECTORS_SECRET,
+            webhook_timestamp_tolerance=10**10,
+        )
 
         # Use raw_body path — should always verify correctly
         result = client._verify_webhook_signature(
@@ -1171,7 +1270,12 @@ class TestHMACTestVectors:
             agent_uri="https://test.example.com",
             protocol=Protocol.MCP,
         )
-        client = ADCPClient(config, webhook_secret=HMAC_TEST_VECTORS_SECRET)
+        # Use large tolerance so test vectors with historical timestamps pass
+        client = ADCPClient(
+            config,
+            webhook_secret=HMAC_TEST_VECTORS_SECRET,
+            webhook_timestamp_tolerance=10**10,
+        )
 
         result = client._verify_webhook_signature(
             payload={},

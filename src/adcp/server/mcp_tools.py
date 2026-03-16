@@ -554,6 +554,60 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 
+# Protocol discovery tool included for all handler types
+_PROTOCOL_TOOLS: set[str] = {"get_adcp_capabilities"}
+
+# Tools specific to each specialized handler type
+_HANDLER_TOOLS: dict[str, set[str]] = {
+    "GovernanceHandler": {
+        "get_creative_features",
+        "sync_plans",
+        "check_governance",
+        "report_plan_outcome",
+        "get_plan_audit_logs",
+        "create_property_list",
+        "get_property_list",
+        "list_property_lists",
+        "update_property_list",
+        "delete_property_list",
+    },
+    "ContentStandardsHandler": {
+        "create_content_standards",
+        "get_content_standards",
+        "list_content_standards",
+        "update_content_standards",
+        "calibrate_content",
+        "validate_content_delivery",
+        "get_media_buy_artifacts",
+    },
+    "SponsoredIntelligenceHandler": {
+        "si_get_offering",
+        "si_initiate_session",
+        "si_send_message",
+        "si_terminate_session",
+    },
+}
+
+
+def get_tools_for_handler(handler_class_name: str) -> list[dict[str, Any]]:
+    """Return tool definitions filtered by handler type.
+
+    Specialized handlers only get their own tools plus protocol discovery.
+    ADCPHandler and unknown handlers get all tools.
+
+    Args:
+        handler_class_name: The handler class name (e.g. "GovernanceHandler")
+
+    Returns:
+        Filtered list of tool definitions
+    """
+    if handler_class_name not in _HANDLER_TOOLS:
+        return ADCP_TOOL_DEFINITIONS.copy()
+
+    allowed = _HANDLER_TOOLS[handler_class_name] | _PROTOCOL_TOOLS
+    return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
+
+
 def create_tool_caller(
     handler: ADCPHandler,
     method_name: str,
@@ -593,17 +647,18 @@ class MCPToolSet:
             handler: ADCP handler instance
         """
         self.handler = handler
+        self._filtered_definitions = get_tools_for_handler(type(handler).__name__)
         self._tools: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
-        # Create tool callers for all methods
-        for tool_def in ADCP_TOOL_DEFINITIONS:
+        # Create tool callers only for filtered tools
+        for tool_def in self._filtered_definitions:
             name = tool_def["name"]
             self._tools[name] = create_tool_caller(handler, name)
 
     @property
     def tool_definitions(self) -> list[dict[str, Any]]:
-        """Get MCP tool definitions."""
-        return ADCP_TOOL_DEFINITIONS.copy()
+        """Get MCP tool definitions filtered by handler type."""
+        return list(self._filtered_definitions)
 
     async def call_tool(self, name: str, params: dict[str, Any]) -> Any:
         """Call a tool by name.

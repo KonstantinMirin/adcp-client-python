@@ -26,7 +26,7 @@ from adcp.server.base import (
 )
 from adcp.server.content_standards import ContentStandardsHandler
 from adcp.server.governance import GovernanceHandler
-from adcp.server.mcp_tools import MCPToolSet, create_mcp_tools
+from adcp.server.mcp_tools import MCPToolSet, create_mcp_tools, get_tools_for_handler
 from adcp.server.proposal import ProposalBuilder, ProposalNotSupported
 from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
 
@@ -46,4 +46,5 @@ __all__ = [
     # MCP integration
     "MCPToolSet",
     "create_mcp_tools",
+    "get_tools_for_handler",
 ]
