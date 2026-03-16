@@ -298,10 +298,13 @@ def fix_constr_type_annotations():
 
 
 # Types to unwrap from RootModel to Union type alias.
-# ALL Request/Response types are unwrapped so consumers can subclass them
-# with model_config overrides (extra='forbid', custom validators, etc.).
-# Value-type RootModels (PricingOption, Destination, etc.) keep the RootModel
-# wrapper + __getattr__ proxy since nobody subclasses them.
+# Only genuine discriminated unions (different field shapes per variant) belong here.
+# "Validation-only" oneOf types (same fields, different required combos) are now
+# handled at the schema level by flatten_validation_oneof() in generate_types.py,
+# which produces a single BaseModel class — no RootModel or unwrapping needed.
+# Removed from this set (now single classes): GetCreativeDeliveryRequest,
+# GetSignalsRequest, ProvidePerformanceFeedbackRequest, SiSendMessageRequest,
+# UpdateMediaBuyRequest.
 # See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
 _UNWRAP_TO_UNION: set[str] = {
     "ActivateSignalResponse",
@@ -311,25 +314,20 @@ _UNWRAP_TO_UNION: set[str] = {
     "CreateMediaBuyResponse",
     "GetAccountFinancialsResponse",
     "GetContentStandardsResponse",
-    "GetCreativeDeliveryRequest",
     "GetCreativeFeaturesResponse",
     "GetMediaBuyArtifactsResponse",
     "GetProductsRequest",
-    "GetSignalsRequest",
     "ListContentStandardsResponse",
     "LogEventResponse",
     "PreviewCreativeRequest",
     "PreviewCreativeResponse",
-    "ProvidePerformanceFeedbackRequest",
     "ProvidePerformanceFeedbackResponse",
-    "SiSendMessageRequest",
     "SyncAccountsResponse",
     "SyncAudiencesResponse",
     "SyncCatalogsResponse",
     "SyncCreativesResponse",
     "SyncEventSourcesResponse",
     "UpdateContentStandardsResponse",
-    "UpdateMediaBuyRequest",
     "UpdateMediaBuyResponse",
     "ValidateContentDeliveryResponse",
 }

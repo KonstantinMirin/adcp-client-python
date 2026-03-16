@@ -850,13 +850,14 @@ class TestRootModelUnwrapForSubclassing:
     consumers can subclass the individual variants with custom model_config.
     """
 
-    def test_get_signals_request_is_union_alias(self):
-        """GetSignalsRequest should be a Union type alias, not a RootModel class."""
-        import types
+    def test_get_signals_request_is_base_model_class(self):
+        """GetSignalsRequest should be a regular BaseModel class (single flattened schema)."""
+        from pydantic import BaseModel
 
         from adcp.types import GetSignalsRequest
 
-        assert isinstance(GetSignalsRequest, types.UnionType)
+        assert isinstance(GetSignalsRequest, type)
+        assert issubclass(GetSignalsRequest, BaseModel)
 
     def test_create_media_buy_response_is_union_alias(self):
         """CreateMediaBuyResponse should be a Union type alias, not a RootModel class."""
@@ -866,13 +867,13 @@ class TestRootModelUnwrapForSubclassing:
 
         assert isinstance(CreateMediaBuyResponse, types.UnionType)
 
-    def test_subclass_get_signals_request_variant_with_extra_forbid(self):
-        """Consumer can subclass GetSignalsRequest variant with extra='forbid'."""
+    def test_subclass_get_signals_request_with_extra_forbid(self):
+        """Consumer can subclass GetSignalsRequest directly with extra='forbid'."""
         from pydantic import ConfigDict
 
-        from adcp.types._generated import GetSignalsRequest1
+        from adcp.types import GetSignalsRequest
 
-        class MyGetSignalsRequest(GetSignalsRequest1):
+        class MyGetSignalsRequest(GetSignalsRequest):
             model_config = ConfigDict(extra="forbid")
 
         req = MyGetSignalsRequest(signal_spec="test signals")
@@ -908,11 +909,22 @@ class TestRootModelUnwrapForSubclassing:
                 unknown_field="should fail",
             )
 
-    def test_type_adapter_validates_get_signals_request_union(self):
-        """TypeAdapter can validate dicts against GetSignalsRequest union."""
+    def test_get_signals_request_accepts_signal_spec_and_signal_ids(self):
+        """GetSignalsRequest can be instantiated with signal_spec or signal_ids."""
         from adcp.types import GetSignalsRequest
-        from adcp.types._generated import GetSignalsRequest1
-        from tests.conftest import validate_union
 
-        result = validate_union(GetSignalsRequest, {"signal_spec": "test signals"})
-        assert isinstance(result, GetSignalsRequest1)
+        # With signal_spec (discovery-style)
+        req1 = GetSignalsRequest(signal_spec="test signals")
+        assert req1.signal_spec == "test signals"
+
+        # With signal_ids (lookup-style)
+        req2 = GetSignalsRequest(
+            signal_ids=[
+                {"source": "catalog", "data_provider_domain": "example.com", "id": "sig1"}
+            ]
+        )
+        assert len(req2.signal_ids) == 1
+
+        # Both are instances of the same class
+        assert isinstance(req1, GetSignalsRequest)
+        assert isinstance(req2, GetSignalsRequest)

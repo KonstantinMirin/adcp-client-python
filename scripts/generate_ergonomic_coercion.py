@@ -50,8 +50,7 @@ NESTED_TYPES_TO_ANALYZE = [
     ("GetProductsRequest1", "media_buy.get_products_request"),
     ("GetProductsRequest2", "media_buy.get_products_request"),
     ("GetProductsRequest3", "media_buy.get_products_request"),
-    ("PackageUpdate1", "media_buy.package_update"),
-    ("PackageUpdate2", "media_buy.package_update"),
+    ("PackageUpdate", "media_buy.package_update"),
 ]
 
 # Types that should get subclass_list coercion (for list variance)
@@ -234,7 +233,7 @@ def generate_code() -> str:
     from adcp.types.generated_poc.media_buy.list_creatives_request import ListCreativesRequest, Sort
     from adcp.types.generated_poc.media_buy.list_creatives_response import ListCreativesResponse
     from adcp.types.generated_poc.media_buy.package_request import PackageRequest
-    from adcp.types.generated_poc.media_buy.package_update import PackageUpdate1, PackageUpdate2
+    from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
 
     # Map names to classes
     request_classes = {
@@ -257,8 +256,7 @@ def generate_code() -> str:
         "GetProductsRequest1": GetProductsRequest1,
         "GetProductsRequest2": GetProductsRequest2,
         "GetProductsRequest3": GetProductsRequest3,
-        "PackageUpdate1": PackageUpdate1,
-        "PackageUpdate2": PackageUpdate2,
+        "PackageUpdate": PackageUpdate,
     }
 
     # Analyze all types
@@ -377,10 +375,7 @@ def generate_code() -> str:
     lines.append("    Sort,")
     lines.append(")")
     lines.append("from adcp.types.generated_poc.media_buy.package_request import PackageRequest")
-    lines.append("from adcp.types.generated_poc.media_buy.package_update import (")
-    lines.append("    PackageUpdate1,")
-    lines.append("    PackageUpdate2,")
-    lines.append(")")
+    lines.append("from adcp.types.generated_poc.media_buy.package_update import PackageUpdate")
 
     # Add response type imports
     lines.append("from adcp.types.generated_poc.media_buy.create_media_buy_response import (")
@@ -424,8 +419,7 @@ def generate_code() -> str:
         "GetProductsRequest3",
         "PackageRequest",
         "CreateMediaBuyRequest",
-        "PackageUpdate1",
-        "PackageUpdate2",
+        "PackageUpdate",
         # Response types
         "GetProductsResponse",
         "ListCreativesResponse",
@@ -518,8 +512,7 @@ def generate_code() -> str:
         lines.append(f"    {type_name}.model_rebuild(force=True)")
         lines.append("")
 
-    # Handle PackageUpdate1 and PackageUpdate2 together if they have same coercions
-    # (they're already handled in the loop above)
+    # PackageUpdate is now a single class (flattened from validation-only oneOf)
 
     # Add helper function
     lines.append("")
