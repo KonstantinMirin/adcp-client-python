@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.9.1](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.9.0...v3.9.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* flatten validation-only oneOf schemas for consumer subclassing ([3171a95](https://github.com/adcontextprotocol/adcp-client-python/commit/3171a953b41dc770098998179aed9381064bc773))
+* flatten validation-only oneOf schemas to single subclassable classes ([c242a7d](https://github.com/adcontextprotocol/adcp-client-python/commit/c242a7d09b652dab8f761136b771b76617078cf3))
+
 ## [3.9.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.8.0...v3.9.0) (2026-03-13)
 
 
