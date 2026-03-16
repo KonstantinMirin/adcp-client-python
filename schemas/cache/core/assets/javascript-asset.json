@@ -1,47 +1,48 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/core/assets/javascript-asset.json",
+  "title": "JavaScript Asset",
   "description": "JavaScript code asset",
+  "type": "object",
   "properties": {
-    "accessibility": {
-      "description": "Self-declared accessibility properties for this opaque creative",
-      "properties": {
-        "alt_text": {
-          "description": "Text alternative describing the creative content",
-          "type": "string"
-        },
-        "keyboard_navigable": {
-          "description": "Whether the creative can be fully operated via keyboard",
-          "type": "boolean"
-        },
-        "motion_control": {
-          "description": "Whether the creative respects prefers-reduced-motion or provides pause/stop controls",
-          "type": "boolean"
-        },
-        "screen_reader_tested": {
-          "description": "Whether the creative has been tested with screen readers",
-          "type": "boolean"
-        }
-      },
-      "type": "object",
-      "x-accessibility": true
-    },
     "content": {
-      "description": "JavaScript content",
-      "type": "string"
+      "type": "string",
+      "description": "JavaScript content"
     },
     "module_type": {
-      "$ref": "../../enums/javascript-module-type.json",
+      "$ref": "/schemas/3.0.0-rc.2/enums/javascript-module-type.json",
       "description": "JavaScript module type"
     },
+    "accessibility": {
+      "type": "object",
+      "description": "Self-declared accessibility properties for this opaque creative",
+      "x-accessibility": true,
+      "properties": {
+        "alt_text": {
+          "type": "string",
+          "description": "Text alternative describing the creative content"
+        },
+        "keyboard_navigable": {
+          "type": "boolean",
+          "description": "Whether the creative can be fully operated via keyboard"
+        },
+        "motion_control": {
+          "type": "boolean",
+          "description": "Whether the creative respects prefers-reduced-motion or provides pause/stop controls"
+        },
+        "screen_reader_tested": {
+          "type": "boolean",
+          "description": "Whether the creative has been tested with screen readers"
+        }
+      }
+    },
     "provenance": {
-      "$ref": "../../core/provenance.json",
+      "$ref": "/schemas/3.0.0-rc.2/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
   "required": [
     "content"
   ],
-  "title": "JavaScript Asset",
-  "type": "object"
+  "additionalProperties": true
 }

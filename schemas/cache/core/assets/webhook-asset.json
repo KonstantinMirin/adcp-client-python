@@ -1,83 +1,75 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/core/assets/webhook-asset.json",
+  "title": "Webhook Asset",
   "description": "Webhook for server-side dynamic content rendering (DCO)",
+  "type": "object",
   "properties": {
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Webhook URL to call for dynamic content"
+    },
     "method": {
-      "$ref": "../../enums/http-method.json",
+      "$ref": "/schemas/3.0.0-rc.2/enums/http-method.json",
       "default": "POST",
       "description": "HTTP method"
     },
-    "provenance": {
-      "$ref": "../../core/provenance.json",
-      "description": "Provenance metadata for this asset, overrides manifest-level provenance"
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 5000,
+      "default": 500,
+      "description": "Maximum time to wait for response in milliseconds"
     },
-    "required_macros": {
-      "description": "Universal macros that must be provided for webhook to function",
+    "supported_macros": {
+      "type": "array",
       "items": {
         "oneOf": [
-          {
-            "$ref": "../../enums/universal-macro.json"
-          },
-          {
-            "description": "Custom or publisher-specific macro name",
-            "type": "string"
-          }
+          { "$ref": "/schemas/3.0.0-rc.2/enums/universal-macro.json" },
+          { "type": "string", "description": "Custom or publisher-specific macro name" }
         ]
       },
-      "type": "array"
+      "description": "Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list."
+    },
+    "required_macros": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "/schemas/3.0.0-rc.2/enums/universal-macro.json" },
+          { "type": "string", "description": "Custom or publisher-specific macro name" }
+        ]
+      },
+      "description": "Universal macros that must be provided for webhook to function"
     },
     "response_type": {
-      "$ref": "../../enums/webhook-response-type.json",
+      "$ref": "/schemas/3.0.0-rc.2/enums/webhook-response-type.json",
       "description": "Expected content type of webhook response"
     },
     "security": {
+      "type": "object",
       "description": "Security configuration for webhook calls",
       "properties": {
-        "api_key_header": {
-          "description": "Header name for API key (e.g., 'X-API-Key')",
-          "type": "string"
+        "method": {
+          "$ref": "/schemas/3.0.0-rc.2/enums/webhook-security-method.json",
+          "description": "Authentication method"
         },
         "hmac_header": {
-          "description": "Header name for HMAC signature (e.g., 'X-Signature')",
-          "type": "string"
+          "type": "string",
+          "description": "Header name for HMAC signature (e.g., 'X-Signature')"
         },
-        "method": {
-          "$ref": "../../enums/webhook-security-method.json",
-          "description": "Authentication method"
+        "api_key_header": {
+          "type": "string",
+          "description": "Header name for API key (e.g., 'X-API-Key')"
         }
       },
       "required": [
         "method"
-      ],
-      "type": "object"
+      ]
     },
-    "supported_macros": {
-      "description": "Universal macros that can be passed to webhook (e.g., DEVICE_TYPE, COUNTRY). See docs/creative/universal-macros.mdx for full list.",
-      "items": {
-        "oneOf": [
-          {
-            "$ref": "../../enums/universal-macro.json"
-          },
-          {
-            "description": "Custom or publisher-specific macro name",
-            "type": "string"
-          }
-        ]
-      },
-      "type": "array"
-    },
-    "timeout_ms": {
-      "default": 500,
-      "description": "Maximum time to wait for response in milliseconds",
-      "maximum": 5000,
-      "minimum": 10,
-      "type": "integer"
-    },
-    "url": {
-      "description": "Webhook URL to call for dynamic content",
-      "format": "uri",
-      "type": "string"
+    "provenance": {
+      "$ref": "/schemas/3.0.0-rc.2/core/provenance.json",
+      "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },
   "required": [
@@ -85,6 +77,5 @@
     "response_type",
     "security"
   ],
-  "title": "Webhook Asset",
-  "type": "object"
+  "additionalProperties": true
 }

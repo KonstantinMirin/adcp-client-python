@@ -457,6 +457,14 @@ class MCPAdapter(ProtocolAdapter):
         """Sync event sources."""
         return await self._call_mcp_tool("sync_event_sources", params)
 
+    async def sync_audiences(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync audiences."""
+        return await self._call_mcp_tool("sync_audiences", params)
+
+    async def sync_catalogs(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync catalogs."""
+        return await self._call_mcp_tool("sync_catalogs", params)
+
     async def preview_creative(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Generate preview URLs for a creative manifest."""
         return await self._call_mcp_tool("preview_creative", params)
@@ -484,6 +492,14 @@ class MCPAdapter(ProtocolAdapter):
     async def sync_accounts(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Sync accounts."""
         return await self._call_mcp_tool("sync_accounts", params)
+
+    async def get_account_financials(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get account financials."""
+        return await self._call_mcp_tool("get_account_financials", params)
+
+    async def report_usage(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Report account usage."""
+        return await self._call_mcp_tool("report_usage", params)
 
     async def list_tools(self) -> list[str]:
         """List available tools from MCP agent."""
@@ -578,6 +594,30 @@ class MCPAdapter(ProtocolAdapter):
     async def get_media_buy_artifacts(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Get artifacts associated with a media buy."""
         return await self._call_mcp_tool("get_media_buy_artifacts", params)
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance
+    # ========================================================================
+
+    async def get_creative_features(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Evaluate governance features for a creative."""
+        return await self._call_mcp_tool("get_creative_features", params)
+
+    async def sync_plans(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync campaign governance plans."""
+        return await self._call_mcp_tool("sync_plans", params)
+
+    async def check_governance(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Check an action against campaign governance."""
+        return await self._call_mcp_tool("check_governance", params)
+
+    async def report_plan_outcome(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Report the outcome of a governed action."""
+        return await self._call_mcp_tool("report_plan_outcome", params)
+
+    async def get_plan_audit_logs(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Retrieve governance audit logs for plans."""
+        return await self._call_mcp_tool("get_plan_audit_logs", params)
 
     # ========================================================================
     # V3 Protocol Methods - Sponsored Intelligence

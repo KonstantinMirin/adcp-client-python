@@ -21,10 +21,10 @@ from adcp.types import (
 )
 from adcp.types.generated_poc.core.context import ContextObject
 from adcp.types.generated_poc.core.ext import ExtensionObject
+from adcp.types.generated_poc.creative.list_creatives_request import Field1 as FieldModel
+from adcp.types.generated_poc.creative.list_creatives_request import Sort
 from adcp.types.generated_poc.enums.creative_sort_field import CreativeSortField
 from adcp.types.generated_poc.enums.sort_direction import SortDirection
-from adcp.types.generated_poc.media_buy.list_creatives_request import Field1 as FieldModel
-from adcp.types.generated_poc.media_buy.list_creatives_request import Sort
 from tests.conftest import validate_union
 
 
@@ -134,11 +134,11 @@ class TestFieldModelStringCoercion:
 
     def test_fields_accepts_string_list(self):
         """ListCreativesRequest.fields accepts ['creative_id', 'name']."""
-        req = ListCreativesRequest(fields=["creative_id", "name", "format"])
+        req = ListCreativesRequest(fields=["creative_id", "name", "format_id"])
         assert len(req.fields) == 3
         assert req.fields[0] == FieldModel.creative_id
         assert req.fields[1] == FieldModel.name
-        assert req.fields[2] == FieldModel.format
+        assert req.fields[2] == FieldModel.format_id
         assert all(isinstance(x, FieldModel) for x in req.fields)
 
     def test_fields_accepts_enum_list(self):

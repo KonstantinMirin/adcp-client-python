@@ -83,9 +83,6 @@ def test_semantic_aliases_are_exported():
         # DAAST assets
         "UrlDaastAsset",
         "InlineDaastAsset",
-        # Sub assets
-        "MediaSubAsset",
-        "TextSubAsset",
         # Response variants
         "CreateMediaBuySuccessResponse",
         "CreateMediaBuyErrorResponse",

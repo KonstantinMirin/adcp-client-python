@@ -307,16 +307,22 @@ def fix_constr_type_annotations():
 # UpdateMediaBuyRequest.
 # See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
 _UNWRAP_TO_UNION: set[str] = {
+    "AcquireRightsResponse",
     "ActivateSignalResponse",
+    "BuildCreativeRequest",
     "BuildCreativeResponse",
     "CalibrateContentResponse",
     "CreateContentStandardsResponse",
     "CreateMediaBuyResponse",
+    "CreativeApprovalResponse",
     "GetAccountFinancialsResponse",
+    "GetBrandIdentityResponse",
     "GetContentStandardsResponse",
     "GetCreativeFeaturesResponse",
     "GetMediaBuyArtifactsResponse",
+    "GetPlanAuditLogsRequest",
     "GetProductsRequest",
+    "GetRightsResponse",
     "ListContentStandardsResponse",
     "LogEventResponse",
     "PreviewCreativeRequest",
@@ -329,6 +335,7 @@ _UNWRAP_TO_UNION: set[str] = {
     "SyncEventSourcesResponse",
     "UpdateContentStandardsResponse",
     "UpdateMediaBuyResponse",
+    "UpdateRightsResponse",
     "ValidateContentDeliveryResponse",
 }
 
@@ -409,8 +416,17 @@ def unwrap_rootmodel_unions():
 
         # Apply replacements in reverse line order to preserve indices
         for start_line, end_line, type_name, union_types in sorted(replacements, reverse=True):
-            # Replace lines (1-indexed to 0-indexed)
-            lines[start_line - 1 : end_line] = [f"{type_name} = {union_types}"]
+            # Wrap multi-line unions in parentheses for valid syntax
+            if "\n" in union_types:
+                # Re-indent continuation lines to 4 spaces
+                union_lines = [ln.strip() for ln in union_types.split("\n")]
+                indented = union_lines[0] + "\n" + "\n".join(
+                    f"    {ln}" for ln in union_lines[1:]
+                )
+                replacement = f"{type_name} = (\n    {indented}\n)"
+            else:
+                replacement = f"{type_name} = {union_types}"
+            lines[start_line - 1 : end_line] = [replacement]
             unwrapped_count += 1
 
         content = "\n".join(lines)
@@ -508,6 +524,42 @@ def add_rootmodel_getattr_proxy():
         print("  No RootModel union types needed __getattr__ proxy")
 
 
+def fix_list_field_shadowing():
+    """Fix models where a field named 'list' shadows the builtin list type.
+
+    GetPropertyListResponse has a field named 'list' which shadows the builtin
+    list type in annotations like list[Identifier]. We add a _list = list alias
+    before the class and replace bare list[] usage in annotations.
+    """
+    target = OUTPUT_DIR / "property" / "get_property_list_response.py"
+    if not target.exists():
+        return
+
+    content = target.read_text()
+    if "_list = list" in content:
+        return  # Already fixed
+
+    # Add alias before the class definition
+    content = content.replace(
+        "\n\nclass GetPropertyListResponse(",
+        "\n\n_list = list  # alias to avoid shadowing by field name\n\n\nclass GetPropertyListResponse(",
+    )
+
+    # Replace bare list[] in annotations (but not the 'list' field itself)
+    # Only replace list[ when used as a type annotation, not as a field name
+    import re
+
+    # Replace list[identifier...] and dict[str, list[identifier...]] patterns
+    content = re.sub(
+        r'(?<![._a-zA-Z])list\[identifier\.',
+        '_list[identifier.',
+        content,
+    )
+
+    target.write_text(content)
+    print("  Fixed list field shadowing in get_property_list_response.py")
+
+
 def main():
     """Apply all post-generation fixes."""
     print("Applying post-generation fixes...")
@@ -521,6 +573,7 @@ def main():
     fix_constr_type_annotations()
     unwrap_rootmodel_unions()
     add_rootmodel_getattr_proxy()
+    fix_list_field_shadowing()
 
     print("\n✓ Post-generation fixes complete\n")
 

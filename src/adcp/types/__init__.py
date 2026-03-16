@@ -82,6 +82,8 @@ from adcp.types._generated import (
     CatalogItemStatus,
     CatalogRequirements,
     CatalogType,
+    CheckGovernanceRequest,
+    CheckGovernanceResponse,
     CoBrandingRequirement,
     Colors,
     Contact,
@@ -134,7 +136,6 @@ from adcp.types._generated import (
     DevicePlatform,
     DeviceType,
     DimensionUnit,
-    Disclaimer,
     DoohMetrics,
     Duration,
     Error,
@@ -180,6 +181,8 @@ from adcp.types._generated import (
     GetMediaBuyDeliveryResponse,
     GetMediaBuysRequest,
     GetMediaBuysResponse,
+    GetPlanAuditLogsRequest,
+    GetPlanAuditLogsResponse,
     GetProductsRequest,
     GetProductsResponse,
     GetPropertyListRequest,
@@ -234,7 +237,6 @@ from adcp.types._generated import (
     Pagination,
     PaginationRequest,
     Parameters,
-    Performance,
     PerformanceFeedback,
     Placement,
     Preview,
@@ -249,7 +251,6 @@ from adcp.types._generated import (
     Product,
     ProductCard,
     ProductCardDetailed,
-    ProductCatalog,
     ProductFilters,
     PromotedOfferings,
     PromotedOfferingsAssetRequirements,
@@ -278,6 +279,8 @@ from adcp.types._generated import (
     ReportingFrequency,
     ReportingPeriod,
     ReportingWebhook,
+    ReportPlanOutcomeRequest,
+    ReportPlanOutcomeResponse,
     ReportUsageRequest,
     ReportUsageResponse,
     Request,
@@ -320,6 +323,8 @@ from adcp.types._generated import (
     SyncCreativesResponse,
     SyncEventSourcesRequest,
     SyncEventSourcesResponse,
+    SyncPlansRequest,
+    SyncPlansResponse,
     Tags,
     TargetingOverlay,
     TaskType,
@@ -385,6 +390,7 @@ from adcp.types.aliases import (
     FlatFeeSignalPricingOption,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
+    GetBrandIdentityField,
     GetContentStandardsErrorResponse,
     GetContentStandardsSuccessResponse,
     GetCreativeDeliveryByBuyerRefRequest,
@@ -395,6 +401,7 @@ from adcp.types.aliases import (
     GetMediaBuyArtifactsErrorResponse,
     GetMediaBuyArtifactsSuccessResponse,
     GetProductsBriefRequest,
+    GetProductsField,
     GetProductsRefineRequest,
     GetProductsWholesaleRequest,
     GetSignalsDiscoveryRequest,
@@ -408,7 +415,6 @@ from adcp.types.aliases import (
     LogEventErrorResponse,
     LogEventSuccessResponse,
     MediaBuyDeliveryStatus,
-    MediaSubAsset,
     PercentOfMediaSignalPricingOption,
     PlatformDeployment,
     PlatformDestination,
@@ -445,7 +451,6 @@ from adcp.types.aliases import (
     SyncCreativesSuccessResponse,
     SyncEventSourcesErrorResponse,
     SyncEventSourcesSuccessResponse,
-    TextSubAsset,
     UpdateContentStandardsErrorResponse,
     UpdateContentStandardsSuccessResponse,
     UpdateMediaBuyErrorResponse,
@@ -465,12 +470,21 @@ from adcp.types.aliases import (
 from adcp.types.core import (
     AgentConfig,
     Member,
+    Policy,
+    PolicyExemplar,
+    PolicyExemplars,
+    PolicyHistory,
+    PolicyRevision,
+    PolicySummary,
     Protocol,
     ResolvedBrand,
     ResolvedProperty,
     TaskResult,
     WebhookMetadata,
 )
+
+# Deprecated: types removed from _generated.py but classes still exist in generated_poc
+from adcp.types.generated_poc.brand import Disclaimer, ProductCatalog
 
 # Status: _generated picks invoice status (get_account_financials_response) due to
 # alphabetical module sort. Import the delivery status variant directly for backward compat.
@@ -480,6 +494,11 @@ from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
 
 # Semantic aliases for auto-generated field enum names
 ListCreativesField = Field1
+
+# FieldModel: _generated picks brand.get_brand_identity_request.FieldModel due to
+# alphabetical module sort. Override to preserve backward compat with the original
+# get_products_request variant (which the generator renamed to Field1 in that module).
+FieldModel = GetProductsField  # type: ignore[misc,assignment]  # noqa: F811
 
 # Backward compatibility aliases
 AssetType = AssetContentType  # Use AssetContentType instead
@@ -494,6 +513,35 @@ VcpmFixedRatePricingOption = VcpmPricingOption
 # Activation key schema change: property_id/property_tag → segment_id/key_value
 PropertyIdActivationKey = SegmentIdActivationKey
 PropertyTagActivationKey = KeyValueActivationKey
+
+# Deprecated: types removed from upstream schemas entirely
+# Performance was removed; PerformanceFeedback is the replacement
+Performance = PerformanceFeedback
+
+# MediaSubAsset (SubAsset1) and TextSubAsset (SubAsset2) were removed from the
+# upstream schema with no replacement. These stubs exist only to provide a clear
+# error message for code that still references them.
+
+
+class MediaSubAsset:
+    """Removed from ADCP schema. Previously SubAsset with asset_kind='media'."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        raise TypeError(
+            "MediaSubAsset was removed from the ADCP schema. "
+            "There is no direct replacement."
+        )
+
+
+class TextSubAsset:
+    """Removed from ADCP schema. Previously SubAsset with asset_kind='text'."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        raise TypeError(
+            "TextSubAsset was removed from the ADCP schema. "
+            "There is no direct replacement."
+        )
+
 
 # Preview alias renames: format/manifest → single/batch/variant discriminator
 PreviewCreativeFormatRequest = PreviewCreativeSingleRequest
@@ -599,6 +647,15 @@ __all__ = [
     # Creative Features
     "GetCreativeFeaturesRequest",
     "GetCreativeFeaturesResponse",
+    # V3 Governance
+    "CheckGovernanceRequest",
+    "CheckGovernanceResponse",
+    "GetPlanAuditLogsRequest",
+    "GetPlanAuditLogsResponse",
+    "ReportPlanOutcomeRequest",
+    "ReportPlanOutcomeResponse",
+    "SyncPlansRequest",
+    "SyncPlansResponse",
     # Forecasting types
     "DayOfWeek",
     "DaypartTarget",
@@ -704,7 +761,6 @@ __all__ = [
     "DeliveryMeasurement",
     "DeliveryMetrics",
     "DeliveryStatus",
-    "Disclaimer",
     "DoohMetrics",
     "Error",
     "ErrorCode",
@@ -722,6 +778,8 @@ __all__ = [
     "LandingPageRequirement",
     "Logo",
     "ListCreativesField",
+    "GetProductsField",
+    "GetBrandIdentityField",
     "MediaBuy",
     "MediaBuyPackage",
     "MediaChannel",
@@ -734,7 +792,6 @@ __all__ = [
     "PackageRequest",
     "PackageUpdate",
     "Parameters",
-    "Performance",
     "PerformanceFeedback",
     "Placement",
     "Preview",
@@ -744,7 +801,6 @@ __all__ = [
     "ProductCard",
     "Proposal",
     "ProductCardDetailed",
-    "ProductCatalog",
     "ProductFilters",
     "PromotedOfferings",
     "PromotedOfferingsAssetRequirements",
@@ -851,6 +907,12 @@ __all__ = [
     # Core types
     "AgentConfig",
     "Member",
+    "Policy",
+    "PolicyExemplar",
+    "PolicyExemplars",
+    "PolicyHistory",
+    "PolicyRevision",
+    "PolicySummary",
     "Protocol",
     "ResolvedBrand",
     "ResolvedProperty",
@@ -900,7 +962,6 @@ __all__ = [
     "ListContentStandardsSuccessResponse",
     "LogEventErrorResponse",
     "LogEventSuccessResponse",
-    "MediaSubAsset",
     "PlatformDeployment",
     "PlatformDestination",
     "PreviewCreativeBatchRequest",
@@ -934,7 +995,6 @@ __all__ = [
     "SyncCreativeResult",
     "SyncEventSourcesErrorResponse",
     "SyncEventSourcesSuccessResponse",
-    "TextSubAsset",
     "UpdateContentStandardsErrorResponse",
     "UpdateContentStandardsSuccessResponse",
     "UpdateMediaBuyErrorResponse",
@@ -992,6 +1052,12 @@ __all__ = [
     "ListAuthorizedPropertiesRequest",
     "ListAuthorizedPropertiesResponse",
     "PackageStatus",
+    # Backward compat: types removed from exports (deprecated)
+    "Disclaimer",
+    "MediaSubAsset",
+    "Performance",
+    "ProductCatalog",
+    "TextSubAsset",
     # Submodules for advanced use:
     "generated",
     "aliases",

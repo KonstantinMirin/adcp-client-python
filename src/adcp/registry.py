@@ -1,18 +1,27 @@
-"""Client for the AdCP registry API (brand, property, and member lookups)."""
+"""Client for the AdCP registry API (brand, property, member, and policy lookups)."""
 
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 import httpx
 from pydantic import ValidationError
 
 from adcp.exceptions import RegistryError
-from adcp.types.core import Member, ResolvedBrand, ResolvedProperty
+from adcp.types.core import (
+    Member,
+    Policy,
+    PolicyHistory,
+    PolicySummary,
+    ResolvedBrand,
+    ResolvedProperty,
+)
 
 DEFAULT_REGISTRY_URL = "https://agenticadvertising.org"
 MAX_BULK_DOMAINS = 100
+MAX_BULK_POLICIES = 100
 
 
 class RegistryClient:
@@ -326,7 +335,10 @@ class RegistryClient:
 
         Raises:
             RegistryError: On HTTP or parsing errors.
+            ValueError: If slug contains path-traversal characters.
         """
+        if not slug or not re.fullmatch(r"[a-zA-Z0-9_-]+", slug):
+            raise ValueError(f"Invalid member slug: {slug!r}")
         client = await self._get_client()
         try:
             response = await client.get(
@@ -353,3 +365,354 @@ class RegistryClient:
             raise RegistryError(f"Member lookup failed: {e}") from e
         except (ValidationError, ValueError) as e:
             raise RegistryError(f"Member lookup failed: invalid response: {e}") from e
+
+    # ========================================================================
+    # Policy Registry Operations
+    # ========================================================================
+
+    async def list_policies(
+        self,
+        search: str | None = None,
+        category: str | None = None,
+        enforcement: str | None = None,
+        jurisdiction: str | None = None,
+        vertical: str | None = None,
+        domain: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[PolicySummary]:
+        """List governance policies with optional filtering.
+
+        Args:
+            search: Full-text search on policy name and description.
+            category: Filter by category ("regulation" or "standard").
+            enforcement: Filter by enforcement level ("must", "should", "may").
+            jurisdiction: Filter by jurisdiction with region alias matching.
+            vertical: Filter by industry vertical.
+            domain: Filter by governance domain ("campaign", "creative", etc.).
+            limit: Results per page (default 20, max 1000).
+            offset: Pagination offset.
+
+        Returns:
+            List of PolicySummary objects.
+
+        Raises:
+            RegistryError: On HTTP or parsing errors.
+        """
+        client = await self._get_client()
+        params: dict[str, str | int] = {"limit": limit, "offset": offset}
+        if search is not None:
+            params["search"] = search
+        if category is not None:
+            params["category"] = category
+        if enforcement is not None:
+            params["enforcement"] = enforcement
+        if jurisdiction is not None:
+            params["jurisdiction"] = jurisdiction
+        if vertical is not None:
+            params["vertical"] = vertical
+        if domain is not None:
+            params["domain"] = domain
+
+        try:
+            response = await client.get(
+                f"{self._base_url}/api/policies/registry",
+                params=params,
+                headers={"User-Agent": self._user_agent},
+                timeout=self._timeout,
+            )
+            if response.status_code != 200:
+                raise RegistryError(
+                    f"Policy list failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            data = response.json()
+            return [PolicySummary.model_validate(p) for p in data.get("policies", [])]
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(f"Policy list timed out after {self._timeout}s") from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"Policy list failed: {e}") from e
+        except (ValidationError, ValueError) as e:
+            raise RegistryError(f"Policy list failed: invalid response: {e}") from e
+
+    async def resolve_policy(
+        self,
+        policy_id: str,
+        version: str | None = None,
+    ) -> Policy | None:
+        """Resolve a single policy by ID.
+
+        Args:
+            policy_id: Policy identifier (e.g., "gdpr_consent").
+            version: Optional version pin; returns None if current version differs.
+
+        Returns:
+            Policy if found, None if not in the registry.
+
+        Raises:
+            RegistryError: On HTTP or parsing errors.
+        """
+        client = await self._get_client()
+        params: dict[str, str] = {"policy_id": policy_id}
+        if version is not None:
+            params["version"] = version
+
+        try:
+            response = await client.get(
+                f"{self._base_url}/api/policies/resolve",
+                params=params,
+                headers={"User-Agent": self._user_agent},
+                timeout=self._timeout,
+            )
+            if response.status_code == 404:
+                return None
+            if response.status_code != 200:
+                raise RegistryError(
+                    f"Policy resolve failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            data = response.json()
+            if data is None:
+                return None
+            return Policy.model_validate(data)
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(f"Policy resolve timed out after {self._timeout}s") from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"Policy resolve failed: {e}") from e
+        except (ValidationError, ValueError) as e:
+            raise RegistryError(f"Policy resolve failed: invalid response: {e}") from e
+
+    async def resolve_policies(
+        self,
+        policy_ids: list[str],
+    ) -> dict[str, Policy | None]:
+        """Bulk resolve policies by ID.
+
+        Automatically chunks requests exceeding 100 policy IDs.
+
+        Args:
+            policy_ids: List of policy identifiers to resolve.
+
+        Returns:
+            Dict mapping each policy_id to its Policy, or None if not found.
+
+        Raises:
+            RegistryError: On HTTP or parsing errors.
+        """
+        if not policy_ids:
+            return {}
+
+        chunks = [
+            policy_ids[i : i + MAX_BULK_POLICIES]
+            for i in range(0, len(policy_ids), MAX_BULK_POLICIES)
+        ]
+
+        chunk_results = await asyncio.gather(
+            *[self._resolve_policies_chunk(chunk) for chunk in chunks]
+        )
+
+        merged: dict[str, Policy | None] = {}
+        for result in chunk_results:
+            merged.update(result)
+        return merged
+
+    async def _resolve_policies_chunk(
+        self, policy_ids: list[str]
+    ) -> dict[str, Policy | None]:
+        """Resolve a single chunk of policy IDs (max 100)."""
+        client = await self._get_client()
+        try:
+            response = await client.post(
+                f"{self._base_url}/api/policies/resolve/bulk",
+                json={"policy_ids": policy_ids},
+                headers={"User-Agent": self._user_agent},
+                timeout=self._timeout,
+            )
+            if response.status_code != 200:
+                raise RegistryError(
+                    f"Bulk policy resolve failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            data = response.json()
+            results_raw = data.get("results", {})
+            results: dict[str, Policy | None] = {pid: None for pid in policy_ids}
+            for pid, policy_data in results_raw.items():
+                if policy_data is not None:
+                    results[pid] = Policy.model_validate(policy_data)
+            return results
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(
+                f"Bulk policy resolve timed out after {self._timeout}s"
+            ) from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"Bulk policy resolve failed: {e}") from e
+        except (ValidationError, ValueError) as e:
+            raise RegistryError(
+                f"Bulk policy resolve failed: invalid response: {e}"
+            ) from e
+
+    async def policy_history(
+        self,
+        policy_id: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> PolicyHistory | None:
+        """Retrieve edit history for a policy.
+
+        Args:
+            policy_id: Policy identifier.
+            limit: Maximum revisions to return (default 20, max 100).
+            offset: Pagination offset.
+
+        Returns:
+            PolicyHistory if found, None if the policy doesn't exist.
+
+        Raises:
+            RegistryError: On HTTP or parsing errors.
+        """
+        client = await self._get_client()
+        try:
+            response = await client.get(
+                f"{self._base_url}/api/policies/history",
+                params={"policy_id": policy_id, "limit": limit, "offset": offset},
+                headers={"User-Agent": self._user_agent},
+                timeout=self._timeout,
+            )
+            if response.status_code == 404:
+                return None
+            if response.status_code != 200:
+                raise RegistryError(
+                    f"Policy history failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            data = response.json()
+            if data is None:
+                return None
+            return PolicyHistory.model_validate(data)
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(
+                f"Policy history timed out after {self._timeout}s"
+            ) from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"Policy history failed: {e}") from e
+        except (ValidationError, ValueError) as e:
+            raise RegistryError(
+                f"Policy history failed: invalid response: {e}"
+            ) from e
+
+    async def save_policy(
+        self,
+        policy_id: str,
+        version: str,
+        name: str,
+        category: str,
+        enforcement: str,
+        policy: str,
+        *,
+        auth_token: str,
+        description: str | None = None,
+        jurisdictions: list[str] | None = None,
+        region_aliases: dict[str, list[str]] | None = None,
+        verticals: list[str] | None = None,
+        channels: list[str] | None = None,
+        effective_date: str | None = None,
+        sunset_date: str | None = None,
+        governance_domains: list[str] | None = None,
+        source_url: str | None = None,
+        source_name: str | None = None,
+        guidance: str | None = None,
+        exemplars: dict[str, Any] | None = None,
+        ext: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create or update a community-contributed policy.
+
+        Requires authentication. Cannot edit registry-sourced or pending policies.
+
+        Args:
+            policy_id: Policy identifier (lowercase alphanumeric with underscores).
+            version: Semantic version string.
+            name: Human-readable policy name.
+            category: "regulation" or "standard".
+            enforcement: "must", "should", or "may".
+            policy: Natural language policy text.
+            auth_token: API key for authentication.
+            description: Policy description.
+            jurisdictions: ISO jurisdiction codes.
+            region_aliases: Region alias mappings (e.g., {"EU": ["DE", "FR"]}).
+            verticals: Industry verticals.
+            channels: Media channels.
+            effective_date: ISO 8601 date when enforcement begins.
+            sunset_date: ISO 8601 date when enforcement ends.
+            governance_domains: Applicable domains ("campaign", "creative", etc.).
+            source_url: URL of the source regulation/standard.
+            source_name: Name of the source.
+            guidance: Implementation guidance text.
+            exemplars: Pass/fail calibration scenarios.
+            ext: Extension data.
+
+        Returns:
+            Dict with success, message, policy_id, and revision_number.
+
+        Raises:
+            RegistryError: On HTTP or parsing errors (400, 401, 409, 429).
+        """
+        client = await self._get_client()
+        body: dict[str, Any] = {
+            "policy_id": policy_id,
+            "version": version,
+            "name": name,
+            "category": category,
+            "enforcement": enforcement,
+            "policy": policy,
+        }
+        for key, value in [
+            ("description", description),
+            ("jurisdictions", jurisdictions),
+            ("region_aliases", region_aliases),
+            ("verticals", verticals),
+            ("channels", channels),
+            ("effective_date", effective_date),
+            ("sunset_date", sunset_date),
+            ("governance_domains", governance_domains),
+            ("source_url", source_url),
+            ("source_name", source_name),
+            ("guidance", guidance),
+            ("exemplars", exemplars),
+            ("ext", ext),
+        ]:
+            if value is not None:
+                body[key] = value
+
+        try:
+            response = await client.post(
+                f"{self._base_url}/api/policies/save",
+                json=body,
+                headers={
+                    "User-Agent": self._user_agent,
+                    "Authorization": f"Bearer {auth_token}",
+                },
+                timeout=self._timeout,
+            )
+            if response.status_code != 200:
+                raise RegistryError(
+                    f"Policy save failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            result: dict[str, Any] = response.json()
+            return result
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(
+                f"Policy save timed out after {self._timeout}s"
+            ) from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"Policy save failed: {e}") from e

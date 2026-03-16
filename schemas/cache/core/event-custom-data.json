@@ -1,85 +1,84 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "$id": "/schemas/3.0.0-rc.2/core/event-custom-data.json",
+  "title": "Event Custom Data",
   "description": "Event-specific data for attribution and reporting",
+  "type": "object",
   "properties": {
-    "content_category": {
-      "description": "Category of the product or content",
-      "type": "string"
+    "value": {
+      "type": "number",
+      "description": "Monetary value of the event (should be accompanied by currency)",
+      "minimum": 0
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code"
+    },
+    "order_id": {
+      "type": "string",
+      "description": "Unique order or transaction identifier"
     },
     "content_ids": {
+      "type": "array",
       "description": "Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).",
       "items": {
         "type": "string"
-      },
-      "type": "array"
-    },
-    "content_name": {
-      "description": "Name of the product or content",
-      "type": "string"
+      }
     },
     "content_type": {
-      "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.",
-      "type": "string"
+      "type": "string",
+      "description": "Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution."
     },
-    "contents": {
-      "description": "Per-item details for e-commerce events",
-      "items": {
-        "additionalProperties": true,
-        "properties": {
-          "brand": {
-            "description": "Brand name of this item",
-            "type": "string"
-          },
-          "id": {
-            "description": "Product or content identifier",
-            "type": "string"
-          },
-          "price": {
-            "description": "Price per unit of this item",
-            "minimum": 0,
-            "type": "number"
-          },
-          "quantity": {
-            "description": "Quantity of this item",
-            "minimum": 1,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "type": "object"
-      },
-      "type": "array"
+    "content_name": {
+      "type": "string",
+      "description": "Name of the product or content"
     },
-    "currency": {
-      "description": "ISO 4217 currency code",
-      "pattern": "^[A-Z]{3}$",
-      "type": "string"
-    },
-    "ext": {
-      "$ref": "ext.json"
+    "content_category": {
+      "type": "string",
+      "description": "Category of the product or content"
     },
     "num_items": {
+      "type": "integer",
       "description": "Number of items in the event",
-      "minimum": 0,
-      "type": "integer"
-    },
-    "order_id": {
-      "description": "Unique order or transaction identifier",
-      "type": "string"
+      "minimum": 0
     },
     "search_string": {
-      "description": "Search query for search events",
-      "type": "string"
+      "type": "string",
+      "description": "Search query for search events"
     },
-    "value": {
-      "description": "Monetary value of the event (should be accompanied by currency)",
-      "minimum": 0,
-      "type": "number"
+    "contents": {
+      "type": "array",
+      "description": "Per-item details for e-commerce events",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Product or content identifier"
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "Quantity of this item",
+            "minimum": 1
+          },
+          "price": {
+            "type": "number",
+            "description": "Price per unit of this item",
+            "minimum": 0
+          },
+          "brand": {
+            "type": "string",
+            "description": "Brand name of this item"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": true
+      }
+    },
+    "ext": {
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "title": "Event Custom Data",
-  "type": "object"
+  "additionalProperties": true
 }

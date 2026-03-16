@@ -139,8 +139,14 @@ class TestGeneratedCodeMatchesSchemas:
             if "$ref" in obj:
                 ref_path = obj["$ref"]
                 ref_normalized = ref_path.replace("-", "_").lstrip("./")
+                # Strip versioned prefix like /schemas/3.0.0_rc.2/ to get relative key
+                ref_stripped = re.sub(r"^/?schemas/[^/]+/", "", ref_normalized)
                 for key in all_schemas:
-                    if key == ref_normalized or key.endswith("/" + ref_normalized):
+                    if (
+                        key in (ref_normalized, ref_stripped)
+                        or key.endswith("/" + ref_normalized)
+                        or key.endswith("/" + ref_stripped)
+                    ):
                         if TestGeneratedCodeMatchesSchemas._schema_allows_extra(
                             all_schemas[key], all_schemas
                         ):
@@ -193,6 +199,6 @@ class TestGeneratedCodeMatchesSchemas:
                     spurious.append(f"{py_file.name} <- {schema_name}")
 
         assert not spurious, (
-            f"Generated files have extra='allow' without schema support:\n"
+            "Generated files have extra='allow' without schema support:\n"
             + "\n".join(f"  {s}" for s in spurious)
         )

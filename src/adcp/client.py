@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import os
+import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -26,6 +27,8 @@ from adcp.types import (
     CreateMediaBuyRequest,
     CreateMediaBuyResponse,
     GeneratedTaskStatus,
+    GetAccountFinancialsRequest,
+    GetAccountFinancialsResponse,
     GetCreativeDeliveryRequest,
     GetCreativeDeliveryResponse,
     GetMediaBuyDeliveryRequest,
@@ -48,8 +51,14 @@ from adcp.types import (
     PreviewCreativeResponse,
     ProvidePerformanceFeedbackRequest,
     ProvidePerformanceFeedbackResponse,
+    ReportUsageRequest,
+    ReportUsageResponse,
     SyncAccountsRequest,
     SyncAccountsResponse,
+    SyncAudiencesRequest,
+    SyncAudiencesResponse,
+    SyncCatalogsRequest,
+    SyncCatalogsResponse,
     SyncCreativesRequest,
     SyncCreativesResponse,
     SyncEventSourcesRequest,
@@ -110,8 +119,34 @@ from adcp.types.generated_poc.content_standards.validate_content_delivery_respon
     ValidateContentDeliveryResponse,
 )
 from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.generated_poc.creative.get_creative_features_request import (
+    GetCreativeFeaturesRequest,
+)
+from adcp.types.generated_poc.creative.get_creative_features_response import (
+    GetCreativeFeaturesResponse,
+)
 
 # V3 Governance (Property Lists) types
+from adcp.types.generated_poc.governance.check_governance_request import (
+    CheckGovernanceRequest,
+)
+from adcp.types.generated_poc.governance.check_governance_response import (
+    CheckGovernanceResponse,
+)
+from adcp.types.generated_poc.governance.get_plan_audit_logs_request import (
+    GetPlanAuditLogsRequest,
+)
+from adcp.types.generated_poc.governance.get_plan_audit_logs_response import (
+    GetPlanAuditLogsResponse,
+)
+from adcp.types.generated_poc.governance.report_plan_outcome_request import (
+    ReportPlanOutcomeRequest,
+)
+from adcp.types.generated_poc.governance.report_plan_outcome_response import (
+    ReportPlanOutcomeResponse,
+)
+from adcp.types.generated_poc.governance.sync_plans_request import SyncPlansRequest
+from adcp.types.generated_poc.governance.sync_plans_response import SyncPlansResponse
 from adcp.types.generated_poc.property.create_property_list_request import (
     CreatePropertyListRequest,
 )
@@ -190,6 +225,7 @@ class ADCPClient:
         webhook_url_template: str | None = None,
         webhook_secret: str | None = None,
         on_activity: Callable[[Activity], None] | None = None,
+        webhook_timestamp_tolerance: int = 300,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -200,11 +236,15 @@ class ADCPClient:
                 {task_type}, {operation_id}
             webhook_secret: Secret for webhook signature verification
             on_activity: Callback for activity events
+            webhook_timestamp_tolerance: Maximum age (in seconds) for webhook
+                timestamps. Webhooks with timestamps older than this or more than
+                this far in the future are rejected. Defaults to 300 (5 minutes).
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
         self.webhook_secret = webhook_secret
         self.on_activity = on_activity
+        self.webhook_timestamp_tolerance = webhook_timestamp_tolerance
 
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
@@ -975,6 +1015,88 @@ class ADCPClient:
 
         return self.adapter._parse_response(raw_result, SyncAccountsResponse)
 
+    async def get_account_financials(
+        self,
+        request: GetAccountFinancialsRequest,
+    ) -> TaskResult[GetAccountFinancialsResponse]:
+        """
+        Get Account Financials.
+
+        Args:
+            request: Request parameters
+
+        Returns:
+            TaskResult containing GetAccountFinancialsResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_account_financials",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_account_financials(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_account_financials",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetAccountFinancialsResponse)
+
+    async def report_usage(
+        self,
+        request: ReportUsageRequest,
+    ) -> TaskResult[ReportUsageResponse]:
+        """
+        Report Usage.
+
+        Args:
+            request: Request parameters
+
+        Returns:
+            TaskResult containing ReportUsageResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="report_usage",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.report_usage(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="report_usage",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, ReportUsageResponse)
+
     async def log_event(
         self,
         request: LogEventRequest,
@@ -1056,6 +1178,88 @@ class ADCPClient:
         )
 
         return self.adapter._parse_response(raw_result, SyncEventSourcesResponse)
+
+    async def sync_audiences(
+        self,
+        request: SyncAudiencesRequest,
+    ) -> TaskResult[SyncAudiencesResponse]:
+        """
+        Sync Audiences.
+
+        Args:
+            request: Request parameters
+
+        Returns:
+            TaskResult containing SyncAudiencesResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_audiences",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.sync_audiences(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_audiences",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, SyncAudiencesResponse)
+
+    async def sync_catalogs(
+        self,
+        request: SyncCatalogsRequest,
+    ) -> TaskResult[SyncCatalogsResponse]:
+        """
+        Sync Catalogs.
+
+        Args:
+            request: Request parameters
+
+        Returns:
+            TaskResult containing SyncCatalogsResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_catalogs",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.sync_catalogs(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_catalogs",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, SyncCatalogsResponse)
 
     async def get_creative_delivery(
         self,
@@ -1630,8 +1834,173 @@ class ADCPClient:
         return self.adapter._parse_response(raw_result, SiTerminateSessionResponse)
 
     # ========================================================================
-    # V3 Governance (Property Lists) Methods
+    # V3 Governance Methods
     # ========================================================================
+
+    async def get_creative_features(
+        self,
+        request: GetCreativeFeaturesRequest,
+    ) -> TaskResult[GetCreativeFeaturesResponse]:
+        """Evaluate governance features for a creative manifest."""
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_creative_features",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_creative_features(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_creative_features",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetCreativeFeaturesResponse)
+
+    async def sync_plans(
+        self,
+        request: SyncPlansRequest,
+    ) -> TaskResult[SyncPlansResponse]:
+        """Sync campaign governance plans to the governance agent."""
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_plans",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.sync_plans(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_plans",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, SyncPlansResponse)
+
+    async def check_governance(
+        self,
+        request: CheckGovernanceRequest,
+    ) -> TaskResult[CheckGovernanceResponse]:
+        """Check a proposed or committed action against campaign governance."""
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="check_governance",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.check_governance(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="check_governance",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, CheckGovernanceResponse)
+
+    async def report_plan_outcome(
+        self,
+        request: ReportPlanOutcomeRequest,
+    ) -> TaskResult[ReportPlanOutcomeResponse]:
+        """Report the outcome of a governed action to the governance agent."""
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="report_plan_outcome",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.report_plan_outcome(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="report_plan_outcome",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, ReportPlanOutcomeResponse)
+
+    async def get_plan_audit_logs(
+        self,
+        request: GetPlanAuditLogsRequest,
+    ) -> TaskResult[GetPlanAuditLogsResponse]:
+        """Retrieve governance state and audit logs for one or more plans."""
+        operation_id = create_operation_id()
+        params = request.model_dump(exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_plan_audit_logs",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_plan_audit_logs(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_plan_audit_logs",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetPlanAuditLogsResponse)
 
     async def create_property_list(
         self,
@@ -1921,7 +2290,19 @@ class ADCPClient:
             True if signature is valid, False otherwise
         """
         if not self.webhook_secret:
+            logger.warning(
+                "Webhook signature verification skipped: no webhook_secret configured"
+            )
             return True
+
+        # Reject stale or future timestamps to prevent replay attacks
+        try:
+            ts = int(timestamp)
+        except (ValueError, TypeError):
+            return False
+        now = int(time.time())
+        if abs(now - ts) > self.webhook_timestamp_tolerance:
+            return False
 
         # Strip "sha256=" prefix if present
         if signature.startswith("sha256="):
@@ -1994,10 +2375,14 @@ class ADCPClient:
             "get_signals": GetSignalsResponse,
             "activate_signal": ActivateSignalResponse,
             "provide_performance_feedback": ProvidePerformanceFeedbackResponse,
+            "report_usage": ReportUsageResponse,
+            "get_account_financials": GetAccountFinancialsResponse,
             "list_accounts": ListAccountsResponse,
             "sync_accounts": SyncAccountsResponse,
             "log_event": LogEventResponse,
             "sync_event_sources": SyncEventSourcesResponse,
+            "sync_audiences": SyncAudiencesResponse,
+            "sync_catalogs": SyncCatalogsResponse,
             "get_creative_delivery": GetCreativeDeliveryResponse,
             # V3 Protocol Discovery
             "get_adcp_capabilities": GetAdcpCapabilitiesResponse,
@@ -2014,7 +2399,12 @@ class ADCPClient:
             "si_initiate_session": SiInitiateSessionResponse,
             "si_send_message": SiSendMessageResponse,
             "si_terminate_session": SiTerminateSessionResponse,
-            # V3 Governance (Property Lists)
+            # V3 Governance
+            "get_creative_features": GetCreativeFeaturesResponse,
+            "sync_plans": SyncPlansResponse,
+            "check_governance": CheckGovernanceResponse,
+            "report_plan_outcome": ReportPlanOutcomeResponse,
+            "get_plan_audit_logs": GetPlanAuditLogsResponse,
             "create_property_list": CreatePropertyListResponse,
             "get_property_list": GetPropertyListResponse,
             "list_property_lists": ListPropertyListsResponse,
@@ -2106,16 +2496,17 @@ class ADCPClient:
         """
         from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
 
-        # Verify signature before processing (requires both signature and timestamp)
-        if (
-            signature
-            and timestamp
-            and not self._verify_webhook_signature(payload, signature, timestamp, raw_body)
-        ):
-            logger.warning(
-                f"Webhook signature verification failed for agent {self.agent_config.id}"
-            )
-            raise ADCPWebhookSignatureError("Invalid webhook signature")
+        # When a webhook_secret is configured, require signed webhooks
+        if self.webhook_secret:
+            if not signature or not timestamp:
+                raise ADCPWebhookSignatureError(
+                    "Webhook signature and timestamp headers are required"
+                )
+            if not self._verify_webhook_signature(payload, signature, timestamp, raw_body):
+                logger.warning(
+                    f"Webhook signature verification failed for agent {self.agent_config.id}"
+                )
+                raise ADCPWebhookSignatureError("Invalid webhook signature")
 
         # Validate and parse MCP webhook payload
         webhook = McpWebhookPayload.model_validate(payload)

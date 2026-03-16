@@ -150,8 +150,12 @@ async def test_all_client_methods():
     assert hasattr(client, "build_creative")
     assert hasattr(client, "list_accounts")
     assert hasattr(client, "sync_accounts")
+    assert hasattr(client, "get_account_financials")
+    assert hasattr(client, "report_usage")
     assert hasattr(client, "log_event")
     assert hasattr(client, "sync_event_sources")
+    assert hasattr(client, "sync_audiences")
+    assert hasattr(client, "sync_catalogs")
     assert hasattr(client, "get_creative_delivery")
     # V3 Protocol Discovery
     assert hasattr(client, "get_adcp_capabilities")
@@ -163,6 +167,12 @@ async def test_all_client_methods():
     assert hasattr(client, "calibrate_content")
     assert hasattr(client, "validate_content_delivery")
     assert hasattr(client, "get_media_buy_artifacts")
+    # V3 Governance
+    assert hasattr(client, "get_creative_features")
+    assert hasattr(client, "sync_plans")
+    assert hasattr(client, "check_governance")
+    assert hasattr(client, "report_plan_outcome")
+    assert hasattr(client, "get_plan_audit_logs")
     # V3 Sponsored Intelligence
     assert hasattr(client, "si_get_offering")
     assert hasattr(client, "si_initiate_session")
@@ -254,6 +264,28 @@ async def test_all_client_methods():
             },
         ),
         (
+            "get_account_financials",
+            "GetAccountFinancialsRequest",
+            {"account": {"account_id": "acct-1"}},
+        ),
+        (
+            "report_usage",
+            "ReportUsageRequest",
+            {
+                "reporting_period": {
+                    "start": "2024-01-01T00:00:00Z",
+                    "end": "2024-01-31T23:59:59Z",
+                },
+                "usage": [
+                    {
+                        "account": {"account_id": "acct-1"},
+                        "vendor_cost": 123.45,
+                        "currency": "USD",
+                    }
+                ],
+            },
+        ),
+        (
             "log_event",
             "LogEventRequest",
             {
@@ -273,9 +305,88 @@ async def test_all_client_methods():
             {"account": {"account_id": "acct-1"}},
         ),
         (
+            "sync_audiences",
+            "SyncAudiencesRequest",
+            {"account": {"account_id": "acct-1"}},
+        ),
+        (
+            "sync_catalogs",
+            "SyncCatalogsRequest",
+            {"account": {"account_id": "acct-1"}},
+        ),
+        (
             "get_creative_delivery",
             "GetCreativeDeliveryRequest",
             {"media_buy_ids": ["mb-1"]},
+        ),
+        # V3 Governance
+        (
+            "sync_plans",
+            "SyncPlansRequest",
+            {"plans": []},
+        ),
+        (
+            "check_governance",
+            "CheckGovernanceRequest",
+            {
+                "plan_id": "plan_123",
+                "buyer_campaign_ref": "campaign_123",
+                "binding": "proposed",
+                "caller": "https://buyer.example.com",
+            },
+        ),
+        (
+            "report_plan_outcome",
+            "ReportPlanOutcomeRequest",
+            {
+                "plan_id": "plan_123",
+                "buyer_campaign_ref": "campaign_123",
+                "outcome": "completed",
+                "seller_response": {},
+            },
+        ),
+        (
+            "get_plan_audit_logs",
+            "GetPlanAuditLogsRequest",
+            {"plan_ids": ["plan_123"]},
+        ),
+        (
+            "get_creative_features",
+            "GetCreativeFeaturesRequest",
+            {
+                "creative_manifest": {
+                    "creative_id": "cr-1",
+                    "name": "Test",
+                    "format_id": {"id": "fmt-1", "agent_url": "https://a.example.com/"},
+                    "assets": {},
+                },
+            },
+        ),
+        # V3 Property Lists
+        (
+            "create_property_list",
+            "CreatePropertyListRequest",
+            {"name": "test-list"},
+        ),
+        (
+            "get_property_list",
+            "GetPropertyListRequest",
+            {"list_id": "pl-1"},
+        ),
+        (
+            "list_property_lists",
+            "ListPropertyListsRequest",
+            {},
+        ),
+        (
+            "update_property_list",
+            "UpdatePropertyListRequest",
+            {"list_id": "pl-1"},
+        ),
+        (
+            "delete_property_list",
+            "DeletePropertyListRequest",
+            {"list_id": "pl-1"},
         ),
         # Note: preview_creative, create_media_buy, update_media_buy, and build_creative
         # are tested separately with full request validation since their schemas are complex
@@ -743,8 +854,8 @@ async def test_get_media_buys_parses_snapshot_response():
         no_snapshot = packages[2]
         assert no_snapshot.snapshot is None
         assert (
-            no_snapshot.snapshot_unavailable_reason
-            == SnapshotUnavailableReason.SNAPSHOT_UNSUPPORTED
+            no_snapshot.snapshot_unavailable_reason.value
+            == SnapshotUnavailableReason.SNAPSHOT_UNSUPPORTED.value
         )
 
 

@@ -198,6 +198,7 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         "create_media_buy": ("create_media_buy", _ta(gen.CreateMediaBuyRequest)),
         "update_media_buy": ("update_media_buy", _ta(gen.UpdateMediaBuyRequest)),
         "get_media_buy_delivery": ("get_media_buy_delivery", _ta(gen.GetMediaBuyDeliveryRequest)),
+        "get_media_buys": ("get_media_buys", _ta(gen.GetMediaBuysRequest)),
         # Signals
         "get_signals": ("get_signals", _ta(gen.GetSignalsRequest)),
         "activate_signal": ("activate_signal", _ta(gen.ActivateSignalRequest)),
@@ -208,9 +209,16 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         # Accounts
         "list_accounts": ("list_accounts", _ta(gen.ListAccountsRequest)),
         "sync_accounts": ("sync_accounts", _ta(gen.SyncAccountsRequest)),
+        "get_account_financials": (
+            "get_account_financials",
+            _ta(gen.GetAccountFinancialsRequest),
+        ),
+        "report_usage": ("report_usage", _ta(gen.ReportUsageRequest)),
         # Events
         "log_event": ("log_event", _ta(gen.LogEventRequest)),
         "sync_event_sources": ("sync_event_sources", _ta(gen.SyncEventSourcesRequest)),
+        "sync_audiences": ("sync_audiences", _ta(gen.SyncAudiencesRequest)),
+        "sync_catalogs": ("sync_catalogs", _ta(gen.SyncCatalogsRequest)),
         # Creative Delivery
         "get_creative_delivery": ("get_creative_delivery", _ta(gen.GetCreativeDeliveryRequest)),
         # V3 Protocol Discovery
@@ -234,6 +242,21 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         "get_media_buy_artifacts": (
             "get_media_buy_artifacts",
             _ta(gen.GetMediaBuyArtifactsRequest),
+        ),
+        # V3 Governance
+        "get_creative_features": (
+            "get_creative_features",
+            _ta(gen.GetCreativeFeaturesRequest),
+        ),
+        "sync_plans": ("sync_plans", _ta(gen.SyncPlansRequest)),
+        "check_governance": ("check_governance", _ta(gen.CheckGovernanceRequest)),
+        "report_plan_outcome": (
+            "report_plan_outcome",
+            _ta(gen.ReportPlanOutcomeRequest),
+        ),
+        "get_plan_audit_logs": (
+            "get_plan_audit_logs",
+            _ta(gen.GetPlanAuditLogsRequest),
         ),
         # V3 Sponsored Intelligence
         "si_get_offering": ("si_get_offering", _ta(gen.SiGetOfferingRequest)),

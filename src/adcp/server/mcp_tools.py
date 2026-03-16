@@ -6,13 +6,9 @@ Provides utilities for registering ADCP handlers with MCP servers.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
-
-if TYPE_CHECKING:
-    pass
-
 
 # Tool definitions for all ADCP operations
 ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -137,6 +133,19 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["media_buy_id"],
         },
     },
+    {
+        "name": "get_media_buys",
+        "description": "List media buys with status and optional delivery snapshots",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "media_buy_ids": {"type": "array", "items": {"type": "string"}},
+                "buyer_refs": {"type": "array", "items": {"type": "string"}},
+                "pagination": {"type": "object"},
+            },
+        },
+    },
     # Signal Operations
     {
         "name": "get_signals",
@@ -184,6 +193,29 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["accounts"],
         },
     },
+    {
+        "name": "get_account_financials",
+        "description": "Get account financials",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "date_range": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "report_usage",
+        "description": "Report usage for billing or metering",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "usage": {"type": "array"},
+            },
+            "required": ["usage"],
+        },
+    },
     # Event Operations
     {
         "name": "log_event",
@@ -205,6 +237,30 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "event_sources": {"type": "array"},
             },
             "required": ["event_sources"],
+        },
+    },
+    {
+        "name": "sync_audiences",
+        "description": "Sync audiences",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "audiences": {"type": "array"},
+            },
+            "required": ["audiences"],
+        },
+    },
+    {
+        "name": "sync_catalogs",
+        "description": "Sync catalogs",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "account": {"type": "object"},
+                "catalogs": {"type": "array"},
+            },
+            "required": ["catalogs"],
         },
     },
     # Feedback Operations
@@ -308,6 +364,78 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "media_buy_id": {"type": "string"},
             },
             "required": ["media_buy_id"],
+        },
+    },
+    # V3 Governance
+    {
+        "name": "get_creative_features",
+        "description": "Evaluate governance features for a creative",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "creative_manifest": {"type": "object"},
+                "account": {"type": "object"},
+                "context": {"type": "object"},
+            },
+            "required": ["creative_manifest"],
+        },
+    },
+    {
+        "name": "sync_plans",
+        "description": "Sync campaign governance plans",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plans": {"type": "array"},
+            },
+            "required": ["plans"],
+        },
+    },
+    {
+        "name": "check_governance",
+        "description": "Check an action against campaign governance",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_id": {"type": "string"},
+                "buyer_campaign_ref": {"type": "string"},
+                "binding": {"type": "string"},
+                "caller": {"type": "string"},
+                "tool": {"type": "string"},
+                "payload": {"type": "object"},
+                "governance_context": {"type": "object"},
+            },
+            "required": ["plan_id", "buyer_campaign_ref", "binding", "caller"],
+        },
+    },
+    {
+        "name": "report_plan_outcome",
+        "description": "Report the outcome of a governed action",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_id": {"type": "string"},
+                "buyer_campaign_ref": {"type": "string"},
+                "outcome": {"type": "string"},
+                "check_id": {"type": "string"},
+                "seller_response": {"type": "object"},
+                "delivery": {"type": "object"},
+                "error": {"type": "object"},
+            },
+            "required": ["plan_id", "buyer_campaign_ref", "outcome"],
+        },
+    },
+    {
+        "name": "get_plan_audit_logs",
+        "description": "Retrieve governance audit logs for one or more plans",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "plan_ids": {"type": "array", "items": {"type": "string"}},
+                "portfolio_plan_ids": {"type": "array", "items": {"type": "string"}},
+                "buyer_campaign_ref": {"type": "string"},
+                "include_entries": {"type": "boolean"},
+            },
         },
     },
     # V3 Sponsored Intelligence
@@ -422,6 +550,71 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 ]
 
 
+# Protocol discovery tool included for all handler types
+_PROTOCOL_TOOLS: set[str] = {"get_adcp_capabilities"}
+
+# Tools specific to each specialized handler type
+_HANDLER_TOOLS: dict[str, set[str]] = {
+    "GovernanceHandler": {
+        "get_creative_features",
+        "sync_plans",
+        "check_governance",
+        "report_plan_outcome",
+        "get_plan_audit_logs",
+        "create_property_list",
+        "get_property_list",
+        "list_property_lists",
+        "update_property_list",
+        "delete_property_list",
+    },
+    "ContentStandardsHandler": {
+        "create_content_standards",
+        "get_content_standards",
+        "list_content_standards",
+        "update_content_standards",
+        "calibrate_content",
+        "validate_content_delivery",
+        "get_media_buy_artifacts",
+    },
+    "SponsoredIntelligenceHandler": {
+        "si_get_offering",
+        "si_initiate_session",
+        "si_send_message",
+        "si_terminate_session",
+    },
+    "ADCPHandler": {tool["name"] for tool in ADCP_TOOL_DEFINITIONS},
+}
+
+# Validate that all handler tool names reference real tools
+_ALL_TOOL_NAMES = {t["name"] for t in ADCP_TOOL_DEFINITIONS}
+for _handler_name, _tools in _HANDLER_TOOLS.items():
+    _unknown = _tools - _ALL_TOOL_NAMES
+    assert not _unknown, f"{_handler_name} references unknown tools: {_unknown}"
+
+
+def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict[str, Any]]:
+    """Return tool definitions filtered by handler type.
+
+    Walks the MRO to find the matching handler base class, so subclasses
+    (e.g. MyGovernanceAgent(GovernanceHandler)) get the correct tool set.
+    ADCPHandler gets all tools. Unknown handlers get only protocol discovery
+    (minimum privilege).
+
+    Args:
+        handler: The handler instance or class
+
+    Returns:
+        Filtered list of tool definitions
+    """
+    cls = handler if isinstance(handler, type) else type(handler)
+    for base in cls.__mro__:
+        if base.__name__ in _HANDLER_TOOLS:
+            allowed = _HANDLER_TOOLS[base.__name__] | _PROTOCOL_TOOLS
+            return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
+
+    return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
+
+
 def create_tool_caller(
     handler: ADCPHandler,
     method_name: str,
@@ -461,17 +654,18 @@ class MCPToolSet:
             handler: ADCP handler instance
         """
         self.handler = handler
+        self._filtered_definitions = get_tools_for_handler(handler)
         self._tools: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
-        # Create tool callers for all methods
-        for tool_def in ADCP_TOOL_DEFINITIONS:
+        # Create tool callers only for filtered tools
+        for tool_def in self._filtered_definitions:
             name = tool_def["name"]
             self._tools[name] = create_tool_caller(handler, name)
 
     @property
     def tool_definitions(self) -> list[dict[str, Any]]:
-        """Get MCP tool definitions."""
-        return ADCP_TOOL_DEFINITIONS.copy()
+        """Get MCP tool definitions filtered by handler type."""
+        return list(self._filtered_definitions)
 
     async def call_tool(self, name: str, params: dict[str, Any]) -> Any:
         """Call a tool by name.

@@ -1,50 +1,41 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
-  "anyOf": [
-    {
-      "required": [
-        "message"
-      ]
-    },
-    {
-      "required": [
-        "action_response"
-      ]
-    }
-  ],
+  "$id": "/schemas/3.0.0-rc.2/sponsored-intelligence/si-send-message-request.json",
+  "title": "SI Send Message Request",
   "description": "Send a message to the brand agent within an active session",
+  "type": "object",
   "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Active session identifier"
+    },
+    "message": {
+      "type": "string",
+      "description": "User's message to the brand agent"
+    },
     "action_response": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Response to a previous action_button (e.g., user clicked checkout)",
       "properties": {
         "action": {
-          "description": "The action that was triggered",
-          "type": "string"
+          "type": "string",
+          "description": "The action that was triggered"
         },
         "payload": {
-          "description": "Action-specific response data",
-          "type": "object"
+          "type": "object",
+          "description": "Action-specific response data"
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
     "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "message": {
-      "description": "User's message to the brand agent",
-      "type": "string"
-    },
-    "session_id": {
-      "description": "Active session identifier",
-      "type": "string"
+      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
     }
   },
-  "required": [
-    "session_id"
+  "required": ["session_id"],
+  "anyOf": [
+    { "required": ["message"] },
+    { "required": ["action_response"] }
   ],
-  "title": "SI Send Message Request",
-  "type": "object"
+  "additionalProperties": true
 }

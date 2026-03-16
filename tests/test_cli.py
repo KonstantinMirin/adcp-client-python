@@ -288,6 +288,11 @@ class TestCLIIntegration:
         # Core operations
         assert "get_products" in dispatch_table
         assert "create_media_buy" in dispatch_table
+        assert "get_media_buys" in dispatch_table
+        assert "get_account_financials" in dispatch_table
+        assert "report_usage" in dispatch_table
+        assert "sync_audiences" in dispatch_table
+        assert "sync_catalogs" in dispatch_table
         assert "list_tools" in dispatch_table
 
         # V3 Protocol Discovery
@@ -301,6 +306,13 @@ class TestCLIIntegration:
         assert "calibrate_content" in dispatch_table
         assert "validate_content_delivery" in dispatch_table
         assert "get_media_buy_artifacts" in dispatch_table
+
+        # V3 Governance
+        assert "get_creative_features" in dispatch_table
+        assert "sync_plans" in dispatch_table
+        assert "check_governance" in dispatch_table
+        assert "report_plan_outcome" in dispatch_table
+        assert "get_plan_audit_logs" in dispatch_table
 
         # V3 Sponsored Intelligence
         assert "si_get_offering" in dispatch_table
