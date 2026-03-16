@@ -77,7 +77,12 @@ def test_tool_filtering_by_handler_type():
     all_tool_names = {tool["name"] for tool in ADCP_TOOL_DEFINITIONS}
 
     # GovernanceHandler: governance tools + protocol discovery
-    gov_tools = {t["name"] for t in get_tools_for_handler("GovernanceHandler")}
+    from adcp.server.base import ADCPHandler
+    from adcp.server.content_standards import ContentStandardsHandler
+    from adcp.server.governance import GovernanceHandler
+    from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
+
+    gov_tools = {t["name"] for t in get_tools_for_handler(GovernanceHandler)}
     assert gov_tools == {
         "get_creative_features", "sync_plans", "check_governance",
         "report_plan_outcome", "get_plan_audit_logs",
@@ -87,7 +92,7 @@ def test_tool_filtering_by_handler_type():
     }
 
     # ContentStandardsHandler: content standards tools + protocol discovery
-    cs_tools = {t["name"] for t in get_tools_for_handler("ContentStandardsHandler")}
+    cs_tools = {t["name"] for t in get_tools_for_handler(ContentStandardsHandler)}
     assert cs_tools == {
         "create_content_standards", "get_content_standards",
         "list_content_standards", "update_content_standards",
@@ -97,7 +102,7 @@ def test_tool_filtering_by_handler_type():
     }
 
     # SponsoredIntelligenceHandler: SI tools + protocol discovery
-    si_tools = {t["name"] for t in get_tools_for_handler("SponsoredIntelligenceHandler")}
+    si_tools = {t["name"] for t in get_tools_for_handler(SponsoredIntelligenceHandler)}
     assert si_tools == {
         "si_get_offering", "si_initiate_session",
         "si_send_message", "si_terminate_session",
@@ -105,12 +110,15 @@ def test_tool_filtering_by_handler_type():
     }
 
     # ADCPHandler: all tools (no filtering)
-    adcp_tools = {t["name"] for t in get_tools_for_handler("ADCPHandler")}
+    adcp_tools = {t["name"] for t in get_tools_for_handler(ADCPHandler)}
     assert adcp_tools == all_tool_names
 
-    # Unknown handler: protocol-only tools (minimum privilege)
-    unknown_tools = {t["name"] for t in get_tools_for_handler("SomeCustomHandler")}
-    assert unknown_tools == {"get_adcp_capabilities"}
+    # Subclass of GovernanceHandler gets governance tools (MRO walk)
+    class MyGovernanceAgent(GovernanceHandler):
+        pass
+
+    subclass_tools = {t["name"] for t in get_tools_for_handler(MyGovernanceAgent)}
+    assert subclass_tools == gov_tools
 
 
 def _collect_all_properties(schema: dict[str, Any]) -> set[str]:

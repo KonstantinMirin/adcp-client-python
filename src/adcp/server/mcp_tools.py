@@ -6,13 +6,9 @@ Provides utilities for registering ADCP handlers with MCP servers.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
-
-if TYPE_CHECKING:
-    pass
-
 
 # Tool definitions for all ADCP operations
 ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -589,25 +585,34 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
     "ADCPHandler": {tool["name"] for tool in ADCP_TOOL_DEFINITIONS},
 }
 
+# Validate that all handler tool names reference real tools
+_ALL_TOOL_NAMES = {t["name"] for t in ADCP_TOOL_DEFINITIONS}
+for _handler_name, _tools in _HANDLER_TOOLS.items():
+    _unknown = _tools - _ALL_TOOL_NAMES
+    assert not _unknown, f"{_handler_name} references unknown tools: {_unknown}"
 
-def get_tools_for_handler(handler_class_name: str) -> list[dict[str, Any]]:
+
+def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict[str, Any]]:
     """Return tool definitions filtered by handler type.
 
-    Specialized handlers only get their own tools plus protocol discovery.
+    Walks the MRO to find the matching handler base class, so subclasses
+    (e.g. MyGovernanceAgent(GovernanceHandler)) get the correct tool set.
     ADCPHandler gets all tools. Unknown handlers get only protocol discovery
     (minimum privilege).
 
     Args:
-        handler_class_name: The handler class name (e.g. "GovernanceHandler")
+        handler: The handler instance or class
 
     Returns:
         Filtered list of tool definitions
     """
-    if handler_class_name not in _HANDLER_TOOLS:
-        return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
+    cls = handler if isinstance(handler, type) else type(handler)
+    for base in cls.__mro__:
+        if base.__name__ in _HANDLER_TOOLS:
+            allowed = _HANDLER_TOOLS[base.__name__] | _PROTOCOL_TOOLS
+            return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
 
-    allowed = _HANDLER_TOOLS[handler_class_name] | _PROTOCOL_TOOLS
-    return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
+    return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
 
 
 def create_tool_caller(
@@ -649,7 +654,7 @@ class MCPToolSet:
             handler: ADCP handler instance
         """
         self.handler = handler
-        self._filtered_definitions = get_tools_for_handler(type(handler).__name__)
+        self._filtered_definitions = get_tools_for_handler(handler)
         self._tools: dict[str, Callable[[dict[str, Any]], Any]] = {}
 
         # Create tool callers only for filtered tools
