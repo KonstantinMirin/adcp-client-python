@@ -586,6 +586,7 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
         "si_send_message",
         "si_terminate_session",
     },
+    "ADCPHandler": {tool["name"] for tool in ADCP_TOOL_DEFINITIONS},
 }
 
 
@@ -593,7 +594,8 @@ def get_tools_for_handler(handler_class_name: str) -> list[dict[str, Any]]:
     """Return tool definitions filtered by handler type.
 
     Specialized handlers only get their own tools plus protocol discovery.
-    ADCPHandler and unknown handlers get all tools.
+    ADCPHandler gets all tools. Unknown handlers get only protocol discovery
+    (minimum privilege).
 
     Args:
         handler_class_name: The handler class name (e.g. "GovernanceHandler")
@@ -602,7 +604,7 @@ def get_tools_for_handler(handler_class_name: str) -> list[dict[str, Any]]:
         Filtered list of tool definitions
     """
     if handler_class_name not in _HANDLER_TOOLS:
-        return ADCP_TOOL_DEFINITIONS.copy()
+        return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
 
     allowed = _HANDLER_TOOLS[handler_class_name] | _PROTOCOL_TOOLS
     return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]

@@ -39,7 +39,7 @@ class TestMCPWebhooks:
             agent_uri="https://test.example.com",
             protocol=Protocol.MCP,
         )
-        self.client = ADCPClient(self.config, webhook_secret="test_secret")
+        self.client = ADCPClient(self.config)
 
     @pytest.mark.asyncio
     async def test_mcp_webhook_completed_success(self):
@@ -184,7 +184,8 @@ class TestMCPWebhooks:
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
-        result = await self.client.handle_webhook(
+        client = ADCPClient(self.config, webhook_secret="test_secret")
+        result = await client.handle_webhook(
             payload,
             task_type="create_media_buy",
             operation_id="op_333",
@@ -216,7 +217,8 @@ class TestMCPWebhooks:
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
-        result = await self.client.handle_webhook(
+        client = ADCPClient(self.config, webhook_secret="test_secret")
+        result = await client.handle_webhook(
             payload,
             task_type="create_media_buy",
             operation_id="op_333b",
@@ -238,8 +240,9 @@ class TestMCPWebhooks:
             "result": {"media_buy_id": "mb_444", "buyer_ref": "ref_444", "packages": []},
         }
 
+        client = ADCPClient(self.config, webhook_secret="test_secret")
         with pytest.raises(ADCPWebhookSignatureError):
-            await self.client.handle_webhook(
+            await client.handle_webhook(
                 payload,
                 task_type="create_media_buy",
                 operation_id="op_444",
@@ -268,7 +271,8 @@ class TestMCPWebhooks:
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
-        result = await self.client.handle_webhook(
+        client = ADCPClient(self.config, webhook_secret="test_secret")
+        result = await client.handle_webhook(
             payload,
             task_type="create_media_buy",
             operation_id="op_ts1",
@@ -300,8 +304,9 @@ class TestMCPWebhooks:
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
+        client = ADCPClient(self.config, webhook_secret="test_secret")
         with pytest.raises(ADCPWebhookSignatureError):
-            await self.client.handle_webhook(
+            await client.handle_webhook(
                 payload,
                 task_type="create_media_buy",
                 operation_id="op_ts2",
@@ -331,13 +336,36 @@ class TestMCPWebhooks:
             b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
+        client = ADCPClient(self.config, webhook_secret="test_secret")
         with pytest.raises(ADCPWebhookSignatureError):
-            await self.client.handle_webhook(
+            await client.handle_webhook(
                 payload,
                 task_type="create_media_buy",
                 operation_id="op_ts3",
                 signature=signature,
                 timestamp=header_timestamp,
+            )
+
+    @pytest.mark.asyncio
+    async def test_mcp_webhook_missing_headers_with_secret_rejects(self):
+        """Omitting signature/timestamp headers when secret is configured must fail."""
+        client = ADCPClient(
+            agent_config=self.config,
+            webhook_secret="test-secret",
+        )
+        payload = {
+            "task_id": "test-123",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "completed",
+            "result": {"products": []},
+        }
+        with pytest.raises(ADCPWebhookSignatureError, match="required"):
+            await client._handle_mcp_webhook(
+                payload=payload,
+                task_type="get_products",
+                operation_id="op-123",
+                signature=None,
+                timestamp=None,
             )
 
     @pytest.mark.asyncio

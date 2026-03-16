@@ -108,9 +108,9 @@ def test_tool_filtering_by_handler_type():
     adcp_tools = {t["name"] for t in get_tools_for_handler("ADCPHandler")}
     assert adcp_tools == all_tool_names
 
-    # Unknown handler: all tools (no filtering)
+    # Unknown handler: protocol-only tools (minimum privilege)
     unknown_tools = {t["name"] for t in get_tools_for_handler("SomeCustomHandler")}
-    assert unknown_tools == all_tool_names
+    assert unknown_tools == {"get_adcp_capabilities"}
 
 
 def _collect_all_properties(schema: dict[str, Any]) -> set[str]:

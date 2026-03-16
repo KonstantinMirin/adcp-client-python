@@ -2290,6 +2290,9 @@ class ADCPClient:
             True if signature is valid, False otherwise
         """
         if not self.webhook_secret:
+            logger.warning(
+                "Webhook signature verification skipped: no webhook_secret configured"
+            )
             return True
 
         # Reject stale or future timestamps to prevent replay attacks
@@ -2493,16 +2496,17 @@ class ADCPClient:
         """
         from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
 
-        # Verify signature before processing (requires both signature and timestamp)
-        if (
-            signature
-            and timestamp
-            and not self._verify_webhook_signature(payload, signature, timestamp, raw_body)
-        ):
-            logger.warning(
-                f"Webhook signature verification failed for agent {self.agent_config.id}"
-            )
-            raise ADCPWebhookSignatureError("Invalid webhook signature")
+        # When a webhook_secret is configured, require signed webhooks
+        if self.webhook_secret:
+            if not signature or not timestamp:
+                raise ADCPWebhookSignatureError(
+                    "Webhook signature and timestamp headers are required"
+                )
+            if not self._verify_webhook_signature(payload, signature, timestamp, raw_body):
+                logger.warning(
+                    f"Webhook signature verification failed for agent {self.agent_config.id}"
+                )
+                raise ADCPWebhookSignatureError("Invalid webhook signature")
 
         # Validate and parse MCP webhook payload
         webhook = McpWebhookPayload.model_validate(payload)
