@@ -19,6 +19,7 @@ from adcp.adagents import (
     verify_agent_authorization,
     verify_agent_for_property,
 )
+from adcp.capabilities import FeatureResolver, validate_capabilities
 from adcp.client import ADCPClient, ADCPMultiAgentClient
 from adcp.exceptions import (
     AdagentsNotFoundError,
@@ -27,6 +28,7 @@ from adcp.exceptions import (
     ADCPAuthenticationError,
     ADCPConnectionError,
     ADCPError,
+    ADCPFeatureUnsupportedError,
     ADCPProtocolError,
     ADCPTimeoutError,
     ADCPToolNotFoundError,
@@ -414,6 +416,9 @@ __all__ = [
     "ADCPClient",
     "ADCPMultiAgentClient",
     "RegistryClient",
+    # Capability validation
+    "FeatureResolver",
+    "validate_capabilities",
     # Core types
     "AgentConfig",
     "Member",
@@ -620,6 +625,7 @@ __all__ = [
     "CREATIVE_AGENT_CONFIG",
     # Exceptions
     "ADCPError",
+    "ADCPFeatureUnsupportedError",
     "ADCPConnectionError",
     "ADCPAuthenticationError",
     "ADCPTimeoutError",

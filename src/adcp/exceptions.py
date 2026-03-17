@@ -165,6 +165,38 @@ class RegistryError(ADCPError):
         super().__init__(message, suggestion=suggestion)
 
 
+class ADCPFeatureUnsupportedError(ADCPError):
+    """Seller does not support one or more required features."""
+
+    def __init__(
+        self,
+        unsupported_features: list[str],
+        declared_features: list[str] | None = None,
+        agent_id: str | None = None,
+        agent_uri: str | None = None,
+    ):
+        """Initialize feature unsupported error.
+
+        Args:
+            unsupported_features: Features that are not supported.
+            declared_features: Features the seller does declare.
+            agent_id: Optional agent ID for context.
+            agent_uri: Optional agent URI for context.
+        """
+        self.unsupported_features = unsupported_features
+        self.declared_features = declared_features or []
+
+        missing = ", ".join(unsupported_features)
+        message = f"Seller does not support: {missing}"
+
+        suggestion = None
+        if self.declared_features:
+            declared = ", ".join(sorted(self.declared_features))
+            suggestion = f"Declared features: {declared}"
+
+        super().__init__(message, agent_id, agent_uri, suggestion)
+
+
 class AdagentsValidationError(ADCPError):
     """Base error for adagents.json validation issues."""
 

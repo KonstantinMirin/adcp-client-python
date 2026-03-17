@@ -18,6 +18,7 @@ Examples:
 
 from __future__ import annotations
 
+from adcp.capabilities import validate_capabilities
 from adcp.server.base import (
     ADCPHandler,
     NotImplementedResponse,
@@ -36,6 +37,8 @@ __all__ = [
     "ToolContext",
     "NotImplementedResponse",
     "not_supported",
+    # Capability validation
+    "validate_capabilities",
     # Protocol handlers
     "ContentStandardsHandler",
     "GovernanceHandler",
