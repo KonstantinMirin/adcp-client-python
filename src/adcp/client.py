@@ -15,7 +15,8 @@ from typing import Any
 from a2a.types import Task, TaskStatusUpdateEvent
 from pydantic import BaseModel
 
-from adcp.exceptions import ADCPWebhookSignatureError
+from adcp.capabilities import TASK_FEATURE_MAP, FeatureResolver
+from adcp.exceptions import ADCPError, ADCPWebhookSignatureError
 from adcp.protocols.a2a import A2AAdapter
 from adcp.protocols.base import ProtocolAdapter
 from adcp.protocols.mcp import MCPAdapter
@@ -226,6 +227,8 @@ class ADCPClient:
         webhook_secret: str | None = None,
         on_activity: Callable[[Activity], None] | None = None,
         webhook_timestamp_tolerance: int = 300,
+        capabilities_ttl: float = 3600.0,
+        validate_features: bool = False,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -239,12 +242,23 @@ class ADCPClient:
             webhook_timestamp_tolerance: Maximum age (in seconds) for webhook
                 timestamps. Webhooks with timestamps older than this or more than
                 this far in the future are rejected. Defaults to 300 (5 minutes).
+            capabilities_ttl: Time-to-live in seconds for cached capabilities (default: 1 hour)
+            validate_features: When True, automatically check that the seller supports
+                required features before making task calls (e.g., sync_audiences requires
+                audience_targeting). Requires capabilities to have been fetched first.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
         self.webhook_secret = webhook_secret
         self.on_activity = on_activity
         self.webhook_timestamp_tolerance = webhook_timestamp_tolerance
+        self.capabilities_ttl = capabilities_ttl
+        self.validate_features = validate_features
+
+        # Capabilities cache
+        self._capabilities: GetAdcpCapabilitiesResponse | None = None
+        self._feature_resolver: FeatureResolver | None = None
+        self._capabilities_fetched_at: float | None = None
 
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
@@ -275,6 +289,121 @@ class ADCPClient:
         """Emit activity event."""
         if self.on_activity:
             self.on_activity(activity)
+
+    # ========================================================================
+    # Capability Validation
+    # ========================================================================
+
+    @property
+    def capabilities(self) -> GetAdcpCapabilitiesResponse | None:
+        """Return cached capabilities, or None if not yet fetched."""
+        return self._capabilities
+
+    @property
+    def feature_resolver(self) -> FeatureResolver | None:
+        """Return the FeatureResolver for cached capabilities, or None."""
+        return self._feature_resolver
+
+    async def fetch_capabilities(self) -> GetAdcpCapabilitiesResponse:
+        """Fetch capabilities, using cache if still valid.
+
+        Returns:
+            The seller's capabilities response.
+        """
+        if self._capabilities is not None and self._capabilities_fetched_at is not None:
+            elapsed = time.monotonic() - self._capabilities_fetched_at
+            if elapsed < self.capabilities_ttl:
+                return self._capabilities
+
+        return await self.refresh_capabilities()
+
+    async def refresh_capabilities(self) -> GetAdcpCapabilitiesResponse:
+        """Fetch capabilities from the seller, bypassing cache.
+
+        Returns:
+            The seller's capabilities response.
+        """
+        result = await self.get_adcp_capabilities(GetAdcpCapabilitiesRequest())
+        if result.success and result.data is not None:
+            self._capabilities = result.data
+            self._feature_resolver = FeatureResolver(result.data)
+            self._capabilities_fetched_at = time.monotonic()
+            return self._capabilities
+        raise ADCPError(
+            f"Failed to fetch capabilities: {result.error or result.message}",
+            agent_id=self.agent_config.id,
+            agent_uri=self.agent_config.agent_uri,
+        )
+
+    def _ensure_resolver(self) -> FeatureResolver:
+        """Return the FeatureResolver, raising if capabilities haven't been fetched."""
+        if self._feature_resolver is None:
+            raise ADCPError(
+                "Cannot check feature support: capabilities have not been fetched. "
+                "Call fetch_capabilities() first.",
+                agent_id=self.agent_config.id,
+                agent_uri=self.agent_config.agent_uri,
+            )
+        return self._feature_resolver
+
+    def supports(self, feature: str) -> bool:
+        """Check if the seller supports a feature.
+
+        Supports multiple feature namespaces:
+        - Protocol support: ``supports("media_buy")`` checks ``supported_protocols``
+        - Extension support: ``supports("ext:scope3")`` checks ``extensions_supported``
+        - Targeting: ``supports("targeting.geo_countries")`` checks
+          ``media_buy.execution.targeting``
+        - Media buy features: ``supports("audience_targeting")`` checks
+          ``media_buy.features``
+        - Signals features: ``supports("catalog_signals")`` checks
+          ``signals.features``
+
+        Args:
+            feature: Feature identifier to check.
+
+        Returns:
+            True if the seller declares the feature as supported.
+
+        Raises:
+            ADCPError: If capabilities have not been fetched yet.
+        """
+        return self._ensure_resolver().supports(feature)
+
+    def require(self, *features: str) -> None:
+        """Assert that the seller supports all listed features.
+
+        Args:
+            *features: Feature identifiers to require.
+
+        Raises:
+            ADCPFeatureUnsupportedError: If any features are not supported.
+            ADCPError: If capabilities have not been fetched yet.
+        """
+        self._ensure_resolver().require(
+            *features,
+            agent_id=self.agent_config.id,
+            agent_uri=self.agent_config.agent_uri,
+        )
+
+    def _validate_task_features(self, task_name: str) -> None:
+        """Check feature requirements for a task if validate_features is enabled.
+
+        Returns without checking if validate_features is False or capabilities
+        haven't been fetched yet (logs a warning in the latter case).
+        """
+        if not self.validate_features:
+            return
+        if self._feature_resolver is None:
+            logger.warning(
+                "validate_features is enabled but capabilities have not been fetched. "
+                "Call fetch_capabilities() to enable feature validation."
+            )
+            return
+        required_feature = TASK_FEATURE_MAP.get(task_name)
+        if required_feature is None:
+            return
+        self.require(required_feature)
 
     async def get_products(
         self,
@@ -1110,6 +1239,7 @@ class ADCPClient:
         Returns:
             TaskResult containing LogEventResponse
         """
+        self._validate_task_features("log_event")
         operation_id = create_operation_id()
         params = request.model_dump(exclude_none=True)
 
@@ -1151,6 +1281,7 @@ class ADCPClient:
         Returns:
             TaskResult containing SyncEventSourcesResponse
         """
+        self._validate_task_features("sync_event_sources")
         operation_id = create_operation_id()
         params = request.model_dump(exclude_none=True)
 
