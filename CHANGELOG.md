@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.10.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.9.1...v3.10.0) (2026-03-17)
+
+
+### Features
+
+* add feature capability validation API (supports/require) ([d550c08](https://github.com/adcontextprotocol/adcp-client-python/commit/d550c081617fa6535b3ed896279f62e11b589283))
+* add RC2 governance support and full spec coverage ([523ea20](https://github.com/adcontextprotocol/adcp-client-python/commit/523ea204d3a137480681cbf13dd0005517e3a3d9))
+* feature capability validation API (supports/require) ([f86f6c4](https://github.com/adcontextprotocol/adcp-client-python/commit/f86f6c4b880fe26fa73da026609b9a9f5154c27c))
+* filter MCP tools by handler type, add webhook replay protection ([ae7f378](https://github.com/adcontextprotocol/adcp-client-python/commit/ae7f3781069b09e9f583bb010c3848c6ba7b19a2))
+
+
+### Bug Fixes
+
+* address PR review feedback (FieldModel collision, handler boilerplate, deprecation aliases) ([b9eac61](https://github.com/adcontextprotocol/adcp-client-python/commit/b9eac61a1a76a295c7a2cd31fb92d40487dfee7d))
+* replace TypeAdapter with model_validate, tighten slug regex ([103d616](https://github.com/adcontextprotocol/adcp-client-python/commit/103d6168374feeace1630eb442e8df7f5469a426))
+* require webhook headers when secret configured, restrict unknown handler tools ([12f1080](https://github.com/adcontextprotocol/adcp-client-python/commit/12f1080106cdd2e962bc7cf544b6c9bb23cb42dd))
+* walk MRO for tool filtering, add tool name validation ([39985e5](https://github.com/adcontextprotocol/adcp-client-python/commit/39985e51153c125866ee354ac5862f0eb525362f))
+
 ## [3.9.1](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.9.0...v3.9.1) (2026-03-16)
 
 
