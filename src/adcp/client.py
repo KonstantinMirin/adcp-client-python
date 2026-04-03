@@ -75,6 +75,24 @@ from adcp.types.core import (
     TaskResult,
     TaskStatus,
 )
+from adcp.types.generated_poc.brand.acquire_rights_request import AcquireRightsRequest
+from adcp.types.generated_poc.brand.acquire_rights_response import (
+    AcquireRightsResponse,
+)
+from adcp.types.generated_poc.brand.get_brand_identity_request import (
+    GetBrandIdentityRequest,
+)
+from adcp.types.generated_poc.brand.get_brand_identity_response import (
+    GetBrandIdentityResponse,
+)
+from adcp.types.generated_poc.brand.get_rights_request import GetRightsRequest
+from adcp.types.generated_poc.brand.get_rights_response import GetRightsResponse
+from adcp.types.generated_poc.compliance.comply_test_controller_request import (
+    ComplyTestControllerRequest,
+)
+from adcp.types.generated_poc.compliance.comply_test_controller_response import (
+    ComplyTestControllerResponse,
+)
 from adcp.types.generated_poc.content_standards.calibrate_content_request import (
     CalibrateContentRequest,
 )
@@ -212,6 +230,10 @@ from adcp.types.generated_poc.sponsored_intelligence.si_terminate_session_reques
 from adcp.types.generated_poc.sponsored_intelligence.si_terminate_session_response import (
     SiTerminateSessionResponse,
 )
+from adcp.types.generated_poc.tmp.context_match_request import ContextMatchRequest
+from adcp.types.generated_poc.tmp.context_match_response import ContextMatchResponse
+from adcp.types.generated_poc.tmp.identity_match_request import IdentityMatchRequest
+from adcp.types.generated_poc.tmp.identity_match_response import IdentityMatchResponse
 from adcp.utils.operation_id import create_operation_id
 
 logger = logging.getLogger(__name__)
@@ -434,7 +456,7 @@ class ADCPClient:
             raise ValueError("creative_agent_client is required when fetch_previews=True")
 
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -497,7 +519,7 @@ class ADCPClient:
             TaskResult containing ListCreativeFormatsResponse with optional preview URLs in metadata
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -554,7 +576,7 @@ class ADCPClient:
             TaskResult containing PreviewCreativeResponse with preview URLs
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -595,7 +617,7 @@ class ADCPClient:
             TaskResult containing SyncCreativesResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -636,7 +658,7 @@ class ADCPClient:
             TaskResult containing ListCreativesResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -677,7 +699,7 @@ class ADCPClient:
             TaskResult containing GetMediaBuyDeliveryResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -718,7 +740,7 @@ class ADCPClient:
             TaskResult containing GetMediaBuysResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -759,7 +781,7 @@ class ADCPClient:
             TaskResult containing GetSignalsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -800,7 +822,7 @@ class ADCPClient:
             TaskResult containing ActivateSignalResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -841,7 +863,7 @@ class ADCPClient:
             TaskResult containing ProvidePerformanceFeedbackResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -906,7 +928,7 @@ class ADCPClient:
             ...     media_buy_id = result.data.media_buy_id
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -970,7 +992,7 @@ class ADCPClient:
             ...     updated_packages = result.data.packages
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1035,7 +1057,7 @@ class ADCPClient:
             ...     vast_url = result.data.assets[0].url
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1076,7 +1098,7 @@ class ADCPClient:
             TaskResult containing ListAccountsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1117,7 +1139,7 @@ class ADCPClient:
             TaskResult containing SyncAccountsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1158,7 +1180,7 @@ class ADCPClient:
             TaskResult containing GetAccountFinancialsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1199,7 +1221,7 @@ class ADCPClient:
             TaskResult containing ReportUsageResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1241,7 +1263,7 @@ class ADCPClient:
         """
         self._validate_task_features("log_event")
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1283,7 +1305,7 @@ class ADCPClient:
         """
         self._validate_task_features("sync_event_sources")
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1324,7 +1346,7 @@ class ADCPClient:
             TaskResult containing SyncAudiencesResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1365,7 +1387,7 @@ class ADCPClient:
             TaskResult containing SyncCatalogsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1406,7 +1428,7 @@ class ADCPClient:
             TaskResult containing GetCreativeDeliveryResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1459,7 +1481,7 @@ class ADCPClient:
                 - signals: Signals capabilities (if supported)
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1507,7 +1529,7 @@ class ADCPClient:
             TaskResult containing CreateContentStandardsResponse with standards_id
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1548,7 +1570,7 @@ class ADCPClient:
             TaskResult containing GetContentStandardsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1589,7 +1611,7 @@ class ADCPClient:
             TaskResult containing ListContentStandardsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1630,7 +1652,7 @@ class ADCPClient:
             TaskResult containing UpdateContentStandardsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1674,7 +1696,7 @@ class ADCPClient:
             TaskResult containing CalibrateContentResponse with verdict
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1717,7 +1739,7 @@ class ADCPClient:
             TaskResult containing ValidateContentDeliveryResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1760,7 +1782,7 @@ class ADCPClient:
             TaskResult containing GetMediaBuyArtifactsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1808,7 +1830,7 @@ class ADCPClient:
             TaskResult containing SiGetOfferingResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1851,7 +1873,7 @@ class ADCPClient:
             TaskResult containing SiInitiateSessionResponse with session_id
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1894,7 +1916,7 @@ class ADCPClient:
             TaskResult containing SiSendMessageResponse with brand response
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1937,7 +1959,7 @@ class ADCPClient:
             TaskResult containing SiTerminateSessionResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -1974,7 +1996,7 @@ class ADCPClient:
     ) -> TaskResult[GetCreativeFeaturesResponse]:
         """Evaluate governance features for a creative manifest."""
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2007,7 +2029,7 @@ class ADCPClient:
     ) -> TaskResult[SyncPlansResponse]:
         """Sync campaign governance plans to the governance agent."""
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2040,7 +2062,7 @@ class ADCPClient:
     ) -> TaskResult[CheckGovernanceResponse]:
         """Check a proposed or committed action against campaign governance."""
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2073,7 +2095,7 @@ class ADCPClient:
     ) -> TaskResult[ReportPlanOutcomeResponse]:
         """Report the outcome of a governed action to the governance agent."""
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2106,7 +2128,7 @@ class ADCPClient:
     ) -> TaskResult[GetPlanAuditLogsResponse]:
         """Retrieve governance state and audit logs for one or more plans."""
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2150,7 +2172,7 @@ class ADCPClient:
             TaskResult containing CreatePropertyListResponse with list_id
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2194,7 +2216,7 @@ class ADCPClient:
             TaskResult containing GetPropertyListResponse with identifiers
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2238,7 +2260,7 @@ class ADCPClient:
             TaskResult containing ListPropertyListsResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2282,7 +2304,7 @@ class ADCPClient:
             TaskResult containing UpdatePropertyListResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2326,7 +2348,7 @@ class ADCPClient:
             TaskResult containing DeletePropertyListResponse
         """
         operation_id = create_operation_id()
-        params = request.model_dump(exclude_none=True)
+        params = request.model_dump(mode="json", exclude_none=True)
 
         self._emit_activity(
             Activity(
@@ -2352,6 +2374,280 @@ class ADCPClient:
         )
 
         return self.adapter._parse_response(raw_result, DeletePropertyListResponse)
+
+    # ========================================================================
+    # V3 Protocol Methods - Temporal Matching Protocol (TMP)
+    # ========================================================================
+
+    async def context_match(
+        self,
+        request: ContextMatchRequest,
+    ) -> TaskResult[ContextMatchResponse]:
+        """Match ad context to buyer packages.
+
+        Evaluates contextual signals for a publisher placement against the
+        buyer's active packages and returns matching offers.
+
+        Args:
+            request: Context match request with placement, property, and
+                optional artifact refs, context signals, and geo data.
+
+        Returns:
+            TaskResult containing ContextMatchResponse with offers.
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True, by_alias=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="context_match",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.context_match(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="context_match",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, ContextMatchResponse)
+
+    async def identity_match(
+        self,
+        request: IdentityMatchRequest,
+    ) -> TaskResult[IdentityMatchResponse]:
+        """Match user identity for package eligibility.
+
+        Evaluates a user identity token against all active packages for
+        frequency capping and personalization.
+
+        Args:
+            request: Identity match request with user_token, uid_type,
+                and package_ids.
+
+        Returns:
+            TaskResult containing IdentityMatchResponse with eligible_package_ids.
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True, by_alias=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="identity_match",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.identity_match(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="identity_match",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, IdentityMatchResponse)
+
+    # ========================================================================
+    # V3 Protocol Methods - Brand Rights
+    # ========================================================================
+
+    async def get_brand_identity(
+        self,
+        request: GetBrandIdentityRequest,
+    ) -> TaskResult[GetBrandIdentityResponse]:
+        """Get brand identity information.
+
+        Retrieves brand identity data including logos, colors, fonts,
+        voice synthesis config, and rights availability.
+
+        Args:
+            request: Request with brand_id and optional fields filter.
+
+        Returns:
+            TaskResult containing GetBrandIdentityResponse.
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_brand_identity",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_brand_identity(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_brand_identity",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetBrandIdentityResponse)
+
+    async def get_rights(
+        self,
+        request: GetRightsRequest,
+    ) -> TaskResult[GetRightsResponse]:
+        """Get available rights for licensing.
+
+        Searches for rights offerings using natural language query and
+        filters by type, uses, countries, and buyer compatibility.
+
+        Args:
+            request: Request with query, uses, and optional filters.
+
+        Returns:
+            TaskResult containing GetRightsResponse with matched rights.
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_rights",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_rights(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_rights",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetRightsResponse)
+
+    async def acquire_rights(
+        self,
+        request: AcquireRightsRequest,
+    ) -> TaskResult[AcquireRightsResponse]:
+        """Acquire rights for brand content usage.
+
+        Binding contractual request to license rights for a campaign.
+        Returns credentials for generating rights-cleared content.
+
+        Args:
+            request: Request with rights_id, pricing_option_id, buyer,
+                campaign, and revocation_webhook.
+
+        Returns:
+            TaskResult containing AcquireRightsResponse (acquired,
+            pending_approval, rejected, or error).
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="acquire_rights",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.acquire_rights(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="acquire_rights",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, AcquireRightsResponse)
+
+    # ========================================================================
+    # V3 Protocol Methods - Compliance
+    # ========================================================================
+
+    async def comply_test_controller(
+        self,
+        request: ComplyTestControllerRequest,
+    ) -> TaskResult[ComplyTestControllerResponse]:
+        """Compliance test controller for sandbox testing.
+
+        Enables sellers to simulate state transitions and delivery data
+        in a sandbox environment for compliance testing.
+
+        Args:
+            request: Request specifying scenario and parameters.
+
+        Returns:
+            TaskResult containing ComplyTestControllerResponse.
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="comply_test_controller",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.comply_test_controller(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="comply_test_controller",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, ComplyTestControllerResponse)
 
     async def list_tools(self) -> list[str]:
         """
@@ -2541,6 +2837,15 @@ class ADCPClient:
             "list_property_lists": ListPropertyListsResponse,
             "update_property_list": UpdatePropertyListResponse,
             "delete_property_list": DeletePropertyListResponse,
+            # TMP
+            "context_match": ContextMatchResponse,
+            "identity_match": IdentityMatchResponse,
+            # Brand Rights
+            "get_brand_identity": GetBrandIdentityResponse,
+            "get_rights": GetRightsResponse,
+            "acquire_rights": AcquireRightsResponse,
+            # Compliance
+            "comply_test_controller": ComplyTestControllerResponse,
         }
 
         # Handle completed tasks with result parsing

@@ -184,6 +184,15 @@ async def test_all_client_methods():
     assert hasattr(client, "list_property_lists")
     assert hasattr(client, "update_property_list")
     assert hasattr(client, "delete_property_list")
+    # V3 TMP
+    assert hasattr(client, "context_match")
+    assert hasattr(client, "identity_match")
+    # V3 Brand Rights
+    assert hasattr(client, "get_brand_identity")
+    assert hasattr(client, "get_rights")
+    assert hasattr(client, "acquire_rights")
+    # V3 Compliance
+    assert hasattr(client, "comply_test_controller")
 
 
 @pytest.mark.parametrize(
@@ -330,8 +339,6 @@ async def test_all_client_methods():
             "CheckGovernanceRequest",
             {
                 "plan_id": "plan_123",
-                "buyer_campaign_ref": "campaign_123",
-                "binding": "proposed",
                 "caller": "https://buyer.example.com",
             },
         ),
@@ -340,9 +347,8 @@ async def test_all_client_methods():
             "ReportPlanOutcomeRequest",
             {
                 "plan_id": "plan_123",
-                "buyer_campaign_ref": "campaign_123",
                 "outcome": "completed",
-                "seller_response": {},
+                "governance_context": "ctx-abc-123-governance",
             },
         ),
         (
@@ -387,6 +393,63 @@ async def test_all_client_methods():
             "delete_property_list",
             "DeletePropertyListRequest",
             {"list_id": "pl-1"},
+        ),
+        # V3 TMP
+        (
+            "context_match",
+            "ContextMatchRequest",
+            {
+                "property_rid": "01912345-6789-7abc-def0-123456789abc",
+                "placement_id": "top-banner",
+                "property_type": "website",
+                "request_id": "req-001",
+                "type": "context_match_request",
+            },
+        ),
+        (
+            "identity_match",
+            "IdentityMatchRequest",
+            {
+                "request_id": "req-002",
+                "type": "identity_match_request",
+                "user_token": "opaque-token-123",
+                "uid_type": "uid2",
+                "package_ids": ["pkg-1"],
+            },
+        ),
+        # V3 Brand Rights
+        (
+            "get_brand_identity",
+            "GetBrandIdentityRequest",
+            {"brand_id": "brand-123"},
+        ),
+        (
+            "get_rights",
+            "GetRightsRequest",
+            {"query": "celebrity spokesperson", "uses": ["likeness"]},
+        ),
+        (
+            "acquire_rights",
+            "AcquireRightsRequest",
+            {
+                "rights_id": "rights-123",
+                "pricing_option_id": "opt-1",
+                "buyer": {"domain": "buyer.example.com"},
+                "campaign": {"description": "Test campaign", "uses": ["likeness"]},
+                "revocation_webhook": {
+                    "url": "https://buyer.example.com/webhook",
+                    "authentication": {
+                        "schemes": ["Bearer"],
+                        "credentials": "a" * 32,
+                    },
+                },
+            },
+        ),
+        # V3 Compliance
+        (
+            "comply_test_controller",
+            "ComplyTestControllerRequest1",
+            {"scenario": "list_scenarios"},
         ),
         # Note: preview_creative, create_media_buy, update_media_buy, and build_creative
         # are tested separately with full request validation since their schemas are complex
@@ -743,7 +806,7 @@ async def test_get_media_buys_parses_response():
             GetMediaBuysRequest.model_validate({"account": {"account_id": "acct-1"}})
         )
         mock_adapter.assert_called_once_with(
-            {"account": {"account_id": "acct-1"}, "include_snapshot": False}
+            {"account": {"account_id": "acct-1"}, "include_history": 0, "include_snapshot": False}
         )
         assert result.success is True
         assert isinstance(result.data, GetMediaBuysResponse)
@@ -830,7 +893,7 @@ async def test_get_media_buys_parses_snapshot_response():
             )
         )
         mock_adapter.assert_called_once_with(
-            {"account": {"account_id": "acct-1"}, "include_snapshot": True}
+            {"account": {"account_id": "acct-1"}, "include_history": 0, "include_snapshot": True}
         )
         assert result.success is True
         assert isinstance(result.data, GetMediaBuysResponse)

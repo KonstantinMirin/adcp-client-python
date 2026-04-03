@@ -35,6 +35,11 @@ from adcp.types._generated import (
     # Account reference variants
     AccountReference1,
     AccountReference2,
+    # Brand Rights
+    AcquireRightsResponse1,
+    AcquireRightsResponse2,
+    AcquireRightsResponse3,
+    AcquireRightsResponse4,
     # Activation responses
     ActivateSignalResponse1,
     ActivateSignalResponse2,
@@ -54,6 +59,18 @@ from adcp.types._generated import (
     # Calibrate content responses
     CalibrateContentResponse1,
     CalibrateContentResponse2,
+    # Compliance Test Controller
+    ComplyTestControllerRequest1,
+    ComplyTestControllerRequest2,
+    ComplyTestControllerRequest3,
+    ComplyTestControllerRequest4,
+    ComplyTestControllerRequest5,
+    ComplyTestControllerRequest6,
+    ComplyTestControllerRequest7,
+    ComplyTestControllerResponse1,
+    ComplyTestControllerResponse2,
+    ComplyTestControllerResponse3,
+    ComplyTestControllerResponse4,
     ConsentBasis,
     CpaPricingOption,
     CpcPricingOption,
@@ -80,6 +97,8 @@ from adcp.types._generated import (
     # Get account financials responses
     GetAccountFinancialsResponse1,
     GetAccountFinancialsResponse2,
+    GetBrandIdentityResponse1,
+    GetBrandIdentityResponse2,
     # Content standards get responses
     GetContentStandardsResponse1,
     GetContentStandardsResponse2,
@@ -91,10 +110,10 @@ from adcp.types._generated import (
     # Media buy artifacts responses
     GetMediaBuyArtifactsResponse1,
     GetMediaBuyArtifactsResponse2,
-    # Get products request variants
-    GetProductsRequest1,
-    GetProductsRequest2,
-    GetProductsRequest3,
+    # Single-class request types (flattened from validation-only oneOf)
+    GetProductsRequest,
+    GetRightsResponse1,
+    GetRightsResponse2,
     GetSignalsRequest,
     # Content standards list responses
     ListContentStandardsResponse1,
@@ -428,6 +447,74 @@ GetCreativeFeaturesErrorResponse = GetCreativeFeaturesResponse2
 """Error response - creative features retrieval failed."""
 
 # ============================================================================
+# BRAND RIGHTS RESPONSE ALIASES
+# ============================================================================
+# AcquireRightsResponse is a 4-way union discriminated by status field.
+
+AcquireRightsAcquiredResponse = AcquireRightsResponse1
+"""Rights acquired - includes generation_credentials and terms."""
+
+AcquireRightsPendingResponse = AcquireRightsResponse2
+"""Rights require approval from the rights holder."""
+
+AcquireRightsRejectedResponse = AcquireRightsResponse3
+"""Rights request was rejected."""
+
+AcquireRightsErrorResponse = AcquireRightsResponse4
+"""Error response - request validation or processing failed."""
+
+GetBrandIdentitySuccessResponse = GetBrandIdentityResponse1
+"""Success response - brand identity data returned."""
+
+GetBrandIdentityErrorResponse = GetBrandIdentityResponse2
+"""Error response - brand identity lookup failed."""
+
+GetRightsSuccessResponse = GetRightsResponse1
+"""Success response - available rights returned."""
+
+GetRightsErrorResponse = GetRightsResponse2
+"""Error response - rights lookup failed."""
+
+# ============================================================================
+# COMPLIANCE TEST CONTROLLER ALIASES
+# ============================================================================
+# ComplyTestControllerRequest is a 7-way union discriminated by scenario field.
+# ComplyTestControllerResponse is a 4-way union.
+
+ComplyListScenariosRequest = ComplyTestControllerRequest1
+"""List supported compliance scenarios."""
+
+ComplyForceCreativeStatusRequest = ComplyTestControllerRequest2
+"""Force a creative to a specific status."""
+
+ComplyForceAccountStatusRequest = ComplyTestControllerRequest3
+"""Force an account to a specific status."""
+
+ComplyForceMediaBuyStatusRequest = ComplyTestControllerRequest4
+"""Force a media buy to a specific status."""
+
+ComplyForceSessionStatusRequest = ComplyTestControllerRequest5
+"""Force an SI session to a terminal status."""
+
+ComplySimulateDeliveryRequest = ComplyTestControllerRequest6
+"""Simulate delivery data for a media buy."""
+
+ComplySimulateBudgetSpendRequest = ComplyTestControllerRequest7
+"""Simulate budget spend percentage."""
+
+ComplyListScenariosResponse = ComplyTestControllerResponse1
+"""Success - lists supported scenarios."""
+
+ComplyStateTransitionResponse = ComplyTestControllerResponse2
+"""Success - state transition completed."""
+
+ComplySimulationResponse = ComplyTestControllerResponse3
+"""Success - simulation completed."""
+
+ComplyErrorResponse = ComplyTestControllerResponse4
+"""Error - operation failed."""
+
+# ============================================================================
 # REQUEST TYPE ALIASES - Operation Variants
 # ============================================================================
 
@@ -442,24 +529,9 @@ PreviewCreativeVariantRequest = PreviewCreativeRequest3
 """Variant preview request using variant_id - request_type='variant'."""
 
 
-# Get Products Request Variants
-GetProductsRefineRequest = GetProductsRequest3
-"""Get products request in refine mode - buying_mode='refine'.
-
-Used to iterate on previous product results with refinement actions
-(include, omit, more_like_this) at request, product, or proposal scope.
-
-Example:
-    ```python
-    from adcp import GetProductsRefineRequest
-
-    request = GetProductsRefineRequest(
-        buying_mode="refine",
-        account={"account_id": "acc_123"},
-        refine=[{"action": "more_like_this", "product_id": "prod_456"}]
-    )
-    ```
-"""
+# Get Products Request Aliases (backward compat — now a single class)
+GetProductsRefineRequest = GetProductsRequest
+"""Get products request — use buying_mode field to select mode."""
 
 # Performance Feedback Request Aliases (backward compat — now a single class)
 ProvidePerformanceFeedbackByMediaBuyRequest = ProvidePerformanceFeedbackRequest
@@ -485,12 +557,12 @@ GetCreativeDeliveryByBuyerRefRequest = GetCreativeDeliveryRequest
 GetCreativeDeliveryByCreativeRequest = GetCreativeDeliveryRequest
 """Request creative delivery — use media_buy_ids, media_buy_buyer_refs, or creative_ids."""
 
-# Get Products Request Variants (by buying_mode)
-GetProductsBriefRequest = GetProductsRequest1
-"""Get products in brief mode - buying_mode='brief', requires brief text."""
+# Get Products Request Aliases (backward compat — now a single class)
+GetProductsBriefRequest = GetProductsRequest
+"""Get products request — use buying_mode field to select mode."""
 
-GetProductsWholesaleRequest = GetProductsRequest2
-"""Get products in wholesale mode - buying_mode='wholesale', raw inventory."""
+GetProductsWholesaleRequest = GetProductsRequest
+"""Get products request — use buying_mode field to select mode."""
 
 # Get Signals Request Aliases (backward compat — now a single class)
 GetSignalsDiscoveryRequest = GetSignalsRequest
@@ -1299,4 +1371,25 @@ __all__ = [
     # Field enum disambiguation aliases
     "GetProductsField",
     "GetBrandIdentityField",
+    # Brand Rights response aliases
+    "AcquireRightsAcquiredResponse",
+    "AcquireRightsPendingResponse",
+    "AcquireRightsRejectedResponse",
+    "AcquireRightsErrorResponse",
+    "GetBrandIdentitySuccessResponse",
+    "GetBrandIdentityErrorResponse",
+    "GetRightsSuccessResponse",
+    "GetRightsErrorResponse",
+    # Compliance Test Controller aliases
+    "ComplyListScenariosRequest",
+    "ComplyForceCreativeStatusRequest",
+    "ComplyForceAccountStatusRequest",
+    "ComplyForceMediaBuyStatusRequest",
+    "ComplyForceSessionStatusRequest",
+    "ComplySimulateDeliveryRequest",
+    "ComplySimulateBudgetSpendRequest",
+    "ComplyListScenariosResponse",
+    "ComplyStateTransitionResponse",
+    "ComplySimulationResponse",
+    "ComplyErrorResponse",
 ]

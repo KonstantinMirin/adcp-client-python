@@ -1,27 +1,27 @@
 {
+  "$id": "/schemas/3.0.0-rc.3/property/list-property-lists-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/3.0.0-rc.2/property/list-property-lists-request.json",
-  "title": "List Property Lists Request",
+  "additionalProperties": false,
   "description": "Request parameters for listing property lists",
-  "type": "object",
   "properties": {
-    "principal": {
-      "type": "string",
-      "description": "Filter to lists owned by this principal"
-    },
-    "name_contains": {
-      "type": "string",
-      "description": "Filter to lists whose name contains this string"
-    },
-    "pagination": {
-      "$ref": "/schemas/3.0.0-rc.2/core/pagination-request.json"
-    },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.2/core/context.json"
+      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.2/core/ext.json"
+      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+    },
+    "name_contains": {
+      "description": "Filter to lists whose name contains this string",
+      "type": "string"
+    },
+    "pagination": {
+      "$ref": "/schemas/3.0.0-rc.3/core/pagination-request.json"
+    },
+    "principal": {
+      "description": "Filter to lists owned by this principal",
+      "type": "string"
     }
   },
-  "additionalProperties": false
+  "title": "List Property Lists Request",
+  "type": "object"
 }

@@ -85,6 +85,10 @@ def generate_consolidated_exports() -> str:
             "sync_audiences_request",
             "sync_audiences_response",
         },
+        # Error collides between core.error (Pydantic model used everywhere) and
+        # compliance.comply_test_controller_response (test-only enum). Export both
+        # with qualified names; aliases/init re-export core Error as the canonical one.
+        "Error": {"error", "comply_test_controller_response"},
     }
 
     special_imports = []

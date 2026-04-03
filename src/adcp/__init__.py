@@ -36,7 +36,14 @@ from adcp.exceptions import (
     ADCPWebhookSignatureError,
     RegistryError,
 )
+from adcp.property_registry import PropertyRegistry
 from adcp.registry import RegistryClient
+from adcp.registry_sync import (
+    ChangeHandler,
+    CursorStore,
+    FileCursorStore,
+    RegistrySync,
+)
 
 # Test helpers
 from adcp.testing import (
@@ -65,6 +72,9 @@ from adcp.types import (
     AccountReference,
     # Type enums from PR #222
     AccountScope,
+    # Brand Rights
+    AcquireRightsRequest,
+    AcquireRightsResponse,
     # Audience & Targeting
     ActivateSignalRequest,
     ActivateSignalResponse,
@@ -91,8 +101,12 @@ from adcp.types import (
     CatalogType,
     CheckGovernanceRequest,
     CheckGovernanceResponse,
+    ComplyTestControllerRequest,
+    ComplyTestControllerResponse,
     ConsentBasis,
     ContentIdType,
+    ContextMatchRequest,
+    ContextMatchResponse,
     ContextObject,
     # Pricing options (all types for product creation)
     CpaPricingOption,
@@ -129,11 +143,12 @@ from adcp.types import (
     FeedFormat,
     FlatRatePricingOption,
     Format,
-    FormatCategory,
     FormatId,
     GeneratedTaskStatus,
     GetAccountFinancialsRequest,
     GetAccountFinancialsResponse,
+    GetBrandIdentityRequest,
+    GetBrandIdentityResponse,
     # Creative Delivery
     GetCreativeDeliveryRequest,
     GetCreativeDeliveryResponse,
@@ -147,9 +162,13 @@ from adcp.types import (
     GetPlanAuditLogsResponse,
     GetProductsRequest,
     GetProductsResponse,
+    GetRightsRequest,
+    GetRightsResponse,
     GetSignalsRequest,
     GetSignalsResponse,
     Gtin,
+    IdentityMatchRequest,
+    IdentityMatchResponse,
     # Account Operations
     ListAccountsRequest,
     ListAccountsResponse,
@@ -248,6 +267,10 @@ from adcp.types import _generated as generated
 from adcp.types.aliases import (
     AccountReferenceById,
     AccountReferenceByNaturalKey,
+    AcquireRightsAcquiredResponse,
+    AcquireRightsErrorResponse,
+    AcquireRightsPendingResponse,
+    AcquireRightsRejectedResponse,
     ActivateSignalErrorResponse,
     ActivateSignalSuccessResponse,
     AgentDeployment,
@@ -274,6 +297,8 @@ from adcp.types.aliases import (
     FlatFeeSignalPricingOption,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
+    GetBrandIdentityErrorResponse,
+    GetBrandIdentitySuccessResponse,
     GetContentStandardsErrorResponse,
     GetContentStandardsSuccessResponse,
     GetCreativeDeliveryByBuyerRefRequest,
@@ -286,6 +311,8 @@ from adcp.types.aliases import (
     GetProductsBriefRequest,
     GetProductsRefineRequest,
     GetProductsWholesaleRequest,
+    GetRightsErrorResponse,
+    GetRightsSuccessResponse,
     GetSignalsDiscoveryRequest,
     GetSignalsLookupRequest,
     HtmlPreviewRender,
@@ -360,6 +387,24 @@ from adcp.types.core import (
     TaskStatus,
     WebhookMetadata,
 )
+from adcp.types.registry import (
+    AgentCapabilities,
+    AgentCompliance,
+    AgentHealth,
+    AgentStats,
+    BrandActivity,
+    BrandRegistryItem,
+    DomainLookupResult,
+    FederatedAgentWithDetails,
+    FederatedPublisher,
+    FeedEvent,
+    FeedPage,
+    PropertyActivity,
+    PropertyIdentifier,
+    PropertyRegistryItem,
+    PropertySummary,
+    ValidationResult,
+)
 from adcp.utils import (
     get_asset_count,
     get_format_assets,
@@ -416,6 +461,28 @@ __all__ = [
     "ADCPClient",
     "ADCPMultiAgentClient",
     "RegistryClient",
+    "PropertyRegistry",
+    "RegistrySync",
+    "CursorStore",
+    "FileCursorStore",
+    "ChangeHandler",
+    # Registry types
+    "AgentCapabilities",
+    "AgentCompliance",
+    "AgentHealth",
+    "AgentStats",
+    "BrandActivity",
+    "BrandRegistryItem",
+    "DomainLookupResult",
+    "FederatedAgentWithDetails",
+    "FederatedPublisher",
+    "FeedEvent",
+    "FeedPage",
+    "PropertyActivity",
+    "PropertyIdentifier",
+    "PropertyRegistryItem",
+    "PropertySummary",
+    "ValidationResult",
     # Capability validation
     "FeatureResolver",
     "validate_capabilities",
@@ -451,6 +518,29 @@ __all__ = [
     # Common request/response types (re-exported for convenience)
     "CheckGovernanceRequest",
     "CheckGovernanceResponse",
+    # TMP
+    "ContextMatchRequest",
+    "ContextMatchResponse",
+    "IdentityMatchRequest",
+    "IdentityMatchResponse",
+    # Brand Rights
+    "AcquireRightsRequest",
+    "AcquireRightsResponse",
+    "AcquireRightsAcquiredResponse",
+    "AcquireRightsErrorResponse",
+    "AcquireRightsPendingResponse",
+    "AcquireRightsRejectedResponse",
+    "GetBrandIdentityRequest",
+    "GetBrandIdentityResponse",
+    "GetBrandIdentitySuccessResponse",
+    "GetBrandIdentityErrorResponse",
+    "GetRightsRequest",
+    "GetRightsResponse",
+    "GetRightsSuccessResponse",
+    "GetRightsErrorResponse",
+    # Compliance
+    "ComplyTestControllerRequest",
+    "ComplyTestControllerResponse",
     "CreateMediaBuyRequest",
     "CreateMediaBuyResponse",
     "GetCreativeDeliveryRequest",
@@ -507,7 +597,6 @@ __all__ = [
     "Format",
     "FormatId",
     "AssetContentType",
-    "FormatCategory",
     "Product",
     "ProductFilters",
     # Catalog types

@@ -368,3 +368,45 @@ class ProtocolAdapter(ABC):
     async def delete_property_list(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Delete a property list."""
         pass
+
+    # ========================================================================
+    # V3 Protocol Methods - Temporal Matching Protocol (TMP)
+    # ========================================================================
+
+    @abstractmethod
+    async def context_match(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Match ad context to buyer packages."""
+        pass
+
+    @abstractmethod
+    async def identity_match(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Match user identity for package eligibility."""
+        pass
+
+    # ========================================================================
+    # V3 Protocol Methods - Brand Rights
+    # ========================================================================
+
+    @abstractmethod
+    async def get_brand_identity(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get brand identity information."""
+        pass
+
+    @abstractmethod
+    async def get_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get available rights for licensing."""
+        pass
+
+    @abstractmethod
+    async def acquire_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Acquire rights for brand content usage."""
+        pass
+
+    # ========================================================================
+    # V3 Protocol Methods - Compliance
+    # ========================================================================
+
+    @abstractmethod
+    async def comply_test_controller(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Compliance test controller (sandbox only)."""
+        pass

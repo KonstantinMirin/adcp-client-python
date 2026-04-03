@@ -733,3 +733,39 @@ class A2AAdapter(ProtocolAdapter):
     async def delete_property_list(self, params: dict[str, Any]) -> TaskResult[Any]:
         """Delete a property list."""
         return await self._call_a2a_tool("delete_property_list", params)
+
+    # ========================================================================
+    # V3 Protocol Methods - TMP
+    # ========================================================================
+
+    async def context_match(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Match ad context to buyer packages."""
+        return await self._call_a2a_tool("context_match", params)
+
+    async def identity_match(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Match user identity for package eligibility."""
+        return await self._call_a2a_tool("identity_match", params)
+
+    # ========================================================================
+    # V3 Protocol Methods - Brand Rights
+    # ========================================================================
+
+    async def get_brand_identity(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get brand identity information."""
+        return await self._call_a2a_tool("get_brand_identity", params)
+
+    async def get_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get available rights for licensing."""
+        return await self._call_a2a_tool("get_rights", params)
+
+    async def acquire_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Acquire rights for brand content usage."""
+        return await self._call_a2a_tool("acquire_rights", params)
+
+    # ========================================================================
+    # V3 Protocol Methods - Compliance
+    # ========================================================================
+
+    async def comply_test_controller(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Compliance test controller (sandbox only)."""
+        return await self._call_a2a_tool("comply_test_controller", params)

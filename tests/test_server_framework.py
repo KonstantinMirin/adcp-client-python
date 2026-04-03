@@ -309,9 +309,7 @@ class TestGovernanceHandler:
                 return CheckGovernanceResponse(
                     check_id="chk_123",
                     status="approved",
-                    binding="proposed",
                     plan_id="plan_123",
-                    buyer_campaign_ref="campaign_123",
                     explanation="Approved",
                 )
 
@@ -385,8 +383,6 @@ class TestGovernanceHandler:
         result = await handler.check_governance(
             {
                 "plan_id": "plan_123",
-                "buyer_campaign_ref": "campaign_123",
-                "binding": "proposed",
                 "caller": "https://buyer.example.com",
             }
         )
@@ -395,9 +391,8 @@ class TestGovernanceHandler:
         result = await handler.report_plan_outcome(
             {
                 "plan_id": "plan_123",
-                "buyer_campaign_ref": "campaign_123",
                 "outcome": "completed",
-                "seller_response": {},
+                "governance_context": "ctx-abc-123-governance",
             }
         )
         assert isinstance(result, ReportPlanOutcomeResponse)

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any
+from typing import Any, TypeVar, cast
+from urllib.parse import quote as url_quote
 
 import httpx
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from adcp.exceptions import RegistryError
+
+_T = TypeVar("_T", bound=BaseModel)
 from adcp.types.core import (
     Member,
     Policy,
@@ -17,6 +20,17 @@ from adcp.types.core import (
     PolicySummary,
     ResolvedBrand,
     ResolvedProperty,
+)
+from adcp.types.registry import (
+    BrandActivity,
+    BrandRegistryItem,
+    DomainLookupResult,
+    FederatedAgentWithDetails,
+    FederatedPublisher,
+    FeedPage,
+    PropertyActivity,
+    PropertyRegistryItem,
+    ValidationResult,
 )
 
 DEFAULT_REGISTRY_URL = "https://agenticadvertising.org"
@@ -74,6 +88,90 @@ class RegistryClient:
 
     async def __aexit__(self, *args: Any) -> None:
         await self.close()
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        auth_token: str | None = None,
+        operation: str = "Registry request",
+        allow_404: bool = False,
+        expected_status: int | set[int] = 200,
+    ) -> httpx.Response | None:
+        """Execute a registry API request with standard error handling.
+
+        Returns None if allow_404=True and the server returns 404.
+        Raises RegistryError for all other non-expected status codes.
+        """
+        client = await self._get_client()
+        headers: dict[str, str] = {"User-Agent": self._user_agent}
+        if auth_token is not None:
+            headers["Authorization"] = f"Bearer {auth_token}"
+
+        expected = {expected_status} if isinstance(expected_status, int) else expected_status
+
+        try:
+            if method == "GET":
+                response = await client.get(
+                    f"{self._base_url}{path}",
+                    params=params,
+                    headers=headers,
+                    timeout=self._timeout,
+                )
+            else:
+                response = await client.post(
+                    f"{self._base_url}{path}",
+                    json=json_body,
+                    headers=headers,
+                    timeout=self._timeout,
+                )
+
+            if allow_404 and response.status_code == 404:
+                return None
+            if response.status_code not in expected:
+                raise RegistryError(
+                    f"{operation} failed: HTTP {response.status_code}",
+                    status_code=response.status_code,
+                )
+            return response
+        except RegistryError:
+            raise
+        except httpx.TimeoutException as e:
+            raise RegistryError(
+                f"{operation} timed out after {self._timeout}s"
+            ) from e
+        except httpx.HTTPError as e:
+            raise RegistryError(f"{operation} failed: {e}") from e
+
+    async def _request_ok(
+        self,
+        method: str,
+        path: str,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """Like _request but guarantees a non-None response.
+
+        Use for endpoints that never return 404-as-None.
+        """
+        resp = await self._request(method, path, **kwargs)
+        if resp is None:
+            raise RegistryError(
+                f"{kwargs.get('operation', 'Request')} failed: unexpected empty response"
+            )
+        return resp
+
+    @staticmethod
+    def _parse(model_cls: type[_T], data: Any, operation: str) -> _T:
+        """Validate data against a Pydantic model, wrapping errors."""
+        try:
+            return model_cls.model_validate(data)
+        except (ValidationError, ValueError) as e:
+            raise RegistryError(
+                f"{operation} failed: invalid response: {e}"
+            ) from e
 
     async def lookup_brand(self, domain: str) -> ResolvedBrand | None:
         """Resolve a domain to its brand identity.
@@ -716,3 +814,525 @@ class RegistryClient:
             ) from e
         except httpx.HTTPError as e:
             raise RegistryError(f"Policy save failed: {e}") from e
+
+    # ========================================================================
+    # Brand Registry Operations
+    # ========================================================================
+
+    async def get_brand_json(
+        self, domain: str, *, fresh: bool = False
+    ) -> dict[str, Any] | None:
+        """Fetch raw brand.json for a domain."""
+        params: dict[str, Any] = {"domain": domain}
+        if fresh:
+            params["fresh"] = "true"
+        resp = await self._request(
+            "GET", "/api/brands/brand-json",
+            params=params, allow_404=True,
+            operation="Brand JSON fetch",
+        )
+        if resp is None:
+            return None
+        return cast(dict[str, Any], resp.json())
+
+    async def save_brand(
+        self,
+        domain: str,
+        brand_name: str,
+        *,
+        auth_token: str,
+        brand_manifest: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Save or update a brand in the registry (auth required)."""
+        body: dict[str, Any] = {"domain": domain, "brand_name": brand_name}
+        if brand_manifest is not None:
+            body["brand_manifest"] = brand_manifest
+        resp = await self._request_ok(
+            "POST", "/api/brands/save",
+            json_body=body, auth_token=auth_token,
+            operation="Brand save",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def list_brands(
+        self,
+        search: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[BrandRegistryItem]:
+        """List brands in the registry."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if search is not None:
+            params["search"] = search
+        resp = await self._request_ok(
+            "GET", "/api/brands/registry",
+            params=params, operation="Brand list",
+        )
+
+        data = resp.json()
+        return [self._parse(BrandRegistryItem, b, "Brand list") for b in data.get("brands", [])]
+
+    async def brand_history(
+        self,
+        domain: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> BrandActivity | None:
+        """Get edit history for a brand."""
+        resp = await self._request(
+            "GET", "/api/brands/history",
+            params={"domain": domain, "limit": limit, "offset": offset},
+            allow_404=True, operation="Brand history",
+        )
+        if resp is None:
+            return None
+        return self._parse(BrandActivity, resp.json(), "Brand history")
+
+    async def enrich_brand(self, domain: str) -> dict[str, Any]:
+        """Enrich brand data using Brandfetch."""
+        resp = await self._request_ok(
+            "GET", "/api/brands/enrich",
+            params={"domain": domain}, operation="Brand enrich",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Property Registry Operations
+    # ========================================================================
+
+    async def list_properties(
+        self,
+        search: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[PropertyRegistryItem]:
+        """List properties in the registry."""
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if search is not None:
+            params["search"] = search
+        resp = await self._request_ok(
+            "GET", "/api/properties/registry",
+            params=params, operation="Property list",
+        )
+
+        data = resp.json()
+        return [
+            self._parse(PropertyRegistryItem, p, "Property list")
+            for p in data.get("properties", [])
+        ]
+
+    async def validate_property(self, domain: str) -> ValidationResult:
+        """Validate a domain's adagents.json configuration."""
+        resp = await self._request_ok(
+            "GET", "/api/properties/validate",
+            params={"domain": domain}, operation="Property validate",
+        )
+
+        return self._parse(ValidationResult, resp.json(), "Property validate")
+
+    async def save_property(
+        self,
+        publisher_domain: str,
+        authorized_agents: list[dict[str, Any]],
+        *,
+        auth_token: str,
+        properties: list[dict[str, Any]] | None = None,
+        contact: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Save or update a hosted property (auth required)."""
+        body: dict[str, Any] = {
+            "publisher_domain": publisher_domain,
+            "authorized_agents": authorized_agents,
+        }
+        if properties is not None:
+            body["properties"] = properties
+        if contact is not None:
+            body["contact"] = contact
+        resp = await self._request_ok(
+            "POST", "/api/properties/save",
+            json_body=body, auth_token=auth_token,
+            operation="Property save",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def property_history(
+        self,
+        domain: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> PropertyActivity | None:
+        """Get edit history for a property."""
+        resp = await self._request(
+            "GET", "/api/properties/history",
+            params={"domain": domain, "limit": limit, "offset": offset},
+            allow_404=True, operation="Property history",
+        )
+        if resp is None:
+            return None
+        return self._parse(PropertyActivity, resp.json(), "Property history")
+
+    async def check_property_list(
+        self, domains: list[str]
+    ) -> dict[str, Any]:
+        """Check publisher domains against the registry."""
+        resp = await self._request_ok(
+            "POST", "/api/properties/check",
+            json_body={"domains": domains}, operation="Property check",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def get_property_check_report(
+        self, report_id: str
+    ) -> dict[str, Any] | None:
+        """Retrieve a property check report by ID."""
+        resp = await self._request(
+            "GET", f"/api/properties/check/{url_quote(report_id, safe='')}",
+            allow_404=True, operation="Property check report",
+        )
+        if resp is None:
+            return None
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Agent Discovery
+    # ========================================================================
+
+    async def list_agents(
+        self,
+        *,
+        type: str | None = None,
+        health: bool = False,
+        capabilities: bool = False,
+        properties: bool = False,
+        compliance: bool = False,
+    ) -> list[FederatedAgentWithDetails]:
+        """List registered and discovered agents."""
+        params: dict[str, Any] = {}
+        if type is not None:
+            params["type"] = type
+        if health:
+            params["health"] = "true"
+        if capabilities:
+            params["capabilities"] = "true"
+        if properties:
+            params["properties"] = "true"
+        if compliance:
+            params["compliance"] = "true"
+        resp = await self._request_ok(
+            "GET", "/api/registry/agents",
+            params=params, operation="Agent list",
+        )
+
+        data = resp.json()
+        return [
+            self._parse(FederatedAgentWithDetails, a, "Agent list")
+            for a in data.get("agents", [])
+        ]
+
+    async def list_publishers(self) -> list[FederatedPublisher]:
+        """List publishers in the registry."""
+        resp = await self._request_ok(
+            "GET", "/api/registry/publishers",
+            operation="Publisher list",
+        )
+
+        data = resp.json()
+        return [
+            self._parse(FederatedPublisher, p, "Publisher list")
+            for p in data.get("publishers", [])
+        ]
+
+    async def get_registry_stats(self) -> dict[str, Any]:
+        """Get aggregate registry statistics."""
+        resp = await self._request_ok(
+            "GET", "/api/registry/stats",
+            operation="Registry stats",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def search_agents(
+        self,
+        *,
+        auth_token: str,
+        channels: str | None = None,
+        property_types: str | None = None,
+        markets: str | None = None,
+        categories: str | None = None,
+        tags: str | None = None,
+        delivery_types: str | None = None,
+        has_tmp: bool | None = None,
+        min_properties: int | None = None,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Search agents by inventory profile (auth required)."""
+        params: dict[str, Any] = {"limit": limit}
+        for key, val in [
+            ("channels", channels),
+            ("property_types", property_types),
+            ("markets", markets),
+            ("categories", categories),
+            ("tags", tags),
+            ("delivery_types", delivery_types),
+            ("cursor", cursor),
+        ]:
+            if val is not None:
+                params[key] = val
+        if has_tmp is not None:
+            params["has_tmp"] = str(has_tmp).lower()
+        if min_properties is not None:
+            params["min_properties"] = min_properties
+        resp = await self._request_ok(
+            "GET", "/api/registry/agents/search",
+            params=params, auth_token=auth_token,
+            operation="Agent search",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def request_crawl(
+        self, domain: str, *, auth_token: str
+    ) -> dict[str, Any]:
+        """Request a domain re-crawl (auth required)."""
+        resp = await self._request_ok(
+            "POST", "/api/registry/crawl-request",
+            json_body={"domain": domain}, auth_token=auth_token,
+            operation="Crawl request",
+            expected_status={200, 202},
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Lookups & Authorization
+    # ========================================================================
+
+    async def lookup_domain(self, domain: str) -> DomainLookupResult:
+        """Find all agents authorized for a publisher domain."""
+        resp = await self._request_ok(
+            "GET", f"/api/registry/lookup/domain/{url_quote(domain, safe='')}",
+            operation="Domain lookup",
+        )
+
+        return self._parse(DomainLookupResult, resp.json(), "Domain lookup")
+
+    async def lookup_property_identifier(
+        self, type: str, value: str
+    ) -> dict[str, Any]:
+        """Find agents holding a specific property identifier."""
+        resp = await self._request_ok(
+            "GET", "/api/registry/lookup/property",
+            params={"type": type, "value": value},
+            operation="Property identifier lookup",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def get_agent_domains(self, agent_url: str) -> dict[str, Any]:
+        """Get all publisher domains and identifiers for an agent."""
+        encoded = url_quote(agent_url, safe="")
+        resp = await self._request_ok(
+            "GET", f"/api/registry/lookup/agent/{encoded}/domains",
+            operation="Agent domains lookup",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def validate_product_authorization(
+        self,
+        agent_url: str,
+        publisher_properties: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Check whether an agent is authorized to sell products."""
+        resp = await self._request_ok(
+            "POST", "/api/registry/validate/product-authorization",
+            json_body={
+                "agent_url": agent_url,
+                "publisher_properties": publisher_properties,
+            },
+            operation="Product authorization",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def expand_product_identifiers(
+        self,
+        agent_url: str,
+        publisher_properties: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Expand publisher_properties selectors into concrete identifiers."""
+        resp = await self._request_ok(
+            "POST", "/api/registry/expand/product-identifiers",
+            json_body={
+                "agent_url": agent_url,
+                "publisher_properties": publisher_properties,
+            },
+            operation="Expand product identifiers",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def validate_property_authorization(
+        self,
+        agent_url: str,
+        identifier_type: str,
+        identifier_value: str,
+    ) -> dict[str, Any]:
+        """Quick check if a property identifier is authorized for an agent."""
+        resp = await self._request_ok(
+            "GET", "/api/registry/validate/property-authorization",
+            params={
+                "agent_url": agent_url,
+                "identifier_type": identifier_type,
+                "identifier_value": identifier_value,
+            },
+            operation="Property authorization",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Validation Tools
+    # ========================================================================
+
+    async def validate_adagents(self, domain: str) -> dict[str, Any]:
+        """Validate a domain's adagents.json via the registry API."""
+        resp = await self._request_ok(
+            "POST", "/api/adagents/validate",
+            json_body={"domain": domain}, operation="Adagents validate",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def create_adagents(
+        self,
+        authorized_agents: list[dict[str, Any]],
+        *,
+        include_schema: bool = False,
+        include_timestamp: bool = False,
+        properties: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a valid adagents.json from authorized agents."""
+        body: dict[str, Any] = {"authorized_agents": authorized_agents}
+        if include_schema:
+            body["include_schema"] = True
+        if include_timestamp:
+            body["include_timestamp"] = True
+        if properties is not None:
+            body["properties"] = properties
+        resp = await self._request_ok(
+            "POST", "/api/adagents/create",
+            json_body=body, operation="Adagents create",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Search
+    # ========================================================================
+
+    async def api_discovery(self) -> dict[str, Any]:
+        """Get API discovery info (links to entry points and docs)."""
+        resp = await self._request_ok(
+            "GET", "/api", operation="API discovery",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def search(self, q: str) -> dict[str, Any]:
+        """Search across brands, publishers, and properties."""
+        resp = await self._request_ok(
+            "GET", "/api/search",
+            params={"q": q}, operation="Search",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def lookup_manifest_ref(
+        self, domain: str, *, type: str | None = None
+    ) -> dict[str, Any]:
+        """Find the best manifest reference for a domain."""
+        params: dict[str, Any] = {"domain": domain}
+        if type is not None:
+            params["type"] = type
+        resp = await self._request_ok(
+            "GET", "/api/manifest-refs/lookup",
+            params=params, operation="Manifest ref lookup",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Agent Probing
+    # ========================================================================
+
+    async def discover_agent(self, url: str) -> dict[str, Any]:
+        """Probe an agent URL to discover its capabilities."""
+        resp = await self._request_ok(
+            "GET", "/api/public/discover-agent",
+            params={"url": url}, operation="Agent discovery",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def get_agent_formats(self, url: str) -> dict[str, Any]:
+        """Fetch creative formats from an agent."""
+        resp = await self._request_ok(
+            "GET", "/api/public/agent-formats",
+            params={"url": url}, operation="Agent formats",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def get_agent_products(self, url: str) -> dict[str, Any]:
+        """Fetch products from a sales agent."""
+        resp = await self._request_ok(
+            "GET", "/api/public/agent-products",
+            params={"url": url}, operation="Agent products",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    async def validate_publisher(self, domain: str) -> dict[str, Any]:
+        """Validate a publisher domain's adagents.json and return stats."""
+        resp = await self._request_ok(
+            "GET", "/api/public/validate-publisher",
+            params={"domain": domain}, operation="Publisher validation",
+        )
+
+        return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Change Feed
+    # ========================================================================
+
+    async def get_feed(
+        self,
+        *,
+        auth_token: str,
+        cursor: str | None = None,
+        types: str | None = None,
+        limit: int = 100,
+    ) -> FeedPage:
+        """Poll the registry change feed (auth required).
+
+        Returns a FeedPage with events, cursor, and has_more.
+        Pass cursor from previous response to resume.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if cursor is not None:
+            params["cursor"] = cursor
+        if types is not None:
+            params["types"] = types
+        resp = await self._request_ok(
+            "GET", "/api/registry/feed",
+            params=params, auth_token=auth_token,
+            operation="Feed poll",
+        )
+
+        return self._parse(FeedPage, resp.json(), "Feed poll")

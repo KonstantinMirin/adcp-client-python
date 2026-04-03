@@ -41,6 +41,11 @@ test-generation: ## Run only code generation tests
 	$(PYTEST) tests/test_code_generation.py -v
 	@echo "✓ Code generation tests passed"
 
+regenerate-registry: ## Regenerate registry types from OpenAPI spec
+	@echo "Generating registry types from OpenAPI spec..."
+	$(PYTHON) scripts/generate_registry_types.py
+	@echo "✓ Registry types regenerated"
+
 regenerate-schemas: ## Download latest schemas and regenerate models
 	@echo "Downloading latest schemas..."
 	$(PYTHON) scripts/sync_schemas.py

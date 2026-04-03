@@ -15,7 +15,6 @@ Type Coercion:
 
     - Enum fields accept string values:
         ListCreativeFormatsRequest(type="video")  # Works!
-        ListCreativeFormatsRequest(type=FormatCategory.video)  # Also works
 
     - Context fields accept dicts:
         GetProductsRequest(context={"key": "value"})  # Works!
@@ -49,6 +48,8 @@ from adcp.types._generated import (
     Account,
     AccountReference,
     AccountScope,
+    AcquireRightsRequest,
+    AcquireRightsResponse,
     ActivateSignalRequest,
     ActivateSignalResponse,
     AggregatedTotals,
@@ -65,6 +66,7 @@ from adcp.types._generated import (
     AuthenticationScheme,
     AuthorizedAgents,
     AvailableMetric,
+    AvailablePackage,
     BrandManifest,
     BrandReference,
     BuildCreativeRequest,
@@ -86,9 +88,13 @@ from adcp.types._generated import (
     CheckGovernanceResponse,
     CoBrandingRequirement,
     Colors,
+    ComplyTestControllerRequest,
+    ComplyTestControllerResponse,
     Contact,
     ContentIdType,
     ContentStandards,
+    ContextMatchRequest,
+    ContextMatchResponse,
     ContextObject,
     Country,
     CpaPricingOption,
@@ -138,7 +144,6 @@ from adcp.types._generated import (
     DimensionUnit,
     DoohMetrics,
     Duration,
-    Error,
     ErrorCode,
     EventType,
     ExtensionObject,
@@ -156,7 +161,6 @@ from adcp.types._generated import (
     Format,
     FormatCard,
     FormatCardDetailed,
-    FormatCategory,
     FormatId,
     FormatIdParameter,
     FrequencyCap,
@@ -169,6 +173,8 @@ from adcp.types._generated import (
     GetAccountFinancialsResponse,
     GetAdcpCapabilitiesRequest,
     GetAdcpCapabilitiesResponse,
+    GetBrandIdentityRequest,
+    GetBrandIdentityResponse,
     GetContentStandardsRequest,
     GetContentStandardsResponse,
     GetCreativeDeliveryRequest,
@@ -187,12 +193,16 @@ from adcp.types._generated import (
     GetProductsResponse,
     GetPropertyListRequest,
     GetPropertyListResponse,
+    GetRightsRequest,
+    GetRightsResponse,
     GetSignalsRequest,
     GetSignalsResponse,
     Gtin,
     HtmlAsset,
     HttpMethod,
     Identifier,
+    IdentityMatchRequest,
+    IdentityMatchResponse,
     ImageAsset,
     Input,
     JavascriptAsset,
@@ -227,6 +237,7 @@ from adcp.types._generated import (
     Offering,
     OfferingAssetConstraint,
     OfferingAssetGroup,
+    OfferPrice,
     OptimizationGoal,
     OutcomeMeasurement,
     Overlay,
@@ -287,6 +298,8 @@ from adcp.types._generated import (
     Response,
     Responsive,
     Results,
+    RightsPricingOption,
+    RightsTerms,
     Security,
     SiCapabilities,
     SiGetOfferingRequest,
@@ -331,6 +344,7 @@ from adcp.types._generated import (
     TextAsset,
     TimeBasedPricingOption,
     TimeUnit,
+    TmpError,
     Totals,
     Transform,
     UpdateContentStandardsRequest,
@@ -355,13 +369,21 @@ from adcp.types._generated import (
     WebhookAsset,
     WebhookResponseType,
 )
+from adcp.types._generated import (
+    Offer as TmpOffer,
+)
 from adcp.types._generated import TaskStatus as GeneratedTaskStatus
+from adcp.types._generated import _ErrorFromError as Error
 from adcp.types._generated import _PackageFromPackage as Package
 
 # Import semantic aliases for discriminated unions
 from adcp.types.aliases import (
     AccountReferenceById,
     AccountReferenceByNaturalKey,
+    AcquireRightsAcquiredResponse,
+    AcquireRightsErrorResponse,
+    AcquireRightsPendingResponse,
+    AcquireRightsRejectedResponse,
     ActivateSignalErrorResponse,
     ActivateSignalSuccessResponse,
     AgentDeployment,
@@ -379,6 +401,17 @@ from adcp.types.aliases import (
     CalibrateContentErrorResponse,
     CalibrateContentSuccessResponse,
     CatalogGroupBinding,
+    ComplyErrorResponse,
+    ComplyForceAccountStatusRequest,
+    ComplyForceCreativeStatusRequest,
+    ComplyForceMediaBuyStatusRequest,
+    ComplyForceSessionStatusRequest,
+    ComplyListScenariosRequest,
+    ComplyListScenariosResponse,
+    ComplySimulateBudgetSpendRequest,
+    ComplySimulateDeliveryRequest,
+    ComplySimulationResponse,
+    ComplyStateTransitionResponse,
     ConsentBasis,
     CpmSignalPricingOption,
     CreateContentStandardsErrorResponse,
@@ -390,7 +423,9 @@ from adcp.types.aliases import (
     FlatFeeSignalPricingOption,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
+    GetBrandIdentityErrorResponse,
     GetBrandIdentityField,
+    GetBrandIdentitySuccessResponse,
     GetContentStandardsErrorResponse,
     GetContentStandardsSuccessResponse,
     GetCreativeDeliveryByBuyerRefRequest,
@@ -404,6 +439,8 @@ from adcp.types.aliases import (
     GetProductsField,
     GetProductsRefineRequest,
     GetProductsWholesaleRequest,
+    GetRightsErrorResponse,
+    GetRightsSuccessResponse,
     GetSignalsDiscoveryRequest,
     GetSignalsLookupRequest,
     HtmlPreviewRender,
@@ -553,7 +590,6 @@ PreviewCreativeInteractiveResponse = PreviewCreativeBatchResponse
 Action = CreativeAction
 Capability = CreativeAgentCapability
 CoBranding = CoBrandingRequirement
-FormatType = FormatCategory
 LandingPage = LandingPageRequirement
 Method = HttpMethod
 ModuleType = JavascriptModuleType
@@ -641,6 +677,27 @@ __all__ = [
     # V3 Protocol Discovery
     "GetAdcpCapabilitiesRequest",
     "GetAdcpCapabilitiesResponse",
+    # TMP (Temporal Matching Protocol)
+    "AvailablePackage",
+    "ContextMatchRequest",
+    "ContextMatchResponse",
+    "IdentityMatchRequest",
+    "IdentityMatchResponse",
+    "TmpOffer",
+    "OfferPrice",
+    "TmpError",
+    # Brand Rights
+    "AcquireRightsRequest",
+    "AcquireRightsResponse",
+    "GetBrandIdentityRequest",
+    "GetBrandIdentityResponse",
+    "GetRightsRequest",
+    "GetRightsResponse",
+    "RightsPricingOption",
+    "RightsTerms",
+    # Compliance Test Controller
+    "ComplyTestControllerRequest",
+    "ComplyTestControllerResponse",
     # Creative Delivery
     "GetCreativeDeliveryRequest",
     "GetCreativeDeliveryResponse",
@@ -738,7 +795,6 @@ __all__ = [
     "DateRange",
     "DatetimeRange",
     "Duration",
-    "FormatCategory",
     "AssignedPackage",
     "Assignments",
     "BrandManifest",
@@ -1009,6 +1065,27 @@ __all__ = [
     # Account financials responses
     "GetAccountFinancialsErrorResponse",
     "GetAccountFinancialsSuccessResponse",
+    # Brand Rights response aliases
+    "AcquireRightsAcquiredResponse",
+    "AcquireRightsPendingResponse",
+    "AcquireRightsRejectedResponse",
+    "AcquireRightsErrorResponse",
+    "GetBrandIdentitySuccessResponse",
+    "GetBrandIdentityErrorResponse",
+    "GetRightsSuccessResponse",
+    "GetRightsErrorResponse",
+    # Compliance Test Controller aliases
+    "ComplyListScenariosRequest",
+    "ComplyForceCreativeStatusRequest",
+    "ComplyForceAccountStatusRequest",
+    "ComplyForceMediaBuyStatusRequest",
+    "ComplyForceSessionStatusRequest",
+    "ComplySimulateDeliveryRequest",
+    "ComplySimulateBudgetSpendRequest",
+    "ComplyListScenariosResponse",
+    "ComplyStateTransitionResponse",
+    "ComplySimulationResponse",
+    "ComplyErrorResponse",
     # Audiences responses
     "MediaBuyDeliveryStatus",
     "SyncAudiencesErrorResponse",
@@ -1022,7 +1099,6 @@ __all__ = [
     "Action",
     "Capability",
     "CoBranding",
-    "FormatType",
     "LandingPage",
     "Measurement",
     "Method",
