@@ -27,12 +27,12 @@ class TestCLIBasics:
         ModuleNotFoundError when the CLI tries to import generated types.
         The generated types use EmailStr which requires email_validator.
         """
-        # Import the CLI module and a type that uses EmailStr (BrandManifest.contact.email)
+        # Import the CLI module and a type that uses EmailStr
         result = subprocess.run(
             [
                 sys.executable,
                 "-c",
-                "import adcp.__main__; from adcp import BrandManifest",
+                "import adcp.__main__; from adcp import Product",
             ],
             capture_output=True,
             text=True,
@@ -414,7 +414,7 @@ class TestDeprecatedFieldWarnings:
 
     def test_check_deprecated_fields_no_warning_for_standard_assets(self, capsys):
         """Should not warn when using standard assets field."""
-        from adcp import Format, FormatCategory
+        from adcp import Format
         from adcp.__main__ import _check_deprecated_fields
 
         # Use the core FormatId which is a proper format identifier type
@@ -423,7 +423,6 @@ class TestDeprecatedFieldWarnings:
         fmt = Format(
             format_id=CoreFormatId(agent_url="https://test.com", id="test"),
             name="Test",
-            type=FormatCategory.display,
             assets=[
                 {
                     "asset_id": "img",
@@ -448,14 +447,13 @@ class TestDeprecatedFieldWarnings:
 
     def test_check_deprecated_fields_handles_list(self, capsys):
         """Should check items in a list without warning for standard fields."""
-        from adcp import Format, FormatCategory, FormatId
+        from adcp import Format, FormatId
         from adcp.__main__ import _check_deprecated_fields
 
         formats = [
             Format(
                 format_id=FormatId(agent_url="https://test.com", id="test"),
                 name="Test",
-                type=FormatCategory.display,
                 assets=[
                     {
                         "asset_id": "img",

@@ -100,55 +100,6 @@ class TestPreviewAliasRenames:
         assert PreviewCreativeManifestRequest is PreviewCreativeBatchRequest
 
 
-class TestRemovedTypeStubs:
-    """Types removed from upstream schemas that have backward-compat stubs."""
-
-    def test_list_authorized_properties_request_imports(self):
-        from adcp import ListAuthorizedPropertiesRequest
-
-        assert ListAuthorizedPropertiesRequest is not None
-
-    def test_list_authorized_properties_response_imports(self):
-        from adcp import ListAuthorizedPropertiesResponse
-
-        assert ListAuthorizedPropertiesResponse is not None
-
-    def test_package_status_imports(self):
-        from adcp import PackageStatus
-
-        assert PackageStatus is not None
-
-    def test_deliver_to_imports(self):
-        from adcp import DeliverTo
-
-        assert DeliverTo is not None
-
-    def test_pricing_imports(self):
-        from adcp import Pricing
-
-        assert Pricing is not None
-
-    def test_measurement_imports(self):
-        from adcp import Measurement
-        from adcp.types import OutcomeMeasurement
-
-        assert Measurement is OutcomeMeasurement
-
-    def test_stubs_accept_extra_fields(self):
-        """Stubs should be open models that accept arbitrary fields."""
-        from adcp import ListAuthorizedPropertiesRequest
-
-        # These stubs should not raise on unknown fields
-        stub = ListAuthorizedPropertiesRequest(some_field="value")
-        assert stub.some_field == "value"
-
-    def test_package_status_is_enum(self):
-        """PackageStatus should be an importable enum."""
-        from adcp import PackageStatus
-
-        assert hasattr(PackageStatus, "__members__")
-
-
 class TestStatusTypeBackwardCompat:
     """Status must resolve to delivery status, not invoice status."""
 
@@ -205,9 +156,6 @@ class TestAllBackwardCompatInAll:
             "PreviewCreativeManifestRequest",
             "PreviewCreativeStaticResponse",
             "PreviewCreativeInteractiveResponse",
-            "ListAuthorizedPropertiesRequest",
-            "ListAuthorizedPropertiesResponse",
-            "PackageStatus",
         ]
         for alias in compat_aliases:
             assert alias in adcp.types.__all__, f"{alias} missing from types.__all__"
@@ -226,12 +174,6 @@ class TestAllBackwardCompatInAll:
             "PreviewCreativeManifestRequest",
             "PreviewCreativeStaticResponse",
             "PreviewCreativeInteractiveResponse",
-            "ListAuthorizedPropertiesRequest",
-            "ListAuthorizedPropertiesResponse",
-            "PackageStatus",
-            "DeliverTo",
-            "Measurement",
-            "Pricing",
         ]
         for alias in compat_aliases:
             assert alias in adcp.__all__, f"{alias} missing from adcp.__all__"

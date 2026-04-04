@@ -308,6 +308,8 @@ def fix_constr_type_annotations():
 # See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
 _UNWRAP_TO_UNION: set[str] = {
     "AcquireRightsResponse",
+    "ComplyTestControllerRequest",
+    "ComplyTestControllerResponse",
     "ActivateSignalResponse",
     "BuildCreativeRequest",
     "BuildCreativeResponse",

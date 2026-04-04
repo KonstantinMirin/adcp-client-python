@@ -152,6 +152,9 @@ uv.lock
 # Temporary schema processing directory
 .schema_temp/
 
+# RegistrySync cursor file (written by FileCursorStore)
+.adcp-sync-cursor.json
+
 # Working/status documents (not for commit)
 IMPLEMENTATION_PLAN.md
 IMPLEMENTATION_SUMMARY.md

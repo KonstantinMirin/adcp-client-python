@@ -510,3 +510,69 @@ class ADCPHandler(ABC):
         Override this in GovernanceHandler subclasses.
         """
         return self._not_supported("delete_property_list")
+
+    # ========================================================================
+    # V3 TMP Operations
+    # ========================================================================
+
+    async def context_match(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Match ad context to buyer packages.
+
+        Override this to provide TMP context matching.
+        """
+        return self._not_supported("context_match")
+
+    async def identity_match(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Match user identity for package eligibility.
+
+        Override this to provide TMP identity matching.
+        """
+        return self._not_supported("identity_match")
+
+    # ========================================================================
+    # V3 Brand Rights Operations
+    # ========================================================================
+
+    async def get_brand_identity(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Get brand identity information.
+
+        Override this in BrandHandler subclasses.
+        """
+        return self._not_supported("get_brand_identity")
+
+    async def get_rights(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Get available rights for licensing.
+
+        Override this in BrandHandler subclasses.
+        """
+        return self._not_supported("get_rights")
+
+    async def acquire_rights(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Acquire rights for brand content usage.
+
+        Override this in BrandHandler subclasses.
+        """
+        return self._not_supported("acquire_rights")
+
+    # ========================================================================
+    # V3 Compliance Operations
+    # ========================================================================
+
+    async def comply_test_controller(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Compliance test controller (sandbox only).
+
+        Override this in ComplianceHandler subclasses.
+        """
+        return self._not_supported("comply_test_controller")

@@ -141,7 +141,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "properties": {
                 "account": {"type": "object"},
                 "media_buy_ids": {"type": "array", "items": {"type": "string"}},
-                "buyer_refs": {"type": "array", "items": {"type": "string"}},
+                "status_filter": {"type": "array", "items": {"type": "string"}},
                 "pagination": {"type": "object"},
             },
         },
@@ -398,14 +398,14 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "plan_id": {"type": "string"},
-                "buyer_campaign_ref": {"type": "string"},
-                "binding": {"type": "string"},
+                "media_buy_id": {"type": "string"},
+                "phase": {"type": "string"},
                 "caller": {"type": "string"},
                 "tool": {"type": "string"},
                 "payload": {"type": "object"},
                 "governance_context": {"type": "object"},
             },
-            "required": ["plan_id", "buyer_campaign_ref", "binding", "caller"],
+            "required": ["plan_id", "caller"],
         },
     },
     {
@@ -415,14 +415,13 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "plan_id": {"type": "string"},
-                "buyer_campaign_ref": {"type": "string"},
                 "outcome": {"type": "string"},
                 "check_id": {"type": "string"},
                 "seller_response": {"type": "object"},
                 "delivery": {"type": "object"},
                 "error": {"type": "object"},
             },
-            "required": ["plan_id", "buyer_campaign_ref", "outcome"],
+            "required": ["plan_id", "outcome"],
         },
     },
     {
@@ -433,7 +432,6 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "properties": {
                 "plan_ids": {"type": "array", "items": {"type": "string"}},
                 "portfolio_plan_ids": {"type": "array", "items": {"type": "string"}},
-                "buyer_campaign_ref": {"type": "string"},
                 "include_entries": {"type": "boolean"},
             },
         },
@@ -547,6 +545,132 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["list_id"],
         },
     },
+    # V3 TMP
+    {
+        "name": "context_match",
+        "description": (
+            "Evaluate publisher placement context against buyer packages"
+            " and return matching offers. Called at ad-request time."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "property_rid": {"type": "string"},
+                "placement_id": {"type": "string"},
+                "property_type": {"type": "string"},
+                "request_id": {"type": "string"},
+                "type": {"type": "string"},
+                "artifact_refs": {"type": "array"},
+                "context_signals": {"type": "object"},
+                "geo": {"type": "object"},
+                "package_ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["property_rid", "placement_id", "property_type", "request_id", "type"],
+        },
+    },
+    {
+        "name": "identity_match",
+        "description": (
+            "Evaluate user identity token against active packages"
+            " for eligibility. Requires consent in regulated regions."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "request_id": {"type": "string"},
+                "type": {"type": "string"},
+                "user_token": {"type": "string"},
+                "uid_type": {"type": "string"},
+                "package_ids": {"type": "array", "items": {"type": "string"}},
+                "consent": {"type": "object"},
+            },
+            "required": ["request_id", "type", "user_token", "uid_type", "package_ids"],
+        },
+    },
+    # V3 Brand Rights
+    {
+        "name": "get_brand_identity",
+        "description": "Get brand identity information",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "brand_id": {"type": "string"},
+                "fields": {"type": "array", "items": {"type": "string"}},
+                "use_case": {"type": "string"},
+            },
+            "required": ["brand_id"],
+        },
+    },
+    {
+        "name": "get_rights",
+        "description": "Get available rights for licensing",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "uses": {"type": "array", "items": {"type": "string"}},
+                "brand_id": {"type": "string"},
+                "right_type": {"type": "string"},
+                "countries": {"type": "array", "items": {"type": "string"}},
+                "include_excluded": {"type": "boolean"},
+                "pagination": {"type": "object"},
+            },
+            "required": ["query", "uses"],
+        },
+    },
+    {
+        "name": "acquire_rights",
+        "description": (
+            "Acquire rights for brand content usage."
+            " Binding contractual action with financial obligations."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "rights_id": {"type": "string"},
+                "pricing_option_id": {"type": "string"},
+                "buyer": {"type": "object"},
+                "campaign": {"type": "object"},
+                "revocation_webhook": {"type": "object"},
+                "idempotency_key": {"type": "string"},
+            },
+            "required": [
+                "rights_id",
+                "pricing_option_id",
+                "buyer",
+                "campaign",
+                "revocation_webhook",
+            ],
+        },
+    },
+    # V3 Compliance
+    {
+        "name": "comply_test_controller",
+        "description": (
+            "Compliance test controller. Sandbox only,"
+            " not for production use."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "scenario": {
+                    "type": "string",
+                    "enum": [
+                        "list_scenarios",
+                        "force_creative_status",
+                        "force_account_status",
+                        "force_media_buy_status",
+                        "force_session_status",
+                        "simulate_delivery",
+                        "simulate_budget_spend",
+                    ],
+                },
+                "params": {"type": "object"},
+                "context": {"type": "object"},
+            },
+            "required": ["scenario"],
+        },
+    },
 ]
 
 
@@ -581,6 +705,18 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
         "si_initiate_session",
         "si_send_message",
         "si_terminate_session",
+    },
+    "TmpHandler": {
+        "context_match",
+        "identity_match",
+    },
+    "BrandHandler": {
+        "get_brand_identity",
+        "get_rights",
+        "acquire_rights",
+    },
+    "ComplianceHandler": {
+        "comply_test_controller",
     },
     "ADCPHandler": {tool["name"] for tool in ADCP_TOOL_DEFINITIONS},
 }

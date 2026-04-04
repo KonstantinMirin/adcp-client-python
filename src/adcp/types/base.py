@@ -212,3 +212,14 @@ class AdCPBaseModel(BaseModel):
         if formatter:
             return formatter(self)
         return f"{self.__class__.__name__} response"
+
+
+class RegistryBaseModel(BaseModel):
+    """Base model for registry API types.
+
+    Uses ``extra='allow'`` so that new fields from the registry API
+    are preserved rather than dropped. This differs from AdCPBaseModel
+    which defaults to ``extra='ignore'`` for protocol types.
+    """
+
+    model_config = ConfigDict(extra="allow")

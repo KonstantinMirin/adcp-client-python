@@ -269,6 +269,15 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         "list_property_lists": ("list_property_lists", _ta(gen.ListPropertyListsRequest)),
         "update_property_list": ("update_property_list", _ta(gen.UpdatePropertyListRequest)),
         "delete_property_list": ("delete_property_list", _ta(gen.DeletePropertyListRequest)),
+        # V3 TMP
+        "context_match": ("context_match", _ta(gen.ContextMatchRequest)),
+        "identity_match": ("identity_match", _ta(gen.IdentityMatchRequest)),
+        # V3 Brand Rights
+        "get_brand_identity": ("get_brand_identity", _ta(gen.GetBrandIdentityRequest)),
+        "get_rights": ("get_rights", _ta(gen.GetRightsRequest)),
+        "acquire_rights": ("acquire_rights", _ta(gen.AcquireRightsRequest)),
+        # V3 Compliance
+        "comply_test_controller": ("comply_test_controller", _ta(gen.ComplyTestControllerRequest)),
     }
 
     return _dispatch_table

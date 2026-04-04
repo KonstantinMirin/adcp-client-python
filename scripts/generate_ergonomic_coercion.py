@@ -47,9 +47,7 @@ RESPONSE_TYPES_TO_ANALYZE = [
 # Nested types that also need coercion
 NESTED_TYPES_TO_ANALYZE = [
     ("Sort", "creative.list_creatives_request"),
-    ("GetProductsRequest1", "media_buy.get_products_request"),
-    ("GetProductsRequest2", "media_buy.get_products_request"),
-    ("GetProductsRequest3", "media_buy.get_products_request"),
+    ("GetProductsRequest", "media_buy.get_products_request"),
     ("PackageUpdate", "media_buy.package_update"),
 ]
 
@@ -232,9 +230,7 @@ def generate_code() -> str:
     )
     from adcp.types.generated_poc.media_buy.get_products_request import (
         Field1 as GetProductsField,
-        GetProductsRequest1,
-        GetProductsRequest2,
-        GetProductsRequest3,
+        GetProductsRequest,
     )
 
     # Response types
@@ -272,9 +268,7 @@ def generate_code() -> str:
 
     nested_classes = {
         "Sort": Sort,
-        "GetProductsRequest1": GetProductsRequest1,
-        "GetProductsRequest2": GetProductsRequest2,
-        "GetProductsRequest3": GetProductsRequest3,
+        "GetProductsRequest": GetProductsRequest,
         "PackageUpdate": PackageUpdate,
     }
 
@@ -341,7 +335,7 @@ def generate_code() -> str:
         "    5. This approach maintains full type checker compatibility",
         "",
         "Coercion rules applied:",
-        '1. Enum fields accept string values (e.g., "video" for FormatCategory.video)',
+        '1. Enum fields accept string values (e.g., "video" for enum fields)',
         '2. List[Enum] fields accept list of strings (e.g., ["image", "video"])',
         "3. ContextObject fields accept dict values",
         "4. ExtensionObject fields accept dict values",
@@ -381,9 +375,7 @@ def generate_code() -> str:
     lines.append(")")
     lines.append("from adcp.types.generated_poc.media_buy.get_products_request import (")
     lines.append("    Field1 as GetProductsField,")
-    lines.append("    GetProductsRequest1,")
-    lines.append("    GetProductsRequest2,")
-    lines.append("    GetProductsRequest3,")
+    lines.append("    GetProductsRequest,")
     lines.append(")")
     lines.append("from adcp.types.generated_poc.media_buy.list_creative_formats_request import (")
     lines.append("    ListCreativeFormatsRequest,")
@@ -417,6 +409,23 @@ def generate_code() -> str:
     lines.append("    ListCreativesResponse,")
     lines.append(")")
 
+    # Add any discovered enum/model imports from request/response modules
+    # These are types (like BuyingMode, ValidAction) defined inside request/response
+    # modules rather than in the enums/ directory.
+    # Filter out types already imported in the hardcoded block above.
+    already_imported = {
+        "CreateMediaBuyRequest", "GetProductsRequest", "Field1",
+        "ListCreativeFormatsRequest", "ListCreativesRequest", "Sort",
+        "PackageRequest", "PackageUpdate", "CreateMediaBuyResponse1",
+        "GetMediaBuyDeliveryResponse", "MediaBuyDelivery", "NotificationType",
+        "GetProductsResponse", "ListCreativeFormatsResponse", "CreativeAgent",
+        "Creative", "ListCreativesResponse",
+    }
+    request_imports_sorted = sorted(set(request_imports))
+    for name, path in request_imports_sorted:
+        if name not in already_imported:
+            lines.append(f"from adcp.types.generated_poc.{path} import {name}")
+
     lines.append("")
     lines.append("")
     lines.append("def _apply_coercion() -> None:")
@@ -433,9 +442,7 @@ def generate_code() -> str:
         "ListCreativeFormatsRequest",
         "ListCreativesRequest",
         "Sort",
-        "GetProductsRequest1",
-        "GetProductsRequest2",
-        "GetProductsRequest3",
+        "GetProductsRequest",
         "PackageRequest",
         "CreateMediaBuyRequest",
         "PackageUpdate",
