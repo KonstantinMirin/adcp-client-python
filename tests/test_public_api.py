@@ -17,7 +17,6 @@ def test_core_domain_types_are_exported():
         "MediaBuy",
         "MediaBuyPackage",
         "Property",
-        "BrandManifest",
         "Creative",
         "CreativeApproval",
         "DeliveryStatus",
@@ -111,9 +110,9 @@ def test_client_types_are_exported():
 
 def test_public_api_types_are_pydantic_models():
     """Core types from public API are valid Pydantic models."""
-    from adcp import BrandManifest, Format, MediaBuy, Product, Property
+    from adcp import Format, MediaBuy, Product, Property
 
-    types_to_test = [Product, Format, MediaBuy, Property, BrandManifest]
+    types_to_test = [Product, Format, MediaBuy, Property]
 
     for model_class in types_to_test:
         # Should have Pydantic model methods

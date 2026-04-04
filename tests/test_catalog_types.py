@@ -13,7 +13,6 @@ from pydantic import ValidationError
 def test_catalog_types_importable_from_adcp():
     """All catalog types are importable from the main adcp package."""
     from adcp import (
-        AssetSelectors,
         Catalog,
         CatalogAction,
         CatalogItemStatus,
@@ -54,7 +53,6 @@ def test_catalog_types_importable_from_adcp():
     assert SyncCatalogsSuccessResponse is not None
     assert SyncCatalogsErrorResponse is not None
     assert SyncCatalogResult is not None
-    assert AssetSelectors is not None
 
 
 def test_catalog_type_enum_values():
@@ -263,43 +261,6 @@ def test_catalog_requirements_offering_with_constraints():
     assert req.offering_asset_constraints is not None
     assert len(req.offering_asset_constraints) == 1
     assert req.offering_asset_constraints[0].asset_group_id == "headlines"
-
-
-def test_backward_compat_removed_types_still_importable():
-    """Types removed from upstream schemas still importable as permissive stubs."""
-    from adcp import (
-        AssetSelectors,
-        PromotedOfferings,
-        PromotedOfferingsAssetRequirements,
-        PromotedOfferingsRequirement,
-        PromotedProducts,
-    )
-
-    # Model stubs accept any payload (extra="allow")
-    po = PromotedOfferings.model_validate({"any_field": "any_value"})
-    assert po is not None
-
-    par = PromotedOfferingsAssetRequirements.model_validate({"requires": ["brand.logos"]})
-    assert par is not None
-
-    # PromotedOfferingsRequirement is preserved as an Enum so attribute/iteration access works
-    assert PromotedOfferingsRequirement.si_agent_url.value == "si_agent_url"
-    assert PromotedOfferingsRequirement.brand_logos.value == "brand.logos"
-    assert {e.value for e in PromotedOfferingsRequirement} == {
-        "si_agent_url",
-        "offerings",
-        "brand.logos",
-        "brand.colors",
-        "brand.tone",
-        "brand.assets",
-        "brand.product_catalog",
-    }
-
-    pp = PromotedProducts.model_validate({"product_id": "prod-123"})
-    assert pp is not None
-
-    asel = AssetSelectors.model_validate({"selectors": ["hero_image"]})
-    assert asel is not None
 
 
 def test_signal_catalog_type_unaffected():

@@ -27,12 +27,12 @@ class TestCLIBasics:
         ModuleNotFoundError when the CLI tries to import generated types.
         The generated types use EmailStr which requires email_validator.
         """
-        # Import the CLI module and a type that uses EmailStr (BrandManifest.contact.email)
+        # Import the CLI module and a type that uses EmailStr
         result = subprocess.run(
             [
                 sys.executable,
                 "-c",
-                "import adcp.__main__; from adcp import BrandManifest",
+                "import adcp.__main__; from adcp import Product",
             ],
             capture_output=True,
             text=True,
