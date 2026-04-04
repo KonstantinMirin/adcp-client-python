@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.11.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.10.0...v3.11.0) (2026-04-04)
+
+
+### Features
+
+* ADCP 3.0.0-rc3 spec + full registry support ([c3f6937](https://github.com/adcontextprotocol/adcp-client-python/commit/c3f6937356bb7c37d7de665e2e674fb4a590da25))
+* implement ADCP 3.0.0-rc3 spec with full registry support ([edc9578](https://github.com/adcontextprotocol/adcp-client-python/commit/edc95783be1b71c662a4b1df5878ffd1cc51ee15))
+* remove all backward-compat type stubs for clean 3.0.0 surface ([a45cdf5](https://github.com/adcontextprotocol/adcp-client-python/commit/a45cdf568d40b10c7c6660f5858b6c712abcf0dd))
+
+
+### Bug Fixes
+
+* add backward-compat FormatCategory/FormatType enum stub ([756ed50](https://github.com/adcontextprotocol/adcp-client-python/commit/756ed50cf192754c1b03a1a15f1e9757a81f9480))
+* clean up formatting in registry_sync and property_registry ([44a1914](https://github.com/adcontextprotocol/adcp-client-python/commit/44a191446bc55a0213873846835d1f5358f58cff))
+* remove accidental cursor file, add to .gitignore ([2650f8e](https://github.com/adcontextprotocol/adcp-client-python/commit/2650f8e1138122a39bc6fbb50bd052596ab99e54))
+* remove stale buyer_campaign_ref from MCP tool schemas ([3c7a2c8](https://github.com/adcontextprotocol/adcp-client-python/commit/3c7a2c89f3d84523810be2bdde9e8f22f7d75bab))
+
 ## [3.10.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.9.1...v3.10.0) (2026-03-17)
 
 
