@@ -141,7 +141,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "properties": {
                 "account": {"type": "object"},
                 "media_buy_ids": {"type": "array", "items": {"type": "string"}},
-                "buyer_refs": {"type": "array", "items": {"type": "string"}},
+                "status_filter": {"type": "array", "items": {"type": "string"}},
                 "pagination": {"type": "object"},
             },
         },
@@ -398,14 +398,14 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "plan_id": {"type": "string"},
-                "buyer_campaign_ref": {"type": "string"},
-                "binding": {"type": "string"},
+                "media_buy_id": {"type": "string"},
+                "phase": {"type": "string"},
                 "caller": {"type": "string"},
                 "tool": {"type": "string"},
                 "payload": {"type": "object"},
                 "governance_context": {"type": "object"},
             },
-            "required": ["plan_id", "buyer_campaign_ref", "binding", "caller"],
+            "required": ["plan_id", "caller"],
         },
     },
     {
@@ -415,14 +415,13 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "plan_id": {"type": "string"},
-                "buyer_campaign_ref": {"type": "string"},
                 "outcome": {"type": "string"},
                 "check_id": {"type": "string"},
                 "seller_response": {"type": "object"},
                 "delivery": {"type": "object"},
                 "error": {"type": "object"},
             },
-            "required": ["plan_id", "buyer_campaign_ref", "outcome"],
+            "required": ["plan_id", "outcome"],
         },
     },
     {
@@ -433,7 +432,6 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "properties": {
                 "plan_ids": {"type": "array", "items": {"type": "string"}},
                 "portfolio_plan_ids": {"type": "array", "items": {"type": "string"}},
-                "buyer_campaign_ref": {"type": "string"},
                 "include_entries": {"type": "boolean"},
             },
         },
