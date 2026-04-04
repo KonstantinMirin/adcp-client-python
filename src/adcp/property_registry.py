@@ -227,7 +227,7 @@ class PropertyRegistry:
                 for p in data.get("properties", [])
                 if "domain" in p
             }
-        except (Exception) as exc:
+        except Exception as exc:
             logger.warning("Failed to refresh agent %s: %s", agent_url, exc)
             return
 

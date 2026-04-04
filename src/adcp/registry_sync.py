@@ -15,6 +15,7 @@ from adcp.exceptions import RegistryError
 
 if TYPE_CHECKING:
     from adcp.registry import RegistryClient
+
 from adcp.types.registry import FeedEvent
 
 logger = logging.getLogger(__name__)
