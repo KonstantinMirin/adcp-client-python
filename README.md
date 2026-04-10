@@ -4,7 +4,49 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-Official Python client for the **Ad Context Protocol (AdCP)**. Build distributed advertising operations that work synchronously OR asynchronously with the same code.
+Official Python SDK for the **Ad Context Protocol (AdCP)**. Build and connect to advertising agents that work synchronously OR asynchronously with the same code.
+
+## Building an AdCP Agent
+
+The fastest path to a working agent: subclass `ADCPHandler`, use response builders, call `serve()`.
+
+```python
+from adcp.server import ADCPHandler, serve
+from adcp.server.responses import capabilities_response, products_response
+
+class MySeller(ADCPHandler):
+    async def get_adcp_capabilities(self, params, context=None):
+        return capabilities_response(["media_buy"])
+
+    async def get_products(self, params, context=None):
+        return products_response(MY_PRODUCTS)
+
+    # implement create_media_buy, get_media_buys, sync_creatives, etc.
+
+serve(MySeller(), name="my-seller")
+```
+
+Validate with storyboards:
+```bash
+python agent.py &
+npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --json
+```
+
+| Agent type | Skill | Storyboard | Steps |
+|-----------|-------|-----------|-------|
+| Seller (publisher, SSP, retail media) | [`skills/build-seller-agent/`](skills/build-seller-agent/SKILL.md) | `media_buy_seller` | 9 |
+| Signals (audience data, CDP) | [`skills/build-signals-agent/`](skills/build-signals-agent/SKILL.md) | `signal_owned` | 4 |
+| Creative (ad server, CMP) | [`skills/build-creative-agent/`](skills/build-creative-agent/SKILL.md) | `creative_lifecycle` | 6 |
+
+For compliance testing, add a `TestControllerStore` so storyboards can force state transitions:
+```python
+from adcp.server.test_controller import TestControllerStore
+serve(MySeller(), name="my-seller", test_controller=MyStore())
+```
+
+Each skill file in [`skills/`](skills/) contains the complete pattern, response shapes, and validation loop for coding agents (Claude, Codex) to generate passing servers.
+
+## Connecting to AdCP Agents
 
 ## The Core Concept
 

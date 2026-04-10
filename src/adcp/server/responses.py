@@ -1,0 +1,426 @@
+"""Response builder helpers for ADCP servers.
+
+These functions produce correctly-shaped AdCP response dicts that match
+the generated Pydantic response schemas. They reduce boilerplate and
+ensure schema compliance.
+
+Every builder here matches the field names in the corresponding
+generated response type (e.g., SyncAccountsResponse uses "accounts",
+SyncCreativesResponse uses "creatives").
+
+Usage:
+    from adcp.server.responses import capabilities_response, products_response
+
+    @mcp.tool()
+    async def get_adcp_capabilities():
+        return capabilities_response(["media_buy"])
+
+    @mcp.tool()
+    async def get_products():
+        return products_response(MY_PRODUCTS)
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any
+
+
+def _serialize(items: list[Any]) -> list[Any]:
+    """Serialize a list of dicts or Pydantic models to plain dicts."""
+    return [
+        p.model_dump(mode="json", exclude_none=True) if hasattr(p, "model_dump") else p
+        for p in items
+    ]
+
+
+# ============================================================================
+# Protocol Discovery
+# ============================================================================
+
+
+def capabilities_response(
+    supported_protocols: list[str],
+    *,
+    major_versions: list[int] | None = None,
+    sandbox: bool = True,
+    features: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a get_adcp_capabilities response.
+
+    Args:
+        supported_protocols: e.g. ["media_buy"], ["media_buy", "signals"],
+            ["media_buy", "compliance_testing"].
+        major_versions: AdCP major versions. Defaults to [3].
+        sandbox: Whether this is a sandbox agent. Defaults to True.
+        features: Additional feature flags.
+    """
+    resp: dict[str, Any] = {
+        "adcp": {"major_versions": major_versions or [3]},
+        "supported_protocols": supported_protocols,
+        "sandbox": sandbox,
+    }
+    if features:
+        resp["features"] = features
+    return resp
+
+
+# ============================================================================
+# Account Operations
+# ============================================================================
+
+
+def sync_accounts_response(
+    accounts: list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a sync_accounts success response.
+
+    Each account dict should include: account_id, brand, operator,
+    action ("created"|"updated"), status ("active"|"pending_approval").
+
+    Matches SyncAccountsResponse1 schema (field: "accounts").
+    """
+    return {"accounts": accounts, "sandbox": sandbox}
+
+
+def sync_governance_response(
+    accounts: list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a sync_governance response.
+
+    Each account dict should include: account, status ("synced"),
+    governance_agents ([{url, categories}]).
+    """
+    return {"accounts": accounts, "sandbox": sandbox}
+
+
+# ============================================================================
+# Product Catalog
+# ============================================================================
+
+
+def products_response(
+    products: list[Any],
+    *,
+    item_count: int | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a get_products response.
+
+    Matches GetProductsResponse schema.
+    """
+    serialized = _serialize(products)
+    resp: dict[str, Any] = {
+        "products": serialized,
+        "item_count": item_count if item_count is not None else len(serialized),
+        "sandbox": sandbox,
+    }
+    return resp
+
+
+# ============================================================================
+# Media Buy Operations
+# ============================================================================
+
+
+def media_buy_response(
+    media_buy_id: str,
+    packages: list[Any],
+    *,
+    buyer_ref: str | None = None,
+    status: str | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a create_media_buy success response.
+
+    Each package should include: package_id, product_id, pricing_option_id, budget.
+    Matches CreateMediaBuyResponse1 (success) schema.
+    """
+    resp: dict[str, Any] = {
+        "media_buy_id": media_buy_id,
+        "packages": _serialize(packages),
+        "sandbox": sandbox,
+    }
+    if buyer_ref is not None:
+        resp["buyer_ref"] = buyer_ref
+    if status is not None:
+        resp["status"] = status
+    return resp
+
+
+def media_buy_error_response(errors: list[dict[str, str]]) -> dict[str, Any]:
+    """Build a create_media_buy error response.
+
+    Each error dict: {"code": "...", "message": "..."}.
+    Matches CreateMediaBuyResponse2 (error) schema.
+    """
+    return {"errors": errors}
+
+
+def update_media_buy_response(
+    media_buy_id: str,
+    *,
+    affected_packages: list[Any] | None = None,
+    status: str | None = None,
+    revision: int | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build an update_media_buy success response.
+
+    Matches UpdateMediaBuyResponse1 (success) schema.
+    """
+    resp: dict[str, Any] = {
+        "media_buy_id": media_buy_id,
+        "sandbox": sandbox,
+    }
+    if affected_packages is not None:
+        resp["affected_packages"] = _serialize(affected_packages)
+    if status is not None:
+        resp["status"] = status
+    if revision is not None:
+        resp["revision"] = revision
+    return resp
+
+
+def media_buys_response(
+    media_buys: list[Any],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a get_media_buys response.
+
+    Each media buy should include: media_buy_id, status, currency, packages.
+    Matches GetMediaBuysResponse schema.
+    """
+    return {
+        "media_buys": _serialize(media_buys),
+        "sandbox": sandbox,
+    }
+
+
+def delivery_response(
+    media_buy_deliveries: list[dict[str, Any]],
+    *,
+    reporting_period: dict[str, str] | None = None,
+    currency: str = "USD",
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a get_media_buy_delivery response.
+
+    Each media_buy_delivery should include:
+        media_buy_id, status, totals (impressions, spend, etc.), by_package.
+
+    Matches GetMediaBuyDeliveryResponse schema.
+
+    Args:
+        media_buy_deliveries: Array of delivery data per media buy.
+        reporting_period: {"start": ISO timestamp, "end": ISO timestamp}.
+            Defaults to current timestamp for both.
+        currency: ISO 4217 currency code.
+        sandbox: Whether this is simulated data.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "reporting_period": reporting_period or {"start": now, "end": now},
+        "media_buy_deliveries": media_buy_deliveries,
+        "currency": currency,
+        "sandbox": sandbox,
+    }
+
+
+# ============================================================================
+# Creative Operations
+# ============================================================================
+
+
+def creative_formats_response(
+    formats: list[Any],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a list_creative_formats response.
+
+    Each format should include: format_id ({agent_url, id}), name.
+    Matches ListCreativeFormatsResponse schema.
+    """
+    return {
+        "formats": _serialize(formats),
+        "sandbox": sandbox,
+    }
+
+
+def sync_creatives_response(
+    creatives: list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a sync_creatives success response.
+
+    Each creative dict should include: creative_id, action ("created"|"updated").
+    Optionally: status ("accepted"|"pending_review"|"rejected").
+    Matches SyncCreativesResponse1 schema (field: "creatives").
+    """
+    return {"creatives": creatives, "sandbox": sandbox}
+
+
+def list_creatives_response(
+    creatives: list[Any],
+    *,
+    pagination: dict[str, Any] | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a list_creatives response.
+
+    Each creative should include: creative_id, name, format_id, status.
+    Matches ListCreativesResponse schema.
+    """
+    count = len(creatives)
+    return {
+        "creatives": _serialize(creatives),
+        "pagination": pagination or {"total": count, "has_more": False},
+        "query_summary": {"total_results": count, "total_matching": count, "returned": count},
+        "sandbox": sandbox,
+    }
+
+
+def preview_creative_response(
+    previews: list[dict[str, Any]],
+    *,
+    expires_at: str | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a preview_creative single response.
+
+    Each preview should include:
+        preview_id, input ({format_id, name, assets}),
+        renders ([{render_id, output_format, preview_url, role, dimensions}]).
+
+    Matches PreviewCreativeResponse1 (single) schema.
+    """
+    return {
+        "response_type": "single",
+        "previews": previews,
+        "expires_at": expires_at or "2099-12-31T23:59:59Z",
+        "sandbox": sandbox,
+    }
+
+
+def build_creative_response(
+    creative_manifest: dict[str, Any] | list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a build_creative success response.
+
+    Accepts either a single manifest dict or a list of manifests.
+    Each manifest should include: format_id, name, assets.
+
+    Single manifest matches BuildCreativeResponse1.
+    List matches BuildCreativeResponse2 (multi-format).
+    """
+    if isinstance(creative_manifest, list):
+        return {
+            "creative_manifests": creative_manifest,
+            "sandbox": sandbox,
+        }
+    return {
+        "creative_manifest": creative_manifest,
+        "sandbox": sandbox,
+    }
+
+
+# ============================================================================
+# Signal Operations
+# ============================================================================
+
+
+def signals_response(
+    signals: list[Any],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a get_signals response.
+
+    Each signal should include: signal_agent_segment_id, name, description,
+    signal_type, data_provider, coverage_percentage, deployments, pricing_options, signal_id.
+    Matches GetSignalsResponse schema.
+    """
+    return {
+        "signals": _serialize(signals),
+        "sandbox": sandbox,
+    }
+
+
+def activate_signal_response(
+    deployments: list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build an activate_signal success response.
+
+    Each deployment should include: type, is_live, activation_key.
+    For platform: platform, account.
+    For agent: agent_url.
+    Matches ActivateSignalResponse1 (success) schema.
+    """
+    return {
+        "deployments": deployments,
+        "sandbox": sandbox,
+    }
+
+
+# ============================================================================
+# Event & Catalog Operations
+# ============================================================================
+
+
+def log_event_response(
+    events_received: int,
+    events_processed: int,
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a log_event success response.
+
+    Matches LogEventResponse1 (success) schema.
+    """
+    return {
+        "events_received": events_received,
+        "events_processed": events_processed,
+        "sandbox": sandbox,
+    }
+
+
+def sync_catalogs_response(
+    catalogs: list[dict[str, Any]],
+    *,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a sync_catalogs success response.
+
+    Each catalog should include: catalog_id, action, item_count, items_approved.
+    Matches SyncCatalogsResponse1 (success) schema.
+    """
+    return {
+        "catalogs": catalogs,
+        "sandbox": sandbox,
+    }
+
+
+# ============================================================================
+# Generic Helpers
+# ============================================================================
+
+
+def error_response(code: str, message: str) -> dict[str, Any]:
+    """Build a standard AdCP error dict.
+
+    Args:
+        code: Error code (e.g., "INVALID_PRODUCT", "NOT_FOUND").
+        message: Human-readable error message.
+    """
+    return {"code": code, "message": message}

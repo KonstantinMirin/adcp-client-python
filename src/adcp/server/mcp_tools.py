@@ -5,10 +5,14 @@ Provides utilities for registering ADCP handlers with MCP servers.
 
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import Callable
 from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
+
+logger = logging.getLogger(__name__)
 
 # Tool definitions for all ADCP operations
 ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -261,6 +265,18 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "catalogs": {"type": "array"},
             },
             "required": ["catalogs"],
+        },
+    },
+    # Governance Sync
+    {
+        "name": "sync_governance",
+        "description": "Register governance agents for accounts",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "accounts": {"type": "array"},
+            },
+            "required": ["accounts"],
         },
     },
     # Feedback Operations
@@ -728,6 +744,198 @@ for _handler_name, _tools in _HANDLER_TOOLS.items():
     assert not _unknown, f"{_handler_name} references unknown tools: {_unknown}"
 
 
+# ============================================================================
+# Pydantic schema generation — spec-accurate input schemas
+# ============================================================================
+
+def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
+    """Generate JSON schemas from Pydantic request models.
+
+    Maps tool names to their corresponding request Pydantic types,
+    then generates JSON Schema via model_json_schema(). This produces
+    spec-accurate schemas with proper field types, descriptions,
+    required fields, and nested definitions.
+
+    Falls back to hand-crafted schemas for tools without a matching
+    Pydantic request type.
+    """
+    try:
+        from pydantic import TypeAdapter
+
+        from adcp.types import (
+            AcquireRightsRequest,
+            ActivateSignalRequest,
+            BuildCreativeRequest,
+            CalibrateContentRequest,
+            CheckGovernanceRequest,
+            ComplyTestControllerRequest,
+            ContextMatchRequest,
+            CreateContentStandardsRequest,
+            CreateMediaBuyRequest,
+            CreatePropertyListRequest,
+            DeletePropertyListRequest,
+            GetAccountFinancialsRequest,
+            GetAdcpCapabilitiesRequest,
+            GetBrandIdentityRequest,
+            GetContentStandardsRequest,
+            GetCreativeDeliveryRequest,
+            GetCreativeFeaturesRequest,
+            GetMediaBuyArtifactsRequest,
+            GetMediaBuyDeliveryRequest,
+            GetMediaBuysRequest,
+            GetPlanAuditLogsRequest,
+            GetProductsRequest,
+            GetPropertyListRequest,
+            GetRightsRequest,
+            GetSignalsRequest,
+            IdentityMatchRequest,
+            ListAccountsRequest,
+            ListContentStandardsRequest,
+            ListCreativeFormatsRequest,
+            ListCreativesRequest,
+            ListPropertyListsRequest,
+            LogEventRequest,
+            PreviewCreativeRequest,
+            ProvidePerformanceFeedbackRequest,
+            ReportPlanOutcomeRequest,
+            ReportUsageRequest,
+            SiGetOfferingRequest,
+            SiInitiateSessionRequest,
+            SiSendMessageRequest,
+            SiTerminateSessionRequest,
+            SyncAccountsRequest,
+            SyncAudiencesRequest,
+            SyncCatalogsRequest,
+            SyncCreativesRequest,
+            SyncEventSourcesRequest,
+            SyncPlansRequest,
+            UpdateContentStandardsRequest,
+            UpdateMediaBuyRequest,
+            UpdatePropertyListRequest,
+            ValidateContentDeliveryRequest,
+        )
+    except ImportError:
+        return {}
+
+    # Map tool names to their Pydantic request types
+    _tool_to_request: dict[str, Any] = {
+        # Catalog
+        "get_products": GetProductsRequest,
+        "list_creative_formats": ListCreativeFormatsRequest,
+        # Creative
+        "sync_creatives": SyncCreativesRequest,
+        "list_creatives": ListCreativesRequest,
+        "build_creative": BuildCreativeRequest,
+        "preview_creative": PreviewCreativeRequest,
+        "get_creative_delivery": GetCreativeDeliveryRequest,
+        # Media Buy
+        "create_media_buy": CreateMediaBuyRequest,
+        "update_media_buy": UpdateMediaBuyRequest,
+        "get_media_buy_delivery": GetMediaBuyDeliveryRequest,
+        "get_media_buys": GetMediaBuysRequest,
+        # Signals
+        "get_signals": GetSignalsRequest,
+        "activate_signal": ActivateSignalRequest,
+        # Account
+        "list_accounts": ListAccountsRequest,
+        "sync_accounts": SyncAccountsRequest,
+        "get_account_financials": GetAccountFinancialsRequest,
+        "report_usage": ReportUsageRequest,
+        # Events & Catalogs
+        "log_event": LogEventRequest,
+        "sync_event_sources": SyncEventSourcesRequest,
+        "sync_audiences": SyncAudiencesRequest,
+        "sync_catalogs": SyncCatalogsRequest,
+        # Feedback
+        "provide_performance_feedback": ProvidePerformanceFeedbackRequest,
+        # Protocol Discovery
+        "get_adcp_capabilities": GetAdcpCapabilitiesRequest,
+        # Compliance
+        "comply_test_controller": ComplyTestControllerRequest,
+        # Content Standards
+        "create_content_standards": CreateContentStandardsRequest,
+        "get_content_standards": GetContentStandardsRequest,
+        "list_content_standards": ListContentStandardsRequest,
+        "update_content_standards": UpdateContentStandardsRequest,
+        "calibrate_content": CalibrateContentRequest,
+        "validate_content_delivery": ValidateContentDeliveryRequest,
+        "get_media_buy_artifacts": GetMediaBuyArtifactsRequest,
+        # Governance
+        "get_creative_features": GetCreativeFeaturesRequest,
+        "sync_plans": SyncPlansRequest,
+        "check_governance": CheckGovernanceRequest,
+        "report_plan_outcome": ReportPlanOutcomeRequest,
+        "get_plan_audit_logs": GetPlanAuditLogsRequest,
+        # Property Lists
+        "create_property_list": CreatePropertyListRequest,
+        "get_property_list": GetPropertyListRequest,
+        "list_property_lists": ListPropertyListsRequest,
+        "update_property_list": UpdatePropertyListRequest,
+        "delete_property_list": DeletePropertyListRequest,
+        # Sponsored Intelligence
+        "si_get_offering": SiGetOfferingRequest,
+        "si_initiate_session": SiInitiateSessionRequest,
+        "si_send_message": SiSendMessageRequest,
+        "si_terminate_session": SiTerminateSessionRequest,
+        # Brand
+        "get_brand_identity": GetBrandIdentityRequest,
+        "get_rights": GetRightsRequest,
+        "acquire_rights": AcquireRightsRequest,
+        # TMP
+        "context_match": ContextMatchRequest,
+        "identity_match": IdentityMatchRequest,
+    }
+
+    schemas: dict[str, dict[str, Any]] = {}
+    for tool_name, request_type in _tool_to_request.items():
+        try:
+            # Handle union types (e.g. PreviewCreativeRequest, ComplyTestControllerRequest)
+            if isinstance(request_type, type) and hasattr(request_type, "model_json_schema"):
+                schema = request_type.model_json_schema()
+            else:
+                # Union types need TypeAdapter
+                adapter = TypeAdapter(request_type)
+                schema = adapter.json_schema()
+
+            schema.pop("title", None)
+
+            # Union types produce anyOf with $ref at root — these can't
+            # be represented as flat MCP schemas. Keep hand-crafted.
+            if "anyOf" in schema or "$ref" in schema:
+                continue
+
+            # Only strip $defs if no $ref references exist in the schema.
+            # If nested properties use $ref, keep $defs so references resolve.
+            schema_str = json.dumps(schema)
+            if '"$ref"' not in schema_str:
+                schema.pop("$defs", None)
+
+            schemas[tool_name] = schema
+        except Exception:
+            logger.debug(
+                "Pydantic schema generation failed for %s, using hand-crafted schema",
+                tool_name,
+                exc_info=True,
+            )
+
+    return schemas
+
+
+# Generate schemas once at import time
+_PYDANTIC_SCHEMAS = _generate_pydantic_schemas()
+
+
+def _apply_pydantic_schemas() -> None:
+    """Replace hand-crafted inputSchemas with Pydantic-generated ones."""
+    for tool_def in ADCP_TOOL_DEFINITIONS:
+        name = tool_def["name"]
+        if name in _PYDANTIC_SCHEMAS:
+            tool_def["inputSchema"] = _PYDANTIC_SCHEMAS[name]
+
+
+_apply_pydantic_schemas()
+
+
 def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict[str, Any]]:
     """Return tool definitions filtered by handler type.
 
@@ -769,9 +977,9 @@ def create_tool_caller(
     async def call_tool(params: dict[str, Any]) -> Any:
         context = ToolContext()
         result = await method(params, context)
-        # Convert Pydantic models to dicts for MCP serialization
+        # Convert Pydantic models to JSON-safe dicts for MCP serialization
         if hasattr(result, "model_dump"):
-            return result.model_dump(exclude_none=True)
+            return result.model_dump(mode="json", exclude_none=True)
         return result
 
     return call_tool
