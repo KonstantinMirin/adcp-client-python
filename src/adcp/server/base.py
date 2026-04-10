@@ -288,6 +288,15 @@ class ADCPHandler(ABC):
         """
         return self._not_supported("sync_audiences")
 
+    async def sync_governance(
+        self, params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Sync governance agents for accounts.
+
+        Override this to handle governance agent registration.
+        """
+        return self._not_supported("sync_governance")
+
     async def sync_catalogs(
         self, params: dict[str, Any], context: ToolContext | None = None
     ) -> Any:
