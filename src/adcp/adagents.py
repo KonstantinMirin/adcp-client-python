@@ -8,6 +8,7 @@ https://{publisher_domain}/.well-known/adagents.json. This module provides utili
 for sales agents to verify they are authorized for specific properties.
 """
 
+import ipaddress
 from typing import Any
 from urllib.parse import urlparse
 
@@ -87,6 +88,38 @@ def _validate_publisher_domain(domain: str) -> str:
         raise AdagentsValidationError(f"Publisher domain must contain at least one dot: {domain!r}")
 
     return domain
+
+
+def _validate_redirect_url(url: str) -> None:
+    """Validate an authoritative_location URL is safe to follow.
+
+    Rejects private/reserved IP addresses and localhost to prevent SSRF attacks
+    where a malicious publisher redirects the SDK to internal services.
+
+    Args:
+        url: The HTTPS URL to validate
+
+    Raises:
+        AdagentsValidationError: If the URL targets a private/reserved address
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    # Reject localhost by name
+    if hostname in ("localhost", "localhost.localdomain") or hostname.endswith(".local"):
+        raise AdagentsValidationError(
+            "authoritative_location must not target localhost"
+        )
+
+    # Reject private/reserved IP addresses
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise AdagentsValidationError(
+                "authoritative_location must not target private/reserved addresses"
+            )
+    except ValueError:
+        pass  # Not an IP literal — hostname is fine
 
 
 def normalize_url(url: str) -> str:
@@ -327,13 +360,21 @@ async def fetch_adagents(
     # Track visited URLs to detect loops
     visited_urls: set[str] = set()
 
+    is_redirect = False
+
     for depth in range(MAX_REDIRECT_DEPTH + 1):
         # Check for redirect loop
         if url in visited_urls:
-            raise AdagentsValidationError(f"Circular redirect detected: {url} already visited")
+            raise AdagentsValidationError(
+                "Circular redirect detected in authoritative_location chain"
+            )
         visited_urls.add(url)
 
-        data = await _fetch_adagents_url(url, timeout, user_agent, client)
+        # Use the caller's client for the initial fetch only. Redirect targets
+        # use a fresh client to avoid leaking credentials to third-party URLs.
+        fetch_client = None if is_redirect else client
+
+        data = await _fetch_adagents_url(url, timeout, user_agent, fetch_client)
 
         # Check if this is a redirect. A response with authoritative_location but no
         # authorized_agents indicates a redirect. If both are present, authorized_agents
@@ -349,6 +390,9 @@ async def fetch_adagents(
                     f"authoritative_location must be an HTTPS URL, got: {authoritative_url!r}"
                 )
 
+            # Validate the redirect target is not a private/reserved address
+            _validate_redirect_url(authoritative_url)
+
             # Check if we've exceeded max depth
             if depth >= MAX_REDIRECT_DEPTH:
                 raise AdagentsValidationError(
@@ -357,6 +401,7 @@ async def fetch_adagents(
 
             # Follow the redirect
             url = authoritative_url
+            is_redirect = True
             continue
 
         # We have the final data with authorized_agents (or both fields present,
@@ -476,8 +521,64 @@ async def verify_agent_for_property(
     )
 
 
+def _resolve_agent_properties(
+    agent: dict[str, Any],
+    top_level_properties: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Resolve properties for a single agent entry based on its authorization_type.
+
+    Args:
+        agent: An authorized_agents entry
+        top_level_properties: The top-level properties array from adagents.json
+
+    Returns:
+        List of resolved property dicts for this agent
+    """
+    authorization_type = agent.get("authorization_type", "")
+
+    # Handle inline_properties, or legacy entries with properties array but no authorization_type
+    if authorization_type == "inline_properties" or (
+        not authorization_type and "properties" in agent
+    ):
+        properties = agent.get("properties", [])
+        if not isinstance(properties, list):
+            return []
+        return [p for p in properties if isinstance(p, dict)]
+
+    # Handle property_ids (filter top-level properties by property_id)
+    if authorization_type == "property_ids":
+        authorized_ids = set(agent.get("property_ids", []))
+        return [
+            p
+            for p in top_level_properties
+            if isinstance(p, dict) and p.get("property_id") in authorized_ids
+        ]
+
+    # Handle property_tags (filter top-level properties by tags)
+    if authorization_type == "property_tags":
+        authorized_tags = {t for t in agent.get("property_tags", []) if isinstance(t, str)}
+        return [
+            p
+            for p in top_level_properties
+            if isinstance(p, dict)
+            and {t for t in p.get("tags", []) if isinstance(t, str)} & authorized_tags
+        ]
+
+    # Handle publisher_properties (cross-domain references)
+    if authorization_type == "publisher_properties":
+        publisher_props = agent.get("publisher_properties", [])
+        if not isinstance(publisher_props, list):
+            return []
+        return [p for p in publisher_props if isinstance(p, dict)]
+
+    return []
+
+
 def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract all properties from adagents.json data.
+
+    Handles all authorization types: inline_properties, property_ids,
+    property_tags, and publisher_properties.
 
     Args:
         adagents_data: Parsed adagents.json data
@@ -495,6 +596,10 @@ def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(authorized_agents, list):
         raise AdagentsValidationError("adagents.json must have 'authorized_agents' array")
 
+    top_level_properties = adagents_data.get("properties", [])
+    if not isinstance(top_level_properties, list):
+        top_level_properties = []
+
     properties = []
     for agent in authorized_agents:
         if not isinstance(agent, dict):
@@ -504,16 +609,11 @@ def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
         if not agent_url:
             continue
 
-        agent_properties = agent.get("properties", [])
-        if not isinstance(agent_properties, list):
-            continue
+        agent_properties = _resolve_agent_properties(agent, top_level_properties)
 
-        # Add each property with the agent URL for reference
         for prop in agent_properties:
-            if isinstance(prop, dict):
-                # Create a copy and add agent_url
-                prop_with_agent = {**prop, "agent_url": agent_url}
-                properties.append(prop_with_agent)
+            prop_with_agent = {**prop, "agent_url": agent_url}
+            properties.append(prop_with_agent)
 
     return properties
 
@@ -570,12 +670,10 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
     if not isinstance(authorized_agents, list):
         raise AdagentsValidationError("adagents.json must have 'authorized_agents' array")
 
-    # Get top-level properties for reference-based authorization types
     top_level_properties = adagents_data.get("properties", [])
     if not isinstance(top_level_properties, list):
         top_level_properties = []
 
-    # Normalize the agent URL for comparison
     normalized_agent_url = normalize_url(agent_url)
 
     for agent in authorized_agents:
@@ -586,48 +684,10 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
         if not agent_url_from_json:
             continue
 
-        # Match agent URL (protocol-agnostic)
         if normalize_url(agent_url_from_json) != normalized_agent_url:
             continue
 
-        # Found the agent - determine authorization type
-        authorization_type = agent.get("authorization_type", "")
-
-        # Handle inline_properties (properties array directly on agent)
-        if authorization_type == "inline_properties" or "properties" in agent:
-            properties = agent.get("properties", [])
-            if not isinstance(properties, list):
-                return []
-            return [p for p in properties if isinstance(p, dict)]
-
-        # Handle property_ids (filter top-level properties by property_id)
-        if authorization_type == "property_ids":
-            authorized_ids = set(agent.get("property_ids", []))
-            return [
-                p
-                for p in top_level_properties
-                if isinstance(p, dict) and p.get("property_id") in authorized_ids
-            ]
-
-        # Handle property_tags (filter top-level properties by tags)
-        if authorization_type == "property_tags":
-            authorized_tags = set(agent.get("property_tags", []))
-            return [
-                p
-                for p in top_level_properties
-                if isinstance(p, dict) and set(p.get("tags", [])) & authorized_tags
-            ]
-
-        # Handle publisher_properties (cross-domain references)
-        # Returns the selector objects; caller must resolve against other domains
-        if authorization_type == "publisher_properties":
-            publisher_props = agent.get("publisher_properties", [])
-            if not isinstance(publisher_props, list):
-                return []
-            return [p for p in publisher_props if isinstance(p, dict)]
-
-        # No recognized authorization type - return empty
-        return []
+        return _resolve_agent_properties(agent, top_level_properties)
 
     return []
 
