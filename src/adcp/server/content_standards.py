@@ -61,7 +61,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def create_content_standards(
         self,
-        params: dict[str, Any],
+        params: CreateContentStandardsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> CreateContentStandardsResponse | NotImplementedResponse:
         """Create content standards configuration.
@@ -80,7 +80,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def get_content_standards(
         self,
-        params: dict[str, Any],
+        params: GetContentStandardsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> GetContentStandardsResponse | NotImplementedResponse:
         """Get content standards configuration.
@@ -99,7 +99,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def list_content_standards(
         self,
-        params: dict[str, Any],
+        params: ListContentStandardsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> ListContentStandardsResponse | NotImplementedResponse:
         """List content standards configurations.
@@ -118,7 +118,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def update_content_standards(
         self,
-        params: dict[str, Any],
+        params: UpdateContentStandardsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> UpdateContentStandardsResponse | NotImplementedResponse:
         """Update content standards configuration.
@@ -137,7 +137,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def calibrate_content(
         self,
-        params: dict[str, Any],
+        params: CalibrateContentRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> CalibrateContentResponse | NotImplementedResponse:
         """Calibrate content against standards.
@@ -156,7 +156,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def validate_content_delivery(
         self,
-        params: dict[str, Any],
+        params: ValidateContentDeliveryRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> ValidateContentDeliveryResponse | NotImplementedResponse:
         """Validate content delivery against standards.
@@ -175,7 +175,7 @@ class ContentStandardsHandler(ADCPHandler):
 
     async def get_media_buy_artifacts(
         self,
-        params: dict[str, Any],
+        params: GetMediaBuyArtifactsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> GetMediaBuyArtifactsResponse | NotImplementedResponse:
         """Get artifacts associated with a media buy.

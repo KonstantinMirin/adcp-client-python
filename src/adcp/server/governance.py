@@ -71,7 +71,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def get_creative_features(
         self,
-        params: dict[str, Any],
+        params: GetCreativeFeaturesRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> GetCreativeFeaturesResponse | NotImplementedResponse:
         """Evaluate governance features for a creative manifest."""
@@ -87,7 +87,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def sync_plans(
         self,
-        params: dict[str, Any],
+        params: SyncPlansRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> SyncPlansResponse | NotImplementedResponse:
         """Sync campaign governance plans to the agent."""
@@ -103,7 +103,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def check_governance(
         self,
-        params: dict[str, Any],
+        params: CheckGovernanceRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> CheckGovernanceResponse | NotImplementedResponse:
         """Check whether a proposed or committed action complies with plan governance."""
@@ -119,7 +119,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def report_plan_outcome(
         self,
-        params: dict[str, Any],
+        params: ReportPlanOutcomeRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> ReportPlanOutcomeResponse | NotImplementedResponse:
         """Report the outcome of a previously governed action."""
@@ -135,7 +135,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def get_plan_audit_logs(
         self,
-        params: dict[str, Any],
+        params: GetPlanAuditLogsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> GetPlanAuditLogsResponse | NotImplementedResponse:
         """Retrieve governance audit logs for one or more plans."""
@@ -151,7 +151,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def create_property_list(
         self,
-        params: dict[str, Any],
+        params: CreatePropertyListRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> CreatePropertyListResponse | NotImplementedResponse:
         """Create a property list for governance filtering.
@@ -170,7 +170,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def get_property_list(
         self,
-        params: dict[str, Any],
+        params: GetPropertyListRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> GetPropertyListResponse | NotImplementedResponse:
         """Get a property list with optional resolution.
@@ -189,7 +189,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def list_property_lists(
         self,
-        params: dict[str, Any],
+        params: ListPropertyListsRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> ListPropertyListsResponse | NotImplementedResponse:
         """List property lists.
@@ -208,7 +208,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def update_property_list(
         self,
-        params: dict[str, Any],
+        params: UpdatePropertyListRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> UpdatePropertyListResponse | NotImplementedResponse:
         """Update a property list.
@@ -227,7 +227,7 @@ class GovernanceHandler(ADCPHandler):
 
     async def delete_property_list(
         self,
-        params: dict[str, Any],
+        params: DeletePropertyListRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> DeletePropertyListResponse | NotImplementedResponse:
         """Delete a property list.
