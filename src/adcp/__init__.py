@@ -19,13 +19,13 @@ from adcp.adagents import (
     verify_agent_authorization,
     verify_agent_for_property,
 )
-from adcp.capabilities import (
+from adcp.capabilities import (  # noqa: F401
     FeatureResolver,
     build_synthetic_capabilities,
     validate_capabilities,
 )
 from adcp.client import ADCPClient, ADCPMultiAgentClient
-from adcp.exceptions import (
+from adcp.exceptions import (  # noqa: F401
     AdagentsNotFoundError,
     AdagentsTimeoutError,
     AdagentsValidationError,
@@ -66,9 +66,6 @@ from adcp.testing import (
     test_agent_client,
     test_agent_no_auth,
 )
-
-# Re-export type guards for response handling
-from adcp.types.guards import is_adcp_error, is_adcp_success
 
 # Re-export commonly-used request/response types for convenience
 # Users should import from main package (e.g., `from adcp import GetProductsRequest`)
@@ -383,6 +380,9 @@ from adcp.types.core import (
     TaskStatus,
     WebhookMetadata,
 )
+
+# Re-export type guards for response handling
+from adcp.types.guards import is_adcp_error, is_adcp_success  # noqa: F401
 from adcp.types.registry import (
     AgentCapabilities,
     AgentCompliance,
