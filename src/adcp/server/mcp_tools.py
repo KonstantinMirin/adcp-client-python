@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """MCP server integration helpers.
 
 Provides utilities for registering ADCP handlers with MCP servers.
