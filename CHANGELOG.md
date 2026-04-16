@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.12.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.11.0...v3.12.0) (2026-04-16)
+
+
+### Features
+
+* skill-based agent generation with storyboard validation ([e0eef4c](https://github.com/adcontextprotocol/adcp-client-python/commit/e0eef4c35a7a8bb2149e1cf67d2fc81ec9bbfafe))
+* skill-based agent generation with storyboard validation ([d9d8778](https://github.com/adcontextprotocol/adcp-client-python/commit/d9d8778826a5d415798605f3dd94482318b0499c))
+
+
+### Bug Fixes
+
+* authorization_type takes precedence over stale properties key ([3fc9ed0](https://github.com/adcontextprotocol/adcp-client-python/commit/3fc9ed00b5641d69065c31cde0de9b8b2d9ba3f0))
+* resolve property_ids and property_tags in get_all_properties() ([ef55dcb](https://github.com/adcontextprotocol/adcp-client-python/commit/ef55dcba4e177cd09f574bf9387c8585c57ed5ad))
+* resolve property_ids and property_tags in get_all_properties() ([eca6bd7](https://github.com/adcontextprotocol/adcp-client-python/commit/eca6bd7383f0d9440233300d8d9415cfba5680f5)), closes [#172](https://github.com/adcontextprotocol/adcp-client-python/issues/172)
+* SSRF protections for authoritative_location redirects ([6d1c962](https://github.com/adcontextprotocol/adcp-client-python/commit/6d1c9628d22993cb4f74206edbf084baab3608ac))
+
 ## [3.11.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.10.0...v3.11.0) (2026-04-04)
 
 
