@@ -1,27 +1,26 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/diagnostic-issue.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Diagnostic Issue",
   "description": "An actionable issue detected during a health or readiness assessment. Used by event source health and measurement readiness to surface problems and recommendations.",
+  "type": "object",
   "properties": {
-    "message": {
-      "description": "Human/agent-readable description of the issue and how to resolve it.",
-      "type": "string"
-    },
     "severity": {
-      "description": "'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement.",
+      "type": "string",
       "enum": [
         "error",
         "warning",
         "info"
       ],
-      "type": "string"
+      "description": "'error': blocks optimization until resolved. 'warning': optimization works but effectiveness is reduced. 'info': suggestion for improvement."
+    },
+    "message": {
+      "type": "string",
+      "description": "Human/agent-readable description of the issue and how to resolve it."
     }
   },
   "required": [
     "severity",
     "message"
   ],
-  "title": "Diagnostic Issue",
-  "type": "object"
+  "additionalProperties": true
 }

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/user-match.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "anyOf": [
@@ -49,7 +48,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "hashed_email": {
       "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace.",
@@ -67,7 +66,7 @@
         "additionalProperties": true,
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/uid-type.json",
+            "$ref": "../enums/uid-type.json",
             "description": "Universal ID type"
           },
           "value": {

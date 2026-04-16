@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/material-deadline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A deadline for creative material submission. Sellers declare stages to distinguish draft materials (e.g., talking points, raw artwork) from production-ready assets (e.g., approved scripts, press-ready PDFs).",

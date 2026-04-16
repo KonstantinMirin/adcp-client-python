@@ -19,7 +19,11 @@ from adcp.adagents import (
     verify_agent_authorization,
     verify_agent_for_property,
 )
-from adcp.capabilities import FeatureResolver, validate_capabilities
+from adcp.capabilities import (
+    FeatureResolver,
+    build_synthetic_capabilities,
+    validate_capabilities,
+)
 from adcp.client import ADCPClient, ADCPMultiAgentClient
 from adcp.exceptions import (
     AdagentsNotFoundError,
@@ -30,6 +34,7 @@ from adcp.exceptions import (
     ADCPError,
     ADCPFeatureUnsupportedError,
     ADCPProtocolError,
+    ADCPTaskError,
     ADCPTimeoutError,
     ADCPToolNotFoundError,
     ADCPWebhookError,
@@ -61,6 +66,9 @@ from adcp.testing import (
     test_agent_client,
     test_agent_no_auth,
 )
+
+# Re-export type guards for response handling
+from adcp.types.guards import is_adcp_error, is_adcp_success
 
 # Re-export commonly-used request/response types for convenience
 # Users should import from main package (e.g., `from adcp import GetProductsRequest`)

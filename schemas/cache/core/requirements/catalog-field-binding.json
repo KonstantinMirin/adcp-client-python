@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/requirements/catalog-field-binding.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "AssetPoolBinding": {
@@ -15,7 +14,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../../core/ext.json"
         },
         "kind": {
           "const": "asset_pool",
@@ -42,7 +41,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../../core/ext.json"
         },
         "kind": {
           "const": "scalar",
@@ -134,7 +133,7 @@
           "type": "boolean"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../../core/ext.json"
         },
         "format_group_id": {
           "description": "The asset_group_id of a repeatable_group in the format's assets array.",

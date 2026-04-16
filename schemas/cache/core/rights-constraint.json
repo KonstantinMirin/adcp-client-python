@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/rights-constraint.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Rights metadata attached to a creative manifest. Each entry represents constraints from a single rights holder. A creative may combine multiple rights constraints (e.g., talent likeness + music license). For v1, rights constraints are informational metadata \u2014 the buyer/orchestrator manages creative lifecycle against these terms.",
@@ -30,7 +29,7 @@
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "impression_cap": {
       "description": "Maximum total impressions allowed for the full validity period (valid_from to valid_until). This is the absolute cap across all creatives using this rights grant, not a per-creative or per-period limit.",
@@ -38,7 +37,7 @@
       "type": "integer"
     },
     "right_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/right-type.json",
+      "$ref": "../enums/right-type.json",
       "description": "Type of rights (talent, music, etc.). Helps identify constraints when a creative combines multiple rights types."
     },
     "rights_agent": {
@@ -67,7 +66,7 @@
     "uses": {
       "description": "Rights uses covered by this constraint",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+        "$ref": "../enums/right-use.json"
       },
       "minItems": 1,
       "type": "array"

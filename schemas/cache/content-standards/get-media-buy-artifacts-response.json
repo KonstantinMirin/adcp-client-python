@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/content-standards/get-media-buy-artifacts-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response containing content artifacts from a media buy for validation",
   "oneOf": [
@@ -11,7 +10,7 @@
           "items": {
             "properties": {
               "artifact": {
-                "$ref": "/schemas/3.0.0-rc.3/content-standards/artifact.json",
+                "$ref": "artifact.json",
                 "description": "Full artifact with content assets"
               },
               "brand_context": {
@@ -90,17 +89,17 @@
           "type": "object"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "media_buy_id": {
           "description": "Media buy these artifacts belong to",
           "type": "string"
         },
         "pagination": {
-          "$ref": "/schemas/3.0.0-rc.3/core/pagination-response.json"
+          "$ref": "../core/pagination-response.json"
         }
       },
       "required": [
@@ -113,16 +112,16 @@
       "description": "Error response",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

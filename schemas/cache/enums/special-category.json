@@ -1,7 +1,8 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/special-category.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Special Category",
   "description": "Category of special or event-anchored content",
+  "type": "string",
   "enum": [
     "awards",
     "championship",
@@ -29,7 +30,5 @@
     "product_launch": "Product reveal or launch event",
     "reunion": "Reunion or anniversary special",
     "tribute": "Tribute or memorial special"
-  },
-  "title": "Special Category",
-  "type": "string"
+  }
 }

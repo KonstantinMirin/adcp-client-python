@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/placement-definition.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "anyOf": [
@@ -29,12 +28,12 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "format_ids": {
       "description": "Optional format IDs supported by this placement across the scoped properties and collections. Lets buyers answer which formats are available on which placements without relying on product-local definitions alone.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "minItems": 1,
       "type": "array"
@@ -50,7 +49,7 @@
     "property_ids": {
       "description": "Property IDs in this adagents.json where this placement can appear.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/property-id.json"
+        "$ref": "property-id.json"
       },
       "minItems": 1,
       "type": "array"
@@ -58,7 +57,7 @@
     "property_tags": {
       "description": "Property tags in this adagents.json where this placement can appear. Useful for network-wide positions such as 'pre_roll' or 'homepage_native_feed'.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/property-tag.json"
+        "$ref": "property-tag.json"
       },
       "minItems": 1,
       "type": "array"

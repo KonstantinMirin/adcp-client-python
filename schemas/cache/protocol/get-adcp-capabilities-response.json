@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/protocol/get-adcp-capabilities-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response payload for get_adcp_capabilities task. Protocol-level capability discovery across all AdCP protocols. Each domain protocol has its own capability section.",
@@ -76,7 +75,7 @@
         "available_uses": {
           "description": "Rights uses available across this agent's roster",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+            "$ref": "../enums/right-use.json"
           },
           "type": "array"
         },
@@ -100,7 +99,7 @@
         "right_types": {
           "description": "Types of rights available through this agent",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/right-type.json"
+            "$ref": "../enums/right-type.json"
           },
           "type": "array"
         },
@@ -113,7 +112,7 @@
       "type": "object"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "creative": {
       "additionalProperties": true,
@@ -144,12 +143,12 @@
     "errors": {
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+        "$ref": "../core/error.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "extensions_supported": {
       "description": "Extension namespaces this agent supports. Buyers can expect meaningful data in ext.{namespace} fields on responses from this agent. Extension schemas are published in the AdCP extension registry.",
@@ -334,7 +333,7 @@
             "supported_uid_types": {
               "description": "Universal ID types accepted for audience matching (MAIDs, RampID, UID2, etc.). MAID support varies significantly by platform \u2014 check this field before sending uids with type: maid.",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/uid-type.json"
+                "$ref": "../enums/uid-type.json"
               },
               "minItems": 1,
               "type": "array"
@@ -356,7 +355,7 @@
             "supported_channels": {
               "description": "Channels for which the seller can provide content artifacts. Helps buyers understand which parts of a mixed-channel buy will have content standards coverage.",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+                "$ref": "../enums/channels.json"
               },
               "minItems": 1,
               "type": "array"
@@ -382,13 +381,13 @@
                 "additionalProperties": true,
                 "properties": {
                   "event_type": {
-                    "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json",
+                    "$ref": "../enums/event-type.json",
                     "description": "Event type this window applies to, or omit for default window"
                   },
                   "post_click": {
                     "description": "Available post-click attribution windows (e.g. [{\"interval\": 7, \"unit\": \"days\"}])",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+                      "$ref": "../core/duration.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -396,7 +395,7 @@
                   "post_view": {
                     "description": "Available post-view attribution windows (e.g. [{\"interval\": 1, \"unit\": \"days\"}])",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+                      "$ref": "../core/duration.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -416,7 +415,7 @@
             "supported_action_sources": {
               "description": "Action sources this seller accepts events from",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/action-source.json"
+                "$ref": "../enums/action-source.json"
               },
               "minItems": 1,
               "type": "array"
@@ -424,7 +423,7 @@
             "supported_event_types": {
               "description": "Event types this seller can track and attribute. If omitted, all standard event types are supported.",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json"
+                "$ref": "../enums/event-type.json"
               },
               "minItems": 1,
               "type": "array"
@@ -444,7 +443,7 @@
             "supported_uid_types": {
               "description": "Universal ID types accepted for user matching",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/uid-type.json"
+                "$ref": "../enums/uid-type.json"
               },
               "minItems": 1,
               "type": "array"
@@ -506,7 +505,7 @@
                     "verification_methods": {
                       "description": "Age verification methods this seller supports",
                       "items": {
-                        "$ref": "/schemas/3.0.0-rc.3/enums/age-verification-method.json"
+                        "$ref": "../enums/age-verification-method.json"
                       },
                       "type": "array"
                     }
@@ -619,7 +618,7 @@
                     "transport_modes": {
                       "description": "Transport modes supported for travel_time isochrones. Only relevant when travel_time is true.",
                       "items": {
-                        "$ref": "/schemas/3.0.0-rc.3/enums/transport-mode.json"
+                        "$ref": "../enums/transport-mode.json"
                       },
                       "minItems": 1,
                       "type": "array"
@@ -719,7 +718,7 @@
           "type": "object"
         },
         "features": {
-          "$ref": "/schemas/3.0.0-rc.3/core/media-buy-features.json"
+          "$ref": "../core/media-buy-features.json"
         },
         "portfolio": {
           "description": "Information about the seller's media inventory portfolio",
@@ -737,7 +736,7 @@
             "primary_channels": {
               "description": "Primary advertising channels in this portfolio",
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+                "$ref": "../enums/channels.json"
               },
               "type": "array"
             },
@@ -803,7 +802,7 @@
         "supported_pricing_models": {
           "description": "Pricing models this seller supports across its product portfolio. Buyers can use this for pre-flight filtering before querying individual products. Individual products may support a subset of these models.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/pricing-model.json"
+            "$ref": "../enums/pricing-model.json"
           },
           "minItems": 1,
           "type": "array",
@@ -849,7 +848,7 @@
           "type": "string"
         },
         "capabilities": {
-          "$ref": "/schemas/3.0.0-rc.3/sponsored-intelligence/si-capabilities.json",
+          "$ref": "../sponsored-intelligence/si-capabilities.json",
           "description": "Modalities, components, and commerce capabilities"
         },
         "endpoint": {

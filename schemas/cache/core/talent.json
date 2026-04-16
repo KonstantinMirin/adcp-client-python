@@ -1,27 +1,26 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/talent.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Talent",
   "description": "A person associated with a collection or installment, with an optional link to their brand.json identity",
+  "type": "object",
   "properties": {
-    "brand_url": {
-      "description": "URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.",
-      "format": "uri",
-      "type": "string"
+    "role": {
+      "$ref": "../enums/talent-role.json",
+      "description": "Role of this person on the collection or installment"
     },
     "name": {
-      "description": "Person's name as credited on the collection",
-      "type": "string"
+      "type": "string",
+      "description": "Person's name as credited on the collection"
     },
-    "role": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/talent-role.json",
-      "description": "Role of this person on the collection or installment"
+    "brand_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations."
     }
   },
   "required": [
     "role",
     "name"
   ],
-  "title": "Talent",
-  "type": "object"
+  "additionalProperties": true
 }

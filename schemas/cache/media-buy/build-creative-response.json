@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/build-creative-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response containing the transformed or generated creative manifest(s), ready for use with preview_creative or sync_creatives. Returns either a single creative_manifest, an array of creative_manifests (for multi-format requests), or error information.",
   "oneOf": [
@@ -8,10 +7,10 @@
       "description": "Single-format success response. Returned when the request used target_format_id.",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "creative_manifest": {
-          "$ref": "/schemas/3.0.0-rc.3/core/creative-manifest.json",
+          "$ref": "../core/creative-manifest.json",
           "description": "The generated or transformed creative manifest"
         },
         "expires_at": {
@@ -20,7 +19,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "preview": {
           "description": "Preview renders included when the request set include_preview to true and the agent supports it. Contains the same content fields as a preview_creative single response (previews, interactive_url, expires_at) minus the response_type discriminator, so clients can reuse the same preview rendering logic.",
@@ -71,7 +70,7 @@
                   "renders": {
                     "description": "Array of rendered pieces for this preview variant. Most formats render as a single piece. Companion ad formats render as multiple pieces.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/creative/preview-render.json"
+                      "$ref": "../creative/preview-render.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -95,7 +94,7 @@
           "type": "object"
         },
         "preview_error": {
-          "$ref": "/schemas/3.0.0-rc.3/core/error.json",
+          "$ref": "../core/error.json",
           "description": "When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested."
         },
         "sandbox": {
@@ -114,12 +113,12 @@
       "description": "Multi-format success response. Returned when the request used target_format_ids. Contains one manifest per requested format. Multi-format requests are atomic \u2014 all formats must succeed or the entire request fails with an error response. Array order corresponds to the target_format_ids request order.",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "creative_manifests": {
           "description": "Array of generated creative manifests, one per requested format. Each manifest contains its own format_id identifying which format it was generated for.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/creative-manifest.json"
+            "$ref": "../core/creative-manifest.json"
           },
           "minItems": 1,
           "type": "array"
@@ -130,7 +129,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "preview": {
           "description": "Preview renders included when the request set include_preview to true and the agent supports it. Contains one default preview per requested format. preview_inputs is ignored for multi-format requests.",
@@ -150,7 +149,7 @@
               "items": {
                 "properties": {
                   "format_id": {
-                    "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+                    "$ref": "../core/format-id.json",
                     "description": "The format this preview was generated for. Matches one of the requested target_format_ids."
                   },
                   "input": {
@@ -185,7 +184,7 @@
                   "renders": {
                     "description": "Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/creative/preview-render.json"
+                      "$ref": "../creative/preview-render.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -210,7 +209,7 @@
           "type": "object"
         },
         "preview_error": {
-          "$ref": "/schemas/3.0.0-rc.3/core/error.json",
+          "$ref": "../core/error.json",
           "description": "When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested."
         },
         "sandbox": {
@@ -229,18 +228,18 @@
       "description": "Error response - creative generation failed",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Array of errors explaining why creative generation failed",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

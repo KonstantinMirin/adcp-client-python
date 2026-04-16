@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/creative/list-creatives-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response from creative library query with filtered results, metadata, and optional enriched data",
@@ -110,7 +109,7 @@
   ],
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "creatives": {
       "description": "Array of creative assets matching the query",
@@ -118,7 +117,7 @@
         "additionalProperties": true,
         "properties": {
           "account": {
-            "$ref": "/schemas/3.0.0-rc.3/core/account.json",
+            "$ref": "../core/account.json",
             "description": "Account that owns this creative"
           },
           "assets": {
@@ -128,46 +127,46 @@
               "^[a-z0-9_]+$": {
                 "anyOf": [
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/image-asset.json"
+                    "$ref": "../core/assets/image-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/video-asset.json"
+                    "$ref": "../core/assets/video-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/audio-asset.json"
+                    "$ref": "../core/assets/audio-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/vast-asset.json"
+                    "$ref": "../core/assets/vast-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/text-asset.json"
+                    "$ref": "../core/assets/text-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/url-asset.json"
+                    "$ref": "../core/assets/url-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/html-asset.json"
+                    "$ref": "../core/assets/html-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/javascript-asset.json"
+                    "$ref": "../core/assets/javascript-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/webhook-asset.json"
+                    "$ref": "../core/assets/webhook-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/css-asset.json"
+                    "$ref": "../core/assets/css-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/daast-asset.json"
+                    "$ref": "../core/assets/daast-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/markdown-asset.json"
+                    "$ref": "../core/assets/markdown-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/brief-asset.json"
+                    "$ref": "../core/assets/brief-asset.json"
                   },
                   {
-                    "$ref": "/schemas/3.0.0-rc.3/core/assets/catalog-asset.json"
+                    "$ref": "../core/assets/catalog-asset.json"
                   }
                 ]
               }
@@ -230,13 +229,13 @@
             "type": "string"
           },
           "format_id": {
-            "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+            "$ref": "../core/format-id.json",
             "description": "Format identifier specifying which format this creative conforms to"
           },
           "items": {
             "description": "Items for multi-asset formats like carousels and native ads (included when include_items=true)",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/core/creative-item.json"
+              "$ref": "../core/creative-item.json"
             },
             "type": "array"
           },
@@ -286,7 +285,7 @@
             "type": "string"
           },
           "status": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/creative-status.json",
+            "$ref": "../enums/creative-status.json",
             "description": "Current approval status of the creative"
           },
           "tags": {
@@ -304,7 +303,7 @@
           "variables": {
             "description": "Dynamic content variables (DCO slots) for this creative. Included when include_variables=true.",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/core/creative-variable.json"
+              "$ref": "../core/creative-variable.json"
             },
             "type": "array"
           }
@@ -324,12 +323,12 @@
     "errors": {
       "description": "Task-specific errors (e.g., invalid filters, account not found)",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+        "$ref": "../core/error.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "format_summary": {
       "additionalProperties": true,
@@ -344,7 +343,7 @@
       "type": "object"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-response.json"
+      "$ref": "../core/pagination-response.json"
     },
     "query_summary": {
       "additionalProperties": true,
@@ -366,7 +365,7 @@
           "description": "Sort order that was applied",
           "properties": {
             "direction": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-direction.json"
+              "$ref": "../enums/sort-direction.json"
             },
             "field": {
               "type": "string"

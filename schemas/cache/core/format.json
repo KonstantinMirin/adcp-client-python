@@ -13,7 +13,7 @@
         "overlays": {
           "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/overlay.json"
+            "$ref": "overlay.json"
           },
           "type": "array"
         },
@@ -48,7 +48,7 @@
         "overlays": {
           "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/overlay.json"
+            "$ref": "overlay.json"
           },
           "type": "array"
         },
@@ -66,7 +66,6 @@
       "type": "object"
     }
   },
-  "$id": "/schemas/3.0.0-rc.3/core/format.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Represents a creative format with its requirements",
@@ -74,7 +73,7 @@
     "accepts_parameters": {
       "description": "List of parameters this format accepts in format_id. Template formats define which parameters (dimensions, duration, etc.) can be specified when instantiating the format. Empty or omitted means this is a concrete format with fixed parameters.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/format-id-parameter.json"
+        "$ref": "../enums/format-id-parameter.json"
       },
       "type": "array",
       "uniqueItems": true
@@ -87,7 +86,7 @@
           "type": "boolean"
         },
         "wcag_level": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/wcag-level.json",
+          "$ref": "../enums/wcag-level.json",
           "description": "WCAG conformance level that this format achieves. For format-rendered creatives, the format guarantees this level. For opaque creatives, the format requires assets that self-certify to this level."
         }
       },
@@ -115,7 +114,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/image-asset-requirements.json"
+                "$ref": "requirements/image-asset-requirements.json"
               }
             }
           },
@@ -134,7 +133,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/video-asset-requirements.json"
+                "$ref": "requirements/video-asset-requirements.json"
               }
             }
           },
@@ -153,7 +152,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/audio-asset-requirements.json"
+                "$ref": "requirements/audio-asset-requirements.json"
               }
             }
           },
@@ -172,7 +171,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/text-asset-requirements.json"
+                "$ref": "requirements/text-asset-requirements.json"
               }
             }
           },
@@ -191,7 +190,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/markdown-asset-requirements.json"
+                "$ref": "requirements/markdown-asset-requirements.json"
               }
             }
           },
@@ -210,7 +209,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/html-asset-requirements.json"
+                "$ref": "requirements/html-asset-requirements.json"
               }
             }
           },
@@ -229,7 +228,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/css-asset-requirements.json"
+                "$ref": "requirements/css-asset-requirements.json"
               }
             }
           },
@@ -248,7 +247,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/javascript-asset-requirements.json"
+                "$ref": "requirements/javascript-asset-requirements.json"
               }
             }
           },
@@ -267,7 +266,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/vast-asset-requirements.json"
+                "$ref": "requirements/vast-asset-requirements.json"
               }
             }
           },
@@ -286,7 +285,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/daast-asset-requirements.json"
+                "$ref": "requirements/daast-asset-requirements.json"
               }
             }
           },
@@ -305,7 +304,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/url-asset-requirements.json"
+                "$ref": "requirements/url-asset-requirements.json"
               }
             }
           },
@@ -324,7 +323,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/webhook-asset-requirements.json"
+                "$ref": "requirements/webhook-asset-requirements.json"
               }
             }
           },
@@ -359,7 +358,7 @@
                 "const": "individual"
               },
               "requirements": {
-                "$ref": "/schemas/3.0.0-rc.3/core/requirements/catalog-requirements.json"
+                "$ref": "requirements/catalog-requirements.json"
               }
             }
           },
@@ -386,7 +385,7 @@
                           "const": "image"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/image-asset-requirements.json"
+                          "$ref": "requirements/image-asset-requirements.json"
                         }
                       }
                     },
@@ -402,7 +401,7 @@
                           "const": "video"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/video-asset-requirements.json"
+                          "$ref": "requirements/video-asset-requirements.json"
                         }
                       }
                     },
@@ -418,7 +417,7 @@
                           "const": "audio"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/audio-asset-requirements.json"
+                          "$ref": "requirements/audio-asset-requirements.json"
                         }
                       }
                     },
@@ -434,7 +433,7 @@
                           "const": "text"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/text-asset-requirements.json"
+                          "$ref": "requirements/text-asset-requirements.json"
                         }
                       }
                     },
@@ -450,7 +449,7 @@
                           "const": "markdown"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/markdown-asset-requirements.json"
+                          "$ref": "requirements/markdown-asset-requirements.json"
                         }
                       }
                     },
@@ -466,7 +465,7 @@
                           "const": "html"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/html-asset-requirements.json"
+                          "$ref": "requirements/html-asset-requirements.json"
                         }
                       }
                     },
@@ -482,7 +481,7 @@
                           "const": "css"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/css-asset-requirements.json"
+                          "$ref": "requirements/css-asset-requirements.json"
                         }
                       }
                     },
@@ -498,7 +497,7 @@
                           "const": "javascript"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/javascript-asset-requirements.json"
+                          "$ref": "requirements/javascript-asset-requirements.json"
                         }
                       }
                     },
@@ -514,7 +513,7 @@
                           "const": "vast"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/vast-asset-requirements.json"
+                          "$ref": "requirements/vast-asset-requirements.json"
                         }
                       }
                     },
@@ -530,7 +529,7 @@
                           "const": "daast"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/daast-asset-requirements.json"
+                          "$ref": "requirements/daast-asset-requirements.json"
                         }
                       }
                     },
@@ -546,7 +545,7 @@
                           "const": "url"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/url-asset-requirements.json"
+                          "$ref": "requirements/url-asset-requirements.json"
                         }
                       }
                     },
@@ -562,7 +561,7 @@
                           "const": "webhook"
                         },
                         "requirements": {
-                          "$ref": "/schemas/3.0.0-rc.3/core/requirements/webhook-asset-requirements.json"
+                          "$ref": "requirements/webhook-asset-requirements.json"
                         }
                       }
                     }
@@ -630,14 +629,14 @@
           "persistence": {
             "description": "Persistence modes this position supports",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-persistence.json"
+              "$ref": "../enums/disclosure-persistence.json"
             },
             "minItems": 1,
             "type": "array",
             "uniqueItems": true
           },
           "position": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-position.json",
+            "$ref": "../enums/disclosure-position.json",
             "description": "The disclosure position"
           }
         },
@@ -660,7 +659,7 @@
       "description": "Optional standard visual card (300x400px) for displaying this format in user interfaces. Can be rendered via preview_creative or pre-generated.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+          "$ref": "format-id.json",
           "description": "Creative format defining the card layout (typically format_card_standard)"
         },
         "manifest": {
@@ -680,7 +679,7 @@
       "description": "Optional detailed card with carousel and full specifications. Provides rich format documentation similar to ad spec pages.",
       "properties": {
         "format_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+          "$ref": "format-id.json",
           "description": "Creative format defining the detailed card layout (typically format_card_detailed)"
         },
         "manifest": {
@@ -696,13 +695,13 @@
       "type": "object"
     },
     "format_id": {
-      "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+      "$ref": "format-id.json",
       "description": "Structured format identifier with agent URL and format name"
     },
     "input_format_ids": {
       "description": "Array of format IDs this format accepts as input creative manifests. When present, indicates this format can take existing creatives in these formats as input. Omit for formats that work from raw assets (images, text, etc.) rather than existing creatives.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "type": "array"
     },
@@ -713,7 +712,7 @@
     "output_format_ids": {
       "description": "Array of format IDs that this format can produce as output. When present, indicates this format can build creatives in these output formats (e.g., a multi-publisher template format might produce standard display formats across many publishers). Omit for formats that produce a single fixed output (the format itself).",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "type": "array"
     },
@@ -798,7 +797,7 @@
                 "type": "object"
               },
               "unit": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/dimension-unit.json",
+                "$ref": "../enums/dimension-unit.json",
                 "description": "Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'."
               },
               "width": {
@@ -829,7 +828,7 @@
     "reported_metrics": {
       "description": "Metrics this format can produce in delivery reporting. Buyers receive the intersection of format reported_metrics and product available_metrics. If omitted, the format defers entirely to product-level metric declarations.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/available-metric.json"
+        "$ref": "../enums/available-metric.json"
       },
       "minItems": 1,
       "type": "array",
@@ -838,7 +837,7 @@
     "supported_disclosure_positions": {
       "description": "Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees \u2014 creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-position.json"
+        "$ref": "../enums/disclosure-position.json"
       },
       "minItems": 1,
       "type": "array",
@@ -849,7 +848,7 @@
       "items": {
         "oneOf": [
           {
-            "$ref": "/schemas/3.0.0-rc.3/enums/universal-macro.json"
+            "$ref": "../enums/universal-macro.json"
           },
           {
             "description": "Custom or publisher-specific macro name",

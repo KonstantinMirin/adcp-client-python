@@ -1,15 +1,14 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/tmp/offer.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A buyer's response to a context match request. Generalizes package activation \u2014 a simple activation is an offer with just package_id. A rich response includes brand, price, summary, and optionally an inline creative manifest.",
   "properties": {
     "brand": {
-      "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+      "$ref": "../core/brand-ref.json",
       "description": "Brand for this offer. Required when the product allows dynamic brands (brand selected at match time rather than fixed on the package). For single-brand packages, the brand is already known from the media buy."
     },
     "creative_manifest": {
-      "$ref": "/schemas/3.0.0-rc.3/core/creative-manifest.json",
+      "$ref": "../core/creative-manifest.json",
       "description": "Full creative details, inline. When present, the publisher has everything needed to render. Inline for small creatives (markdown, product card). For large creatives (VAST, video), the manifest references external assets via URLs."
     },
     "macros": {
@@ -24,7 +23,7 @@
       "type": "string"
     },
     "price": {
-      "$ref": "/schemas/3.0.0-rc.3/tmp/offer-price.json",
+      "$ref": "offer-price.json",
       "description": "Price for this offer. Only present when the product supports variable pricing. For fixed-price packages, price is already set on the media buy."
     },
     "summary": {

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/get-rights-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first \u2014 no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.",
@@ -9,11 +8,11 @@
       "type": "string"
     },
     "buyer_brand": {
-      "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+      "$ref": "../core/brand-ref.json",
       "description": "The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions)."
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "countries": {
       "description": "Countries where rights are needed (ISO 3166-1 alpha-2). Filters to rights available in these markets.",
@@ -24,7 +23,7 @@
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "include_excluded": {
       "default": false,
@@ -32,7 +31,7 @@
       "type": "boolean"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-request.json",
+      "$ref": "../core/pagination-request.json",
       "description": "Pagination parameters for large result sets"
     },
     "query": {
@@ -41,13 +40,13 @@
       "type": "string"
     },
     "right_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/right-type.json",
+      "$ref": "../enums/right-type.json",
       "description": "Filter by type of rights (talent, music, stock_media, etc.)"
     },
     "uses": {
       "description": "Rights uses being requested. The agent returns options covering these uses, potentially bundled into composite pricing.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+        "$ref": "../enums/right-use.json"
       },
       "minItems": 1,
       "type": "array"

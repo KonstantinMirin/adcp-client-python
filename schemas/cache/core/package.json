@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/package.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A specific product within a media buy (line item)",
@@ -34,7 +33,7 @@
           "type": "string"
         },
         "canceled_by": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/canceled-by.json",
+          "$ref": "../enums/canceled-by.json",
           "description": "Which party initiated the package cancellation."
         },
         "reason": {
@@ -52,17 +51,17 @@
     "catalogs": {
       "description": "Catalogs this package promotes. Each catalog MUST have a distinct type (e.g., one product catalog, one store catalog). This constraint is enforced at the application level \u2014 sellers MUST reject requests containing multiple catalogs of the same type with a validation_error. Echoed from the create_media_buy request.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/catalog.json"
+        "$ref": "catalog.json"
       },
       "type": "array"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "context.json"
     },
     "creative_assignments": {
       "description": "Creative assets assigned to this package",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/creative-assignment.json"
+        "$ref": "creative-assignment.json"
       },
       "type": "array"
     },
@@ -77,19 +76,19 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "format_ids": {
       "description": "Format IDs active for this package. Echoed from the create_media_buy request; omitted means all formats for the product are active.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "type": "array"
     },
     "format_ids_to_provide": {
       "description": "Format IDs that creative assets will be provided for this package",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "type": "array"
     },
@@ -101,13 +100,13 @@
     "optimization_goals": {
       "description": "Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/optimization-goal.json"
+        "$ref": "optimization-goal.json"
       },
       "minItems": 1,
       "type": "array"
     },
     "pacing": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/pacing.json"
+      "$ref": "../enums/pacing.json"
     },
     "package_id": {
       "description": "Seller's unique identifier for the package",
@@ -119,7 +118,7 @@
       "type": "boolean"
     },
     "price_breakdown": {
-      "$ref": "/schemas/3.0.0-rc.3/pricing-options/price-breakdown.json",
+      "$ref": "../pricing-options/price-breakdown.json",
       "description": "Breakdown of the effective price for this package. On fixed-price packages, echoes the pricing option's breakdown. On auction packages, shows the clearing price breakdown including any commission or settlement terms."
     },
     "pricing_option_id": {
@@ -139,7 +138,7 @@
       "type": "string"
     },
     "targeting_overlay": {
-      "$ref": "/schemas/3.0.0-rc.3/core/targeting.json"
+      "$ref": "targeting.json"
     }
   },
   "required": [

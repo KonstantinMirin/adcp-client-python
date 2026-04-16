@@ -1,0 +1,260 @@
+"""Tests for ADCP server DX helpers."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from adcp.server.helpers import (
+    STANDARD_ERROR_CODES,
+    adcp_error,
+    cancel_media_buy_response,
+    inject_context,
+    is_terminal_status,
+    resolve_account,
+    valid_actions_for_status,
+)
+
+
+class TestAdcpError:
+    """Tests for adcp_error() structured error builder."""
+
+    def test_standard_code_auto_recovery(self) -> None:
+        result = adcp_error("BUDGET_TOO_LOW", "Budget $50 is below $500")
+        assert result["errors"][0]["code"] == "BUDGET_TOO_LOW"
+        assert result["errors"][0]["recovery"] == "correctable"
+        assert "below" in result["errors"][0]["message"]
+
+    def test_standard_code_default_message(self) -> None:
+        result = adcp_error("RATE_LIMITED")
+        assert result["errors"][0]["message"] == "Too many requests"
+        assert result["errors"][0]["recovery"] == "transient"
+
+    def test_custom_code_defaults_terminal(self) -> None:
+        result = adcp_error("MY_CUSTOM_ERROR", "Something broke")
+        assert result["errors"][0]["recovery"] == "terminal"
+
+    def test_recovery_override(self) -> None:
+        result = adcp_error("BUDGET_TOO_LOW", recovery="transient")
+        assert result["errors"][0]["recovery"] == "transient"
+
+    def test_field_and_suggestion(self) -> None:
+        result = adcp_error(
+            "PRODUCT_NOT_FOUND",
+            field="product_id",
+            suggestion="Use get_products first",
+        )
+        err = result["errors"][0]
+        assert err["field"] == "product_id"
+        assert err["suggestion"] == "Use get_products first"
+
+    def test_retry_after(self) -> None:
+        result = adcp_error("RATE_LIMITED", retry_after=30)
+        assert result["errors"][0]["retry_after"] == 30
+
+    def test_details(self) -> None:
+        result = adcp_error("BUDGET_TOO_LOW", details={"minimum": 500, "actual": 50})
+        assert result["errors"][0]["details"]["minimum"] == 500
+
+    def test_all_standard_codes_have_recovery(self) -> None:
+        for code, info in STANDARD_ERROR_CODES.items():
+            assert "recovery" in info, f"{code} missing recovery"
+            assert info["recovery"] in ("transient", "correctable", "terminal")
+
+    def test_importable_from_server_package(self) -> None:
+        from adcp.server import adcp_error as imported
+
+        assert callable(imported)
+
+
+class TestValidActionsForStatus:
+    """Tests for media buy state machine."""
+
+    def test_active_has_pause_and_cancel(self) -> None:
+        actions = valid_actions_for_status("active")
+        assert "pause" in actions
+        assert "cancel" in actions
+
+    def test_paused_has_resume(self) -> None:
+        actions = valid_actions_for_status("paused")
+        assert "resume" in actions
+
+    def test_terminal_statuses_empty(self) -> None:
+        for status in ("completed", "rejected", "canceled"):
+            assert valid_actions_for_status(status) == []
+
+    def test_pending_activation_allows_cancel(self) -> None:
+        actions = valid_actions_for_status("pending_activation")
+        assert "cancel" in actions
+        assert "update_packages" in actions
+
+    def test_unknown_status_empty(self) -> None:
+        assert valid_actions_for_status("nonexistent") == []
+
+
+class TestIsTerminalStatus:
+    def test_terminal(self) -> None:
+        assert is_terminal_status("completed") is True
+        assert is_terminal_status("rejected") is True
+        assert is_terminal_status("canceled") is True
+
+    def test_non_terminal(self) -> None:
+        assert is_terminal_status("active") is False
+        assert is_terminal_status("paused") is False
+
+
+class TestResolveAccount:
+    @pytest.mark.asyncio
+    async def test_no_resolver(self) -> None:
+        account, error = await resolve_account({"account": {"account_id": "a1"}}, None)
+        assert account is None
+        assert error is None
+
+    @pytest.mark.asyncio
+    async def test_no_account_field(self) -> None:
+        async def resolver(ref: dict) -> dict:
+            return {"id": "resolved"}
+
+        account, error = await resolve_account({"brief": "test"}, resolver)
+        assert account is None
+        assert error is None
+
+    @pytest.mark.asyncio
+    async def test_successful_resolution(self) -> None:
+        async def resolver(ref: dict) -> dict:
+            return {"id": ref["account_id"], "name": "Acme"}
+
+        account, error = await resolve_account(
+            {"account": {"account_id": "a1"}}, resolver
+        )
+        assert account == {"id": "a1", "name": "Acme"}
+        assert error is None
+
+    @pytest.mark.asyncio
+    async def test_not_found(self) -> None:
+        async def resolver(ref: dict) -> None:
+            return None
+
+        account, error = await resolve_account(
+            {"account": {"account_id": "bad"}}, resolver
+        )
+        assert account is None
+        assert error is not None
+        assert error["errors"][0]["code"] == "ACCOUNT_NOT_FOUND"
+
+    @pytest.mark.asyncio
+    async def test_suspended_via_account_error(self) -> None:
+        from adcp.server.helpers import AccountError
+
+        async def resolver(ref: dict) -> None:
+            raise AccountError("ACCOUNT_SUSPENDED", "Account is suspended")
+
+        account, error = await resolve_account(
+            {"account": {"account_id": "a1"}}, resolver
+        )
+        assert account is None
+        assert error is not None
+        assert error["errors"][0]["code"] == "ACCOUNT_SUSPENDED"
+
+    @pytest.mark.asyncio
+    async def test_payment_required_with_suggestion(self) -> None:
+        from adcp.server.helpers import AccountError
+
+        async def resolver(ref: dict) -> None:
+            raise AccountError(
+                "ACCOUNT_PAYMENT_REQUIRED",
+                suggestion="Update payment at https://billing.example.com",
+            )
+
+        account, error = await resolve_account(
+            {"account": {"account_id": "a1"}}, resolver
+        )
+        assert error["errors"][0]["code"] == "ACCOUNT_PAYMENT_REQUIRED"
+        assert "billing" in error["errors"][0]["suggestion"]
+
+
+class TestInjectContext:
+    def test_injects_context(self) -> None:
+        params = {"brief": "test", "context": {"correlation_id": "abc"}}
+        response: dict[str, Any] = {"products": []}
+        inject_context(params, response)
+        assert response["context"] == {"correlation_id": "abc"}
+
+    def test_no_context_no_injection(self) -> None:
+        params = {"brief": "test"}
+        response: dict[str, Any] = {"products": []}
+        inject_context(params, response)
+        assert "context" not in response
+
+    def test_does_not_overwrite_existing(self) -> None:
+        params = {"context": {"new": True}}
+        response: dict[str, Any] = {"context": {"existing": True}}
+        inject_context(params, response)
+        assert response["context"] == {"existing": True}
+
+
+class TestCancelMediaBuyResponse:
+    def test_basic_cancellation(self) -> None:
+        resp = cancel_media_buy_response("mb_123", "buyer")
+        assert resp["media_buy_id"] == "mb_123"
+        assert resp["status"] == "canceled"
+        assert resp["canceled_by"] == "buyer"
+        assert resp["valid_actions"] == []
+        assert "canceled_at" in resp
+
+    def test_with_reason(self) -> None:
+        resp = cancel_media_buy_response("mb_123", "seller", reason="Policy violation")
+        assert resp["reason"] == "Policy violation"
+
+    def test_auto_timestamp(self) -> None:
+        resp = cancel_media_buy_response("mb_123", "buyer")
+        assert resp["canceled_at"].endswith("+00:00") or "Z" in resp["canceled_at"]
+
+    def test_custom_timestamp(self) -> None:
+        resp = cancel_media_buy_response(
+            "mb_123", "buyer", canceled_at="2026-01-01T00:00:00Z"
+        )
+        assert resp["canceled_at"] == "2026-01-01T00:00:00Z"
+
+    def test_invalid_canceled_by_raises(self) -> None:
+        with pytest.raises(ValueError, match="canceled_by must be"):
+            cancel_media_buy_response("mb_123", "system")
+
+
+class TestMediaBuyResponseAutoActions:
+    """Test that response builders auto-populate valid_actions."""
+
+    def test_media_buy_response_auto_actions(self) -> None:
+        from adcp.server.responses import media_buy_response
+
+        resp = media_buy_response("mb_1", [], status="active")
+        assert "valid_actions" in resp
+        assert "pause" in resp["valid_actions"]
+        assert "cancel" in resp["valid_actions"]
+
+    def test_media_buy_response_terminal_empty_actions(self) -> None:
+        from adcp.server.responses import media_buy_response
+
+        resp = media_buy_response("mb_1", [], status="completed")
+        assert resp["valid_actions"] == []
+
+    def test_media_buy_response_auto_revision(self) -> None:
+        from adcp.server.responses import media_buy_response
+
+        resp = media_buy_response("mb_1", [])
+        assert resp["revision"] == 1
+
+    def test_update_response_auto_actions(self) -> None:
+        from adcp.server.responses import update_media_buy_response
+
+        resp = update_media_buy_response("mb_1", status="paused")
+        assert "resume" in resp["valid_actions"]
+
+    def test_explicit_actions_override(self) -> None:
+        from adcp.server.responses import media_buy_response
+
+        resp = media_buy_response(
+            "mb_1", [], status="active", valid_actions=["cancel"]
+        )
+        assert resp["valid_actions"] == ["cancel"]

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/creative-filters.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Filter criteria for querying creatives from a creative library. By default, archived creatives are excluded from results. To include archived creatives, explicitly filter by status='archived' or include 'archived' in the statuses array.",
@@ -7,7 +6,7 @@
     "accounts": {
       "description": "Filter creatives by owning accounts. Useful for agencies managing multiple client accounts.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json"
+        "$ref": "account-ref.json"
       },
       "minItems": 1,
       "type": "array"
@@ -50,7 +49,7 @@
     "format_ids": {
       "description": "Filter by structured format IDs. Returns creatives that match any of these formats.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "minItems": 1,
       "type": "array"
@@ -78,7 +77,7 @@
     "statuses": {
       "description": "Filter by creative approval statuses",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/creative-status.json"
+        "$ref": "../enums/creative-status.json"
       },
       "minItems": 1,
       "type": "array"

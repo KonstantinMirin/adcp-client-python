@@ -58,8 +58,8 @@ Pricing models:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
-from adcp.server import ADCPHandler, serve
-from adcp.server.responses import capabilities_response, products_response
+from adcp.server import ADCPHandler, serve, adcp_error, resolve_account, inject_context
+from adcp.server.responses import capabilities_response, products_response, media_buy_response
 from adcp.server.test_controller import TestControllerStore
 
 class MySeller(ADCPHandler):
@@ -72,6 +72,125 @@ class MySeller(ADCPHandler):
     # ... more tools ...
 
 serve(MySeller(), name="my-seller", test_controller=MyStore())
+```
+
+## Product Construction Example
+
+```python
+PRODUCTS = [
+    {
+        "product_id": "premium-homepage",
+        "name": "Homepage Takeover",
+        "description": "Full-page homepage placement with 100% SOV",
+        "delivery_type": "guaranteed",
+        "publisher_properties": [
+            {"publisher_domain": "example.com", "selection_type": "all"}
+        ],
+        "format_ids": [
+            {"agent_url": "http://localhost:3001/mcp", "id": "display_970x250"}
+        ],
+        "pricing_options": [
+            {
+                "pricing_option_id": "po-cpm-homepage",
+                "pricing_model": "cpm",
+                "floor_price": 15.00,
+                "currency": "USD",
+            }
+        ],
+    },
+]
+```
+
+## DX Helpers
+
+The SDK provides helpers that eliminate common boilerplate. Import from `adcp.server`:
+
+| Helper | What it does |
+|--------|-------------|
+| `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery classification (20+ standard codes) |
+| `media_buy_response(..., status="active")` | Auto-populates `valid_actions` from status, auto-sets `revision` and `confirmed_at` |
+| `cancel_media_buy_response(id, "buyer")` | Auto-sets `canceled_at`, `status`, `valid_actions=[]` |
+| `resolve_account(params, resolver)` | Auto-resolves AccountReference, returns ACCOUNT_NOT_FOUND if missing |
+| `inject_context(params, response)` | Echoes `context` field from request to response (ADCP requirement) |
+| `valid_actions_for_status(status)` | Maps status to valid buyer actions |
+| `is_terminal_status(status)` | True for completed/rejected/canceled |
+| `AccountError(code, message, suggestion=)` | Raise from resolver for suspended/payment/ambiguous accounts |
+
+## Account Resolution Pattern
+
+Sellers that require accounts should resolve them before processing:
+
+```python
+from adcp.server import resolve_account, AccountError
+
+class MySeller(ADCPHandler):
+    async def _resolve(self, ref):
+        account = db.find(ref)
+        if not account:
+            return None  # auto-returns ACCOUNT_NOT_FOUND
+        if account.status == "suspended":
+            raise AccountError("ACCOUNT_SUSPENDED")
+        if account.status == "payment_required":
+            raise AccountError("ACCOUNT_PAYMENT_REQUIRED",
+                suggestion="Update payment at https://billing.example.com")
+        return account
+
+    async def create_media_buy(self, params, context=None):
+        account, error = await resolve_account(params, self._resolve)
+        if error:
+            return error  # structured error response
+        # account is guaranteed non-None here
+        ...
+```
+
+## Proposal Workflow (Guaranteed Deals)
+
+For premium/guaranteed inventory, buyers negotiate before committing. The flow:
+
+1. Buyer calls `get_products` with `buying_mode: "refine"` and a `proposal`
+2. Seller returns products with a `proposal` containing `proposal_id` and `status: "draft"`
+3. Buyer refines (adjusts budget, dates, packages) by calling `get_products` again with the `proposal_id`
+4. When satisfied, buyer calls `create_media_buy` with the committed `proposal_id`
+5. Seller validates the proposal and creates the media buy
+
+```python
+async def get_products(self, params, context=None):
+    buying_mode = params.get("buying_mode", "brief")
+
+    if buying_mode == "refine":
+        proposal = params.get("proposal", {})
+        proposal_id = proposal.get("proposal_id") or f"prop-{uuid.uuid4().hex[:8]}"
+        # Store/update the proposal draft
+        proposals[proposal_id] = {
+            "status": "draft",
+            "packages": proposal.get("packages", []),
+        }
+        return products_response(PRODUCTS, proposal={
+            "proposal_id": proposal_id,
+            "status": "draft",
+        })
+
+    # Default brief mode - return all matching products
+    return products_response(PRODUCTS)
+
+async def create_media_buy(self, params, context=None):
+    proposal_id = params.get("proposal_id")
+    if proposal_id:
+        proposal = proposals.get(proposal_id)
+        if not proposal:
+            return adcp_error("INVALID_REQUEST", "Unknown proposal",
+                              field="proposal_id")
+        if proposal.get("status") != "draft":
+            return adcp_error("PROPOSAL_NOT_COMMITTED",
+                              "Proposal must be in draft status")
+    # ... create the media buy from the proposal
+```
+
+For IO-required deals, return `IO_REQUIRED` from `create_media_buy` until the IO is signed:
+```python
+if product["delivery_type"] == "guaranteed" and not has_signed_io(account):
+    return adcp_error("IO_REQUIRED",
+                      suggestion="Sign the IO at https://seller.example.com/io")
 ```
 
 ## Tools and Required Response Shapes
@@ -138,21 +257,34 @@ async def get_products(self, params, context=None):
 
 **`create_media_buy`**
 ```python
+from adcp.server import adcp_error, inject_context
 from adcp.server.responses import media_buy_response
 
 async def create_media_buy(self, params, context=None):
+    if not params.get("packages"):
+        return adcp_error("INVALID_REQUEST", "At least one package required",
+                          field="packages")
+
     packages = []
     for pkg in params.get("packages", []):
+        product_id = pkg.get("product_id")
+        if product_id not in {p["product_id"] for p in PRODUCTS}:
+            return adcp_error("PRODUCT_NOT_FOUND",
+                              f"Product '{product_id}' not found",
+                              field="product_id",
+                              suggestion="Use get_products to discover available products")
         packages.append({
             "package_id": f"pkg-{uuid.uuid4().hex[:8]}",
-            "product_id": pkg.get("product_id"),
+            "product_id": product_id,
             "pricing_option_id": pkg.get("pricing_option_id"),
             "budget": pkg.get("budget"),
         })
     mb_id = f"mb-{uuid.uuid4().hex[:8]}"
     # Store so get_media_buys and test controller can find it
     media_buys[mb_id] = {"status": "active", "currency": "USD", "packages": packages}
-    return media_buy_response(mb_id, packages)
+    # status="active" auto-populates valid_actions, revision, confirmed_at
+    resp = media_buy_response(mb_id, packages, status="active")
+    return inject_context(params, resp)
 ```
 
 **`get_media_buys`**
@@ -172,6 +304,48 @@ async def get_media_buys(self, params, context=None):
             "packages": mb.get("packages", []),
         })
     return media_buys_response(results)
+```
+
+**`update_media_buy`** — handles pause, resume, cancel, budget changes, package updates.
+```python
+from adcp.server import adcp_error, inject_context, cancel_media_buy_response
+from adcp.server.responses import update_media_buy_response
+
+async def update_media_buy(self, params, context=None):
+    mb_id = params.get("media_buy_id")
+    mb = media_buys.get(mb_id)
+    if not mb:
+        return adcp_error("MEDIA_BUY_NOT_FOUND", f"Media buy {mb_id} not found")
+
+    # Check revision for optimistic concurrency
+    if params.get("revision") and params["revision"] != mb.get("revision", 1):
+        return adcp_error("CONFLICT", "Revision mismatch - refetch and retry")
+
+    status = mb["status"]
+
+    # Handle pause/resume/cancel
+    if params.get("paused") is True and status == "active":
+        mb["status"] = "paused"
+    elif params.get("paused") is False and status == "paused":
+        mb["status"] = "active"
+    elif params.get("canceled") is True:
+        if status in ("completed", "rejected", "canceled"):
+            return adcp_error("NOT_CANCELLABLE",
+                              f"Cannot cancel a {status} media buy")
+        mb["status"] = "canceled"
+        return cancel_media_buy_response(mb_id, "buyer")
+
+    # Handle package updates
+    if params.get("packages"):
+        for pkg_update in params["packages"]:
+            pkg_id = pkg_update.get("package_id")
+            # Apply budget, dates, etc.
+
+    mb["revision"] = mb.get("revision", 1) + 1
+    resp = update_media_buy_response(
+        mb_id, status=mb["status"], revision=mb["revision"]
+    )
+    return inject_context(params, resp)
 ```
 
 **`list_creative_formats`**
@@ -294,22 +468,33 @@ return capabilities_response(["media_buy", "compliance_testing"])
 
 ## SDK Quick Reference
 
+**Response builders** (from `adcp.server.responses`):
+
 | Function | Usage |
 |----------|-------|
-| `serve(handler, test_controller=store)` | Start server on `:3001/mcp` with test controller |
-| `create_mcp_server(handler)` | Create server without starting (for customization) |
 | `capabilities_response(protocols)` | `get_adcp_capabilities` response |
 | `products_response(products)` | `get_products` response |
-| `media_buy_response(id, packages)` | `create_media_buy` success response |
+| `media_buy_response(id, packages, status=)` | `create_media_buy` success (auto-populates valid_actions) |
 | `media_buys_response(media_buys)` | `get_media_buys` response |
-| `delivery_response(deliveries, reporting_period=...)` | `get_media_buy_delivery` response |
+| `update_media_buy_response(id, status=)` | `update_media_buy` success (auto-populates valid_actions) |
+| `delivery_response(deliveries, reporting_period=)` | `get_media_buy_delivery` response |
 | `sync_accounts_response(accounts)` | `sync_accounts` response |
 | `sync_governance_response(accounts)` | `sync_governance` response |
 | `creative_formats_response(formats)` | `list_creative_formats` response |
 | `sync_creatives_response(creatives)` | `sync_creatives` response |
-| `error_response(code, message)` | Structured error |
 
-Import handlers from `adcp.server`. Import response builders from `adcp.server.responses`. Import types from `adcp.types`.
+**DX helpers** (from `adcp.server`):
+
+| Function | Usage |
+|----------|-------|
+| `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery |
+| `cancel_media_buy_response(id, "buyer"/"seller")` | Cancellation with auto-defaults |
+| `resolve_account(params, resolver)` | Account resolution with auto-error |
+| `inject_context(params, response)` | Context passthrough (ADCP requirement) |
+| `valid_actions_for_status(status)` | Status-to-actions mapping |
+| `serve(handler, test_controller=store)` | Start server on `:3001/mcp` |
+
+Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`. Import types from `adcp.types`.
 
 ## Validation
 

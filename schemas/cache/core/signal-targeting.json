@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/signal-targeting.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.",
   "discriminator": {
@@ -11,7 +10,7 @@
       "description": "Binary signal targeting - user either matches or doesn't",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "value": {
@@ -36,7 +35,7 @@
       "description": "Categorical signal targeting - target users with specific values",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {
@@ -73,7 +72,7 @@
           "type": "number"
         },
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "value_type": {

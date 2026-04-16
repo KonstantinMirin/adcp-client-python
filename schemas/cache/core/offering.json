@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/offering.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A promotable offering from a brand. Can represent a campaign, product promotion, service, or any other thing the brand wants to make available. Offerings carry structured asset groups for creative assembly and can be promoted via traditional creatives or conversational SI experiences (via the brand's SI agent).",
@@ -115,7 +114,7 @@
     "assets": {
       "description": "Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/offering-asset-group.json"
+        "$ref": "offering-asset-group.json"
       },
       "type": "array"
     },
@@ -136,7 +135,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "geo_targets": {
       "additionalProperties": true,
@@ -157,7 +156,7 @@
             "additionalProperties": true,
             "properties": {
               "system": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/metro-system.json",
+                "$ref": "../enums/metro-system.json",
                 "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')"
               },
               "values": {
@@ -184,7 +183,7 @@
             "additionalProperties": true,
             "properties": {
               "system": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/postal-system.json",
+                "$ref": "../enums/postal-system.json",
                 "description": "Postal code system (e.g., 'us_zip', 'de_plz')"
               },
               "values": {

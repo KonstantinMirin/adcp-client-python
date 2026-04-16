@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
     "asset": {
@@ -11,7 +10,7 @@
           "type": "string"
         },
         "asset_type": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/asset-content-type.json",
+          "$ref": "enums/asset-content-type.json",
           "description": "Type of asset content"
         },
         "description": {
@@ -219,7 +218,7 @@
                 "type": "string"
               },
               "role": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/talent-role.json",
+                "$ref": "enums/talent-role.json",
                 "description": "This person's role on the collection"
               },
               "seller_agent_url": {
@@ -289,7 +288,7 @@
         "industries": {
           "description": "Brand industries (e.g., ['automotive'] or ['healthcare.pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does \u2014 not what regulatory regimes apply (use policy_categories for that). When create_media_buy omits advertiser_industry, sellers may infer from this field.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/advertiser-industry.json"
+            "$ref": "enums/advertiser-industry.json"
           },
           "minItems": 1,
           "type": "array"
@@ -1336,7 +1335,7 @@
         "available_uses": {
           "description": "Rights uses available for licensing through this agent",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+            "$ref": "enums/right-use.json"
           },
           "minItems": 1,
           "type": "array"
@@ -1357,7 +1356,7 @@
         "right_types": {
           "description": "Types of rights available",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/right-type.json"
+            "$ref": "enums/right-type.json"
           },
           "minItems": 1,
           "type": "array"

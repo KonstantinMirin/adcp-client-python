@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/event-source-health.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Health assessment for a configured event source. Sellers evaluate the quality, completeness, and volume of events received from this source. Sellers with native quality scores (Snap EQS, Meta EMQ) relay them in detail; sellers without native scores derive status from operational metrics (volume, error rates, tag activity).",
@@ -42,7 +41,7 @@
     "issues": {
       "description": "Actionable issues detected with this event source. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/diagnostic-issue.json"
+        "$ref": "diagnostic-issue.json"
       },
       "type": "array"
     },
@@ -58,7 +57,7 @@
       "type": "number"
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/assessment-status.json",
+      "$ref": "../enums/assessment-status.json",
       "description": "Overall health status. Use this for cross-seller decisions \u2014 do not rely on detail.score for comparability."
     }
   },

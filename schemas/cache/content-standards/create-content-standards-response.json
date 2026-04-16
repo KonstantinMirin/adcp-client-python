@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/content-standards/create-content-standards-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response payload for creating a content standards configuration",
   "oneOf": [
@@ -7,10 +6,10 @@
       "description": "Success response - returns the created standards identifier",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "standards_id": {
           "description": "Unique identifier for the created standards configuration",
@@ -30,16 +29,16 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

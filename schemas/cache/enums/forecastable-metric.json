@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/forecastable-metric.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Standard delivery and engagement metric names for forecasts. For outcome/conversion forecasts (purchases, leads, app installs, etc.), use event-type enum values as metric keys instead. The ForecastPoint metrics map accepts any string key, so both forecastable-metric and event-type values can be used together.",
   "enum": [

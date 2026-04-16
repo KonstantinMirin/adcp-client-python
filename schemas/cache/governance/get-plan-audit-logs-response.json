@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/get-plan-audit-logs-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Governance state and audit trail for one or more plans.",
@@ -103,7 +102,7 @@
                         "type": "string"
                       },
                       "severity": {
-                        "$ref": "/schemas/3.0.0-rc.3/enums/escalation-severity.json"
+                        "$ref": "../enums/escalation-severity.json"
                       }
                     },
                     "required": [
@@ -124,7 +123,7 @@
                   "type": "string"
                 },
                 "outcome": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/outcome-type.json",
+                  "$ref": "../enums/outcome-type.json",
                   "description": "Outcome type (present for outcome entries)."
                 },
                 "outcome_status": {

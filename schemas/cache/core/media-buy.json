@@ -1,11 +1,10 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/media-buy.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Represents a purchased advertising campaign",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account.json",
+      "$ref": "account.json",
       "description": "Account billed for this media buy"
     },
     "cancellation": {
@@ -18,7 +17,7 @@
           "type": "string"
         },
         "canceled_by": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/canceled-by.json",
+          "$ref": "../enums/canceled-by.json",
           "description": "Which party initiated the cancellation. 'buyer' when canceled via update_media_buy; 'seller' when the seller cancels (e.g., policy violation, inventory withdrawal)."
         },
         "reason": {
@@ -49,10 +48,10 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+      "$ref": "business-entity.json",
       "description": "Per-buy override for who receives the invoice. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."
     },
     "media_buy_id": {
@@ -62,7 +61,7 @@
     "packages": {
       "description": "Array of packages within this media buy",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/package.json"
+        "$ref": "package.json"
       },
       "type": "array"
     },
@@ -76,7 +75,7 @@
       "type": "integer"
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json"
+      "$ref": "../enums/media-buy-status.json"
     },
     "total_budget": {
       "description": "Total budget amount",

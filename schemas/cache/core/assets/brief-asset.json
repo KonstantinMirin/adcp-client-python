@@ -1,9 +1,8 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/assets/brief-asset.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "allOf": [
     {
-      "$ref": "/schemas/3.0.0-rc.3/core/creative-brief.json"
+      "$ref": "../../core/creative-brief.json"
     }
   ],
   "description": "Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.",

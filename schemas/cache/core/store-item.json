@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/store-item.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A physical store or location within a store-type catalog. Carries the location data, catchment areas, and metadata that platforms use for proximity targeting, store locator creatives, and inventory-aware ad serving.",
@@ -173,13 +172,13 @@
     "catchments": {
       "description": "Catchment areas for this store. Each defines a reachable area using travel time (isochrone), simple radius, or pre-computed GeoJSON. Multiple catchments allow different modes \u2014 e.g., 15-minute drive AND 10-minute walk.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/catchment.json"
+        "$ref": "catchment.json"
       },
       "minItems": 1,
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "hours": {
       "additionalProperties": {

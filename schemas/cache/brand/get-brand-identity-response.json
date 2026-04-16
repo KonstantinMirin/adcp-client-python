@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/get-brand-identity-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Brand identity data from a brand agent. Core identity (house, names, description, logos) is always public. Authorized callers receive richer data (high-res assets, voice synthesis, tone guidelines, rights availability). Includes available_fields to signal what the caller could unlock by linking their account.",
   "oneOf": [
@@ -21,7 +20,7 @@
                 "type": "string"
               },
               "asset_type": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/asset-content-type.json",
+                "$ref": "../enums/asset-content-type.json",
                 "description": "Type of asset content"
               },
               "description": {
@@ -187,14 +186,14 @@
           "type": "object"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "description": {
           "description": "Brand description",
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "fonts": {
           "additionalProperties": true,
@@ -340,7 +339,7 @@
           "properties": {
             "available_uses": {
               "items": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+                "$ref": "../enums/right-use.json"
               },
               "type": "array"
             },
@@ -480,17 +479,17 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

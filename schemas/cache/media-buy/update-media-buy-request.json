@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/update-media-buy-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for updating campaign and package settings",
@@ -15,7 +14,7 @@
       "type": "string"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "end_time": {
       "description": "New end date/time in ISO 8601 format",
@@ -23,7 +22,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "idempotency_key": {
       "description": "Client-generated idempotency key for safe retries. If an update fails without a response, resending with the same idempotency_key guarantees the update is applied at most once. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
@@ -32,7 +31,7 @@
       "type": "string"
     },
     "invoice_recipient": {
-      "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+      "$ref": "../core/business-entity.json",
       "description": "Update who receives the invoice for this buy. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."
     },
     "media_buy_id": {
@@ -42,7 +41,7 @@
     "new_packages": {
       "description": "New packages to add to this media buy. Uses the same schema as create_media_buy packages. Sellers that support mid-flight package additions advertise add_packages in valid_actions. Sellers that do not support this MUST reject with UNSUPPORTED_FEATURE.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/media-buy/package-request.json"
+        "$ref": "package-request.json"
       },
       "minItems": 1,
       "type": "array"
@@ -50,7 +49,7 @@
     "packages": {
       "description": "Package-specific updates for existing packages",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/media-buy/package-update.json"
+        "$ref": "package-update.json"
       },
       "minItems": 1,
       "type": "array"
@@ -60,11 +59,11 @@
       "type": "boolean"
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.0-rc.3/core/push-notification-config.json",
+      "$ref": "../core/push-notification-config.json",
       "description": "Optional webhook configuration for async update notifications. Publisher will send webhook when update completes if operation takes longer than immediate response time. This is separate from reporting_webhook which configures ongoing campaign reporting."
     },
     "reporting_webhook": {
-      "$ref": "/schemas/3.0.0-rc.3/core/reporting-webhook.json",
+      "$ref": "../core/reporting-webhook.json",
       "description": "Optional webhook configuration for automated reporting delivery. Updates the reporting configuration for this media buy."
     },
     "revision": {
@@ -73,7 +72,7 @@
       "type": "integer"
     },
     "start_time": {
-      "$ref": "/schemas/3.0.0-rc.3/core/start-timing.json"
+      "$ref": "../core/start-timing.json"
     }
   },
   "required": [

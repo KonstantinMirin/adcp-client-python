@@ -19,6 +19,7 @@ from adcp.types import (
     PlatformDeployment,
     Product,
     PublisherPropertiesAll,
+    ReportingCapabilities,
 )
 
 
@@ -37,6 +38,14 @@ def product_with_pricing() -> Product:
         format_ids=[FormatId(agent_url="http://localhost", id="display_300x250")],
         delivery_type=DeliveryType.guaranteed,
         delivery_measurement=DeliveryMeasurement(provider="Test"),
+        reporting_capabilities=ReportingCapabilities(
+            available_metrics=[],
+            available_reporting_frequencies=["daily"],
+            date_range_support="date_range",
+            expected_delay_minutes=60,
+            supports_webhooks=False,
+            timezone="UTC",
+        ),
         pricing_options=[
             FlatRatePricingOption(
                 pricing_option_id="flat_1",

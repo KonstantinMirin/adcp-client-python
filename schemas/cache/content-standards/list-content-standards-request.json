@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/content-standards/list-content-standards-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for listing content standards configurations",
@@ -7,13 +6,13 @@
     "channels": {
       "description": "Filter by channel",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+        "$ref": "../enums/channels.json"
       },
       "minItems": 1,
       "type": "array"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "countries": {
       "description": "Filter by ISO 3166-1 alpha-2 country codes",
@@ -24,7 +23,7 @@
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "languages": {
       "description": "Filter by BCP 47 language tags",
@@ -35,7 +34,7 @@
       "type": "array"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-request.json"
+      "$ref": "../core/pagination-request.json"
     }
   },
   "title": "List Content Standards Request",

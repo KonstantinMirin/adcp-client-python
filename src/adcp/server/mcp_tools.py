@@ -561,6 +561,70 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "required": ["list_id"],
         },
     },
+    # V3 Governance (Collection Lists)
+    {
+        "name": "create_collection_list",
+        "description": "Create a collection list for governance filtering",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "base_collections": {"type": "array"},
+                "filters": {"type": "object"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "get_collection_list",
+        "description": "Get a collection list with optional resolution",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+                "resolve": {"type": "boolean"},
+                "pagination": {"type": "object"},
+            },
+            "required": ["list_id"],
+        },
+    },
+    {
+        "name": "list_collection_lists",
+        "description": "List collection lists",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "principal": {"type": "string"},
+                "pagination": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "update_collection_list",
+        "description": "Update a collection list",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "filters": {"type": "object"},
+            },
+            "required": ["list_id"],
+        },
+    },
+    {
+        "name": "delete_collection_list",
+        "description": "Delete a collection list",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+            },
+            "required": ["list_id"],
+        },
+    },
     # V3 TMP
     {
         "name": "context_match",
@@ -706,6 +770,11 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
         "list_property_lists",
         "update_property_list",
         "delete_property_list",
+        "create_collection_list",
+        "get_collection_list",
+        "list_collection_lists",
+        "update_collection_list",
+        "delete_collection_list",
     },
     "ContentStandardsHandler": {
         "create_content_standards",
@@ -771,8 +840,10 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             ComplyTestControllerRequest,
             ContextMatchRequest,
             CreateContentStandardsRequest,
+            CreateCollectionListRequest,
             CreateMediaBuyRequest,
             CreatePropertyListRequest,
+            DeleteCollectionListRequest,
             DeletePropertyListRequest,
             GetAccountFinancialsRequest,
             GetAdcpCapabilitiesRequest,
@@ -785,15 +856,18 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             GetMediaBuysRequest,
             GetPlanAuditLogsRequest,
             GetProductsRequest,
+            GetCollectionListRequest,
             GetPropertyListRequest,
             GetRightsRequest,
             GetSignalsRequest,
             IdentityMatchRequest,
             ListAccountsRequest,
+            ListCollectionListsRequest,
             ListContentStandardsRequest,
             ListCreativeFormatsRequest,
             ListCreativesRequest,
             ListPropertyListsRequest,
+            UpdateCollectionListRequest,
             LogEventRequest,
             PreviewCreativeRequest,
             ProvidePerformanceFeedbackRequest,
@@ -872,6 +946,12 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
         "list_property_lists": ListPropertyListsRequest,
         "update_property_list": UpdatePropertyListRequest,
         "delete_property_list": DeletePropertyListRequest,
+        # Collection Lists
+        "create_collection_list": CreateCollectionListRequest,
+        "get_collection_list": GetCollectionListRequest,
+        "list_collection_lists": ListCollectionListsRequest,
+        "update_collection_list": UpdateCollectionListRequest,
+        "delete_collection_list": DeleteCollectionListRequest,
         # Sponsored Intelligence
         "si_get_offering": SiGetOfferingRequest,
         "si_initiate_session": SiInitiateSessionRequest,

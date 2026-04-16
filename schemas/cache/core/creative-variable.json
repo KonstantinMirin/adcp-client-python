@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/creative-variable.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A dynamic content variable (DCO slot) on a creative. Variables represent content that can change at serve time \u2014 headlines, images, product data, etc.",

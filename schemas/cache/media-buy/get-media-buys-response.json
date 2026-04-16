@@ -1,21 +1,20 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/get-media-buys-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response payload for get_media_buys task. Returns media buy configuration, creative approval state, and optional delivery snapshots.",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "errors": {
       "description": "Task-specific errors (e.g., media buy not found)",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+        "$ref": "../core/error.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "media_buys": {
       "description": "Array of media buys with status, creative approval state, and optional delivery snapshots",
@@ -23,7 +22,7 @@
         "additionalProperties": true,
         "properties": {
           "account": {
-            "$ref": "/schemas/3.0.0-rc.3/core/account.json",
+            "$ref": "../core/account.json",
             "description": "Account billed for this media buy"
           },
           "cancellation": {
@@ -36,7 +35,7 @@
                 "type": "string"
               },
               "canceled_by": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/canceled-by.json",
+                "$ref": "../enums/canceled-by.json",
                 "description": "Which party initiated the cancellation."
               },
               "reason": {
@@ -77,7 +76,7 @@
             "type": "string"
           },
           "ext": {
-            "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+            "$ref": "../core/ext.json"
           },
           "history": {
             "description": "Revision history entries, most recent first. Only present when include_history > 0 in the request. Each entry represents a state change or update to the media buy. Entries are append-only: sellers MUST NOT modify or delete previously emitted history entries. Callers MAY cache entries by revision number. Returns min(N, available entries) when include_history exceeds the total.",
@@ -93,7 +92,7 @@
                   "type": "string"
                 },
                 "ext": {
-                  "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+                  "$ref": "../core/ext.json"
                 },
                 "package_id": {
                   "description": "Package affected, when the change targeted a specific package.",
@@ -125,7 +124,7 @@
             "type": "array"
           },
           "invoice_recipient": {
-            "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+            "$ref": "../core/business-entity.json",
             "description": "Per-buy invoice recipient when provided at creation. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
           },
           "media_buy_id": {
@@ -162,7 +161,7 @@
                       "type": "string"
                     },
                     "canceled_by": {
-                      "$ref": "/schemas/3.0.0-rc.3/enums/canceled-by.json",
+                      "$ref": "../enums/canceled-by.json",
                       "description": "Which party initiated the package cancellation."
                     },
                     "reason": {
@@ -183,7 +182,7 @@
                     "additionalProperties": true,
                     "properties": {
                       "approval_status": {
-                        "$ref": "/schemas/3.0.0-rc.3/enums/creative-approval-status.json"
+                        "$ref": "../enums/creative-approval-status.json"
                       },
                       "creative_id": {
                         "description": "Creative identifier",
@@ -218,12 +217,12 @@
                   "type": "string"
                 },
                 "ext": {
-                  "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+                  "$ref": "../core/ext.json"
                 },
                 "format_ids_pending": {
                   "description": "Format IDs from the original create_media_buy format_ids_to_provide that have not yet been uploaded via sync_creatives. When empty or absent, all required formats have been provided.",
                   "items": {
-                    "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+                    "$ref": "../core/format-id.json"
                   },
                   "type": "array"
                 },
@@ -276,7 +275,7 @@
                       "type": "string"
                     },
                     "ext": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/ext.json",
+                      "$ref": "../core/ext.json",
                       "description": "Optional extension object for seller-specific snapshot fields."
                     },
                     "impressions": {
@@ -342,7 +341,7 @@
             "type": "string"
           },
           "status": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json"
+            "$ref": "../enums/media-buy-status.json"
           },
           "total_budget": {
             "description": "Total budget amount across all packages, denominated in media_buy.currency",
@@ -384,7 +383,7 @@
       "type": "array"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-response.json",
+      "$ref": "../core/pagination-response.json",
       "description": "Pagination metadata for the media_buys array."
     },
     "sandbox": {

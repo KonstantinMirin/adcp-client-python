@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/error-code.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Standard error code vocabulary for AdCP. Codes are machine-readable so agents can apply autonomous recovery strategies based on the recovery classification. Sellers MAY return codes not listed here for platform-specific errors \u2014 the error.json code field accepts any string. Agents MUST handle unknown codes by falling back to the recovery classification.",
   "enum": [

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/advertiser-industry.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Standardized advertiser industry classification. Top-level categories classify the advertiser's primary business. Dot-notation subcategories (e.g., 'media_entertainment.podcasts') provide platform-specific precision where needed. Sellers map these to platform-native codes (Spotify ADV categories, LinkedIn industry IDs, IAB Content Taxonomy, etc.). Sellers MUST accept unknown values gracefully \u2014 treat unrecognized values as the parent category (strip the subcategory) or as uncategorized. This ensures forward compatibility as the taxonomy evolves.",
   "enum": [

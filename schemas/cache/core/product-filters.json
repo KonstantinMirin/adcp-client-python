@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/product-filters.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Structured filters for product discovery",
@@ -44,7 +43,7 @@
     "channels": {
       "description": "Filter by advertising channels (e.g., ['display', 'ctv', 'dooh'])",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+        "$ref": "../enums/channels.json"
       },
       "minItems": 1,
       "type": "array"
@@ -59,7 +58,7 @@
       "type": "array"
     },
     "delivery_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/delivery-type.json"
+      "$ref": "../enums/delivery-type.json"
     },
     "end_date": {
       "description": "Campaign end date (ISO 8601 date format: YYYY-MM-DD) for availability checks",
@@ -67,13 +66,13 @@
       "type": "string"
     },
     "exclusivity": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/exclusivity.json",
+      "$ref": "../enums/exclusivity.json",
       "description": "Filter by exclusivity level. Returns products matching the specified exclusivity (e.g., 'exclusive' returns only sole-sponsorship products)."
     },
     "format_ids": {
       "description": "Filter by specific format IDs",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/format-id.json"
+        "$ref": "format-id.json"
       },
       "minItems": 1,
       "type": "array"
@@ -191,7 +190,7 @@
             "description": "Simple radius from the point",
             "properties": {
               "unit": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/distance-unit.json",
+                "$ref": "../enums/distance-unit.json",
                 "description": "Distance unit"
               },
               "value": {
@@ -207,7 +206,7 @@
             "type": "object"
           },
           "transport_mode": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/transport-mode.json",
+            "$ref": "../enums/transport-mode.json",
             "description": "Transportation mode for isochrone calculation. Required when travel_time is provided."
           },
           "travel_time": {
@@ -283,7 +282,7 @@
             "type": "string"
           },
           "system": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/metro-system.json",
+            "$ref": "../enums/metro-system.json",
             "description": "Metro classification system"
           }
         },
@@ -307,7 +306,7 @@
         "additionalProperties": false,
         "properties": {
           "system": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/postal-system.json",
+            "$ref": "../enums/postal-system.json",
             "description": "Postal code system (e.g., 'us_zip', 'gb_outward')"
           },
           "values": {
@@ -348,7 +347,7 @@
       "type": "array"
     },
     "required_features": {
-      "$ref": "/schemas/3.0.0-rc.3/core/media-buy-features.json",
+      "$ref": "media-buy-features.json",
       "description": "Filter to products from sellers supporting specific protocol features. Only features set to true are used for filtering."
     },
     "required_geo_targeting": {
@@ -357,7 +356,7 @@
         "additionalProperties": false,
         "properties": {
           "level": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/geo-level.json",
+            "$ref": "../enums/geo-level.json",
             "description": "Geographic targeting level (country, region, metro, postal_area)"
           },
           "system": {
@@ -376,7 +375,7 @@
     "signal_targeting": {
       "description": "Filter to products supporting specific signals from data provider catalogs. Products must have the requested signals in their data_provider_signals and signal_targeting_allowed must be true (or all signals requested).",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/signal-targeting.json"
+        "$ref": "signal-targeting.json"
       },
       "minItems": 1,
       "type": "array"
@@ -424,7 +423,7 @@
         "response_types": {
           "description": "Filter to products supporting specific TMP response types (e.g., 'activation', 'creative', 'catalog_items'). Products must support at least one of the listed types.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/response-type.json"
+            "$ref": "../enums/response-type.json"
           },
           "minItems": 1,
           "type": "array"

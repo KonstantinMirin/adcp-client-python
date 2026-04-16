@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/outcome-type.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "The type of outcome reported to a campaign governance agent after a seller interaction.",
   "enum": [

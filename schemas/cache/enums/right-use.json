@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/right-use.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
   "enum": [

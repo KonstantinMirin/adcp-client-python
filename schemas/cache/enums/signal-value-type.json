@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/signal-value-type.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "The data type of a signal's values, determining how it can be targeted",
   "enum": [

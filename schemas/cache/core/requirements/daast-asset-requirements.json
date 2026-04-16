@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/requirements/daast-asset-requirements.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Requirements for DAAST (Digital Audio Ad Serving Template) creative assets.",

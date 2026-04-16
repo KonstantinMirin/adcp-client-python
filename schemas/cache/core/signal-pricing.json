@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/signal-pricing.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Pricing model for a signal. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), or 'flat_fee' (fixed charge per reporting period, e.g. monthly licensed segments).",
   "oneOf": [
@@ -18,7 +17,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "ext.json"
         },
         "model": {
           "const": "cpm",
@@ -43,7 +42,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "ext.json"
         },
         "max_cpm": {
           "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
@@ -84,7 +83,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "ext.json"
         },
         "model": {
           "const": "flat_fee",

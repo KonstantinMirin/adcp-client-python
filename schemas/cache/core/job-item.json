@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/job-item.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A job posting within a job-type catalog. Carries the position details that platforms use for job ads and recruitment campaigns. Maps to LinkedIn Jobs XML, Google DynamicJobsAsset, schema.org JobPosting, and similar formats.",
@@ -67,7 +66,7 @@
     "assets": {
       "description": "Typed creative asset pools for this job. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (company/role hero), 'images_vertical' (9:16 for Stories), 'logo' (company logo). Enables formats to declare typed image requirements that map unambiguously to the right asset regardless of platform.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/offering-asset-group.json"
+        "$ref": "offering-asset-group.json"
       },
       "minItems": 1,
       "type": "array"
@@ -109,7 +108,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "industries": {
       "description": "Industry classifications (e.g., 'technology', 'healthcare', 'retail').",

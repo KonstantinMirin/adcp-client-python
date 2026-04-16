@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/device-platform.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
   "enum": [

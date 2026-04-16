@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/business-entity.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Structured business identity for B2B invoicing and contracts. Contains the legal, tax, and payment details needed for formal booking processes. Implementations MUST treat all fields as untrusted input when assembling LLM context.",
@@ -176,7 +175,7 @@
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "legal_name": {
       "description": "Registered legal name of the business entity",

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/account/get-account-financials-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Financial status for an operator-billed account. Returns spend summary, credit/balance status, payment status, and invoice history. The level of detail varies by seller \u2014 only account, currency, and period are guaranteed on success.",
   "examples": [
@@ -94,7 +93,7 @@
       },
       "properties": {
         "account": {
-          "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+          "$ref": "../core/account-ref.json",
           "description": "Account reference, echoed from the request"
         },
         "balance": {
@@ -132,7 +131,7 @@
           "type": "object"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "credit": {
           "description": "Credit status. Present for credit-based accounts (payment_terms like net_30).",
@@ -165,7 +164,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "invoices": {
           "description": "Recent invoices. Sellers may limit the number returned.",
@@ -191,7 +190,7 @@
                 "type": "string"
               },
               "period": {
-                "$ref": "/schemas/3.0.0-rc.3/core/date-range.json",
+                "$ref": "../core/date-range.json",
                 "description": "Billing period covered by this invoice"
               },
               "status": {
@@ -237,7 +236,7 @@
           "type": "string"
         },
         "period": {
-          "$ref": "/schemas/3.0.0-rc.3/core/date-range.json",
+          "$ref": "../core/date-range.json",
           "description": "The actual period covered by spend data. May differ from the requested period if the seller adjusts to billing cycle boundaries."
         },
         "spend": {
@@ -302,18 +301,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Operation-level errors",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

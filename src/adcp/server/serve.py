@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 def serve(
-    handler: ADCPHandler,
+    handler: ADCPHandler | Any,
     *,
     name: str = "adcp-agent",
     port: int | None = None,
@@ -35,7 +35,10 @@ def serve(
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
 ) -> None:
-    """Start an MCP server from an ADCP handler.
+    """Start an MCP server from an ADCP handler or server builder.
+
+    Accepts either an ``ADCPHandler`` instance or an ``ADCPServerBuilder``
+    (from ``adcp_server()``). Builders are auto-converted via ``build_handler()``.
 
     This is the simplest way to run an ADCP agent. It creates a FastMCP server,
     registers all tools from the handler, optionally registers a test controller,
@@ -49,6 +52,12 @@ def serve(
         transport: MCP transport type. Default "streamable-http".
         instructions: Optional system instructions for the agent.
         test_controller: Optional TestControllerStore instance for storyboard testing.
+
+    Security:
+        This function does NOT configure authentication. In production,
+        use a reverse proxy or middleware that validates credentials
+        before forwarding to the MCP endpoint. Without authentication,
+        the tools/list endpoint exposes the agent's capability surface.
 
     Example:
         from adcp.server import ADCPHandler, serve
@@ -69,6 +78,14 @@ def serve(
 
         serve(MyAgent(), name="my-agent", test_controller=MyStore())
     """
+    # Accept ADCPServerBuilder from adcp_server() decorator pattern
+    from adcp.server.builder import ADCPServerBuilder
+
+    if isinstance(handler, ADCPServerBuilder):
+        if not name or name == "adcp-agent":
+            name = handler.name
+        handler = handler.build_handler()
+
     mcp = create_mcp_server(handler, name=name, port=port, instructions=instructions)
 
     if test_controller is not None:
@@ -176,5 +193,6 @@ def _register_tool(
         wrap_output=False,
     )
 
-    # Register directly in the tool manager's dict
+    # FastMCP does not expose a public API for registering pre-built Tool
+    # objects with custom schemas. This accesses internals; requires mcp>=1.23.
     mcp._tool_manager._tools[name] = tool

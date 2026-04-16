@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/sync-catalogs-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for syncing catalog feeds with upsert semantics. Supports bulk operations across multiple catalog types (products, inventory, stores, promotions, offerings). Existing catalogs matched by catalog_id are updated, new ones are created. When catalogs is omitted, the call is discovery-only: returns all catalogs on the account without modification.",
@@ -82,7 +81,7 @@
   },
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account that owns these catalogs."
     },
     "catalog_ids": {
@@ -97,14 +96,14 @@
     "catalogs": {
       "description": "Array of catalog feeds to sync (create or update). When omitted, the call is discovery-only and returns all existing catalogs on the account without modification.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/catalog.json"
+        "$ref": "../core/catalog.json"
       },
       "maxItems": 50,
       "minItems": 1,
       "type": "array"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "delete_missing": {
       "default": false,
@@ -117,14 +116,14 @@
       "type": "boolean"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.0-rc.3/core/push-notification-config.json",
+      "$ref": "../core/push-notification-config.json",
       "description": "Optional webhook configuration for async sync notifications. Publisher will send webhook when sync completes if operation takes longer than immediate response time (common for large feeds requiring platform review)."
     },
     "validation_mode": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/validation-mode.json",
+      "$ref": "../enums/validation-mode.json",
       "default": "strict",
       "description": "Validation strictness. 'strict' fails entire sync on any validation error. 'lenient' processes valid catalogs and reports errors."
     }

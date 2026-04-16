@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/sync-plans-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Push campaign plans to the governance agent. A plan defines the authorized parameters for a campaign -- budget limits, channels, flight dates, and authorized markets.",
@@ -21,11 +20,11 @@
             ]
           },
           "audience": {
-            "$ref": "/schemas/3.0.0-rc.3/governance/audience-constraints.json",
+            "$ref": "audience-constraints.json",
             "description": "Audience targeting constraints. Defines who the campaign should reach (include) and must not reach (exclude). The governance agent evaluates seller targeting against these constraints."
           },
           "brand": {
-            "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+            "$ref": "../core/brand-ref.json",
             "description": "Brand or organization being governed. For campaign plans, the governance agent resolves the brand's compliance configuration. For portfolio plans, this is the holding company or parent organization."
           },
           "budget": {
@@ -33,7 +32,7 @@
             "description": "Budget authorization parameters.",
             "properties": {
               "authority_level": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/budget-authority-level.json",
+                "$ref": "../enums/budget-authority-level.json",
                 "description": "Budget authority level for the orchestrator agent."
               },
               "currency": {
@@ -67,7 +66,7 @@
               "allowed": {
                 "description": "Channels the orchestrator may use.",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+                  "$ref": "../enums/channels.json"
                 },
                 "type": "array"
               },
@@ -90,7 +89,7 @@
               "required": {
                 "description": "Channels that must be included in the media mix.",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/channels.json"
+                  "$ref": "../enums/channels.json"
                 },
                 "type": "array"
               }
@@ -123,7 +122,7 @@
                   "type": "string"
                 },
                 "authority": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/delegation-authority.json",
+                  "$ref": "../enums/delegation-authority.json",
                   "description": "Authority level granted to this agent."
                 },
                 "budget_limit": {
@@ -165,7 +164,7 @@
             "type": "array"
           },
           "ext": {
-            "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+            "$ref": "../core/ext.json"
           },
           "flight": {
             "additionalProperties": false,
@@ -275,7 +274,7 @@
           "restricted_attributes": {
             "description": "Personal data categories that must not be used for targeting in this campaign. Applies horizontally across all audience criteria. Used for EU DSA Article 26 compliance (prohibits targeting on GDPR Article 9 special categories) and similar regulations. The governance agent flags any audience targeting that references these attributes.",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/restricted-attribute.json"
+              "$ref": "../enums/restricted-attribute.json"
             },
             "minItems": 1,
             "type": "array"

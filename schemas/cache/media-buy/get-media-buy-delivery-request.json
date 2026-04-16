@@ -1,11 +1,10 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/get-media-buy-delivery-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for retrieving comprehensive delivery metrics",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Filter delivery data to a specific account. When omitted, returns data across all accessible accounts."
     },
     "attribution_window": {
@@ -13,13 +12,13 @@
       "description": "Attribution window to apply for conversion metrics. When provided, the seller returns conversion data using the requested lookback windows instead of their platform default. The seller echoes the applied window in the response. Sellers that do not support configurable windows ignore this field and return their default. Check get_adcp_capabilities conversion_tracking.attribution_windows for available options.",
       "properties": {
         "model": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/attribution-model.json",
+          "$ref": "../enums/attribution-model.json",
           "description": "Attribution model to use. When omitted, the seller applies their default model."
         },
         "post_click": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+              "$ref": "../core/duration.json"
             }
           ],
           "description": "Post-click attribution window to apply."
@@ -27,7 +26,7 @@
         "post_view": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+              "$ref": "../core/duration.json"
             }
           ],
           "description": "Post-view attribution window to apply."
@@ -36,7 +35,7 @@
       "type": "object"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "end_date": {
       "description": "End date for reporting period (YYYY-MM-DD). When omitted along with start_date, returns campaign lifetime data. Only accepted when the product's reporting_capabilities.date_range_support is 'date_range'.",
@@ -44,7 +43,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "include_package_daily_breakdown": {
       "default": false,
@@ -74,7 +73,7 @@
               "type": "integer"
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-metric.json",
+              "$ref": "../enums/sort-metric.json",
               "default": "spend",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric."
             }
@@ -91,7 +90,7 @@
               "type": "integer"
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-metric.json",
+              "$ref": "../enums/sort-metric.json",
               "default": "spend",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric."
             }
@@ -108,7 +107,7 @@
               "type": "integer"
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-metric.json",
+              "$ref": "../enums/sort-metric.json",
               "default": "spend",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric."
             }
@@ -120,7 +119,7 @@
           "description": "Request geographic breakdown. Check reporting_capabilities.supports_geo_breakdown for available levels and systems.",
           "properties": {
             "geo_level": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/geo-level.json",
+              "$ref": "../enums/geo-level.json",
               "description": "Geographic granularity level for the breakdown"
             },
             "limit": {
@@ -130,7 +129,7 @@
               "type": "integer"
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-metric.json",
+              "$ref": "../enums/sort-metric.json",
               "default": "spend",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric."
             },
@@ -138,10 +137,10 @@
               "description": "Classification system for metro or postal_area levels (e.g., 'nielsen_dma', 'us_zip'). Required when geo_level is 'metro' or 'postal_area'.",
               "oneOf": [
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/metro-system.json"
+                  "$ref": "../enums/metro-system.json"
                 },
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/postal-system.json"
+                  "$ref": "../enums/postal-system.json"
                 }
               ]
             }
@@ -162,7 +161,7 @@
               "type": "integer"
             },
             "sort_by": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/sort-metric.json",
+              "$ref": "../enums/sort-metric.json",
               "default": "spend",
               "description": "Metric to sort breakdown rows by (descending). Falls back to 'spend' if the seller does not report the requested metric."
             }
@@ -181,11 +180,11 @@
       "description": "Filter by status. Can be a single status or array of statuses",
       "oneOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json"
+          "$ref": "../enums/media-buy-status.json"
         },
         {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json"
+            "$ref": "../enums/media-buy-status.json"
           },
           "minItems": 1,
           "type": "array"

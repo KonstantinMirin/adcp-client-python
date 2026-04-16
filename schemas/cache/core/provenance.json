@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/provenance.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Declares how content was produced, whether AI was involved, and what disclosure obligations apply. Attaches to creative manifests, individual assets, or content-standards artifacts. When present at multiple levels, the most specific provenance object replaces the inherited one entirely (no field-level merging). Provenance is a claim by the declaring party \u2014 receiving parties should verify claims independently via their own detection tools.",
@@ -85,7 +84,7 @@
       "type": "object"
     },
     "digital_source_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/digital-source-type.json",
+      "$ref": "../enums/digital-source-type.json",
       "description": "IPTC-aligned classification of AI involvement in producing this content"
     },
     "disclosure": {
@@ -119,7 +118,7 @@
                 "minProperties": 1,
                 "properties": {
                   "ext": {
-                    "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+                    "$ref": "ext.json"
                   },
                   "min_duration_ms": {
                     "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available.",
@@ -127,13 +126,13 @@
                     "type": "integer"
                   },
                   "persistence": {
-                    "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-persistence.json",
+                    "$ref": "../enums/disclosure-persistence.json",
                     "description": "How long the disclosure must persist during content playback or display"
                   },
                   "positions": {
                     "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-position.json"
+                      "$ref": "../enums/disclosure-position.json"
                     },
                     "minItems": 1,
                     "type": "array",
@@ -163,7 +162,7 @@
       "type": "object"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "human_oversight": {
       "description": "Level of human involvement in the AI-assisted creation process",

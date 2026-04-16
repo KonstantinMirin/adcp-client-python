@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/pagination-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Standard cursor-based pagination metadata for list responses",

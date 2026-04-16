@@ -1,6 +1,9 @@
 """ADCP Server Framework.
 
-The simplest way to build an AdCP agent:
+Build an AdCP agent in minutes. The framework handles the protocol
+plumbing so you focus on business logic.
+
+Quickstart (class-based)::
 
     from adcp.server import ADCPHandler, serve
     from adcp.server.responses import capabilities_response, products_response
@@ -13,6 +16,38 @@ The simplest way to build an AdCP agent:
             return products_response(MY_PRODUCTS)
 
     serve(MySeller(), name="my-seller")
+
+Quickstart (decorator-based)::
+
+    from adcp.server import adcp_server, serve
+    from adcp.server.responses import products_response
+
+    server = adcp_server("my-seller")
+
+    @server.get_products
+    async def get_products(params, context=None):
+        return products_response(MY_PRODUCTS)
+
+    serve(server, name="my-seller")  # capabilities auto-generated
+
+What the framework does automatically:
+
+- **Error responses**: ``adcp_error("BUDGET_TOO_LOW")`` auto-populates
+  recovery classification (transient/correctable/terminal) from 20+
+  standard codes.
+- **State transitions**: ``media_buy_response(..., status="active")``
+  auto-populates ``valid_actions`` from the status. No manual mapping.
+- **Account resolution**: ``resolve_account(params, my_resolver)``
+  auto-resolves AccountReference and returns ACCOUNT_NOT_FOUND errors.
+- **Context passthrough**: ``inject_context(params, response)`` echoes
+  the request context field back in the response (ADCP requirement).
+- **Cancellation**: ``cancel_media_buy_response(id, "buyer")``
+  auto-sets canceled_at, status, and valid_actions=[].
+- **Capabilities**: The decorator builder auto-generates
+  ``get_adcp_capabilities`` from which handlers you register.
+- **Validation**: GovernanceHandler and ContentStandardsHandler
+  auto-validate request dicts into Pydantic models before your
+  handler code runs.
 """
 
 from __future__ import annotations
@@ -25,9 +60,20 @@ from adcp.server.base import (
     not_supported,
 )
 from adcp.server.brand import BrandHandler
+from adcp.server.builder import ADCPServerBuilder, adcp_server
 from adcp.server.compliance import ComplianceHandler
 from adcp.server.content_standards import ContentStandardsHandler
 from adcp.server.governance import GovernanceHandler
+from adcp.server.helpers import (
+    STANDARD_ERROR_CODES,
+    AccountError,
+    adcp_error,
+    cancel_media_buy_response,
+    inject_context,
+    is_terminal_status,
+    resolve_account,
+    valid_actions_for_status,
+)
 from adcp.server.mcp_tools import MCPToolSet, create_mcp_tools, get_tools_for_handler
 from adcp.server.proposal import ProposalBuilder, ProposalNotSupported
 from adcp.server.responses import (
@@ -88,6 +134,17 @@ __all__ = [
     "TestControllerStore",
     "TestControllerError",
     "register_test_controller",
+    # DX helpers
+    "AccountError",
+    "STANDARD_ERROR_CODES",
+    "adcp_error",
+    "adcp_server",
+    "ADCPServerBuilder",
+    "cancel_media_buy_response",
+    "inject_context",
+    "is_terminal_status",
+    "resolve_account",
+    "valid_actions_for_status",
     # Response builders
     "activate_signal_response",
     "build_creative_response",

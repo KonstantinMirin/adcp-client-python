@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/sync-event-sources-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response from event source sync operation. Returns either per-source results OR operation-level errors.",
   "oneOf": [
@@ -13,7 +12,7 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "event_sources": {
           "description": "Results for each event source, including both synced and seller-managed sources on the account",
@@ -32,7 +31,7 @@
                 "type": "string"
               },
               "action_source": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/action-source.json",
+                "$ref": "../enums/action-source.json",
                 "description": "Type of event source (website pixel, app SDK, in-store, etc.)"
               },
               "errors": {
@@ -49,12 +48,12 @@
               "event_types": {
                 "description": "Event types this source handles",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json"
+                  "$ref": "../enums/event-type.json"
                 },
                 "type": "array"
               },
               "health": {
-                "$ref": "/schemas/3.0.0-rc.3/core/event-source-health.json",
+                "$ref": "../core/event-source-health.json",
                 "description": "Health assessment for this event source. Reflects event volume, data quality, and parameter completeness. Sellers that support health scoring include this on every source (buyer-managed and seller-managed). Absent when the seller does not evaluate event source health."
               },
               "managed_by": {
@@ -108,7 +107,7 @@
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "sandbox": {
           "description": "When true, this response contains simulated data from sandbox mode.",
@@ -140,18 +139,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Operation-level errors that prevented processing",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/requirements/url-asset-requirements.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Requirements for URL assets such as click-through URLs, tracking pixels, and landing pages.",

@@ -21,11 +21,61 @@ if TYPE_CHECKING:
 
 # Mapping from AdCP task names to the media_buy.features flag they require.
 # Only includes tasks that exist on ADCPClient and ADCPHandler.
-# Other features (audience_targeting, catalog_management, etc.) will be added
-# here when their corresponding task methods are implemented.
+# Maps AdCP task names to the capability feature they require.
+# Used by validate_capabilities() to check handler/feature consistency.
 TASK_FEATURE_MAP: dict[str, str] = {
+    # Conversion tracking
     "sync_event_sources": "conversion_tracking",
     "log_event": "conversion_tracking",
+    # Audience targeting
+    "sync_audiences": "audience_targeting",
+    # Catalog management
+    "sync_catalogs": "catalog_management",
+    # Content standards
+    "create_content_standards": "content_standards",
+    "update_content_standards": "content_standards",
+    "get_content_standards": "content_standards",
+    "list_content_standards": "content_standards",
+    "calibrate_content": "content_standards",
+    "validate_content_delivery": "content_standards",
+    "get_media_buy_artifacts": "content_standards",
+    "get_creative_features": "content_standards",
+    # Signals
+    "get_signals": "signals",
+    "activate_signal": "signals",
+    # Creative agent
+    "build_creative": "creative_agent",
+    "preview_creative": "creative_agent",
+    "get_creative_delivery": "creative_agent",
+    # Campaign governance
+    "sync_plans": "campaign_governance",
+    "check_governance": "campaign_governance",
+    "report_plan_outcome": "campaign_governance",
+    "get_plan_audit_logs": "campaign_governance",
+    # Property lists
+    "create_property_list": "property_lists",
+    "update_property_list": "property_lists",
+    "get_property_list": "property_lists",
+    "list_property_lists": "property_lists",
+    "delete_property_list": "property_lists",
+    # Collection lists
+    "create_collection_list": "collection_lists",
+    "update_collection_list": "collection_lists",
+    "get_collection_list": "collection_lists",
+    "list_collection_lists": "collection_lists",
+    "delete_collection_list": "collection_lists",
+    # Trusted Match Protocol
+    "context_match": "trusted_match",
+    "identity_match": "trusted_match",
+    # Sponsored Intelligence
+    "si_get_offering": "sponsored_intelligence",
+    "si_initiate_session": "sponsored_intelligence",
+    "si_send_message": "sponsored_intelligence",
+    "si_terminate_session": "sponsored_intelligence",
+    # Brand
+    "get_brand_identity": "brand",
+    "get_rights": "brand",
+    "acquire_rights": "brand",
 }
 
 # Derived: feature -> list of handler methods that implement it.
@@ -33,6 +83,33 @@ TASK_FEATURE_MAP: dict[str, str] = {
 FEATURE_HANDLER_MAP: dict[str, list[str]] = {}
 for _task, _feature in TASK_FEATURE_MAP.items():
     FEATURE_HANDLER_MAP.setdefault(_feature, []).append(_task)
+
+
+def build_synthetic_capabilities(
+    supported_protocols: list[str],
+    *,
+    major_versions: list[int] | None = None,
+) -> dict[str, Any]:
+    """Build a synthetic capabilities response for pre-v3 sellers.
+
+    Use this when connecting to a seller that doesn't support
+    ``get_adcp_capabilities`` (pre-v3 sellers). The returned dict
+    can be passed to ``FeatureResolver`` after wrapping with the
+    appropriate Pydantic model.
+
+    Args:
+        supported_protocols: List of protocol domains the seller supports
+            (e.g., ``["media_buy"]``).
+        major_versions: ADCP major versions the seller supports.
+            Defaults to ``[2]``.
+
+    Returns:
+        A dict matching the GetAdcpCapabilitiesResponse shape.
+    """
+    return {
+        "adcp": {"major_versions": major_versions or [2]},
+        "supported_protocols": supported_protocols,
+    }
 
 
 class FeatureResolver:
@@ -65,6 +142,19 @@ class FeatureResolver:
     @property
     def capabilities(self) -> GetAdcpCapabilitiesResponse:
         return self._caps
+
+    def supports_v3(self) -> bool:
+        """Check if the seller supports ADCP v3.
+
+        Returns:
+            True if major_versions includes 3.
+        """
+        if self._caps.adcp is None:
+            return False
+        for v in self._caps.adcp.major_versions:
+            if (v.root if hasattr(v, "root") else v) == 3:
+                return True
+        return False
 
     def supports(self, feature: str) -> bool:
         """Check if a feature is supported."""

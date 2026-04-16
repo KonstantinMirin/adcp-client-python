@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/exclusivity.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Whether a product offers exclusive access to its inventory",
   "enum": [
