@@ -476,8 +476,61 @@ async def verify_agent_for_property(
     )
 
 
+def _resolve_agent_properties(
+    agent: dict[str, Any],
+    top_level_properties: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Resolve properties for a single agent entry based on its authorization_type.
+
+    Args:
+        agent: An authorized_agents entry
+        top_level_properties: The top-level properties array from adagents.json
+
+    Returns:
+        List of resolved property dicts for this agent
+    """
+    authorization_type = agent.get("authorization_type", "")
+
+    # Handle inline_properties (properties array directly on agent)
+    if authorization_type == "inline_properties" or "properties" in agent:
+        properties = agent.get("properties", [])
+        if not isinstance(properties, list):
+            return []
+        return [p for p in properties if isinstance(p, dict)]
+
+    # Handle property_ids (filter top-level properties by property_id)
+    if authorization_type == "property_ids":
+        authorized_ids = set(agent.get("property_ids", []))
+        return [
+            p
+            for p in top_level_properties
+            if isinstance(p, dict) and p.get("property_id") in authorized_ids
+        ]
+
+    # Handle property_tags (filter top-level properties by tags)
+    if authorization_type == "property_tags":
+        authorized_tags = set(agent.get("property_tags", []))
+        return [
+            p
+            for p in top_level_properties
+            if isinstance(p, dict) and set(p.get("tags", [])) & authorized_tags
+        ]
+
+    # Handle publisher_properties (cross-domain references)
+    if authorization_type == "publisher_properties":
+        publisher_props = agent.get("publisher_properties", [])
+        if not isinstance(publisher_props, list):
+            return []
+        return [p for p in publisher_props if isinstance(p, dict)]
+
+    return []
+
+
 def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract all properties from adagents.json data.
+
+    Handles all authorization types: inline_properties, property_ids,
+    property_tags, and publisher_properties.
 
     Args:
         adagents_data: Parsed adagents.json data
@@ -495,6 +548,10 @@ def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(authorized_agents, list):
         raise AdagentsValidationError("adagents.json must have 'authorized_agents' array")
 
+    top_level_properties = adagents_data.get("properties", [])
+    if not isinstance(top_level_properties, list):
+        top_level_properties = []
+
     properties = []
     for agent in authorized_agents:
         if not isinstance(agent, dict):
@@ -504,16 +561,11 @@ def get_all_properties(adagents_data: dict[str, Any]) -> list[dict[str, Any]]:
         if not agent_url:
             continue
 
-        agent_properties = agent.get("properties", [])
-        if not isinstance(agent_properties, list):
-            continue
+        agent_properties = _resolve_agent_properties(agent, top_level_properties)
 
-        # Add each property with the agent URL for reference
         for prop in agent_properties:
-            if isinstance(prop, dict):
-                # Create a copy and add agent_url
-                prop_with_agent = {**prop, "agent_url": agent_url}
-                properties.append(prop_with_agent)
+            prop_with_agent = {**prop, "agent_url": agent_url}
+            properties.append(prop_with_agent)
 
     return properties
 
@@ -570,12 +622,10 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
     if not isinstance(authorized_agents, list):
         raise AdagentsValidationError("adagents.json must have 'authorized_agents' array")
 
-    # Get top-level properties for reference-based authorization types
     top_level_properties = adagents_data.get("properties", [])
     if not isinstance(top_level_properties, list):
         top_level_properties = []
 
-    # Normalize the agent URL for comparison
     normalized_agent_url = normalize_url(agent_url)
 
     for agent in authorized_agents:
@@ -586,48 +636,10 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
         if not agent_url_from_json:
             continue
 
-        # Match agent URL (protocol-agnostic)
         if normalize_url(agent_url_from_json) != normalized_agent_url:
             continue
 
-        # Found the agent - determine authorization type
-        authorization_type = agent.get("authorization_type", "")
-
-        # Handle inline_properties (properties array directly on agent)
-        if authorization_type == "inline_properties" or "properties" in agent:
-            properties = agent.get("properties", [])
-            if not isinstance(properties, list):
-                return []
-            return [p for p in properties if isinstance(p, dict)]
-
-        # Handle property_ids (filter top-level properties by property_id)
-        if authorization_type == "property_ids":
-            authorized_ids = set(agent.get("property_ids", []))
-            return [
-                p
-                for p in top_level_properties
-                if isinstance(p, dict) and p.get("property_id") in authorized_ids
-            ]
-
-        # Handle property_tags (filter top-level properties by tags)
-        if authorization_type == "property_tags":
-            authorized_tags = set(agent.get("property_tags", []))
-            return [
-                p
-                for p in top_level_properties
-                if isinstance(p, dict) and set(p.get("tags", [])) & authorized_tags
-            ]
-
-        # Handle publisher_properties (cross-domain references)
-        # Returns the selector objects; caller must resolve against other domains
-        if authorization_type == "publisher_properties":
-            publisher_props = agent.get("publisher_properties", [])
-            if not isinstance(publisher_props, list):
-                return []
-            return [p for p in publisher_props if isinstance(p, dict)]
-
-        # No recognized authorization type - return empty
-        return []
+        return _resolve_agent_properties(agent, top_level_properties)
 
     return []
 

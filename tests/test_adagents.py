@@ -623,6 +623,154 @@ class TestGetAllProperties:
         assert len(properties) == 1
         assert properties[0]["name"] == "Site"
 
+    def test_get_all_properties_with_property_ids(self):
+        """Should resolve property_ids against top-level properties."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "la_depeche",
+                    "property_type": "website",
+                    "name": "La Dépêche",
+                    "identifiers": [{"type": "domain", "value": "ladepeche.fr"}],
+                },
+                {
+                    "property_id": "midi_libre",
+                    "property_type": "website",
+                    "name": "Midi Libre",
+                    "identifiers": [{"type": "domain", "value": "midilibre.fr"}],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://agent1.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["la_depeche"],
+                },
+                {
+                    "url": "https://agent2.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["midi_libre"],
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert len(properties) == 2
+        assert properties[0]["name"] == "La Dépêche"
+        assert properties[0]["agent_url"] == "https://agent1.example.com"
+        assert properties[1]["name"] == "Midi Libre"
+        assert properties[1]["agent_url"] == "https://agent2.example.com"
+
+    def test_get_all_properties_with_property_tags(self):
+        """Should resolve property_tags against top-level properties."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "site_a",
+                    "property_type": "website",
+                    "name": "Site A",
+                    "identifiers": [{"type": "domain", "value": "a.com"}],
+                    "tags": ["news", "premium"],
+                },
+                {
+                    "property_id": "site_b",
+                    "property_type": "website",
+                    "name": "Site B",
+                    "identifiers": [{"type": "domain", "value": "b.com"}],
+                    "tags": ["sports"],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://agent1.example.com",
+                    "authorization_type": "property_tags",
+                    "property_tags": ["news"],
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert len(properties) == 1
+        assert properties[0]["name"] == "Site A"
+        assert properties[0]["agent_url"] == "https://agent1.example.com"
+
+    def test_get_all_properties_mixed_authorization_types(self):
+        """Should handle mix of inline, property_ids, and property_tags."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "ref_site",
+                    "property_type": "website",
+                    "name": "Referenced Site",
+                    "identifiers": [{"type": "domain", "value": "ref.com"}],
+                    "tags": ["premium"],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://inline-agent.example.com",
+                    "authorization_type": "inline_properties",
+                    "properties": [
+                        {
+                            "property_type": "website",
+                            "name": "Inline Site",
+                            "identifiers": [{"type": "domain", "value": "inline.com"}],
+                        }
+                    ],
+                },
+                {
+                    "url": "https://ids-agent.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["ref_site"],
+                },
+                {
+                    "url": "https://tags-agent.example.com",
+                    "authorization_type": "property_tags",
+                    "property_tags": ["premium"],
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert len(properties) == 3
+        names = {p["name"] for p in properties}
+        assert names == {"Inline Site", "Referenced Site", "Referenced Site"}
+        # Check agent_url attribution
+        by_agent = {p["agent_url"]: p["name"] for p in properties}
+        assert by_agent["https://inline-agent.example.com"] == "Inline Site"
+        assert by_agent["https://ids-agent.example.com"] == "Referenced Site"
+        assert by_agent["https://tags-agent.example.com"] == "Referenced Site"
+
+    def test_get_all_properties_deduplicates_not(self):
+        """Properties referenced by multiple agents should appear once per agent."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "shared",
+                    "property_type": "website",
+                    "name": "Shared Site",
+                    "identifiers": [{"type": "domain", "value": "shared.com"}],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://agent1.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["shared"],
+                },
+                {
+                    "url": "https://agent2.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["shared"],
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert len(properties) == 2
+        assert properties[0]["agent_url"] == "https://agent1.example.com"
+        assert properties[1]["agent_url"] == "https://agent2.example.com"
+
     def test_get_all_properties_invalid_data(self):
         """Should raise error for invalid data."""
         with pytest.raises(AdagentsValidationError):
