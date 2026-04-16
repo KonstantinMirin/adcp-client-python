@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/installment-deadlines.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Deadlines associated with a bookable installment. Applies to any channel where inventory is tied to a scheduled unit: print issues, podcast episodes, linear TV airings, influencer posts, DOOH rotations.",
@@ -18,7 +17,7 @@
     "material_deadlines": {
       "description": "Stages for creative material submission. Items MUST be in chronological order by due_at (earliest first). Typical pattern: 'draft' for raw materials the seller will process, 'final' for production-ready assets. Print example: draft artwork then press-ready PDF. Influencer example: talking points then approved script.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/material-deadline.json"
+        "$ref": "material-deadline.json"
       },
       "minItems": 1,
       "type": "array"

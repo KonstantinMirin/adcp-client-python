@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/get-plan-audit-logs-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "anyOf": [

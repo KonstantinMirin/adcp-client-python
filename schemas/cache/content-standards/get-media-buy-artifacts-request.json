@@ -1,17 +1,16 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/content-standards/get-media-buy-artifacts-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Request parameters for retrieving content artifacts from a media buy for validation",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Filter artifacts to a specific account. When omitted, returns artifacts across all accessible accounts."
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "failures_only": {
       "default": false,

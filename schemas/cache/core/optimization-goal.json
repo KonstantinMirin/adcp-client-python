@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/optimization-goal.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "A single optimization target for a package. Packages accept an array of optimization_goals. When multiple goals are present, priority determines which the seller focuses on \u2014 1 is highest priority (primary goal); higher numbers are secondary. Duplicate priority values result in undefined seller behavior.",
   "oneOf": [
@@ -36,7 +35,7 @@
         "reach_unit": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.0-rc.3/enums/reach-unit.json"
+              "$ref": "../enums/reach-unit.json"
             }
           ],
           "description": "Unit for reach measurement. Required when metric is 'reach'. Must be a value declared in the product's metric_optimization.supported_reach_units."
@@ -115,7 +114,7 @@
             "window": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+                  "$ref": "duration.json"
                 }
               ],
               "description": "Time window over which frequency is measured (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Weekly windows are typical for brand campaigns; daily windows suit high-cadence direct response."
@@ -149,7 +148,7 @@
             "post_click": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+                  "$ref": "duration.json"
                 }
               ],
               "description": "Post-click attribution window. Conversions within this duration after a click are attributed to the ad (e.g. {\"interval\": 7, \"unit\": \"days\"})."
@@ -157,7 +156,7 @@
             "post_view": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+                  "$ref": "duration.json"
                 }
               ],
               "description": "Post-view attribution window. Conversions within this duration after an ad impression (without click) are attributed to the ad (e.g. {\"interval\": 1, \"unit\": \"days\"})."
@@ -183,7 +182,7 @@
                 "type": "string"
               },
               "event_type": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json",
+                "$ref": "../enums/event-type.json",
                 "description": "Event type to include from this source (e.g., purchase, lead, app_install, refund)"
               },
               "value_factor": {

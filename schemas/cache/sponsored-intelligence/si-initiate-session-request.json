@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/sponsored-intelligence/si-initiate-session-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Host initiates a session with a brand agent",
@@ -9,7 +8,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "idempotency_key": {
       "description": "Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
@@ -18,7 +17,7 @@
       "type": "string"
     },
     "identity": {
-      "$ref": "/schemas/3.0.0-rc.3/sponsored-intelligence/si-identity.json"
+      "$ref": "si-identity.json"
     },
     "media_buy_id": {
       "description": "AdCP media buy ID if session was triggered by advertising",
@@ -37,7 +36,7 @@
       "type": "string"
     },
     "supported_capabilities": {
-      "$ref": "/schemas/3.0.0-rc.3/sponsored-intelligence/si-capabilities.json",
+      "$ref": "si-capabilities.json",
       "description": "What capabilities the host supports"
     }
   },

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/account-ref.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Reference to an account by seller-assigned ID or natural key. Use account_id for explicit accounts (require_operator_auth: true, discovered via list_accounts). Use the natural key (brand + operator) for implicit accounts (require_operator_auth: false, declared via sync_accounts). For sandbox: explicit accounts use account_id (pre-existing test account), implicit accounts use the natural key with sandbox: true.",
   "examples": [
@@ -44,7 +43,7 @@
       "additionalProperties": false,
       "properties": {
         "brand": {
-          "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+          "$ref": "brand-ref.json",
           "description": "Brand reference identifying the advertiser"
         },
         "operator": {

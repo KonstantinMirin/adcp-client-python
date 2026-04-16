@@ -53,7 +53,7 @@ At least one pricing option per signal:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
-from adcp.server import ADCPHandler, serve
+from adcp.server import ADCPHandler, serve, adcp_error, inject_context
 from adcp.server.responses import capabilities_response, signals_response, activate_signal_response
 
 class MySignalsAgent(ADCPHandler):
@@ -64,6 +64,10 @@ class MySignalsAgent(ADCPHandler):
         return signals_response(MY_SIGNALS)
 
     async def activate_signal(self, params, context=None):
+        # adcp_error() auto-classifies recovery (correctable/transient/terminal)
+        segment_id = params.get("signal_agent_segment_id")
+        if segment_id not in SIGNALS:
+            return adcp_error("SIGNAL_NOT_FOUND", f"Signal {segment_id} not found")
         return activate_signal_response(deployments)
 
 serve(MySignalsAgent(), name="my-signals-agent")
@@ -147,13 +151,14 @@ Each signal must include:
 
 **`activate_signal`**
 ```python
+from adcp.server import adcp_error
 from adcp.server.responses import activate_signal_response
 
 async def activate_signal(self, params, context=None):
     segment_id = params.get("signal_agent_segment_id")
     signal = SIGNALS.get(segment_id)
     if not signal:
-        return {"errors": [{"code": "SIGNAL_NOT_FOUND", "message": f"Signal {segment_id} not found"}]}
+        return adcp_error("SIGNAL_NOT_FOUND", f"Signal {segment_id} not found")
 
     deployments = []
     for dest in params.get("destinations", []):
@@ -187,15 +192,23 @@ async def activate_signal(self, params, context=None):
 
 ## SDK Quick Reference
 
+**Response builders** (from `adcp.server.responses`):
+
 | Function | Usage |
 |----------|-------|
-| `serve(handler)` | Start server on `:3001/mcp` |
 | `capabilities_response(protocols)` | `get_adcp_capabilities` response |
 | `signals_response(signals)` | `get_signals` response |
 | `activate_signal_response(deployments)` | `activate_signal` response |
-| `error_response(code, message)` | Structured error |
 
-Import handlers from `adcp.server`. Import response builders from `adcp.server.responses`.
+**DX helpers** (from `adcp.server`):
+
+| Function | Usage |
+|----------|-------|
+| `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery |
+| `inject_context(params, response)` | Context passthrough (ADCP requirement) |
+| `serve(handler)` | Start server on `:3001/mcp` |
+
+Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`.
 
 ## Validation
 

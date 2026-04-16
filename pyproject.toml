@@ -98,6 +98,10 @@ module = "tests.*"
 disable_error_code = ["import-not-found", "no-untyped-def", "var-annotated", "operator"]
 
 [[tool.mypy.overrides]]
+module = "adcp.types.generated_poc.*"
+disable_error_code = ["valid-type"]
+
+[[tool.mypy.overrides]]
 module = "tests.integration.*"
 ignore_errors = true
 

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/catalog-field-mapping.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "allOf": [
@@ -106,7 +105,7 @@
       "description": "Fallback value to use when feed_field is absent, null, or empty. Applied after any transform would have been applied. Allows optional feed fields to have a guaranteed baseline value."
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "feed_field": {
       "description": "Field name in the external feed record. Omit when injecting a static literal value (use the value property instead).",

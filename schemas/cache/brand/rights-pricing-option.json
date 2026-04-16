@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/rights-pricing-option.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A pricing option for licensable rights. Separate from media-buy pricing options \u2014 rights pricing includes period, impression caps, overage rates, and use-type scoping.",
@@ -14,7 +13,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "impression_cap": {
       "description": "Maximum impressions included in this pricing option per period",
@@ -22,7 +21,7 @@
       "type": "integer"
     },
     "model": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/pricing-model.json",
+      "$ref": "../enums/pricing-model.json",
       "description": "Pricing model (cpm, flat_rate, etc.)"
     },
     "overage_cpm": {
@@ -54,7 +53,7 @@
     "uses": {
       "description": "Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+        "$ref": "../enums/right-use.json"
       },
       "minItems": 1,
       "type": "array"

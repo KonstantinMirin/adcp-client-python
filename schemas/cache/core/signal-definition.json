@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/signal-definition.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Definition of a signal in a data provider's catalog, published via adagents.json",
@@ -61,7 +60,7 @@
     "restricted_attributes": {
       "description": "Restricted attribute categories this signal touches. Data providers SHOULD declare these so governance agents can structurally match signals against a plan's restricted_attributes without relying on semantic inference from the signal name or description.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/restricted-attribute.json"
+        "$ref": "../enums/restricted-attribute.json"
       },
       "minItems": 1,
       "type": "array"
@@ -75,7 +74,7 @@
       "type": "array"
     },
     "value_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/signal-value-type.json",
+      "$ref": "../enums/signal-value-type.json",
       "description": "The data type of this signal's values"
     }
   },

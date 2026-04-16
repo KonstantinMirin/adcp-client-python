@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/account/sync-accounts-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Sync advertiser accounts with a seller using upsert semantics. The agent declares which brands it represents, who operates on each brand's behalf, and the billing model. The seller provisions or links accounts accordingly, returning per-account status.",
@@ -123,11 +122,11 @@
             "type": "string"
           },
           "billing_entity": {
-            "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+            "$ref": "../core/business-entity.json",
             "description": "Business entity details for the party responsible for payment. The agent provides this so the seller has the legal name, tax IDs, address, and bank details needed for formal B2B invoicing."
           },
           "brand": {
-            "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+            "$ref": "../core/brand-ref.json",
             "description": "Brand reference identifying the advertiser. Uses the brand's house domain and optional brand_id from brand.json."
           },
           "operator": {
@@ -163,7 +162,7 @@
       "type": "array"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "delete_missing": {
       "default": false,
@@ -176,10 +175,10 @@
       "type": "boolean"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "push_notification_config": {
-      "$ref": "/schemas/3.0.0-rc.3/core/push-notification-config.json",
+      "$ref": "../core/push-notification-config.json",
       "description": "Webhook for async notifications when account status changes (e.g., pending_approval transitions to active)."
     }
   },

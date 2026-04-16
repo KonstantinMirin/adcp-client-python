@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/delivery-metrics.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "dependencies": {
@@ -15,7 +14,7 @@
         "additionalProperties": true,
         "properties": {
           "action_source": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/action-source.json",
+            "$ref": "../enums/action-source.json",
             "description": "Where the conversion occurred"
           },
           "count": {
@@ -56,7 +55,7 @@
             "type": "string"
           },
           "event_type": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json",
+            "$ref": "../enums/event-type.json",
             "description": "The event type"
           },
           "value": {
@@ -269,7 +268,7 @@
     "reach_unit": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/enums/reach-unit.json"
+          "$ref": "../enums/reach-unit.json"
         }
       ],
       "description": "Unit of measurement for the reach field. Aligns with the reach_unit declared on optimization goals and delivery forecasts. Required when reach is present to enable cross-platform comparison."

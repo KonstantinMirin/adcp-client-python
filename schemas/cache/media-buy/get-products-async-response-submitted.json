@@ -1,21 +1,20 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/get-products-async-response-submitted.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Get Products - Submitted",
   "description": "Payload acknowledging the search is queued. Usually for custom/bespoke product curation.",
+  "type": "object",
   "properties": {
-    "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
-    },
     "estimated_completion": {
-      "description": "Estimated completion time for the search",
+      "type": "string",
       "format": "date-time",
-      "type": "string"
+      "description": "Estimated completion time for the search"
+    },
+    "context": {
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
-  "title": "Get Products - Submitted",
-  "type": "object"
+  "additionalProperties": true
 }

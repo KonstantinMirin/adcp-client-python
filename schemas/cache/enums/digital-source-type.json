@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/digital-source-type.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Classification of AI involvement in content creation, aligned with IPTC digitalsourcetype vocabulary. Used in provenance metadata to declare how a creative asset, artifact, or individual asset was produced.",
   "enum": [

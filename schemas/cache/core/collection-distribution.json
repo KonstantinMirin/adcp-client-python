@@ -1,41 +1,40 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/collection-distribution.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Collection Distribution",
   "description": "A collection's presence on a specific publisher platform, identified by platform-specific identifiers. Enables cross-seller matching when the same collection is sold by different agents.",
+  "type": "object",
   "properties": {
+    "publisher_domain": {
+      "type": "string",
+      "description": "Domain of the publisher platform where the collection is distributed (e.g., 'youtube.com', 'spotify.com')"
+    },
     "identifiers": {
+      "type": "array",
       "description": "Platform-specific identifiers for the collection on this publisher",
       "items": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
           "type": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/distribution-identifier-type.json",
+            "$ref": "../enums/distribution-identifier-type.json",
             "description": "Type of distribution identifier"
           },
           "value": {
-            "description": "The identifier value",
-            "type": "string"
+            "type": "string",
+            "description": "The identifier value"
           }
         },
         "required": [
           "type",
           "value"
         ],
-        "type": "object"
+        "additionalProperties": false
       },
-      "minItems": 1,
-      "type": "array"
-    },
-    "publisher_domain": {
-      "description": "Domain of the publisher platform where the collection is distributed (e.g., 'youtube.com', 'spotify.com')",
-      "type": "string"
+      "minItems": 1
     }
   },
   "required": [
     "publisher_domain",
     "identifiers"
   ],
-  "title": "Collection Distribution",
-  "type": "object"
+  "additionalProperties": true
 }

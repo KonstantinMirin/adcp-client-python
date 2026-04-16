@@ -1,17 +1,16 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/attribution-window.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Describes the attribution methodology and lookback windows used for conversion measurement. Enables cross-platform comparison by making attribution methodology transparent.",
   "properties": {
     "model": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/attribution-model.json",
+      "$ref": "../enums/attribution-model.json",
       "description": "Attribution model used to assign credit when multiple touchpoints exist"
     },
     "post_click": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+          "$ref": "duration.json"
         }
       ],
       "description": "Post-click attribution window. Conversions occurring within this duration after a click are attributed to the ad."
@@ -19,7 +18,7 @@
     "post_view": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+          "$ref": "duration.json"
         }
       ],
       "description": "Post-view attribution window. Conversions occurring within this duration after an ad impression (without click) are attributed to the ad."

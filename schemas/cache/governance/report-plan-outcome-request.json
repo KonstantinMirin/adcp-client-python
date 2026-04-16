@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/report-plan-outcome-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Report the outcome of an action to the governance agent. Called by the orchestrator (buyer-side agent) after a seller responds. This is the 'after' half of the governance loop. Sellers do not call this task -- they report delivery data via check_governance with phase 'delivery'.",
@@ -88,7 +87,7 @@
       "type": "string"
     },
     "outcome": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/outcome-type.json",
+      "$ref": "../enums/outcome-type.json",
       "description": "Outcome type."
     },
     "plan_id": {
@@ -128,7 +127,7 @@
           "type": "array"
         },
         "planned_delivery": {
-          "$ref": "/schemas/3.0.0-rc.3/core/planned-delivery.json",
+          "$ref": "../core/planned-delivery.json",
           "description": "What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."
         }
       },

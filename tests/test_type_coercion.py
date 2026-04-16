@@ -518,6 +518,14 @@ class TestResponseTypeCoercion:
             delivery_type=DeliveryType.guaranteed,
             delivery_measurement=DeliveryMeasurement(provider="Test Provider"),
             format_ids=[FormatId(agent_url="https://example.com", id="banner-300x250")],
+            reporting_capabilities={
+                "available_metrics": [],
+                "available_reporting_frequencies": ["daily"],
+                "date_range_support": "date_range",
+                "expected_delay_minutes": 60,
+                "supports_webhooks": False,
+                "timezone": "UTC",
+            },
             pricing_options=[
                 CpmPricingOption(
                     currency="USD",

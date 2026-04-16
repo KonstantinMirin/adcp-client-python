@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/sync-plans-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Response from syncing campaign plans. Returns status and active validation categories for each plan.",
@@ -45,7 +44,7 @@
               "additionalProperties": false,
               "properties": {
                 "enforcement": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/policy-enforcement.json",
+                  "$ref": "../enums/policy-enforcement.json",
                   "description": "Enforcement level for this policy."
                 },
                 "policy_id": {

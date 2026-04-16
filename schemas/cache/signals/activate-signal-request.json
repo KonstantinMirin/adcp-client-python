@@ -1,11 +1,10 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/signals/activate-signal-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Request parameters for activating or deactivating a signal on deployment targets",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account for this activation. Associates with a commercial relationship established via sync_accounts."
     },
     "action": {
@@ -18,18 +17,18 @@
       "type": "string"
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "destinations": {
       "description": "Target destination(s) for activation. If the authenticated caller matches one of these destinations, activation keys will be included in the response.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/destination.json"
+        "$ref": "../core/destination.json"
       },
       "minItems": 1,
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "idempotency_key": {
       "description": "Client-generated unique key for this request. Prevents duplicate activations on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",

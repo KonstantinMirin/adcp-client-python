@@ -1,6 +1,8 @@
+"""Exception hierarchy for AdCP client."""
+
 from __future__ import annotations
 
-"""Exception hierarchy for AdCP client."""
+from typing import Any
 
 
 class ADCPError(Exception):
@@ -25,9 +27,14 @@ class ADCPError(Exception):
         if agent_uri:
             full_message = f"{full_message}\n  URI: {agent_uri}"
         if suggestion:
-            full_message = f"{full_message}\n  💡 {suggestion}"
+            full_message = f"{full_message}\n  Suggestion: {suggestion}"
 
         super().__init__(full_message)
+
+    @property
+    def is_retryable(self) -> bool:
+        """Whether this error is safe to retry."""
+        return False
 
 
 class ADCPConnectionError(ADCPError):
@@ -40,6 +47,10 @@ class ADCPConnectionError(ADCPError):
             "     Try testing with: python -m adcp test --config <agent-id>"
         )
         super().__init__(message, agent_id, agent_uri, suggestion)
+
+    @property
+    def is_retryable(self) -> bool:
+        return True
 
 
 class ADCPAuthenticationError(ADCPError):
@@ -72,6 +83,10 @@ class ADCPTimeoutError(ADCPError):
         )
         suggestion += "\n     Try increasing the timeout value or check if the agent is overloaded."
         super().__init__(message, agent_id, agent_uri, suggestion)
+
+    @property
+    def is_retryable(self) -> bool:
+        return True
 
 
 class ADCPProtocolError(ADCPError):
@@ -134,6 +149,7 @@ class ADCPSimpleAPIError(ADCPError):
         operation: str,
         error_message: str | None = None,
         agent_id: str | None = None,
+        errors: list[Any] | None = None,
     ):
         """Initialize simple API error.
 
@@ -141,7 +157,11 @@ class ADCPSimpleAPIError(ADCPError):
             operation: The operation that failed (e.g., "get_products")
             error_message: The underlying error message from TaskResult
             agent_id: Optional agent ID for context
+            errors: Structured ADCP error objects from the response
         """
+        self.operation = operation
+        self.errors = errors or []
+
         message = f"{operation} failed"
         if error_message:
             message = f"{message}: {error_message}"
@@ -225,3 +245,46 @@ class AdagentsTimeoutError(AdagentsValidationError):
             "     Try increasing the timeout value or check the domain is correct."
         )
         super().__init__(message, None, None, suggestion)
+
+
+class ADCPTaskError(ADCPError):
+    """A task returned an ADCP error response.
+
+    Provides structured access to the error objects from the response,
+    including error codes for programmatic handling.
+    """
+
+    def __init__(
+        self,
+        operation: str,
+        errors: list[Any],
+        agent_id: str | None = None,
+    ):
+        """Initialize task error.
+
+        Args:
+            operation: The task that failed (e.g., "create_media_buy")
+            errors: List of ADCP Error objects from the response
+            agent_id: Optional agent ID for context
+        """
+        self.operation = operation
+        self.errors = errors
+        self.error_codes = [
+            e.code for e in errors if hasattr(e, "code") and e.code
+        ]
+
+        message = f"{operation} failed"
+        if errors:
+            first_msg = getattr(errors[0], "message", str(errors[0]))
+            message = f"{operation} failed: {first_msg}"
+            if len(errors) > 1:
+                message += f" (+{len(errors) - 1} more)"
+
+        super().__init__(message, agent_id=agent_id)
+
+    @property
+    def is_retryable(self) -> bool:
+        """True if any error code is transient (RATE_LIMITED, etc.)."""
+        from adcp.server.helpers import TRANSIENT_CODES
+
+        return bool(TRANSIENT_CODES & set(self.error_codes))

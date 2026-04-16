@@ -1,14 +1,13 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/property/get-property-list-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Request parameters for retrieving a property list with resolved identifiers",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "list_id": {
       "description": "ID of the property list to retrieve",

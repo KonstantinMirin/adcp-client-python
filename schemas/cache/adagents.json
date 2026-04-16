@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/adagents.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Declaration of authorized agents for advertising inventory and data signals. Hosted at /.well-known/adagents.json on publisher domains (for properties) or data provider domains (for signals). Can either contain the full structure inline or reference an authoritative URL.",
   "examples": [
@@ -495,7 +494,7 @@
                   "collections": {
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/collection-selector.json"
+                      "$ref": "core/collection-selector.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -553,7 +552,7 @@
                   "property_ids": {
                     "description": "Property IDs this agent is authorized for. Resolved against the top-level properties array in this file",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/property-id.json"
+                      "$ref": "core/property-id.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -561,7 +560,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -597,7 +596,7 @@
                   "collections": {
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/collection-selector.json"
+                      "$ref": "core/collection-selector.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -655,7 +654,7 @@
                   "property_tags": {
                     "description": "Tags identifying which properties this agent is authorized for. Resolved against the top-level properties array in this file using tag matching",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/property-tag.json"
+                      "$ref": "core/property-tag.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -663,7 +662,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -699,7 +698,7 @@
                   "collections": {
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/collection-selector.json"
+                      "$ref": "core/collection-selector.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -757,7 +756,7 @@
                   "properties": {
                     "description": "Specific properties this agent is authorized for (alternative to property_ids/property_tags)",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/property.json"
+                      "$ref": "core/property.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -765,7 +764,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -801,7 +800,7 @@
                   "collections": {
                     "description": "Optional collection constraints. When present, authorization only applies to inventory associated with these collections.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/collection-selector.json"
+                      "$ref": "core/collection-selector.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -859,7 +858,7 @@
                   "publisher_properties": {
                     "description": "Properties from other publisher domains this agent is authorized for. Each entry specifies a publisher domain and which of their properties this agent can sell",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/publisher-property-selector.json"
+                      "$ref": "core/publisher-property-selector.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -867,7 +866,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -913,7 +912,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -959,7 +958,7 @@
                   "signing_keys": {
                     "description": "Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.",
                     "items": {
-                      "$ref": "/schemas/3.0.0-rc.3/core/agent-signing-key.json"
+                      "$ref": "core/agent-signing-key.json"
                     },
                     "minItems": 1,
                     "type": "array"
@@ -986,7 +985,7 @@
         "collections": {
           "description": "Collections produced or distributed by this publisher. Declares the content programs whose inventory is sold through authorized agents. Products in get_products responses reference these collections by collection_id.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/collection.json"
+            "$ref": "core/collection.json"
           },
           "type": "array"
         },
@@ -1065,7 +1064,7 @@
         "placements": {
           "description": "Canonical placement definitions for properties in this file. Products SHOULD reuse these placement_id values when exposing inventory in get_products, and authorized agents can scope authorization to these placement IDs.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/placement-definition.json"
+            "$ref": "core/placement-definition.json"
           },
           "minItems": 1,
           "type": "array"
@@ -1073,7 +1072,7 @@
         "properties": {
           "description": "Array of all properties covered by this adagents.json file. Defines the canonical property list that authorized agents reference.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/property.json"
+            "$ref": "core/property.json"
           },
           "minItems": 1,
           "type": "array"
@@ -1139,7 +1138,7 @@
         "signals": {
           "description": "Signal catalog published by this data provider. Signals agents reference these signals via data_provider_domain + signal_id.",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/signal-definition.json"
+            "$ref": "core/signal-definition.json"
           },
           "minItems": 1,
           "type": "array"

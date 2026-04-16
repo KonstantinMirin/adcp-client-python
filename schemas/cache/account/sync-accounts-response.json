@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/account/sync-accounts-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.",
   "examples": [
@@ -190,11 +189,11 @@
                 "type": "string"
               },
               "billing_entity": {
-                "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+                "$ref": "../core/business-entity.json",
                 "description": "Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
               },
               "brand": {
-                "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+                "$ref": "../core/brand-ref.json",
                 "description": "Brand reference, echoed from the request"
               },
               "credit_limit": {
@@ -217,7 +216,7 @@
               "errors": {
                 "description": "Per-account errors (only present when action is 'failed')",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+                  "$ref": "../core/error.json"
                 },
                 "type": "array"
               },
@@ -304,14 +303,14 @@
           "type": "array"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "dry_run": {
           "description": "Whether this was a dry run (no actual changes made)",
           "type": "boolean"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [
@@ -339,18 +338,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

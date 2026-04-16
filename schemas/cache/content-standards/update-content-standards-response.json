@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/content-standards/update-content-standards-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response from updating a content standards configuration",
   "oneOf": [
@@ -7,10 +6,10 @@
       "additionalProperties": true,
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "standards_id": {
           "description": "ID of the updated standards configuration",
@@ -37,18 +36,18 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Errors that occurred during the update",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "success": {
           "const": false,

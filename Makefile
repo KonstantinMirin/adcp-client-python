@@ -53,6 +53,10 @@ regenerate-schemas: ## Download latest schemas and regenerate models
 	$(PYTHON) scripts/fix_schema_refs.py
 	@echo "Generating Pydantic models..."
 	$(PYTHON) scripts/generate_types.py
+	@echo "Consolidating exports..."
+	$(PYTHON) scripts/consolidate_exports.py
+	@echo "Generating ergonomic coercion..."
+	$(PYTHON) scripts/generate_ergonomic_coercion.py
 	@echo "✓ Schemas regenerated successfully"
 
 validate-generated: ## Validate generated code (syntax and imports)

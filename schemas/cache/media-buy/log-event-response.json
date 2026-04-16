@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/log-event-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response from event logging operation. Returns either event processing results OR operation-level errors.",
   "oneOf": [
@@ -13,7 +12,7 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "events_processed": {
           "description": "Number of events successfully queued for processing",
@@ -26,7 +25,7 @@
           "type": "integer"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "match_quality": {
           "description": "Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)",
@@ -104,18 +103,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Operation-level errors",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

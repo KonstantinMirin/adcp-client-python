@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/report-plan-outcome-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Response from reporting an action outcome. Only returned to the orchestrator (buyer-side agent) that manages the plan. Sellers report delivery data via check_governance with phase 'delivery', not via this task.",
@@ -27,7 +26,7 @@
             "type": "string"
           },
           "severity": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/escalation-severity.json",
+            "$ref": "../enums/escalation-severity.json",
             "description": "Finding severity."
           }
         },

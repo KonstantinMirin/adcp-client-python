@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/rights-terms.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
@@ -61,7 +60,7 @@
     },
     "uses": {
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+        "$ref": "../enums/right-use.json"
       },
       "type": "array"
     }

@@ -1,16 +1,15 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/update-media-buy-async-response-submitted.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Update Media Buy - Submitted",
   "description": "Payload acknowledging update_media_buy task is queued for processing.",
+  "type": "object",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
-  "title": "Update Media Buy - Submitted",
-  "type": "object"
+  "additionalProperties": true
 }

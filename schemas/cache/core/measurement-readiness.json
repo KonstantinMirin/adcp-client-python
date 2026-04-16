@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/measurement-readiness.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Per-product assessment of whether the buyer's event source setup is sufficient for the product's optimization capabilities. Sellers evaluate this in the context of the buyer's account \u2014 the same product may show different readiness for different buyers depending on their event source configuration.",
@@ -7,14 +6,14 @@
     "issues": {
       "description": "Actionable issues preventing full measurement readiness. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/diagnostic-issue.json"
+        "$ref": "diagnostic-issue.json"
       },
       "type": "array"
     },
     "missing_event_types": {
       "description": "Event types this product requires that the buyer has not configured. Empty or absent when all required types are covered.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json"
+        "$ref": "../enums/event-type.json"
       },
       "type": "array"
     },
@@ -25,13 +24,13 @@
     "required_event_types": {
       "description": "Event types this product needs for effective optimization. Buyers should ensure their event sources cover these types.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json"
+        "$ref": "../enums/event-type.json"
       },
       "minItems": 1,
       "type": "array"
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/assessment-status.json",
+      "$ref": "../enums/assessment-status.json",
       "description": "Overall measurement readiness level for this product given the buyer's event setup. 'insufficient' means the product cannot optimize effectively with the current setup."
     }
   },

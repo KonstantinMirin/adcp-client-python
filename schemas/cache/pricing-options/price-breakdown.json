@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/pricing-options/price-breakdown.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Breaks down the composition of fixed_price from a list (rate card) price through adjustments. Adjustments fall into four kinds: fees (increase buyer price), discounts (reduce buyer price), commissions (revenue splits that don't affect buyer price), and settlement terms (applied at invoicing). The invariant is: list_price with all fee and discount adjustments applied sequentially equals fixed_price. Fees increase the running price; discounts reduce it. This invariant applies only when fixed_price is present on the parent object; on auction-based packages the breakdown is informational only. All monetary values are rounded to currency precision at each step. Budgets are always denominated at the fixed_price level, inclusive of commissions.",
@@ -37,7 +36,7 @@
             "type": "string"
           },
           "kind": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/adjustment-kind.json"
+            "$ref": "../enums/adjustment-kind.json"
           },
           "name": {
             "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",

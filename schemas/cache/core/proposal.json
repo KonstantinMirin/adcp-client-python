@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/proposal.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A proposed media plan with budget allocations across products. Represents the publisher's strategic recommendation for how to structure a campaign based on the brief. Proposals are actionable - buyers can execute them directly via create_media_buy by providing the proposal_id.",
@@ -7,7 +6,7 @@
     "allocations": {
       "description": "Budget allocations across products. Allocation percentages MUST sum to 100. Publishers are responsible for ensuring the sum equals 100; buyers SHOULD validate this before execution.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/product-allocation.json"
+        "$ref": "product-allocation.json"
       },
       "minItems": 1,
       "type": "array"
@@ -28,14 +27,14 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "forecast": {
-      "$ref": "/schemas/3.0.0-rc.3/core/delivery-forecast.json",
+      "$ref": "delivery-forecast.json",
       "description": "Aggregate forecasted delivery metrics for the entire proposal. When both proposal-level and allocation-level forecasts are present, the proposal-level forecast is authoritative for total delivery estimation."
     },
     "insertion_order": {
-      "$ref": "/schemas/3.0.0-rc.3/core/insertion-order.json",
+      "$ref": "insertion-order.json",
       "description": "Formal insertion order attached to a committed proposal. Present when the seller requires a signed agreement before the media buy can proceed. The buyer references the io_id in io_acceptance on create_media_buy."
     },
     "name": {
@@ -49,7 +48,7 @@
       "type": "string"
     },
     "proposal_status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/proposal-status.json",
+      "$ref": "../enums/proposal-status.json",
       "description": "Lifecycle status of this proposal. When absent, the proposal is ready to buy (backward compatible). 'draft' means indicative pricing \u2014 finalize via refine before purchasing. 'committed' means firm pricing with inventory reserved until expires_at."
     },
     "total_budget_guidance": {

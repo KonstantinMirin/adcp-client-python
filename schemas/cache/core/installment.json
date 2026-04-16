@@ -1,11 +1,10 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/installment.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A single bookable unit within a collection \u2014 one episode, issue, event, or rotation period. The parent collection's kind indicates how to interpret each installment: TV/podcast episodes, print issues, live event airings, newsletter editions, or DOOH rotation periods. Installments inherit collection-level fields they don't override: content_rating defaults to the collection's baseline, guest_talent is additive to the collection's recurring talent, and topics add context beyond the collection's genre.",
   "properties": {
     "ad_inventory": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ad-inventory-config.json",
+      "$ref": "ad-inventory-config.json",
       "description": "Break-based ad inventory for this installment. For non-break formats (host reads, integrations), use product placements."
     },
     "collection_id": {
@@ -13,11 +12,11 @@
       "type": "string"
     },
     "content_rating": {
-      "$ref": "/schemas/3.0.0-rc.3/core/content-rating.json",
+      "$ref": "content-rating.json",
       "description": "Installment-specific content rating. Overrides the collection's baseline content_rating when present."
     },
     "deadlines": {
-      "$ref": "/schemas/3.0.0-rc.3/core/installment-deadlines.json",
+      "$ref": "installment-deadlines.json",
       "description": "Booking, cancellation, and material submission deadlines for this installment. Present when the installment has time-sensitive inventory that requires advance commitment or material delivery."
     },
     "derivative_of": {
@@ -29,7 +28,7 @@
           "type": "string"
         },
         "type": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/derivative-type.json",
+          "$ref": "../enums/derivative-type.json",
           "description": "What kind of derivative content this is"
         }
       },
@@ -45,7 +44,7 @@
       "type": "integer"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "flexible_end": {
       "description": "Whether the end time is approximate (live events, sports)",
@@ -54,7 +53,7 @@
     "guest_talent": {
       "description": "Installment-specific guests and talent. Additive to the collection's recurring talent.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/talent.json"
+        "$ref": "talent.json"
       },
       "type": "array"
     },
@@ -80,11 +79,11 @@
       "type": "string"
     },
     "special": {
-      "$ref": "/schemas/3.0.0-rc.3/core/special.json",
+      "$ref": "special.json",
       "description": "Installment-specific event context. When present, this installment is anchored to a real-world event. Overrides the collection-level special when present."
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/installment-status.json",
+      "$ref": "../enums/installment-status.json",
       "description": "Lifecycle status of the installment"
     },
     "topics": {

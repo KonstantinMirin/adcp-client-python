@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/creative-asset.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Creative asset for upload to library - supports static assets, generative formats, and third-party snippets",
@@ -11,46 +10,46 @@
         "^[a-z0-9_]+$": {
           "anyOf": [
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/image-asset.json"
+              "$ref": "assets/image-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/video-asset.json"
+              "$ref": "assets/video-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/audio-asset.json"
+              "$ref": "assets/audio-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/vast-asset.json"
+              "$ref": "assets/vast-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/text-asset.json"
+              "$ref": "assets/text-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/url-asset.json"
+              "$ref": "assets/url-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/html-asset.json"
+              "$ref": "assets/html-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/javascript-asset.json"
+              "$ref": "assets/javascript-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/webhook-asset.json"
+              "$ref": "assets/webhook-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/css-asset.json"
+              "$ref": "assets/css-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/daast-asset.json"
+              "$ref": "assets/daast-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/markdown-asset.json"
+              "$ref": "assets/markdown-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/brief-asset.json"
+              "$ref": "assets/brief-asset.json"
             },
             {
-              "$ref": "/schemas/3.0.0-rc.3/core/assets/catalog-asset.json"
+              "$ref": "assets/catalog-asset.json"
             }
           ]
         }
@@ -62,7 +61,7 @@
       "type": "string"
     },
     "format_id": {
-      "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+      "$ref": "format-id.json",
       "description": "Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
     },
     "inputs": {
@@ -106,11 +105,11 @@
       "type": "array"
     },
     "provenance": {
-      "$ref": "/schemas/3.0.0-rc.3/core/provenance.json",
+      "$ref": "provenance.json",
       "description": "Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/creative-status.json",
+      "$ref": "../enums/creative-status.json",
       "description": "For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state)."
     },
     "tags": {

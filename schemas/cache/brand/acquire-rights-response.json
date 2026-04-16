@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/acquire-rights-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Result of a rights acquisition request. Returns one of three statuses: acquired (with terms and generation credentials), pending_approval (requires rights holder review), or rejected (with reason). Uses discriminated union on status field.",
   "oneOf": [
@@ -12,7 +11,7 @@
       },
       "properties": {
         "approval_webhook": {
-          "$ref": "/schemas/3.0.0-rc.3/core/push-notification-config.json",
+          "$ref": "../core/push-notification-config.json",
           "description": "Authenticated webhook for submitting creatives for approval. POST a creative-approval-request to the URL using the provided authentication. The response is a creative-approval-response."
         },
         "brand_id": {
@@ -20,7 +19,7 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "disclosure": {
           "additionalProperties": true,
@@ -41,12 +40,12 @@
           "type": "object"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "generation_credentials": {
           "description": "Scoped credentials for generating rights-cleared content",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/generation-credential.json"
+            "$ref": "../core/generation-credential.json"
           },
           "type": "array"
         },
@@ -58,7 +57,7 @@
           "type": "array"
         },
         "rights_constraint": {
-          "$ref": "/schemas/3.0.0-rc.3/core/rights-constraint.json",
+          "$ref": "../core/rights-constraint.json",
           "description": "Pre-built rights constraint for embedding in creative manifests. Populated from the agreed terms \u2014 the buyer does not need to construct it manually."
         },
         "rights_id": {
@@ -71,7 +70,7 @@
           "type": "string"
         },
         "terms": {
-          "$ref": "/schemas/3.0.0-rc.3/brand/rights-terms.json",
+          "$ref": "rights-terms.json",
           "description": "Agreed contractual terms"
         },
         "usage_reporting_url": {
@@ -102,7 +101,7 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "detail": {
           "description": "Explanation of what requires approval",
@@ -113,7 +112,7 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "rights_id": {
           "type": "string"
@@ -143,10 +142,10 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "reason": {
           "description": "Why the rights request was rejected. May be sanitized to protect confidential brand rules \u2014 e.g., 'This violates our public figures brand guidelines' rather than naming the specific rule.",
@@ -189,17 +188,17 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

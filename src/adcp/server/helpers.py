@@ -1,0 +1,295 @@
+"""DX helpers for ADCP server builders.
+
+Automate error responses, state transitions, account resolution,
+and context passthrough so developers focus on business logic.
+
+    from adcp.server.helpers import adcp_error, valid_actions_for_status
+
+    return adcp_error("BUDGET_TOO_LOW", "Budget $50 is below minimum $500",
+                      field="budget", suggestion="Increase to at least $500")
+
+    actions = valid_actions_for_status("active")
+"""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
+from typing import Any
+
+# All 32 codes from the ADCP spec (enums/error-code.json) plus SDK extensions.
+# Recovery classification: transient (retry), correctable (fix request), terminal.
+STANDARD_ERROR_CODES: dict[str, dict[str, str]] = {
+    # --- Spec codes: Transient ---
+    "RATE_LIMITED": {"recovery": "transient", "message": "Too many requests"},
+    "SERVICE_UNAVAILABLE": {"recovery": "transient", "message": "Service temporarily unavailable"},
+    # --- Spec codes: Correctable ---
+    "INVALID_REQUEST": {"recovery": "correctable", "message": "Invalid request parameters"},
+    "VALIDATION_ERROR": {"recovery": "correctable", "message": "Request validation failed"},
+    "POLICY_VIOLATION": {"recovery": "correctable", "message": "Policy violation"},
+    "PRODUCT_NOT_FOUND": {"recovery": "correctable", "message": "Product not found"},
+    "PRODUCT_UNAVAILABLE": {"recovery": "correctable", "message": "Product unavailable"},
+    "PRODUCT_EXPIRED": {"recovery": "correctable", "message": "Product expired"},
+    "PROPOSAL_EXPIRED": {"recovery": "correctable", "message": "Proposal expired"},
+    "PROPOSAL_NOT_COMMITTED": {"recovery": "correctable", "message": "Proposal not committed"},
+    "BUDGET_TOO_LOW": {"recovery": "correctable", "message": "Budget below minimum"},
+    "BUDGET_EXHAUSTED": {"recovery": "correctable", "message": "Budget fully spent"},
+    "BUDGET_EXCEEDED": {"recovery": "correctable", "message": "Would exceed budget allocation"},
+    "CREATIVE_REJECTED": {"recovery": "correctable", "message": "Creative rejected"},
+    "CREATIVE_DEADLINE_EXCEEDED": {"recovery": "correctable", "message": "Creative deadline passed"},  # noqa: E501
+    "AUDIENCE_TOO_SMALL": {"recovery": "correctable", "message": "Audience too small"},
+    "MEDIA_BUY_NOT_FOUND": {"recovery": "correctable", "message": "Media buy not found"},
+    "PACKAGE_NOT_FOUND": {"recovery": "correctable", "message": "Package not found"},
+    "CONFLICT": {"recovery": "correctable", "message": "Revision conflict - refetch and retry"},
+    "INVALID_STATE": {"recovery": "correctable", "message": "Invalid state for this operation"},
+    "NOT_CANCELLABLE": {"recovery": "correctable", "message": "Cannot cancel this media buy"},
+    "COMPLIANCE_UNSATISFIED": {"recovery": "correctable", "message": "Compliance not met"},
+    "ACCOUNT_AMBIGUOUS": {"recovery": "correctable", "message": "Account reference is ambiguous"},
+    "ACCOUNT_SETUP_REQUIRED": {"recovery": "correctable", "message": "Account setup required"},
+    "ACCOUNT_PAYMENT_REQUIRED": {"recovery": "correctable", "message": "Payment required"},
+    "IO_REQUIRED": {"recovery": "correctable", "message": "Insertion order required"},
+    "SESSION_NOT_FOUND": {"recovery": "correctable", "message": "Session not found"},
+    "SESSION_TERMINATED": {"recovery": "correctable", "message": "Session already terminated"},
+    # --- Spec codes: Terminal ---
+    "AUTH_REQUIRED": {"recovery": "terminal", "message": "Authentication required"},
+    "ACCOUNT_NOT_FOUND": {"recovery": "terminal", "message": "Account not found"},
+    "ACCOUNT_SUSPENDED": {"recovery": "terminal", "message": "Account suspended"},
+    "UNSUPPORTED_FEATURE": {"recovery": "terminal", "message": "Feature not supported"},
+    # --- SDK extensions (not in spec enum) ---
+    "NOT_SUPPORTED": {"recovery": "terminal", "message": "Operation not supported"},
+}
+
+# Typed recovery classification sets for servers building their own error hierarchies.
+TRANSIENT_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "transient"
+)
+CORRECTABLE_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "correctable"
+)
+TERMINAL_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "terminal"
+)
+
+
+def adcp_error(
+    code: str,
+    message: str | None = None,
+    *,
+    field: str | None = None,
+    suggestion: str | None = None,
+    recovery: str | None = None,
+    retry_after: int | None = None,
+    details: dict[str, str | int | float | bool | None] | None = None,
+) -> dict[str, Any]:
+    """Build a structured ADCP error response with auto-recovery.
+
+    Standard codes get recovery auto-populated from the code table.
+    Custom codes default to "terminal".
+
+    Args:
+        code: Error code (e.g., "BUDGET_TOO_LOW").
+        message: Human-readable message. Defaults to standard message.
+        field: Which request field caused the error.
+        suggestion: Actionable fix suggestion.
+        recovery: Override ("transient", "correctable", "terminal").
+        retry_after: Seconds to wait (for RATE_LIMITED).
+        details: Server-generated debugging data (constraint names, limits,
+            thresholds). Use only server-generated values here. NEVER pass
+            request params or user-supplied strings -- they flow to the
+            caller's LLM context and could enable prompt injection.
+    """
+    std = STANDARD_ERROR_CODES.get(code, {})
+    err: dict[str, Any] = {
+        "code": code,
+        "message": message or std.get("message", code),
+        "recovery": recovery or std.get("recovery", "terminal"),
+    }
+    if field is not None:
+        err["field"] = field
+    if suggestion is not None:
+        err["suggestion"] = suggestion
+    if retry_after is not None:
+        err["retry_after"] = retry_after
+    if details is not None:
+        err["details"] = details
+    return {"errors": [err]}
+
+
+# ============================================================================
+# Media Buy State Machine
+# ============================================================================
+
+# Status values from the ADCP spec (enums/media-buy-status.json).
+# Actions are operations available via update_media_buy for each status.
+# Public constant — servers can inspect, test against, or extend this.
+MEDIA_BUY_STATE_MACHINE: dict[str, list[str]] = {
+    "pending_activation": [
+        "cancel", "update_budget", "update_dates",
+        "update_packages", "add_packages",
+    ],
+    "active": [
+        "pause", "cancel", "update_budget", "update_dates",
+        "update_packages", "add_packages",
+    ],
+    "paused": ["resume", "cancel", "update_budget", "update_dates"],
+    "completed": [],
+    "rejected": [],
+    "canceled": [],
+}
+
+
+def valid_actions_for_status(status: str) -> list[str]:
+    """Get valid buyer actions for a media buy status."""
+    return list(MEDIA_BUY_STATE_MACHINE.get(status, []))
+
+
+def is_terminal_status(status: str) -> bool:
+    """Check if a media buy status is terminal (no further actions)."""
+    return status in ("completed", "rejected", "canceled")
+
+
+# ============================================================================
+# Account Resolution
+# ============================================================================
+
+AccountResolver = Callable[[dict[str, Any]], Awaitable[Any | None]]
+
+
+class AccountError(Exception):
+    """Raised by account resolvers to indicate a specific account error.
+
+    Use this in your resolver to return structured errors for cases
+    beyond simple "not found"::
+
+        async def my_resolver(ref):
+            account = db.find(ref)
+            if not account:
+                return None  # auto-returns ACCOUNT_NOT_FOUND
+            if account.status == "suspended":
+                raise AccountError("ACCOUNT_SUSPENDED", "Account is suspended")
+            if account.status == "payment_required":
+                raise AccountError("ACCOUNT_PAYMENT_REQUIRED",
+                    suggestion="Update payment method at https://...")
+            return account
+    """
+
+    def __init__(
+        self,
+        code: str,
+        message: str | None = None,
+        *,
+        suggestion: str | None = None,
+    ):
+        self.code = code
+        self.error_message = message
+        self.suggestion = suggestion
+        super().__init__(message or code)
+
+
+async def resolve_account(
+    params: dict[str, Any],
+    resolver: AccountResolver | None,
+) -> tuple[Any | None, dict[str, Any] | None]:
+    """Resolve an account reference from request params.
+
+    Returns (account, None) on success, (None, error_dict) on failure,
+    or (None, None) if no account field or no resolver configured.
+
+    The resolver can return None (auto-ACCOUNT_NOT_FOUND) or raise
+    ``AccountError`` for specific error codes (ACCOUNT_SUSPENDED,
+    ACCOUNT_PAYMENT_REQUIRED, ACCOUNT_AMBIGUOUS, etc.).
+    """
+    if resolver is None or "account" not in params:
+        return None, None
+    try:
+        account = await resolver(params["account"])
+    except AccountError as e:
+        return None, adcp_error(
+            e.code,
+            e.error_message,
+            field="account",
+            suggestion=e.suggestion,
+        )
+    if account is None:
+        return None, adcp_error(
+            "ACCOUNT_NOT_FOUND",
+            "The specified account does not exist",
+            field="account",
+            suggestion="Use list_accounts to discover available accounts, "
+            "or sync_accounts to create one",
+        )
+    return account, None
+
+
+# ============================================================================
+# Context Passthrough
+# ============================================================================
+
+
+_MAX_CONTEXT_SIZE = 64 * 1024  # 64KB limit on context passthrough
+
+
+def inject_context(
+    params: dict[str, Any],
+    response: dict[str, Any],
+    *,
+    max_size: int = _MAX_CONTEXT_SIZE,
+) -> dict[str, Any]:
+    """Auto-inject context passthrough from request into response.
+
+    ADCP requires that if a request contains a ``context`` field,
+    the response must echo it back unchanged. A size limit prevents
+    resource amplification from oversized context payloads.
+
+    The context field is opaque and may contain attacker-controlled
+    data -- do not interpret or display its contents.
+    """
+    if "context" in params and "context" not in response:
+        import json
+
+        ctx = params["context"]
+        if len(json.dumps(ctx, default=str)) <= max_size:
+            response["context"] = ctx
+    return response
+
+
+# ============================================================================
+# Cancellation Helper
+# ============================================================================
+
+
+def cancel_media_buy_response(
+    media_buy_id: str,
+    canceled_by: str,
+    *,
+    reason: str | None = None,
+    canceled_at: str | None = None,
+    affected_packages: list[Any] | None = None,
+    revision: int | None = None,
+    sandbox: bool = True,
+) -> dict[str, Any]:
+    """Build a cancellation response with auto-defaults.
+
+    Auto-sets canceled_at to now, status to "canceled", valid_actions to [].
+    Requires canceled_by ("buyer" or "seller") - the field developers
+    most commonly forget.
+    """
+    if canceled_by not in ("buyer", "seller"):
+        raise ValueError(
+            f"canceled_by must be 'buyer' or 'seller', got {canceled_by!r}"
+        )
+    resp: dict[str, Any] = {
+        "media_buy_id": media_buy_id,
+        "status": "canceled",
+        "canceled_by": canceled_by,
+        "canceled_at": canceled_at or datetime.now(timezone.utc).isoformat(),
+        "valid_actions": [],
+        "sandbox": sandbox,
+    }
+    if reason is not None:
+        resp["reason"] = reason
+    if affected_packages is not None:
+        resp["affected_packages"] = affected_packages
+    if revision is not None:
+        resp["revision"] = revision
+    return resp

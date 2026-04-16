@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/account.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A billing account representing the relationship between a buyer and seller. The account determines rate cards, payment terms, and billing entity.",
@@ -152,7 +151,7 @@
       "type": "string"
     },
     "billing_entity": {
-      "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+      "$ref": "business-entity.json",
       "description": "Business entity details for the party responsible for payment. Contains the legal name, tax IDs, address, and bank details needed for formal B2B invoicing. Corresponds to whoever billing points to (operator, agent, or advertiser). When this account appears in a response, bank details MUST be omitted (write-only)."
     },
     "billing_proxy": {
@@ -160,7 +159,7 @@
       "type": "string"
     },
     "brand": {
-      "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+      "$ref": "brand-ref.json",
       "description": "Brand reference identifying the advertiser"
     },
     "credit_limit": {
@@ -182,7 +181,7 @@
       "type": "object"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "governance_agents": {
       "description": "Governance agent endpoints registered on this account. Authentication credentials are write-only and not included in responses \u2014 use sync_governance to set or update credentials.",
@@ -268,7 +267,7 @@
       "type": "object"
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/account-status.json",
+      "$ref": "../enums/account-status.json",
       "description": "Account lifecycle status. See the Accounts Protocol overview for the operations matrix showing which tasks are permitted in each state."
     }
   },

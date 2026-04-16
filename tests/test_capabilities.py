@@ -754,3 +754,88 @@ class TestValidateCapabilities:
         method_names = {w.split("'")[3] for w in warnings}
         assert "log_event" in method_names
         assert "sync_event_sources" in method_names
+
+
+class TestTaskFeatureMapCompleteness:
+    """Verify TASK_FEATURE_MAP covers all expected domains."""
+
+    def test_all_expected_domains_present(self) -> None:
+        from adcp.capabilities import TASK_FEATURE_MAP
+
+        domains = set(TASK_FEATURE_MAP.values())
+        expected = {
+            "conversion_tracking",
+            "audience_targeting",
+            "catalog_management",
+            "content_standards",
+            "signals",
+            "creative_agent",
+            "campaign_governance",
+            "property_lists",
+            "collection_lists",
+            "trusted_match",
+            "sponsored_intelligence",
+            "brand",
+        }
+        assert expected <= domains, f"Missing domains: {expected - domains}"
+
+    def test_all_values_are_strings(self) -> None:
+        from adcp.capabilities import TASK_FEATURE_MAP
+
+        for task, feature in TASK_FEATURE_MAP.items():
+            assert isinstance(task, str), f"Task key {task} is not a string"
+            assert isinstance(feature, str), f"Feature {feature} is not a string"
+
+
+class TestBuildSyntheticCapabilities:
+    """Tests for build_synthetic_capabilities()."""
+
+    def test_default_major_versions(self) -> None:
+        from adcp.capabilities import build_synthetic_capabilities
+
+        result = build_synthetic_capabilities(["media_buy"])
+        assert result["adcp"]["major_versions"] == [2]
+        assert result["supported_protocols"] == ["media_buy"]
+
+    def test_custom_major_versions(self) -> None:
+        from adcp.capabilities import build_synthetic_capabilities
+
+        result = build_synthetic_capabilities(
+            ["media_buy", "signals"],
+            major_versions=[2, 3],
+        )
+        assert result["adcp"]["major_versions"] == [2, 3]
+        assert result["supported_protocols"] == ["media_buy", "signals"]
+
+    def test_importable_from_top_level(self) -> None:
+        from adcp import build_synthetic_capabilities
+
+        assert callable(build_synthetic_capabilities)
+
+
+class TestSupportsV3:
+    """Tests for FeatureResolver.supports_v3()."""
+
+    def test_v3_supported(self) -> None:
+        caps = GetAdcpCapabilitiesResponse(
+            adcp=AdcpInfo(major_versions=[MajorVersion(3)]),
+            supported_protocols=[SupportedProtocol("media_buy")],
+        )
+        resolver = FeatureResolver(caps)
+        assert resolver.supports_v3() is True
+
+    def test_v2_only(self) -> None:
+        caps = GetAdcpCapabilitiesResponse(
+            adcp=AdcpInfo(major_versions=[MajorVersion(2)]),
+            supported_protocols=[SupportedProtocol("media_buy")],
+        )
+        resolver = FeatureResolver(caps)
+        assert resolver.supports_v3() is False
+
+    def test_both_v2_and_v3(self) -> None:
+        caps = GetAdcpCapabilitiesResponse(
+            adcp=AdcpInfo(major_versions=[MajorVersion(2), MajorVersion(3)]),
+            supported_protocols=[SupportedProtocol("media_buy")],
+        )
+        resolver = FeatureResolver(caps)
+        assert resolver.supports_v3() is True

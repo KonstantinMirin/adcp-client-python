@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/brand/get-rights-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Licensable rights matching the search criteria, with pricing options. Each result is a complete snapshot of current availability (stateless, DDEX PIE pattern). Excluded results explain why they were filtered out.",
   "oneOf": [
@@ -12,7 +11,7 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "excluded": {
           "description": "Results that matched but were filtered out, with reasons",
@@ -46,7 +45,7 @@
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "rights": {
           "description": "Matching rights with pricing options, ranked by relevance",
@@ -56,7 +55,7 @@
               "available_uses": {
                 "description": "Rights uses available for licensing",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/enums/right-use.json"
+                  "$ref": "../enums/right-use.json"
                 },
                 "type": "array"
               },
@@ -149,13 +148,13 @@
               "pricing_options": {
                 "description": "Available pricing options for these rights",
                 "items": {
-                  "$ref": "/schemas/3.0.0-rc.3/brand/rights-pricing-option.json"
+                  "$ref": "rights-pricing-option.json"
                 },
                 "minItems": 1,
                 "type": "array"
               },
               "right_type": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/right-type.json"
+                "$ref": "../enums/right-type.json"
               },
               "rights_id": {
                 "description": "Identifier for this rights offering. Referenced in acquire_rights.",
@@ -192,17 +191,17 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

@@ -1,24 +1,23 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/signals/get-signals-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response payload for get_signals task",
   "properties": {
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "errors": {
       "description": "Task-specific errors and warnings (e.g., signal discovery or pricing issues)",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+        "$ref": "../core/error.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-response.json"
+      "$ref": "../core/pagination-response.json"
     },
     "sandbox": {
       "description": "When true, this response contains simulated data from sandbox mode.",
@@ -49,7 +48,7 @@
           "deployments": {
             "description": "Array of deployment targets",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/core/deployment.json"
+              "$ref": "../core/deployment.json"
             },
             "type": "array"
           },
@@ -64,7 +63,7 @@
           "pricing_options": {
             "description": "Pricing options available for this signal. The buyer selects one and passes its pricing_option_id in report_usage for billing verification.",
             "items": {
-              "$ref": "/schemas/3.0.0-rc.3/core/signal-pricing-option.json"
+              "$ref": "../core/signal-pricing-option.json"
             },
             "minItems": 1,
             "type": "array"
@@ -93,15 +92,15 @@
             "type": "string"
           },
           "signal_id": {
-            "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+            "$ref": "../core/signal-id.json",
             "description": "Universal signal identifier referencing the data provider's catalog. Use this to verify authorization and look up signal definitions."
           },
           "signal_type": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/signal-catalog-type.json",
+            "$ref": "../enums/signal-catalog-type.json",
             "description": "Catalog type of signal (marketplace, custom, owned)"
           },
           "value_type": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/signal-value-type.json",
+            "$ref": "../enums/signal-value-type.json",
             "description": "The data type of this signal's values (binary, categorical, numeric)"
           }
         },

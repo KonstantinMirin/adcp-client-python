@@ -1,21 +1,20 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/property/list-property-lists-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Response payload for list_property_lists task",
   "properties": {
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "lists": {
       "description": "Array of property lists (metadata only, not resolved properties)",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/property/property-list.json"
+        "$ref": "property-list.json"
       },
       "type": "array"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-response.json"
+      "$ref": "../core/pagination-response.json"
     }
   },
   "required": [

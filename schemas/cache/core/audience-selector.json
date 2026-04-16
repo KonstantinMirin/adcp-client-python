@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/audience-selector.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Selects an audience by signal reference or natural language description. Uses 'type' as the primary discriminator (signal vs description). Signal selectors additionally use 'value_type' to determine the targeting expression format (matching signal-targeting.json variants).",
   "oneOf": [
@@ -8,7 +7,7 @@
       "description": "Signal-based selector for binary signals \u2014 user either matches or doesn't. The governance agent can resolve catalog signals to their full definition for structural validation.",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "type": {
@@ -39,7 +38,7 @@
       "description": "Signal-based selector for categorical signals \u2014 target users with specific values.",
       "properties": {
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "type": {
@@ -82,7 +81,7 @@
           "type": "number"
         },
         "signal_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/signal-id.json",
+          "$ref": "signal-id.json",
           "description": "The signal to target"
         },
         "type": {

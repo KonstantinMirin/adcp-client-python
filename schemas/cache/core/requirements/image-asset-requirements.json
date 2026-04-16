@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/requirements/image-asset-requirements.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Requirements for image creative assets. These define the technical constraints for image files.",
@@ -137,7 +136,7 @@
       "type": "boolean"
     },
     "unit": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/dimension-unit.json",
+      "$ref": "../../enums/dimension-unit.json",
       "description": "Unit of measurement for width/height values. Defaults to 'px' when absent. Print formats use 'inches' or 'cm'."
     }
   },

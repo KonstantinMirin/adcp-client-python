@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/update-media-buy-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response payload for update_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - updates are either fully applied or not applied at all.",
   "oneOf": [
@@ -15,15 +14,15 @@
         "affected_packages": {
           "description": "Array of packages that were modified with complete state information",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/package.json"
+            "$ref": "../core/package.json"
           },
           "type": "array"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "implementation_date": {
           "description": "ISO 8601 timestamp when changes take effect (null if pending approval)",
@@ -34,7 +33,7 @@
           ]
         },
         "invoice_recipient": {
-          "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+          "$ref": "../core/business-entity.json",
           "description": "Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         },
         "media_buy_id": {
@@ -51,7 +50,7 @@
           "type": "boolean"
         },
         "status": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json",
+          "$ref": "../enums/media-buy-status.json",
           "description": "Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused')."
         },
         "valid_actions": {
@@ -102,18 +101,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Array of errors explaining why the operation failed",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

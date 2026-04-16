@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """MCP server integration helpers.
 
 Provides utilities for registering ADCP handlers with MCP servers.
@@ -14,12 +15,28 @@ from adcp.server.base import ADCPHandler, ToolContext
 
 logger = logging.getLogger(__name__)
 
+# MCP ToolAnnotations — behavioral hints for agent planning.
+# RO = read-only (safe to call speculatively)
+# MUT = mutating (creates or changes state)
+# DEST = destructive (deletes state, not easily reversible)
+# IDEMP = idempotent (safe to retry / call multiple times)
+_RO: dict[str, bool] = {"readOnlyHint": True, "idempotentHint": True}
+_MUT: dict[str, bool] = {"readOnlyHint": False, "destructiveHint": False}
+_DEST: dict[str, bool] = {"readOnlyHint": False, "destructiveHint": True}
+_IDEMP: dict[str, bool] = {"readOnlyHint": False, "idempotentHint": True}
+
 # Tool definitions for all ADCP operations
 ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Core Catalog Operations
     {
         "name": "get_products",
-        "description": "Get advertising products from the catalog",
+        "description": (
+            "Search available advertising products matching campaign requirements. "
+            "Returns products with pricing, formats, and delivery options. "
+            "Use buying_mode='brief' for natural language or 'refine' for proposal negotiation. "
+            "Products include product_ids needed for create_media_buy."
+        ),
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -32,7 +49,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "list_creative_formats",
-        "description": "List supported creative formats",
+        "description": "List available creative formats with asset requirements. Returns format_ids needed for sync_creatives.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -45,7 +63,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Creative Operations
     {
         "name": "sync_creatives",
-        "description": "Sync creatives to the agent",
+        "description": "Upload or update creative assets for a media buy. Idempotent: re-sending the same creative_id updates it. Returns approval status per creative.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -56,7 +75,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "list_creatives",
-        "description": "List synced creatives",
+        "description": "List synced creatives with optional filtering by status, format, or media buy.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -68,7 +88,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "build_creative",
-        "description": "Build a creative from assets",
+        "description": "Generate a creative from a brief and brand assets. Returns a creative manifest with rendered assets.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -80,7 +101,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "preview_creative",
-        "description": "Preview a creative rendering",
+        "description": "Preview a creative rendering before going live. Returns preview URLs or HTML for visual verification.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -92,7 +114,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_creative_delivery",
-        "description": "Get creative delivery metrics",
+        "description": "Get creative delivery tags (VAST, HTML, etc.) for serving. Use after creatives are approved.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -104,7 +127,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Media Buy Operations
     {
         "name": "create_media_buy",
-        "description": "Create a media buy from products",
+        "description": "Create a new media buy with packages. Each package references a product_id from get_products and a pricing_option_id. Returns media_buy_id for tracking.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -115,7 +139,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "update_media_buy",
-        "description": "Update an existing media buy",
+        "description": "Update an existing media buy: pause, resume, cancel, or modify packages and budget. Requires revision for optimistic concurrency.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -127,7 +152,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_media_buy_delivery",
-        "description": "Get delivery metrics for a media buy",
+        "description": "Get delivery metrics (impressions, clicks, spend) for active media buys. Returns totals and per-package breakdowns.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -139,7 +165,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_media_buys",
-        "description": "List media buys with status and optional delivery snapshots",
+        "description": "List media buys with status, packages, and optional delivery snapshots. Filter by media_buy_ids.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -153,7 +180,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Signal Operations
     {
         "name": "get_signals",
-        "description": "Get available signals",
+        "description": "Discover available audience signals for targeting. Use signal_spec for natural language search or signal_ids for exact lookup.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -164,7 +192,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "activate_signal",
-        "description": "Activate a signal for use",
+        "description": "Activate an audience signal to a destination (DSP platform or sales agent). Returns deployment status and activation keys.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -177,7 +206,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Account Operations
     {
         "name": "list_accounts",
-        "description": "List accounts",
+        "description": "List advertiser accounts on this seller. Returns account_ids needed for other operations.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -188,7 +218,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "sync_accounts",
-        "description": "Sync accounts",
+        "description": "Create or update advertiser accounts. Idempotent: re-sending the same brand/operator pair updates the existing account.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -199,7 +230,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_account_financials",
-        "description": "Get account financials",
+        "description": "Get financial details for an account including balance, credit, and payment status.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -210,7 +242,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "report_usage",
-        "description": "Report usage for billing or metering",
+        "description": "Report usage metrics for billing reconciliation.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -223,7 +256,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Event Operations
     {
         "name": "log_event",
-        "description": "Log event",
+        "description": "Log conversion events (purchases, leads, etc.) for attribution and optimization.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -234,7 +268,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "sync_event_sources",
-        "description": "Sync event sources",
+        "description": "Register conversion tracking pixels or event endpoints. Idempotent.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -245,7 +280,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "sync_audiences",
-        "description": "Sync audiences",
+        "description": "Upload audience segments for targeting. Idempotent: re-sending updates existing segments.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -257,7 +293,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "sync_catalogs",
-        "description": "Sync catalogs",
+        "description": "Upload product catalogs for dynamic ads. Supports multiple catalog types (product, store, hotel, etc.).",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -270,7 +307,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Governance Sync
     {
         "name": "sync_governance",
-        "description": "Register governance agents for accounts",
+        "description": "Register governance agents for accounts. Idempotent.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -282,7 +320,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # Feedback Operations
     {
         "name": "provide_performance_feedback",
-        "description": "Provide performance feedback",
+        "description": "Send conversion or performance data back to the seller for optimization. Reference by media_buy_id or buyer_ref.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -295,7 +334,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Protocol Discovery
     {
         "name": "get_adcp_capabilities",
-        "description": "Get ADCP capabilities supported by this agent",
+        "description": "Get this agent's supported protocols, features, and configuration. Call first to understand what this seller can do.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -304,7 +344,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Content Standards
     {
         "name": "create_content_standards",
-        "description": "Create content standards configuration",
+        "description": "Create content standards configuration for brand safety and compliance.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -316,7 +357,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_content_standards",
-        "description": "Get content standards configuration",
+        "description": "Get content standards configuration.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -327,7 +369,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "list_content_standards",
-        "description": "List content standards configurations",
+        "description": "List content standards configurations.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -337,7 +380,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "update_content_standards",
-        "description": "Update content standards configuration",
+        "description": "Update content standards configuration.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -349,7 +393,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "calibrate_content",
-        "description": "Calibrate content against standards",
+        "description": "Evaluate content against standards. Returns compliance assessment.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -361,7 +406,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "validate_content_delivery",
-        "description": "Validate content delivery against standards",
+        "description": "Validate that delivery meets content standards.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -373,7 +419,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_media_buy_artifacts",
-        "description": "Get artifacts associated with a media buy",
+        "description": "Get compliance artifacts associated with a media buy.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -385,7 +432,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Governance
     {
         "name": "get_creative_features",
-        "description": "Evaluate governance features for a creative",
+        "description": "Get creative feature definitions for governance evaluation.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -398,7 +446,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "sync_plans",
-        "description": "Sync campaign governance plans",
+        "description": "Sync campaign governance plans. Idempotent.",
+        "annotations": _IDEMP,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -409,7 +458,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "check_governance",
-        "description": "Check an action against campaign governance",
+        "description": "Check an action against campaign governance rules. Returns approved, denied, or conditions.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -426,7 +476,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "report_plan_outcome",
-        "description": "Report the outcome of a governed action",
+        "description": "Report the outcome of a governed action for audit.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -442,7 +493,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_plan_audit_logs",
-        "description": "Retrieve governance audit logs for one or more plans",
+        "description": "Get audit logs for governance decisions.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -455,7 +507,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Sponsored Intelligence
     {
         "name": "si_get_offering",
-        "description": "Get sponsored intelligence offering",
+        "description": "Get sponsored intelligence offering details and capabilities.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -463,7 +516,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "si_initiate_session",
-        "description": "Initiate sponsored intelligence session",
+        "description": "Start a sponsored intelligence conversational session.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -474,7 +528,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "si_send_message",
-        "description": "Send message in sponsored intelligence session",
+        "description": "Send a message in an active SI session.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -486,7 +541,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "si_terminate_session",
-        "description": "Terminate sponsored intelligence session",
+        "description": "End an SI session. Cannot be undone.",
+        "annotations": _DEST,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -498,7 +554,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Governance (Property Lists)
     {
         "name": "create_property_list",
-        "description": "Create a property list for governance filtering",
+        "description": "Create a property list for inclusion/exclusion targeting.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -513,7 +570,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_property_list",
-        "description": "Get a property list with optional resolution",
+        "description": "Get a property list with optional resolution of dynamic filters.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -526,7 +584,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "list_property_lists",
-        "description": "List property lists",
+        "description": "List property lists with optional filtering by principal or status.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -537,7 +596,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "update_property_list",
-        "description": "Update a property list",
+        "description": "Update a property list name, description, or filters.",
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -552,7 +612,77 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "delete_property_list",
-        "description": "Delete a property list",
+        "description": "Permanently delete a property list.",
+        "annotations": _DEST,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+            },
+            "required": ["list_id"],
+        },
+    },
+    # V3 Governance (Collection Lists)
+    {
+        "name": "create_collection_list",
+        "description": "Create a collection list for governance filtering.",
+        "annotations": _MUT,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "base_collections": {"type": "array"},
+                "filters": {"type": "object"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "get_collection_list",
+        "description": "Get a collection list with optional resolution.",
+        "annotations": _RO,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+                "resolve": {"type": "boolean"},
+                "pagination": {"type": "object"},
+            },
+            "required": ["list_id"],
+        },
+    },
+    {
+        "name": "list_collection_lists",
+        "description": "List collection lists with optional filtering by principal or status.",
+        "annotations": _RO,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "principal": {"type": "string"},
+                "pagination": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "update_collection_list",
+        "description": "Update a collection list name, description, or filters.",
+        "annotations": _MUT,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "list_id": {"type": "string"},
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "filters": {"type": "object"},
+            },
+            "required": ["list_id"],
+        },
+    },
+    {
+        "name": "delete_collection_list",
+        "description": "Permanently delete a collection list.",
+        "annotations": _DEST,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -568,6 +698,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Evaluate publisher placement context against buyer packages"
             " and return matching offers. Called at ad-request time."
         ),
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -590,6 +721,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Evaluate user identity token against active packages"
             " for eligibility. Requires consent in regulated regions."
         ),
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -606,7 +738,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Brand Rights
     {
         "name": "get_brand_identity",
-        "description": "Get brand identity information",
+        "description": "Get brand identity information (logos, colors, guidelines).",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -619,7 +752,8 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
     {
         "name": "get_rights",
-        "description": "Get available rights for licensing",
+        "description": "Discover available brand rights for licensing.",
+        "annotations": _RO,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -640,6 +774,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Acquire rights for brand content usage."
             " Binding contractual action with financial obligations."
         ),
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -666,6 +801,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "Compliance test controller. Sandbox only,"
             " not for production use."
         ),
+        "annotations": _MUT,
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -706,6 +842,11 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
         "list_property_lists",
         "update_property_list",
         "delete_property_list",
+        "create_collection_list",
+        "get_collection_list",
+        "list_collection_lists",
+        "update_collection_list",
+        "delete_collection_list",
     },
     "ContentStandardsHandler": {
         "create_content_standards",
@@ -770,13 +911,16 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             CheckGovernanceRequest,
             ComplyTestControllerRequest,
             ContextMatchRequest,
+            CreateCollectionListRequest,
             CreateContentStandardsRequest,
             CreateMediaBuyRequest,
             CreatePropertyListRequest,
+            DeleteCollectionListRequest,
             DeletePropertyListRequest,
             GetAccountFinancialsRequest,
             GetAdcpCapabilitiesRequest,
             GetBrandIdentityRequest,
+            GetCollectionListRequest,
             GetContentStandardsRequest,
             GetCreativeDeliveryRequest,
             GetCreativeFeaturesRequest,
@@ -790,6 +934,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             GetSignalsRequest,
             IdentityMatchRequest,
             ListAccountsRequest,
+            ListCollectionListsRequest,
             ListContentStandardsRequest,
             ListCreativeFormatsRequest,
             ListCreativesRequest,
@@ -809,6 +954,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             SyncCreativesRequest,
             SyncEventSourcesRequest,
             SyncPlansRequest,
+            UpdateCollectionListRequest,
             UpdateContentStandardsRequest,
             UpdateMediaBuyRequest,
             UpdatePropertyListRequest,
@@ -872,6 +1018,12 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
         "list_property_lists": ListPropertyListsRequest,
         "update_property_list": UpdatePropertyListRequest,
         "delete_property_list": DeletePropertyListRequest,
+        # Collection Lists
+        "create_collection_list": CreateCollectionListRequest,
+        "get_collection_list": GetCollectionListRequest,
+        "list_collection_lists": ListCollectionListsRequest,
+        "update_collection_list": UpdateCollectionListRequest,
+        "delete_collection_list": DeleteCollectionListRequest,
         # Sponsored Intelligence
         "si_get_offering": SiGetOfferingRequest,
         "si_initiate_session": SiInitiateSessionRequest,

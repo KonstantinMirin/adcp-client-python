@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/requirements/offering-asset-constraint.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Declares per-group creative requirements that each offering must satisfy. Allows formats to specify what asset groups (headlines, images, videos) offerings must provide, along with count and per-asset technical constraints.",
@@ -31,15 +30,15 @@
       "type": "string"
     },
     "asset_requirements": {
-      "$ref": "/schemas/3.0.0-rc.3/core/requirements/asset-requirements.json",
+      "$ref": "asset-requirements.json",
       "description": "Technical requirements for each item in this group (e.g., max_length for text, min_width/aspect_ratio for images). Applies uniformly to all items in the group."
     },
     "asset_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/asset-content-type.json",
+      "$ref": "../../enums/asset-content-type.json",
       "description": "The expected content type for this group."
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../../core/ext.json"
     },
     "max_count": {
       "description": "Maximum number of items allowed in this group.",

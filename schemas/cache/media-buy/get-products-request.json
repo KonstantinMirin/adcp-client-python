@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/get-products-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "dependencies": {
@@ -10,11 +9,11 @@
   "description": "Request parameters for discovering or refining advertising products. buying_mode declares the buyer's intent: 'brief' for curated discovery, 'wholesale' for raw catalog access, or 'refine' to iterate on known products and proposals.",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account for product lookup. Returns products with pricing specific to this account's rate card."
     },
     "brand": {
-      "$ref": "/schemas/3.0.0-rc.3/core/brand-ref.json",
+      "$ref": "../core/brand-ref.json",
       "description": "Brand reference for product discovery context. Resolved to full brand identity at execution time."
     },
     "brief": {
@@ -31,14 +30,14 @@
       "type": "string"
     },
     "catalog": {
-      "$ref": "/schemas/3.0.0-rc.3/core/catalog.json",
+      "$ref": "../core/catalog.json",
       "description": "Catalog of items the buyer wants to promote. The seller matches catalog items against its inventory and returns products where matches exist. Supports all catalog types: a job catalog finds job ad products, a product catalog finds sponsored product slots. Reference a synced catalog by catalog_id, or provide inline items."
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "fields": {
       "description": "Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed (e.g., just IDs and pricing for comparison). Required fields (product_id, name) are always included regardless of selection.",
@@ -81,22 +80,22 @@
       "type": "array"
     },
     "filters": {
-      "$ref": "/schemas/3.0.0-rc.3/core/product-filters.json"
+      "$ref": "../core/product-filters.json"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-request.json"
+      "$ref": "../core/pagination-request.json"
     },
     "preferred_delivery_types": {
       "description": "Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation \u2014 the publisher may still include other delivery types when they match the brief well.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/delivery-type.json"
+        "$ref": "../enums/delivery-type.json"
       },
       "minItems": 1,
       "type": "array",
       "uniqueItems": true
     },
     "property_list": {
-      "$ref": "/schemas/3.0.0-rc.3/core/property-list-ref.json",
+      "$ref": "../core/property-list-ref.json",
       "description": "[AdCP 3.0] Reference to an externally managed property list. When provided, the sales agent should filter products to only those available on properties in the list."
     },
     "refine": {
@@ -206,7 +205,7 @@
     "time_budget": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+          "$ref": "../core/duration.json"
         }
       ],
       "description": "Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing."

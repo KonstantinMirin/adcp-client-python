@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/reporting-capabilities.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Reporting capabilities available for a product",
@@ -20,7 +19,7 @@
         ]
       ],
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/available-metric.json"
+        "$ref": "../enums/available-metric.json"
       },
       "type": "array",
       "uniqueItems": true
@@ -28,7 +27,7 @@
     "available_reporting_frequencies": {
       "description": "Supported reporting frequency options",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/enums/reporting-frequency.json"
+        "$ref": "../enums/reporting-frequency.json"
       },
       "minItems": 1,
       "type": "array",
@@ -70,7 +69,7 @@
       "type": "boolean"
     },
     "supports_geo_breakdown": {
-      "$ref": "/schemas/3.0.0-rc.3/core/geo-breakdown-support.json",
+      "$ref": "geo-breakdown-support.json",
       "description": "Geographic breakdown support for this product. Declares which geo levels and systems are available for by_geo reporting within by_package."
     },
     "supports_keyword_breakdown": {

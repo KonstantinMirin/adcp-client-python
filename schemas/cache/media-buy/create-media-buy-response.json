@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/create-media-buy-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response payload for create_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the media buy is either fully created or not created at all.",
   "oneOf": [
@@ -13,7 +12,7 @@
       },
       "properties": {
         "account": {
-          "$ref": "/schemas/3.0.0-rc.3/core/account.json",
+          "$ref": "../core/account.json",
           "description": "Account billed for this media buy. Includes advertiser, billing proxy (if any), and rate card applied."
         },
         "confirmed_at": {
@@ -22,7 +21,7 @@
           "type": "string"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "creative_deadline": {
           "description": "ISO 8601 timestamp for creative upload deadline",
@@ -30,10 +29,10 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "invoice_recipient": {
-          "$ref": "/schemas/3.0.0-rc.3/core/business-entity.json",
+          "$ref": "../core/business-entity.json",
           "description": "Per-buy invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         },
         "media_buy_id": {
@@ -43,12 +42,12 @@
         "packages": {
           "description": "Array of created packages with complete state information",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/package.json"
+            "$ref": "../core/package.json"
           },
           "type": "array"
         },
         "planned_delivery": {
-          "$ref": "/schemas/3.0.0-rc.3/core/planned-delivery.json",
+          "$ref": "../core/planned-delivery.json",
           "description": "The seller's interpreted delivery parameters. Describes what the seller will actually run -- geo, channels, flight dates, frequency caps, and budget. Present when the account has governance_agents or when the seller chooses to provide delivery transparency."
         },
         "revision": {
@@ -61,7 +60,7 @@
           "type": "boolean"
         },
         "status": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json",
+          "$ref": "../enums/media-buy-status.json",
           "description": "Initial media buy status. Either 'active' (immediate activation) or 'pending_activation' (awaiting platform setup)."
         },
         "valid_actions": {
@@ -113,18 +112,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Array of errors explaining why the operation failed",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

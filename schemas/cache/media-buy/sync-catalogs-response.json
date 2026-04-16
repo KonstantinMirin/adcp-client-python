@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/sync-catalogs-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response from catalog sync operation. Returns either per-catalog results (best-effort processing) OR operation-level errors (complete failure). Platforms may approve, reject, or flag individual items within each catalog (similar to Google Merchant Center product review).",
   "oneOf": [
@@ -18,7 +17,7 @@
             "additionalProperties": true,
             "properties": {
               "action": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/catalog-action.json",
+                "$ref": "../enums/catalog-action.json",
                 "description": "Action taken for this catalog"
               },
               "catalog_id": {
@@ -61,7 +60,7 @@
                       "type": "array"
                     },
                     "status": {
-                      "$ref": "/schemas/3.0.0-rc.3/enums/catalog-item-status.json",
+                      "$ref": "../enums/catalog-item-status.json",
                       "description": "Item review status"
                     }
                   },
@@ -119,14 +118,14 @@
           "type": "array"
         },
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "dry_run": {
           "description": "Whether this was a dry run (no actual changes made)",
           "type": "boolean"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "sandbox": {
           "description": "When true, this response contains simulated data from sandbox mode.",
@@ -163,18 +162,18 @@
       },
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "description": "Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "minItems": 1,
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

@@ -1,0 +1,77 @@
+# adcp - Python SDK for Ad Context Protocol
+
+## What this is
+Python client and server library for ADCP, the agent-to-agent advertising protocol.
+Two use cases: (1) connect to ADCP agents as a buyer, (2) build ADCP agents as a seller.
+
+## Quick start: Connect as a buyer
+```python
+from adcp.testing import test_agent
+
+products = await test_agent.simple.get_products(
+    brief="Coffee subscription service",
+    buying_mode="brief",
+)
+print(f"Found {len(products.products)} products")
+```
+
+## Quick start: Build a seller agent
+```python
+from adcp.server import ADCPHandler, serve
+from adcp.server.responses import capabilities_response, products_response
+
+class MySeller(ADCPHandler):
+    async def get_adcp_capabilities(self, params, context=None):
+        return capabilities_response(["media_buy"])
+
+    async def get_products(self, params, context=None):
+        return products_response([
+            {"product_id": "p1", "name": "Premium Display",
+             "pricing_options": [{"pricing_model": "cpm", "floor_price": 5.0, "currency": "USD"}]}
+        ])
+
+serve(MySeller(), name="my-seller")
+```
+
+## Key modules
+- `adcp.client`: ADCPClient, ADCPMultiAgentClient (buyer-side)
+- `adcp.server`: ADCPHandler, serve, adcp_server, response builders (seller-side)
+- `adcp.server.helpers`: adcp_error, valid_actions_for_status, resolve_account, inject_context
+- `adcp.types`: All Pydantic types (Product, MediaBuy, Creative, etc.)
+- `adcp.types.guards`: Type guards (is_adcp_success, is_adcp_error, typed per-response guards)
+- `adcp.types.aliases`: Semantic names for discriminated union variants
+- `adcp.testing`: Pre-configured test agents (test_agent, creative_agent)
+- `adcp.exceptions`: Error hierarchy (ADCPError, ADCPTaskError with is_retryable)
+- `adcp.capabilities`: FeatureResolver, build_synthetic_capabilities, validate_capabilities
+
+## Framework auto-behaviors (seller-side)
+- adcp_error("CODE") auto-populates recovery classification from 20+ standard codes
+- media_buy_response(..., status="active") auto-populates valid_actions
+- resolve_account(params, resolver) auto-returns ACCOUNT_NOT_FOUND errors
+- inject_context(params, response) auto-echoes context passthrough
+- cancel_media_buy_response() auto-sets canceled_at, status, valid_actions
+- Decorator builder (adcp_server) auto-generates get_adcp_capabilities
+
+## Import conventions
+```python
+from adcp import ADCPClient, AgentConfig           # Client setup
+from adcp.types import Product, GetProductsRequest  # Domain types
+from adcp.types.aliases import CreateMediaBuySuccessResponse  # Union variants
+from adcp.types.guards import is_adcp_success       # Response handling
+from adcp.server import ADCPHandler, serve           # Server setup
+from adcp.server import adcp_error, resolve_account  # DX helpers
+from adcp.server.responses import products_response  # Response builders
+```
+
+## Validation
+```bash
+pytest tests/ -v          # Tests
+ruff check src/           # Linter
+mypy src/adcp/            # Type checker
+```
+
+## Do NOT read (generated, wastes context)
+- `src/adcp/types/generated_poc/` - auto-generated from schemas
+- `src/adcp/types/_generated.py` - consolidated generated exports
+- `src/adcp/types/_ergonomic.py` - auto-generated coercion
+- `schemas/` - raw JSON schemas

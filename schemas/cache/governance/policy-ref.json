@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/policy-ref.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "A reference to a policy in the policy registry. Used in brand compliance configurations to declare which registry policies apply.",

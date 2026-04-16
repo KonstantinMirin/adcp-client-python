@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/media-buy/get-media-buy-delivery-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Response payload for get_media_buy_delivery task",
@@ -68,7 +67,7 @@
         "reach_unit": {
           "allOf": [
             {
-              "$ref": "/schemas/3.0.0-rc.3/enums/reach-unit.json"
+              "$ref": "../enums/reach-unit.json"
             }
           ],
           "description": "Unit of measurement for reach. Only present when all aggregated media buys use the same reach_unit."
@@ -97,11 +96,11 @@
       "type": "object"
     },
     "attribution_window": {
-      "$ref": "/schemas/3.0.0-rc.3/core/attribution-window.json",
+      "$ref": "../core/attribution-window.json",
       "description": "Attribution methodology and lookback windows used for conversion metrics in this response. All media buys from a single seller share the same attribution methodology. Enables cross-platform comparison (e.g., Amazon 14-day click vs. Criteo 30-day click)."
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "currency": {
       "description": "ISO 4217 currency code",
@@ -111,12 +110,12 @@
     "errors": {
       "description": "Task-specific errors and warnings (e.g., missing delivery data, reporting platform issues)",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+        "$ref": "../core/error.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "media_buy_deliveries": {
       "description": "Array of delivery data for media buys. When used in webhook notifications, may contain multiple media buys aggregated by publisher. When used in get_media_buy_delivery API responses, typically contains requested media buys.",
@@ -128,7 +127,7 @@
             "items": {
               "allOf": [
                 {
-                  "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                  "$ref": "../core/delivery-metrics.json"
                 },
                 {
                   "properties": {
@@ -137,7 +136,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -150,7 +149,7 @@
                                 "type": "string"
                               },
                               "audience_source": {
-                                "$ref": "/schemas/3.0.0-rc.3/enums/audience-source.json",
+                                "$ref": "../enums/audience-source.json",
                                 "description": "Origin of the audience segment (synced, platform, third_party, lookalike, retargeting, unknown)"
                               }
                             },
@@ -175,7 +174,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -184,7 +183,7 @@
                                 "type": "string"
                               },
                               "content_id_type": {
-                                "$ref": "/schemas/3.0.0-rc.3/enums/content-id-type.json",
+                                "$ref": "../enums/content-id-type.json",
                                 "description": "Identifier type for this content_id"
                               }
                             },
@@ -204,7 +203,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -235,12 +234,12 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
                               "device_platform": {
-                                "$ref": "/schemas/3.0.0-rc.3/enums/device-platform.json",
+                                "$ref": "../enums/device-platform.json",
                                 "description": "Operating system platform"
                               }
                             },
@@ -264,12 +263,12 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
                               "device_type": {
-                                "$ref": "/schemas/3.0.0-rc.3/enums/device-type.json",
+                                "$ref": "../enums/device-type.json",
                                 "description": "Device form factor (desktop, mobile, tablet, ctv, dooh, unknown)"
                               }
                             },
@@ -293,7 +292,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -302,7 +301,7 @@
                                 "type": "string"
                               },
                               "geo_level": {
-                                "$ref": "/schemas/3.0.0-rc.3/enums/geo-level.json",
+                                "$ref": "../enums/geo-level.json",
                                 "description": "Geographic level of this entry (country, region, metro, postal_area)"
                               },
                               "geo_name": {
@@ -335,7 +334,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -370,7 +369,7 @@
                       "items": {
                         "allOf": [
                           {
-                            "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                            "$ref": "../core/delivery-metrics.json"
                           },
                           {
                             "properties": {
@@ -479,7 +478,7 @@
                       "type": "boolean"
                     },
                     "pricing_model": {
-                      "$ref": "/schemas/3.0.0-rc.3/enums/pricing-model.json",
+                      "$ref": "../enums/pricing-model.json",
                       "description": "The pricing model used for this package (e.g., cpm, cpcv, cpp). Indicates how the package is billed and which metrics are most relevant for optimization."
                     },
                     "rate": {
@@ -566,7 +565,7 @@
             "type": "string"
           },
           "pricing_model": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/pricing-model.json",
+            "$ref": "../enums/pricing-model.json",
             "description": "Pricing model used for this media buy"
           },
           "status": {
@@ -587,7 +586,7 @@
           "totals": {
             "allOf": [
               {
-                "$ref": "/schemas/3.0.0-rc.3/core/delivery-metrics.json"
+                "$ref": "../core/delivery-metrics.json"
               },
               {
                 "description": "Aggregate metrics for this media buy across all packages",

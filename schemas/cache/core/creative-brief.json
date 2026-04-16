@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/creative-brief.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "Campaign-level creative context for AI-powered creative generation. Provides the layer between brand identity (stable across campaigns) and individual creative execution (per-request). A brand has one identity (defined in brand.json) but different creative briefs for each campaign or flight.",
@@ -44,11 +43,11 @@
                 "type": "integer"
               },
               "persistence": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-persistence.json",
+                "$ref": "../enums/disclosure-persistence.json",
                 "description": "How long the disclosure must persist during content playback or display. When omitted, the creative agent should use the most restrictive persistence mode supported by the target format."
               },
               "position": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/disclosure-position.json",
+                "$ref": "../enums/disclosure-position.json",
                 "description": "Where the disclosure should appear within the creative. prominent: clearly visible in the main creative area; footer: at the bottom of visual creatives; audio: spoken in audio/video creatives; subtitle: displayed in the subtitle or closed-caption track; overlay: superimposed on video content; end_card: displayed on video end card; pre_roll: spoken or displayed before main content; companion: in companion ad unit alongside primary creative"
               },
               "regulation": {
@@ -115,7 +114,7 @@
     "reference_assets": {
       "description": "Visual and strategic reference materials such as mood boards, product shots, example creatives, and strategy documents",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/reference-asset.json"
+        "$ref": "reference-asset.json"
       },
       "type": "array"
     },

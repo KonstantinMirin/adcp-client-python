@@ -25,6 +25,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from adcp.server.helpers import valid_actions_for_status
+
 
 def _serialize(items: list[Any]) -> list[Any]:
     """Serialize a list of dicts or Pydantic models to plain dicts."""
@@ -133,22 +135,36 @@ def media_buy_response(
     *,
     buyer_ref: str | None = None,
     status: str | None = None,
+    valid_actions: list[str] | None = None,
+    revision: int | None = None,
+    confirmed_at: str | None = None,
     sandbox: bool = True,
 ) -> dict[str, Any]:
     """Build a create_media_buy success response.
 
     Each package should include: package_id, product_id, pricing_option_id, budget.
     Matches CreateMediaBuyResponse1 (success) schema.
+
+    Auto-populates valid_actions from status if not provided.
+    Auto-sets revision to 1 and confirmed_at to now if not provided.
     """
     resp: dict[str, Any] = {
         "media_buy_id": media_buy_id,
         "packages": _serialize(packages),
+        "revision": revision if revision is not None else 1,
+        "confirmed_at": confirmed_at or datetime.now(timezone.utc).isoformat(),
         "sandbox": sandbox,
     }
     if buyer_ref is not None:
         resp["buyer_ref"] = buyer_ref
     if status is not None:
         resp["status"] = status
+        if valid_actions is None:
+            resp["valid_actions"] = valid_actions_for_status(status)
+        else:
+            resp["valid_actions"] = valid_actions
+    elif valid_actions is not None:
+        resp["valid_actions"] = valid_actions
     return resp
 
 
@@ -166,12 +182,14 @@ def update_media_buy_response(
     *,
     affected_packages: list[Any] | None = None,
     status: str | None = None,
+    valid_actions: list[str] | None = None,
     revision: int | None = None,
     sandbox: bool = True,
 ) -> dict[str, Any]:
     """Build an update_media_buy success response.
 
     Matches UpdateMediaBuyResponse1 (success) schema.
+    Auto-populates valid_actions from status if not provided.
     """
     resp: dict[str, Any] = {
         "media_buy_id": media_buy_id,
@@ -181,6 +199,12 @@ def update_media_buy_response(
         resp["affected_packages"] = _serialize(affected_packages)
     if status is not None:
         resp["status"] = status
+        if valid_actions is None:
+            resp["valid_actions"] = valid_actions_for_status(status)
+        else:
+            resp["valid_actions"] = valid_actions
+    elif valid_actions is not None:
+        resp["valid_actions"] = valid_actions
     if revision is not None:
         resp["revision"] = revision
     return resp
@@ -417,10 +441,13 @@ def sync_catalogs_response(
 
 
 def error_response(code: str, message: str) -> dict[str, Any]:
-    """Build a standard AdCP error dict.
+    """Build a single AdCP error object (not a full error response).
 
-    Args:
-        code: Error code (e.g., "INVALID_PRODUCT", "NOT_FOUND").
-        message: Human-readable error message.
+    .. deprecated::
+        Use ``adcp_error()`` from ``adcp.server.helpers`` instead.
+        It returns a properly wrapped ``{"errors": [...]}`` response with
+        auto-recovery classification. This function returns an unwrapped
+        single error dict ``{"code": ..., "message": ...}`` which is not
+        a valid ADCP error response on its own.
     """
     return {"code": code, "message": message}

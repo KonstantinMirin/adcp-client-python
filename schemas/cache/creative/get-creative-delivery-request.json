@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/creative/get-creative-delivery-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "anyOf": [
@@ -17,11 +16,11 @@
   "description": "Request parameters for retrieving creative delivery data including variant-level metrics from a creative agent. At least one scoping filter (media_buy_ids or creative_ids) is required.",
   "properties": {
     "account": {
-      "$ref": "/schemas/3.0.0-rc.3/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account for routing and scoping. Limits results to creatives within this account."
     },
     "context": {
-      "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+      "$ref": "../core/context.json"
     },
     "creative_ids": {
       "description": "Filter to specific creatives by ID. If omitted, returns delivery for all creatives matching the other filters.",
@@ -37,7 +36,7 @@
       "type": "string"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "max_variants": {
       "description": "Maximum number of variants to return per creative. When omitted, the agent returns all variants. Use this to limit response size for generative creatives that may produce large numbers of variants.",
@@ -53,7 +52,7 @@
       "type": "array"
     },
     "pagination": {
-      "$ref": "/schemas/3.0.0-rc.3/core/pagination-request.json",
+      "$ref": "../core/pagination-request.json",
       "description": "Pagination parameters for the creatives array in the response. Uses cursor-based pagination consistent with other list operations."
     },
     "start_date": {

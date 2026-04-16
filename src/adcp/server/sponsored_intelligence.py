@@ -55,7 +55,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
 
     async def si_get_offering(
         self,
-        params: dict[str, Any],
+        params: SiGetOfferingRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> SiGetOfferingResponse | NotImplementedResponse:
         """Get sponsored intelligence offering.
@@ -74,7 +74,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
 
     async def si_initiate_session(
         self,
-        params: dict[str, Any],
+        params: SiInitiateSessionRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> SiInitiateSessionResponse | NotImplementedResponse:
         """Initiate sponsored intelligence session.
@@ -93,7 +93,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
 
     async def si_send_message(
         self,
-        params: dict[str, Any],
+        params: SiSendMessageRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> SiSendMessageResponse | NotImplementedResponse:
         """Send message in sponsored intelligence session.
@@ -112,7 +112,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
 
     async def si_terminate_session(
         self,
-        params: dict[str, Any],
+        params: SiTerminateSessionRequest | dict[str, Any],
         context: ToolContext | None = None,
     ) -> SiTerminateSessionResponse | NotImplementedResponse:
         """Terminate sponsored intelligence session.

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/creative/preview-creative-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Request to generate previews of one or more creative manifests. Accepts either a single creative request or an array of requests for batch processing.",
   "oneOf": [
@@ -8,17 +7,17 @@
       "description": "Single creative preview request",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "creative_manifest": {
-          "$ref": "/schemas/3.0.0-rc.3/core/creative-manifest.json",
+          "$ref": "../core/creative-manifest.json",
           "description": "Complete creative manifest with all required assets for the format."
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "format_id": {
-          "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+          "$ref": "../core/format-id.json",
           "description": "Format identifier for rendering the preview. Optional \u2014 defaults to creative_manifest.format_id if omitted."
         },
         "inputs": {
@@ -56,12 +55,12 @@
           "type": "integer"
         },
         "output_format": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/preview-output-format.json",
+          "$ref": "../enums/preview-output-format.json",
           "default": "url",
           "description": "Output format for previews. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML for direct embedding). Default: 'url' for backward compatibility."
         },
         "quality": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/creative-quality.json",
+          "$ref": "../enums/creative-quality.json",
           "description": "Render quality for the preview. 'draft' produces fast, lower-fidelity renderings for rapid iteration. 'production' produces full-quality renderings for final review. If omitted, the creative agent uses its own default."
         },
         "request_type": {
@@ -85,18 +84,18 @@
       "description": "Batch preview request for multiple creatives (5-10x faster than individual calls)",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "output_format": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/preview-output-format.json",
+          "$ref": "../enums/preview-output-format.json",
           "default": "url",
           "description": "Default output format for all requests in this batch. Individual requests can override this. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML for direct embedding)."
         },
         "quality": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/creative-quality.json",
+          "$ref": "../enums/creative-quality.json",
           "description": "Default render quality for all requests in this batch. Individual requests can override this. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings."
         },
         "request_type": {
@@ -110,11 +109,11 @@
             "additionalProperties": true,
             "properties": {
               "creative_manifest": {
-                "$ref": "/schemas/3.0.0-rc.3/core/creative-manifest.json",
+                "$ref": "../core/creative-manifest.json",
                 "description": "Complete creative manifest with all required assets."
               },
               "format_id": {
-                "$ref": "/schemas/3.0.0-rc.3/core/format-id.json",
+                "$ref": "../core/format-id.json",
                 "description": "Format identifier for rendering the preview. Optional \u2014 defaults to creative_manifest.format_id if omitted."
               },
               "inputs": {
@@ -152,12 +151,12 @@
                 "type": "integer"
               },
               "output_format": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/preview-output-format.json",
+                "$ref": "../enums/preview-output-format.json",
                 "default": "url",
                 "description": "Output format for this preview. 'url' returns preview_url, 'html' returns preview_html."
               },
               "quality": {
-                "$ref": "/schemas/3.0.0-rc.3/enums/creative-quality.json",
+                "$ref": "../enums/creative-quality.json",
                 "description": "Render quality for this preview. 'draft' produces fast, lower-fidelity renderings. 'production' produces full-quality renderings. Overrides any batch-level default."
               },
               "template_id": {
@@ -186,17 +185,17 @@
       "description": "Variant preview request - retrieve a post-flight preview of a specific creative variant that was served during delivery",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "creative_id": {
           "description": "Creative identifier for context",
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "output_format": {
-          "$ref": "/schemas/3.0.0-rc.3/enums/preview-output-format.json",
+          "$ref": "../enums/preview-output-format.json",
           "default": "url",
           "description": "Output format for the preview. 'url' returns preview_url (iframe-embeddable URL), 'html' returns preview_html (raw HTML for direct embedding)."
         },

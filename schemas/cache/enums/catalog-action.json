@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/enums/catalog-action.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Action taken on a catalog during sync operation",
   "enum": [

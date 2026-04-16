@@ -1,11 +1,10 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/collection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A recurring inventory container \u2014 a named program, publication, event series, or rotation that produces bookable installments on a defined cadence. The kind field indicates how to interpret this collection: 'series' for TV/podcast programs, 'publication' for print/newsletter titles, 'event_series' for live events, 'rotation' for DOOH scheduling. Declared in the publisher's adagents.json and referenced by products via collection selectors.",
   "properties": {
     "cadence": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/collection-cadence.json",
+      "$ref": "../enums/collection-cadence.json",
       "description": "How frequently the collection releases new installments"
     },
     "collection_id": {
@@ -13,11 +12,11 @@
       "type": "string"
     },
     "content_rating": {
-      "$ref": "/schemas/3.0.0-rc.3/core/content-rating.json",
+      "$ref": "content-rating.json",
       "description": "Baseline content rating for the collection. Individual installments may override this."
     },
     "deadline_policy": {
-      "$ref": "/schemas/3.0.0-rc.3/core/deadline-policy.json",
+      "$ref": "deadline-policy.json",
       "description": "Default deadline rules for installments of this collection. Agents compute absolute deadlines from each installment's scheduled_at and these lead times. Installments with explicit deadlines override this policy."
     },
     "description": {
@@ -27,12 +26,12 @@
     "distribution": {
       "description": "Where this collection is distributed. Each entry maps the collection to a publisher platform with platform-specific identifiers. Collections SHOULD include at least one platform-independent identifier (imdb_id, gracenote_id, eidr_id) when available.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/collection-distribution.json"
+        "$ref": "collection-distribution.json"
       },
       "type": "array"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "genre": {
       "description": "Genre tags. When genre_taxonomy is present, values are taxonomy IDs (e.g., IAB Content Taxonomy 3.0 codes). Otherwise free-form.",
@@ -60,7 +59,7 @@
       "type": "string"
     },
     "limited_series": {
-      "$ref": "/schemas/3.0.0-rc.3/core/limited-series.json",
+      "$ref": "limited-series.json",
       "description": "When present, this collection is a limited series \u2014 a bounded run with a defined arc, installment count, and end date."
     },
     "name": {
@@ -68,7 +67,7 @@
       "type": "string"
     },
     "production_quality": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/production-quality.json",
+      "$ref": "../enums/production-quality.json",
       "description": "Production quality tier. Seller-declared. Maps to OpenRTB content.prodq (professional=1, prosumer=2, ugc=3)."
     },
     "related_collections": {
@@ -81,7 +80,7 @@
             "type": "string"
           },
           "relationship": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/collection-relationship.json",
+            "$ref": "../enums/collection-relationship.json",
             "description": "How the collections are related"
           }
         },
@@ -98,17 +97,17 @@
       "type": "string"
     },
     "special": {
-      "$ref": "/schemas/3.0.0-rc.3/core/special.json",
+      "$ref": "special.json",
       "description": "When present, this collection is a special \u2014 content anchored to a real-world event or occasion. Individual installments may override with their own event context."
     },
     "status": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/collection-status.json",
+      "$ref": "../enums/collection-status.json",
       "description": "Lifecycle status of the collection"
     },
     "talent": {
       "description": "Hosts, recurring cast, creators associated with the collection. Each talent entry may include a brand_url linking to their brand.json identity.",
       "items": {
-        "$ref": "/schemas/3.0.0-rc.3/core/talent.json"
+        "$ref": "talent.json"
       },
       "type": "array"
     }

@@ -19,9 +19,13 @@ from adcp.adagents import (
     verify_agent_authorization,
     verify_agent_for_property,
 )
-from adcp.capabilities import FeatureResolver, validate_capabilities
+from adcp.capabilities import (  # noqa: F401
+    FeatureResolver,
+    build_synthetic_capabilities,
+    validate_capabilities,
+)
 from adcp.client import ADCPClient, ADCPMultiAgentClient
-from adcp.exceptions import (
+from adcp.exceptions import (  # noqa: F401
     AdagentsNotFoundError,
     AdagentsTimeoutError,
     AdagentsValidationError,
@@ -30,6 +34,7 @@ from adcp.exceptions import (
     ADCPError,
     ADCPFeatureUnsupportedError,
     ADCPProtocolError,
+    ADCPTaskError,
     ADCPTimeoutError,
     ADCPToolNotFoundError,
     ADCPWebhookError,
@@ -375,6 +380,9 @@ from adcp.types.core import (
     TaskStatus,
     WebhookMetadata,
 )
+
+# Re-export type guards for response handling
+from adcp.types.guards import is_adcp_error, is_adcp_success  # noqa: F401
 from adcp.types.registry import (
     AgentCapabilities,
     AgentCompliance,

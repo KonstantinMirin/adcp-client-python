@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/compliance/comply-test-controller-request.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Request payload for the comply_test_controller tool. Triggers seller-side state transitions for compliance testing. Sandbox only \u2014 sellers MUST NOT expose this tool in production.",
   "examples": [
@@ -73,10 +72,10 @@
       "description": "Discover which scenarios this seller supports",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "scenario": {
           "const": "list_scenarios",
@@ -94,10 +93,10 @@
       "description": "Transition a creative to the specified status",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,
@@ -111,7 +110,7 @@
               "type": "string"
             },
             "status": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/creative-status.json"
+              "$ref": "../enums/creative-status.json"
             }
           },
           "required": [
@@ -137,10 +136,10 @@
       "description": "Transition an account to the specified status",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,
@@ -150,7 +149,7 @@
               "type": "string"
             },
             "status": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/account-status.json"
+              "$ref": "../enums/account-status.json"
             }
           },
           "required": [
@@ -176,10 +175,10 @@
       "description": "Transition a media buy to the specified status",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,
@@ -193,7 +192,7 @@
               "type": "string"
             },
             "status": {
-              "$ref": "/schemas/3.0.0-rc.3/enums/media-buy-status.json"
+              "$ref": "../enums/media-buy-status.json"
             }
           },
           "required": [
@@ -219,10 +218,10 @@
       "description": "Transition an SI session to a terminal status",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,
@@ -267,10 +266,10 @@
       "description": "Inject synthetic delivery data for a media buy",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,
@@ -335,10 +334,10 @@
       "description": "Simulate budget consumption to a specified percentage",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "params": {
           "additionalProperties": true,

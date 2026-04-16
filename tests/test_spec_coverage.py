@@ -88,6 +88,8 @@ def test_tool_filtering_by_handler_type():
         "report_plan_outcome", "get_plan_audit_logs",
         "create_property_list", "get_property_list", "list_property_lists",
         "update_property_list", "delete_property_list",
+        "create_collection_list", "get_collection_list", "list_collection_lists",
+        "update_collection_list", "delete_collection_list",
         "get_adcp_capabilities",
     }
 

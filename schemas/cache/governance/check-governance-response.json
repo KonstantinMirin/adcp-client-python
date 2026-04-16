@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/governance/check-governance-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "description": "Governance agent's response to a check request. Returns whether the action is approved under the campaign plan.",
@@ -78,7 +77,7 @@
             "type": "string"
           },
           "severity": {
-            "$ref": "/schemas/3.0.0-rc.3/enums/escalation-severity.json"
+            "$ref": "../enums/escalation-severity.json"
           },
           "uncertainty_reason": {
             "description": "Explanation of why confidence is below 1.0 (e.g., 'Targeting includes regions that partially overlap jurisdiction boundaries'). Present when confidence is below a governance-agent-defined threshold.",

@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/frequency-cap.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "anyOf": [
@@ -41,7 +40,7 @@
     "per": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/enums/reach-unit.json"
+          "$ref": "../enums/reach-unit.json"
         }
       ],
       "description": "Entity granularity for impression counting. Required when max_impressions is set."
@@ -49,7 +48,7 @@
     "suppress": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+          "$ref": "duration.json"
         }
       ],
       "description": "Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {\"interval\": 60, \"unit\": \"minutes\"} for a 1-hour cooldown). Preferred over suppress_minutes."
@@ -62,7 +61,7 @@
     "window": {
       "allOf": [
         {
-          "$ref": "/schemas/3.0.0-rc.3/core/duration.json"
+          "$ref": "duration.json"
         }
       ],
       "description": "Time window for the max_impressions cap (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Required when max_impressions is set."

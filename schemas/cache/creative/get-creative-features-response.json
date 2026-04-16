@@ -1,5 +1,4 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/creative/get-creative-features-response.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Response payload for the get_creative_features task. Returns scored feature values from the governance agent's evaluation of the submitted creative manifest.",
   "oneOf": [
@@ -7,7 +6,7 @@
       "description": "Success response",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "detail_url": {
           "description": "URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control.",
@@ -15,12 +14,12 @@
           "type": "string"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         },
         "results": {
           "description": "Feature values for the evaluated creative",
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/creative/creative-feature-result.json"
+            "$ref": "creative-feature-result.json"
           },
           "type": "array"
         }
@@ -34,16 +33,16 @@
       "description": "Error response",
       "properties": {
         "context": {
-          "$ref": "/schemas/3.0.0-rc.3/core/context.json"
+          "$ref": "../core/context.json"
         },
         "errors": {
           "items": {
-            "$ref": "/schemas/3.0.0-rc.3/core/error.json"
+            "$ref": "../core/error.json"
           },
           "type": "array"
         },
         "ext": {
-          "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
       "required": [

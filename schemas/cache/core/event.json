@@ -1,15 +1,14 @@
 {
-  "$id": "/schemas/3.0.0-rc.3/core/event.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "description": "A marketing event (conversion, engagement, or custom) for attribution and optimization",
   "properties": {
     "action_source": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/action-source.json",
+      "$ref": "../enums/action-source.json",
       "description": "Where the event originated"
     },
     "custom_data": {
-      "$ref": "/schemas/3.0.0-rc.3/core/event-custom-data.json",
+      "$ref": "event-custom-data.json",
       "description": "Event-specific data (value, currency, items, etc.)"
     },
     "custom_event_name": {
@@ -33,14 +32,14 @@
       "type": "string"
     },
     "event_type": {
-      "$ref": "/schemas/3.0.0-rc.3/enums/event-type.json",
+      "$ref": "../enums/event-type.json",
       "description": "Standard event type"
     },
     "ext": {
-      "$ref": "/schemas/3.0.0-rc.3/core/ext.json"
+      "$ref": "ext.json"
     },
     "user_match": {
-      "$ref": "/schemas/3.0.0-rc.3/core/user-match.json",
+      "$ref": "user-match.json",
       "description": "User identifiers for attribution matching"
     }
   },
