@@ -2,8 +2,10 @@ from __future__ import annotations
 
 """Tests for adagents.json validation functionality."""
 
+import unittest.mock
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from adcp.adagents import (
@@ -403,6 +405,7 @@ class TestFetchAdagents:
     @pytest.mark.asyncio
     async def test_fetch_follows_authoritative_location(self):
         """Should follow authoritative_location redirect and return resolved data."""
+        import adcp.adagents as adagents_module
         from adcp.adagents import fetch_adagents
 
         # Initial response has authoritative_location redirect
@@ -426,21 +429,36 @@ class TestFetchAdagents:
             "last_updated": "2025-01-15T10:00:00Z",
         }
 
-        # Mock client that returns different responses based on URL
+        # Mock client for the initial fetch (returns redirect)
         called_urls: list[str] = []
-        responses = [redirect_response_data, resolved_data]
 
         async def mock_get(url, **kwargs):
             called_urls.append(url)
             mock_response = MagicMock()
             mock_response.status_code = 200
-            mock_response.json.return_value = responses[len(called_urls) - 1]
+            mock_response.json.return_value = redirect_response_data
             return mock_response
 
         mock_client = MagicMock()
         mock_client.get = mock_get
 
-        result = await fetch_adagents("example.com", client=mock_client)
+        # Redirect hop uses a fresh client — mock httpx.AsyncClient for that
+        class MockRedirectClient:
+            async def get(self, url, **kwargs):
+                called_urls.append(url)
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = resolved_data
+                return mock_response
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+
+        with unittest.mock.patch.object(
+            adagents_module.httpx, "AsyncClient", MockRedirectClient
+        ):
+            result = await fetch_adagents("example.com", client=mock_client)
 
         assert result == resolved_data
         assert called_urls == [
@@ -486,12 +504,13 @@ class TestFetchAdagents:
 
         mock_client = create_mock_httpx_client(mock_response)
 
-        with pytest.raises(AdagentsValidationError, match="redirect loop|already visited"):
+        with pytest.raises(AdagentsValidationError, match="Circular redirect"):
             await fetch_adagents("example.com", client=mock_client)
 
     @pytest.mark.asyncio
     async def test_fetch_enforces_max_redirect_depth(self):
         """Should enforce maximum redirect depth to prevent abuse."""
+        import adcp.adagents as adagents_module
         from adcp.adagents import fetch_adagents
 
         # Create a long chain of redirects
@@ -512,11 +531,248 @@ class TestFetchAdagents:
         mock_client = MagicMock()
         mock_client.get = mock_get
 
-        with pytest.raises(AdagentsValidationError, match="redirect|depth"):
-            await fetch_adagents("example.com", client=mock_client)
+        # Redirect hops use a fresh client, so patch httpx.AsyncClient too
+        class MockRedirectClient:
+            async def get(self, url, **kwargs):
+                return await mock_get(url, **kwargs)
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+
+        with unittest.mock.patch.object(
+            adagents_module.httpx, "AsyncClient", MockRedirectClient
+        ):
+            with pytest.raises(AdagentsValidationError, match="redirect|depth"):
+                await fetch_adagents("example.com", client=mock_client)
 
         # Should stop after reasonable number of redirects (not go forever)
         assert call_count[0] <= 10
+
+
+class TestSSRFProtection:
+    """Test SSRF protections on authoritative_location redirects."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_localhost_redirect(self):
+        """Should reject authoritative_location pointing to localhost."""
+        from adcp.adagents import fetch_adagents
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://localhost/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = redirect_data
+
+        mock_client = create_mock_httpx_client(mock_response)
+
+        with pytest.raises(AdagentsValidationError, match="localhost"):
+            await fetch_adagents("example.com", client=mock_client)
+
+    @pytest.mark.asyncio
+    async def test_rejects_private_ip_redirect(self):
+        """Should reject authoritative_location pointing to private IP."""
+        from adcp.adagents import fetch_adagents
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://192.168.1.1/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = redirect_data
+
+        mock_client = create_mock_httpx_client(mock_response)
+
+        with pytest.raises(AdagentsValidationError, match="private/reserved"):
+            await fetch_adagents("example.com", client=mock_client)
+
+    @pytest.mark.asyncio
+    async def test_rejects_loopback_ip_redirect(self):
+        """Should reject authoritative_location pointing to 127.0.0.1."""
+        from adcp.adagents import fetch_adagents
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://127.0.0.1/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = redirect_data
+
+        mock_client = create_mock_httpx_client(mock_response)
+
+        with pytest.raises(AdagentsValidationError, match="private/reserved"):
+            await fetch_adagents("example.com", client=mock_client)
+
+    @pytest.mark.asyncio
+    async def test_rejects_cloud_metadata_ip_redirect(self):
+        """Should reject authoritative_location pointing to cloud metadata endpoint."""
+        from adcp.adagents import fetch_adagents
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://169.254.169.254/latest/meta-data/",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = redirect_data
+
+        mock_client = create_mock_httpx_client(mock_response)
+
+        with pytest.raises(AdagentsValidationError, match="private/reserved"):
+            await fetch_adagents("example.com", client=mock_client)
+
+    @pytest.mark.asyncio
+    async def test_rejects_dot_local_redirect(self):
+        """Should reject authoritative_location pointing to .local domain."""
+        from adcp.adagents import fetch_adagents
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://internal-service.local/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = redirect_data
+
+        mock_client = create_mock_httpx_client(mock_response)
+
+        with pytest.raises(AdagentsValidationError, match="localhost"):
+            await fetch_adagents("example.com", client=mock_client)
+
+    @pytest.mark.asyncio
+    async def test_redirect_uses_fresh_client(self):
+        """Redirect hops should not reuse the caller's client."""
+        import adcp.adagents as adagents_module
+        from adcp.adagents import fetch_adagents
+
+        resolved_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authorized_agents": [
+                {
+                    "url": "https://agent.example.com",
+                    "properties": [
+                        {
+                            "property_type": "website",
+                            "name": "Site",
+                            "identifiers": [{"type": "domain", "value": "example.com"}],
+                        }
+                    ],
+                }
+            ],
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://cdn.other-domain.com/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        caller_urls = []
+
+        async def mock_get(url, **kwargs):
+            caller_urls.append(url)
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = redirect_data
+            return mock_response
+
+        caller_client = MagicMock()
+        caller_client.get = mock_get
+
+        fresh_client_urls = []
+
+        class TrackingClient:
+            async def get(self, url, **kwargs):
+                fresh_client_urls.append(url)
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = resolved_data
+                return mock_response
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+
+        with unittest.mock.patch.object(adagents_module.httpx, "AsyncClient", TrackingClient):
+            result = await fetch_adagents("example.com", client=caller_client)
+
+        # Initial fetch used the caller's client
+        assert len(caller_urls) == 1
+        assert "example.com" in caller_urls[0]
+        # Redirect used a fresh client
+        assert len(fresh_client_urls) == 1
+        assert "cdn.other-domain.com" in fresh_client_urls[0]
+        assert "authorized_agents" in result
+
+    @pytest.mark.asyncio
+    async def test_allows_public_domain_redirect(self):
+        """Should allow redirects to legitimate public domains."""
+        import adcp.adagents as adagents_module
+        from adcp.adagents import fetch_adagents
+
+        resolved_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authorized_agents": [
+                {
+                    "url": "https://agent.example.com",
+                    "properties": [
+                        {
+                            "property_type": "website",
+                            "name": "Site",
+                            "identifiers": [{"type": "domain", "value": "example.com"}],
+                        }
+                    ],
+                }
+            ],
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        redirect_data = {
+            "$schema": "/schemas/2.6.0/adagents.json",
+            "authoritative_location": "https://cdn.example.com/adagents/v2/adagents.json",
+            "last_updated": "2025-01-15T10:00:00Z",
+        }
+
+        async def mock_get(url, **kwargs):
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = redirect_data
+            return mock_response
+
+        mock_client = MagicMock()
+        mock_client.get = mock_get
+
+        class MockRedirectClient:
+            async def get(self, url, **kwargs):
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = resolved_data
+                return mock_response
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                pass
+
+        with unittest.mock.patch.object(
+            adagents_module.httpx, "AsyncClient", MockRedirectClient
+        ):
+            result = await fetch_adagents("example.com", client=mock_client)
+        assert "authorized_agents" in result
 
 
 class TestVerifyAgentForProperty:

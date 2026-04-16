@@ -8,6 +8,7 @@ https://{publisher_domain}/.well-known/adagents.json. This module provides utili
 for sales agents to verify they are authorized for specific properties.
 """
 
+import ipaddress
 from typing import Any
 from urllib.parse import urlparse
 
@@ -87,6 +88,38 @@ def _validate_publisher_domain(domain: str) -> str:
         raise AdagentsValidationError(f"Publisher domain must contain at least one dot: {domain!r}")
 
     return domain
+
+
+def _validate_redirect_url(url: str) -> None:
+    """Validate an authoritative_location URL is safe to follow.
+
+    Rejects private/reserved IP addresses and localhost to prevent SSRF attacks
+    where a malicious publisher redirects the SDK to internal services.
+
+    Args:
+        url: The HTTPS URL to validate
+
+    Raises:
+        AdagentsValidationError: If the URL targets a private/reserved address
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+
+    # Reject localhost by name
+    if hostname in ("localhost", "localhost.localdomain") or hostname.endswith(".local"):
+        raise AdagentsValidationError(
+            "authoritative_location must not target localhost"
+        )
+
+    # Reject private/reserved IP addresses
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise AdagentsValidationError(
+                "authoritative_location must not target private/reserved addresses"
+            )
+    except ValueError:
+        pass  # Not an IP literal — hostname is fine
 
 
 def normalize_url(url: str) -> str:
@@ -327,13 +360,21 @@ async def fetch_adagents(
     # Track visited URLs to detect loops
     visited_urls: set[str] = set()
 
+    is_redirect = False
+
     for depth in range(MAX_REDIRECT_DEPTH + 1):
         # Check for redirect loop
         if url in visited_urls:
-            raise AdagentsValidationError(f"Circular redirect detected: {url} already visited")
+            raise AdagentsValidationError(
+                "Circular redirect detected in authoritative_location chain"
+            )
         visited_urls.add(url)
 
-        data = await _fetch_adagents_url(url, timeout, user_agent, client)
+        # Use the caller's client for the initial fetch only. Redirect targets
+        # use a fresh client to avoid leaking credentials to third-party URLs.
+        fetch_client = None if is_redirect else client
+
+        data = await _fetch_adagents_url(url, timeout, user_agent, fetch_client)
 
         # Check if this is a redirect. A response with authoritative_location but no
         # authorized_agents indicates a redirect. If both are present, authorized_agents
@@ -349,6 +390,9 @@ async def fetch_adagents(
                     f"authoritative_location must be an HTTPS URL, got: {authoritative_url!r}"
                 )
 
+            # Validate the redirect target is not a private/reserved address
+            _validate_redirect_url(authoritative_url)
+
             # Check if we've exceeded max depth
             if depth >= MAX_REDIRECT_DEPTH:
                 raise AdagentsValidationError(
@@ -357,6 +401,7 @@ async def fetch_adagents(
 
             # Follow the redirect
             url = authoritative_url
+            is_redirect = True
             continue
 
         # We have the final data with authorized_agents (or both fields present,
