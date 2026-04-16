@@ -733,8 +733,6 @@ class TestGetAllProperties:
 
         properties = get_all_properties(adagents_data)
         assert len(properties) == 3
-        names = {p["name"] for p in properties}
-        assert names == {"Inline Site", "Referenced Site", "Referenced Site"}
         # Check agent_url attribution
         by_agent = {p["agent_url"]: p["name"] for p in properties}
         assert by_agent["https://inline-agent.example.com"] == "Inline Site"
@@ -770,6 +768,51 @@ class TestGetAllProperties:
         assert len(properties) == 2
         assert properties[0]["agent_url"] == "https://agent1.example.com"
         assert properties[1]["agent_url"] == "https://agent2.example.com"
+
+    def test_get_all_properties_unknown_authorization_type(self):
+        """Should return empty for agents with unrecognized authorization_type."""
+        adagents_data = {
+            "authorized_agents": [
+                {
+                    "url": "https://agent.example.com",
+                    "authorization_type": "some_future_type",
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert properties == []
+
+    def test_get_all_properties_authorization_type_takes_precedence(self):
+        """authorization_type should take precedence over stale properties key."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "correct",
+                    "property_type": "website",
+                    "name": "Correct Site",
+                    "identifiers": [{"type": "domain", "value": "correct.com"}],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://agent.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["correct"],
+                    "properties": [
+                        {
+                            "property_type": "website",
+                            "name": "Stale Inline Site",
+                            "identifiers": [{"type": "domain", "value": "stale.com"}],
+                        }
+                    ],
+                },
+            ],
+        }
+
+        properties = get_all_properties(adagents_data)
+        assert len(properties) == 1
+        assert properties[0]["name"] == "Correct Site"
 
     def test_get_all_properties_invalid_data(self):
         """Should raise error for invalid data."""
@@ -837,6 +880,30 @@ class TestGetAllTags:
 
         tags = get_all_tags(adagents_data)
         assert tags == set()
+
+    def test_get_all_tags_with_property_ids(self):
+        """Should extract tags from properties resolved via property_ids."""
+        adagents_data = {
+            "properties": [
+                {
+                    "property_id": "site_a",
+                    "property_type": "website",
+                    "name": "Site A",
+                    "identifiers": [{"type": "domain", "value": "a.com"}],
+                    "tags": ["premium", "news"],
+                },
+            ],
+            "authorized_agents": [
+                {
+                    "url": "https://agent.example.com",
+                    "authorization_type": "property_ids",
+                    "property_ids": ["site_a"],
+                },
+            ],
+        }
+
+        tags = get_all_tags(adagents_data)
+        assert tags == {"premium", "news"}
 
 
 class TestGetPropertiesByAgent:

@@ -491,8 +491,10 @@ def _resolve_agent_properties(
     """
     authorization_type = agent.get("authorization_type", "")
 
-    # Handle inline_properties (properties array directly on agent)
-    if authorization_type == "inline_properties" or "properties" in agent:
+    # Handle inline_properties, or legacy entries with properties array but no authorization_type
+    if authorization_type == "inline_properties" or (
+        not authorization_type and "properties" in agent
+    ):
         properties = agent.get("properties", [])
         if not isinstance(properties, list):
             return []
@@ -509,11 +511,12 @@ def _resolve_agent_properties(
 
     # Handle property_tags (filter top-level properties by tags)
     if authorization_type == "property_tags":
-        authorized_tags = set(agent.get("property_tags", []))
+        authorized_tags = {t for t in agent.get("property_tags", []) if isinstance(t, str)}
         return [
             p
             for p in top_level_properties
-            if isinstance(p, dict) and set(p.get("tags", [])) & authorized_tags
+            if isinstance(p, dict)
+            and {t for t in p.get("tags", []) if isinstance(t, str)} & authorized_tags
         ]
 
     # Handle publisher_properties (cross-domain references)
