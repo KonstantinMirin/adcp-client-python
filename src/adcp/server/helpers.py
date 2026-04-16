@@ -59,6 +59,17 @@ STANDARD_ERROR_CODES: dict[str, dict[str, str]] = {
     "NOT_SUPPORTED": {"recovery": "terminal", "message": "Operation not supported"},
 }
 
+# Typed recovery classification sets for servers building their own error hierarchies.
+TRANSIENT_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "transient"
+)
+CORRECTABLE_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "correctable"
+)
+TERMINAL_CODES: frozenset[str] = frozenset(
+    code for code, info in STANDARD_ERROR_CODES.items() if info["recovery"] == "terminal"
+)
+
 
 def adcp_error(
     code: str,
@@ -110,7 +121,8 @@ def adcp_error(
 
 # Status values from the ADCP spec (enums/media-buy-status.json).
 # Actions are operations available via update_media_buy for each status.
-_STATUS_ACTIONS: dict[str, list[str]] = {
+# Public constant — servers can inspect, test against, or extend this.
+MEDIA_BUY_STATE_MACHINE: dict[str, list[str]] = {
     "pending_activation": [
         "cancel", "update_budget", "update_dates",
         "update_packages", "add_packages",
@@ -128,7 +140,7 @@ _STATUS_ACTIONS: dict[str, list[str]] = {
 
 def valid_actions_for_status(status: str) -> list[str]:
     """Get valid buyer actions for a media buy status."""
-    return list(_STATUS_ACTIONS.get(status, []))
+    return list(MEDIA_BUY_STATE_MACHINE.get(status, []))
 
 
 def is_terminal_status(status: str) -> bool:

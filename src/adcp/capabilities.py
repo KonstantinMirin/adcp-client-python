@@ -78,11 +78,12 @@ TASK_FEATURE_MAP: dict[str, str] = {
     "acquire_rights": "brand",
 }
 
-# Derived: feature -> list of handler methods that implement it.
-# Used by validate_capabilities() to check that sellers implement what they declare.
+# Bidirectional: feature -> list of tasks that require it.
+# Use for feature-gating: "which tasks to hide if feature X is disabled?"
 FEATURE_HANDLER_MAP: dict[str, list[str]] = {}
 for _task, _feature in TASK_FEATURE_MAP.items():
     FEATURE_HANDLER_MAP.setdefault(_feature, []).append(_task)
+del _task, _feature
 
 
 def build_synthetic_capabilities(

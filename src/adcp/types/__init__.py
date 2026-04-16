@@ -252,6 +252,7 @@ from adcp.types._generated import (
     PackageUpdate,
     Pagination,
     PaginationRequest,
+    PaginationResponse,
     Parameters,
     PerformanceFeedback,
     Placement,

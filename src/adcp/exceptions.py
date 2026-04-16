@@ -284,6 +284,7 @@ class ADCPTaskError(ADCPError):
 
     @property
     def is_retryable(self) -> bool:
-        """True if any error code is transient (RATE_LIMITED, TIMEOUT, etc.)."""
-        transient_codes = {"RATE_LIMITED", "SERVICE_UNAVAILABLE", "TIMEOUT"}
-        return bool(transient_codes & set(self.error_codes))
+        """True if any error code is transient (RATE_LIMITED, etc.)."""
+        from adcp.server.helpers import TRANSIENT_CODES
+
+        return bool(TRANSIENT_CODES & set(self.error_codes))
