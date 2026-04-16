@@ -277,6 +277,13 @@ def generate_consolidated_exports() -> str:
 
     # Add model_rebuild() calls for types with forward references
     # This resolves Pydantic forward references after all types are imported
+    rebuild_candidates = [
+        "CreativeManifest",
+        "PreviewCreativeRequest1",
+        "PreviewCreativeRequest2",
+    ]
+    rebuild_types = [t for t in rebuild_candidates if t in all_exports]
+
     rebuild_lines = [
         "",
         "# Rebuild models with forward references",
@@ -287,11 +294,10 @@ def generate_consolidated_exports() -> str:
         "",
         "# Rebuild models that reference other models via forward refs",
         "# Note: only call model_rebuild() on actual classes, not Union type aliases",
-        "CreativeManifest.model_rebuild()",
-        "PreviewCreativeRequest1.model_rebuild()",
-        "PreviewCreativeRequest2.model_rebuild()",
-        "",
     ]
+    for t in rebuild_types:
+        rebuild_lines.append(f"{t}.model_rebuild()")
+    rebuild_lines.append("")
     lines.extend(rebuild_lines)
 
     return "\n".join(lines)

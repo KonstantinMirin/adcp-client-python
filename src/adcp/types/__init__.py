@@ -504,7 +504,7 @@ from adcp.types.aliases import (
 )
 
 # Re-export type guards for discriminated union response handling
-from adcp.types.guards import (
+from adcp.types.guards import (  # noqa: F401
     is_adcp_error,
     is_adcp_success,
     is_activate_signal_error,
