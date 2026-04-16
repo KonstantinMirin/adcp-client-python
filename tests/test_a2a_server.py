@@ -111,6 +111,32 @@ async def test_execute_with_datapart():
     assert result["products"][0]["id"] == "p1"
 
 
+async def test_context_auto_injected():
+    """Context from request is automatically echoed in response."""
+    executor = ADCPAgentExecutor(_TestHandler())
+    ctx = RequestContext(
+        request=MessageSendParams(
+            message=_make_datapart_msg(
+                "get_products",
+                {"context": {"correlation_id": "test-ctx-123"}},
+            )
+        )
+    )
+    queue = EventQueue()
+
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    data_parts = [
+        p.root
+        for p in event.artifacts[0].parts
+        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+    ]
+    result = data_parts[0].data
+    assert result["context"]["correlation_id"] == "test-ctx-123"
+
+
 async def test_execute_unknown_skill():
     """Executor returns failed task for unknown skills."""
     executor = ADCPAgentExecutor(_TestHandler())
