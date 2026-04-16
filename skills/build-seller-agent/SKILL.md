@@ -58,7 +58,7 @@ Pricing models:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
-from adcp.server import ADCPHandler, serve, adcp_error, resolve_account, inject_context
+from adcp.server import ADCPHandler, serve, adcp_error, resolve_account
 from adcp.server.responses import capabilities_response, products_response, media_buy_response
 from adcp.server.test_controller import TestControllerStore
 
@@ -76,6 +76,8 @@ serve(MySeller(), name="my-seller", test_controller=MyStore())
 
 ## Product Construction Example
 
+Every product needs `description`, `reporting_capabilities`, and `delivery_measurement` — these are required by the schema and the storyboard validator.
+
 ```python
 PRODUCTS = [
     {
@@ -87,7 +89,7 @@ PRODUCTS = [
             {"publisher_domain": "example.com", "selection_type": "all"}
         ],
         "format_ids": [
-            {"agent_url": "http://localhost:3001/mcp", "id": "display_970x250"}
+            {"agent_url": AGENT_URL, "id": "display_970x250"}
         ],
         "pricing_options": [
             {
@@ -97,6 +99,19 @@ PRODUCTS = [
                 "currency": "USD",
             }
         ],
+        "reporting_capabilities": {
+            "available_metrics": ["impressions", "spend", "clicks", "ctr"],
+            "available_reporting_frequencies": ["hourly", "daily"],  # hourly|daily|monthly only
+            "date_range_support": "date_range",  # or "lifetime_only"
+            "supports_webhooks": False,
+            "expected_delay_minutes": 60,
+            "timezone": "UTC",
+        },
+        "delivery_measurement": {
+            "measurement_type": "server_side",
+            "verification": "internal",
+            "provider": "internal",
+        },
     },
 ]
 ```
@@ -105,13 +120,15 @@ PRODUCTS = [
 
 The SDK provides helpers that eliminate common boilerplate. Import from `adcp.server`:
 
+**Automatic behaviors** (no handler code needed):
+- **Context passthrough** — if the request has a `context` field, it's echoed back in the response automatically.
+
 | Helper | What it does |
 |--------|-------------|
 | `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery classification (20+ standard codes) |
 | `media_buy_response(..., status="active")` | Auto-populates `valid_actions` from status, auto-sets `revision` and `confirmed_at` |
 | `cancel_media_buy_response(id, "buyer")` | Auto-sets `canceled_at`, `status`, `valid_actions=[]` |
 | `resolve_account(params, resolver)` | Auto-resolves AccountReference, returns ACCOUNT_NOT_FOUND if missing |
-| `inject_context(params, response)` | Echoes `context` field from request to response (ADCP requirement) |
 | `valid_actions_for_status(status)` | Maps status to valid buyer actions |
 | `is_terminal_status(status)` | True for completed/rejected/canceled |
 | `AccountError(code, message, suggestion=)` | Raise from resolver for suspended/payment/ambiguous accounts |
@@ -257,7 +274,7 @@ async def get_products(self, params, context=None):
 
 **`create_media_buy`**
 ```python
-from adcp.server import adcp_error, inject_context
+from adcp.server import adcp_error
 from adcp.server.responses import media_buy_response
 
 async def create_media_buy(self, params, context=None):
@@ -283,8 +300,7 @@ async def create_media_buy(self, params, context=None):
     # Store so get_media_buys and test controller can find it
     media_buys[mb_id] = {"status": "active", "currency": "USD", "packages": packages}
     # status="active" auto-populates valid_actions, revision, confirmed_at
-    resp = media_buy_response(mb_id, packages, status="active")
-    return inject_context(params, resp)
+    return media_buy_response(mb_id, packages, status="active")
 ```
 
 **`get_media_buys`**
@@ -308,7 +324,7 @@ async def get_media_buys(self, params, context=None):
 
 **`update_media_buy`** — handles pause, resume, cancel, budget changes, package updates.
 ```python
-from adcp.server import adcp_error, inject_context, cancel_media_buy_response
+from adcp.server import adcp_error, cancel_media_buy_response
 from adcp.server.responses import update_media_buy_response
 
 async def update_media_buy(self, params, context=None):
@@ -342,10 +358,9 @@ async def update_media_buy(self, params, context=None):
             # Apply budget, dates, etc.
 
     mb["revision"] = mb.get("revision", 1) + 1
-    resp = update_media_buy_response(
+    return update_media_buy_response(
         mb_id, status=mb["status"], revision=mb["revision"]
     )
-    return inject_context(params, resp)
 ```
 
 **`list_creative_formats`**
@@ -490,9 +505,8 @@ return capabilities_response(["media_buy", "compliance_testing"])
 | `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery |
 | `cancel_media_buy_response(id, "buyer"/"seller")` | Cancellation with auto-defaults |
 | `resolve_account(params, resolver)` | Account resolution with auto-error |
-| `inject_context(params, response)` | Context passthrough (ADCP requirement) |
 | `valid_actions_for_status(status)` | Status-to-actions mapping |
-| `serve(handler, test_controller=store)` | Start server on `:3001/mcp` |
+| `serve(handler, transport="a2a"\|"streamable-http", port=3001, test_controller=store)` | Start MCP or A2A server. Context passthrough is automatic. |
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`. Import types from `adcp.types`.
 
@@ -525,6 +539,9 @@ npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --jso
 | Missing `brand`/`operator` in sync_accounts | Echo them back from the request |
 | Not storing entities in memory | Test controller needs to find accounts, media buys, creatives |
 | Wrong `delivery_response` signature | Takes `delivery_response(deliveries_list, reporting_period=...)`, not individual metrics |
+| Missing `reporting_capabilities` on products | Required. Sub-fields: `available_metrics`, `available_reporting_frequencies`, `date_range_support`, `supports_webhooks` |
+| `weekly` in `available_reporting_frequencies` | Only `hourly`, `daily`, `monthly` are valid |
+| Missing `delivery_measurement.provider` | Required field — use `"internal"` or third-party provider name |
 
 ## Reference
 

@@ -228,7 +228,7 @@ async def build_creative(self, params, context=None):
 
 | Function | Usage |
 |----------|-------|
-| `serve(handler)` | Start server on `:3001/mcp` |
+| `serve(handler, transport="a2a"\|"streamable-http", port=3001)` | Start MCP or A2A server. Context passthrough is automatic. |
 | `capabilities_response(protocols)` | `get_adcp_capabilities` response |
 | `creative_formats_response(formats)` | `list_creative_formats` response |
 | `sync_creatives_response(creatives)` | `sync_creatives` response |

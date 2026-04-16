@@ -1117,6 +1117,10 @@ def create_tool_caller(
 ) -> Callable[[dict[str, Any]], Any]:
     """Create a tool caller function for an ADCP handler method.
 
+    Automatically injects context passthrough: if the request contains a
+    ``context`` field, it is echoed back in the response (ADCP requirement).
+    Handlers no longer need to call ``inject_context()`` manually.
+
     Args:
         handler: The ADCP handler instance
         method_name: Name of the method to call
@@ -1124,6 +1128,8 @@ def create_tool_caller(
     Returns:
         Async callable that invokes the handler method
     """
+    from adcp.server.helpers import inject_context
+
     method = getattr(handler, method_name)
 
     async def call_tool(params: dict[str, Any]) -> Any:
@@ -1131,7 +1137,10 @@ def create_tool_caller(
         result = await method(params, context)
         # Convert Pydantic models to JSON-safe dicts for MCP serialization
         if hasattr(result, "model_dump"):
-            return result.model_dump(mode="json", exclude_none=True)
+            result = result.model_dump(mode="json", exclude_none=True)
+        # ADCP requires echoing context from request to response
+        if isinstance(result, dict):
+            inject_context(params, result)
         return result
 
     return call_tool

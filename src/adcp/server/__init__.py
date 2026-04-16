@@ -53,6 +53,7 @@ What the framework does automatically:
 from __future__ import annotations
 
 from adcp.capabilities import validate_capabilities
+from adcp.server.a2a_server import ADCPAgentExecutor, create_a2a_server
 from adcp.server.base import (
     ADCPHandler,
     NotImplementedResponse,
@@ -134,6 +135,9 @@ __all__ = [
     "create_mcp_server",
     "get_tools_for_handler",
     "serve",
+    # A2A integration
+    "ADCPAgentExecutor",
+    "create_a2a_server",
     # Test controller
     "TestControllerStore",
     "TestControllerError",

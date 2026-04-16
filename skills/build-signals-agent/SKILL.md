@@ -53,7 +53,7 @@ At least one pricing option per signal:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
-from adcp.server import ADCPHandler, serve, adcp_error, inject_context
+from adcp.server import ADCPHandler, serve, adcp_error
 from adcp.server.responses import capabilities_response, signals_response, activate_signal_response
 
 class MySignalsAgent(ADCPHandler):
@@ -205,8 +205,7 @@ async def activate_signal(self, params, context=None):
 | Function | Usage |
 |----------|-------|
 | `adcp_error(code, message, field=, suggestion=)` | Structured error with auto-recovery |
-| `inject_context(params, response)` | Context passthrough (ADCP requirement) |
-| `serve(handler)` | Start server on `:3001/mcp` |
+| `serve(handler, transport="a2a"\|"streamable-http", port=3001)` | Start MCP or A2A server. Context passthrough is automatic — no need to call `inject_context` in handlers. |
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`.
 
