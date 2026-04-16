@@ -1,23 +1,25 @@
-"""Error translation and request normalization for multi-transport servers.
+"""Error translation and request normalization for proxy and custom-transport servers.
 
-Servers supporting both MCP and A2A need to translate AdCP errors to each
-protocol's error format, and normalize deprecated field names from older
-clients. These helpers eliminate that duplication.
+Standard servers using ``serve()`` or ``ADCPAgentExecutor`` do not need these
+helpers — the framework handles error translation and request normalization
+internally.
 
-Examples::
+These are for **proxy servers** that catch ``ADCPError`` from a downstream
+agent call and need to format it for their own transport, or custom
+multi-transport servers that bypass the standard framework.
 
-    from adcp.server import translate_error, normalize_request
+Not exported from ``adcp.server`` — import directly::
 
+    from adcp.server.translate import translate_error, normalize_request
+
+    # In a proxy catching errors from a downstream agent:
     try:
-        result = await handler.create_media_buy(params)
+        result = await downstream_client.create_media_buy(params)
     except ADCPError as e:
         raise translate_error(e, protocol="a2a")
         # Raises: ServerError(InternalError(message="...", data={...}))
 
-        raise translate_error(e, protocol="mcp")
-        # Raises: ToolError("INTERNAL_ERROR: ...")
-
-    # Normalize deprecated field names before processing
+    # Normalize deprecated field names from older callers:
     params = normalize_request(params, task_name="create_media_buy")
 """
 
