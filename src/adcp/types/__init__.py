@@ -957,6 +957,7 @@ __all__ = [
     "Pacing",
     "Pagination",
     "PaginationRequest",
+    "PaginationResponse",
     "PricingModel",
     "PrimaryCountry",
     "PropertyIdentifierTypes",
