@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any
 
+import pytest
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
 from a2a.types import (
@@ -23,8 +25,7 @@ from adcp.server.a2a_server import (
     _build_agent_card,
     create_a2a_server,
 )
-from adcp.server.test_controller import TestControllerStore, TestControllerError
-
+from adcp.server.test_controller import TestControllerError, TestControllerStore
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -221,6 +222,10 @@ def test_build_agent_card_skills_tagged_adcp():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 def test_create_a2a_server_creates_starlette_app():
     app = create_a2a_server(_TestHandler(), name="test-agent")
     # Starlette app has .routes
@@ -347,6 +352,10 @@ async def test_execute_test_controller_error():
     assert result["error"] == "NOT_FOUND"
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 def test_create_a2a_server_with_test_controller():
     """create_a2a_server includes comply_test_controller in agent card."""
     app = create_a2a_server(
