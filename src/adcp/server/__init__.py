@@ -109,6 +109,7 @@ from adcp.server.test_controller import (
     register_test_controller,
 )
 from adcp.server.tmp import TmpHandler
+from adcp.server.translate import normalize_request, translate_error
 
 __all__ = [
     # Base classes
@@ -169,4 +170,7 @@ __all__ = [
     "sync_creatives_response",
     "sync_governance_response",
     "update_media_buy_response",
+    # Multi-transport helpers
+    "normalize_request",
+    "translate_error",
 ]
