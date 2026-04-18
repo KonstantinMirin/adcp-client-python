@@ -551,15 +551,18 @@ class TestMCPAdapterIntegration:
 
     @pytest.mark.asyncio
     async def test_structured_conflict_raises(self) -> None:
+        # Spec-canonical MCP error shape per transport-errors.mdx: structuredContent
+        # carries {"adcp_error": {"code": ..., "message": ...}} (singular), not
+        # the A2A-style {"errors": [...]} array.
         from adcp.protocols.mcp import MCPAdapter
 
         adapter = MCPAdapter(_cfg(Protocol.MCP))
         session = AsyncMock()
         mock_result = MagicMock()
         mock_result.isError = True
-        mock_result.content = [MagicMock(type="text", text="Conflict")]
+        mock_result.content = [{"type": "text", "text": "Conflict"}]
         mock_result.structuredContent = {
-            "errors": [{"code": "IDEMPOTENCY_CONFLICT", "message": "drift"}]
+            "adcp_error": {"code": "IDEMPOTENCY_CONFLICT", "message": "drift"}
         }
         session.call_tool = AsyncMock(return_value=mock_result)
         with patch.object(adapter, "_get_session", AsyncMock(return_value=session)):
