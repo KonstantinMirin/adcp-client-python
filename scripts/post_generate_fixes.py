@@ -572,7 +572,7 @@ def fix_reuse_model_discriminator_bug():
     ``Value 'reuse' for discriminator mapped to multiple choices``.
 
     Workaround: delete each bogus subclass and rewrite references to its
-    parent. Remove this fix once the upstream codegen bug is resolved.
+    parent. Remove once koxudaxi/datamodel-code-generator#3092 is fixed.
     """
     print("Fixing Literal['reuse'] discriminator bug from --reuse-model...")
 
