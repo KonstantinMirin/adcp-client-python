@@ -41,7 +41,13 @@ except ImportError:
     HTTPX_AVAILABLE = False
     HTTPStatusError = None  # type: ignore[assignment, misc]
 
-from adcp.exceptions import ADCPConnectionError, ADCPTimeoutError
+from adcp import _idempotency
+from adcp.exceptions import (
+    ADCPConnectionError,
+    ADCPTimeoutError,
+    IdempotencyConflictError,
+    IdempotencyExpiredError,
+)
 from adcp.protocols.base import ProtocolAdapter
 from adcp.types.core import DebugInfo, TaskResult, TaskStatus
 
@@ -310,6 +316,11 @@ class MCPAdapter(ProtocolAdapter):
         start_time = time.time() if self.agent_config.debug else None
         debug_info = None
         debug_request: dict[str, Any] = {}
+        if _idempotency.is_mutating(tool_name) and self.idempotency_capability_check:
+            await self.idempotency_capability_check()
+        params, idempotency_key = _idempotency.inject_key(
+            tool_name, params, client_token=self.idempotency_client_token
+        )
 
         try:
             session = await self._get_session()
@@ -318,7 +329,7 @@ class MCPAdapter(ProtocolAdapter):
                 debug_request = {
                     "protocol": "MCP",
                     "tool": tool_name,
-                    "params": params,
+                    "params": _idempotency.redact_params(params),
                     "transport": self.agent_config.mcp_transport,
                 }
 
@@ -344,6 +355,16 @@ class MCPAdapter(ProtocolAdapter):
                 # For error responses, structuredContent is optional
                 # Use the error message from content as the error
                 error_message = message_text or "Tool execution failed"
+                structured_error = getattr(result, "structuredContent", None)
+                # Prefer structured error codes when present, then fall back to
+                # scanning the text content — many MCP servers (FastMCP default)
+                # return is_error=true with only a text body carrying the code.
+                _idempotency.raise_for_idempotency_error(
+                    tool_name, structured_error, self.agent_config.id
+                )
+                _idempotency.raise_for_idempotency_text(
+                    tool_name, message_text, self.agent_config.id
+                )
                 if self.agent_config.debug and start_time:
                     duration_ms = (time.time() - start_time) * 1000
                     debug_info = DebugInfo(
@@ -359,6 +380,7 @@ class MCPAdapter(ProtocolAdapter):
                     error=error_message,
                     success=False,
                     debug_info=debug_info,
+                    idempotency_key=idempotency_key,
                 )
 
             # For successful responses, structuredContent is required
@@ -377,23 +399,36 @@ class MCPAdapter(ProtocolAdapter):
                 duration_ms = (time.time() - start_time) * 1000
                 debug_info = DebugInfo(
                     request=debug_request,
-                    response={
-                        "data": data_to_return,
-                        "message": message_text,
-                        "is_error": False,
-                    },
+                    response=_idempotency.deep_redact(
+                        {
+                            "data": data_to_return,
+                            "message": message_text,
+                            "is_error": False,
+                        }
+                    ),
                     duration_ms=duration_ms,
                 )
 
+            _idempotency.raise_for_idempotency_error(
+                tool_name, data_to_return, self.agent_config.id
+            )
+
             # Return both the structured data and the human-readable message
-            return TaskResult[Any](
+            task_result = TaskResult[Any](
                 status=TaskStatus.COMPLETED,
                 data=data_to_return,
                 message=message_text,
                 success=True,
                 debug_info=debug_info,
             )
+            return _idempotency.annotate_result(task_result, idempotency_key)
 
+        except (IdempotencyConflictError, IdempotencyExpiredError):
+            # Propagate typed idempotency errors — callers MUST handle these
+            # distinctly (mint fresh key / reconcile state). Other ADCPError
+            # subclasses (connection, timeout) continue to be converted to
+            # TaskResult(failed) below, preserving the existing contract.
+            raise
         except Exception as e:
             if self.agent_config.debug and start_time:
                 duration_ms = (time.time() - start_time) * 1000
@@ -407,6 +442,7 @@ class MCPAdapter(ProtocolAdapter):
                 error=str(e),
                 success=False,
                 debug_info=debug_info,
+                idempotency_key=idempotency_key,
             )
 
     # ========================================================================

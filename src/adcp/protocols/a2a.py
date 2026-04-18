@@ -20,10 +20,13 @@ from a2a.types import (
     TextPart,
 )
 
+from adcp import _idempotency
 from adcp.exceptions import (
     ADCPAuthenticationError,
     ADCPConnectionError,
     ADCPTimeoutError,
+    IdempotencyConflictError,
+    IdempotencyExpiredError,
 )
 from adcp.protocols.base import ProtocolAdapter
 from adcp.types.core import AgentConfig, DebugInfo, TaskResult, TaskStatus
@@ -140,6 +143,11 @@ class A2AAdapter(ProtocolAdapter):
         See: https://docs.adcontextprotocol.org/docs/protocols/a2a-guide
         """
         start_time = time.time() if self.agent_config.debug else None
+        if _idempotency.is_mutating(tool_name) and self.idempotency_capability_check:
+            await self.idempotency_capability_check()
+        params, idempotency_key = _idempotency.inject_key(
+            tool_name, params, client_token=self.idempotency_client_token
+        )
         a2a_client = await self._get_a2a_client()
 
         # Build A2A message
@@ -185,7 +193,7 @@ class A2AAdapter(ProtocolAdapter):
                 "method": "send_message",
                 "message_id": message_id,
                 "tool": tool_name,
-                "params": params,
+                "params": _idempotency.redact_params(params),
             }
 
         try:
@@ -203,7 +211,7 @@ class A2AAdapter(ProtocolAdapter):
                     duration_ms = (time.time() - start_time) * 1000
                     debug_info = DebugInfo(
                         request=debug_request,
-                        response={"error": response.error.model_dump()},
+                        response=_idempotency.deep_redact({"error": response.error.model_dump()}),
                         duration_ms=duration_ms,
                     )
                 return TaskResult[Any](
@@ -211,6 +219,7 @@ class A2AAdapter(ProtocolAdapter):
                     error=error_msg,
                     success=False,
                     debug_info=debug_info,
+                    idempotency_key=idempotency_key,
                 )
 
             # Handle success response
@@ -221,13 +230,17 @@ class A2AAdapter(ProtocolAdapter):
                     duration_ms = (time.time() - start_time) * 1000
                     debug_info = DebugInfo(
                         request=debug_request,
-                        response={"result": result.model_dump()},
+                        response=_idempotency.deep_redact({"result": result.model_dump()}),
                         duration_ms=duration_ms,
                     )
 
                 # Result can be either Task or Message
                 if isinstance(result, Task):
-                    return self._process_task_response(result, debug_info)
+                    task_result = self._process_task_response(result, debug_info)
+                    _idempotency.raise_for_idempotency_error(
+                        tool_name, task_result.data, self.agent_config.id
+                    )
+                    return _idempotency.annotate_result(task_result, idempotency_key)
                 else:
                     # Message response (shouldn't happen for send_message, but handle it)
                     agent_id = self.agent_config.id
@@ -246,6 +259,7 @@ class A2AAdapter(ProtocolAdapter):
                 error="Invalid response from A2A client",
                 success=False,
                 debug_info=debug_info,
+                idempotency_key=idempotency_key,
             )
 
         except httpx.HTTPStatusError as e:
@@ -268,6 +282,7 @@ class A2AAdapter(ProtocolAdapter):
                 error=error_msg,
                 success=False,
                 debug_info=debug_info,
+                idempotency_key=idempotency_key,
             )
         except httpx.TimeoutException as e:
             if self.agent_config.debug and start_time:
@@ -282,7 +297,14 @@ class A2AAdapter(ProtocolAdapter):
                 error=f"Timeout: {e}",
                 success=False,
                 debug_info=debug_info,
+                idempotency_key=idempotency_key,
             )
+        except (IdempotencyConflictError, IdempotencyExpiredError):
+            # Propagate typed idempotency errors — callers MUST handle these
+            # distinctly (mint fresh key / reconcile state). Other ADCPError
+            # subclasses (connection, timeout, auth) continue to be converted
+            # to TaskResult(failed) below, preserving the existing contract.
+            raise
         except Exception as e:
             if self.agent_config.debug and start_time:
                 duration_ms = (time.time() - start_time) * 1000
@@ -296,6 +318,7 @@ class A2AAdapter(ProtocolAdapter):
                 error=str(e),
                 success=False,
                 debug_info=debug_info,
+                idempotency_key=idempotency_key,
             )
 
     def _process_task_response(self, task: Task, debug_info: DebugInfo | None) -> TaskResult[Any]:

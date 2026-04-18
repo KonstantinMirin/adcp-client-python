@@ -136,6 +136,16 @@ class TaskResult(BaseModel, Generic[T]):
     success: bool = Field(default=True)
     metadata: dict[str, Any] | None = None
     debug_info: DebugInfo | None = None
+    # The full idempotency_key the SDK used for this request — echoed here so
+    # buyers can correlate against their own records. SENSITIVE inside the
+    # seller's replay_ttl_seconds window (serves as a retry-pattern oracle);
+    # do not emit to shared logs. The SDK's debug capture redacts keys by
+    # default; avoid ``model_dump_json()``-ing a TaskResult into shared sinks.
+    idempotency_key: str | None = None
+    # True when the seller returned a cached response for a replayed key.
+    # Agents that emit side effects on success (notifications, memory writes,
+    # downstream tool calls) must check this flag and suppress duplicates.
+    replayed: bool = False
 
 
 class ActivityType(str, Enum):

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 """Main client classes for AdCP."""
 
+import contextlib
 import hashlib
 import hmac
 import json
 import logging
 import os
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
 from typing import Any
 
@@ -291,6 +292,7 @@ class ADCPClient:
         webhook_timestamp_tolerance: int = 300,
         capabilities_ttl: float = 3600.0,
         validate_features: bool = False,
+        strict_idempotency: bool = False,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -308,6 +310,12 @@ class ADCPClient:
             validate_features: When True, automatically check that the seller supports
                 required features before making task calls (e.g., sync_audiences requires
                 audience_targeting). Requires capabilities to have been fetched first.
+            strict_idempotency: When True, verify the seller declared
+                ``adcp.idempotency.replay_ttl_seconds`` in capabilities before any
+                mutating call. Fetches capabilities lazily on first use. Raises
+                ``IdempotencyUnsupportedError`` if the declaration is missing —
+                sellers that don't declare it provide no retry-safety guarantee
+                per AdCP #2315. Defaults to False for backward compatibility.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
@@ -316,11 +324,18 @@ class ADCPClient:
         self.webhook_timestamp_tolerance = webhook_timestamp_tolerance
         self.capabilities_ttl = capabilities_ttl
         self.validate_features = validate_features
+        self.strict_idempotency = strict_idempotency
 
         # Capabilities cache
         self._capabilities: GetAdcpCapabilitiesResponse | None = None
         self._feature_resolver: FeatureResolver | None = None
         self._capabilities_fetched_at: float | None = None
+        self._idempotency_capability_verified: bool = False
+        # Unique per-instance token so use_idempotency_key scopes to this
+        # client and does not bleed to siblings (AdCP #2315 cross-seller risk).
+        from uuid import uuid4 as _uuid4
+
+        self._idempotency_client_token: str = _uuid4().hex
 
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
@@ -331,10 +346,51 @@ class ADCPClient:
         else:
             raise ValueError(f"Unsupported protocol: {agent_config.protocol}")
 
+        self.adapter.idempotency_client_token = self._idempotency_client_token
+        if strict_idempotency:
+            self.adapter.idempotency_capability_check = self._ensure_idempotency_capability
+
         # Initialize simple API accessor (lazy import to avoid circular dependency)
         from adcp.simple import SimpleAPI
 
         self.simple = SimpleAPI(self)
+
+    async def _ensure_idempotency_capability(self) -> None:
+        """Verify the seller declared idempotency.replay_ttl_seconds in capabilities.
+
+        Called before every mutating request when ``strict_idempotency=True``.
+        Fetches capabilities on first invocation; subsequent calls are no-ops
+        once the declaration has been observed. Raises
+        ``IdempotencyUnsupportedError`` when the seller is missing the field.
+
+        Sets ``_idempotency_capability_verified = True`` BEFORE calling
+        ``fetch_capabilities`` so any recursive dispatch through the adapter
+        terminates (``get_adcp_capabilities`` is non-mutating, so it would
+        short-circuit anyway — but this guard protects against future refactors
+        that might add it to the mutating set).
+        """
+        from adcp.exceptions import IdempotencyUnsupportedError
+
+        if self._idempotency_capability_verified:
+            return
+
+        self._idempotency_capability_verified = True
+        try:
+            caps = await self.fetch_capabilities()
+            adcp_info = getattr(caps, "adcp", None)
+            idempotency_info = getattr(adcp_info, "idempotency", None) if adcp_info else None
+            ttl = (
+                getattr(idempotency_info, "replay_ttl_seconds", None) if idempotency_info else None
+            )
+
+            if ttl is None:
+                raise IdempotencyUnsupportedError(
+                    agent_id=self.agent_config.id,
+                    agent_uri=self.agent_config.agent_uri,
+                )
+        except Exception:
+            self._idempotency_capability_verified = False
+            raise
 
     def get_webhook_url(self, task_type: str, operation_id: str) -> str:
         """Generate webhook URL for a task."""
@@ -351,6 +407,50 @@ class ADCPClient:
         """Emit activity event."""
         if self.on_activity:
             self.on_activity(activity)
+
+    @contextlib.contextmanager
+    def use_idempotency_key(self, key: str) -> Iterator[str]:
+        """Pin an ``idempotency_key`` for the next mutating call on THIS client.
+
+        Use when you've persisted a key (e.g., in a buyer-side database) and
+        want the SDK to send that exact key on resume or retry across process
+        restarts. The key is validated against ``^[A-Za-z0-9_.:-]{16,255}$`` on
+        entry; a ``ValueError`` is raised for malformed keys.
+
+        Scope rules:
+
+        * **Single-use within scope.** The first mutating call inside the
+          ``with`` block consumes the pinned key; a second mutating call falls
+          through to a fresh UUID. This protects against ``asyncio.gather``
+          siblings accidentally sharing the key (which would trigger
+          ``IDEMPOTENCY_CONFLICT`` or silently duplicate work). If you need to
+          retry, wrap each attempt in its own ``with`` block.
+        * **Client-scoped.** The pinned key applies only to calls on THIS
+          client. A mutating call on a sibling ``ADCPClient`` inside the same
+          ``with`` block generates a fresh key and emits a ``UserWarning`` —
+          keys must be unique per (seller, request) pair (AdCP #2315).
+        * **No nesting.** Nested ``use_idempotency_key`` on the same client
+          raises ``RuntimeError``.
+
+        Example::
+
+            with client.use_idempotency_key(campaign.stored_key):
+                result = await client.create_media_buy(request)
+        """
+        from adcp import _idempotency
+
+        _idempotency.validate_key(key)
+        token = self._idempotency_client_token
+        if token in _idempotency._scoped_keys:
+            raise RuntimeError(
+                "use_idempotency_key is already active on this client; "
+                "nested usage is not supported."
+            )
+        _idempotency._scoped_keys[token] = key
+        try:
+            yield key
+        finally:
+            _idempotency._scoped_keys.pop(token, None)
 
     # ========================================================================
     # Capability Validation
@@ -3013,9 +3113,7 @@ class ADCPClient:
             True if signature is valid, False otherwise
         """
         if not self.webhook_secret:
-            logger.warning(
-                "Webhook signature verification skipped: no webhook_secret configured"
-            )
+            logger.warning("Webhook signature verification skipped: no webhook_secret configured")
             return True
 
         # Reject stale or future timestamps to prevent replay attacks
