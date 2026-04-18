@@ -231,21 +231,30 @@ def generate_code() -> str:
         GetMediaBuyDeliveryResponse,
     )
 
-    # CreateMediaBuyResponse is a oneOf union that datamodel-codegen names with
-    # numeric suffixes (e.g. CreateMediaBuyResponse1, CreateMediaBuyResponse2).
-    # The success variant's suffix can shift between codegen versions (sometimes
-    # no suffix, sometimes 1, sometimes 2), so pick it out dynamically rather
-    # than hard-coding the name.
-    CreateMediaBuyResponse1 = getattr(
-        _cmbr_module,
-        "CreateMediaBuyResponse1",
-        getattr(_cmbr_module, "CreateMediaBuyResponse", None),
-    )
-    if CreateMediaBuyResponse1 is None:
+    # Resolve the CreateMediaBuyResponse success variant. Different
+    # datamodel-codegen versions emit the variants under shifting names:
+    # sometimes `CreateMediaBuyResponse1`/`...2`, sometimes `CreateMediaBuyResponse`
+    # (success, unnumbered) + `CreateMediaBuyResponseN`. Find the success
+    # variant by scanning the module for a pydantic model whose fields include
+    # the success-only `media_buy_id` key.
+    from pydantic import BaseModel as _PydBaseModel
+
+    def _find_success_variant() -> type[_PydBaseModel]:
+        for name in dir(_cmbr_module):
+            obj = getattr(_cmbr_module, name)
+            if (
+                isinstance(obj, type)
+                and issubclass(obj, _PydBaseModel)
+                and "media_buy_id" in getattr(obj, "model_fields", {})
+            ):
+                return obj
         raise ImportError(
-            "Could not find CreateMediaBuyResponse variant in "
+            "Could not find CreateMediaBuyResponse success variant "
+            "(class with a `media_buy_id` field) in "
             "adcp.types.generated_poc.media_buy.create_media_buy_response"
         )
+
+    CreateMediaBuyResponse1 = _find_success_variant()
     from adcp.types.generated_poc.media_buy.get_products_request import (
         Field1 as GetProductsField,
         GetProductsRequest,

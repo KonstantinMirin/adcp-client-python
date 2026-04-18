@@ -9,22 +9,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-# Tasks that the schema declares but the SDK has not implemented yet.
-# Tracked as a follow-up: keeping the gap explicit here prevents the coverage
-# guard from rotting, while letting the beta ship without stubbing every new
-# schema task the same day it lands upstream.
-EXPECTED_GAPS: frozenset[str] = frozenset(
-    {
-        "create_collection_list",
-        "delete_collection_list",
-        "get_collection_list",
-        "list_collection_lists",
-        "update_collection_list",
-        "sync_governance",
-    }
-)
-
-
 def _schema_task_names() -> set[str]:
     index_path = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "index.json"
     index_data = json.loads(index_path.read_text())
@@ -35,7 +19,7 @@ def _schema_task_names() -> set[str]:
         if isinstance(tasks, dict):
             task_names.update(name.replace("-", "_") for name in tasks)
 
-    return task_names - EXPECTED_GAPS
+    return task_names
 
 
 def test_client_methods_cover_schema_index():
@@ -337,6 +321,15 @@ def test_mcp_tool_input_schema_matches_pydantic_models():
             "webhook_url",
         },
         "delete_property_list": {"context", "ext", "idempotency_key"},
+        # Collection Lists + sync_governance: envelope fields
+        "create_collection_list": {"context", "ext", "idempotency_key"},
+        "get_collection_list": {"context", "ext"},
+        "list_collection_lists": {"context", "ext"},
+        "update_collection_list": {"context", "ext", "idempotency_key"},
+        "delete_collection_list": {"context", "ext", "idempotency_key"},
+        "sync_governance": {
+            "adcp_major_version", "context", "ext", "idempotency_key",
+        },
         # TMP: envelope fields optional for agents
         "context_match": {
             "$schema", "artifact", "property_id", "protocol_version",

@@ -197,6 +197,46 @@ from adcp.types.generated_poc.property.update_property_list_response import (
     UpdatePropertyListResponse,
 )
 
+# V3 Governance (Collection Lists) types
+from adcp.types.generated_poc.collection.create_collection_list_request import (
+    CreateCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.create_collection_list_response import (
+    CreateCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.delete_collection_list_request import (
+    DeleteCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.delete_collection_list_response import (
+    DeleteCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.get_collection_list_request import (
+    GetCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.get_collection_list_response import (
+    GetCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.list_collection_lists_request import (
+    ListCollectionListsRequest,
+)
+from adcp.types.generated_poc.collection.list_collection_lists_response import (
+    ListCollectionListsResponse,
+)
+from adcp.types.generated_poc.collection.update_collection_list_request import (
+    UpdateCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.update_collection_list_response import (
+    UpdateCollectionListResponse,
+)
+
+# V3 Governance (Sync Governance) types
+from adcp.types.generated_poc.account.sync_governance_request import (
+    SyncGovernanceRequest,
+)
+from adcp.types.generated_poc.account.sync_governance_response import (
+    SyncGovernanceResponse,
+)
+
 # V3 Protocol Discovery types
 from adcp.types.generated_poc.protocol.get_adcp_capabilities_request import (
     GetAdcpCapabilitiesRequest,
@@ -2374,6 +2414,262 @@ class ADCPClient:
         )
 
         return self.adapter._parse_response(raw_result, DeletePropertyListResponse)
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance (Collection Lists)
+    # ========================================================================
+
+    async def create_collection_list(
+        self,
+        request: CreateCollectionListRequest,
+    ) -> TaskResult[CreateCollectionListResponse]:
+        """Create a collection list for governance filtering.
+
+        Collection lists define dynamic sets of collections (properties, segments, etc.)
+        that can be referenced by authorization rules and audience scoping.
+
+        Args:
+            request: Request parameters for creating the collection list
+
+        Returns:
+            TaskResult containing CreateCollectionListResponse with list_id
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="create_collection_list",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.create_collection_list(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="create_collection_list",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, CreateCollectionListResponse)
+
+    async def get_collection_list(
+        self,
+        request: GetCollectionListRequest,
+    ) -> TaskResult[GetCollectionListResponse]:
+        """Get a collection list with optional resolution.
+
+        When resolve=true, returns the resolved members of the collection list.
+
+        Args:
+            request: Request parameters including list_id and resolve flag
+
+        Returns:
+            TaskResult containing GetCollectionListResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_collection_list",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.get_collection_list(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="get_collection_list",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, GetCollectionListResponse)
+
+    async def list_collection_lists(
+        self,
+        request: ListCollectionListsRequest,
+    ) -> TaskResult[ListCollectionListsResponse]:
+        """List collection lists owned by a principal.
+
+        Args:
+            request: Request parameters with optional filtering
+
+        Returns:
+            TaskResult containing ListCollectionListsResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="list_collection_lists",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.list_collection_lists(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="list_collection_lists",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, ListCollectionListsResponse)
+
+    async def update_collection_list(
+        self,
+        request: UpdateCollectionListRequest,
+    ) -> TaskResult[UpdateCollectionListResponse]:
+        """Update a collection list.
+
+        Args:
+            request: Request parameters with list_id and updates
+
+        Returns:
+            TaskResult containing UpdateCollectionListResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="update_collection_list",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.update_collection_list(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="update_collection_list",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, UpdateCollectionListResponse)
+
+    async def delete_collection_list(
+        self,
+        request: DeleteCollectionListRequest,
+    ) -> TaskResult[DeleteCollectionListResponse]:
+        """Delete a collection list.
+
+        Args:
+            request: Request parameters with list_id
+
+        Returns:
+            TaskResult containing DeleteCollectionListResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="delete_collection_list",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.delete_collection_list(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="delete_collection_list",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, DeleteCollectionListResponse)
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance (Sync Governance)
+    # ========================================================================
+
+    async def sync_governance(
+        self,
+        request: SyncGovernanceRequest,
+    ) -> TaskResult[SyncGovernanceResponse]:
+        """Sync governance agents attached to an account.
+
+        Attach, detach, or replace the set of governance agents that must be
+        consulted for plan approval on an account.
+
+        Args:
+            request: Request parameters with account and governance agents
+
+        Returns:
+            TaskResult containing SyncGovernanceResponse
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_governance",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.sync_governance(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="sync_governance",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, SyncGovernanceResponse)
 
     # ========================================================================
     # V3 Protocol Methods - Temporal Matching Protocol (TMP)
