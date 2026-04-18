@@ -1,378 +1,252 @@
 #!/usr/bin/env python3
 """
-Sync AdCP JSON schemas from the authoritative public website.
+Sync AdCP JSON schemas from the authoritative protocol bundle.
 
-This script downloads AdCP schemas from https://adcontextprotocol.org/schemas/
-which is the canonical, versioned source of truth for AdCP schemas.
+Downloads a single gzipped tarball at
+https://adcontextprotocol.org/protocol/{version}.tgz, verifies the bundle
+against its SHA-256 sidecar, and extracts the `schemas/` tree into
+`schemas/cache/`. Replaces the prior per-file sync.
 
-Features:
-- Downloads from versioned public API (e.g., v1, v2)
-- Content-based change detection (only updates files when content changes)
-- Automatic cleanup of orphaned schemas (files removed upstream)
-- Preserves directory structure from upstream
+Pinned releases additionally ship Sigstore keyless sidecars (`.tgz.sig` +
+`.tgz.crt`). When present, this script shells out to `cosign verify-blob`
+to prove the bundle was built by the adcontextprotocol/adcp release
+workflow. Missing sidecars (e.g., `latest.tgz`, or releases that predate
+signing) fall back to checksum-only trust per the upstream client contract.
+
+The target version comes from `src/adcp/ADCP_VERSION`. If that version's
+bundle is not published, sync falls back to `latest.tgz` (the dev snapshot).
 
 Usage:
-    python scripts/sync_schemas.py          # Normal sync (uses content hashing)
-    python scripts/sync_schemas.py --force  # Force re-download all schemas
+    python scripts/sync_schemas.py
 """
 
 from __future__ import annotations
 
-import argparse
 import hashlib
-import json
+import io
+import os
+import shutil
+import subprocess
 import sys
+import tarfile
+import tempfile
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+REPO_ROOT = Path(__file__).parent.parent
+CACHE_DIR = REPO_ROOT / "schemas" / "cache"
+VERSION_FILE = REPO_ROOT / "src" / "adcp" / "ADCP_VERSION"
+BUNDLE_BASE_URL = "https://adcontextprotocol.org/protocol"
+USER_AGENT = "adcp-python-sdk/3.0"
+
+# Sigstore keyless verification identity. Must match the upstream release
+# workflow — see adcontextprotocol/adcp#2273.
+COSIGN_IDENTITY_REGEX = (
+    r"^https://github\.com/adcontextprotocol/adcp/"
+    r"\.github/workflows/release\.yml@refs/heads/.*$"
+)
+COSIGN_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 
 
 def get_target_adcp_version() -> str:
-    """
-    Get the target AdCP version from ADCP_VERSION file.
-
-    Returns:
-        AdCP version string (e.g., "v1", "v2")
-    """
-    version_file = Path(__file__).parent.parent / "src" / "adcp" / "ADCP_VERSION"
-    if version_file.exists():
-        return version_file.read_text().strip()
-    return "v1"  # Fallback
+    """Read target AdCP version from ADCP_VERSION file (e.g. "3.0.0-rc.3")."""
+    if VERSION_FILE.exists():
+        return VERSION_FILE.read_text().strip()
+    return "latest"
 
 
-# Get target AdCP version
-TARGET_ADCP_VERSION = get_target_adcp_version()
-
-# Use authoritative public website as source
-ADCP_BASE_URL = "https://adcontextprotocol.org/schemas"
-SCHEMA_INDEX_URL = f"{ADCP_BASE_URL}/{TARGET_ADCP_VERSION}/index.json"
-CACHE_DIR = Path(__file__).parent.parent / "schemas" / "cache"
-HASH_CACHE_FILE = CACHE_DIR / ".hashes.json"
+def _http_get(url: str) -> bytes:
+    req = Request(url, headers={"User-Agent": USER_AGENT})
+    with urlopen(req) as response:
+        return response.read()
 
 
-def compute_hash(content: str) -> str:
-    """Compute SHA-256 hash of content."""
-    return hashlib.sha256(content.encode()).hexdigest()
-
-
-def load_hash_cache() -> dict[str, str]:
-    """Load cached hashes from disk."""
-    if HASH_CACHE_FILE.exists():
-        try:
-            with open(HASH_CACHE_FILE) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return {}
-    return {}
-
-
-def save_hash_cache(hash_cache: dict[str, str]) -> None:
-    """Save content hashes to disk."""
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(HASH_CACHE_FILE, "w") as f:
-        json.dump(hash_cache, f, indent=2)
-
-
-def download_schema(url: str) -> dict:
-    """
-    Download a JSON schema from URL.
-
-    Returns:
-        Schema data as dict
-    """
+def _http_get_optional(url: str) -> bytes | None:
+    """GET returning None on 404 instead of raising."""
     try:
-        req = Request(url, headers={"User-Agent": "adcp-python-sdk/3.0"})
-        with urlopen(req) as response:
-            data = json.loads(response.read().decode())
-            return data
-
-    except URLError as e:
-        print(f"Error downloading {url}: {e}", file=sys.stderr)
+        return _http_get(url)
+    except HTTPError as exc:
+        if exc.code == 404:
+            return None
         raise
 
 
-def discover_schemas_from_index(index_data: dict) -> list[str]:
-    """
-    Discover all schema URLs from index.json.
-
-    The index contains references to all schemas organized by category.
-    We recursively extract all $ref paths and convert them to full URLs.
+def fetch_bundle(version: str) -> tuple[bytes, str]:
+    """Fetch the bundle and expected checksum for a version.
 
     Returns:
-        List of schema URLs
+        (tgz_bytes, expected_sha256_hex)
     """
-    schema_urls = []
-
-    def extract_refs(obj: dict | list | str) -> None:
-        """Recursively extract all $ref values from nested structure."""
-        if isinstance(obj, dict):
-            if "$ref" in obj:
-                # Found a schema reference
-                # $ref paths are like "/schemas/2.4.0/core/package.json"
-                # Convert to full URL by prepending domain only
-                ref_path = obj["$ref"]
-                schema_url = f"https://adcontextprotocol.org{ref_path}"
-                schema_urls.append(schema_url)
-            # Recurse into nested objects
-            for value in obj.values():
-                extract_refs(value)
-        elif isinstance(obj, list):
-            # Recurse into lists
-            for item in obj:
-                extract_refs(item)
-
-    # Start extraction from schemas section
-    schemas = index_data.get("schemas", {})
-    extract_refs(schemas)
-
-    return schema_urls
+    tgz_bytes = _http_get(f"{BUNDLE_BASE_URL}/{version}.tgz")
+    sha_text = _http_get(f"{BUNDLE_BASE_URL}/{version}.tgz.sha256").decode()
+    expected = sha_text.split()[0].strip().lower()
+    return tgz_bytes, expected
 
 
-def download_schema_file(
-    url: str, hash_cache: dict[str, str], force: bool = False
-) -> tuple[bool, str | None]:
-    """
-    Download a schema and save it to cache, using content hashing for change detection.
-    Preserves directory structure from URL path.
+def fetch_bundle_with_fallback(version: str) -> tuple[bytes, str, str]:
+    """Fetch a pinned bundle; fall back to `latest` if not published yet.
 
     Returns:
-        Tuple of (was_updated, new_hash)
+        (tgz_bytes, expected_sha256_hex, effective_version)
     """
-    # Extract path from URL
-    # URL format: https://adcontextprotocol.org/schemas/2.4.0/core/package.json
-    # We want to extract: core/package.json
-    # The URL from index has full path including version number
-    url_path = url.replace(f"{ADCP_BASE_URL}/", "")
-    # Split and skip the version part (e.g., "2.4.0" or "v1")
-    parts = url_path.split("/")
-    if len(parts) > 1:
-        # Skip first part (version), keep rest
-        url_parts = parts[1:]
-    else:
-        url_parts = parts
-
-    # Create subdirectories if needed (directly in CACHE_DIR)
-    if len(url_parts) > 1:
-        subdir = CACHE_DIR / Path(*url_parts[:-1])
-        subdir.mkdir(parents=True, exist_ok=True)
-        output_path = subdir / url_parts[-1]
-        display_name = "/".join(url_parts)
-    else:
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        output_path = CACHE_DIR / url_parts[0]
-        display_name = url_parts[0]
-
-    # Download schema
     try:
-        schema = download_schema(url)
-
-        # Normalize JSON output for consistent hashing
-        content = json.dumps(schema, indent=2, sort_keys=True)
-        new_hash = compute_hash(content)
-
-        # Check if content changed
-        if not force and output_path.exists():
-            cached_hash = hash_cache.get(url)
-
-            if cached_hash == new_hash:
-                # Content unchanged
-                print(f"  ✓ {display_name} (unchanged)")
-                return False, new_hash
-
-            # Content changed
-            with open(output_path, "w") as f:
-                f.write(content)
-            print(f"  ↻ {display_name} (updated)")
-            return True, new_hash
-
-        # New file or forced download
-        with open(output_path, "w") as f:
-            f.write(content)
-
-        status = "downloaded" if not output_path.exists() else "forced update"
-        print(f"  ✓ {display_name} ({status})")
-        return True, new_hash
-
-    except Exception as e:
-        print(f"  ✗ {display_name} (failed: {e})", file=sys.stderr)
-        return False, None
+        data, sha = fetch_bundle(version)
+        return data, sha, version
+    except HTTPError as exc:
+        if exc.code != 404 or version == "latest":
+            raise
+        print(f"  ! {version}.tgz not published yet; falling back to latest.tgz")
+        data, sha = fetch_bundle("latest")
+        return data, sha, "latest"
 
 
-def discover_transitive_refs(schema: dict) -> list[str]:
-    """
-    Extract all $ref URLs from a schema document.
-
-    This finds schemas referenced by this schema, allowing us to follow
-    the transitive closure of dependencies.
+def fetch_signature_sidecars(version: str) -> tuple[bytes | None, bytes | None]:
+    """Fetch Sigstore `.sig` and `.crt` sidecars for a version.
 
     Returns:
-        List of full URLs referenced by this schema
+        (sig_bytes, crt_bytes), or (None, None) if either sidecar is missing.
     """
-    refs = []
-
-    def extract_refs(obj: dict | list | str) -> None:
-        if isinstance(obj, dict):
-            if "$ref" in obj:
-                ref_path = obj["$ref"]
-                # Convert relative refs like "../core/context.json" to full URLs
-                if ref_path.startswith("../") or ref_path.startswith("./"):
-                    # These will be fixed by fix_schema_refs.py later
-                    # For now, try to resolve to absolute path
-                    # Assume these are relative to schemas/VERSION/
-                    pass
-                elif ref_path.startswith("/schemas/"):
-                    # Absolute schema path
-                    refs.append(f"https://adcontextprotocol.org{ref_path}")
-            for value in obj.values():
-                extract_refs(value)
-        elif isinstance(obj, list):
-            for item in obj:
-                extract_refs(item)
-
-    extract_refs(schema)
-    return refs
+    sig = _http_get_optional(f"{BUNDLE_BASE_URL}/{version}.tgz.sig")
+    crt = _http_get_optional(f"{BUNDLE_BASE_URL}/{version}.tgz.crt")
+    if sig is None or crt is None:
+        return None, None
+    return sig, crt
 
 
-def main():
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="Sync AdCP schemas from GitHub",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Force re-download all schemas, ignoring content hashes",
-    )
-    args = parser.parse_args()
+def verify_cosign_signature(
+    tgz_bytes: bytes, sig_bytes: bytes, crt_bytes: bytes
+) -> None:
+    """Verify the bundle with `cosign verify-blob`.
 
-    print(f"Syncing AdCP schemas from {ADCP_BASE_URL}...")
-    print(f"Target version: {TARGET_ADCP_VERSION}")
-    print(f"Cache directory: {CACHE_DIR}")
-    print(f"Mode: {'FORCE' if args.force else 'NORMAL (using content hashing)'}\n")
+    Raises RuntimeError if cosign is not installed or verification fails.
+    """
+    if shutil.which("cosign") is None:
+        raise RuntimeError(
+            "Bundle has Sigstore signature sidecars but `cosign` is not installed.\n"
+            "  Install: https://docs.sigstore.dev/cosign/installation/\n"
+            "  Or set ADCP_SKIP_SIGNATURE=1 to trust the SHA-256 checksum only."
+        )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tgz_path = Path(tmp) / "bundle.tgz"
+        sig_path = Path(tmp) / "bundle.tgz.sig"
+        crt_path = Path(tmp) / "bundle.tgz.crt"
+        tgz_path.write_bytes(tgz_bytes)
+        sig_path.write_bytes(sig_bytes)
+        crt_path.write_bytes(crt_bytes)
+
+        result = subprocess.run(
+            [
+                "cosign",
+                "verify-blob",
+                "--signature",
+                str(sig_path),
+                "--certificate",
+                str(crt_path),
+                "--certificate-identity-regexp",
+                COSIGN_IDENTITY_REGEX,
+                "--certificate-oidc-issuer",
+                COSIGN_OIDC_ISSUER,
+                str(tgz_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Cosign signature verification failed.\n"
+            f"  stdout: {result.stdout.strip()}\n"
+            f"  stderr: {result.stderr.strip()}"
+        )
+
+
+def replace_cache_from_bundle(tgz_bytes: bytes, effective_version: str) -> int:
+    """Extract the bundle's `schemas/` tree into CACHE_DIR, replacing its contents.
+
+    Returns the number of files written.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with tarfile.open(fileobj=io.BytesIO(tgz_bytes), mode="r:gz") as tf:
+            tf.extractall(tmpdir, filter="data")
+
+        bundle_root = Path(tmpdir) / f"adcp-{effective_version}"
+        schemas_src = bundle_root / "schemas"
+        if not schemas_src.is_dir():
+            raise RuntimeError(
+                f"Bundle missing expected directory: adcp-{effective_version}/schemas/"
+            )
+
+        if CACHE_DIR.exists():
+            shutil.rmtree(CACHE_DIR)
+        CACHE_DIR.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(schemas_src, CACHE_DIR)
+
+        return sum(1 for _ in CACHE_DIR.rglob("*") if _.is_file())
+
+
+def main() -> None:
+    target_version = get_target_adcp_version()
+    print(f"Syncing AdCP schema bundle from {BUNDLE_BASE_URL}...")
+    print(f"Target version: {target_version}")
+    print(f"Cache directory: {CACHE_DIR}\n")
 
     try:
-        # Load hash cache
-        hash_cache = {} if args.force else load_hash_cache()
-        updated_hashes = {}
+        print(f"Fetching {target_version}.tgz + checksum...")
+        tgz_bytes, expected_sha, effective_version = fetch_bundle_with_fallback(
+            target_version
+        )
+    except (HTTPError, URLError) as exc:
+        print(f"\n✗ Failed to download bundle: {exc}", file=sys.stderr)
+        sys.exit(1)
 
-        # Download index to get schema list
-        print("Fetching schema index...")
+    actual_sha = hashlib.sha256(tgz_bytes).hexdigest()
+    if actual_sha != expected_sha:
+        print(
+            f"\n✗ Checksum mismatch for adcp-{effective_version}.tgz:\n"
+            f"  expected: {expected_sha}\n"
+            f"  actual:   {actual_sha}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"  ✓ Checksum verified ({actual_sha[:12]}…, {len(tgz_bytes):,} bytes)")
+
+    if os.environ.get("ADCP_SKIP_SIGNATURE") == "1":
+        print("  ! Skipping Sigstore verification (ADCP_SKIP_SIGNATURE=1)")
+    else:
         try:
-            index_schema = download_schema(SCHEMA_INDEX_URL)
-
-            # Compute hash for index
-            index_content = json.dumps(index_schema, indent=2, sort_keys=True)
-            index_hash = compute_hash(index_content)
-            updated_hashes[SCHEMA_INDEX_URL] = index_hash
-
-            print("Schema index retrieved\n")
-        except Exception as e:
-            print(f"Error: Could not fetch index.json from {SCHEMA_INDEX_URL}")
-            print(f"Details: {e}\n")
+            sig_bytes, crt_bytes = fetch_signature_sidecars(effective_version)
+        except (HTTPError, URLError) as exc:
+            print(f"\n✗ Failed to fetch signature sidecars: {exc}", file=sys.stderr)
             sys.exit(1)
 
-        # Discover all schemas from index
-        print("Discovering schemas from index...")
-        schema_urls = set(discover_schemas_from_index(index_schema))
-
-        print(f"Found {len(schema_urls)} schemas in index")
-        print("Checking for transitive dependencies...\n")
-
-        # Follow transitive dependencies
-        # Download schemas and check for additional refs
-        processed = set()
-        to_process = list(schema_urls)
-
-        while to_process:
-            url = to_process.pop(0)
-            if url in processed:
-                continue
-
-            processed.add(url)
-
+        if sig_bytes is None or crt_bytes is None:
+            print(
+                f"  ! No Sigstore sidecars for adcp-{effective_version} "
+                "(checksum-only trust)"
+            )
+        else:
             try:
-                schema = download_schema(url)
-                # Find any additional schemas this one references
-                new_refs = discover_transitive_refs(schema)
-                for ref_url in new_refs:
-                    if ref_url not in processed and ref_url not in to_process:
-                        to_process.append(ref_url)
-                        schema_urls.add(ref_url)
-            except Exception:
-                # If we can't download, we'll catch it in the main download loop
-                pass
+                verify_cosign_signature(tgz_bytes, sig_bytes, crt_bytes)
+            except RuntimeError as exc:
+                print(f"\n✗ {exc}", file=sys.stderr)
+                sys.exit(1)
+            print(
+                "  ✓ Sigstore signature verified "
+                "(issued to adcontextprotocol/adcp release workflow)"
+            )
 
-        # Remove duplicates and sort
-        schema_urls = sorted(schema_urls)
-
-        print(f"Found {len(schema_urls)} total schemas (including dependencies)\n")
-
-        # Download all schemas
-        print("Downloading schemas:")
-        updated_count = 0
-        cached_count = 0
-        removed_count = 0
-
-        for url in schema_urls:
-            was_updated, new_hash = download_schema_file(url, hash_cache, force=args.force)
-
-            if was_updated:
-                updated_count += 1
-            else:
-                cached_count += 1
-
-            if new_hash:
-                updated_hashes[url] = new_hash
-
-        # Clean up orphaned schemas (files that exist locally but not upstream)
-        if CACHE_DIR.exists():
-            # Get list of expected filenames from URLs
-            expected_files = {url.split("/")[-1] for url in schema_urls}
-            # Also allow the hash cache file
-            expected_files.add(".hashes.json")
-
-            # Find orphaned JSON files
-            orphaned_files = []
-            for json_file in CACHE_DIR.rglob("*.json"):
-                if json_file.name not in expected_files and json_file.name != ".hashes.json":
-                    orphaned_files.append(json_file)
-
-            # Remove orphaned files
-            if orphaned_files:
-                print("\nCleaning up orphaned schemas:")
-                for orphan in orphaned_files:
-                    rel_path = orphan.relative_to(CACHE_DIR)
-                    print(f"  ✗ {rel_path} (removed - no longer in upstream)")
-                    orphan.unlink()
-                    removed_count += 1
-
-                    # Remove empty directories
-                    parent = orphan.parent
-                    try:
-                        if parent != CACHE_DIR and not any(parent.iterdir()):
-                            parent.rmdir()
-                    except OSError:
-                        pass
-
-        # Save updated hash cache
-        if updated_hashes:
-            save_hash_cache(updated_hashes)
-
-        print(f"\n✓ Successfully synced {len(schema_urls)} schemas")
-        print(f"  Target AdCP version: {TARGET_ADCP_VERSION}")
-        print(f"  Location: {CACHE_DIR}")
-        print(f"  Updated: {updated_count}")
-        print(f"  Cached: {cached_count}")
-        if removed_count > 0:
-            print(f"  Removed: {removed_count} (orphaned)")
-
-    except Exception as e:
-        print(f"\n✗ Error syncing schemas: {e}", file=sys.stderr)
-        import traceback
-
-        traceback.print_exc()
+    try:
+        file_count = replace_cache_from_bundle(tgz_bytes, effective_version)
+    except (tarfile.TarError, RuntimeError) as exc:
+        print(f"\n✗ Failed to extract bundle: {exc}", file=sys.stderr)
         sys.exit(1)
+
+    print(f"\n✓ Successfully synced {file_count} schema files")
+    print(f"  Effective version: adcp-{effective_version}")
+    print(f"  Location: {CACHE_DIR}")
 
 
 if __name__ == "__main__":
