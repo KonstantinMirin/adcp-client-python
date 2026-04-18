@@ -1941,7 +1941,7 @@
     "records"
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T18:46:36.001Z",
+    "generatedAt": "2026-04-18T19:54:51.216Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

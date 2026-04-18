@@ -45,7 +45,10 @@ dev = [
     "mypy>=1.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
-    "datamodel-code-generator[http]>=0.35.0",
+    # Pin to exact version: codegen's variant numbering (e.g. CreateMediaBuyResponse1 vs
+    # CreateMediaBuyResponse) shifts between versions, producing diff churn and breaking
+    # generated-code imports that reference specific suffixes.
+    "datamodel-code-generator[http]==0.56.1",
 ]
 docs = [
     "pdoc3>=0.10.0",
@@ -150,6 +153,6 @@ skips = ["B101"]  # Allow assert in code (we're not using -O optimization)
 
 [dependency-groups]
 dev = [
-    "datamodel-code-generator>=0.35.0",
+    "datamodel-code-generator==0.56.1",
     "pre-commit>=4.4.0",
 ]

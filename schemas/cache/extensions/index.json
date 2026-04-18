@@ -3,6 +3,6 @@
   "title": "AdCP Extension Registry",
   "description": "Auto-generated registry of formal AdCP extensions. Extensions provide typed schemas for vendor-specific or domain-specific data within the ext field. Agents declare which extensions they support in their agent card.",
   "_generated": true,
-  "_generatedAt": "2026-04-18T18:46:35.943Z",
+  "_generatedAt": "2026-04-18T19:54:51.159Z",
   "extensions": {}
 }

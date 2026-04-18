@@ -1886,7 +1886,7 @@
     "artifact"
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T18:46:35.952Z",
+    "generatedAt": "2026-04-18T19:54:51.167Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }
