@@ -160,3 +160,6 @@ IMPLEMENTATION_PLAN.md
 IMPLEMENTATION_SUMMARY.md
 TESTING_STATUS.md
 IMPLEMENTATION_PLAN.md
+
+# Claude Code harness scratch — scheduled-task lock, session state, etc.
+.claude/
