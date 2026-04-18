@@ -233,13 +233,13 @@ def verify_request_signature(
             message=f"key {keyid!r} is revoked",
         )
 
-    # Per-keyid cap check runs before crypto — it's a key-level abuse signal
-    # on par with revocation. A compromised or misconfigured signer hitting the
-    # cap must be rejected cheaply, not after an Ed25519/ECDSA verify.
+    # Step 9a (per spec, after adcp#2342): per-keyid cap runs between JWKS
+    # resolution and crypto verify. A compromised or misconfigured signer
+    # hitting the cap must be rejected cheaply, not after Ed25519/ECDSA verify.
     if options.replay_store is not None and options.replay_store.at_capacity(keyid):
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_RATE_ABUSE,
-            step=12,
+            step="9a",
             message=f"replay cache at capacity for keyid {keyid!r}",
         )
 

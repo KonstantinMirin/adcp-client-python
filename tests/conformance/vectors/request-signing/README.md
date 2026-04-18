@@ -16,6 +16,7 @@ These vectors exercise the [verifier checklist](https://adcontextprotocol.org/do
 test-vectors/request-signing/
 ├── README.md                             this file
 ├── keys.json                             test keypairs (Ed25519 + ES256) in JWK format with adcp_use values
+├── canonicalization.json                 pure URL-canonicalization cases (no crypto) — every rule from the @target-uri algorithm + malformed-authority rejections
 ├── negative/                             vectors that MUST fail verification
 │   ├── 001-no-signature-header.json      → request_signature_required (pre-check 0; op in required_for)
 │   ├── 002-wrong-tag.json                → request_signature_tag_invalid (step 3)
@@ -36,7 +37,7 @@ test-vectors/request-signing/
 │   ├── 017-key-revoked.json              → request_signature_key_revoked (step 9; requires test_harness_state preload)
 │   ├── 018-digest-covered-when-forbidden.json → request_signature_components_unexpected (step 6; policy 'forbidden')
 │   ├── 019-signature-without-signature-input.json → request_signature_header_malformed (pre-check; downgrade loophole)
-│   └── 020-rate-abuse.json               → request_signature_rate_abuse (step 12 cap; abuse signal)
+│   └── 020-rate-abuse.json               → request_signature_rate_abuse (step 9a cap; abuse signal)
 └── positive/                             vectors that MUST verify successfully
     ├── 001-basic-post.json                   Ed25519, no content-digest
     ├── 002-post-with-content-digest.json     Ed25519, content-digest covered
@@ -47,6 +48,42 @@ test-vectors/request-signing/
     ├── 007-query-byte-preserved.json         Query b=2&a=1&c=3 — preserved, not alphabetized
     └── 008-percent-encoded-path.json         Path has lowercase %xx; canonical uppercases
 ```
+
+## Canonicalization vectors (`canonicalization.json`)
+
+`canonicalization.json` is a flat set of URL-canonicalization cases that exercise every rule in the `@target-uri` canonicalization algorithm, plus the malformed-authority rejection cases. Independent of cryptographic signing — an SDK can run this file without keys, crypto, or a full verifier harness, which makes it the fastest way to surface cross-implementation divergence.
+
+Shape:
+
+```json
+{
+  "spec_reference": "#adcp-rfc-9421-profile",
+  "cases": [
+    {
+      "name": "ipv6-host-hex-lowercased",
+      "rule": "step 2: IPv6 brackets preserved; hex digits inside lowercased",
+      "input_url": "https://[2001:DB8::1]/p",
+      "expected_target_uri": "https://[2001:db8::1]/p",
+      "expected_authority": "[2001:db8::1]"
+    },
+    {
+      "name": "malformed-port-without-host",
+      "rule": "step 3: authority with port but no host is malformed",
+      "input_url": "https://:443/p",
+      "reject": true,
+      "reject_reason": "authority missing host",
+      "expected_error_code": "request_signature_header_malformed"
+    }
+  ]
+}
+```
+
+For each case:
+
+- **Positive case** (no `reject` field): the implementation MUST canonicalize `input_url` and produce byte-for-byte matches on `expected_target_uri` and `expected_authority`. Each case also carries a `rule` string pointing to the specific numbered step in the canonicalization algorithm it exercises — useful when a test fails and you want to know which rule the implementation got wrong.
+- **Reject case** (`reject: true`): the implementation MUST refuse to canonicalize `input_url`. Signers refuse to sign; verifiers reject with `expected_error_code`.
+
+SDKs SHOULD run `canonicalization.json` on every commit alongside a lint pass. Canonicalization divergence is the #1 silent 9421 interop bug, and catching it as a fast unit test (cheap, no network, no crypto) closes that gap.
 
 ## Vector format
 
@@ -98,13 +135,14 @@ Every vector is a single JSON file with this shape:
 - **`verifier_capability`** — the `request_signing` block the verifier advertises. Drives expected behavior on content-digest coverage (`"required"` | `"forbidden"` | `"either"`) and whether unsigned requests to the operation are rejected pre-check.
 - **`jwks_ref`** — array of `kid` strings from `keys.json`. The test harness builds the verifier's view of the signing agent's JWKS by selecting those entries. Present on most vectors.
 - **`jwks_override`** — full JWKS object (`{ keys: [...] }`) that replaces the default `jwks_ref` lookup for this vector. Used when a vector needs a JWK that is NOT in the canonical `keys.json` (e.g., a malformed `key_ops` to test step 8 rejection). Mutually exclusive with `jwks_ref`.
-- **`test_harness_state`** — optional. Preloads verifier state BEFORE invoking verification. Supported sub-keys:
-  - `replay_cache_entries` — list of `{ keyid, nonce, ttl_seconds }` to preload into the replay cache (used by `016-replayed-nonce.json`).
-  - `revocation_list` — full signed-revocation-list object to preload as the current freshness snapshot (used by `017-key-revoked.json`).
+- **`test_harness_state`** — optional. Preloads verifier state BEFORE invoking verification. Harness implementations translate each sub-key into the appropriate concrete preload for their verifier under test. Supported sub-keys:
+  - `replay_cache_entries` — list of `{ keyid, nonce, ttl_seconds }` to preload into the per-`(keyid, nonce)` replay cache. Used by `016-replayed-nonce.json` to assert the nonce-dedup check at step 12.
+  - `replay_cache_per_keyid_cap_hit` — object `{ keyid }` signalling the per-keyid entry cap is hit for the named key. Used by `020-rate-abuse.json` to assert the cap check at step 9a. The harness MAY simulate by populating the cache with N placeholder entries (where N equals the verifier's configured cap) or by setting an implementation-private flag — what the vector asserts is the rejection behavior when the cap is hit, not the mechanism of reaching it.
+  - `revocation_list` — full signed-revocation-list object to preload as the current freshness snapshot. Used by `017-key-revoked.json` to assert the revocation check at step 9.
 - **`expected_signature_base`** — present on positive vectors and on `015-signature-invalid.json`. The canonical signature base string per RFC 9421 §2.5. Shape specifics that implementers get wrong: **lines are joined with a single `\n`** (LF, not CRLF); **there is no trailing newline** after the final `@signature-params` line; **components appear in the exact order listed in `Signature-Input`**, followed by `@signature-params` as the last line. The JSON string uses `\n` escapes which parse to real newline bytes at load time. Implementers can diff their computed base against this field BEFORE worrying about signatures — canonicalization disagreements are the #1 source of 9421 interop bugs, and checking the base is how you catch them.
 - **`expected_outcome.success`** — `true` for positive vectors, `false` for negative.
 - **`expected_outcome.error_code`** — stable code from the [transport error taxonomy](https://adcontextprotocol.org/docs/building/implementation/security#transport-error-taxonomy). Conformance requires **byte-for-byte match** on this code. Negative vectors only.
-- **`expected_outcome.failed_step`** — which step of the verifier checklist the rejection occurs at. Informational only — an implementation that rejects at an earlier step with the same error code is non-conformant (see [Conformance expectations](#conformance-expectations)). Negative vectors only.
+- **`expected_outcome.failed_step`** — which step of the verifier checklist the rejection occurs at. Integer for numbered steps (`1`–`13`), or a string for lettered sub-steps (e.g. `"9a"` for the per-keyid cap check). Informational only — an implementation that rejects with the correct error code is conformant even if its internal step numbering differs. An implementation that rejects with a DIFFERENT error code is non-conformant (see [Conformance expectations](#conformance-expectations)). Negative vectors only.
 - **`$comment`** — free-form clarifying notes. Some vectors use `$comment` to describe test-harness setup or conformance edge cases.
 
 ## Test keypairs
@@ -156,7 +194,8 @@ Run vectors in this order when validating a new implementation — it isolates f
 2. **Parse-level negatives next** (`001`, `002`, `011`, `012`, `014`, `019`). These fail at the pre-check or early checklist steps without invoking crypto. Passing these means your header parsing and presence checks are correct.
 3. **Semantic negatives** (`003`, `004`, `005`, `006`, `007`, `013`, `018`). These exercise specific rules (window, alg allowlist, covered components, content-digest policy) without requiring valid signatures.
 4. **Key-path negatives** (`008`, `009`). JWKS resolution + `adcp_use` enforcement.
-5. **Crypto / stateful negatives last** (`015`, `010`, `016`, `017`). These require the verifier to have run most of the checklist before reaching the failure point. `015` specifically catches canonicalization bugs where your implementation computes a different signature base than the spec — if you pass `positive/001` but fail `015`, your canonicalization is still off somewhere and `015` is picking it up.
+5. **Stateful pre-crypto negatives** (`017`, `020`). These require preloaded harness state and reject before crypto verify — `017` on revocation (step 9), `020` on the per-keyid cap (step 9a). The committed `Signature` on these vectors is a placeholder and is NOT expected to verify cryptographically; the rejection MUST land on the pre-crypto cheap check.
+6. **Crypto / stateful-post negatives last** (`015`, `010`, `016`). These require the verifier to have run most of the checklist before reaching the failure point. `015` specifically catches canonicalization bugs where your implementation computes a different signature base than the spec — if you pass `positive/001` but fail `015`, your canonicalization is still off somewhere and `015` is picking it up.
 
 ## Adding vectors
 

@@ -15,7 +15,7 @@ class SignatureVerificationError(Exception):
         self,
         code: str,
         *,
-        step: int | None = None,
+        step: int | str | None = None,
         message: str | None = None,
     ) -> None:
         super().__init__(message or code)
