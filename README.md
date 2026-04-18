@@ -798,6 +798,94 @@ for domain, ctx in contexts.items():
 
 See `examples/fetch_agent_authorizations.py` for complete examples.
 
+## Request Signing (AdCP 3.0 optional, 4.0 required)
+
+AdCP defines an optional transport-layer request-signing profile based on
+[RFC 9421 HTTP Message Signatures](https://datatracker.ietf.org/doc/rfc9421/).
+A valid signature proves the request came from the agent whose key signed it.
+See the [spec profile](https://adcontextprotocol.org/docs/building/implementation/security#signed-requests-transport-layer)
+and the [conformance vectors](https://adcontextprotocol.org/test-vectors/request-signing/).
+
+### Generate a keypair
+
+```bash
+python -m adcp.signing.keygen --alg ed25519 --out signing-key.pem
+# prints the JWK to stdout — publish it at your agent's jwks_uri
+```
+
+ES256 is also supported: `--alg es256`. Ed25519 is the recommended default.
+
+### Sign an outgoing request
+
+```python
+from cryptography.hazmat.primitives import serialization
+from adcp.signing import sign_request
+
+private_key = serialization.load_pem_private_key(
+    open("signing-key.pem", "rb").read(), password=None
+)
+
+signed = sign_request(
+    method="POST",
+    url="https://seller.example.com/adcp/create_media_buy",
+    headers={"Content-Type": "application/json"},
+    body=body,
+    private_key=private_key,
+    key_id="adcp-ed25519-20260418",
+    alg="ed25519",
+    cover_content_digest=True,  # required by sellers that set covers_content_digest="required"
+)
+httpx.post(url, content=body, headers={**headers, **signed.as_dict()})
+```
+
+### Verify incoming requests (FastAPI)
+
+```python
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from adcp.signing import (
+    CachingJwksResolver, SignatureVerificationError,
+    VerifierCapability, VerifyOptions,
+    unauthorized_response_headers, verify_starlette_request,
+)
+
+jwks = CachingJwksResolver("https://buyer.example.com/.well-known/jwks.json")
+capability = VerifierCapability(
+    covers_content_digest="either",
+    required_for=frozenset({"create_media_buy"}),
+)
+
+@app.post("/adcp/create_media_buy")
+async def create_media_buy(request: Request):
+    options = VerifyOptions(
+        now=time.time(),
+        capability=capability,
+        operation="create_media_buy",
+        jwks_resolver=jwks,
+    )
+    try:
+        signer = await verify_starlette_request(request, options=options)
+    except SignatureVerificationError as exc:
+        return JSONResponse(
+            {"error": exc.code},
+            status_code=401,
+            headers=unauthorized_response_headers(exc),
+        )
+    # signer.key_id is the verified caller's key identity
+    ...
+```
+
+Flask has an equivalent synchronous helper `verify_flask_request`.
+
+### Conformance
+
+The verifier passes all 28 AdCP request-signing conformance vectors (8 positive,
+20 negative). Run them against your signer or verifier:
+
+```bash
+pytest tests/conformance/signing/
+```
+
 ## CLI Tool
 
 The `adcp` command-line tool provides easy interaction with AdCP agents without writing code.
