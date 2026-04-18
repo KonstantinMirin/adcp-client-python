@@ -1,26 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "List Property Lists Request",
   "description": "Request parameters for listing property lists",
+  "type": "object",
   "properties": {
+    "adcp_major_version": {
+      "type": "integer",
+      "description": "The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "minimum": 1,
+      "maximum": 99
+    },
+    "principal": {
+      "type": "string",
+      "description": "Filter to lists owned by this principal"
+    },
+    "name_contains": {
+      "type": "string",
+      "description": "Filter to lists whose name contains this string"
+    },
+    "pagination": {
+      "$ref": "../core/pagination-request.json"
+    },
     "context": {
       "$ref": "../core/context.json"
     },
     "ext": {
       "$ref": "../core/ext.json"
-    },
-    "name_contains": {
-      "description": "Filter to lists whose name contains this string",
-      "type": "string"
-    },
-    "pagination": {
-      "$ref": "../core/pagination-request.json"
-    },
-    "principal": {
-      "description": "Filter to lists owned by this principal",
-      "type": "string"
     }
   },
-  "title": "List Property Lists Request",
-  "type": "object"
+  "additionalProperties": false
 }

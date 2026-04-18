@@ -59,14 +59,8 @@ from adcp.types._generated import (
     # Calibrate content responses
     CalibrateContentResponse1,
     CalibrateContentResponse2,
-    # Compliance Test Controller
-    ComplyTestControllerRequest1,
-    ComplyTestControllerRequest2,
-    ComplyTestControllerRequest3,
-    ComplyTestControllerRequest4,
-    ComplyTestControllerRequest5,
-    ComplyTestControllerRequest6,
-    ComplyTestControllerRequest7,
+    # Compliance Test Controller response variants
+    # (Request is now a single class with a `scenario` enum field, no variants.)
     ComplyTestControllerResponse1,
     ComplyTestControllerResponse2,
     ComplyTestControllerResponse3,
@@ -121,10 +115,7 @@ from adcp.types._generated import (
     # Log event responses
     LogEventResponse1,
     LogEventResponse2,
-    # Preview creative requests
-    PreviewCreativeRequest1,
-    PreviewCreativeRequest2,
-    PreviewCreativeRequest3,
+    # (PreviewCreativeRequest is now a single class with a `request_type` enum field.)
     # Preview creative responses
     PreviewCreativeResponse1,
     PreviewCreativeResponse2,
@@ -140,10 +131,7 @@ from adcp.types._generated import (
     # Performance feedback responses
     ProvidePerformanceFeedbackResponse1,
     ProvidePerformanceFeedbackResponse2,
-    # Signal pricing option variants
-    SignalPricingOption5,
-    SignalPricingOption6,
-    SignalPricingOption7,
+    # (SignalPricingOption is now a single RootModel wrapping VendorPricingOption.)
     SiSendMessageRequest,
     # Sync accounts responses
     SyncAccountsResponse1,
@@ -478,29 +466,8 @@ GetRightsErrorResponse = GetRightsResponse2
 # ============================================================================
 # COMPLIANCE TEST CONTROLLER ALIASES
 # ============================================================================
-# ComplyTestControllerRequest is a 7-way union discriminated by scenario field.
-# ComplyTestControllerResponse is a 4-way union.
-
-ComplyListScenariosRequest = ComplyTestControllerRequest1
-"""List supported compliance scenarios."""
-
-ComplyForceCreativeStatusRequest = ComplyTestControllerRequest2
-"""Force a creative to a specific status."""
-
-ComplyForceAccountStatusRequest = ComplyTestControllerRequest3
-"""Force an account to a specific status."""
-
-ComplyForceMediaBuyStatusRequest = ComplyTestControllerRequest4
-"""Force a media buy to a specific status."""
-
-ComplyForceSessionStatusRequest = ComplyTestControllerRequest5
-"""Force an SI session to a terminal status."""
-
-ComplySimulateDeliveryRequest = ComplyTestControllerRequest6
-"""Simulate delivery data for a media buy."""
-
-ComplySimulateBudgetSpendRequest = ComplyTestControllerRequest7
-"""Simulate budget spend percentage."""
+# Request is now a single class with a `scenario` enum field — per-scenario
+# request aliases were removed. Response remains a 4-way discriminated union.
 
 ComplyListScenariosResponse = ComplyTestControllerResponse1
 """Success - lists supported scenarios."""
@@ -518,16 +485,8 @@ ComplyErrorResponse = ComplyTestControllerResponse4
 # REQUEST TYPE ALIASES - Operation Variants
 # ============================================================================
 
-# Preview Creative Request Variants
-PreviewCreativeSingleRequest = PreviewCreativeRequest1
-"""Single preview request with creative_manifest and optional format_id - request_type='single'."""
-
-PreviewCreativeBatchRequest = PreviewCreativeRequest2
-"""Batch preview request with array of requests (1-50) - request_type='batch'."""
-
-PreviewCreativeVariantRequest = PreviewCreativeRequest3
-"""Variant preview request using variant_id - request_type='variant'."""
-
+# PreviewCreativeRequest is now a single class with a `request_type` enum field —
+# per-mode request aliases were removed. Dispatch on request.request_type instead.
 
 # Get Products Request Aliases (backward compat — now a single class)
 GetProductsRefineRequest = GetProductsRequest
@@ -1101,19 +1060,11 @@ Example:
 """
 
 # ============================================================================
-# SIGNAL PRICING OPTION ALIASES - Pricing Model Discriminated Unions
+# SIGNAL PRICING OPTION ALIASES
 # ============================================================================
-# SignalPricingOption is a discriminated union with three pricing models.
-# Variants 5/6/7 combine the model-specific fields with pricing_option_id.
-
-CpmSignalPricingOption = SignalPricingOption5
-"""Signal pricing option with model='cpm' - fixed cost per thousand impressions."""
-
-PercentOfMediaSignalPricingOption = SignalPricingOption6
-"""Signal pricing option with model='percent_of_media' - percentage of media spend."""
-
-FlatFeeSignalPricingOption = SignalPricingOption7
-"""Signal pricing option with model='flat_fee' - fixed charge per reporting period."""
+# SignalPricingOption is now a RootModel wrapping VendorPricingOption; the
+# per-model variant aliases (CpmSignalPricingOption, etc.) were removed.
+# Dispatch on the wrapped VendorPricingOption.root.model field instead.
 
 # ============================================================================
 # FIELD ENUM ALIASES - Disambiguating FieldModel Name Collision
@@ -1281,10 +1232,6 @@ __all__ = [
     # Performance feedback responses
     "ProvidePerformanceFeedbackSuccessResponse",
     "ProvidePerformanceFeedbackErrorResponse",
-    # Preview creative requests
-    "PreviewCreativeSingleRequest",
-    "PreviewCreativeBatchRequest",
-    "PreviewCreativeVariantRequest",
     # Preview creative responses
     "PreviewCreativeSingleResponse",
     "PreviewCreativeBatchResponse",
@@ -1357,10 +1304,6 @@ __all__ = [
     "Destination",
     # Pricing option union
     "PricingOption",
-    # Signal pricing option variants
-    "CpmSignalPricingOption",
-    "FlatFeeSignalPricingOption",
-    "PercentOfMediaSignalPricingOption",
     # Sync audiences input type
     "SyncAudiencesAudience",
     "ConsentBasis",
@@ -1380,14 +1323,7 @@ __all__ = [
     "GetBrandIdentityErrorResponse",
     "GetRightsSuccessResponse",
     "GetRightsErrorResponse",
-    # Compliance Test Controller aliases
-    "ComplyListScenariosRequest",
-    "ComplyForceCreativeStatusRequest",
-    "ComplyForceAccountStatusRequest",
-    "ComplyForceMediaBuyStatusRequest",
-    "ComplyForceSessionStatusRequest",
-    "ComplySimulateDeliveryRequest",
-    "ComplySimulateBudgetSpendRequest",
+    # Compliance Test Controller response aliases
     "ComplyListScenariosResponse",
     "ComplyStateTransitionResponse",
     "ComplySimulationResponse",

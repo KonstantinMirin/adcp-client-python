@@ -12,6 +12,9 @@
       "type": "string",
       "description": "ID of the deleted list"
     },
+    "context": {
+      "$ref": "../core/context.json"
+    },
     "ext": {
       "$ref": "../core/ext.json"
     }

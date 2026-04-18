@@ -1,13 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
-  "description": "Request to terminate an SI session",
+  "title": "SI Terminate Session Request",
+  "description": "Request to terminate an SI session. Naturally idempotent \u2014 `session_id` is the dedup boundary, and terminating an already-terminated session is a no-op that returns the same terminal state. No `idempotency_key` is needed on this request.",
+  "type": "object",
   "properties": {
-    "ext": {
-      "$ref": "../core/ext.json"
+    "adcp_major_version": {
+      "type": "integer",
+      "description": "The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "minimum": 1,
+      "maximum": 99
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session identifier to terminate"
     },
     "reason": {
-      "description": "Reason for termination",
+      "type": "string",
       "enum": [
         "handoff_transaction",
         "handoff_complete",
@@ -15,50 +23,51 @@
         "session_timeout",
         "host_terminated"
       ],
-      "type": "string"
-    },
-    "session_id": {
-      "description": "Session identifier to terminate",
-      "type": "string"
+      "description": "Reason for termination"
     },
     "termination_context": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Context for the termination",
       "properties": {
-        "cause": {
-          "description": "For host_terminated - why host ended session",
-          "type": "string"
-        },
         "summary": {
-          "description": "Summary of the conversation",
-          "type": "string"
+          "type": "string",
+          "description": "Summary of the conversation"
         },
         "transaction_intent": {
-          "additionalProperties": true,
+          "type": "object",
           "description": "For handoff_transaction - what user wants to buy",
           "properties": {
             "action": {
+              "type": "string",
               "enum": [
                 "purchase",
                 "subscribe"
-              ],
-              "type": "string"
+              ]
             },
             "product": {
-              "description": "Product/service details",
-              "type": "object"
+              "type": "object",
+              "description": "Product/service details"
             }
           },
-          "type": "object"
+          "additionalProperties": true
+        },
+        "cause": {
+          "type": "string",
+          "description": "For host_terminated - why host ended session"
         }
       },
-      "type": "object"
+      "additionalProperties": true
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
     "session_id",
     "reason"
   ],
-  "title": "SI Terminate Session Request",
-  "type": "object"
+  "additionalProperties": true
 }

@@ -1,37 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "Geographic Breakdown Support",
   "description": "Declares which geographic levels and classification systems are available for by_geo reporting breakdowns in product-level reporting_capabilities.",
+  "type": "object",
   "properties": {
     "country": {
-      "description": "Supports country-level geo breakdown (ISO 3166-1 alpha-2)",
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Supports country-level geo breakdown (ISO 3166-1 alpha-2)"
+    },
+    "region": {
+      "type": "boolean",
+      "description": "Supports region/state-level geo breakdown (ISO 3166-2)"
     },
     "metro": {
-      "additionalProperties": {
-        "type": "boolean"
-      },
+      "type": "object",
       "description": "Metro area breakdown support. Keys are metro-system enum values; true means supported.",
       "propertyNames": {
         "$ref": "../enums/metro-system.json"
       },
-      "type": "object"
-    },
-    "postal_area": {
       "additionalProperties": {
         "type": "boolean"
-      },
+      }
+    },
+    "postal_area": {
+      "type": "object",
       "description": "Postal area breakdown support. Keys are postal-system enum values; true means supported.",
       "propertyNames": {
         "$ref": "../enums/postal-system.json"
       },
-      "type": "object"
-    },
-    "region": {
-      "description": "Supports region/state-level geo breakdown (ISO 3166-2)",
-      "type": "boolean"
+      "additionalProperties": {
+        "type": "boolean"
+      }
     }
   },
-  "title": "Geographic Breakdown Support",
-  "type": "object"
+  "additionalProperties": false
 }

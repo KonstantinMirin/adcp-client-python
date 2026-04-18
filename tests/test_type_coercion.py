@@ -90,8 +90,8 @@ class TestDictToModelCoercion:
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
-        req = validate_union(GetProductsRequest,
-            {"buying_mode": "wholesale", "context": {"key": "value"}}
+        req = validate_union(
+            GetProductsRequest, {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
         assert isinstance(req.context, ContextObject)
         assert req.context.key == "value"
@@ -289,6 +289,7 @@ class TestListVariance:
 
         # No cast() needed!
         request = CreateMediaBuyRequest(
+            idempotency_key="test-idempotency-key",
             account={"account_id": "acct-1"},
             brand={"domain": "example.com"},
             buyer_ref="buyer-ref",

@@ -77,8 +77,6 @@ def main():
 
     # Find all JSON files recursively (including subdirectories)
     schema_files = list(SCHEMAS_DIR.rglob("*.json"))
-    # Filter out .hashes.json
-    schema_files = [f for f in schema_files if f.name != ".hashes.json"]
 
     print(f"Found {len(schema_files)} schemas\n")
 

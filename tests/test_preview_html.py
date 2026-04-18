@@ -35,7 +35,7 @@ def make_format_id(id_str: str) -> FormatId:
 @pytest.mark.asyncio
 async def test_preview_creative():
     """Test preview_creative method."""
-    from adcp.types._generated import PreviewCreativeRequest1
+    from adcp.types._generated import PreviewCreativeRequest
 
     config = AgentConfig(
         id="creative_agent",
@@ -91,7 +91,7 @@ async def test_preview_creative():
         client.adapter, "preview_creative", return_value=mock_raw_result
     ) as mock_call:
         with patch.object(client.adapter, "_parse_response", return_value=mock_parsed_result):
-            request = PreviewCreativeRequest1(
+            request = PreviewCreativeRequest(
                 request_type="single",
                 format_id=format_id,
                 creative_manifest=manifest,

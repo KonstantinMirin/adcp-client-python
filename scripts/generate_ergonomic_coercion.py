@@ -223,11 +223,38 @@ def get_symbol_name(cls) -> str:
 def generate_code() -> str:
     """Generate the _ergonomic.py module content."""
     # Import all the types we need to analyze
+    from adcp.types.generated_poc.media_buy import (
+        create_media_buy_response as _cmbr_module,
+    )
     from adcp.types.generated_poc.media_buy.create_media_buy_request import CreateMediaBuyRequest
-    from adcp.types.generated_poc.media_buy.create_media_buy_response import CreateMediaBuyResponse1
     from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
         GetMediaBuyDeliveryResponse,
     )
+
+    # Resolve the CreateMediaBuyResponse success variant. Different
+    # datamodel-codegen versions emit the variants under shifting names:
+    # sometimes `CreateMediaBuyResponse1`/`...2`, sometimes `CreateMediaBuyResponse`
+    # (success, unnumbered) + `CreateMediaBuyResponseN`. Find the success
+    # variant by scanning the module for a pydantic model whose fields include
+    # the success-only `media_buy_id` key.
+    from pydantic import BaseModel as _PydBaseModel
+
+    def _find_success_variant() -> type[_PydBaseModel]:
+        for name in dir(_cmbr_module):
+            obj = getattr(_cmbr_module, name)
+            if (
+                isinstance(obj, type)
+                and issubclass(obj, _PydBaseModel)
+                and "media_buy_id" in getattr(obj, "model_fields", {})
+            ):
+                return obj
+        raise ImportError(
+            "Could not find CreateMediaBuyResponse success variant "
+            "(class with a `media_buy_id` field) in "
+            "adcp.types.generated_poc.media_buy.create_media_buy_response"
+        )
+
+    CreateMediaBuyResponse1 = _find_success_variant()
     from adcp.types.generated_poc.media_buy.get_products_request import (
         Field1 as GetProductsField,
         GetProductsRequest,
@@ -388,9 +415,14 @@ def generate_code() -> str:
     lines.append("from adcp.types.generated_poc.media_buy.package_request import PackageRequest")
     lines.append("from adcp.types.generated_poc.media_buy.package_update import PackageUpdate")
 
-    # Add response type imports
+    # Add response type imports. CreateMediaBuyResponse1's numeric suffix can
+    # shift between codegen versions; import under its actual class name.
+    cmbr_name = CreateMediaBuyResponse1.__name__
     lines.append("from adcp.types.generated_poc.media_buy.create_media_buy_response import (")
-    lines.append("    CreateMediaBuyResponse1,")
+    if cmbr_name == "CreateMediaBuyResponse1":
+        lines.append("    CreateMediaBuyResponse1,")
+    else:
+        lines.append(f"    {cmbr_name} as CreateMediaBuyResponse1,")
     lines.append(")")
     lines.append("from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (")
     lines.append("    GetMediaBuyDeliveryResponse,")

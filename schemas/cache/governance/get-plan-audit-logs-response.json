@@ -1,101 +1,292 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "Get Plan Audit Logs Response",
   "description": "Governance state and audit trail for one or more plans.",
+  "type": "object",
   "properties": {
     "plans": {
+      "type": "array",
       "description": "Audit data for each requested plan.",
       "items": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
+          "plan_id": {
+            "type": "string",
+            "description": "Plan identifier."
+          },
+          "plan_version": {
+            "type": "integer",
+            "description": "Current plan version."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended",
+              "completed"
+            ],
+            "description": "Plan lifecycle status."
+          },
           "budget": {
-            "additionalProperties": false,
+            "type": "object",
             "description": "Budget state.",
             "properties": {
               "authorized": {
-                "description": "Total authorized budget from the plan.",
-                "type": "number"
+                "type": "number",
+                "description": "Total authorized budget from the plan."
               },
               "committed": {
-                "description": "Total budget committed from confirmed outcomes.",
-                "type": "number"
+                "type": "number",
+                "description": "Total budget committed from confirmed outcomes."
               },
               "remaining": {
-                "description": "Authorized minus committed.",
-                "type": "number"
+                "type": "number",
+                "description": "Authorized minus committed."
               },
               "utilization_pct": {
-                "description": "Committed as a percentage of authorized.",
-                "type": "number"
+                "type": "number",
+                "description": "Committed as a percentage of authorized."
               }
             },
-            "type": "object"
+            "additionalProperties": false
           },
           "channel_allocation": {
+            "type": "object",
+            "description": "Current channel mix. Keyed by channel ID.",
             "additionalProperties": {
-              "additionalProperties": false,
+              "type": "object",
               "properties": {
                 "committed": {
-                  "description": "Budget committed to this channel.",
-                  "type": "number"
+                  "type": "number",
+                  "description": "Budget committed to this channel."
                 },
                 "pct": {
-                  "description": "Channel's share of the authorized total budget.",
-                  "type": "number"
+                  "type": "number",
+                  "description": "Channel's share of the authorized total budget."
                 }
               },
-              "type": "object"
+              "additionalProperties": false
+            }
+          },
+          "summary": {
+            "type": "object",
+            "description": "Aggregate validation and outcome statistics.",
+            "properties": {
+              "checks_performed": {
+                "type": "integer",
+                "description": "Total governance checks performed."
+              },
+              "outcomes_reported": {
+                "type": "integer",
+                "description": "Total outcomes reported."
+              },
+              "statuses": {
+                "type": "object",
+                "description": "Count of each governance check status.",
+                "properties": {
+                  "approved": {
+                    "type": "integer"
+                  },
+                  "denied": {
+                    "type": "integer"
+                  },
+                  "conditions": {
+                    "type": "integer"
+                  },
+                  "human_reviewed": {
+                    "type": "integer",
+                    "description": "Supplementary count of checks that went through internal human review. These checks are also counted in approved or denied."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "findings_count": {
+                "type": "integer",
+                "description": "Total findings across all checks and outcomes."
+              },
+              "escalations": {
+                "type": "array",
+                "description": "All escalations and their resolutions.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "check_id": {
+                      "type": "string",
+                      "description": "The escalated governance check."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was escalated."
+                    },
+                    "resolution": {
+                      "type": "string",
+                      "description": "How it was resolved (e.g., 'approved_by_human', 'rejected_by_human')."
+                    },
+                    "resolved_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 resolution timestamp."
+                    }
+                  },
+                  "required": [
+                    "check_id",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "drift_metrics": {
+                "type": "object",
+                "description": "Aggregate governance metrics for detecting oversight drift. A declining escalation rate may indicate well-calibrated governance or eroding human oversight -- surfacing the trend lets the organization make that judgment.",
+                "properties": {
+                  "escalation_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Fraction of checks that resulted in escalation."
+                  },
+                  "escalation_rate_trend": {
+                    "type": "string",
+                    "enum": [
+                      "increasing",
+                      "stable",
+                      "declining"
+                    ],
+                    "description": "Direction of escalation rate over the plan's lifetime."
+                  },
+                  "auto_approval_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Fraction of checks approved without human intervention."
+                  },
+                  "human_override_rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Fraction of escalations where the human overrode the governance agent's recommendation."
+                  },
+                  "mean_confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Average confidence score across all findings. Present when findings include confidence scores."
+                  },
+                  "thresholds": {
+                    "type": "object",
+                    "description": "Organization-defined thresholds for drift metrics. When a metric crosses its threshold, the governance agent SHOULD include a finding on the next check. Set by the organization in governance agent configuration, echoed here for visibility.",
+                    "properties": {
+                      "escalation_rate_max": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Maximum acceptable escalation rate. A rate above this suggests policy miscalibration."
+                      },
+                      "escalation_rate_min": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Minimum acceptable escalation rate. A rate below this may indicate eroding oversight."
+                      },
+                      "auto_approval_rate_max": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Maximum acceptable auto-approval rate."
+                      },
+                      "human_override_rate_max": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Maximum acceptable human override rate. A high rate suggests the governance agent's recommendations are poorly calibrated."
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
             },
-            "description": "Current channel mix. Keyed by channel ID.",
-            "type": "object"
+            "additionalProperties": false
           },
           "entries": {
+            "type": "array",
             "description": "Ordered audit trail. Only present when include_entries is true.",
             "items": {
-              "additionalProperties": false,
+              "type": "object",
               "properties": {
-                "caller": {
-                  "description": "URL of the agent that made the request. Resolved from the credentials used on the governance callback.",
-                  "format": "uri",
-                  "type": "string"
+                "id": {
+                  "type": "string",
+                  "description": "Entry identifier."
                 },
-                "categories_evaluated": {
-                  "description": "Governance categories evaluated (e.g., 'budget_authority', 'regulatory_compliance'). Present for check entries.",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "check",
+                    "outcome"
+                  ],
+                  "description": "Entry type."
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 timestamp."
+                },
+                "plan_id": {
+                  "type": "string",
+                  "description": "Plan this entry belongs to. Present when querying multiple plans or a portfolio."
+                },
+                "caller": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "URL of the agent that made the request. Resolved from the credentials used on the governance callback."
+                },
+                "tool": {
+                  "type": "string",
+                  "description": "The AdCP tool (present for check entries)."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "approved",
+                    "denied",
+                    "conditions"
+                  ],
+                  "description": "Governance check status (present for check entries)."
                 },
                 "check_type": {
-                  "description": "Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries.",
+                  "type": "string",
                   "enum": [
                     "intent",
                     "execution"
                   ],
-                  "type": "string"
-                },
-                "committed_budget": {
-                  "description": "Budget committed (present for completed outcome entries).",
-                  "type": "number"
+                  "description": "Whether the check was an intent check (orchestrator) or execution check (seller). Inferred from the fields present on the original check request. Present for check entries."
                 },
                 "explanation": {
-                  "description": "Human-readable explanation of the governance decision (present for check entries).",
-                  "type": "string"
+                  "type": "string",
+                  "description": "Human-readable explanation of the governance decision (present for check entries)."
+                },
+                "policies_evaluated": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Registry policy IDs evaluated during this check (present for check entries)."
+                },
+                "categories_evaluated": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Governance categories evaluated (e.g., 'budget_authority', 'regulatory_compliance'). Present for check entries."
                 },
                 "findings": {
+                  "type": "array",
                   "description": "Findings from this check or outcome. Same structure as check_governance response findings.",
                   "items": {
-                    "additionalProperties": false,
+                    "type": "object",
                     "properties": {
                       "category_id": {
-                        "type": "string"
-                      },
-                      "confidence": {
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": "number"
-                      },
-                      "explanation": {
                         "type": "string"
                       },
                       "policy_id": {
@@ -103,6 +294,14 @@
                       },
                       "severity": {
                         "$ref": "../enums/escalation-severity.json"
+                      },
+                      "explanation": {
+                        "type": "string"
+                      },
+                      "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
                       }
                     },
                     "required": [
@@ -110,62 +309,28 @@
                       "severity",
                       "explanation"
                     ],
-                    "type": "object"
-                  },
-                  "type": "array"
-                },
-                "id": {
-                  "description": "Entry identifier.",
-                  "type": "string"
-                },
-                "media_buy_id": {
-                  "description": "Media buy ID (present for delivery outcome entries).",
-                  "type": "string"
+                    "additionalProperties": false
+                  }
                 },
                 "outcome": {
                   "$ref": "../enums/outcome-type.json",
                   "description": "Outcome type (present for outcome entries)."
                 },
+                "committed_budget": {
+                  "type": "number",
+                  "description": "Budget committed (present for completed outcome entries)."
+                },
+                "governance_context": {
+                  "type": "string",
+                  "description": "Governance context for this entry (present for check and outcome entries)."
+                },
+                "purchase_type": {
+                  "$ref": "../enums/purchase-type.json",
+                  "description": "Purchase type for this entry."
+                },
                 "outcome_status": {
-                  "description": "Outcome status (present for outcome entries).",
-                  "type": "string"
-                },
-                "plan_id": {
-                  "description": "Plan this entry belongs to. Present when querying multiple plans or a portfolio.",
-                  "type": "string"
-                },
-                "policies_evaluated": {
-                  "description": "Registry policy IDs evaluated during this check (present for check entries).",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "status": {
-                  "description": "Governance check status (present for check entries).",
-                  "enum": [
-                    "approved",
-                    "denied",
-                    "conditions"
-                  ],
-                  "type": "string"
-                },
-                "timestamp": {
-                  "description": "ISO 8601 timestamp.",
-                  "format": "date-time",
-                  "type": "string"
-                },
-                "tool": {
-                  "description": "The AdCP tool (present for check entries).",
-                  "type": "string"
-                },
-                "type": {
-                  "description": "Entry type.",
-                  "enum": [
-                    "check",
-                    "outcome"
-                  ],
-                  "type": "string"
+                  "type": "string",
+                  "description": "Outcome status (present for outcome entries)."
                 }
               },
               "required": [
@@ -173,203 +338,54 @@
                 "type",
                 "timestamp"
               ],
-              "type": "object"
-            },
-            "type": "array"
+              "additionalProperties": false
+            }
           },
-          "media_buys": {
-            "description": "Per-media-buy breakdown.",
+          "governed_actions": {
+            "type": "array",
+            "description": "Per-action breakdown grouped by governance context.",
             "items": {
-              "additionalProperties": false,
+              "type": "object",
               "properties": {
-                "check_count": {
-                  "description": "Number of governance checks performed for this media buy.",
-                  "type": "integer"
+                "governance_context": {
+                  "type": "string",
+                  "description": "Governance context correlating this action's lifecycle."
                 },
-                "committed": {
-                  "description": "Budget committed for this media buy.",
-                  "type": "number"
-                },
-                "media_buy_id": {
-                  "description": "Seller-assigned media buy identifier.",
-                  "type": "string"
+                "purchase_type": {
+                  "$ref": "../enums/purchase-type.json",
+                  "description": "Type of financial commitment."
                 },
                 "status": {
-                  "description": "Media buy status.",
+                  "type": "string",
                   "enum": [
                     "active",
                     "suspended",
                     "completed"
                   ],
-                  "type": "string"
+                  "description": "Action status."
+                },
+                "committed": {
+                  "type": "number",
+                  "description": "Budget committed for this action."
+                },
+                "check_count": {
+                  "type": "integer",
+                  "description": "Number of governance checks performed for this action."
+                },
+                "seller_reference": {
+                  "type": "string",
+                  "description": "The seller's identifier for the resource (e.g., media_buy_id, rights_grant_id). Present when reported via report_plan_outcome."
                 }
               },
               "required": [
-                "media_buy_id",
+                "governance_context",
+                "purchase_type",
                 "status",
-                "committed"
+                "committed",
+                "check_count"
               ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "plan_id": {
-            "description": "Plan identifier.",
-            "type": "string"
-          },
-          "plan_version": {
-            "description": "Current plan version.",
-            "type": "integer"
-          },
-          "status": {
-            "description": "Plan lifecycle status.",
-            "enum": [
-              "active",
-              "suspended",
-              "completed"
-            ],
-            "type": "string"
-          },
-          "summary": {
-            "additionalProperties": false,
-            "description": "Aggregate validation and outcome statistics.",
-            "properties": {
-              "checks_performed": {
-                "description": "Total governance checks performed.",
-                "type": "integer"
-              },
-              "drift_metrics": {
-                "additionalProperties": false,
-                "description": "Aggregate governance metrics for detecting oversight drift. A declining escalation rate may indicate well-calibrated governance or eroding human oversight -- surfacing the trend lets the organization make that judgment.",
-                "properties": {
-                  "auto_approval_rate": {
-                    "description": "Fraction of checks approved without human intervention.",
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "escalation_rate": {
-                    "description": "Fraction of checks that resulted in escalation.",
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "escalation_rate_trend": {
-                    "description": "Direction of escalation rate over the plan's lifetime.",
-                    "enum": [
-                      "increasing",
-                      "stable",
-                      "declining"
-                    ],
-                    "type": "string"
-                  },
-                  "human_override_rate": {
-                    "description": "Fraction of escalations where the human overrode the governance agent's recommendation.",
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "mean_confidence": {
-                    "description": "Average confidence score across all findings. Present when findings include confidence scores.",
-                    "maximum": 1,
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "thresholds": {
-                    "additionalProperties": false,
-                    "description": "Organization-defined thresholds for drift metrics. When a metric crosses its threshold, the governance agent SHOULD include a finding on the next check. Set by the organization in governance agent configuration, echoed here for visibility.",
-                    "properties": {
-                      "auto_approval_rate_max": {
-                        "description": "Maximum acceptable auto-approval rate.",
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": "number"
-                      },
-                      "escalation_rate_max": {
-                        "description": "Maximum acceptable escalation rate. A rate above this suggests policy miscalibration.",
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": "number"
-                      },
-                      "escalation_rate_min": {
-                        "description": "Minimum acceptable escalation rate. A rate below this may indicate eroding oversight.",
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": "number"
-                      },
-                      "human_override_rate_max": {
-                        "description": "Maximum acceptable human override rate. A high rate suggests the governance agent's recommendations are poorly calibrated.",
-                        "maximum": 1,
-                        "minimum": 0,
-                        "type": "number"
-                      }
-                    },
-                    "type": "object"
-                  }
-                },
-                "type": "object"
-              },
-              "escalations": {
-                "description": "All escalations and their resolutions.",
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "check_id": {
-                      "description": "The escalated governance check.",
-                      "type": "string"
-                    },
-                    "reason": {
-                      "description": "Why it was escalated.",
-                      "type": "string"
-                    },
-                    "resolution": {
-                      "description": "How it was resolved (e.g., 'approved_by_human', 'rejected_by_human').",
-                      "type": "string"
-                    },
-                    "resolved_at": {
-                      "description": "ISO 8601 resolution timestamp.",
-                      "format": "date-time",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "check_id",
-                    "reason"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              "findings_count": {
-                "description": "Total findings across all checks and outcomes.",
-                "type": "integer"
-              },
-              "outcomes_reported": {
-                "description": "Total outcomes reported.",
-                "type": "integer"
-              },
-              "statuses": {
-                "additionalProperties": false,
-                "description": "Count of each governance check status.",
-                "properties": {
-                  "approved": {
-                    "type": "integer"
-                  },
-                  "conditions": {
-                    "type": "integer"
-                  },
-                  "denied": {
-                    "type": "integer"
-                  },
-                  "human_reviewed": {
-                    "description": "Supplementary count of checks that went through internal human review. These checks are also counted in approved or denied.",
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              }
-            },
-            "type": "object"
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -377,17 +393,21 @@
           "plan_version",
           "status",
           "budget",
-          "media_buys",
+          "governed_actions",
           "summary"
         ],
-        "type": "object"
-      },
-      "type": "array"
+        "additionalProperties": false
+      }
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
     "plans"
   ],
-  "title": "Get Plan Audit Logs Response",
-  "type": "object"
+  "additionalProperties": false
 }

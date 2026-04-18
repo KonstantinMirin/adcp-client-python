@@ -1,46 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Rights Terms",
   "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
+  "type": "object",
   "properties": {
+    "pricing_option_id": {
+      "type": "string"
+    },
     "amount": {
-      "minimum": 0,
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "currency": {
-      "pattern": "^[A-Z]{3}$",
-      "type": "string"
-    },
-    "end_date": {
-      "format": "date",
-      "type": "string"
-    },
-    "exclusivity": {
-      "additionalProperties": true,
-      "description": "Exclusivity terms if applicable",
-      "properties": {
-        "countries": {
-          "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "scope": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "impression_cap": {
-      "minimum": 1,
-      "type": "integer"
-    },
-    "overage_cpm": {
-      "minimum": 0,
-      "type": "number"
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
     },
     "period": {
+      "type": "string",
       "enum": [
         "daily",
         "weekly",
@@ -48,21 +24,46 @@
         "quarterly",
         "annual",
         "one_time"
-      ],
-      "type": "string"
-    },
-    "pricing_option_id": {
-      "type": "string"
-    },
-    "start_date": {
-      "format": "date",
-      "type": "string"
+      ]
     },
     "uses": {
+      "type": "array",
       "items": {
         "$ref": "../enums/right-use.json"
+      }
+    },
+    "impression_cap": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "overage_cpm": {
+      "type": "number",
+      "minimum": 0
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "exclusivity": {
+      "type": "object",
+      "description": "Exclusivity terms if applicable",
+      "properties": {
+        "scope": {
+          "type": "string"
+        },
+        "countries": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
+        }
       },
-      "type": "array"
+      "additionalProperties": true
     }
   },
   "required": [
@@ -71,6 +72,5 @@
     "currency",
     "uses"
   ],
-  "title": "Rights Terms",
-  "type": "object"
+  "additionalProperties": true
 }

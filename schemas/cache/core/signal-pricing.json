@@ -1,27 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "description": "Pricing model for a signal. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), or 'flat_fee' (fixed charge per reporting period, e.g. monthly licensed segments).",
+  "title": "Vendor Pricing",
+  "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), or 'per_unit' (fixed price per unit of work).",
+  "type": "object",
   "oneOf": [
     {
-      "additionalProperties": true,
+      "title": "CpmPricing",
       "description": "Fixed cost per thousand impressions",
+      "type": "object",
       "properties": {
+        "model": {
+          "type": "string",
+          "const": "cpm"
+        },
         "cpm": {
+          "type": "number",
           "description": "Cost per thousand impressions",
-          "minimum": 0,
-          "type": "number"
+          "minimum": 0
         },
         "currency": {
+          "type": "string",
           "description": "ISO 4217 currency code",
-          "pattern": "^[A-Z]{3}$",
-          "type": "string"
+          "pattern": "^[A-Z]{3}$"
         },
         "ext": {
           "$ref": "ext.json"
-        },
-        "model": {
-          "const": "cpm",
-          "type": "string"
         }
       },
       "required": [
@@ -29,35 +32,35 @@
         "cpm",
         "currency"
       ],
-      "title": "CpmPricing",
-      "type": "object"
+      "additionalProperties": true
     },
     {
-      "additionalProperties": true,
+      "title": "PercentOfMediaPricing",
       "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+      "type": "object",
       "properties": {
+        "model": {
+          "type": "string",
+          "const": "percent_of_media"
+        },
+        "percent": {
+          "type": "number",
+          "description": "Percentage of media spend, e.g. 15 = 15%",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_cpm": {
+          "type": "number",
+          "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
+          "minimum": 0
+        },
         "currency": {
+          "type": "string",
           "description": "ISO 4217 currency code for the resulting charge",
-          "pattern": "^[A-Z]{3}$",
-          "type": "string"
+          "pattern": "^[A-Z]{3}$"
         },
         "ext": {
           "$ref": "ext.json"
-        },
-        "max_cpm": {
-          "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
-          "minimum": 0,
-          "type": "number"
-        },
-        "model": {
-          "const": "percent_of_media",
-          "type": "string"
-        },
-        "percent": {
-          "description": "Percentage of media spend, e.g. 15 = 15%",
-          "maximum": 100,
-          "minimum": 0,
-          "type": "number"
         }
       },
       "required": [
@@ -65,39 +68,39 @@
         "percent",
         "currency"
       ],
-      "title": "PercentOfMediaPricing",
-      "type": "object"
+      "additionalProperties": true
     },
     {
-      "additionalProperties": true,
+      "title": "FlatFeePricing",
       "description": "Fixed charge per billing period, regardless of impressions or spend. Used for licensed data bundles and audience subscriptions.",
+      "type": "object",
       "properties": {
-        "amount": {
-          "description": "Fixed charge for the billing period",
-          "minimum": 0,
-          "type": "number"
-        },
-        "currency": {
-          "description": "ISO 4217 currency code",
-          "pattern": "^[A-Z]{3}$",
-          "type": "string"
-        },
-        "ext": {
-          "$ref": "ext.json"
-        },
         "model": {
-          "const": "flat_fee",
-          "type": "string"
+          "type": "string",
+          "const": "flat_fee"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Fixed charge for the billing period",
+          "minimum": 0
         },
         "period": {
-          "description": "Billing period for the flat fee.",
+          "type": "string",
           "enum": [
             "monthly",
             "quarterly",
             "annual",
             "campaign"
           ],
-          "type": "string"
+          "description": "Billing period for the flat fee."
+        },
+        "currency": {
+          "type": "string",
+          "description": "ISO 4217 currency code",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "ext": {
+          "$ref": "ext.json"
         }
       },
       "required": [
@@ -106,10 +109,42 @@
         "period",
         "currency"
       ],
-      "title": "FlatFeePricing",
-      "type": "object"
+      "additionalProperties": true
+    },
+    {
+      "title": "PerUnitPricing",
+      "description": "Fixed price per unit of work. Used for creative transformation (per format), AI generation (per image, per token), and rendering (per variant). The unit field describes what is counted; unit_price is the cost per one unit.",
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "const": "per_unit"
+        },
+        "unit": {
+          "type": "string",
+          "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
+        },
+        "unit_price": {
+          "type": "number",
+          "description": "Cost per one unit",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "description": "ISO 4217 currency code",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "ext": {
+          "$ref": "ext.json"
+        }
+      },
+      "required": [
+        "model",
+        "unit",
+        "unit_price",
+        "currency"
+      ],
+      "additionalProperties": true
     }
-  ],
-  "title": "Signal Pricing",
-  "type": "object"
+  ]
 }

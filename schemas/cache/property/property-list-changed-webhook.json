@@ -1,56 +1,57 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "Property List Changed Webhook",
   "description": "Webhook notification sent when a property list's resolved properties change. Contains a summary only - recipients must call get_property_list to retrieve the updated properties. This keeps payloads small and avoids redundant data transfer.",
+  "type": "object",
   "properties": {
-    "cache_valid_until": {
-      "description": "When the consumer should refresh from the governance agent",
-      "format": "date-time",
-      "type": "string"
+    "event": {
+      "type": "string",
+      "const": "property_list_changed",
+      "description": "The event type"
+    },
+    "list_id": {
+      "type": "string",
+      "description": "ID of the property list that changed"
+    },
+    "list_name": {
+      "type": "string",
+      "description": "Name of the property list"
     },
     "change_summary": {
-      "additionalProperties": false,
+      "type": "object",
       "description": "Summary of changes to the resolved list",
       "properties": {
         "properties_added": {
-          "description": "Number of properties added since last resolution",
-          "type": "integer"
+          "type": "integer",
+          "description": "Number of properties added since last resolution"
         },
         "properties_removed": {
-          "description": "Number of properties removed since last resolution",
-          "type": "integer"
+          "type": "integer",
+          "description": "Number of properties removed since last resolution"
         },
         "total_properties": {
-          "description": "Total properties in the resolved list",
-          "type": "integer"
+          "type": "integer",
+          "description": "Total properties in the resolved list"
         }
       },
-      "type": "object"
+      "additionalProperties": false
     },
-    "event": {
-      "const": "property_list_changed",
-      "description": "The event type",
-      "type": "string"
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the list was re-resolved"
+    },
+    "cache_valid_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the consumer should refresh from the governance agent"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Cryptographic signature of the webhook payload, signed with the agent's private key. Recipients MUST verify this signature."
     },
     "ext": {
       "$ref": "../core/ext.json"
-    },
-    "list_id": {
-      "description": "ID of the property list that changed",
-      "type": "string"
-    },
-    "list_name": {
-      "description": "Name of the property list",
-      "type": "string"
-    },
-    "resolved_at": {
-      "description": "When the list was re-resolved",
-      "format": "date-time",
-      "type": "string"
-    },
-    "signature": {
-      "description": "Cryptographic signature of the webhook payload, signed with the agent's private key. Recipients MUST verify this signature.",
-      "type": "string"
     }
   },
   "required": [
@@ -59,6 +60,5 @@
     "resolved_at",
     "signature"
   ],
-  "title": "Property List Changed Webhook",
-  "type": "object"
+  "additionalProperties": false
 }

@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Content ID Type",
   "description": "Identifier type used in content_ids on conversion events to match back to catalog items. Omit when the identifier type is custom or not listed here.",
+  "type": "string",
   "enum": [
     "sku",
     "gtin",
@@ -14,7 +16,5 @@
     "program_id",
     "destination_id",
     "app_id"
-  ],
-  "title": "Content ID Type",
-  "type": "string"
+  ]
 }

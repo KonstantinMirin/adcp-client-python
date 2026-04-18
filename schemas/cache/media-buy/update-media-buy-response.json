@@ -1,61 +1,51 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Update Media Buy Response",
   "description": "Response payload for update_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - updates are either fully applied or not applied at all.",
+  "type": "object",
   "oneOf": [
     {
-      "additionalProperties": true,
+      "title": "UpdateMediaBuySuccess",
       "description": "Success response - media buy updated successfully",
-      "not": {
-        "required": [
-          "errors"
-        ]
-      },
+      "type": "object",
       "properties": {
-        "affected_packages": {
-          "description": "Array of packages that were modified with complete state information",
-          "items": {
-            "$ref": "../core/package.json"
-          },
-          "type": "array"
-        },
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "implementation_date": {
-          "description": "ISO 8601 timestamp when changes take effect (null if pending approval)",
-          "format": "date-time",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "invoice_recipient": {
-          "$ref": "../core/business-entity.json",
-          "description": "Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
-        },
         "media_buy_id": {
-          "description": "Seller's identifier for the media buy",
-          "type": "string"
-        },
-        "revision": {
-          "description": "Revision number after this update. Use this value in subsequent update_media_buy requests for optimistic concurrency.",
-          "minimum": 1,
-          "type": "integer"
-        },
-        "sandbox": {
-          "description": "When true, this response contains simulated data from sandbox mode.",
-          "type": "boolean"
+          "type": "string",
+          "description": "Seller's identifier for the media buy"
         },
         "status": {
           "$ref": "../enums/media-buy-status.json",
           "description": "Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused')."
         },
+        "revision": {
+          "type": "integer",
+          "description": "Revision number after this update. Use this value in subsequent update_media_buy requests for optimistic concurrency.",
+          "minimum": 1
+        },
+        "implementation_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when changes take effect (null if pending approval)"
+        },
+        "invoice_recipient": {
+          "$ref": "../core/business-entity.json",
+          "description": "Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
+        },
+        "affected_packages": {
+          "type": "array",
+          "description": "Array of packages that were modified with complete state information",
+          "items": {
+            "$ref": "../core/package.json"
+          }
+        },
         "valid_actions": {
+          "type": "array",
           "description": "Actions the buyer can perform after this update. Saves a round-trip to get_media_buys.",
           "items": {
+            "type": "string",
             "enum": [
               "pause",
               "resume",
@@ -65,21 +55,54 @@
               "update_packages",
               "add_packages",
               "sync_creatives"
-            ],
-            "type": "string"
-          },
-          "type": "array"
+            ]
+          }
+        },
+        "sandbox": {
+          "type": "boolean",
+          "description": "When true, this response contains simulated data from sandbox mode."
+        },
+        "context": {
+          "$ref": "../core/context.json"
+        },
+        "ext": {
+          "$ref": "../core/ext.json"
         }
       },
       "required": [
         "media_buy_id"
       ],
-      "title": "UpdateMediaBuySuccess",
-      "type": "object"
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "errors"
+        ]
+      }
     },
     {
-      "additionalProperties": true,
+      "title": "UpdateMediaBuyError",
       "description": "Error response - operation failed, no changes applied",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "description": "Array of errors explaining why the operation failed",
+          "items": {
+            "$ref": "../core/error.json"
+          },
+          "minItems": 1
+        },
+        "context": {
+          "$ref": "../core/context.json"
+        },
+        "ext": {
+          "$ref": "../core/ext.json"
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "additionalProperties": true,
       "not": {
         "anyOf": [
           {
@@ -98,30 +121,7 @@
             ]
           }
         ]
-      },
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "errors": {
-          "description": "Array of errors explaining why the operation failed",
-          "items": {
-            "$ref": "../core/error.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        }
-      },
-      "required": [
-        "errors"
-      ],
-      "title": "UpdateMediaBuyError",
-      "type": "object"
+      }
     }
-  ],
-  "title": "Update Media Buy Response",
-  "type": "object"
+  ]
 }

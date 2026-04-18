@@ -1,10 +1,23 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Creative Asset",
   "description": "Creative asset for upload to library - supports static assets, generative formats, and third-party snippets",
+  "type": "object",
   "properties": {
+    "creative_id": {
+      "type": "string",
+      "description": "Unique identifier for the creative"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable creative name"
+    },
+    "format_id": {
+      "$ref": "format-id.json",
+      "description": "Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
+    },
     "assets": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Assets required by the format, keyed by asset_id",
       "patternProperties": {
         "^[a-z0-9_]+$": {
@@ -54,76 +67,72 @@
           ]
         }
       },
-      "type": "object"
-    },
-    "creative_id": {
-      "description": "Unique identifier for the creative",
-      "type": "string"
-    },
-    "format_id": {
-      "$ref": "format-id.json",
-      "description": "Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
+      "additionalProperties": true
     },
     "inputs": {
+      "type": "array",
       "description": "Preview contexts for generative formats - defines what scenarios to generate previews for",
       "items": {
-        "additionalProperties": true,
+        "type": "object",
         "properties": {
-          "context_description": {
-            "description": "Natural language description of the context for AI-generated content",
-            "type": "string"
+          "name": {
+            "type": "string",
+            "description": "Human-readable name for this preview variant"
           },
           "macros": {
+            "type": "object",
+            "description": "Macro values to apply for this preview",
             "additionalProperties": {
               "type": "string"
-            },
-            "description": "Macro values to apply for this preview",
-            "type": "object"
+            }
           },
-          "name": {
-            "description": "Human-readable name for this preview variant",
-            "type": "string"
+          "context_description": {
+            "type": "string",
+            "description": "Natural language description of the context for AI-generated content"
           }
         },
         "required": [
           "name"
         ],
-        "type": "object"
-      },
-      "type": "array"
+        "additionalProperties": true
+      }
     },
-    "name": {
-      "description": "Human-readable creative name",
-      "type": "string"
-    },
-    "placement_ids": {
-      "description": "Optional array of placement IDs where this creative should run when uploading via create_media_buy or update_media_buy. References placement_id values from the product's placements array. If omitted, creative runs on all placements. Only used during upload to media buy - not stored in creative library.",
+    "tags": {
+      "type": "array",
+      "description": "User-defined tags for organization and searchability",
       "items": {
         "type": "string"
-      },
-      "minItems": 1,
-      "type": "array"
-    },
-    "provenance": {
-      "$ref": "provenance.json",
-      "description": "Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
+      }
     },
     "status": {
       "$ref": "../enums/creative-status.json",
       "description": "For generative creatives: set to 'approved' to finalize, 'rejected' to request regeneration with updated assets/message. Omit for non-generative creatives (system will set based on processing state)."
     },
-    "tags": {
-      "description": "User-defined tags for organization and searchability",
+    "weight": {
+      "type": "number",
+      "description": "Optional delivery weight for creative rotation when uploading via create_media_buy or update_media_buy (0-100). If omitted, platform determines rotation. Only used during upload to media buy - not stored in creative library.",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "placement_ids": {
+      "type": "array",
+      "description": "Optional array of placement IDs where this creative should run when uploading via create_media_buy or update_media_buy. References placement_id values from the product's placements array. If omitted, creative runs on all placements. Only used during upload to media buy - not stored in creative library.",
       "items": {
         "type": "string"
       },
-      "type": "array"
+      "minItems": 1
     },
-    "weight": {
-      "description": "Optional delivery weight for creative rotation when uploading via create_media_buy or update_media_buy (0-100). If omitted, platform determines rotation. Only used during upload to media buy - not stored in creative library.",
-      "maximum": 100,
-      "minimum": 0,
-      "type": "number"
+    "industry_identifiers": {
+      "type": "array",
+      "description": "Industry-standard identifiers for this creative (e.g., Ad-ID, ISCI, Clearcast clock number). In broadcast buying, these identifiers tie the creative to rotation instructions and traffic systems. A creative may have multiple identifiers when different systems reference the same asset.",
+      "items": {
+        "$ref": "industry-identifier.json"
+      },
+      "uniqueItems": true
+    },
+    "provenance": {
+      "$ref": "provenance.json",
+      "description": "Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
     }
   },
   "required": [
@@ -132,6 +141,5 @@
     "format_id",
     "assets"
   ],
-  "title": "Creative Asset",
-  "type": "object"
+  "additionalProperties": true
 }

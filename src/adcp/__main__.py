@@ -269,6 +269,26 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         "list_property_lists": ("list_property_lists", _ta(gen.ListPropertyListsRequest)),
         "update_property_list": ("update_property_list", _ta(gen.UpdatePropertyListRequest)),
         "delete_property_list": ("delete_property_list", _ta(gen.DeletePropertyListRequest)),
+        # V3 Governance (Collection Lists)
+        "create_collection_list": (
+            "create_collection_list",
+            _ta(gen.CreateCollectionListRequest),
+        ),
+        "get_collection_list": ("get_collection_list", _ta(gen.GetCollectionListRequest)),
+        "list_collection_lists": (
+            "list_collection_lists",
+            _ta(gen.ListCollectionListsRequest),
+        ),
+        "update_collection_list": (
+            "update_collection_list",
+            _ta(gen.UpdateCollectionListRequest),
+        ),
+        "delete_collection_list": (
+            "delete_collection_list",
+            _ta(gen.DeleteCollectionListRequest),
+        ),
+        # V3 Governance (Sync Governance)
+        "sync_governance": ("sync_governance", _ta(gen.SyncGovernanceRequest)),
         # V3 TMP
         "context_match": ("context_match", _ta(gen.ContextMatchRequest)),
         "identity_match": ("identity_match", _ta(gen.IdentityMatchRequest)),

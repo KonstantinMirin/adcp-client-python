@@ -168,7 +168,7 @@ class TestGeneratedCodeMatchesSchemas:
         """Load all schemas with underscore-normalized keys for lookup."""
         all_schemas: dict[str, Any] = {}
         for schema_file in SCHEMAS_DIR.rglob("*.json"):
-            if schema_file.name in (".hashes.json", "index.json"):
+            if schema_file.name == "index.json":
                 continue
             with open(schema_file) as f:
                 schema = json.load(f)

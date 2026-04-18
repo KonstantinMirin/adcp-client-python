@@ -67,7 +67,7 @@ class PreviewURLGenerator:
         Returns:
             Preview data with preview_url and metadata, or None if generation fails
         """
-        from adcp.types.aliases import PreviewCreativeSingleRequest
+        from adcp.types._generated import PreviewCreativeRequest
 
         cache_key = _make_manifest_cache_key(format_id, manifest.model_dump(exclude_none=True))
 
@@ -75,7 +75,7 @@ class PreviewURLGenerator:
             return self._preview_cache[cache_key]
 
         try:
-            request = PreviewCreativeSingleRequest(
+            request = PreviewCreativeRequest(
                 request_type="single",
                 format_id=format_id,
                 creative_manifest=manifest,

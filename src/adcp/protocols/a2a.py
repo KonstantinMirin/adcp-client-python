@@ -735,6 +735,38 @@ class A2AAdapter(ProtocolAdapter):
         return await self._call_a2a_tool("delete_property_list", params)
 
     # ========================================================================
+    # V3 Protocol Methods - Governance (Collection Lists)
+    # ========================================================================
+
+    async def create_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Create a collection list for governance."""
+        return await self._call_a2a_tool("create_collection_list", params)
+
+    async def get_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get a collection list with optional resolution."""
+        return await self._call_a2a_tool("get_collection_list", params)
+
+    async def list_collection_lists(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """List collection lists."""
+        return await self._call_a2a_tool("list_collection_lists", params)
+
+    async def update_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Update a collection list."""
+        return await self._call_a2a_tool("update_collection_list", params)
+
+    async def delete_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Delete a collection list."""
+        return await self._call_a2a_tool("delete_collection_list", params)
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance (Sync Governance)
+    # ========================================================================
+
+    async def sync_governance(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync governance agents attached to an account."""
+        return await self._call_a2a_tool("sync_governance", params)
+
+    # ========================================================================
     # V3 Protocol Methods - TMP
     # ========================================================================
 

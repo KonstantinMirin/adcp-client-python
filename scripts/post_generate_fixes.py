@@ -332,6 +332,7 @@ _UNWRAP_TO_UNION: set[str] = {
     "ProvidePerformanceFeedbackResponse",
     "SyncAccountsResponse",
     "SyncAudiencesResponse",
+    "SyncGovernanceResponse",
     "SyncCatalogsResponse",
     "SyncCreativesResponse",
     "SyncEventSourcesResponse",
@@ -562,6 +563,44 @@ def fix_list_field_shadowing():
     print("  Fixed list field shadowing in get_property_list_response.py")
 
 
+def fix_reuse_model_discriminator_bug():
+    """Strip bogus ``source: Literal['reuse']`` subclasses.
+
+    datamodel-code-generator bug: when ``--reuse-model`` deduplicates inlined
+    copies of the same discriminated union, codegen emits subclasses like
+    ``class SignalIdN(Parent): source: Literal['reuse']``. Two such subclasses
+    collide on the literal ``'reuse'`` and pydantic rejects the union with
+    ``Value 'reuse' for discriminator mapped to multiple choices``.
+
+    Workaround: delete each bogus subclass and rewrite references to its
+    parent. Remove once koxudaxi/datamodel-code-generator#3092 is fixed.
+    """
+    print("Fixing Literal['reuse'] discriminator bug from --reuse-model...")
+
+    pattern = re.compile(
+        r"\n\s*class (\w+)\((\w+)\):\n\s*source: Literal\['reuse'\]\n",
+    )
+
+    total_fixes = 0
+    for py_file in OUTPUT_DIR.rglob("*.py"):
+        content = py_file.read_text()
+        mappings = pattern.findall(content)
+        if not mappings:
+            continue
+
+        content = pattern.sub("\n", content)
+        for child, parent in mappings:
+            content = re.sub(rf"\b{re.escape(child)}\b", parent, content)
+
+        py_file.write_text(content)
+        rel = py_file.relative_to(OUTPUT_DIR)
+        print(f"  {rel}: stripped {len(mappings)} bogus subclasses")
+        total_fixes += len(mappings)
+
+    if total_fixes == 0:
+        print("  No Literal['reuse'] subclasses found")
+
+
 def main():
     """Apply all post-generation fixes."""
     print("Applying post-generation fixes...")
@@ -576,6 +615,7 @@ def main():
     unwrap_rootmodel_unions()
     add_rootmodel_getattr_proxy()
     fix_list_field_shadowing()
+    fix_reuse_model_discriminator_bug()
 
     print("\n✓ Post-generation fixes complete\n")
 

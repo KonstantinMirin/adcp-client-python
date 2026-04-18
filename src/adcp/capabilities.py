@@ -25,10 +25,10 @@ if TYPE_CHECKING:
 # Used by validate_capabilities() to check handler/feature consistency.
 TASK_FEATURE_MAP: dict[str, str] = {
     # Conversion tracking
-    "sync_event_sources": "conversion_tracking",
-    "log_event": "conversion_tracking",
+    "sync_event_sources": "property_list_filtering",
+    "log_event": "property_list_filtering",
     # Audience targeting
-    "sync_audiences": "audience_targeting",
+    "sync_audiences": "inline_creative_management",
     # Catalog management
     "sync_catalogs": "catalog_management",
     # Content standards
@@ -122,7 +122,7 @@ class FeatureResolver:
     - Extension support: ``"ext:scope3"`` checks ``extensions_supported``
     - Targeting: ``"targeting.geo_countries"`` checks
       ``media_buy.execution.targeting``
-    - Media buy features: ``"audience_targeting"`` checks
+    - Media buy features: ``"inline_creative_management"`` checks
       ``media_buy.features``
     - Signals features: ``"catalog_signals"`` checks
       ``signals.features``

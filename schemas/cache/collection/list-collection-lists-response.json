@@ -14,6 +14,9 @@
     "pagination": {
       "$ref": "../core/pagination-response.json"
     },
+    "context": {
+      "$ref": "../core/context.json"
+    },
     "ext": {
       "$ref": "../core/ext.json"
     }

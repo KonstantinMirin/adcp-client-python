@@ -1,58 +1,61 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "SI Initiate Session Response",
   "description": "Brand agent's response to session initiation",
+  "type": "object",
   "properties": {
-    "errors": {
-      "description": "Errors during session initiation",
-      "items": {
-        "$ref": "../core/error.json"
-      },
-      "type": "array"
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier for subsequent messages"
     },
-    "ext": {
-      "$ref": "../core/ext.json"
+    "response": {
+      "type": "object",
+      "description": "Brand agent's initial response",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Conversational message from brand agent"
+        },
+        "ui_elements": {
+          "type": "array",
+          "items": {
+            "$ref": "si-ui-element.json"
+          },
+          "description": "Visual components to render"
+        }
+      },
+      "additionalProperties": true
     },
     "negotiated_capabilities": {
       "$ref": "si-capabilities.json",
       "description": "Intersection of brand and host capabilities for this session"
-    },
-    "response": {
-      "additionalProperties": true,
-      "description": "Brand agent's initial response",
-      "properties": {
-        "message": {
-          "description": "Conversational message from brand agent",
-          "type": "string"
-        },
-        "ui_elements": {
-          "description": "Visual components to render",
-          "items": {
-            "$ref": "si-ui-element.json"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "session_id": {
-      "description": "Unique session identifier for subsequent messages",
-      "type": "string"
     },
     "session_status": {
       "$ref": "../enums/si-session-status.json",
       "description": "Current session lifecycle state. Returned in initiation, message, and termination responses."
     },
     "session_ttl_seconds": {
-      "description": "Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible.",
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
+      "description": "Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible."
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "../core/error.json"
+      },
+      "description": "Errors during session initiation"
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
     "session_id",
     "session_status"
   ],
-  "title": "SI Initiate Session Response",
-  "type": "object"
+  "additionalProperties": true
 }

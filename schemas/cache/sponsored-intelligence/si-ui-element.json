@@ -1,5 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SI UI Element",
+  "description": "Standard visual component that brand returns and host renders",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "link",
+        "image",
+        "product_card",
+        "carousel",
+        "action_button",
+        "app_handoff",
+        "integration_actions"
+      ],
+      "description": "Component type"
+    },
+    "data": {
+      "type": "object",
+      "description": "Component-specific data",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "type"
+  ],
   "additionalProperties": true,
   "allOf": [
     {
@@ -13,16 +40,16 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
               "message": {
-                "description": "Text message content",
-                "type": "string"
+                "type": "string",
+                "description": "Text message content"
               }
             },
             "required": [
               "message"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -38,26 +65,26 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Link URL"
+              },
               "label": {
-                "description": "Link text",
-                "type": "string"
+                "type": "string",
+                "description": "Link text"
               },
               "preview": {
-                "description": "Show link preview",
-                "type": "boolean"
-              },
-              "url": {
-                "description": "Link URL",
-                "format": "uri",
-                "type": "string"
+                "type": "boolean",
+                "description": "Show link preview"
               }
             },
             "required": [
               "url",
               "label"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -73,26 +100,26 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Image URL"
+              },
               "alt": {
-                "description": "Alt text",
-                "type": "string"
+                "type": "string",
+                "description": "Alt text"
               },
               "caption": {
-                "description": "Image caption",
-                "type": "string"
-              },
-              "url": {
-                "description": "Image URL",
-                "format": "uri",
-                "type": "string"
+                "type": "string",
+                "description": "Image caption"
               }
             },
             "required": [
               "url",
               "alt"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -108,49 +135,49 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "badge": {
-                "description": "Badge text (e.g., 'Free Upgrade')",
-                "type": "string"
-              },
-              "cta": {
-                "properties": {
-                  "action": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              },
-              "description": {
-                "description": "Product description",
-                "type": "string"
-              },
-              "image_url": {
-                "description": "Product image",
-                "format": "uri",
-                "type": "string"
-              },
-              "price": {
-                "description": "Price display string",
-                "type": "string"
+              "title": {
+                "type": "string",
+                "description": "Product title"
               },
               "subtitle": {
-                "description": "Product subtitle",
-                "type": "string"
+                "type": "string",
+                "description": "Product subtitle"
               },
-              "title": {
-                "description": "Product title",
-                "type": "string"
+              "price": {
+                "type": "string",
+                "description": "Price display string"
+              },
+              "image_url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Product image"
+              },
+              "description": {
+                "type": "string",
+                "description": "Product description"
+              },
+              "badge": {
+                "type": "string",
+                "description": "Badge text (e.g., 'Free Upgrade')"
+              },
+              "cta": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string"
+                  }
+                }
               }
             },
             "required": [
               "title",
               "price"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -166,23 +193,23 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
+              "title": {
+                "type": "string",
+                "description": "Carousel title"
+              },
               "items": {
+                "type": "array",
                 "description": "Carousel items (product cards or images)",
                 "items": {
                   "type": "object"
-                },
-                "type": "array"
-              },
-              "title": {
-                "description": "Carousel title",
-                "type": "string"
+                }
               }
             },
             "required": [
               "items"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -198,25 +225,25 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
-              "action": {
-                "description": "Action identifier (e.g., 'acp_checkout')",
-                "type": "string"
-              },
               "label": {
-                "description": "Button label",
-                "type": "string"
+                "type": "string",
+                "description": "Button label"
+              },
+              "action": {
+                "type": "string",
+                "description": "Action identifier (e.g., 'acp_checkout')"
               },
               "payload": {
-                "description": "Action payload",
-                "type": "object"
+                "type": "object",
+                "description": "Action payload"
               }
             },
             "required": [
               "label",
               "action"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
@@ -232,7 +259,10 @@
       "then": {
         "properties": {
           "apps": {
+            "type": "object",
+            "description": "Platform-specific app handoff targets",
             "additionalProperties": {
+              "type": "object",
               "properties": {
                 "app_id": {
                   "type": "string"
@@ -241,14 +271,11 @@
                   "type": "string"
                 },
                 "url": {
-                  "format": "uri",
-                  "type": "string"
+                  "type": "string",
+                  "format": "uri"
                 }
-              },
-              "type": "object"
-            },
-            "description": "Platform-specific app handoff targets",
-            "type": "object"
+              }
+            }
           }
         }
       }
@@ -264,76 +291,49 @@
       "then": {
         "properties": {
           "data": {
+            "type": "object",
             "properties": {
               "actions": {
+                "type": "array",
                 "description": "Available integration actions",
                 "items": {
+                  "type": "object",
                   "properties": {
-                    "highlighted": {
-                      "description": "Whether this action should be visually emphasized",
-                      "type": "boolean"
-                    },
-                    "label": {
-                      "description": "User-facing button label",
-                      "type": "string"
-                    },
                     "type": {
-                      "description": "Integration type",
+                      "type": "string",
                       "enum": [
                         "mcp",
                         "a2a"
                       ],
-                      "type": "string"
+                      "description": "Integration type"
+                    },
+                    "label": {
+                      "type": "string",
+                      "description": "User-facing button label"
+                    },
+                    "highlighted": {
+                      "type": "boolean",
+                      "description": "Whether this action should be visually emphasized"
                     },
                     "url": {
-                      "description": "URL for the integration endpoint",
+                      "type": "string",
                       "format": "uri",
-                      "type": "string"
+                      "description": "URL for the integration endpoint"
                     }
                   },
                   "required": [
                     "type",
                     "label"
-                  ],
-                  "type": "object"
-                },
-                "type": "array"
+                  ]
+                }
               }
             },
             "required": [
               "actions"
-            ],
-            "type": "object"
+            ]
           }
         }
       }
     }
-  ],
-  "description": "Standard visual component that brand returns and host renders",
-  "properties": {
-    "data": {
-      "additionalProperties": true,
-      "description": "Component-specific data",
-      "type": "object"
-    },
-    "type": {
-      "description": "Component type",
-      "enum": [
-        "text",
-        "link",
-        "image",
-        "product_card",
-        "carousel",
-        "action_button",
-        "app_handoff",
-        "integration_actions"
-      ],
-      "type": "string"
-    }
-  },
-  "required": [
-    "type"
-  ],
-  "title": "SI UI Element",
-  "type": "object"
+  ]
 }

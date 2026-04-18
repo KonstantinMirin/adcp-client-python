@@ -1,60 +1,68 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Provide Performance Feedback Request",
   "description": "Request payload for provide_performance_feedback task",
+  "type": "object",
   "properties": {
-    "context": {
-      "$ref": "../core/context.json"
+    "adcp_major_version": {
+      "type": "integer",
+      "description": "The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "minimum": 1,
+      "maximum": 99
     },
-    "creative_id": {
-      "description": "Specific creative asset (if feedback is creative-specific)",
-      "minLength": 1,
-      "type": "string"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "feedback_source": {
-      "$ref": "../enums/feedback-source.json",
-      "default": "buyer_attribution",
-      "description": "Source of the performance data"
+    "media_buy_id": {
+      "type": "string",
+      "description": "Seller's media buy identifier",
+      "minLength": 1
     },
     "idempotency_key": {
+      "type": "string",
       "description": "Client-generated unique key for this request. Prevents duplicate feedback submissions on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
-      "maxLength": 255,
       "minLength": 16,
-      "type": "string"
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "measurement_period": {
       "$ref": "../core/datetime-range.json",
       "description": "Time period for performance measurement"
     },
-    "media_buy_id": {
-      "description": "Seller's media buy identifier",
-      "minLength": 1,
-      "type": "string"
+    "performance_index": {
+      "type": "number",
+      "description": "Normalized performance score (0.0 = no value, 1.0 = expected, >1.0 = above expected)",
+      "minimum": 0
+    },
+    "package_id": {
+      "type": "string",
+      "description": "Specific package within the media buy (if feedback is package-specific)",
+      "minLength": 1
+    },
+    "creative_id": {
+      "type": "string",
+      "description": "Specific creative asset (if feedback is creative-specific)",
+      "minLength": 1
     },
     "metric_type": {
       "$ref": "../enums/metric-type.json",
-      "default": "overall_performance",
-      "description": "The business metric being measured"
+      "description": "The business metric being measured",
+      "default": "overall_performance"
     },
-    "package_id": {
-      "description": "Specific package within the media buy (if feedback is package-specific)",
-      "minLength": 1,
-      "type": "string"
+    "feedback_source": {
+      "$ref": "../enums/feedback-source.json",
+      "description": "Source of the performance data",
+      "default": "buyer_attribution"
     },
-    "performance_index": {
-      "description": "Normalized performance score (0.0 = no value, 1.0 = expected, >1.0 = above expected)",
-      "minimum": 0,
-      "type": "number"
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
+    "idempotency_key",
     "media_buy_id",
     "measurement_period",
     "performance_index"
   ],
-  "title": "Provide Performance Feedback Request",
-  "type": "object"
+  "additionalProperties": true
 }

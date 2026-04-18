@@ -1,10 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Creative Manifest",
   "description": "Complete specification of a creative: format_id + assets. Everything the creative needs \u2014 images, text, briefs, catalogs \u2014 lives in the assets map, declared by the format. Each asset is typed according to its asset_type from the format specification.",
+  "type": "object",
   "properties": {
+    "format_id": {
+      "$ref": "format-id.json",
+      "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'})."
+    },
     "assets": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Map of asset IDs to actual asset content. Each key MUST match an asset_id from the format's assets array (e.g., 'banner_image', 'clickthrough_url', 'video_file', 'vast_tag'). The asset_id is the technical identifier used to match assets to format requirements.\n\nIMPORTANT: Full validation requires format context. The format defines what type each asset_id should be. Standalone schema validation only checks structural conformance \u2014 each asset must match at least one valid asset type schema.",
       "patternProperties": {
         "^[a-z0-9_]+$": {
@@ -54,31 +59,34 @@
           ]
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "ext": {
-      "$ref": "ext.json"
+    "rights": {
+      "type": "array",
+      "description": "Rights constraints attached to this creative. Each entry represents constraints from a single rights holder. A creative may combine multiple rights constraints (e.g., talent likeness + music license). For v1, rights constraints are informational metadata \u2014 the buyer/orchestrator manages creative lifecycle against these terms.",
+      "items": {
+        "$ref": "rights-constraint.json"
+      }
     },
-    "format_id": {
-      "$ref": "format-id.json",
-      "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'})."
+    "industry_identifiers": {
+      "type": "array",
+      "description": "Industry-standard identifiers for this specific manifest (e.g., Ad-ID, ISCI, Clearcast clock number). When present, overrides creative-level identifiers. Use when different format versions of the same source creative have distinct Ad-IDs (e.g., the :15 and :30 cuts).",
+      "items": {
+        "$ref": "industry-identifier.json"
+      },
+      "uniqueItems": true
     },
     "provenance": {
       "$ref": "provenance.json",
       "description": "Provenance metadata for this creative manifest. Serves as the default provenance for all assets in this manifest. An asset with its own provenance replaces this object entirely (no field-level merging)."
     },
-    "rights": {
-      "description": "Rights constraints attached to this creative. Each entry represents constraints from a single rights holder. A creative may combine multiple rights constraints (e.g., talent likeness + music license). For v1, rights constraints are informational metadata \u2014 the buyer/orchestrator manages creative lifecycle against these terms.",
-      "items": {
-        "$ref": "rights-constraint.json"
-      },
-      "type": "array"
+    "ext": {
+      "$ref": "ext.json"
     }
   },
   "required": [
     "format_id",
     "assets"
   ],
-  "title": "Creative Manifest",
-  "type": "object"
+  "additionalProperties": true
 }

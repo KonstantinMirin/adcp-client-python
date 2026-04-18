@@ -49,11 +49,15 @@ def generate_consolidated_exports() -> str:
     """Generate the consolidated exports file content."""
 
     # Discover all modules recursively (including subdirectories)
-    # Process enums/ first so canonical enum definitions take priority over inline duplicates
-    def _module_sort_key(p: Path) -> tuple[int, str]:
+    # Sort order: enums first (canonical enum definitions), then non-bundled,
+    # then bundled. Bundled schemas inline the same types as non-bundled, but
+    # as renumbered/enum duplicates — we want the canonical class definitions
+    # from non-bundled to win the first-seen dedup.
+    def _module_sort_key(p: Path) -> tuple[int, int, str]:
         rel = p.relative_to(GENERATED_POC_DIR)
         is_enum = rel.parts[0] == "enums" if len(rel.parts) > 1 else False
-        return (0 if is_enum else 1, str(p))
+        is_bundled = rel.parts[0] == "bundled" if len(rel.parts) > 1 else False
+        return (0 if is_enum else 1, 1 if is_bundled else 0, str(p))
 
     modules = sorted(GENERATED_POC_DIR.rglob("*.py"), key=_module_sort_key)
     modules = [m for m in modules if m.stem != "__init__" and not m.stem.startswith(".")]
@@ -94,52 +98,65 @@ def generate_consolidated_exports() -> str:
     special_imports = []
     collision_modules_seen: dict[str, set[str]] = {name: set() for name in known_collisions}
 
+    def _stem_matches_export(module_stem: str, export_name: str) -> bool:
+        """True if the module filename matches the export (snake_case ↔ PascalCase)."""
+        return module_stem.replace("_", "").lower() == export_name.lower()
+
+    # First pass: decide which module owns each export name.
+    # Canonical class definitions live in files named after the class
+    # (e.g. core/format.py defines Format). Prefer those over duplicates
+    # elsewhere (bundled copies, enum aliases in unrelated files).
+    module_exports: dict[str, set[str]] = {}
     for module_path in modules:
-        # Get relative path from generated_poc directory
         rel_path = module_path.relative_to(GENERATED_POC_DIR)
-        # Convert to module path (e.g., "core/error.py" -> "core.error")
         module_parts = list(rel_path.parts[:-1]) + [rel_path.stem]
         module_name = ".".join(module_parts)
-        # For display, use the stem only
         display_name = rel_path.stem
 
         exports = extract_exports_from_module(module_path)
-
         if not exports:
             continue
+        module_exports[module_name] = exports
 
-        # Filter out names that collide with already-exported names
-        unique_exports = set()
         for export_name in exports:
-            # Special case: Known collisions - track all modules that define them
             if export_name in known_collisions and display_name in known_collisions[export_name]:
                 collision_modules_seen[export_name].add(module_name)
-                export_to_module[export_name] = module_name  # Track that we've seen it
-                continue  # Don't add to unique_exports, we'll handle specially
+                # Sentinel: known collisions are only imported via qualified
+                # names later, never as a primary export.
+                export_to_module[export_name] = "<collision>"
+                continue
 
             if export_name in export_to_module:
                 first_module = export_to_module[export_name]
-                # Collision detected - skip this duplicate
-                collisions.append(
-                    f"  {export_name}: defined in both "
-                    f"{first_module} and {module_name} (using {first_module})"
-                )
+                first_stem = first_module.rsplit(".", 1)[-1]
+                if _stem_matches_export(display_name, export_name) and not _stem_matches_export(
+                    first_stem, export_name
+                ):
+                    export_to_module[export_name] = module_name
+                    collisions.append(
+                        f"  {export_name}: defined in ['{first_module}', '{module_name}'] "
+                        f"(preferring {module_name} — stem matches export name)"
+                    )
+                else:
+                    collisions.append(
+                        f"  {export_name}: defined in both "
+                        f"{first_module} and {module_name} (using {first_module})"
+                    )
             else:
-                unique_exports.add(export_name)
                 export_to_module[export_name] = module_name
 
-        if not unique_exports:
+    # Second pass: emit one import line per module with only the exports it owns.
+    for module_name, exports in module_exports.items():
+        owned = {e for e in exports if export_to_module.get(e) == module_name}
+        display_name = module_name.rsplit(".", 1)[-1]
+        if not owned:
             print(f"  {display_name}: 0 unique exports (all collisions)")
             continue
-
-        print(f"  {display_name}: {len(unique_exports)} exports")
-
-        # Create import statement with only unique exports
-        exports_str = ", ".join(sorted(unique_exports))
+        print(f"  {display_name}: {len(owned)} exports")
+        exports_str = ", ".join(sorted(owned))
         import_line = f"from adcp.types.generated_poc.{module_name} import {exports_str}"
         import_lines.append(import_line)
-
-        all_exports.update(unique_exports)
+        all_exports.update(owned)
 
     # Generate special imports for all known collisions
     for type_name, modules_seen in collision_modules_seen.items():
@@ -149,11 +166,14 @@ def generate_consolidated_exports() -> str:
             f"  {type_name}: defined in {sorted(modules_seen)} (all exported with qualified names)"
         )
         for module_name in sorted(modules_seen):
-            # Create qualified name from module path (e.g., "core.package" -> "Package")
+            # Non-bundled versions use the stem as the alias suffix
+            # (_PackageFromGetMediaBuysResponse). Bundled versions prepend
+            # "Bundled" so they don't collide when the same filename exists
+            # under both roots.
             parts = module_name.split(".")
-            qualified_name = (
-                f"_{type_name}From{parts[-1].replace('_', ' ').title().replace(' ', '')}"
-            )
+            stem = parts[-1].replace("_", " ").title().replace(" ", "")
+            prefix = "Bundled" if parts[0] == "bundled" else ""
+            qualified_name = f"_{type_name}From{prefix}{stem}"
             import_str = (
                 f"from adcp.types.generated_poc.{module_name}"
                 f" import {type_name} as {qualified_name}"

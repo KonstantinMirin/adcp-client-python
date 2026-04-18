@@ -1,32 +1,38 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Get Content Standards Response",
   "description": "Response payload with content safety policies",
+  "type": "object",
   "oneOf": [
     {
+      "type": "object",
+      "description": "Success response - returns the content standards configuration",
       "allOf": [
         {
           "$ref": "content-standards.json"
         }
       ],
-      "description": "Success response - returns the content standards configuration",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        }
-      },
-      "type": "object"
-    },
-    {
-      "description": "Error response",
       "properties": {
         "context": {
           "$ref": "../core/context.json"
         },
+        "ext": {
+          "$ref": "../core/ext.json"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "description": "Error response",
+      "properties": {
         "errors": {
+          "type": "array",
           "items": {
             "$ref": "../core/error.json"
-          },
-          "type": "array"
+          }
+        },
+        "context": {
+          "$ref": "../core/context.json"
         },
         "ext": {
           "$ref": "../core/ext.json"
@@ -34,10 +40,7 @@
       },
       "required": [
         "errors"
-      ],
-      "type": "object"
+      ]
     }
-  ],
-  "title": "Get Content Standards Response",
-  "type": "object"
+  ]
 }

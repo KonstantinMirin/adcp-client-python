@@ -1,124 +1,127 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Get Media Buy Artifacts Response",
   "description": "Response containing content artifacts from a media buy for validation",
+  "type": "object",
   "oneOf": [
     {
+      "type": "object",
       "description": "Success response with artifacts",
       "properties": {
+        "media_buy_id": {
+          "type": "string",
+          "description": "Media buy these artifacts belong to"
+        },
         "artifacts": {
+          "type": "array",
           "description": "Delivery records with full artifact content",
           "items": {
+            "type": "object",
             "properties": {
+              "record_id": {
+                "type": "string",
+                "description": "Unique identifier for this delivery record"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the delivery occurred"
+              },
+              "package_id": {
+                "type": "string",
+                "description": "Which package this delivery belongs to"
+              },
               "artifact": {
                 "$ref": "artifact.json",
                 "description": "Full artifact with content assets"
               },
+              "country": {
+                "type": "string",
+                "description": "ISO 3166-1 alpha-2 country code where delivery occurred"
+              },
+              "channel": {
+                "type": "string",
+                "description": "Channel type (e.g., display, video, audio, social)"
+              },
               "brand_context": {
+                "type": "object",
                 "description": "Brand information for policy evaluation. Schema TBD - placeholder for brand identifiers.",
                 "properties": {
                   "brand_id": {
-                    "description": "Brand identifier",
-                    "type": "string"
+                    "type": "string",
+                    "description": "Brand identifier"
                   },
                   "sku_id": {
-                    "description": "Product/SKU identifier if applicable",
-                    "type": "string"
+                    "type": "string",
+                    "description": "Product/SKU identifier if applicable"
                   }
-                },
-                "type": "object"
-              },
-              "channel": {
-                "description": "Channel type (e.g., display, video, audio, social)",
-                "type": "string"
-              },
-              "country": {
-                "description": "ISO 3166-1 alpha-2 country code where delivery occurred",
-                "type": "string"
+                }
               },
               "local_verdict": {
-                "description": "Seller's local model verdict for this artifact",
+                "type": "string",
                 "enum": [
                   "pass",
                   "fail",
                   "unevaluated"
                 ],
-                "type": "string"
-              },
-              "package_id": {
-                "description": "Which package this delivery belongs to",
-                "type": "string"
-              },
-              "record_id": {
-                "description": "Unique identifier for this delivery record",
-                "type": "string"
-              },
-              "timestamp": {
-                "description": "When the delivery occurred",
-                "format": "date-time",
-                "type": "string"
+                "description": "Seller's local model verdict for this artifact"
               }
             },
             "required": [
               "record_id",
               "artifact"
-            ],
-            "type": "object"
-          },
-          "type": "array"
+            ]
+          }
         },
         "collection_info": {
+          "type": "object",
           "description": "Information about artifact collection for this media buy. Sampling is configured at buy creation time \u2014 this reports what was actually collected.",
           "properties": {
-            "effective_rate": {
-              "description": "Actual collection rate achieved (total_collected / total_deliveries)",
-              "type": "number"
-            },
-            "returned_count": {
-              "description": "Number of artifacts in this response (may be less than total_collected due to pagination or filters)",
-              "type": "integer"
+            "total_deliveries": {
+              "type": "integer",
+              "description": "Total deliveries in the requested time range"
             },
             "total_collected": {
-              "description": "Total artifacts collected (per the buy's sampling configuration)",
-              "type": "integer"
+              "type": "integer",
+              "description": "Total artifacts collected (per the buy's sampling configuration)"
             },
-            "total_deliveries": {
-              "description": "Total deliveries in the requested time range",
-              "type": "integer"
+            "returned_count": {
+              "type": "integer",
+              "description": "Number of artifacts in this response (may be less than total_collected due to pagination or filters)"
+            },
+            "effective_rate": {
+              "type": "number",
+              "description": "Actual collection rate achieved (total_collected / total_deliveries)"
             }
-          },
-          "type": "object"
+          }
+        },
+        "pagination": {
+          "$ref": "../core/pagination-response.json"
         },
         "context": {
           "$ref": "../core/context.json"
         },
         "ext": {
           "$ref": "../core/ext.json"
-        },
-        "media_buy_id": {
-          "description": "Media buy these artifacts belong to",
-          "type": "string"
-        },
-        "pagination": {
-          "$ref": "../core/pagination-response.json"
         }
       },
       "required": [
         "media_buy_id",
         "artifacts"
-      ],
-      "type": "object"
+      ]
     },
     {
+      "type": "object",
       "description": "Error response",
       "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
         "errors": {
+          "type": "array",
           "items": {
             "$ref": "../core/error.json"
-          },
-          "type": "array"
+          }
+        },
+        "context": {
+          "$ref": "../core/context.json"
         },
         "ext": {
           "$ref": "../core/ext.json"
@@ -126,10 +129,7 @@
       },
       "required": [
         "errors"
-      ],
-      "type": "object"
+      ]
     }
-  ],
-  "title": "Get Media Buy Artifacts Response",
-  "type": "object"
+  ]
 }

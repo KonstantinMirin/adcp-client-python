@@ -1,67 +1,82 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "Sync Plans Response",
   "description": "Response from syncing campaign plans. Returns status and active validation categories for each plan.",
+  "type": "object",
   "properties": {
     "plans": {
+      "type": "array",
       "description": "Status for each synced plan.",
       "items": {
-        "additionalProperties": false,
+        "type": "object",
         "properties": {
+          "plan_id": {
+            "type": "string",
+            "description": "Plan identifier."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "error"
+            ],
+            "description": "Sync result status. 'active' means sync succeeded; 'error' means sync failed."
+          },
+          "version": {
+            "type": "integer",
+            "description": "Plan version (increments on each sync)."
+          },
           "categories": {
+            "type": "array",
             "description": "Validation categories active for this plan.",
             "items": {
-              "additionalProperties": false,
+              "type": "object",
               "properties": {
                 "category_id": {
-                  "description": "Validation category identifier.",
-                  "type": "string"
+                  "type": "string",
+                  "description": "Validation category identifier."
                 },
                 "status": {
-                  "description": "Whether this category is active for this plan.",
+                  "type": "string",
                   "enum": [
                     "active",
                     "inactive"
                   ],
-                  "type": "string"
+                  "description": "Whether this category is active for this plan."
                 }
               },
               "required": [
                 "category_id",
                 "status"
               ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "plan_id": {
-            "description": "Plan identifier.",
-            "type": "string"
+              "additionalProperties": false
+            }
           },
           "resolved_policies": {
+            "type": "array",
             "description": "Policies the governance agent will enforce for this plan. Includes explicitly referenced policies from the brand compliance configuration and auto-applied policies matched by jurisdiction or policy category. Present when the governance agent supports policy resolution.",
             "items": {
-              "additionalProperties": false,
+              "type": "object",
               "properties": {
-                "enforcement": {
-                  "$ref": "../enums/policy-enforcement.json",
-                  "description": "Enforcement level for this policy."
-                },
                 "policy_id": {
-                  "description": "Registry policy ID.",
-                  "type": "string"
-                },
-                "reason": {
-                  "description": "Why this policy was included (e.g., 'Matched jurisdiction US and policy category pharmaceutical_advertising').",
-                  "type": "string"
+                  "type": "string",
+                  "description": "Registry policy ID."
                 },
                 "source": {
-                  "description": "How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category.",
+                  "type": "string",
                   "enum": [
                     "explicit",
                     "auto_applied"
                   ],
-                  "type": "string"
+                  "description": "How this policy was included. 'explicit': referenced in the brand compliance configuration. 'auto_applied': matched automatically by jurisdiction or policy category."
+                },
+                "enforcement": {
+                  "$ref": "../enums/policy-enforcement.json",
+                  "description": "Enforcement level for this policy."
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "Why this policy was included (e.g., 'Matched jurisdiction US and policy category pharmaceutical_advertising')."
                 }
               },
               "required": [
@@ -69,21 +84,8 @@
                 "source",
                 "enforcement"
               ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "status": {
-            "description": "Sync result status. 'active' means sync succeeded; 'error' means sync failed.",
-            "enum": [
-              "active",
-              "error"
-            ],
-            "type": "string"
-          },
-          "version": {
-            "description": "Plan version (increments on each sync).",
-            "type": "integer"
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -91,14 +93,18 @@
           "status",
           "version"
         ],
-        "type": "object"
-      },
-      "type": "array"
+        "additionalProperties": false
+      }
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
     "plans"
   ],
-  "title": "Sync Plans Response",
-  "type": "object"
+  "additionalProperties": false
 }

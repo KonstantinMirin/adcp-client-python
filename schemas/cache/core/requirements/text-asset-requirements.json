@@ -1,40 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Text Asset Requirements",
   "description": "Requirements for text creative assets such as headlines, body copy, and CTAs.",
+  "type": "object",
   "properties": {
-    "character_pattern": {
-      "description": "Regex pattern defining allowed characters (e.g., '^[a-zA-Z0-9 .,!?-]+$')",
-      "type": "string"
+    "min_length": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum character length"
     },
     "max_length": {
-      "description": "Maximum character length",
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
-    },
-    "max_lines": {
-      "description": "Maximum number of lines",
-      "minimum": 1,
-      "type": "integer"
-    },
-    "min_length": {
-      "description": "Minimum character length",
-      "minimum": 0,
-      "type": "integer"
+      "description": "Maximum character length"
     },
     "min_lines": {
-      "description": "Minimum number of lines",
+      "type": "integer",
       "minimum": 1,
-      "type": "integer"
+      "description": "Minimum number of lines"
+    },
+    "max_lines": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of lines"
+    },
+    "character_pattern": {
+      "type": "string",
+      "description": "Regex pattern defining allowed characters (e.g., '^[a-zA-Z0-9 .,!?-]+$')"
     },
     "prohibited_terms": {
-      "description": "List of prohibited words or phrases",
+      "type": "array",
       "items": {
         "type": "string"
       },
-      "type": "array"
+      "description": "List of prohibited words or phrases"
     }
   },
-  "title": "Text Asset Requirements",
-  "type": "object"
+  "additionalProperties": true
 }

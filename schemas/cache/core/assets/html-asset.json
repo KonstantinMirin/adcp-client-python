@@ -1,47 +1,47 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "HTML Asset",
   "description": "HTML content asset",
+  "type": "object",
   "properties": {
+    "content": {
+      "type": "string",
+      "description": "HTML content"
+    },
+    "version": {
+      "type": "string",
+      "description": "HTML version (e.g., 'HTML5')"
+    },
     "accessibility": {
+      "type": "object",
       "description": "Self-declared accessibility properties for this opaque creative",
+      "x-accessibility": true,
       "properties": {
         "alt_text": {
-          "description": "Text alternative describing the creative content",
-          "type": "string"
+          "type": "string",
+          "description": "Text alternative describing the creative content"
         },
         "keyboard_navigable": {
-          "description": "Whether the creative can be fully operated via keyboard",
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the creative can be fully operated via keyboard"
         },
         "motion_control": {
-          "description": "Whether the creative respects prefers-reduced-motion or provides pause/stop controls",
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the creative respects prefers-reduced-motion or provides pause/stop controls"
         },
         "screen_reader_tested": {
-          "description": "Whether the creative has been tested with screen readers",
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the creative has been tested with screen readers"
         }
-      },
-      "type": "object",
-      "x-accessibility": true
-    },
-    "content": {
-      "description": "HTML content",
-      "type": "string"
+      }
     },
     "provenance": {
       "$ref": "../../core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
-    },
-    "version": {
-      "description": "HTML version (e.g., 'HTML5')",
-      "type": "string"
     }
   },
   "required": [
     "content"
   ],
-  "title": "HTML Asset",
-  "type": "object"
+  "additionalProperties": true
 }

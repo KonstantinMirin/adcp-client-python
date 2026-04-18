@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 def _schema_task_names() -> set[str]:
     index_path = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "index.json"
     index_data = json.loads(index_path.read_text())
@@ -322,6 +321,15 @@ def test_mcp_tool_input_schema_matches_pydantic_models():
             "webhook_url",
         },
         "delete_property_list": {"context", "ext", "idempotency_key"},
+        # Collection Lists + sync_governance: envelope fields
+        "create_collection_list": {"context", "ext", "idempotency_key"},
+        "get_collection_list": {"context", "ext"},
+        "list_collection_lists": {"context", "ext"},
+        "update_collection_list": {"context", "ext", "idempotency_key"},
+        "delete_collection_list": {"context", "ext", "idempotency_key"},
+        "sync_governance": {
+            "adcp_major_version", "context", "ext", "idempotency_key",
+        },
         # TMP: envelope fields optional for agents
         "context_match": {
             "$schema", "artifact", "property_id", "protocol_version",

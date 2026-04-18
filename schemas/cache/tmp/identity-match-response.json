@@ -1,29 +1,34 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
-  "description": "Response indicating which packages the user is eligible for. The ttl_sec field defines a caching contract: the router caches this response and returns cached eligibility without re-querying the buyer during the TTL window.",
+  "title": "Identity Match Response",
+  "description": "Response indicating which packages the user is eligible for. The ttl_sec field defines a caching contract: the router caches this response and returns cached eligibility without re-querying the buyer during the TTL window. Extension fields (ext, context) are intentionally omitted to prevent data leakage across the identity privacy boundary.",
+  "type": "object",
   "properties": {
+    "type": {
+      "type": "string",
+      "const": "identity_match_response",
+      "description": "Message type discriminator for deserialization."
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Echoed request identifier from the identity match request"
+    },
     "eligible_package_ids": {
+      "type": "array",
       "description": "Package IDs the user is eligible for. Packages not listed are ineligible.",
       "items": {
         "type": "string"
-      },
-      "type": "array"
-    },
-    "request_id": {
-      "description": "Echoed request identifier from the identity match request",
-      "type": "string"
+      }
     },
     "ttl_sec": {
+      "type": "integer",
       "description": "How long the router should cache this response, in seconds. The router returns cached eligibility without re-querying the buyer during this window. A value of 0 means do not cache.",
-      "maximum": 86400,
       "minimum": 0,
-      "type": "integer"
+      "maximum": 86400
     },
-    "type": {
-      "const": "identity_match_response",
-      "description": "Message type discriminator for deserialization.",
-      "type": "string"
+    "tmpx": {
+      "type": "string",
+      "description": "HPKE-encrypted exposure token containing the resolved user identity tokens. The publisher substitutes this into creative tracking URLs as {TMPX}. The buyer's impression pixel receives the token at serve time, enabling real-time per-user frequency state updates. Wire format: kid.base64url_nopad(ciphertext) \u2014 unpadded base64url per RFC 4648 section 5 (no = characters). Publishers MUST treat this value as opaque pass-through data."
     }
   },
   "required": [
@@ -32,6 +37,5 @@
     "eligible_package_ids",
     "ttl_sec"
   ],
-  "title": "Identity Match Response",
-  "type": "object"
+  "additionalProperties": true
 }

@@ -370,6 +370,44 @@ class ProtocolAdapter(ABC):
         pass
 
     # ========================================================================
+    # V3 Protocol Methods - Governance (Collection Lists)
+    # ========================================================================
+
+    @abstractmethod
+    async def create_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Create a collection list for governance."""
+        pass
+
+    @abstractmethod
+    async def get_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Get a collection list with optional resolution."""
+        pass
+
+    @abstractmethod
+    async def list_collection_lists(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """List collection lists."""
+        pass
+
+    @abstractmethod
+    async def update_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Update a collection list."""
+        pass
+
+    @abstractmethod
+    async def delete_collection_list(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Delete a collection list."""
+        pass
+
+    # ========================================================================
+    # V3 Protocol Methods - Governance (Sync Governance)
+    # ========================================================================
+
+    @abstractmethod
+    async def sync_governance(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Sync governance agents attached to an account."""
+        pass
+
+    # ========================================================================
     # V3 Protocol Methods - Temporal Matching Protocol (TMP)
     # ========================================================================
 

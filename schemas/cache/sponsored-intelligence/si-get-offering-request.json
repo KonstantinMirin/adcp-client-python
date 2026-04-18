@@ -1,35 +1,41 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "SI Get Offering Request",
   "description": "Get offering details and availability before session handoff. Returns offering information, availability status, and optionally matching products based on context.",
+  "type": "object",
   "properties": {
+    "adcp_major_version": {
+      "type": "integer",
+      "description": "The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "minimum": 1,
+      "maximum": 99
+    },
+    "offering_id": {
+      "type": "string",
+      "description": "Offering identifier from the catalog to get details for"
+    },
     "context": {
-      "description": "Optional natural language context about user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII.",
-      "type": "string"
+      "type": "string",
+      "description": "Optional natural language context about user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."
+    },
+    "include_products": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to include matching products in the response"
+    },
+    "product_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 5,
+      "description": "Maximum number of matching products to return"
     },
     "ext": {
       "$ref": "../core/ext.json"
-    },
-    "include_products": {
-      "default": false,
-      "description": "Whether to include matching products in the response",
-      "type": "boolean"
-    },
-    "offering_id": {
-      "description": "Offering identifier from the catalog to get details for",
-      "type": "string"
-    },
-    "product_limit": {
-      "default": 5,
-      "description": "Maximum number of matching products to return",
-      "maximum": 50,
-      "minimum": 1,
-      "type": "integer"
     }
   },
   "required": [
     "offering_id"
   ],
-  "title": "SI Get Offering Request",
-  "type": "object"
+  "additionalProperties": true
 }
