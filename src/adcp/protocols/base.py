@@ -3,6 +3,7 @@ from __future__ import annotations
 """Base protocol adapter interface."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -25,6 +26,14 @@ class ProtocolAdapter(ABC):
     def __init__(self, agent_config: AgentConfig):
         """Initialize adapter with agent configuration."""
         self.agent_config = agent_config
+        # Optional hook; ADCPClient sets this when strict_idempotency is enabled.
+        # Invoked before each mutating tool call to verify the seller declared
+        # adcp.idempotency.replay_ttl_seconds in capabilities. None = no check.
+        self.idempotency_capability_check: Callable[[], Awaitable[None]] | None = None
+        # Unique token for this adapter's owning client — used to scope
+        # ``use_idempotency_key`` so a key pinned on one client does not bleed
+        # to sibling clients (cross-seller correlation risk per AdCP #2315).
+        self.idempotency_client_token: str | None = None
 
     # ========================================================================
     # Helper methods for response parsing
@@ -60,6 +69,8 @@ class ProtocolAdapter(ABC):
                 error=raw_result.error,  # Only use error if one was set
                 metadata=raw_result.metadata,
                 debug_info=raw_result.debug_info,
+                idempotency_key=raw_result.idempotency_key,
+                replayed=raw_result.replayed,
             )
 
         try:
@@ -78,15 +89,21 @@ class ProtocolAdapter(ABC):
                 error=raw_result.error,
                 metadata=raw_result.metadata,
                 debug_info=raw_result.debug_info,
+                idempotency_key=raw_result.idempotency_key,
+                replayed=raw_result.replayed,
             )
         except ValueError as e:
-            # Parsing failed - return error result
+            # Parsing failed - return error result. Preserve idempotency_key
+            # and replayed so callers can still correlate/suppress side-effects
+            # even when response parsing fails.
             return TaskResult[T](
                 status=TaskStatus.FAILED,
                 error=f"Failed to parse response: {e}",
                 message=raw_result.message,
                 success=False,
                 debug_info=raw_result.debug_info,
+                idempotency_key=raw_result.idempotency_key,
+                replayed=raw_result.replayed,
             )
 
     # ========================================================================

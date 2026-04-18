@@ -269,9 +269,7 @@ class ADCPTaskError(ADCPError):
         """
         self.operation = operation
         self.errors = errors
-        self.error_codes = [
-            e.code for e in errors if hasattr(e, "code") and e.code
-        ]
+        self.error_codes = [e.code for e in errors if hasattr(e, "code") and e.code]
 
         message = f"{operation} failed"
         if errors:
@@ -288,3 +286,117 @@ class ADCPTaskError(ADCPError):
         from adcp.server.helpers import TRANSIENT_CODES
 
         return bool(TRANSIENT_CODES & set(self.error_codes))
+
+
+class IdempotencyConflictError(ADCPTaskError):
+    """Server rejected a reused idempotency_key whose payload differs from the original.
+
+    The request used the same idempotency_key as an earlier request but with a
+    materially different (post-JCS-canonicalization) payload. Two valid recovery
+    paths: (a) mint a fresh ``uuid.uuid4()`` key and resubmit, or (b) resend the
+    exact original payload — whichever matches the caller's intent.
+
+    By design the rendered message does NOT include the server's error text
+    because non-compliant sellers may include payload hints that violate the
+    ``IDEMPOTENCY_CONFLICT`` spec requirement. Raw errors remain on
+    ``self.errors`` for callers that want to inspect.
+    """
+
+    def __init__(
+        self,
+        operation: str,
+        errors: list[Any],
+        agent_id: str | None = None,
+    ):
+        self.operation = operation
+        self.errors = errors
+        self.error_codes = [e.code for e in errors if hasattr(e, "code") and e.code] or [
+            "IDEMPOTENCY_CONFLICT"
+        ]
+        message = f"{operation}: idempotency_key reused with a different payload"
+        suggestion = (
+            "The server already has a response for this idempotency_key with a "
+            "different (JCS-canonicalized) payload. Either resend the exact original "
+            "payload, or mint a fresh key with uuid.uuid4() and resubmit. Do NOT "
+            "reuse this key with modified fields."
+        )
+        # Skip ADCPTaskError.__init__ to avoid leaking server-supplied text.
+        ADCPError.__init__(self, message, agent_id=agent_id, suggestion=suggestion)
+
+
+class IdempotencyExpiredError(ADCPTaskError):
+    """Server's replay cache for this idempotency_key has expired.
+
+    Per AdCP #2315 the seller MAY discard cached responses after
+    ``replay_ttl_seconds``. Re-executing is unsafe because the seller can no
+    longer distinguish "seen and evicted" from "never seen" — silently retrying
+    risks duplicate execution. Recovery: reconcile state via a read (e.g.
+    ``get_media_buys``) before resubmitting with a fresh key.
+    """
+
+    def __init__(
+        self,
+        operation: str,
+        errors: list[Any],
+        agent_id: str | None = None,
+    ):
+        self.operation = operation
+        self.errors = errors
+        self.error_codes = [e.code for e in errors if hasattr(e, "code") and e.code] or [
+            "IDEMPOTENCY_EXPIRED"
+        ]
+        message = f"{operation}: idempotency replay window has expired"
+        suggestion = (
+            "The seller's replay_ttl_seconds window for this key has passed. "
+            "Re-execution is unsafe — the seller can no longer guarantee "
+            "at-most-once. Reconcile state with a read (e.g. get_media_buys) "
+            "before resubmitting with a fresh uuid.uuid4() key."
+        )
+        ADCPError.__init__(self, message, agent_id=agent_id, suggestion=suggestion)
+
+
+class IdempotencyUnsupportedError(ADCPError):
+    """Seller did not declare adcp.idempotency.replay_ttl_seconds in capabilities.
+
+    Per AdCP #2315 sellers MUST declare their replay window; clients MUST NOT
+    assume a default. Raised before the first mutating call when
+    ``strict_idempotency=True`` and the seller's capabilities response is
+    missing this field.
+    """
+
+    def __init__(
+        self,
+        agent_id: str | None = None,
+        agent_uri: str | None = None,
+    ):
+        message = (
+            "Seller did not declare adcp.idempotency.replay_ttl_seconds; "
+            "retry safety for mutating requests cannot be guaranteed."
+        )
+        suggestion = (
+            "Recommended: ask the seller to declare replay_ttl_seconds in "
+            "get_adcp_capabilities (AdCP #2315 requirement). To proceed without "
+            "this guarantee — retries may double-charge or duplicate — construct "
+            "ADCPClient with strict_idempotency=False; the caller then owns "
+            "reconciliation on retry."
+        )
+        super().__init__(message, agent_id, agent_uri, suggestion)
+
+
+IDEMPOTENCY_ERROR_CODE_MAP: dict[str, type[ADCPTaskError]] = {
+    "IDEMPOTENCY_CONFLICT": IdempotencyConflictError,
+    "IDEMPOTENCY_EXPIRED": IdempotencyExpiredError,
+}
+
+
+def classify_task_error(
+    operation: str,
+    errors: list[Any],
+    agent_id: str | None = None,
+) -> ADCPTaskError:
+    """Build the most specific ADCPTaskError subclass matching the response codes."""
+    for err in errors:
+        code = getattr(err, "code", None) or (err.get("code") if isinstance(err, dict) else None)
+        if code and code in IDEMPOTENCY_ERROR_CODE_MAP:
+            return IDEMPOTENCY_ERROR_CODE_MAP[code](operation, errors, agent_id=agent_id)
+    return ADCPTaskError(operation, errors, agent_id=agent_id)

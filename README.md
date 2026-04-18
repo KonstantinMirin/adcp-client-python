@@ -496,6 +496,72 @@ All exceptions include:
 - **Actionable suggestions**: specific steps to fix common issues
 - **Error classification**: proper HTTP status code handling
 
+### Idempotency and retries
+
+AdCP 3.0 requires an `idempotency_key` on every mutating request (`create_media_buy`, `sync_creatives`, and 26 others). The client handles this for you — you pass a key (or let the SDK generate one) and get back the key the seller cached under, plus a `replayed` flag indicating whether the seller served a cached response:
+
+```python
+import uuid
+from adcp import CreateMediaBuyRequest
+
+# Pass a fresh UUID v4 on each new logical operation — the request schema
+# requires idempotency_key at construction time.
+request = CreateMediaBuyRequest(
+    idempotency_key=uuid.uuid4().hex,
+    account=..., brand=..., start_time=..., end_time=..., packages=[...]
+)
+result = await client.create_media_buy(request)
+print(result.idempotency_key)    # The key the SDK sent
+print(result.replayed)           # True if the seller returned a cached response
+```
+
+**Retrying the same logical operation** — wrap the retry loop in `use_idempotency_key` so every attempt sends the same key. Otherwise each retry gets a new UUID and defeats the whole point.
+
+```python
+stored = uuid.uuid4().hex
+for attempt in range(3):
+    try:
+        with client.use_idempotency_key(stored):
+            result = await client.create_media_buy(request)
+        break
+    except TimeoutError:
+        continue
+```
+
+**Bring your own key** when you persist keys across process restarts (e.g., storing alongside a campaign row in your DB):
+
+```python
+with client.use_idempotency_key(campaign.stored_key):
+    result = await client.create_media_buy(request)
+```
+
+The pinned key is scoped to *this* client instance — a sibling `ADCPClient` running inside the same `with` block generates a fresh key (per AdCP §2315: keys must be unique per `(seller, request)` pair to prevent cross-seller correlation). The pinned key is also single-use within the scope: if you `asyncio.gather` two sibling calls inside the block, only the first gets the pinned key, the rest get fresh UUIDs — preventing accidental payload drift.
+
+**Typed errors** for the two idempotency-specific failure modes:
+
+```python
+from adcp import IdempotencyConflictError, IdempotencyExpiredError
+
+try:
+    await client.create_media_buy(request)
+except IdempotencyConflictError:
+    # Same key, different payload. Either mint a fresh uuid.uuid4() or resend original.
+    ...
+except IdempotencyExpiredError:
+    # Replay window closed; reconcile via a read before resubmitting with a new key.
+    ...
+```
+
+**Strict mode** refuses mutating calls against sellers that don't declare `adcp.idempotency.replay_ttl_seconds` in capabilities:
+
+```python
+client = ADCPClient(agent, strict_idempotency=True)  # default: False
+# First mutating call fetches capabilities and raises IdempotencyUnsupportedError
+# if the seller is silent. Set False to opt-out; you then own reconciliation.
+```
+
+**Security note on logs.** The SDK redacts `idempotency_key` in its own debug captures, but the underlying `httpx`/`httpcore` loggers log full request bodies at `DEBUG`. If you enable `logging.basicConfig(level=logging.DEBUG)` in production, raise those two loggers back to `INFO` — otherwise full keys end up in logs during the seller's replay TTL window and become a retry-pattern oracle for anyone who can read them.
+
 ## Available Tools
 
 All AdCP tools with full type safety:
