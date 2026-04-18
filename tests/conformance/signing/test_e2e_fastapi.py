@@ -13,8 +13,11 @@ from typing import Any
 
 import httpx
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+
+fastapi = pytest.importorskip("fastapi")
+FastAPI = fastapi.FastAPI
+Request = fastapi.Request
+from fastapi.responses import JSONResponse  # noqa: E402
 
 from adcp.signing import (
     SignatureVerificationError,
