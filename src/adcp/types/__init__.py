@@ -308,7 +308,6 @@ from adcp.types._generated import (
     Signal,
     SignalCatalogType,
     SignalFilters,
-    SignalPricing,
     SignalPricingOption,
     SiIdentity,
     SiInitiateSessionRequest,
@@ -405,25 +404,16 @@ from adcp.types.aliases import (
     CalibrateContentSuccessResponse,
     CatalogGroupBinding,
     ComplyErrorResponse,
-    ComplyForceAccountStatusRequest,
-    ComplyForceCreativeStatusRequest,
-    ComplyForceMediaBuyStatusRequest,
-    ComplyForceSessionStatusRequest,
-    ComplyListScenariosRequest,
     ComplyListScenariosResponse,
-    ComplySimulateBudgetSpendRequest,
-    ComplySimulateDeliveryRequest,
     ComplySimulationResponse,
     ComplyStateTransitionResponse,
     ConsentBasis,
-    CpmSignalPricingOption,
     CreateContentStandardsErrorResponse,
     CreateContentStandardsSuccessResponse,
     CreateMediaBuyErrorResponse,
     CreateMediaBuySuccessResponse,
     Deployment,
     Destination,
-    FlatFeeSignalPricingOption,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
     GetBrandIdentityErrorResponse,
@@ -455,14 +445,10 @@ from adcp.types.aliases import (
     LogEventErrorResponse,
     LogEventSuccessResponse,
     MediaBuyDeliveryStatus,
-    PercentOfMediaSignalPricingOption,
     PlatformDeployment,
     PlatformDestination,
-    PreviewCreativeBatchRequest,
     PreviewCreativeBatchResponse,
-    PreviewCreativeSingleRequest,
     PreviewCreativeSingleResponse,
-    PreviewCreativeVariantRequest,
     PreviewCreativeVariantResponse,
     PricingOption,
     PropertyId,
@@ -612,9 +598,8 @@ class TextSubAsset:
         )
 
 
-# Preview alias renames: format/manifest → single/batch/variant discriminator
-PreviewCreativeFormatRequest = PreviewCreativeSingleRequest
-PreviewCreativeManifestRequest = PreviewCreativeBatchRequest
+# Preview response rename aliases (per-mode Request variants were removed when
+# PreviewCreativeRequest collapsed to a single class with a request_type enum).
 PreviewCreativeStaticResponse = PreviewCreativeSingleResponse
 PreviewCreativeInteractiveResponse = PreviewCreativeBatchResponse
 
@@ -908,11 +893,7 @@ __all__ = [
     "Results",
     "Signal",
     "SignalFilters",
-    "SignalPricing",
     "SignalPricingOption",
-    "CpmSignalPricingOption",
-    "FlatFeeSignalPricingOption",
-    "PercentOfMediaSignalPricingOption",
     "Snapshot",
     "SnapshotUnavailableReason",
     "Tags",
@@ -1059,11 +1040,8 @@ __all__ = [
     "LogEventSuccessResponse",
     "PlatformDeployment",
     "PlatformDestination",
-    "PreviewCreativeBatchRequest",
     "PreviewCreativeBatchResponse",
-    "PreviewCreativeSingleRequest",
     "PreviewCreativeSingleResponse",
-    "PreviewCreativeVariantRequest",
     "PreviewCreativeVariantResponse",
     "PricingOption",
     "PropertyId",
@@ -1113,14 +1091,7 @@ __all__ = [
     "GetBrandIdentityErrorResponse",
     "GetRightsSuccessResponse",
     "GetRightsErrorResponse",
-    # Compliance Test Controller aliases
-    "ComplyListScenariosRequest",
-    "ComplyForceCreativeStatusRequest",
-    "ComplyForceAccountStatusRequest",
-    "ComplyForceMediaBuyStatusRequest",
-    "ComplyForceSessionStatusRequest",
-    "ComplySimulateDeliveryRequest",
-    "ComplySimulateBudgetSpendRequest",
+    # Compliance Test Controller response aliases
     "ComplyListScenariosResponse",
     "ComplyStateTransitionResponse",
     "ComplySimulationResponse",

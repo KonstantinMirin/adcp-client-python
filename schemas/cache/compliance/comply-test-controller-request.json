@@ -1,392 +1,338 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Comply Test Controller Request",
   "description": "Request payload for the comply_test_controller tool. Triggers seller-side state transitions for compliance testing. Sandbox only \u2014 sellers MUST NOT expose this tool in production.",
+  "type": "object",
+  "properties": {
+    "scenario": {
+      "type": "string",
+      "enum": [
+        "list_scenarios",
+        "force_creative_status",
+        "force_account_status",
+        "force_media_buy_status",
+        "force_session_status",
+        "simulate_delivery",
+        "simulate_budget_spend"
+      ],
+      "description": "Test scenario to execute. 'list_scenarios' discovers supported scenarios. Others trigger state transitions for the specified domain."
+    },
+    "params": {
+      "type": "object",
+      "description": "Scenario-specific parameters. Required for all scenarios except list_scenarios.",
+      "properties": {
+        "creative_id": {
+          "type": "string",
+          "description": "Creative to transition. Used by force_creative_status."
+        },
+        "account_id": {
+          "type": "string",
+          "description": "Account to transition. Used by force_account_status and simulate_budget_spend."
+        },
+        "media_buy_id": {
+          "type": "string",
+          "description": "Media buy to transition. Used by force_media_buy_status, simulate_delivery, and simulate_budget_spend."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Session to transition. Used by force_session_status."
+        },
+        "status": {
+          "type": "string",
+          "description": "Target status for the resource. Type depends on scenario: creative-status for force_creative_status, account-status for force_account_status, media-buy-status for force_media_buy_status. For force_session_status, must be 'complete' or 'terminated'."
+        },
+        "rejection_reason": {
+          "type": "string",
+          "description": "Reason for rejection. Used by force_creative_status and force_media_buy_status when status = rejected."
+        },
+        "termination_reason": {
+          "type": "string",
+          "description": "Reason for termination (e.g., session_timeout, host_terminated, policy_violation). Used by force_session_status when status = terminated."
+        },
+        "impressions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Impressions to simulate. Used by simulate_delivery."
+        },
+        "clicks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Clicks to simulate. Used by simulate_delivery."
+        },
+        "conversions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Conversions to simulate. Used by simulate_delivery."
+        },
+        "reported_spend": {
+          "type": "object",
+          "description": "Spend as reported in delivery data. Does not affect budget. Used by simulate_delivery.",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "minimum": 0
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          },
+          "required": [
+            "amount",
+            "currency"
+          ]
+        },
+        "spend_percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Spend to this percentage of budget (0\u2013100). Used by simulate_budget_spend."
+        }
+      },
+      "additionalProperties": true
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
+    }
+  },
+  "required": [
+    "scenario"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "force_creative_status"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "creative_id",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "$ref": "../enums/creative-status.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "force_account_status"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "account_id",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "$ref": "../enums/account-status.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "force_media_buy_status"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "media_buy_id",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "$ref": "../enums/media-buy-status.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "force_session_status"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "session_id",
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "terminated"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "simulate_delivery"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "media_buy_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenario": {
+            "const": "simulate_budget_spend"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "params"
+        ],
+        "properties": {
+          "params": {
+            "required": [
+              "spend_percentage"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "account_id"
+                ]
+              },
+              {
+                "required": [
+                  "media_buy_id"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true,
   "examples": [
     {
+      "description": "List supported scenarios",
       "data": {
         "scenario": "list_scenarios"
-      },
-      "description": "List supported scenarios"
+      }
     },
     {
+      "description": "Force a creative to rejected status",
       "data": {
+        "scenario": "force_creative_status",
         "params": {
           "creative_id": "cr-123",
-          "rejection_reason": "Brand safety policy violation",
-          "status": "rejected"
-        },
-        "scenario": "force_creative_status"
-      },
-      "description": "Force a creative to rejected status"
+          "status": "rejected",
+          "rejection_reason": "Brand safety policy violation"
+        }
+      }
     },
     {
+      "description": "Force account suspension",
       "data": {
+        "scenario": "force_account_status",
         "params": {
           "account_id": "acct-456",
           "status": "suspended"
-        },
-        "scenario": "force_account_status"
-      },
-      "description": "Force account suspension"
+        }
+      }
     },
     {
+      "description": "Simulate session timeout",
       "data": {
+        "scenario": "force_session_status",
         "params": {
           "session_id": "sess-abc",
           "status": "terminated",
           "termination_reason": "session_timeout"
-        },
-        "scenario": "force_session_status"
-      },
-      "description": "Simulate session timeout"
+        }
+      }
     },
     {
+      "description": "Simulate delivery data",
       "data": {
+        "scenario": "simulate_delivery",
         "params": {
-          "clicks": 150,
-          "impressions": 10000,
           "media_buy_id": "mb-789",
+          "impressions": 10000,
+          "clicks": 150,
           "reported_spend": {
             "amount": 150.0,
             "currency": "USD"
           }
-        },
-        "scenario": "simulate_delivery"
-      },
-      "description": "Simulate delivery data"
+        }
+      }
     },
     {
+      "description": "Simulate budget consumption to 95%",
       "data": {
+        "scenario": "simulate_budget_spend",
         "params": {
           "media_buy_id": "mb-789",
           "spend_percentage": 95
-        },
-        "scenario": "simulate_budget_spend"
-      },
-      "description": "Simulate budget consumption to 95%"
+        }
+      }
     }
-  ],
-  "oneOf": [
-    {
-      "additionalProperties": true,
-      "description": "Discover which scenarios this seller supports",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "scenario": {
-          "const": "list_scenarios",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario"
-      ],
-      "title": "ListScenarios",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Transition a creative to the specified status",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "properties": {
-            "creative_id": {
-              "description": "Creative to transition",
-              "type": "string"
-            },
-            "rejection_reason": {
-              "description": "Reason for rejection. Required when status = rejected.",
-              "type": "string"
-            },
-            "status": {
-              "$ref": "../enums/creative-status.json"
-            }
-          },
-          "required": [
-            "creative_id",
-            "status"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "force_creative_status",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "ForceCreativeStatus",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Transition an account to the specified status",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "properties": {
-            "account_id": {
-              "description": "Account to transition",
-              "type": "string"
-            },
-            "status": {
-              "$ref": "../enums/account-status.json"
-            }
-          },
-          "required": [
-            "account_id",
-            "status"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "force_account_status",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "ForceAccountStatus",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Transition a media buy to the specified status",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "properties": {
-            "media_buy_id": {
-              "description": "Media buy to transition",
-              "type": "string"
-            },
-            "rejection_reason": {
-              "description": "Reason for rejection. Required when status = rejected.",
-              "type": "string"
-            },
-            "status": {
-              "$ref": "../enums/media-buy-status.json"
-            }
-          },
-          "required": [
-            "media_buy_id",
-            "status"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "force_media_buy_status",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "ForceMediaBuyStatus",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Transition an SI session to a terminal status",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "properties": {
-            "session_id": {
-              "description": "Session to transition",
-              "type": "string"
-            },
-            "status": {
-              "description": "Target terminal status. Only terminal statuses are valid \u2014 active and pending_handoff are session-internal transitions.",
-              "enum": [
-                "complete",
-                "terminated"
-              ],
-              "type": "string"
-            },
-            "termination_reason": {
-              "description": "Reason for termination (e.g., session_timeout, host_terminated, policy_violation). Required when status = terminated.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "session_id",
-            "status"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "force_session_status",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "ForceSessionStatus",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Inject synthetic delivery data for a media buy",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "properties": {
-            "clicks": {
-              "description": "Clicks to simulate",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "conversions": {
-              "description": "Conversions to simulate",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "impressions": {
-              "description": "Impressions to simulate",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "media_buy_id": {
-              "description": "Media buy to add delivery to",
-              "type": "string"
-            },
-            "reported_spend": {
-              "description": "Spend as reported in delivery data. Does not affect budget.",
-              "properties": {
-                "amount": {
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "currency": {
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "amount",
-                "currency"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "media_buy_id"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "simulate_delivery",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "SimulateDelivery",
-      "type": "object"
-    },
-    {
-      "additionalProperties": true,
-      "description": "Simulate budget consumption to a specified percentage",
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        },
-        "params": {
-          "additionalProperties": true,
-          "anyOf": [
-            {
-              "required": [
-                "account_id"
-              ]
-            },
-            {
-              "required": [
-                "media_buy_id"
-              ]
-            }
-          ],
-          "properties": {
-            "account_id": {
-              "description": "Account (for account-level budget)",
-              "type": "string"
-            },
-            "media_buy_id": {
-              "description": "Media buy (for buy-level budget)",
-              "type": "string"
-            },
-            "spend_percentage": {
-              "description": "Spend to this percentage of budget (0\u2013100)",
-              "maximum": 100,
-              "minimum": 0,
-              "type": "number"
-            }
-          },
-          "required": [
-            "spend_percentage"
-          ],
-          "type": "object"
-        },
-        "scenario": {
-          "const": "simulate_budget_spend",
-          "type": "string"
-        }
-      },
-      "required": [
-        "scenario",
-        "params"
-      ],
-      "title": "SimulateBudgetSpend",
-      "type": "object"
-    }
-  ],
-  "title": "Comply Test Controller Request",
-  "type": "object"
+  ]
 }

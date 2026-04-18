@@ -1,15 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Text Asset",
   "description": "Text content asset",
+  "type": "object",
   "properties": {
     "content": {
-      "description": "Text content",
-      "type": "string"
+      "type": "string",
+      "description": "Text content"
     },
     "language": {
-      "description": "Language code (e.g., 'en', 'es', 'fr')",
-      "type": "string"
+      "type": "string",
+      "description": "Language code (e.g., 'en', 'es', 'fr')"
     },
     "provenance": {
       "$ref": "../../core/provenance.json",
@@ -19,6 +20,5 @@
   "required": [
     "content"
   ],
-  "title": "Text Asset",
-  "type": "object"
+  "additionalProperties": true
 }

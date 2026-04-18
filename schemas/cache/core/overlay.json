@@ -1,19 +1,64 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": false,
+  "title": "Overlay",
   "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
+  "type": "object",
   "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable explanation of what this overlay is and how buyers should account for it"
+    },
+    "visual": {
+      "type": "object",
+      "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor."
+        },
+        "light": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)"
+        },
+        "dark": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)"
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
     "bounds": {
-      "additionalProperties": false,
+      "type": "object",
       "description": "Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.",
       "properties": {
-        "height": {
-          "description": "Height of the overlay",
+        "x": {
+          "type": "number",
+          "description": "Horizontal offset from the asset's left edge"
+        },
+        "y": {
+          "type": "number",
+          "description": "Vertical offset from the asset's top edge"
+        },
+        "width": {
+          "type": "number",
           "minimum": 0,
-          "type": "number"
+          "description": "Width of the overlay"
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Height of the overlay"
         },
         "unit": {
-          "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.",
+          "type": "string",
           "enum": [
             "px",
             "fraction",
@@ -22,20 +67,7 @@
             "mm",
             "pt"
           ],
-          "type": "string"
-        },
-        "width": {
-          "description": "Width of the overlay",
-          "minimum": 0,
-          "type": "number"
-        },
-        "x": {
-          "description": "Horizontal offset from the asset's left edge",
-          "type": "number"
-        },
-        "y": {
-          "description": "Vertical offset from the asset's top edge",
-          "type": "number"
+          "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left."
         }
       },
       "required": [
@@ -45,44 +77,12 @@
         "height",
         "unit"
       ],
-      "type": "object"
-    },
-    "description": {
-      "description": "Human-readable explanation of what this overlay is and how buyers should account for it",
-      "type": "string"
-    },
-    "id": {
-      "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')",
-      "type": "string"
-    },
-    "visual": {
-      "additionalProperties": false,
-      "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
-      "minProperties": 1,
-      "properties": {
-        "dark": {
-          "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)",
-          "format": "uri",
-          "type": "string"
-        },
-        "light": {
-          "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)",
-          "format": "uri",
-          "type": "string"
-        },
-        "url": {
-          "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.",
-          "format": "uri",
-          "type": "string"
-        }
-      },
-      "type": "object"
+      "additionalProperties": false
     }
   },
   "required": [
     "id",
     "bounds"
   ],
-  "title": "Overlay",
-  "type": "object"
+  "additionalProperties": false
 }

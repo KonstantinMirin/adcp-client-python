@@ -1,40 +1,41 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Deployment",
   "description": "A signal deployment to a specific deployment target with activation status and key",
   "oneOf": [
     {
-      "additionalProperties": true,
+      "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "const": "platform",
+          "description": "Discriminator indicating this is a platform-based deployment"
+        },
+        "platform": {
+          "type": "string",
+          "description": "Platform identifier for DSPs"
+        },
         "account": {
-          "description": "Account identifier if applicable",
-          "type": "string"
+          "type": "string",
+          "description": "Account identifier if applicable"
+        },
+        "is_live": {
+          "type": "boolean",
+          "description": "Whether signal is currently active on this deployment"
         },
         "activation_key": {
           "$ref": "activation-key.json",
           "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment."
         },
-        "deployed_at": {
-          "description": "Timestamp when activation completed (if is_live=true)",
-          "format": "date-time",
-          "type": "string"
-        },
         "estimated_activation_duration_minutes": {
+          "type": "number",
           "description": "Estimated time to activate if not live, or to complete activation if in progress",
-          "minimum": 0,
-          "type": "number"
+          "minimum": 0
         },
-        "is_live": {
-          "description": "Whether signal is currently active on this deployment",
-          "type": "boolean"
-        },
-        "platform": {
-          "description": "Platform identifier for DSPs",
-          "type": "string"
-        },
-        "type": {
-          "const": "platform",
-          "description": "Discriminator indicating this is a platform-based deployment",
-          "type": "string"
+        "deployed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when activation completed (if is_live=true)"
         }
       },
       "required": [
@@ -42,42 +43,42 @@
         "platform",
         "is_live"
       ],
-      "type": "object"
+      "additionalProperties": true
     },
     {
-      "additionalProperties": true,
+      "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "const": "agent",
+          "description": "Discriminator indicating this is an agent URL-based deployment"
+        },
+        "agent_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL identifying the deployment agent"
+        },
         "account": {
-          "description": "Account identifier if applicable",
-          "type": "string"
+          "type": "string",
+          "description": "Account identifier if applicable"
+        },
+        "is_live": {
+          "type": "boolean",
+          "description": "Whether signal is currently active on this deployment"
         },
         "activation_key": {
           "$ref": "activation-key.json",
           "description": "The key to use for targeting. Only present if is_live=true AND requester has access to this deployment."
         },
-        "agent_url": {
-          "description": "URL identifying the deployment agent",
-          "format": "uri",
-          "type": "string"
+        "estimated_activation_duration_minutes": {
+          "type": "number",
+          "description": "Estimated time to activate if not live, or to complete activation if in progress",
+          "minimum": 0
         },
         "deployed_at": {
-          "description": "Timestamp when activation completed (if is_live=true)",
+          "type": "string",
           "format": "date-time",
-          "type": "string"
-        },
-        "estimated_activation_duration_minutes": {
-          "description": "Estimated time to activate if not live, or to complete activation if in progress",
-          "minimum": 0,
-          "type": "number"
-        },
-        "is_live": {
-          "description": "Whether signal is currently active on this deployment",
-          "type": "boolean"
-        },
-        "type": {
-          "const": "agent",
-          "description": "Discriminator indicating this is an agent URL-based deployment",
-          "type": "string"
+          "description": "Timestamp when activation completed (if is_live=true)"
         }
       },
       "required": [
@@ -85,8 +86,7 @@
         "agent_url",
         "is_live"
       ],
-      "type": "object"
+      "additionalProperties": true
     }
-  ],
-  "title": "Deployment"
+  ]
 }

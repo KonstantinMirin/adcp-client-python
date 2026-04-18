@@ -3,12 +3,12 @@
   "title": "AdCP Schema Registry",
   "version": "1.0.0",
   "description": "Registry of all AdCP JSON schemas for validation and discovery",
-  "adcp_version": "3.0.0-rc.2",
+  "adcp_version": "latest",
   "versioning": {
-    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.0-rc.2. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ \u2192 /schemas/3.0.0-rc.2/."
+    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP latest. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/vlatest/ \u2192 /schemas/latest/."
   },
-  "lastUpdated": "2026-03-15",
-  "baseUrl": "/schemas/3.0.0-rc.2",
+  "lastUpdated": "2026-04-18",
+  "baseUrl": "/schemas/latest",
   "schemas": {
     "core": {
       "description": "Core data models used throughout AdCP",
@@ -41,6 +41,10 @@
           "$ref": "core/duration.json",
           "description": "A time duration with value and unit (hours or days)"
         },
+        "feature-requirement": {
+          "$ref": "core/feature-requirement.json",
+          "description": "A feature-based requirement \u2014 reusable predicate over a feature value. Used by property list filters, designed for reuse across governance surfaces."
+        },
         "frequency-cap": {
           "$ref": "core/frequency-cap.json",
           "description": "Frequency capping settings"
@@ -72,6 +76,18 @@
         "creative-policy": {
           "$ref": "core/creative-policy.json",
           "description": "Creative requirements and restrictions for a product"
+        },
+        "deadline-policy": {
+          "$ref": "core/deadline-policy.json",
+          "description": "Default deadline rules for installments based on lead times from scheduled_at"
+        },
+        "installment-deadlines": {
+          "$ref": "core/installment-deadlines.json",
+          "description": "Booking, cancellation, and material submission deadlines for an installment"
+        },
+        "material-deadline": {
+          "$ref": "core/material-deadline.json",
+          "description": "A deadline for creative material submission at a specific stage"
         },
         "response": {
           "$ref": "core/response.json",
@@ -144,6 +160,10 @@
         "proposal": {
           "$ref": "core/proposal.json",
           "description": "A proposed media plan with budget allocations across products - actionable via create_media_buy"
+        },
+        "insertion-order": {
+          "$ref": "core/insertion-order.json",
+          "description": "A formal insertion order attached to a committed proposal for agreement signing"
         },
         "product-allocation": {
           "$ref": "core/product-allocation.json",
@@ -225,9 +245,17 @@
           "$ref": "core/protocol-envelope.json",
           "description": "Standard envelope structure added by protocol layer (MCP, A2A, REST) that wraps task response payloads with protocol-level fields like status, context_id, task_id, and message"
         },
+        "agent-signing-key": {
+          "$ref": "core/agent-signing-key.json",
+          "description": "Publisher-attested public key material for an authorized agent"
+        },
         "placement": {
           "$ref": "core/placement.json",
           "description": "Represents a specific ad placement within a product's inventory"
+        },
+        "placement-definition": {
+          "$ref": "core/placement-definition.json",
+          "description": "Canonical placement definition published in a publisher's adagents.json"
         },
         "mcp-webhook-payload": {
           "$ref": "core/mcp-webhook-payload.json",
@@ -259,11 +287,19 @@
         },
         "signal-pricing": {
           "$ref": "core/signal-pricing.json",
-          "description": "Signal pricing model \u2014 discriminated union of cpm (fixed CPM), percent_of_media (percentage of spend, with optional CPM cap), or flat_fee (fixed charge per reporting period)"
+          "description": "Vendor pricing model \u2014 discriminated union of cpm (fixed CPM), percent_of_media (percentage of spend, with optional CPM cap), flat_fee (fixed charge per reporting period), or per_unit (fixed price per unit of work)"
         },
         "signal-pricing-option": {
           "$ref": "core/signal-pricing-option.json",
-          "description": "A pricing option offered by a signals agent, combining a pricing_option_id with a signal pricing model. Returned in get_signals, referenced in report_usage."
+          "description": "Deprecated \u2014 alias for vendor-pricing-option.json. Retained for backward compatibility. Prefer vendor-pricing-option.json for new implementations."
+        },
+        "vendor-pricing-option": {
+          "$ref": "core/vendor-pricing-option.json",
+          "description": "A pricing option offered by a vendor agent (signals, creative, governance), combining a pricing_option_id with a pricing model. Returned in get_signals and list_creatives, referenced in build_creative responses and report_usage."
+        },
+        "creative-consumption": {
+          "$ref": "core/creative-consumption.json",
+          "description": "Structured consumption details returned by build_creative when a paid creative agent computes cost. Well-known fields for tokens, images, renders, and processing time."
         },
         "property-id": {
           "$ref": "core/property-id.json",
@@ -276,6 +312,10 @@
         "property-list-ref": {
           "$ref": "core/property-list-ref.json",
           "description": "Reference to an externally managed property list for passing large property sets"
+        },
+        "collection-list-ref": {
+          "$ref": "core/collection-list-ref.json",
+          "description": "Reference to an externally managed collection list for passing large collection exclusion/inclusion sets"
         },
         "identifier": {
           "$ref": "core/identifier.json",
@@ -423,6 +463,10 @@
           "$ref": "enums/delivery-type.json",
           "description": "Type of inventory delivery"
         },
+        "proposal-status": {
+          "$ref": "enums/proposal-status.json",
+          "description": "Lifecycle status of a proposal (draft or committed)"
+        },
         "media-buy-status": {
           "$ref": "enums/media-buy-status.json",
           "description": "Status of a media buy"
@@ -479,10 +523,6 @@
           "$ref": "enums/disclosure-persistence.json",
           "description": "How long a disclosure must persist during content playback or display"
         },
-        "format-category": {
-          "$ref": "enums/format-category.json",
-          "description": "High-level categories for creative formats (audio, video, display, native, dooh, rich_media, universal)"
-        },
         "vast-version": {
           "$ref": "enums/vast-version.json",
           "description": "Supported VAST specification versions (2.0, 3.0, 4.0, 4.1, 4.2)"
@@ -493,7 +533,7 @@
         },
         "property-type": {
           "$ref": "enums/property-type.json",
-          "description": "Types of advertising properties (website, mobile_app, ctv_app, dooh, podcast, radio, streaming_audio)"
+          "description": "Types of addressable advertising properties with verifiable ownership"
         },
         "dimension-unit": {
           "$ref": "enums/dimension-unit.json",
@@ -555,9 +595,13 @@
           "$ref": "enums/creative-agent-capability.json",
           "description": "Capabilities supported by creative agents (validation, assembly, generation, preview, delivery)"
         },
-        "adcp-domain": {
-          "$ref": "enums/adcp-domain.json",
+        "adcp-protocol": {
+          "$ref": "enums/adcp-protocol.json",
           "description": "AdCP protocol domains (media-buy, signals, governance, creative, brand)"
+        },
+        "brand-agent-type": {
+          "$ref": "enums/brand-agent-type.json",
+          "description": "Agent types declarable in brand.json (brand, rights, measurement, governance, creative, sales, buying, signals)"
         },
         "right-use": {
           "$ref": "enums/right-use.json",
@@ -747,6 +791,10 @@
           "$ref": "enums/governance-domain.json",
           "description": "Governance sub-domains a registry policy applies to (campaign, property, creative, content_standards)"
         },
+        "genre-taxonomy": {
+          "$ref": "enums/genre-taxonomy.json",
+          "description": "Taxonomy systems for genre classification (iab_content_3.0, gracenote, eidr, etc.)"
+        },
         "governance-mode": {
           "$ref": "enums/governance-mode.json",
           "description": "Operating mode for a governance agent (audit, advisory, enforce)"
@@ -823,6 +871,16 @@
           "response": {
             "$ref": "account/sync-accounts-response.json",
             "description": "Response payload for sync_accounts task"
+          }
+        },
+        "sync-governance": {
+          "request": {
+            "$ref": "account/sync-governance-request.json",
+            "description": "Request parameters for registering governance agent endpoints on accounts"
+          },
+          "response": {
+            "$ref": "account/sync-governance-response.json",
+            "description": "Response payload for sync_governance task"
           }
         },
         "report-usage": {
@@ -1077,10 +1135,6 @@
           "$ref": "property/property-feature.json",
           "description": "A discrete feature assessment for a property"
         },
-        "feature-requirement": {
-          "$ref": "property/feature-requirement.json",
-          "description": "A feature-based requirement for property filtering"
-        },
         "property-error": {
           "$ref": "property/property-error.json",
           "description": "Error information for a property that could not be evaluated"
@@ -1100,6 +1154,22 @@
         "base-property-source": {
           "$ref": "property/base-property-source.json",
           "description": "A source of properties for a property list - supports publisher+tags, publisher+property_ids, or direct identifiers"
+        },
+        "collection-list": {
+          "$ref": "collection/collection-list.json",
+          "description": "A managed collection list with optional filters for dynamic evaluation \u2014 collections represent programs/shows independent of properties"
+        },
+        "collection-list-filters": {
+          "$ref": "collection/collection-list-filters.json",
+          "description": "Filters that dynamically modify a collection list when resolved \u2014 content ratings, genres, kinds, production quality"
+        },
+        "collection-list-changed-webhook": {
+          "$ref": "collection/collection-list-changed-webhook.json",
+          "description": "Webhook payload when a collection list changes"
+        },
+        "base-collection-source": {
+          "$ref": "collection/base-collection-source.json",
+          "description": "A source of collections for a collection list - supports distribution_ids, publisher_collections, or publisher_genres"
         },
         "content-standards": {
           "$ref": "content-standards/content-standards.json",
@@ -1171,6 +1241,56 @@
           "response": {
             "$ref": "property/delete-property-list-response.json",
             "description": "Response payload for delete_property_list task"
+          }
+        },
+        "create-collection-list": {
+          "request": {
+            "$ref": "collection/create-collection-list-request.json",
+            "description": "Request parameters for creating a new collection list"
+          },
+          "response": {
+            "$ref": "collection/create-collection-list-response.json",
+            "description": "Response payload for create_collection_list task"
+          }
+        },
+        "update-collection-list": {
+          "request": {
+            "$ref": "collection/update-collection-list-request.json",
+            "description": "Request parameters for updating an existing collection list"
+          },
+          "response": {
+            "$ref": "collection/update-collection-list-response.json",
+            "description": "Response payload for update_collection_list task"
+          }
+        },
+        "get-collection-list": {
+          "request": {
+            "$ref": "collection/get-collection-list-request.json",
+            "description": "Request parameters for retrieving a collection list with resolved collections"
+          },
+          "response": {
+            "$ref": "collection/get-collection-list-response.json",
+            "description": "Response payload for get_collection_list task"
+          }
+        },
+        "list-collection-lists": {
+          "request": {
+            "$ref": "collection/list-collection-lists-request.json",
+            "description": "Request parameters for listing collection lists"
+          },
+          "response": {
+            "$ref": "collection/list-collection-lists-response.json",
+            "description": "Response payload for list_collection_lists task"
+          }
+        },
+        "delete-collection-list": {
+          "request": {
+            "$ref": "collection/delete-collection-list-request.json",
+            "description": "Request parameters for deleting a collection list"
+          },
+          "response": {
+            "$ref": "collection/delete-collection-list-response.json",
+            "description": "Response payload for delete_collection_list task"
           }
         },
         "list-content-standards": {
@@ -1381,6 +1501,53 @@
       "file_location": "/.well-known/brand.json",
       "purpose": "Declares brand identity and agent for a domain, enabling brand discovery and verification"
     },
+    "trusted-match": {
+      "description": "Trusted Match Protocol (TMP) \u2014 real-time execution layer for activating pre-negotiated packages across any surface",
+      "supporting-schemas": {
+        "available-package": {
+          "$ref": "tmp/available-package.json",
+          "description": "A package available for contextual matching on a given impression opportunity"
+        },
+        "offer": {
+          "$ref": "tmp/offer.json",
+          "description": "Buyer's response to a context match \u2014 ranges from simple activation (package_id only) to rich offers with brand, price, summary, and creative manifest"
+        },
+        "offer-price": {
+          "$ref": "tmp/offer-price.json",
+          "description": "Lightweight price for variable-priced offers"
+        },
+        "error": {
+          "$ref": "tmp/error.json",
+          "description": "Error response from a TMP provider or router when a request cannot be processed"
+        },
+        "provider-registration": {
+          "$ref": "tmp/provider-registration.json",
+          "description": "TMP provider registration \u2014 endpoint, capabilities, and operational parameters for router configuration"
+        }
+      },
+      "operations": {
+        "context-match": {
+          "request": {
+            "$ref": "tmp/context-match-request.json",
+            "description": "Evaluate available packages against content context. Contains no user identity."
+          },
+          "response": {
+            "$ref": "tmp/context-match-response.json",
+            "description": "Offers for matched packages with optional brand, price, summary, creative manifest, and targeting signals"
+          }
+        },
+        "identity-match": {
+          "request": {
+            "$ref": "tmp/identity-match-request.json",
+            "description": "Evaluate user eligibility for packages using an opaque identity token. Contains no page context."
+          },
+          "response": {
+            "$ref": "tmp/identity-match-response.json",
+            "description": "Per-package eligibility \u2014 boolean eligible plus optional intent score"
+          }
+        }
+      }
+    },
     "brand-protocol": {
       "description": "Brand protocol schemas for identity retrieval, rights discovery, and rights acquisition",
       "schemas": {
@@ -1425,6 +1592,21 @@
         "description": "Schema that all extension files must follow. Defines valid_from, valid_until, and extension data structure."
       },
       "schemas": {}
+    },
+    "compliance": {
+      "description": "Compliance testing tool schemas. The test controller is an optional sandbox-only tool that lets comply walk full lifecycle state machines by triggering seller-side transitions deterministically.",
+      "tasks": {
+        "comply-test-controller": {
+          "request": {
+            "$ref": "compliance/comply-test-controller-request.json",
+            "description": "Request payload for the comply_test_controller tool \u2014 scenario selection and scenario-specific params"
+          },
+          "response": {
+            "$ref": "compliance/comply-test-controller-response.json",
+            "description": "Response payload \u2014 state transition results, simulation results, scenario list, or structured errors"
+          }
+        }
+      }
     }
   },
   "usage": {

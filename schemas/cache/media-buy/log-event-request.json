@@ -1,42 +1,50 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Log Event Request",
   "description": "Request parameters for logging marketing events",
+  "type": "object",
   "properties": {
-    "context": {
-      "$ref": "../core/context.json"
+    "adcp_major_version": {
+      "type": "integer",
+      "description": "The AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+      "minimum": 1,
+      "maximum": 99
     },
     "event_source_id": {
-      "description": "Event source configured on the account via sync_event_sources",
-      "type": "string"
+      "type": "string",
+      "description": "Event source configured on the account via sync_event_sources"
+    },
+    "test_event_code": {
+      "type": "string",
+      "description": "Test event code for validation without affecting production data. Events with this code appear in the platform's test events UI."
     },
     "events": {
+      "type": "array",
       "description": "Events to log",
       "items": {
         "$ref": "../core/event.json"
       },
-      "maxItems": 10000,
       "minItems": 1,
-      "type": "array"
+      "maxItems": 10000
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Client-generated unique key for this request. Prevents duplicate event logging on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
+      "minLength": 16,
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
+    },
+    "context": {
+      "$ref": "../core/context.json"
     },
     "ext": {
       "$ref": "../core/ext.json"
-    },
-    "idempotency_key": {
-      "description": "Client-generated unique key for this request. Prevents duplicate event logging on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
-      "maxLength": 255,
-      "minLength": 16,
-      "type": "string"
-    },
-    "test_event_code": {
-      "description": "Test event code for validation without affecting production data. Events with this code appear in the platform's test events UI.",
-      "type": "string"
     }
   },
   "required": [
+    "idempotency_key",
     "event_source_id",
     "events"
   ],
-  "title": "Log Event Request",
-  "type": "object"
+  "additionalProperties": true
 }

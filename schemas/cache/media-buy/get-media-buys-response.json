@@ -1,361 +1,105 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Get Media Buys Response",
   "description": "Response payload for get_media_buys task. Returns media buy configuration, creative approval state, and optional delivery snapshots.",
+  "type": "object",
   "properties": {
-    "context": {
-      "$ref": "../core/context.json"
-    },
-    "errors": {
-      "description": "Task-specific errors (e.g., media buy not found)",
-      "items": {
-        "$ref": "../core/error.json"
-      },
-      "type": "array"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
     "media_buys": {
+      "type": "array",
       "description": "Array of media buys with status, creative approval state, and optional delivery snapshots",
       "items": {
-        "additionalProperties": true,
+        "type": "object",
         "properties": {
+          "media_buy_id": {
+            "type": "string",
+            "description": "Seller's unique identifier for the media buy"
+          },
           "account": {
             "$ref": "../core/account.json",
             "description": "Account billed for this media buy"
           },
+          "invoice_recipient": {
+            "$ref": "../core/business-entity.json",
+            "description": "Per-buy invoice recipient when provided at creation. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
+          },
+          "status": {
+            "$ref": "../enums/media-buy-status.json"
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217 currency code (e.g., USD, EUR, GBP) for monetary values at this media buy level. total_budget is always denominated in this currency. Package-level fields may override with package.currency.",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "total_budget": {
+            "type": "number",
+            "description": "Total budget amount across all packages, denominated in media_buy.currency",
+            "minimum": 0
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 flight start time for this media buy (earliest package start_time). Avoids requiring buyers to compute min(packages[].start_time)."
+          },
+          "end_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 flight end time for this media buy (latest package end_time). Avoids requiring buyers to compute max(packages[].end_time)."
+          },
+          "creative_deadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp for creative upload deadline"
+          },
+          "confirmed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when the seller confirmed this media buy. A successful create_media_buy response constitutes order confirmation."
+          },
           "cancellation": {
-            "additionalProperties": false,
+            "type": "object",
             "description": "Cancellation metadata. Present only when status is 'canceled'.",
+            "required": [
+              "canceled_at",
+              "canceled_by"
+            ],
             "properties": {
               "canceled_at": {
-                "description": "ISO 8601 timestamp when this media buy was canceled.",
+                "type": "string",
                 "format": "date-time",
-                "type": "string"
+                "description": "ISO 8601 timestamp when this media buy was canceled."
               },
               "canceled_by": {
                 "$ref": "../enums/canceled-by.json",
                 "description": "Which party initiated the cancellation."
               },
               "reason": {
+                "type": "string",
                 "description": "Reason the media buy was canceled.",
-                "maxLength": 500,
-                "type": "string"
+                "maxLength": 500
               }
             },
-            "required": [
-              "canceled_at",
-              "canceled_by"
-            ],
-            "type": "object"
-          },
-          "confirmed_at": {
-            "description": "ISO 8601 timestamp when the seller confirmed this media buy. A successful create_media_buy response constitutes order confirmation.",
-            "format": "date-time",
-            "type": "string"
-          },
-          "created_at": {
-            "description": "Creation timestamp",
-            "format": "date-time",
-            "type": "string"
-          },
-          "creative_deadline": {
-            "description": "ISO 8601 timestamp for creative upload deadline",
-            "format": "date-time",
-            "type": "string"
-          },
-          "currency": {
-            "description": "ISO 4217 currency code (e.g., USD, EUR, GBP) for monetary values at this media buy level. total_budget is always denominated in this currency. Package-level fields may override with package.currency.",
-            "pattern": "^[A-Z]{3}$",
-            "type": "string"
-          },
-          "end_time": {
-            "description": "ISO 8601 flight end time for this media buy (latest package end_time). Avoids requiring buyers to compute max(packages[].end_time).",
-            "format": "date-time",
-            "type": "string"
-          },
-          "ext": {
-            "$ref": "../core/ext.json"
-          },
-          "history": {
-            "description": "Revision history entries, most recent first. Only present when include_history > 0 in the request. Each entry represents a state change or update to the media buy. Entries are append-only: sellers MUST NOT modify or delete previously emitted history entries. Callers MAY cache entries by revision number. Returns min(N, available entries) when include_history exceeds the total.",
-            "items": {
-              "additionalProperties": true,
-              "properties": {
-                "action": {
-                  "description": "What happened. Standard actions: created, activated, paused, resumed, canceled, rejected, completed, updated_budget, updated_dates, updated_packages, package_canceled, package_paused, package_resumed. Sellers MAY use additional platform-specific actions (e.g., creative_approved, targeting_updated) \u2014 use ext on the history entry for structured metadata about custom actions.",
-                  "type": "string"
-                },
-                "actor": {
-                  "description": "Identity of who made the change \u2014 derived from authentication context, not caller-provided. Format is seller-defined (e.g., agent URL, user email, API key label).",
-                  "type": "string"
-                },
-                "ext": {
-                  "$ref": "../core/ext.json"
-                },
-                "package_id": {
-                  "description": "Package affected, when the change targeted a specific package.",
-                  "type": "string"
-                },
-                "revision": {
-                  "description": "Revision number after this change was applied.",
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "summary": {
-                  "description": "Human-readable summary of the change (e.g., 'Budget increased from $5,000 to $7,500 on pkg_abc').",
-                  "maxLength": 500,
-                  "type": "string"
-                },
-                "timestamp": {
-                  "description": "When this change occurred.",
-                  "format": "date-time",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "revision",
-                "timestamp",
-                "action"
-              ],
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "invoice_recipient": {
-            "$ref": "../core/business-entity.json",
-            "description": "Per-buy invoice recipient when provided at creation. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
-          },
-          "media_buy_id": {
-            "description": "Seller's unique identifier for the media buy",
-            "type": "string"
-          },
-          "packages": {
-            "description": "Packages within this media buy, augmented with creative approval status and optional delivery snapshots",
-            "items": {
-              "additionalProperties": true,
-              "description": "Current status of a package within a media buy \u2014 includes creative approval state and optional delivery snapshot. For the creation input shape, see PackageRequest. For the creation output shape, see Package.",
-              "properties": {
-                "bid_price": {
-                  "description": "Current bid price for auction-based packages. Denominated in package.currency when present, otherwise media_buy.currency. Relevant for automated price optimization loops.",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "budget": {
-                  "description": "Package budget amount, denominated in package.currency when present, otherwise media_buy.currency",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "canceled": {
-                  "description": "Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated.",
-                  "type": "boolean"
-                },
-                "cancellation": {
-                  "additionalProperties": false,
-                  "description": "Cancellation metadata. Present only when canceled is true.",
-                  "properties": {
-                    "canceled_at": {
-                      "description": "ISO 8601 timestamp when this package was canceled.",
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "canceled_by": {
-                      "$ref": "../enums/canceled-by.json",
-                      "description": "Which party initiated the package cancellation."
-                    },
-                    "reason": {
-                      "description": "Reason the package was canceled.",
-                      "maxLength": 500,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "canceled_at",
-                    "canceled_by"
-                  ],
-                  "type": "object"
-                },
-                "creative_approvals": {
-                  "description": "Approval status for each creative assigned to this package. Absent when no creatives have been assigned.",
-                  "items": {
-                    "additionalProperties": true,
-                    "properties": {
-                      "approval_status": {
-                        "$ref": "../enums/creative-approval-status.json"
-                      },
-                      "creative_id": {
-                        "description": "Creative identifier",
-                        "type": "string"
-                      },
-                      "rejection_reason": {
-                        "description": "Human-readable explanation of why the creative was rejected. Present only when approval_status is 'rejected'.",
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "creative_id",
-                      "approval_status"
-                    ],
-                    "type": "object"
-                  },
-                  "type": "array"
-                },
-                "creative_deadline": {
-                  "description": "ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies.",
-                  "format": "date-time",
-                  "type": "string"
-                },
-                "currency": {
-                  "description": "ISO 4217 currency code for monetary values at this package level (budget, bid_price, snapshot.spend). When absent, inherit media_buy.currency.",
-                  "pattern": "^[A-Z]{3}$",
-                  "type": "string"
-                },
-                "end_time": {
-                  "description": "ISO 8601 flight end time for this package",
-                  "format": "date-time",
-                  "type": "string"
-                },
-                "ext": {
-                  "$ref": "../core/ext.json"
-                },
-                "format_ids_pending": {
-                  "description": "Format IDs from the original create_media_buy format_ids_to_provide that have not yet been uploaded via sync_creatives. When empty or absent, all required formats have been provided.",
-                  "items": {
-                    "$ref": "../core/format-id.json"
-                  },
-                  "type": "array"
-                },
-                "impressions": {
-                  "description": "Goal impression count for impression-based packages",
-                  "minimum": 0,
-                  "type": "number"
-                },
-                "package_id": {
-                  "description": "Seller's package identifier",
-                  "type": "string"
-                },
-                "paused": {
-                  "description": "Whether this package is currently paused by the buyer",
-                  "type": "boolean"
-                },
-                "product_id": {
-                  "description": "Product identifier this package is purchased from",
-                  "type": "string"
-                },
-                "snapshot": {
-                  "additionalProperties": true,
-                  "description": "Near-real-time delivery snapshot for this package. Only present when include_snapshot was true in the request. Represents the latest available entity-level stats from the platform \u2014 not billing-grade data.",
-                  "properties": {
-                    "as_of": {
-                      "description": "ISO 8601 timestamp when this snapshot was captured by the platform",
-                      "format": "date-time",
-                      "type": "string"
-                    },
-                    "clicks": {
-                      "description": "Total clicks since package start (when available)",
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "currency": {
-                      "description": "ISO 4217 currency code for spend in this snapshot. Optional when unchanged from package.currency or media_buy.currency.",
-                      "pattern": "^[A-Z]{3}$",
-                      "type": "string"
-                    },
-                    "delivery_status": {
-                      "description": "Operational delivery state of this package. 'not_delivering' means the package is within its scheduled flight but has delivered zero impressions for at least one full staleness cycle \u2014 the signal for automated price adjustments or buyer alerts. Implementers must not return 'not_delivering' until at least staleness_seconds have elapsed since package activation.",
-                      "enum": [
-                        "delivering",
-                        "not_delivering",
-                        "completed",
-                        "budget_exhausted",
-                        "flight_ended",
-                        "goal_met"
-                      ],
-                      "type": "string"
-                    },
-                    "ext": {
-                      "$ref": "../core/ext.json",
-                      "description": "Optional extension object for seller-specific snapshot fields."
-                    },
-                    "impressions": {
-                      "description": "Total impressions delivered since package start",
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "pacing_index": {
-                      "description": "Current delivery pace relative to expected (1.0 = on track, <1.0 = behind, >1.0 = ahead). Absent when pacing cannot be determined.",
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "spend": {
-                      "description": "Total spend since package start, denominated in snapshot.currency when present, otherwise package.currency or media_buy.currency",
-                      "minimum": 0,
-                      "type": "number"
-                    },
-                    "staleness_seconds": {
-                      "description": "Maximum age of this data in seconds. For example, 900 means the data may be up to 15 minutes old. Use this to interpret zero delivery: a value of 900 means zero impressions is likely real; a value of 14400 means reporting may still be catching up.",
-                      "minimum": 0,
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "as_of",
-                    "staleness_seconds",
-                    "impressions",
-                    "spend"
-                  ],
-                  "type": "object"
-                },
-                "snapshot_unavailable_reason": {
-                  "description": "Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot is unavailable for this package.",
-                  "enum": [
-                    "SNAPSHOT_UNSUPPORTED",
-                    "SNAPSHOT_TEMPORARILY_UNAVAILABLE",
-                    "SNAPSHOT_PERMISSION_DENIED"
-                  ],
-                  "type": "string"
-                },
-                "start_time": {
-                  "description": "ISO 8601 flight start time for this package. Use to determine whether the package is within its scheduled flight before interpreting delivery status.",
-                  "format": "date-time",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "package_id"
-              ],
-              "title": "PackageStatus",
-              "type": "object"
-            },
-            "type": "array"
+            "additionalProperties": false
           },
           "revision": {
+            "type": "integer",
             "description": "Current revision number. Pass this in update_media_buy for optimistic concurrency.",
-            "minimum": 1,
-            "type": "integer"
+            "minimum": 1
           },
-          "start_time": {
-            "description": "ISO 8601 flight start time for this media buy (earliest package start_time). Avoids requiring buyers to compute min(packages[].start_time).",
+          "created_at": {
+            "type": "string",
             "format": "date-time",
-            "type": "string"
-          },
-          "status": {
-            "$ref": "../enums/media-buy-status.json"
-          },
-          "total_budget": {
-            "description": "Total budget amount across all packages, denominated in media_buy.currency",
-            "minimum": 0,
-            "type": "number"
+            "description": "Creation timestamp"
           },
           "updated_at": {
-            "description": "Last update timestamp",
+            "type": "string",
             "format": "date-time",
-            "type": "string"
+            "description": "Last update timestamp"
           },
           "valid_actions": {
+            "type": "array",
             "description": "Actions the buyer can perform on this media buy in its current state. Eliminates the need for agents to internalize the state machine \u2014 the seller declares what is permitted right now.",
             "items": {
+              "type": "string",
               "enum": [
                 "pause",
                 "resume",
@@ -365,10 +109,255 @@
                 "update_packages",
                 "add_packages",
                 "sync_creatives"
+              ]
+            }
+          },
+          "history": {
+            "type": "array",
+            "description": "Revision history entries, most recent first. Only present when include_history > 0 in the request. Each entry represents a state change or update to the media buy. Entries are append-only: sellers MUST NOT modify or delete previously emitted history entries. Callers MAY cache entries by revision number. Returns min(N, available entries) when include_history exceeds the total.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "revision": {
+                  "type": "integer",
+                  "description": "Revision number after this change was applied.",
+                  "minimum": 1
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When this change occurred."
+                },
+                "actor": {
+                  "type": "string",
+                  "description": "Identity of who made the change \u2014 derived from authentication context, not caller-provided. Format is seller-defined (e.g., agent URL, user email, API key label)."
+                },
+                "action": {
+                  "type": "string",
+                  "description": "What happened. Standard actions: created, activated, paused, resumed, canceled, rejected, completed, updated_budget, updated_dates, updated_packages, package_canceled, package_paused, package_resumed. Sellers MAY use additional platform-specific actions (e.g., creative_approved, targeting_updated) \u2014 use ext on the history entry for structured metadata about custom actions."
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "Human-readable summary of the change (e.g., 'Budget increased from $5,000 to $7,500 on pkg_abc').",
+                  "maxLength": 500
+                },
+                "package_id": {
+                  "type": "string",
+                  "description": "Package affected, when the change targeted a specific package."
+                },
+                "ext": {
+                  "$ref": "../core/ext.json"
+                }
+              },
+              "required": [
+                "revision",
+                "timestamp",
+                "action"
               ],
-              "type": "string"
-            },
-            "type": "array"
+              "additionalProperties": true
+            }
+          },
+          "packages": {
+            "type": "array",
+            "description": "Packages within this media buy, augmented with creative approval status and optional delivery snapshots",
+            "items": {
+              "title": "PackageStatus",
+              "description": "Current status of a package within a media buy \u2014 includes creative approval state and optional delivery snapshot. For the creation input shape, see PackageRequest. For the creation output shape, see Package.",
+              "type": "object",
+              "properties": {
+                "package_id": {
+                  "type": "string",
+                  "description": "Seller's package identifier"
+                },
+                "product_id": {
+                  "type": "string",
+                  "description": "Product identifier this package is purchased from"
+                },
+                "budget": {
+                  "type": "number",
+                  "description": "Package budget amount, denominated in package.currency when present, otherwise media_buy.currency",
+                  "minimum": 0
+                },
+                "currency": {
+                  "type": "string",
+                  "description": "ISO 4217 currency code for monetary values at this package level (budget, bid_price, snapshot.spend). When absent, inherit media_buy.currency.",
+                  "pattern": "^[A-Z]{3}$"
+                },
+                "bid_price": {
+                  "type": "number",
+                  "description": "Current bid price for auction-based packages. Denominated in package.currency when present, otherwise media_buy.currency. Relevant for automated price optimization loops.",
+                  "minimum": 0
+                },
+                "impressions": {
+                  "type": "number",
+                  "description": "Goal impression count for impression-based packages",
+                  "minimum": 0
+                },
+                "start_time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 flight start time for this package. Use to determine whether the package is within its scheduled flight before interpreting delivery status."
+                },
+                "end_time": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 flight end time for this package"
+                },
+                "paused": {
+                  "type": "boolean",
+                  "description": "Whether this package is currently paused by the buyer"
+                },
+                "canceled": {
+                  "type": "boolean",
+                  "description": "Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated."
+                },
+                "cancellation": {
+                  "type": "object",
+                  "description": "Cancellation metadata. Present only when canceled is true.",
+                  "required": [
+                    "canceled_at",
+                    "canceled_by"
+                  ],
+                  "properties": {
+                    "canceled_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp when this package was canceled."
+                    },
+                    "canceled_by": {
+                      "$ref": "../enums/canceled-by.json",
+                      "description": "Which party initiated the package cancellation."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Reason the package was canceled.",
+                      "maxLength": 500
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "creative_deadline": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."
+                },
+                "creative_approvals": {
+                  "type": "array",
+                  "description": "Approval status for each creative assigned to this package. Absent when no creatives have been assigned.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "creative_id": {
+                        "type": "string",
+                        "description": "Creative identifier"
+                      },
+                      "approval_status": {
+                        "$ref": "../enums/creative-approval-status.json"
+                      },
+                      "rejection_reason": {
+                        "type": "string",
+                        "description": "Human-readable explanation of why the creative was rejected. Present only when approval_status is 'rejected'."
+                      }
+                    },
+                    "required": [
+                      "creative_id",
+                      "approval_status"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                "format_ids_pending": {
+                  "type": "array",
+                  "description": "Format IDs from the original create_media_buy format_ids_to_provide that have not yet been uploaded via sync_creatives. When empty or absent, all required formats have been provided.",
+                  "items": {
+                    "$ref": "../core/format-id.json"
+                  }
+                },
+                "snapshot_unavailable_reason": {
+                  "type": "string",
+                  "description": "Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot is unavailable for this package.",
+                  "enum": [
+                    "SNAPSHOT_UNSUPPORTED",
+                    "SNAPSHOT_TEMPORARILY_UNAVAILABLE",
+                    "SNAPSHOT_PERMISSION_DENIED"
+                  ]
+                },
+                "snapshot": {
+                  "type": "object",
+                  "description": "Near-real-time delivery snapshot for this package. Only present when include_snapshot was true in the request. Represents the latest available entity-level stats from the platform \u2014 not billing-grade data.",
+                  "properties": {
+                    "as_of": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "ISO 8601 timestamp when this snapshot was captured by the platform"
+                    },
+                    "staleness_seconds": {
+                      "type": "integer",
+                      "description": "Maximum age of this data in seconds. For example, 900 means the data may be up to 15 minutes old. Use this to interpret zero delivery: a value of 900 means zero impressions is likely real; a value of 14400 means reporting may still be catching up.",
+                      "minimum": 0
+                    },
+                    "impressions": {
+                      "type": "number",
+                      "description": "Total impressions delivered since package start",
+                      "minimum": 0
+                    },
+                    "spend": {
+                      "type": "number",
+                      "description": "Total spend since package start, denominated in snapshot.currency when present, otherwise package.currency or media_buy.currency",
+                      "minimum": 0
+                    },
+                    "currency": {
+                      "type": "string",
+                      "description": "ISO 4217 currency code for spend in this snapshot. Optional when unchanged from package.currency or media_buy.currency.",
+                      "pattern": "^[A-Z]{3}$"
+                    },
+                    "clicks": {
+                      "type": "number",
+                      "description": "Total clicks since package start (when available)",
+                      "minimum": 0
+                    },
+                    "pacing_index": {
+                      "type": "number",
+                      "description": "Current delivery pace relative to expected (1.0 = on track, <1.0 = behind, >1.0 = ahead). Absent when pacing cannot be determined.",
+                      "minimum": 0
+                    },
+                    "delivery_status": {
+                      "type": "string",
+                      "description": "Operational delivery state of this package. 'not_delivering' means the package is within its scheduled flight but has delivered zero impressions for at least one full staleness cycle \u2014 the signal for automated price adjustments or buyer alerts. Implementers must not return 'not_delivering' until at least staleness_seconds have elapsed since package activation.",
+                      "enum": [
+                        "delivering",
+                        "not_delivering",
+                        "completed",
+                        "budget_exhausted",
+                        "flight_ended",
+                        "goal_met"
+                      ]
+                    },
+                    "ext": {
+                      "$ref": "../core/ext.json",
+                      "description": "Optional extension object for seller-specific snapshot fields."
+                    }
+                  },
+                  "required": [
+                    "as_of",
+                    "staleness_seconds",
+                    "impressions",
+                    "spend"
+                  ],
+                  "additionalProperties": true
+                },
+                "ext": {
+                  "$ref": "../core/ext.json"
+                }
+              },
+              "required": [
+                "package_id"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "ext": {
+            "$ref": "../core/ext.json"
           }
         },
         "required": [
@@ -378,22 +367,33 @@
           "total_budget",
           "packages"
         ],
-        "type": "object"
-      },
-      "type": "array"
+        "additionalProperties": true
+      }
+    },
+    "errors": {
+      "type": "array",
+      "description": "Task-specific errors (e.g., media buy not found)",
+      "items": {
+        "$ref": "../core/error.json"
+      }
     },
     "pagination": {
       "$ref": "../core/pagination-response.json",
       "description": "Pagination metadata for the media_buys array."
     },
     "sandbox": {
-      "description": "When true, this response contains simulated data from sandbox mode.",
-      "type": "boolean"
+      "type": "boolean",
+      "description": "When true, this response contains simulated data from sandbox mode."
+    },
+    "context": {
+      "$ref": "../core/context.json"
+    },
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
     "media_buys"
   ],
-  "title": "Get Media Buys Response",
-  "type": "object"
+  "additionalProperties": true
 }

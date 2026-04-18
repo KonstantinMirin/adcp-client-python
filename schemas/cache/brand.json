@@ -1,62 +1,333 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Brand Discovery",
+  "description": "Brand identity and discovery file. Hosted at /.well-known/brand.json on house domains. Contains the full brand portfolio with identity, creative assets, and digital properties. Brands are identified by house + brand_id (like properties are identified by publisher + property_id). Supports variants: house portfolio (full brand data), brand agent (agent provides brand info via MCP), house redirect (pointer to house domain), or authoritative location redirect.",
   "definitions": {
+    "domain": {
+      "type": "string",
+      "description": "A valid domain name",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+    },
+    "brand_id": {
+      "type": "string",
+      "description": "Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "localized_name": {
+      "type": "object",
+      "description": "A localized name with BCP 47 locale code key (e.g., 'en_US', 'fr_CA', 'zh_CN') and name value. Bare language codes ('en') are accepted as wildcards for backwards compatibility.",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "keller_type": {
+      "type": "string",
+      "enum": [
+        "master",
+        "sub_brand",
+        "endorsed",
+        "independent"
+      ],
+      "description": "Brand architecture type from Keller's theory. master: primary brand of house. sub_brand: carries parent name (Nike SB). endorsed: independent identity backed by parent (Air Jordan 'by Nike'). independent: operates separately (Converse under Nike, Inc.)"
+    },
+    "logo": {
+      "type": "object",
+      "description": "Brand logo asset with structured fields for orientation, background compatibility, and variant type",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the logo asset"
+        },
+        "orientation": {
+          "type": "string",
+          "enum": [
+            "square",
+            "horizontal",
+            "vertical",
+            "stacked"
+          ],
+          "description": "Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements"
+        },
+        "background": {
+          "type": "string",
+          "enum": [
+            "dark-bg",
+            "light-bg",
+            "transparent-bg"
+          ],
+          "description": "Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background"
+        },
+        "variant": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "secondary",
+            "icon",
+            "wordmark",
+            "full-lockup"
+          ],
+          "description": "Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields",
+          "items": {
+            "type": "string"
+          }
+        },
+        "usage": {
+          "type": "string",
+          "description": "Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')"
+        },
+        "width": {
+          "type": "integer",
+          "description": "Width in pixels"
+        },
+        "height": {
+          "type": "integer",
+          "description": "Height in pixels"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": true
+    },
+    "hex_color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "A single hex color value"
+    },
+    "color_value": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "colors": {
+      "type": "object",
+      "description": "Brand color palette. Each role accepts a single hex color or an array of hex colors for brands with multiple values per role. Beyond the core five roles, brands can provide additional color roles for finer granularity \u2014 heading, body, label, border, divider, surface_1, surface_2, etc.",
+      "properties": {
+        "primary": {
+          "$ref": "#/definitions/color_value"
+        },
+        "secondary": {
+          "$ref": "#/definitions/color_value"
+        },
+        "accent": {
+          "$ref": "#/definitions/color_value"
+        },
+        "background": {
+          "$ref": "#/definitions/color_value"
+        },
+        "text": {
+          "$ref": "#/definitions/color_value"
+        },
+        "heading": {
+          "$ref": "#/definitions/color_value"
+        },
+        "body": {
+          "$ref": "#/definitions/color_value"
+        },
+        "label": {
+          "$ref": "#/definitions/color_value"
+        },
+        "border": {
+          "$ref": "#/definitions/color_value"
+        },
+        "divider": {
+          "$ref": "#/definitions/color_value"
+        },
+        "surface_1": {
+          "$ref": "#/definitions/color_value"
+        },
+        "surface_2": {
+          "$ref": "#/definitions/color_value"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/color_value"
+      }
+    },
+    "font_file": {
+      "type": "object",
+      "description": "A font file with weight, style, and variable font metadata",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "HTTPS URL to the font file (WOFF2, TTF, or OTF)"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 900,
+          "description": "CSS numeric font-weight for static fonts (100-900)"
+        },
+        "weight_range": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 900
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Variable font weight axis range as [min, max] (e.g., [100, 900]). Use instead of weight for variable fonts."
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "italic",
+            "oblique"
+          ],
+          "description": "CSS font-style"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": true
+    },
+    "font_role": {
+      "description": "A font role entry. Either a CSS font-family string (simple) or a structured object with family name and font files (rich).",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "CSS font-family name (e.g., 'Montserrat', 'Arial, sans-serif')"
+        },
+        {
+          "type": "object",
+          "description": "Structured font with family name, downloadable font files, and typographic metadata",
+          "properties": {
+            "family": {
+              "type": "string",
+              "description": "CSS font-family name (e.g., 'Brand Sans')"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/font_file"
+              },
+              "maxItems": 36,
+              "description": "Font files for different weights and styles"
+            },
+            "opentype_features": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]{4}$"
+              },
+              "maxItems": 20,
+              "description": "OpenType feature tags to enable (e.g., ['ss01', 'tnum', 'cv01']). These are four-character tags per the OpenType spec."
+            },
+            "fallbacks": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 100
+              },
+              "maxItems": 10,
+              "description": "Ordered fallback font-family names for when the primary font is unavailable or does not support the required script (e.g., ['Noto Sans Arabic', 'Noto Sans SC', 'sans-serif'])"
+            }
+          },
+          "required": [
+            "family"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "fonts": {
+      "type": "object",
+      "description": "Brand typography. Each key is a role name (e.g., 'primary', 'secondary') referenced by type_scale entries. Values are either a CSS font-family string or a structured object with font files for reliable resolution.",
+      "maxProperties": 20,
+      "properties": {
+        "primary": {
+          "$ref": "#/definitions/font_role",
+          "description": "Primary font family"
+        },
+        "secondary": {
+          "$ref": "#/definitions/font_role",
+          "description": "Secondary font family"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/font_role"
+      }
+    },
     "asset": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Brand asset (image, video, audio, text)",
       "properties": {
         "asset_id": {
-          "description": "Unique identifier",
-          "type": "string"
+          "type": "string",
+          "description": "Unique identifier"
         },
         "asset_type": {
           "$ref": "enums/asset-content-type.json",
           "description": "Type of asset content"
         },
-        "description": {
-          "description": "Asset description or usage notes",
-          "type": "string"
-        },
-        "duration_seconds": {
-          "description": "Video/audio duration in seconds",
-          "type": "number"
-        },
-        "file_size_bytes": {
-          "description": "File size in bytes",
-          "type": "integer"
-        },
-        "format": {
-          "description": "File format (e.g., 'jpg', 'mp4', 'mp3')",
-          "type": "string"
-        },
-        "height": {
-          "description": "Image/video height in pixels",
-          "type": "integer"
-        },
-        "metadata": {
-          "additionalProperties": true,
-          "description": "Additional asset-specific metadata",
-          "type": "object"
-        },
-        "name": {
-          "description": "Human-readable name",
-          "type": "string"
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to CDN-hosted asset file"
         },
         "tags": {
-          "description": "Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')",
+          "type": "array",
           "items": {
             "type": "string"
           },
-          "type": "array"
+          "description": "Tags for discovery (e.g., 'hero', 'lifestyle', 'product', 'holiday')"
         },
-        "url": {
-          "description": "URL to CDN-hosted asset file",
-          "format": "uri",
-          "type": "string"
+        "name": {
+          "type": "string",
+          "description": "Human-readable name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Asset description or usage notes"
         },
         "width": {
-          "description": "Image/video width in pixels",
-          "type": "integer"
+          "type": "integer",
+          "description": "Image/video width in pixels"
+        },
+        "height": {
+          "type": "integer",
+          "description": "Image/video height in pixels"
+        },
+        "duration_seconds": {
+          "type": "number",
+          "description": "Video/audio duration in seconds"
+        },
+        "file_size_bytes": {
+          "type": "integer",
+          "description": "File size in bytes"
+        },
+        "format": {
+          "type": "string",
+          "description": "File format (e.g., 'jpg', 'mp4', 'mp3')"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional asset-specific metadata",
+          "additionalProperties": true
         }
       },
       "required": [
@@ -64,720 +335,767 @@
         "asset_type",
         "url"
       ],
-      "type": "object"
+      "additionalProperties": true
     },
-    "asset_library": {
-      "additionalProperties": true,
-      "description": "A managed asset library (icon set, illustration system, image collection). The URL is for human access; agent-facing DAM integration is under investigation.",
+    "property": {
+      "type": "object",
+      "description": "A digital property associated with a brand. Defaults to owned; use 'relationship' to declare direct, delegated, or ad_network properties. These values match the delegation_type field in adagents.json, creating a bilateral verification chain: the operator declares the relationship here, the publisher confirms by setting the same delegation_type on the agent's authorization in their adagents.json.",
       "properties": {
-        "color_guide": {
-          "additionalProperties": true,
-          "description": "Color guide for the asset library defining roles and palettes",
-          "properties": {
-            "palettes": {
-              "description": "Named color palettes mapping roles to specific colors",
-              "items": {
-                "additionalProperties": true,
-                "properties": {
-                  "colors": {
-                    "additionalProperties": {
-                      "$ref": "#/definitions/hex_color"
-                    },
-                    "description": "Map of role names to hex color values",
-                    "type": "object"
-                  },
-                  "name": {
-                    "description": "Palette name",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name",
-                  "colors"
-                ],
-                "type": "object"
-              },
-              "type": "array"
-            },
-            "roles": {
-              "description": "Named color roles used in the library (e.g., base, shadow_1, highlight_1, stroke)",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "type": "object"
-        },
-        "description": {
-          "description": "Description of the library contents and usage",
-          "type": "string"
-        },
-        "name": {
-          "description": "Display name of the asset library",
-          "type": "string"
-        },
         "type": {
-          "description": "Type of asset library",
+          "type": "string",
           "enum": [
-            "icon_set",
-            "illustration_system",
-            "image_library",
-            "video_library",
-            "template_library"
+            "website",
+            "mobile_app",
+            "ctv_app",
+            "desktop_app",
+            "dooh",
+            "podcast",
+            "radio",
+            "streaming_audio"
           ],
-          "type": "string"
+          "description": "Property type"
         },
-        "url": {
-          "description": "URL to the asset library (for human access)",
-          "format": "uri",
-          "type": "string"
+        "identifier": {
+          "type": "string",
+          "description": "Property identifier - domain for websites, bundle ID for apps",
+          "minLength": 1
+        },
+        "store": {
+          "type": "string",
+          "enum": [
+            "apple",
+            "google",
+            "amazon",
+            "roku",
+            "samsung",
+            "lg",
+            "other"
+          ],
+          "description": "App store for mobile/CTV apps"
+        },
+        "region": {
+          "type": "string",
+          "description": "ISO 3166-1 alpha-2 country code or 'global'",
+          "pattern": "^([A-Z]{2}|global)$"
+        },
+        "primary": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this is the primary property for the brand"
+        },
+        "relationship": {
+          "type": "string",
+          "enum": [
+            "owned",
+            "direct",
+            "delegated",
+            "ad_network"
+          ],
+          "default": "owned",
+          "description": "How this brand relates to the property, using the same vocabulary as adagents.json delegation_type. 'owned': the brand owns and operates this property (default). 'direct': the brand is the direct sales path for this property, even if a third party operates the software (e.g., a publisher's in-house ad team using a vendor's tech). 'delegated': the brand manages monetization for this property \u2014 they are in charge of ad sales (e.g., Mediavine managing a food blog). 'ad_network': the brand sells this property's inventory as part of a network or exchange \u2014 they are a path to the inventory, not the path (e.g., PubMatic as an SSP). For non-owned properties, the publisher confirms the relationship by setting the matching delegation_type on the agent's authorization in their adagents.json."
         }
       },
       "required": [
-        "name",
-        "url"
+        "type",
+        "identifier"
       ],
-      "type": "object"
+      "additionalProperties": true
     },
-    "authorized_operator": {
-      "additionalProperties": true,
-      "description": "An entity authorized to represent brands from this house. Verified by resolving the operator's domain.",
+    "product_catalog": {
+      "type": "object",
+      "description": "Product catalog for e-commerce brands",
       "properties": {
-        "brands": {
-          "description": "Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.",
+        "feed_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to product catalog feed"
+        },
+        "feed_format": {
+          "type": "string",
+          "enum": [
+            "google_merchant_center",
+            "facebook_catalog",
+            "openai_product_feed",
+            "custom"
+          ],
+          "description": "Format of the product feed"
+        },
+        "categories": {
+          "type": "array",
           "items": {
-            "pattern": "^([a-z0-9_]+|\\*)$",
+            "type": "string"
+          },
+          "description": "Product categories available in the catalog"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the product catalog was last updated"
+        },
+        "update_frequency": {
+          "type": "string",
+          "enum": [
+            "realtime",
+            "hourly",
+            "daily",
+            "weekly"
+          ],
+          "description": "How frequently the product catalog is updated"
+        },
+        "agentic_checkout": {
+          "type": "object",
+          "description": "Agentic checkout endpoint configuration",
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "format": "uri",
+              "description": "Base URL for checkout session API"
+            },
+            "spec": {
+              "type": "string",
+              "enum": [
+                "openai_agentic_checkout_v1"
+              ],
+              "description": "Checkout API specification"
+            },
+            "supported_payment_providers": {
+              "type": "array",
+              "description": "Payment providers supported by this checkout endpoint",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "endpoint",
+            "spec"
+          ]
+        }
+      },
+      "required": [
+        "feed_url"
+      ],
+      "additionalProperties": true
+    },
+    "brand": {
+      "type": "object",
+      "description": "A brand within a house portfolio. Combines identity (who) with creative assets (how to represent). Referenced as domain + brand_id.",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/brand_id",
+          "description": "Brand identifier within the house. House chooses this ID."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Primary brand URL for context and asset discovery"
+        },
+        "names": {
+          "type": "array",
+          "description": "Localized brand names. Multiple entries per language allowed for aliases.",
+          "items": {
+            "$ref": "#/definitions/localized_name"
+          },
+          "minItems": 1
+        },
+        "keller_type": {
+          "$ref": "#/definitions/keller_type"
+        },
+        "parent_brand": {
+          "$ref": "#/definitions/brand_id",
+          "description": "Parent brand ID for sub-brands and endorsed brands"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brand description"
+        },
+        "industries": {
+          "type": "array",
+          "items": {
             "type": "string"
           },
           "minItems": 1,
-          "type": "array"
+          "description": "Brand industries (e.g., ['automotive'] or ['pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does \u2014 not what regulatory regimes apply (use policy_categories for that)."
         },
-        "countries": {
-          "description": "ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.",
+        "target_audience": {
+          "type": "string",
+          "description": "Primary target audience"
+        },
+        "logos": {
+          "type": "array",
           "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
+            "$ref": "#/definitions/logo"
           },
-          "type": "array"
+          "description": "Brand logo assets"
         },
-        "domain": {
-          "$ref": "#/definitions/domain",
-          "description": "Domain of the authorized operator (e.g., 'groupm.com')"
-        }
-      },
-      "required": [
-        "domain",
-        "brands"
-      ],
-      "type": "object"
-    },
-    "brand": {
-      "additionalProperties": true,
-      "description": "A brand within a house portfolio. Combines identity (who) with creative assets (how to represent). Referenced as domain + brand_id.",
-      "properties": {
+        "colors": {
+          "$ref": "#/definitions/colors"
+        },
+        "fonts": {
+          "$ref": "#/definitions/fonts"
+        },
+        "tone": {
+          "description": "Brand voice and messaging tone guidelines",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Simple tone descriptors for backwards compatibility"
+            },
+            {
+              "type": "object",
+              "description": "Structured brand voice guidelines",
+              "properties": {
+                "voice": {
+                  "type": "string",
+                  "description": "High-level voice descriptor (e.g., 'warm and inviting', 'professional and trustworthy')"
+                },
+                "attributes": {
+                  "type": "array",
+                  "description": "Personality traits that characterize the brand voice",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "dos": {
+                  "type": "array",
+                  "description": "Guidance for copy generation - what TO do",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "donts": {
+                  "type": "array",
+                  "description": "Guardrails to avoid brand violations - what NOT to do",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "tagline": {
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Plain tagline string for backwards compatibility"
+            },
+            {
+              "type": "array",
+              "description": "Localized taglines with BCP 47 locale codes",
+              "items": {
+                "$ref": "#/definitions/localized_name"
+              },
+              "minItems": 1
+            }
+          ],
+          "description": "Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern."
+        },
         "assets": {
-          "description": "Brand asset library",
+          "type": "array",
           "items": {
             "$ref": "#/definitions/asset"
           },
-          "type": "array"
+          "description": "Brand asset library"
         },
-        "avatar": {
-          "additionalProperties": true,
-          "description": "Visual avatar configuration",
-          "properties": {
-            "avatar_id": {
-              "type": "string"
+        "properties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/property"
+          },
+          "description": "Digital properties associated with this brand \u2014 owned, managed, or represented"
+        },
+        "product_catalog": {
+          "$ref": "#/definitions/product_catalog"
+        },
+        "privacy_policy_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the brand's privacy policy"
+        },
+        "disclaimers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "context": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean",
+                "default": true
+              }
             },
+            "required": [
+              "text"
+            ]
+          },
+          "description": "Legal disclaimers for creatives"
+        },
+        "voice_synthesis": {
+          "type": "object",
+          "description": "TTS voice synthesis configuration for AI-generated audio",
+          "properties": {
             "provider": {
               "type": "string"
             },
+            "voice_id": {
+              "type": "string"
+            },
             "settings": {
-              "additionalProperties": true,
-              "type": "object"
+              "type": "object",
+              "additionalProperties": true
             }
           },
-          "type": "object"
+          "additionalProperties": true
+        },
+        "avatar": {
+          "type": "object",
+          "description": "Visual avatar configuration",
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "avatar_id": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "visual_guidelines": {
+          "$ref": "#/definitions/visual_guidelines",
+          "description": "Structured visual rules for generative creative systems"
+        },
+        "agents": {
+          "$ref": "#/definitions/agents",
+          "description": "Agents authorized to act on behalf of this brand. Overrides house-level agents of the same type."
         },
         "brand_agent": {
           "$ref": "#/definitions/brand_agent",
-          "description": "Brand agent that provides dynamic brand data via MCP"
+          "description": "Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP.",
+          "deprecated": true
+        },
+        "rights_agent": {
+          "$ref": "#/definitions/rights_agent",
+          "description": "Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand.",
+          "deprecated": true
+        },
+        "contact": {
+          "type": "object",
+          "description": "Brand-level contact information",
+          "properties": {
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Contact email"
+            },
+            "phone": {
+              "type": "string",
+              "description": "Contact phone number"
+            }
+          }
         },
         "collections": {
+          "type": "array",
           "description": "Collections this person or brand is associated with. Enables bidirectional linking: a collection's talent references brand.json via brand_url, and brand.json links back to collections.",
           "items": {
-            "additionalProperties": true,
+            "type": "object",
             "properties": {
               "collection_id": {
-                "description": "Collection identifier as used in the seller's get_products responses",
-                "type": "string"
+                "type": "string",
+                "description": "Collection identifier as used in the seller's get_products responses"
               },
               "name": {
-                "description": "Human-readable collection name",
-                "type": "string"
+                "type": "string",
+                "description": "Human-readable collection name"
               },
               "role": {
                 "$ref": "enums/talent-role.json",
                 "description": "This person's role on the collection"
               },
               "seller_agent_url": {
-                "description": "URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products.",
+                "type": "string",
                 "format": "uri",
-                "type": "string"
+                "description": "URL of the sales agent that sells inventory for this collection. Buyer agents can query this agent for collection products."
               }
             },
             "required": [
               "name"
             ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "colors": {
-          "$ref": "#/definitions/colors"
-        },
-        "contact": {
-          "description": "Brand-level contact information",
-          "properties": {
-            "email": {
-              "description": "Contact email",
-              "format": "email",
-              "type": "string"
-            },
-            "phone": {
-              "description": "Contact phone number",
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "description": {
-          "description": "Brand description",
-          "type": "string"
-        },
-        "disclaimers": {
-          "description": "Legal disclaimers for creatives",
-          "items": {
-            "properties": {
-              "context": {
-                "type": "string"
-              },
-              "required": {
-                "default": true,
-                "type": "boolean"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "text"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "fonts": {
-          "$ref": "#/definitions/fonts"
-        },
-        "id": {
-          "$ref": "#/definitions/brand_id",
-          "description": "Brand identifier within the house. House chooses this ID."
-        },
-        "industries": {
-          "description": "Brand industries (e.g., ['automotive'] or ['healthcare.pharmaceutical', 'cpg'] for a consumer health company). Describes what the company does \u2014 not what regulatory regimes apply (use policy_categories for that). When create_media_buy omits advertiser_industry, sellers may infer from this field.",
-          "items": {
-            "$ref": "enums/advertiser-industry.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "keller_type": {
-          "$ref": "#/definitions/keller_type"
-        },
-        "logos": {
-          "description": "Brand logo assets",
-          "items": {
-            "$ref": "#/definitions/logo"
-          },
-          "type": "array"
-        },
-        "names": {
-          "description": "Localized brand names. Multiple entries per language allowed for aliases.",
-          "items": {
-            "$ref": "#/definitions/localized_name"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "parent_brand": {
-          "$ref": "#/definitions/brand_id",
-          "description": "Parent brand ID for sub-brands and endorsed brands"
-        },
-        "privacy_policy_url": {
-          "description": "URL to the brand's privacy policy",
-          "format": "uri",
-          "type": "string"
-        },
-        "product_catalog": {
-          "$ref": "#/definitions/product_catalog"
-        },
-        "properties": {
-          "description": "Digital properties owned by this brand",
-          "items": {
-            "$ref": "#/definitions/property"
-          },
-          "type": "array"
-        },
-        "rights_agent": {
-          "$ref": "#/definitions/rights_agent",
-          "description": "Rights licensing agent for this brand"
-        },
-        "tagline": {
-          "description": "Brand tagline or slogan. Accepts a plain string or a localized array matching the names pattern.",
-          "oneOf": [
-            {
-              "description": "Plain tagline string for backwards compatibility",
-              "type": "string"
-            },
-            {
-              "description": "Localized taglines with BCP 47 locale codes",
-              "items": {
-                "$ref": "#/definitions/localized_name"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
-        },
-        "target_audience": {
-          "description": "Primary target audience",
-          "type": "string"
-        },
-        "tone": {
-          "description": "Brand voice and messaging tone guidelines",
-          "oneOf": [
-            {
-              "description": "Simple tone descriptors for backwards compatibility",
-              "type": "string"
-            },
-            {
-              "description": "Structured brand voice guidelines",
-              "properties": {
-                "attributes": {
-                  "description": "Personality traits that characterize the brand voice",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "donts": {
-                  "description": "Guardrails to avoid brand violations - what NOT to do",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "dos": {
-                  "description": "Guidance for copy generation - what TO do",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                },
-                "voice": {
-                  "description": "High-level voice descriptor (e.g., 'warm and inviting', 'professional and trustworthy')",
-                  "type": "string"
-                }
-              },
-              "type": "object"
-            }
-          ]
-        },
-        "url": {
-          "description": "Primary brand URL for context and asset discovery",
-          "format": "uri",
-          "type": "string"
-        },
-        "visual_guidelines": {
-          "$ref": "#/definitions/visual_guidelines",
-          "description": "Structured visual rules for generative creative systems"
-        },
-        "voice_synthesis": {
-          "additionalProperties": true,
-          "description": "TTS voice synthesis configuration for AI-generated audio",
-          "properties": {
-            "provider": {
-              "type": "string"
-            },
-            "settings": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "voice_id": {
-              "type": "string"
-            }
-          },
-          "type": "object"
+            "additionalProperties": true
+          }
         }
       },
       "required": [
         "id",
         "names"
       ],
-      "type": "object"
+      "additionalProperties": true
+    },
+    "house": {
+      "type": "object",
+      "description": "Corporate or organizational entity that owns brands",
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/domain",
+          "description": "The house's domain where brand.json is hosted"
+        },
+        "name": {
+          "type": "string",
+          "description": "Primary display name of the house",
+          "minLength": 1
+        },
+        "names": {
+          "type": "array",
+          "description": "Localized house names including legal name, stock symbol, etc.",
+          "items": {
+            "$ref": "#/definitions/localized_name"
+          }
+        },
+        "architecture": {
+          "type": "string",
+          "enum": [
+            "branded_house",
+            "house_of_brands",
+            "hybrid"
+          ],
+          "description": "Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)"
+        },
+        "agents": {
+          "$ref": "#/definitions/agents",
+          "description": "House-level agents that apply to all brands unless overridden at the brand level"
+        }
+      },
+      "required": [
+        "domain",
+        "name"
+      ],
+      "additionalProperties": true
     },
     "brand_agent": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Reference to a brand agent that provides brand data via MCP",
       "properties": {
-        "id": {
-          "description": "Agent identifier (useful for logging, multi-tenant DAMs)",
-          "pattern": "^[a-z0-9_]+$",
-          "type": "string"
-        },
         "url": {
-          "description": "Brand agent MCP endpoint URL",
+          "type": "string",
           "format": "uri",
           "pattern": "^https://",
-          "type": "string"
+          "description": "Brand agent MCP endpoint URL"
+        },
+        "id": {
+          "type": "string",
+          "description": "Agent identifier (useful for logging, multi-tenant DAMs)",
+          "pattern": "^[a-z0-9_]+$"
         }
       },
       "required": [
         "url",
         "id"
       ],
-      "type": "object"
+      "additionalProperties": true
     },
-    "brand_id": {
-      "description": "Brand identifier within the house portfolio. Lowercase alphanumeric with underscores. House chooses this ID.",
-      "pattern": "^[a-z0-9_]+$",
-      "type": "string"
-    },
-    "brand_shapes": {
-      "additionalProperties": true,
-      "description": "Distinctive shapes used as part of brand visual identity",
+    "rights_agent": {
+      "type": "object",
+      "description": "Rights licensing agent for this brand. Provides discovery, pricing, and acquisition of licensable rights via MCP. Use get_rights and acquire_rights tasks to interact.",
       "properties": {
-        "primary_shape": {
-          "description": "Primary brand shape (e.g., 'rounded_rectangle', 'circle', 'hexagon')",
-          "type": "string"
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Rights agent MCP endpoint URL"
         },
-        "secondary_shapes": {
-          "description": "Secondary shapes in the brand vocabulary",
+        "id": {
+          "type": "string",
+          "description": "Agent identifier",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "available_uses": {
+          "type": "array",
+          "description": "Rights uses available for licensing through this agent",
           "items": {
-            "type": "string"
+            "$ref": "enums/right-use.json"
           },
-          "type": "array"
+          "minItems": 1
         },
-        "usage": {
-          "additionalProperties": true,
-          "description": "Shape usage rules",
-          "properties": {
-            "max_per_layout": {
-              "description": "Maximum distinct shapes per layout",
-              "type": "integer"
-            },
-            "overlap_allowed": {
-              "description": "Whether shapes may overlap",
-              "type": "boolean"
-            }
-          },
-          "type": "object"
-        }
-      },
-      "type": "object"
-    },
-    "color_value": {
-      "oneOf": [
-        {
-          "pattern": "^#[0-9A-Fa-f]{6}$",
-          "type": "string"
-        },
-        {
+        "right_types": {
+          "type": "array",
+          "description": "Types of rights available",
           "items": {
-            "pattern": "^#[0-9A-Fa-f]{6}$",
-            "type": "string"
+            "$ref": "enums/right-type.json"
           },
-          "minItems": 1,
-          "type": "array"
-        }
-      ]
-    },
-    "colors": {
-      "additionalProperties": true,
-      "description": "Brand color palette. Each role accepts a single hex color or an array of hex colors for brands with multiple values per role.",
-      "properties": {
-        "accent": {
-          "$ref": "#/definitions/color_value"
+          "minItems": 1
         },
-        "background": {
-          "$ref": "#/definitions/color_value"
-        },
-        "primary": {
-          "$ref": "#/definitions/color_value"
-        },
-        "secondary": {
-          "$ref": "#/definitions/color_value"
-        },
-        "text": {
-          "$ref": "#/definitions/color_value"
-        }
-      },
-      "type": "object"
-    },
-    "colorway": {
-      "additionalProperties": true,
-      "description": "A named color pairing that defines how colors work together. Colorways ensure foreground/background combinations are always on-brand and accessible.",
-      "properties": {
-        "accent": {
-          "$ref": "#/definitions/hex_color"
-        },
-        "background": {
-          "$ref": "#/definitions/hex_color"
-        },
-        "border": {
-          "$ref": "#/definitions/hex_color"
-        },
-        "channels": {
-          "description": "Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways.",
+        "countries": {
+          "type": "array",
+          "description": "Countries where rights are available (ISO 3166-1 alpha-2)",
           "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "cta_background": {
-          "$ref": "#/definitions/hex_color",
-          "description": "CTA button/container color, if different from accent"
-        },
-        "cta_foreground": {
-          "$ref": "#/definitions/hex_color",
-          "description": "CTA text/icon color, if different from foreground"
-        },
-        "foreground": {
-          "$ref": "#/definitions/hex_color"
-        },
-        "name": {
-          "description": "Colorway name (e.g., 'primary', 'inverted', 'subtle')",
-          "type": "string"
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
         }
       },
       "required": [
-        "name",
-        "foreground",
-        "background"
+        "url",
+        "id",
+        "available_uses"
       ],
-      "type": "object"
+      "additionalProperties": true
     },
-    "composition_rules": {
-      "additionalProperties": true,
-      "description": "Layout composition rules including overlays, textures, and backgrounds",
+    "brand_agent_entry": {
+      "type": "object",
+      "description": "An agent declared by a brand or house. Each entry identifies one agent endpoint and its functional role in the advertising ecosystem.",
       "properties": {
-        "backgrounds": {
-          "additionalProperties": true,
-          "description": "Background treatment rules",
-          "properties": {
-            "types_allowed": {
-              "description": "Permitted background types",
-              "items": {
-                "enum": [
-                  "solid_color",
-                  "gradient",
-                  "blurred_photo",
-                  "image",
-                  "video",
-                  "pattern",
-                  "transparent"
-                ],
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "type": "object"
+        "type": {
+          "$ref": "enums/brand-agent-type.json",
+          "description": "Functional role of this agent"
         },
-        "overlays": {
-          "additionalProperties": true,
-          "description": "Graphic overlay rules",
-          "properties": {
-            "gradient_direction": {
-              "description": "Gradient direction (e.g., '45deg', 'to-bottom-right')",
-              "type": "string"
-            },
-            "gradient_style": {
-              "description": "Gradient type for overlays",
-              "enum": [
-                "linear",
-                "radial",
-                "conic",
-                "none"
-              ],
-              "type": "string"
-            },
-            "opacity": {
-              "description": "Overlay opacity (e.g., '70%')",
-              "type": "string"
-            }
-          },
-          "type": "object"
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Agent endpoint URL (MCP or A2A)"
         },
-        "texture": {
-          "additionalProperties": true,
-          "description": "Texture treatment rules",
-          "properties": {
-            "intensity": {
-              "description": "Texture intensity",
-              "enum": [
-                "low",
-                "medium",
-                "high"
-              ],
-              "type": "string"
-            },
-            "style": {
-              "description": "Texture style applied to creative assets",
-              "enum": [
-                "none",
-                "subtle_grain",
-                "noise",
-                "paper",
-                "fabric",
-                "concrete"
-              ],
-              "type": "string"
-            }
-          },
-          "type": "object"
-        }
-      },
-      "type": "object"
-    },
-    "contact": {
-      "additionalProperties": true,
-      "description": "Contact information",
-      "properties": {
-        "domain": {
-          "$ref": "#/definitions/domain"
-        },
-        "email": {
-          "format": "email",
-          "maxLength": 255,
-          "type": "string"
-        },
-        "name": {
-          "maxLength": 255,
-          "minLength": 1,
-          "type": "string"
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "type": "object"
-    },
-    "domain": {
-      "description": "A valid domain name",
-      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
-      "type": "string"
-    },
-    "fonts": {
-      "additionalProperties": true,
-      "description": "Brand typography",
-      "properties": {
-        "font_urls": {
-          "description": "URLs to web font files",
-          "items": {
-            "format": "uri",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "primary": {
-          "description": "Primary font family",
-          "type": "string"
-        },
-        "secondary": {
-          "description": "Secondary font family",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "graphic_element": {
-      "additionalProperties": true,
-      "description": "A reusable decorative or structural visual element that is part of the brand identity (e.g., torn paper edges, watermarks, dividers, background patterns)",
-      "properties": {
-        "colors": {
-          "description": "Colors this element may appear in",
-          "items": {
-            "$ref": "#/definitions/hex_color"
-          },
-          "type": "array"
+        "id": {
+          "type": "string",
+          "description": "Agent identifier (useful for logging, multi-tenant platforms)",
+          "pattern": "^[a-z0-9_]+$",
+          "maxLength": 100
         },
         "description": {
-          "description": "How the element is used in layouts",
-          "type": "string"
+          "type": "string",
+          "description": "Human-readable description of this agent's capabilities or scope",
+          "maxLength": 500
         },
-        "max_per_layout": {
-          "description": "Maximum instances per layout",
-          "type": "integer"
+        "jwks_uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "HTTPS URL of the agent's JWKS (RFC 7517) containing public keys used to verify artifacts this agent signs \u2014 for governance agents, the signed governance_context token. When absent, verifiers MUST default to /.well-known/jwks.json on the origin of `url`. Keys are identified by `kid` in the JWS header; JWKS MAY contain multiple keys to support rotation."
         },
-        "name": {
-          "description": "Element name (e.g., 'Paper Tear', 'Brand Watermark', 'Section Divider')",
-          "type": "string"
+        "scope": {
+          "type": "array",
+          "description": "For governance agents: which governance responsibilities this agent handles. Values correspond to compliance specialisms. When a house declares multiple governance agents, scope distinguishes them. When absent on a governance agent, the agent is assumed to handle all governance categories.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "spend_authority",
+              "delivery_monitor",
+              "brand_safety",
+              "regulatory_compliance"
+            ]
+          },
+          "uniqueItems": true
         },
-        "orientation": {
-          "description": "Preferred orientation when used in layouts",
-          "enum": [
-            "horizontal",
-            "vertical",
-            "any"
-          ],
-          "type": "string"
+        "available_uses": {
+          "type": "array",
+          "description": "For rights agents: rights uses available for licensing",
+          "items": {
+            "$ref": "enums/right-use.json"
+          },
+          "minItems": 1
         },
-        "type": {
-          "description": "Element type",
-          "enum": [
-            "border",
-            "divider",
-            "frame",
-            "watermark",
-            "pattern",
-            "texture_overlay",
-            "decorative"
-          ],
-          "type": "string"
+        "right_types": {
+          "type": "array",
+          "description": "For rights agents: types of rights available",
+          "items": {
+            "$ref": "enums/right-type.json"
+          },
+          "minItems": 1
+        },
+        "countries": {
+          "type": "array",
+          "description": "ISO 3166-1 alpha-2 country codes where this agent operates. Omit for global scope.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
         }
       },
       "required": [
-        "name"
+        "type",
+        "url",
+        "id"
       ],
-      "type": "object"
+      "additionalProperties": true
+    },
+    "agents": {
+      "type": "array",
+      "description": "Agents declared by this brand or house. One agent per type.",
+      "items": {
+        "$ref": "#/definitions/brand_agent_entry"
+      },
+      "maxItems": 20
+    },
+    "authorized_operator": {
+      "type": "object",
+      "description": "An entity authorized to represent brands from this house. Verified by resolving the operator's domain.",
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/domain",
+          "description": "Domain of the authorized operator (e.g., 'groupm.com')"
+        },
+        "brands": {
+          "type": "array",
+          "description": "Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.",
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z0-9_]+|\\*)$"
+          },
+          "minItems": 1
+        },
+        "countries": {
+          "type": "array",
+          "description": "ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          }
+        }
+      },
+      "required": [
+        "domain",
+        "brands"
+      ],
+      "additionalProperties": true
+    },
+    "photography_style": {
+      "type": "object",
+      "description": "Photography style rules for generative creative systems. Defines how brand photography should look when selected or generated.",
+      "properties": {
+        "realism": {
+          "type": "string",
+          "enum": [
+            "natural",
+            "stylized",
+            "hyperreal",
+            "abstract"
+          ],
+          "description": "Level of photographic realism"
+        },
+        "lighting": {
+          "type": "string",
+          "description": "Lighting style (e.g., 'soft daylight', 'studio', 'golden hour', 'high-key', 'low-key')"
+        },
+        "color_temperature": {
+          "type": "string",
+          "enum": [
+            "warm",
+            "neutral",
+            "cool"
+          ],
+          "description": "Overall color temperature of photography"
+        },
+        "contrast": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Contrast level in photography"
+        },
+        "depth_of_field": {
+          "type": "string",
+          "enum": [
+            "shallow",
+            "medium",
+            "deep"
+          ],
+          "description": "Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus"
+        },
+        "subject": {
+          "type": "object",
+          "description": "Subject matter guidelines",
+          "properties": {
+            "people": {
+              "type": "object",
+              "description": "People photography guidelines",
+              "properties": {
+                "age_range": {
+                  "type": "string",
+                  "description": "Target age range (e.g., '20-35')"
+                },
+                "diversity": {
+                  "type": "string",
+                  "description": "Diversity representation (e.g., 'mixed', 'varied')"
+                },
+                "mood": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Mood descriptors (e.g., ['confident', 'relaxed'])"
+                }
+              },
+              "additionalProperties": true
+            },
+            "product_focus": {
+              "type": "string",
+              "enum": [
+                "in-use",
+                "isolated",
+                "lifestyle",
+                "detail"
+              ],
+              "description": "How products are shown"
+            },
+            "setting": {
+              "type": "string",
+              "description": "Environmental context for photography (e.g., 'indoor', 'outdoor', 'studio', 'urban', 'nature', 'workplace')"
+            }
+          },
+          "additionalProperties": true
+        },
+        "framing": {
+          "type": "object",
+          "description": "Camera framing rules",
+          "properties": {
+            "subject_position": {
+              "type": "string",
+              "description": "Where the subject sits in frame (e.g., 'center', 'center-left', 'rule-of-thirds')"
+            },
+            "crop_style": {
+              "type": "string",
+              "description": "Cropping convention (e.g., 'waist-up', 'full-body', 'close-up', 'wide')"
+            },
+            "perspective": {
+              "type": "string",
+              "description": "Camera perspective (e.g., 'eye-level', 'overhead', 'low-angle')"
+            }
+          },
+          "additionalProperties": true
+        },
+        "preferred_aspect_ratios": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\d+:\\d+$"
+          },
+          "description": "Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional style descriptors"
+        }
+      },
+      "additionalProperties": true
     },
     "graphic_style": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Visual language for brand graphics and illustrations",
       "properties": {
-        "corner_radius": {
-          "description": "Default corner radius for rounded elements (e.g., '12px', '8px', 'sharp')",
-          "type": "string"
-        },
-        "stroke_style": {
-          "description": "Stroke end/join style",
-          "enum": [
-            "rounded",
-            "square",
-            "mixed",
-            "none"
-          ],
-          "type": "string"
-        },
-        "stroke_weight": {
-          "description": "Stroke weight (e.g., '2px', 'thin', 'bold')",
-          "type": "string"
-        },
         "style_type": {
-          "description": "Primary graphic style",
+          "type": "string",
           "enum": [
             "flat_illustration",
             "geometric",
@@ -789,78 +1107,173 @@
             "isometric",
             "photographic_composite"
           ],
-          "type": "string"
+          "description": "Primary graphic style"
         },
-        "tags": {
-          "description": "Additional style descriptors",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "hex_color": {
-      "description": "A single hex color value",
-      "pattern": "^#[0-9A-Fa-f]{6}$",
-      "type": "string"
-    },
-    "house": {
-      "additionalProperties": true,
-      "description": "Corporate or organizational entity that owns brands",
-      "properties": {
-        "architecture": {
-          "description": "Brand architecture model: branded_house (Google), house_of_brands (P&G), hybrid (Nike)",
-          "enum": [
-            "branded_house",
-            "house_of_brands",
-            "hybrid"
-          ],
-          "type": "string"
-        },
-        "domain": {
-          "$ref": "#/definitions/domain",
-          "description": "The house's domain where brand.json is hosted"
-        },
-        "name": {
-          "description": "Primary display name of the house",
-          "minLength": 1,
-          "type": "string"
-        },
-        "names": {
-          "description": "Localized house names including legal name, stock symbol, etc.",
-          "items": {
-            "$ref": "#/definitions/localized_name"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "domain",
-        "name"
-      ],
-      "type": "object"
-    },
-    "iconography": {
-      "additionalProperties": true,
-      "description": "Icon style system and usage rules",
-      "properties": {
-        "corner_style": {
-          "description": "Corner style for icon paths",
+        "stroke_style": {
+          "type": "string",
           "enum": [
             "rounded",
             "square",
-            "mixed"
+            "mixed",
+            "none"
           ],
-          "type": "string"
+          "description": "Stroke end/join style"
         },
         "stroke_weight": {
-          "description": "Icon stroke weight (e.g., '2px', '1.5px')",
-          "type": "string"
+          "type": "string",
+          "description": "Stroke weight (e.g., '2px', 'thin', 'bold')"
         },
+        "corner_radius": {
+          "type": "string",
+          "description": "Default corner radius for graphic and illustration elements (e.g., '12px', '8px', 'sharp'). For UI component radii (buttons, cards, inputs), see visual_guidelines.border_radius."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional style descriptors"
+        }
+      },
+      "additionalProperties": true
+    },
+    "border_radius": {
+      "type": "object",
+      "description": "Named border radius presets for UI components and layout elements. One of the most visible brand differentiators \u2014 Airbnb uses generous 20px, Stripe uses precise 4\u20138px, Spotify uses pill/999px.",
+      "properties": {
+        "none": {
+          "type": "string",
+          "description": "Explicitly sharp corners (e.g., '0')"
+        },
+        "default": {
+          "type": "string",
+          "description": "Default border radius for UI components (e.g., '8px', '12px', '0'). For graphic/illustration elements, see graphic_style.corner_radius."
+        },
+        "small": {
+          "type": "string",
+          "description": "Small border radius for compact elements (e.g., '4px')"
+        },
+        "large": {
+          "type": "string",
+          "description": "Large border radius for cards and containers (e.g., '16px', '24px')"
+        },
+        "pill": {
+          "type": "string",
+          "description": "Fully rounded / pill shape (e.g., '999px')"
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "elevation": {
+      "type": "object",
+      "description": "Named shadow/elevation levels. Brands use elevation as identity \u2014 from Stripe's blue-tinted multi-layer shadows to Apple's single diffuse shadow. Values are CSS box-shadow syntax.",
+      "properties": {
+        "none": {
+          "type": "string",
+          "description": "No shadow (e.g., 'none')"
+        },
+        "subtle": {
+          "type": "string",
+          "description": "Subtle shadow for slight lift (e.g., '0 1px 2px rgba(0,0,0,0.05)')"
+        },
+        "card": {
+          "type": "string",
+          "description": "Card-level shadow (e.g., '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)')"
+        },
+        "modal": {
+          "type": "string",
+          "description": "Modal/overlay shadow (e.g., '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)')"
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "spacing": {
+      "type": "object",
+      "description": "Spacing system for consistent layout rhythm. Most design systems use an 8px base grid.",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "description": "Base grid unit this scale was designed from (e.g., '8px', '4px'). Informational \u2014 agents should use the named scale values, not compute from this."
+        },
+        "scale": {
+          "type": "object",
+          "description": "Named spacing scale built from the base unit",
+          "properties": {
+            "xs": {
+              "type": "string",
+              "description": "Extra small spacing (e.g., '4px')"
+            },
+            "sm": {
+              "type": "string",
+              "description": "Small spacing (e.g., '8px')"
+            },
+            "md": {
+              "type": "string",
+              "description": "Medium spacing (e.g., '16px')"
+            },
+            "lg": {
+              "type": "string",
+              "description": "Large spacing (e.g., '24px')"
+            },
+            "xl": {
+              "type": "string",
+              "description": "Extra large spacing (e.g., '32px')"
+            },
+            "2xl": {
+              "type": "string",
+              "description": "Section-level spacing (e.g., '48px', '64px')"
+            }
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "brand_shapes": {
+      "type": "object",
+      "description": "Distinctive shapes used as part of brand visual identity",
+      "properties": {
+        "primary_shape": {
+          "type": "string",
+          "description": "Primary brand shape (e.g., 'rounded_rectangle', 'circle', 'hexagon')"
+        },
+        "secondary_shapes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Secondary shapes in the brand vocabulary"
+        },
+        "usage": {
+          "type": "object",
+          "description": "Shape usage rules",
+          "properties": {
+            "max_per_layout": {
+              "type": "integer",
+              "description": "Maximum distinct shapes per layout"
+            },
+            "overlap_allowed": {
+              "type": "boolean",
+              "description": "Whether shapes may overlap"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "iconography": {
+      "type": "object",
+      "description": "Icon style system and usage rules",
+      "properties": {
         "style": {
-          "description": "Icon rendering style",
+          "type": "string",
           "enum": [
             "outline",
             "filled",
@@ -869,133 +1282,272 @@
             "glyph",
             "hand_drawn"
           ],
-          "type": "string"
+          "description": "Icon rendering style"
+        },
+        "stroke_weight": {
+          "type": "string",
+          "description": "Icon stroke weight (e.g., '2px', '1.5px')"
+        },
+        "corner_style": {
+          "type": "string",
+          "enum": [
+            "rounded",
+            "square",
+            "mixed"
+          ],
+          "description": "Corner style for icon paths"
         },
         "usage": {
-          "additionalProperties": true,
+          "type": "object",
           "description": "Icon usage rules",
           "properties": {
             "max_per_frame": {
-              "description": "Maximum icons per creative frame",
-              "type": "integer"
+              "type": "integer",
+              "description": "Maximum icons per creative frame"
             },
             "size_ratio": {
-              "description": "Icon-to-layout size ratio (e.g., '1:8')",
-              "type": "string"
+              "type": "string",
+              "description": "Icon-to-layout size ratio (e.g., '1:8')"
             }
           },
-          "type": "object"
+          "additionalProperties": true
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "keller_type": {
-      "description": "Brand architecture type from Keller's theory. master: primary brand of house. sub_brand: carries parent name (Nike SB). endorsed: independent identity backed by parent (Air Jordan 'by Nike'). independent: operates separately (Converse under Nike, Inc.)",
-      "enum": [
-        "master",
-        "sub_brand",
-        "endorsed",
-        "independent"
-      ],
-      "type": "string"
-    },
-    "localized_name": {
-      "additionalProperties": {
-        "minLength": 1,
-        "type": "string"
-      },
-      "description": "A localized name with BCP 47 locale code key (e.g., 'en_US', 'fr_CA', 'zh_CN') and name value. Bare language codes ('en') are accepted as wildcards for backwards compatibility.",
-      "maxProperties": 1,
-      "minProperties": 1,
-      "type": "object"
-    },
-    "logo": {
-      "additionalProperties": true,
-      "description": "Brand logo asset with structured fields for orientation, background compatibility, and variant type",
+    "composition_rules": {
+      "type": "object",
+      "description": "Layout composition rules including overlays, textures, and backgrounds",
       "properties": {
+        "overlays": {
+          "type": "object",
+          "description": "Graphic overlay rules",
+          "properties": {
+            "gradient_style": {
+              "type": "string",
+              "enum": [
+                "linear",
+                "radial",
+                "conic",
+                "none"
+              ],
+              "description": "Gradient type for overlays"
+            },
+            "gradient_direction": {
+              "type": "string",
+              "description": "Gradient direction (e.g., '45deg', 'to-bottom-right')"
+            },
+            "opacity": {
+              "type": "string",
+              "description": "Overlay opacity (e.g., '70%')"
+            }
+          },
+          "additionalProperties": true
+        },
+        "texture": {
+          "type": "object",
+          "description": "Texture treatment rules",
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": [
+                "none",
+                "subtle_grain",
+                "noise",
+                "paper",
+                "fabric",
+                "concrete"
+              ],
+              "description": "Texture style applied to creative assets"
+            },
+            "intensity": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "description": "Texture intensity"
+            }
+          },
+          "additionalProperties": true
+        },
+        "backgrounds": {
+          "type": "object",
+          "description": "Background treatment rules",
+          "properties": {
+            "types_allowed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "solid_color",
+                  "gradient",
+                  "blurred_photo",
+                  "image",
+                  "video",
+                  "pattern",
+                  "transparent"
+                ]
+              },
+              "description": "Permitted background types"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "colorway": {
+      "type": "object",
+      "description": "A named color pairing that defines how colors work together. Colorways ensure foreground/background combinations are always on-brand and accessible.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Colorway name (e.g., 'primary', 'inverted', 'subtle')"
+        },
+        "foreground": {
+          "$ref": "#/definitions/hex_color"
+        },
         "background": {
-          "description": "Background compatibility. dark-bg: use on dark backgrounds, light-bg: use on light backgrounds, transparent-bg: has transparent background",
-          "enum": [
-            "dark-bg",
-            "light-bg",
-            "transparent-bg"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/hex_color"
         },
-        "height": {
-          "description": "Height in pixels",
-          "type": "integer"
+        "accent": {
+          "$ref": "#/definitions/hex_color"
         },
-        "orientation": {
-          "description": "Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements",
-          "enum": [
-            "square",
-            "horizontal",
-            "vertical",
-            "stacked"
-          ],
-          "type": "string"
+        "border": {
+          "$ref": "#/definitions/hex_color"
         },
-        "tags": {
-          "description": "Additional semantic tags for custom categorization beyond the standard orientation, background, and variant fields",
+        "cta_foreground": {
+          "$ref": "#/definitions/hex_color",
+          "description": "CTA text/icon color, if different from foreground"
+        },
+        "cta_background": {
+          "$ref": "#/definitions/hex_color",
+          "description": "CTA button/container color, if different from accent"
+        },
+        "channels": {
+          "type": "array",
           "items": {
             "type": "string"
           },
-          "type": "array"
-        },
-        "url": {
-          "description": "URL to the logo asset",
-          "format": "uri",
-          "type": "string"
-        },
-        "usage": {
-          "description": "Human-readable description of when to use this logo variant (e.g., 'Primary logo for use on light backgrounds')",
-          "type": "string"
-        },
-        "variant": {
-          "description": "Logo variant type. primary: main logo, secondary: alternative, icon: symbol only, wordmark: text only, full-lockup: complete logo",
-          "enum": [
-            "primary",
-            "secondary",
-            "icon",
-            "wordmark",
-            "full-lockup"
-          ],
-          "type": "string"
-        },
-        "width": {
-          "description": "Width in pixels",
-          "type": "integer"
+          "description": "Channels or contexts where this colorway applies (e.g., 'online', 'print', 'pos', 'social', 'outdoor'). Omit for universal colorways."
         }
       },
       "required": [
-        "url"
+        "name",
+        "foreground",
+        "background"
       ],
-      "type": "object"
+      "additionalProperties": true
+    },
+    "type_scale_entry": {
+      "type": "object",
+      "description": "A single entry in the type scale",
+      "properties": {
+        "font": {
+          "type": "string",
+          "description": "Font reference. Use a key from the fonts object (e.g., 'primary', 'secondary') to reference a defined font role, or a literal CSS font-family string as a fallback."
+        },
+        "size": {
+          "type": "string",
+          "description": "Font size (e.g., '48px', '2rem')"
+        },
+        "weight": {
+          "type": "string",
+          "description": "Font weight (e.g., '700', 'bold')"
+        },
+        "line_height": {
+          "type": "string",
+          "description": "Line height (e.g., '1.2', '56px')"
+        },
+        "letter_spacing": {
+          "type": "string",
+          "description": "Letter spacing (e.g., '-0.02em', '0.5px')"
+        },
+        "text_transform": {
+          "type": "string",
+          "enum": [
+            "none",
+            "uppercase",
+            "lowercase",
+            "capitalize"
+          ],
+          "description": "Text transformation"
+        }
+      },
+      "additionalProperties": true
+    },
+    "motion_guidelines": {
+      "type": "object",
+      "description": "Motion and animation rules for video, animated display, and interactive formats",
+      "properties": {
+        "transition_style": {
+          "type": "string",
+          "enum": [
+            "cut",
+            "dissolve",
+            "slide",
+            "wipe",
+            "zoom",
+            "fade"
+          ],
+          "description": "Primary transition style between scenes"
+        },
+        "animation_speed": {
+          "type": "string",
+          "enum": [
+            "slow",
+            "moderate",
+            "fast"
+          ],
+          "description": "Overall animation pacing"
+        },
+        "easing": {
+          "type": "string",
+          "description": "Default easing function (e.g., 'ease-in-out', 'spring', 'linear')"
+        },
+        "text_entrance": {
+          "type": "string",
+          "enum": [
+            "fade",
+            "typewriter",
+            "slide_up",
+            "slide_left",
+            "scale",
+            "none"
+          ],
+          "description": "How text enters the frame"
+        },
+        "pacing": {
+          "type": "string",
+          "enum": [
+            "lingering",
+            "moderate",
+            "fast_cuts"
+          ],
+          "description": "Overall editing rhythm"
+        },
+        "kinetic_typography": {
+          "type": "boolean",
+          "description": "Whether animated/kinetic typography is allowed"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional motion style descriptors"
+        }
+      },
+      "additionalProperties": true
     },
     "logo_placement": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Logo placement and clear space rules for automated creative production",
       "properties": {
-        "background_contrast": {
-          "description": "Permitted background contrast behind logo",
-          "enum": [
-            "light_only",
-            "dark_only",
-            "any"
-          ],
-          "type": "string"
-        },
-        "min_clear_space": {
-          "description": "Minimum clear space around the logo, expressed as a multiple of logo height (e.g., '0.5x', '1x') or fixed value (e.g., '16px')",
-          "type": "string"
-        },
-        "min_height": {
-          "description": "Minimum logo height to maintain legibility (e.g., '40px', '24px')",
-          "type": "string"
-        },
         "preferred_position": {
-          "description": "Preferred logo position in layouts",
+          "type": "string",
           "enum": [
             "top-left",
             "top-center",
@@ -1005,475 +1557,214 @@
             "bottom-right",
             "center"
           ],
-          "type": "string"
+          "description": "Preferred logo position in layouts"
+        },
+        "min_clear_space": {
+          "type": "string",
+          "description": "Minimum clear space around the logo, expressed as a multiple of logo height (e.g., '0.5x', '1x') or fixed value (e.g., '16px')"
+        },
+        "min_height": {
+          "type": "string",
+          "description": "Minimum logo height to maintain legibility (e.g., '40px', '24px')"
+        },
+        "background_contrast": {
+          "type": "string",
+          "enum": [
+            "light_only",
+            "dark_only",
+            "any"
+          ],
+          "description": "Permitted background contrast behind logo"
         }
       },
-      "type": "object"
+      "additionalProperties": true
     },
-    "motion_guidelines": {
-      "additionalProperties": true,
-      "description": "Motion and animation rules for video, animated display, and interactive formats",
+    "graphic_element": {
+      "type": "object",
+      "description": "A reusable decorative or structural visual element that is part of the brand identity (e.g., torn paper edges, watermarks, dividers, background patterns)",
       "properties": {
-        "animation_speed": {
-          "description": "Overall animation pacing",
+        "name": {
+          "type": "string",
+          "description": "Element name (e.g., 'Paper Tear', 'Brand Watermark', 'Section Divider')"
+        },
+        "type": {
+          "type": "string",
           "enum": [
-            "slow",
-            "moderate",
-            "fast"
+            "border",
+            "divider",
+            "frame",
+            "watermark",
+            "pattern",
+            "texture_overlay",
+            "decorative"
           ],
-          "type": "string"
+          "description": "Element type"
         },
-        "easing": {
-          "description": "Default easing function (e.g., 'ease-in-out', 'spring', 'linear')",
-          "type": "string"
+        "description": {
+          "type": "string",
+          "description": "How the element is used in layouts"
         },
-        "kinetic_typography": {
-          "description": "Whether animated/kinetic typography is allowed",
-          "type": "boolean"
-        },
-        "pacing": {
-          "description": "Overall editing rhythm",
+        "orientation": {
+          "type": "string",
           "enum": [
-            "lingering",
-            "moderate",
-            "fast_cuts"
+            "horizontal",
+            "vertical",
+            "any"
           ],
-          "type": "string"
+          "description": "Preferred orientation when used in layouts"
         },
-        "tags": {
-          "description": "Additional motion style descriptors",
+        "colors": {
+          "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/hex_color"
           },
-          "type": "array"
+          "description": "Colors this element may appear in"
         },
-        "text_entrance": {
-          "description": "How text enters the frame",
-          "enum": [
-            "fade",
-            "typewriter",
-            "slide_up",
-            "slide_left",
-            "scale",
-            "none"
-          ],
-          "type": "string"
-        },
-        "transition_style": {
-          "description": "Primary transition style between scenes",
-          "enum": [
-            "cut",
-            "dissolve",
-            "slide",
-            "wipe",
-            "zoom",
-            "fade"
-          ],
-          "type": "string"
+        "max_per_layout": {
+          "type": "integer",
+          "description": "Maximum instances per layout"
         }
       },
-      "type": "object"
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
     },
-    "photography_style": {
-      "additionalProperties": true,
-      "description": "Photography style rules for generative creative systems. Defines how brand photography should look when selected or generated.",
+    "asset_library": {
+      "type": "object",
+      "description": "A managed asset library (icon set, illustration system, image collection). The URL is for human access; agent-facing DAM integration is under investigation.",
       "properties": {
-        "color_temperature": {
-          "description": "Overall color temperature of photography",
-          "enum": [
-            "warm",
-            "neutral",
-            "cool"
-          ],
-          "type": "string"
+        "name": {
+          "type": "string",
+          "description": "Display name of the asset library"
         },
-        "contrast": {
-          "description": "Contrast level in photography",
+        "type": {
+          "type": "string",
           "enum": [
-            "low",
-            "medium",
-            "high"
+            "icon_set",
+            "illustration_system",
+            "image_library",
+            "video_library",
+            "template_library"
           ],
-          "type": "string"
+          "description": "Type of asset library"
         },
-        "depth_of_field": {
-          "description": "Depth of field preference. shallow: blurred background with subject isolation, deep: everything in focus",
-          "enum": [
-            "shallow",
-            "medium",
-            "deep"
-          ],
-          "type": "string"
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the asset library (for human access)"
         },
-        "framing": {
-          "additionalProperties": true,
-          "description": "Camera framing rules",
+        "description": {
+          "type": "string",
+          "description": "Description of the library contents and usage"
+        },
+        "color_guide": {
+          "type": "object",
+          "description": "Color guide for the asset library defining roles and palettes",
           "properties": {
-            "crop_style": {
-              "description": "Cropping convention (e.g., 'waist-up', 'full-body', 'close-up', 'wide')",
-              "type": "string"
-            },
-            "perspective": {
-              "description": "Camera perspective (e.g., 'eye-level', 'overhead', 'low-angle')",
-              "type": "string"
-            },
-            "subject_position": {
-              "description": "Where the subject sits in frame (e.g., 'center', 'center-left', 'rule-of-thirds')",
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "lighting": {
-          "description": "Lighting style (e.g., 'soft daylight', 'studio', 'golden hour', 'high-key', 'low-key')",
-          "type": "string"
-        },
-        "preferred_aspect_ratios": {
-          "description": "Preferred aspect ratios for brand photography (e.g., '16:9', '4:5', '1:1')",
-          "items": {
-            "pattern": "^\\d+:\\d+$",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "realism": {
-          "description": "Level of photographic realism",
-          "enum": [
-            "natural",
-            "stylized",
-            "hyperreal",
-            "abstract"
-          ],
-          "type": "string"
-        },
-        "subject": {
-          "additionalProperties": true,
-          "description": "Subject matter guidelines",
-          "properties": {
-            "people": {
-              "additionalProperties": true,
-              "description": "People photography guidelines",
-              "properties": {
-                "age_range": {
-                  "description": "Target age range (e.g., '20-35')",
-                  "type": "string"
-                },
-                "diversity": {
-                  "description": "Diversity representation (e.g., 'mixed', 'varied')",
-                  "type": "string"
-                },
-                "mood": {
-                  "description": "Mood descriptors (e.g., ['confident', 'relaxed'])",
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              },
-              "type": "object"
-            },
-            "product_focus": {
-              "description": "How products are shown",
-              "enum": [
-                "in-use",
-                "isolated",
-                "lifestyle",
-                "detail"
-              ],
-              "type": "string"
-            },
-            "setting": {
-              "description": "Environmental context for photography (e.g., 'indoor', 'outdoor', 'studio', 'urban', 'nature', 'workplace')",
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "tags": {
-          "description": "Additional style descriptors",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "type": "object"
-    },
-    "product_catalog": {
-      "additionalProperties": true,
-      "description": "Product catalog for e-commerce brands",
-      "properties": {
-        "agentic_checkout": {
-          "description": "Agentic checkout endpoint configuration",
-          "properties": {
-            "endpoint": {
-              "description": "Base URL for checkout session API",
-              "format": "uri",
-              "type": "string"
-            },
-            "spec": {
-              "description": "Checkout API specification",
-              "enum": [
-                "openai_agentic_checkout_v1"
-              ],
-              "type": "string"
-            },
-            "supported_payment_providers": {
-              "description": "Payment providers supported by this checkout endpoint",
+            "roles": {
+              "type": "array",
               "items": {
                 "type": "string"
               },
-              "type": "array"
+              "description": "Named color roles used in the library (e.g., base, shadow_1, highlight_1, stroke)"
+            },
+            "palettes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Palette name"
+                  },
+                  "colors": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/hex_color"
+                    },
+                    "description": "Map of role names to hex color values"
+                  }
+                },
+                "required": [
+                  "name",
+                  "colors"
+                ],
+                "additionalProperties": true
+              },
+              "description": "Named color palettes mapping roles to specific colors"
             }
           },
-          "required": [
-            "endpoint",
-            "spec"
-          ],
-          "type": "object"
-        },
-        "categories": {
-          "description": "Product categories available in the catalog",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "feed_format": {
-          "description": "Format of the product feed",
-          "enum": [
-            "google_merchant_center",
-            "facebook_catalog",
-            "openai_product_feed",
-            "custom"
-          ],
-          "type": "string"
-        },
-        "feed_url": {
-          "description": "URL to product catalog feed",
-          "format": "uri",
-          "type": "string"
-        },
-        "last_updated": {
-          "description": "When the product catalog was last updated",
-          "format": "date-time",
-          "type": "string"
-        },
-        "update_frequency": {
-          "description": "How frequently the product catalog is updated",
-          "enum": [
-            "realtime",
-            "hourly",
-            "daily",
-            "weekly"
-          ],
-          "type": "string"
+          "additionalProperties": true
         }
       },
       "required": [
-        "feed_url"
+        "name",
+        "url"
       ],
-      "type": "object"
-    },
-    "property": {
-      "additionalProperties": true,
-      "description": "A digital property owned by a brand",
-      "properties": {
-        "identifier": {
-          "description": "Property identifier - domain for websites, bundle ID for apps",
-          "minLength": 1,
-          "type": "string"
-        },
-        "primary": {
-          "default": false,
-          "description": "Whether this is the primary property for the brand",
-          "type": "boolean"
-        },
-        "region": {
-          "description": "ISO 3166-1 alpha-2 country code or 'global'",
-          "pattern": "^([A-Z]{2}|global)$",
-          "type": "string"
-        },
-        "store": {
-          "description": "App store for mobile/CTV apps",
-          "enum": [
-            "apple",
-            "google",
-            "amazon",
-            "roku",
-            "samsung",
-            "lg",
-            "other"
-          ],
-          "type": "string"
-        },
-        "type": {
-          "description": "Property type",
-          "enum": [
-            "website",
-            "mobile_app",
-            "ctv_app",
-            "desktop_app",
-            "dooh",
-            "podcast",
-            "radio",
-            "streaming_audio"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "type",
-        "identifier"
-      ],
-      "type": "object"
-    },
-    "rights_agent": {
-      "additionalProperties": true,
-      "description": "Rights licensing agent for this brand. Provides discovery, pricing, and acquisition of licensable rights via MCP. Use get_rights and acquire_rights tasks to interact.",
-      "properties": {
-        "available_uses": {
-          "description": "Rights uses available for licensing through this agent",
-          "items": {
-            "$ref": "enums/right-use.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "countries": {
-          "description": "Countries where rights are available (ISO 3166-1 alpha-2)",
-          "items": {
-            "pattern": "^[A-Z]{2}$",
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "id": {
-          "description": "Agent identifier",
-          "pattern": "^[a-z0-9_]+$",
-          "type": "string"
-        },
-        "right_types": {
-          "description": "Types of rights available",
-          "items": {
-            "$ref": "enums/right-type.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "url": {
-          "description": "Rights agent MCP endpoint URL",
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
-        }
-      },
-      "required": [
-        "url",
-        "id",
-        "available_uses"
-      ],
-      "type": "object"
-    },
-    "type_scale_entry": {
-      "additionalProperties": true,
-      "description": "A single entry in the type scale",
-      "properties": {
-        "font": {
-          "description": "Font family reference (e.g., 'primary', 'secondary', or a specific family name)",
-          "type": "string"
-        },
-        "letter_spacing": {
-          "description": "Letter spacing (e.g., '-0.02em', '0.5px')",
-          "type": "string"
-        },
-        "line_height": {
-          "description": "Line height (e.g., '1.2', '56px')",
-          "type": "string"
-        },
-        "size": {
-          "description": "Font size (e.g., '48px', '2rem')",
-          "type": "string"
-        },
-        "text_transform": {
-          "description": "Text transformation",
-          "enum": [
-            "none",
-            "uppercase",
-            "lowercase",
-            "capitalize"
-          ],
-          "type": "string"
-        },
-        "weight": {
-          "description": "Font weight (e.g., '700', 'bold')",
-          "type": "string"
-        }
-      },
-      "type": "object"
+      "additionalProperties": true
     },
     "visual_guidelines": {
-      "additionalProperties": true,
+      "type": "object",
       "description": "Structured visual rules for generative creative systems. Defines how brand photography, graphics, typography, and composition should be produced to maintain brand consistency at scale.",
       "properties": {
-        "asset_libraries": {
-          "description": "References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation.",
-          "items": {
-            "$ref": "#/definitions/asset_library"
-          },
-          "type": "array"
-        },
-        "colorways": {
-          "description": "Named color pairings for consistent foreground/background combinations",
-          "items": {
-            "$ref": "#/definitions/colorway"
-          },
-          "type": "array"
-        },
-        "composition": {
-          "$ref": "#/definitions/composition_rules"
-        },
-        "graphic_elements": {
-          "description": "Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)",
-          "items": {
-            "$ref": "#/definitions/graphic_element"
-          },
-          "type": "array"
+        "photography": {
+          "$ref": "#/definitions/photography_style"
         },
         "graphic_style": {
           "$ref": "#/definitions/graphic_style"
         },
+        "shapes": {
+          "$ref": "#/definitions/brand_shapes"
+        },
         "iconography": {
           "$ref": "#/definitions/iconography"
         },
-        "logo_placement": {
-          "$ref": "#/definitions/logo_placement"
+        "composition": {
+          "$ref": "#/definitions/composition_rules"
+        },
+        "border_radius": {
+          "$ref": "#/definitions/border_radius"
+        },
+        "elevation": {
+          "$ref": "#/definitions/elevation"
+        },
+        "spacing": {
+          "$ref": "#/definitions/spacing"
+        },
+        "graphic_elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/graphic_element"
+          },
+          "description": "Reusable decorative elements that are part of the brand visual identity (e.g., torn paper edges, watermarks, dividers)"
         },
         "motion": {
           "$ref": "#/definitions/motion_guidelines"
         },
-        "photography": {
-          "$ref": "#/definitions/photography_style"
+        "logo_placement": {
+          "$ref": "#/definitions/logo_placement"
         },
-        "restrictions": {
-          "description": "Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')",
+        "colorways": {
+          "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/colorway"
           },
-          "type": "array"
-        },
-        "shapes": {
-          "$ref": "#/definitions/brand_shapes"
+          "description": "Named color pairings for consistent foreground/background combinations"
         },
         "type_scale": {
-          "additionalProperties": {
-            "$ref": "#/definitions/type_scale_entry"
-          },
+          "type": "object",
           "description": "Typography scale defining sizes and weights for different text roles. When sizes are in px, use base_width to indicate the reference canvas.",
           "properties": {
             "base_width": {
-              "description": "Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes.",
-              "type": "string"
+              "type": "string",
+              "description": "Reference canvas width these sizes were designed for (e.g., '1080px'). Generative systems should scale proportionally for other canvas sizes."
+            },
+            "heading": {
+              "$ref": "#/definitions/type_scale_entry"
+            },
+            "subheading": {
+              "$ref": "#/definitions/type_scale_entry"
             },
             "body": {
               "$ref": "#/definitions/type_scale_entry"
@@ -1483,72 +1774,262 @@
             },
             "cta": {
               "$ref": "#/definitions/type_scale_entry"
-            },
-            "heading": {
-              "$ref": "#/definitions/type_scale_entry"
-            },
-            "subheading": {
-              "$ref": "#/definitions/type_scale_entry"
             }
           },
-          "type": "object"
+          "additionalProperties": {
+            "$ref": "#/definitions/type_scale_entry"
+          }
+        },
+        "asset_libraries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/asset_library"
+          },
+          "description": "References to managed asset libraries (icon sets, illustration systems, image collections). URLs are intended for human access; agent-facing DAM integration is under investigation."
+        },
+        "restrictions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Visual prohibitions and guardrails (e.g., 'Never use black backgrounds', 'Do not crop the logo', 'No stock photography of people on phones')"
         }
       },
-      "type": "object"
+      "additionalProperties": true
+    },
+    "contact": {
+      "type": "object",
+      "description": "Contact information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 255
+        },
+        "domain": {
+          "$ref": "#/definitions/domain"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": true
     }
   },
-  "description": "Brand identity and discovery file. Hosted at /.well-known/brand.json on house domains. Contains the full brand portfolio with identity, creative assets, and digital properties. Brands are identified by house + brand_id (like properties are identified by publisher + property_id). Supports variants: house portfolio (full brand data), brand agent (agent provides brand info via MCP), house redirect (pointer to house domain), or authoritative location redirect.",
+  "oneOf": [
+    {
+      "type": "object",
+      "title": "Authoritative Location Redirect",
+      "description": "Redirects to a hosted brand.json file at another URL",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "authoritative_location": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "HTTPS URL of the authoritative brand.json file"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "authoritative_location"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "House Redirect",
+      "description": "Redirects to the house domain that contains the full brand portfolio",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "house": {
+          "$ref": "#/definitions/domain",
+          "description": "House domain to fetch brand portfolio from"
+        },
+        "region": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ISO 3166-1 alpha-2 country code if this is a regional domain"
+        },
+        "note": {
+          "type": "string"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "house"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "Brand Agent",
+      "description": "Brand represented by agents that provide brand info via MCP",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "agents": {
+          "$ref": "#/definitions/agents"
+        },
+        "brand_agent": {
+          "$ref": "#/definitions/brand_agent",
+          "deprecated": true
+        },
+        "contact": {
+          "$ref": "#/definitions/contact"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "agents"
+          ]
+        },
+        {
+          "required": [
+            "brand_agent"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "House Portfolio",
+      "description": "Full house/brand portfolio with hierarchy, creative assets, and properties",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "house": {
+          "$ref": "#/definitions/house"
+        },
+        "brands": {
+          "type": "array",
+          "description": "Brands owned by this house",
+          "items": {
+            "$ref": "#/definitions/brand"
+          },
+          "minItems": 1
+        },
+        "contact": {
+          "$ref": "#/definitions/contact"
+        },
+        "authorized_operators": {
+          "type": "array",
+          "description": "Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.",
+          "items": {
+            "$ref": "#/definitions/authorized_operator"
+          }
+        },
+        "trademarks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "registry": {
+                "type": "string"
+              },
+              "number": {
+                "type": "string"
+              },
+              "mark": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "registry",
+              "number",
+              "mark"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "house",
+        "brands"
+      ],
+      "additionalProperties": false
+    }
+  ],
   "examples": [
     {
-      "$schema": "/schemas/3.0.0-rc.3/brand.json",
+      "$schema": "/schemas/latest/brand.json",
       "authoritative_location": "https://adcontextprotocol.org/brand/abc123/brand.json"
     },
     {
-      "$schema": "/schemas/3.0.0-rc.3/brand.json",
+      "$schema": "/schemas/latest/brand.json",
       "house": "nikeinc.com",
       "note": "Redirect to house domain for full brand portfolio"
     },
     {
-      "$schema": "/schemas/3.0.0-rc.3/brand.json",
-      "brand_agent": {
-        "id": "acme_brand_agent",
-        "url": "https://agent.acme.com/mcp"
-      },
-      "version": "1.0"
+      "$schema": "/schemas/latest/brand.json",
+      "version": "1.0",
+      "agents": [
+        {
+          "type": "brand",
+          "url": "https://agent.acme.com/mcp",
+          "id": "acme_brand"
+        }
+      ]
     },
     {
-      "$schema": "/schemas/3.0.0-rc.3/brand.json",
+      "$schema": "/schemas/latest/brand.json",
+      "version": "1.0",
+      "house": {
+        "domain": "pg.com",
+        "name": "Procter & Gamble",
+        "architecture": "house_of_brands",
+        "agents": [
+          {
+            "type": "governance",
+            "url": "https://agents.pg.com/governance",
+            "id": "pg_governance",
+            "description": "Brand safety and compliance for all P&G brands",
+            "jwks_uri": "https://agents.pg.com/.well-known/jwks.json",
+            "scope": [
+              "spend_authority",
+              "delivery_monitor",
+              "brand_safety"
+            ]
+          }
+        ]
+      },
       "brands": [
         {
-          "colors": {
-            "primary": "#FF6600",
-            "secondary": "#0066CC"
-          },
-          "contact": {
-            "email": "brands@pg.com"
-          },
-          "description": "Laundry detergent brand",
           "id": "tide",
-          "industries": [
-            "cpg"
-          ],
-          "keller_type": "master",
-          "logos": [
-            {
-              "background": "transparent-bg",
-              "orientation": "square",
-              "url": "https://cdn.pg.com/tide/logo-square.png",
-              "usage": "Primary logo for general use",
-              "variant": "primary"
-            },
-            {
-              "background": "dark-bg",
-              "orientation": "horizontal",
-              "url": "https://cdn.pg.com/tide/logo-horizontal-dark.png",
-              "usage": "Full lockup for dark backgrounds",
-              "variant": "full-lockup"
-            }
-          ],
+          "url": "https://tide.com",
           "names": [
             {
               "en_US": "Tide"
@@ -1560,118 +2041,68 @@
               "zh_CN": "\u6c70\u6e0d"
             }
           ],
-          "properties": [
+          "keller_type": "master",
+          "industries": [
+            "cpg"
+          ],
+          "description": "Laundry detergent brand",
+          "logos": [
             {
-              "identifier": "tide.com",
-              "primary": true,
-              "type": "website"
+              "url": "https://cdn.pg.com/tide/logo-square.png",
+              "orientation": "square",
+              "background": "transparent-bg",
+              "variant": "primary",
+              "usage": "Primary logo for general use"
             },
             {
-              "identifier": "com.pg.tide",
-              "store": "apple",
-              "type": "mobile_app"
+              "url": "https://cdn.pg.com/tide/logo-horizontal-dark.png",
+              "orientation": "horizontal",
+              "background": "dark-bg",
+              "variant": "full-lockup",
+              "usage": "Full lockup for dark backgrounds"
             }
           ],
-          "tagline": [
-            {
-              "en_US": "Tide's In, Dirt's Out"
-            }
-          ],
+          "colors": {
+            "primary": "#FF6600",
+            "secondary": "#0066CC",
+            "background": "#FFFFFF",
+            "text": "#1A1A1A",
+            "heading": "#FF6600",
+            "body": "#333333",
+            "label": "#666666",
+            "border": "#E5E5E5",
+            "divider": "#F0F0F0",
+            "surface_1": "#F9F9F9",
+            "surface_2": "#EFEFEF"
+          },
           "tone": {
+            "voice": "clean, fresh, trustworthy",
             "attributes": [
               "reliable",
               "family-friendly",
               "confident"
             ],
-            "donts": [
-              "Avoid technical jargon",
-              "Don't be overly serious"
-            ],
             "dos": [
               "Use simple, direct language",
               "Emphasize cleaning power"
             ],
-            "voice": "clean, fresh, trustworthy"
+            "donts": [
+              "Avoid technical jargon",
+              "Don't be overly serious"
+            ]
           },
-          "url": "https://tide.com",
+          "tagline": [
+            {
+              "en_US": "Tide's In, Dirt's Out"
+            }
+          ],
           "visual_guidelines": {
-            "colorways": [
-              {
-                "accent": "#0066CC",
-                "background": "#FF6600",
-                "foreground": "#FFFFFF",
-                "name": "primary"
-              },
-              {
-                "accent": "#0066CC",
-                "background": "#FFFFFF",
-                "border": "#FF6600",
-                "foreground": "#FF6600",
-                "name": "inverted"
-              }
-            ],
-            "composition": {
-              "backgrounds": {
-                "types_allowed": [
-                  "solid_color",
-                  "gradient",
-                  "blurred_photo"
-                ]
-              },
-              "overlays": {
-                "gradient_direction": "180deg",
-                "gradient_style": "linear",
-                "opacity": "60%"
-              },
-              "texture": {
-                "style": "none"
-              }
-            },
-            "graphic_style": {
-              "corner_radius": "12px",
-              "stroke_style": "rounded",
-              "stroke_weight": "2px",
-              "style_type": "flat_illustration"
-            },
-            "iconography": {
-              "corner_style": "rounded",
-              "stroke_weight": "2px",
-              "style": "outline",
-              "usage": {
-                "max_per_frame": 3,
-                "size_ratio": "1:8"
-              }
-            },
-            "logo_placement": {
-              "background_contrast": "any",
-              "min_clear_space": "0.5x",
-              "min_height": "32px",
-              "preferred_position": "bottom-right"
-            },
-            "motion": {
-              "animation_speed": "moderate",
-              "easing": "ease-in-out",
-              "kinetic_typography": false,
-              "pacing": "moderate",
-              "text_entrance": "fade",
-              "transition_style": "dissolve"
-            },
             "photography": {
+              "realism": "natural",
+              "lighting": "soft daylight",
               "color_temperature": "warm",
               "contrast": "medium",
               "depth_of_field": "medium",
-              "framing": {
-                "crop_style": "waist-up",
-                "perspective": "eye-level",
-                "subject_position": "center"
-              },
-              "lighting": "soft daylight",
-              "preferred_aspect_ratios": [
-                "16:9",
-                "4:5",
-                "1:1"
-              ],
-              "realism": "natural",
               "subject": {
                 "people": {
                   "age_range": "25-45",
@@ -1684,13 +2115,24 @@
                 },
                 "product_focus": "in-use",
                 "setting": "indoor"
-              }
+              },
+              "framing": {
+                "subject_position": "center",
+                "crop_style": "waist-up",
+                "perspective": "eye-level"
+              },
+              "preferred_aspect_ratios": [
+                "16:9",
+                "4:5",
+                "1:1"
+              ]
             },
-            "restrictions": [
-              "Never place text over the product",
-              "Do not use black backgrounds",
-              "No stock photography of people on phones"
-            ],
+            "graphic_style": {
+              "style_type": "flat_illustration",
+              "stroke_style": "rounded",
+              "stroke_weight": "2px",
+              "corner_radius": "12px"
+            },
             "shapes": {
               "primary_shape": "circle",
               "secondary_shapes": [
@@ -1701,136 +2143,185 @@
                 "overlap_allowed": false
               }
             },
+            "iconography": {
+              "style": "outline",
+              "stroke_weight": "2px",
+              "corner_style": "rounded",
+              "usage": {
+                "max_per_frame": 3,
+                "size_ratio": "1:8"
+              }
+            },
+            "composition": {
+              "overlays": {
+                "gradient_style": "linear",
+                "gradient_direction": "180deg",
+                "opacity": "60%"
+              },
+              "texture": {
+                "style": "none"
+              },
+              "backgrounds": {
+                "types_allowed": [
+                  "solid_color",
+                  "gradient",
+                  "blurred_photo"
+                ]
+              }
+            },
+            "border_radius": {
+              "none": "0",
+              "default": "12px",
+              "small": "4px",
+              "large": "20px",
+              "pill": "999px"
+            },
+            "elevation": {
+              "none": "none",
+              "subtle": "0 1px 3px rgba(0,0,0,0.08)",
+              "card": "0 4px 8px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.06)",
+              "modal": "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.06)"
+            },
+            "spacing": {
+              "unit": "8px",
+              "scale": {
+                "xs": "4px",
+                "sm": "8px",
+                "md": "16px",
+                "lg": "24px",
+                "xl": "32px",
+                "2xl": "48px"
+              }
+            },
+            "motion": {
+              "transition_style": "dissolve",
+              "animation_speed": "moderate",
+              "easing": "ease-in-out",
+              "text_entrance": "fade",
+              "pacing": "moderate",
+              "kinetic_typography": false
+            },
+            "logo_placement": {
+              "preferred_position": "bottom-right",
+              "min_clear_space": "0.5x",
+              "min_height": "32px",
+              "background_contrast": "any"
+            },
+            "colorways": [
+              {
+                "name": "primary",
+                "foreground": "#FFFFFF",
+                "background": "#FF6600",
+                "accent": "#0066CC"
+              },
+              {
+                "name": "inverted",
+                "foreground": "#FF6600",
+                "background": "#FFFFFF",
+                "accent": "#0066CC",
+                "border": "#FF6600"
+              }
+            ],
             "type_scale": {
               "base_width": "1080px",
-              "body": {
-                "font": "secondary",
-                "line_height": "1.5",
-                "size": "16px",
-                "weight": "400"
-              },
-              "cta": {
-                "font": "primary",
-                "letter_spacing": "0.05em",
-                "size": "18px",
-                "text_transform": "uppercase",
-                "weight": "700"
-              },
               "heading": {
                 "font": "primary",
-                "line_height": "1.1",
                 "size": "48px",
-                "text_transform": "none",
-                "weight": "700"
+                "weight": "700",
+                "line_height": "1.1",
+                "text_transform": "none"
               },
               "subheading": {
                 "font": "primary",
-                "line_height": "1.3",
                 "size": "24px",
-                "weight": "600"
+                "weight": "600",
+                "line_height": "1.3"
+              },
+              "body": {
+                "font": "secondary",
+                "size": "16px",
+                "weight": "400",
+                "line_height": "1.5"
+              },
+              "cta": {
+                "font": "primary",
+                "size": "18px",
+                "weight": "700",
+                "text_transform": "uppercase",
+                "letter_spacing": "0.05em"
               }
+            },
+            "restrictions": [
+              "Never place text over the product",
+              "Do not use black backgrounds",
+              "No stock photography of people on phones"
+            ]
+          },
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "tide.com",
+              "primary": true
+            },
+            {
+              "type": "mobile_app",
+              "store": "apple",
+              "identifier": "com.pg.tide"
             }
+          ],
+          "contact": {
+            "email": "brands@pg.com"
           }
         },
         {
-          "colors": {
-            "primary": "#00A0D2"
-          },
           "id": "pampers",
-          "industries": [
-            "cpg"
-          ],
-          "keller_type": "master",
-          "logos": [
-            {
-              "orientation": "horizontal",
-              "url": "https://cdn.pg.com/pampers/logo.png",
-              "variant": "primary"
-            }
-          ],
+          "url": "https://pampers.com",
           "names": [
             {
               "en_US": "Pampers"
             }
           ],
-          "properties": [
+          "keller_type": "master",
+          "industries": [
+            "cpg"
+          ],
+          "logos": [
             {
-              "identifier": "pampers.com",
-              "primary": true,
-              "type": "website"
+              "url": "https://cdn.pg.com/pampers/logo.png",
+              "orientation": "horizontal",
+              "variant": "primary"
             }
           ],
-          "url": "https://pampers.com"
+          "colors": {
+            "primary": "#00A0D2"
+          },
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "pampers.com",
+              "primary": true
+            }
+          ]
         }
       ],
       "contact": {
-        "email": "brands@pg.com",
-        "name": "P&G Brand Team"
+        "name": "P&G Brand Team",
+        "email": "brands@pg.com"
       },
-      "house": {
-        "architecture": "house_of_brands",
-        "domain": "pg.com",
-        "name": "Procter & Gamble"
-      },
-      "last_updated": "2026-01-15T10:00:00Z",
-      "version": "1.0"
+      "last_updated": "2026-01-15T10:00:00Z"
     },
     {
-      "$schema": "/schemas/3.0.0-rc.3/brand.json",
-      "authorized_operators": [
-        {
-          "brands": [
-            "nike",
-            "air_jordan"
-          ],
-          "countries": [
-            "US",
-            "GB",
-            "DE",
-            "FR"
-          ],
-          "domain": "wpp.com"
-        },
-        {
-          "brands": [
-            "nike"
-          ],
-          "countries": [
-            "JP"
-          ],
-          "domain": "dentsu.co.jp"
-        },
-        {
-          "brands": [
-            "*"
-          ],
-          "domain": "nike.com"
-        }
-      ],
+      "$schema": "/schemas/latest/brand.json",
+      "version": "1.0",
+      "house": {
+        "domain": "nikeinc.com",
+        "name": "Nike, Inc.",
+        "architecture": "hybrid"
+      },
       "brands": [
         {
-          "colors": {
-            "accent": "#FF6600",
-            "primary": "#111111"
-          },
           "id": "nike",
-          "keller_type": "master",
-          "logos": [
-            {
-              "background": "dark-bg",
-              "orientation": "horizontal",
-              "url": "https://cdn.nike.com/swoosh-dark.svg",
-              "usage": "Swoosh icon for dark backgrounds",
-              "variant": "icon"
-            },
-            {
-              "background": "light-bg",
-              "orientation": "horizontal",
-              "url": "https://cdn.nike.com/logo-full.svg",
-              "usage": "Full logo with wordmark for light backgrounds",
-              "variant": "full-lockup"
-            }
-          ],
+          "url": "https://nike.com",
           "names": [
             {
               "en_US": "Nike"
@@ -1842,50 +2333,54 @@
               "ja_JP": "\u30ca\u30a4\u30ad"
             }
           ],
-          "properties": [
+          "keller_type": "master",
+          "logos": [
             {
-              "identifier": "nike.com",
-              "primary": true,
-              "type": "website"
+              "url": "https://cdn.nike.com/swoosh-dark.svg",
+              "orientation": "horizontal",
+              "background": "dark-bg",
+              "variant": "icon",
+              "usage": "Swoosh icon for dark backgrounds"
             },
             {
-              "identifier": "nike.cn",
-              "region": "CN",
-              "type": "website"
-            },
-            {
-              "identifier": "com.nike.omega",
-              "store": "apple",
-              "type": "mobile_app"
+              "url": "https://cdn.nike.com/logo-full.svg",
+              "orientation": "horizontal",
+              "background": "light-bg",
+              "variant": "full-lockup",
+              "usage": "Full logo with wordmark for light backgrounds"
             }
           ],
+          "colors": {
+            "primary": "#111111",
+            "accent": "#FF6600"
+          },
+          "tone": "inspirational, bold, athletic",
           "tagline": [
             {
               "en_US": "Just Do It"
             }
           ],
-          "tone": "inspirational, bold, athletic",
-          "url": "https://nike.com"
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "nike.com",
+              "primary": true
+            },
+            {
+              "type": "website",
+              "identifier": "nike.cn",
+              "region": "CN"
+            },
+            {
+              "type": "mobile_app",
+              "store": "apple",
+              "identifier": "com.nike.omega"
+            }
+          ]
         },
         {
-          "brand_agent": {
-            "id": "nike_dam",
-            "url": "https://dam.nike.com/mcp"
-          },
-          "colors": {
-            "primary": "#CE1141",
-            "secondary": "#111111"
-          },
           "id": "air_jordan",
-          "keller_type": "endorsed",
-          "logos": [
-            {
-              "background": "transparent-bg",
-              "orientation": "square",
-              "url": "https://cdn.nike.com/jumpman.svg",
-              "variant": "icon"
-            }
-          ],
+          "url": "https://jordan.com",
           "names": [
             {
               "en_US": "Air Jordan"
@@ -1897,202 +2392,143 @@
               "en_US": "Jumpman"
             }
           ],
+          "keller_type": "endorsed",
           "parent_brand": "nike",
-          "properties": [
-            {
-              "identifier": "jordan.com",
-              "primary": true,
-              "type": "website"
-            },
-            {
-              "identifier": "jumpman23.com",
-              "type": "website"
-            }
-          ],
-          "url": "https://jordan.com"
-        },
-        {
-          "id": "converse",
-          "keller_type": "independent",
           "logos": [
             {
+              "url": "https://cdn.nike.com/jumpman.svg",
               "orientation": "square",
-              "url": "https://cdn.converse.com/star.svg",
+              "background": "transparent-bg",
               "variant": "icon"
             }
           ],
+          "colors": {
+            "primary": "#CE1141",
+            "secondary": "#111111"
+          },
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "jordan.com",
+              "primary": true
+            },
+            {
+              "type": "website",
+              "identifier": "jumpman23.com"
+            }
+          ],
+          "brand_agent": {
+            "url": "https://dam.nike.com/mcp",
+            "id": "nike_dam"
+          }
+        },
+        {
+          "id": "converse",
+          "url": "https://converse.com",
           "names": [
             {
               "en_US": "Converse"
             }
           ],
-          "properties": [
+          "keller_type": "independent",
+          "logos": [
             {
-              "identifier": "converse.com",
-              "primary": true,
-              "type": "website"
+              "url": "https://cdn.converse.com/star.svg",
+              "orientation": "square",
+              "variant": "icon"
             }
           ],
-          "url": "https://converse.com"
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "converse.com",
+              "primary": true
+            }
+          ]
         }
       ],
+      "authorized_operators": [
+        {
+          "domain": "wpp.com",
+          "brands": [
+            "nike",
+            "air_jordan"
+          ],
+          "countries": [
+            "US",
+            "GB",
+            "DE",
+            "FR"
+          ]
+        },
+        {
+          "domain": "dentsu.co.jp",
+          "brands": [
+            "nike"
+          ],
+          "countries": [
+            "JP"
+          ]
+        },
+        {
+          "domain": "nike.com",
+          "brands": [
+            "*"
+          ]
+        }
+      ],
+      "last_updated": "2026-01-15T10:00:00Z"
+    },
+    {
+      "$schema": "/schemas/latest/brand.json",
+      "version": "1.0",
       "house": {
-        "architecture": "hybrid",
-        "domain": "nikeinc.com",
-        "name": "Nike, Inc."
+        "domain": "mediavine.com",
+        "name": "Mediavine",
+        "architecture": "branded_house"
       },
-      "last_updated": "2026-01-15T10:00:00Z",
-      "version": "1.0"
-    }
-  ],
-  "oneOf": [
-    {
-      "additionalProperties": false,
-      "description": "Redirects to a hosted brand.json file at another URL",
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "authoritative_location": {
-          "description": "HTTPS URL of the authoritative brand.json file",
-          "format": "uri",
-          "pattern": "^https://",
-          "type": "string"
-        },
-        "last_updated": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "authoritative_location"
-      ],
-      "title": "Authoritative Location Redirect",
-      "type": "object"
-    },
-    {
-      "additionalProperties": false,
-      "description": "Redirects to the house domain that contains the full brand portfolio",
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "house": {
-          "$ref": "#/definitions/domain",
-          "description": "House domain to fetch brand portfolio from"
-        },
-        "last_updated": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "note": {
-          "type": "string"
-        },
-        "region": {
-          "description": "ISO 3166-1 alpha-2 country code if this is a regional domain",
-          "pattern": "^[A-Z]{2}$",
-          "type": "string"
-        }
-      },
-      "required": [
-        "house"
-      ],
-      "title": "House Redirect",
-      "type": "object"
-    },
-    {
-      "additionalProperties": false,
-      "description": "Brand with an agent that provides brand info via MCP",
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "brand_agent": {
-          "$ref": "#/definitions/brand_agent"
-        },
-        "contact": {
-          "$ref": "#/definitions/contact"
-        },
-        "last_updated": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "version": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "brand_agent"
-      ],
-      "title": "Brand Agent",
-      "type": "object"
-    },
-    {
-      "additionalProperties": false,
-      "description": "Full house/brand portfolio with hierarchy, creative assets, and properties",
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "authorized_operators": {
-          "description": "Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain.",
-          "items": {
-            "$ref": "#/definitions/authorized_operator"
-          },
-          "type": "array"
-        },
-        "brands": {
-          "description": "Brands owned by this house",
-          "items": {
-            "$ref": "#/definitions/brand"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "contact": {
-          "$ref": "#/definitions/contact"
-        },
-        "house": {
-          "$ref": "#/definitions/house"
-        },
-        "last_updated": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "trademarks": {
-          "items": {
-            "additionalProperties": true,
-            "properties": {
-              "mark": {
-                "type": "string"
-              },
-              "number": {
-                "type": "string"
-              },
-              "registry": {
-                "type": "string"
-              }
+      "brands": [
+        {
+          "id": "mediavine",
+          "url": "https://mediavine.com",
+          "names": [
+            {
+              "en_US": "Mediavine"
+            }
+          ],
+          "keller_type": "master",
+          "properties": [
+            {
+              "type": "website",
+              "identifier": "mediavine.com",
+              "primary": true
             },
-            "required": [
-              "registry",
-              "number",
-              "mark"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "version": {
-          "type": "string"
+            {
+              "type": "website",
+              "identifier": "thehollywoodgossip.com",
+              "relationship": "delegated"
+            },
+            {
+              "type": "website",
+              "identifier": "foodfanatic.com",
+              "relationship": "delegated"
+            },
+            {
+              "type": "website",
+              "identifier": "thebiglead.com",
+              "relationship": "delegated"
+            }
+          ],
+          "agents": [
+            {
+              "type": "sales",
+              "url": "https://ads.mediavine.com/mcp",
+              "id": "mediavine_sales"
+            }
+          ]
         }
-      },
-      "required": [
-        "house",
-        "brands"
       ],
-      "title": "House Portfolio",
-      "type": "object"
+      "last_updated": "2026-01-15T10:00:00Z"
     }
-  ],
-  "title": "Brand Discovery"
+  ]
 }

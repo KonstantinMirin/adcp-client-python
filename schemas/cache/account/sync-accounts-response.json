@@ -1,279 +1,52 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sync Accounts Response",
   "description": "Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.",
-  "examples": [
-    {
-      "data": {
-        "accounts": [
-          {
-            "account_id": "acc_spark_001",
-            "account_scope": "operator_brand",
-            "action": "created",
-            "billing": "operator",
-            "brand": {
-              "brand_id": "spark",
-              "domain": "nova-brands.com"
-            },
-            "name": "Spark (via Pinnacle)",
-            "operator": "pinnacle-media.com",
-            "status": "active"
-          },
-          {
-            "account_id": "acc_glow_pending",
-            "account_scope": "operator_brand",
-            "action": "created",
-            "billing": "operator",
-            "brand": {
-              "brand_id": "glow",
-              "domain": "nova-brands.com"
-            },
-            "name": "Glow",
-            "operator": "pinnacle-media.com",
-            "setup": {
-              "expires_at": "2026-03-10T00:00:00Z",
-              "message": "Complete advertiser registration and credit application",
-              "url": "https://seller.example.com/advertiser-onboard"
-            },
-            "status": "pending_approval"
-          }
-        ]
-      },
-      "description": "Mixed results \u2014 one active, one pending approval"
-    },
-    {
-      "data": {
-        "accounts": [
-          {
-            "action": "created",
-            "brand": {
-              "brand_id": "clearance",
-              "domain": "acme-corp.com"
-            },
-            "operator": "acme-corp.com",
-            "status": "rejected",
-            "warnings": [
-              "Account request declined: advertiser category not accepted on this platform."
-            ]
-          }
-        ]
-      },
-      "description": "Rejected account \u2014 no account_id assigned"
-    },
-    {
-      "data": {
-        "accounts": [
-          {
-            "action": "failed",
-            "brand": {
-              "domain": "acme-corp.com"
-            },
-            "errors": [
-              {
-                "code": "BILLING_NOT_SUPPORTED",
-                "message": "Operator billing is not supported. This seller only accepts agent billing."
-              }
-            ],
-            "operator": "acme-corp.com",
-            "status": "rejected"
-          }
-        ]
-      },
-      "description": "Unsupported billing \u2014 seller rejects the request"
-    },
-    {
-      "data": {
-        "accounts": [
-          {
-            "account_id": "acc_acme_direct_bill",
-            "account_scope": "operator_brand",
-            "action": "created",
-            "billing": "advertiser",
-            "billing_entity": {
-              "address": {
-                "city": "Munich",
-                "country": "DE",
-                "postal_code": "80331",
-                "street": "Hauptstrasse 42"
-              },
-              "contacts": [
-                {
-                  "email": "billing@acme-corp.com",
-                  "name": "AP Department",
-                  "role": "billing"
-                }
-              ],
-              "legal_name": "Acme Corporation GmbH",
-              "registration_number": "HRB 67890",
-              "vat_id": "DE987654321"
-            },
-            "brand": {
-              "domain": "acme-corp.com"
-            },
-            "name": "Acme Corp (billed direct)",
-            "operator": "pinnacle-media.com",
-            "payment_terms": "net_30",
-            "status": "active"
-          }
-        ]
-      },
-      "description": "Advertiser billed directly with billing entity (bank details omitted in response)"
-    },
-    {
-      "data": {
-        "accounts": [
-          {
-            "action": "failed",
-            "brand": {
-              "domain": "acme-corp.com"
-            },
-            "errors": [
-              {
-                "code": "PAYMENT_TERMS_NOT_SUPPORTED",
-                "message": "Net-60 payment terms are not available. Omit payment_terms to accept this seller's default terms (net_30)."
-              }
-            ],
-            "operator": "acme-corp.com",
-            "status": "rejected"
-          }
-        ]
-      },
-      "description": "Unsupported payment terms \u2014 seller rejects the request"
-    }
-  ],
+  "type": "object",
   "oneOf": [
     {
-      "additionalProperties": true,
+      "title": "SyncAccountsSuccess",
       "description": "Sync operation processed accounts (individual accounts may be pending or have action=failed)",
-      "not": {
-        "required": [
-          "errors"
-        ]
-      },
+      "type": "object",
       "properties": {
+        "dry_run": {
+          "type": "boolean",
+          "description": "Whether this was a dry run (no actual changes made)"
+        },
         "accounts": {
+          "type": "array",
           "description": "Results for each account processed",
           "items": {
-            "additionalProperties": true,
+            "type": "object",
             "properties": {
               "account_id": {
-                "description": "Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations.",
-                "type": "string"
+                "type": "string",
+                "description": "Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations."
               },
-              "account_scope": {
-                "description": "How the seller scoped this account. operator: shared across all brands for this operator. brand: shared across all operators for this brand. operator_brand: dedicated to this operator+brand pair. agent: the agent's default account.",
-                "enum": [
-                  "operator",
-                  "brand",
-                  "operator_brand",
-                  "agent"
-                ],
-                "type": "string"
+              "brand": {
+                "$ref": "../core/brand-ref.json",
+                "description": "Brand reference, echoed from the request"
+              },
+              "operator": {
+                "type": "string",
+                "description": "Operator domain, echoed from request"
+              },
+              "name": {
+                "type": "string",
+                "description": "Human-readable account name assigned by the seller"
               },
               "action": {
-                "description": "Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).",
+                "type": "string",
                 "enum": [
                   "created",
                   "updated",
                   "unchanged",
                   "failed"
                 ],
-                "type": "string"
-              },
-              "billing": {
-                "description": "Who is invoiced on this account. Matches the requested billing model.",
-                "enum": [
-                  "operator",
-                  "agent",
-                  "advertiser"
-                ],
-                "type": "string"
-              },
-              "billing_entity": {
-                "$ref": "../core/business-entity.json",
-                "description": "Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
-              },
-              "brand": {
-                "$ref": "../core/brand-ref.json",
-                "description": "Brand reference, echoed from the request"
-              },
-              "credit_limit": {
-                "properties": {
-                  "amount": {
-                    "minimum": 0,
-                    "type": "number"
-                  },
-                  "currency": {
-                    "pattern": "^[A-Z]{3}$",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "amount",
-                  "currency"
-                ],
-                "type": "object"
-              },
-              "errors": {
-                "description": "Per-account errors (only present when action is 'failed')",
-                "items": {
-                  "$ref": "../core/error.json"
-                },
-                "type": "array"
-              },
-              "name": {
-                "description": "Human-readable account name assigned by the seller",
-                "type": "string"
-              },
-              "operator": {
-                "description": "Operator domain, echoed from request",
-                "type": "string"
-              },
-              "payment_terms": {
-                "description": "Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account.",
-                "enum": [
-                  "net_15",
-                  "net_30",
-                  "net_45",
-                  "net_60",
-                  "net_90",
-                  "prepay"
-                ],
-                "type": "string"
-              },
-              "rate_card": {
-                "description": "Rate card applied to this account",
-                "type": "string"
-              },
-              "sandbox": {
-                "description": "Whether this is a sandbox account, echoed from the request. Only present for implicit accounts.",
-                "type": "boolean"
-              },
-              "setup": {
-                "additionalProperties": true,
-                "description": "Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.",
-                "properties": {
-                  "expires_at": {
-                    "description": "When this setup link expires",
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  "message": {
-                    "description": "Human-readable description of what's needed",
-                    "type": "string"
-                  },
-                  "url": {
-                    "description": "URL where the human can complete the required action (credit application, legal agreement, add funds)",
-                    "format": "uri",
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "message"
-                ],
-                "type": "object"
+                "description": "Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors)."
               },
               "status": {
-                "description": "Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated.",
+                "type": "string",
                 "enum": [
                   "active",
                   "pending_approval",
@@ -282,14 +55,105 @@
                   "suspended",
                   "closed"
                 ],
-                "type": "string"
+                "description": "Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated."
+              },
+              "billing": {
+                "type": "string",
+                "enum": [
+                  "operator",
+                  "agent",
+                  "advertiser"
+                ],
+                "description": "Who is invoiced on this account. Matches the requested billing model."
+              },
+              "billing_entity": {
+                "$ref": "../core/business-entity.json",
+                "description": "Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
+              },
+              "account_scope": {
+                "type": "string",
+                "enum": [
+                  "operator",
+                  "brand",
+                  "operator_brand",
+                  "agent"
+                ],
+                "description": "How the seller scoped this account. operator: shared across all brands for this operator. brand: shared across all operators for this brand. operator_brand: dedicated to this operator+brand pair. agent: the agent's default account."
+              },
+              "setup": {
+                "type": "object",
+                "description": "Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL where the human can complete the required action (credit application, legal agreement, add funds)"
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "Human-readable description of what's needed"
+                  },
+                  "expires_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "When this setup link expires"
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": true
+              },
+              "rate_card": {
+                "type": "string",
+                "description": "Rate card applied to this account"
+              },
+              "payment_terms": {
+                "type": "string",
+                "enum": [
+                  "net_15",
+                  "net_30",
+                  "net_45",
+                  "net_60",
+                  "net_90",
+                  "prepay"
+                ],
+                "description": "Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account."
+              },
+              "credit_limit": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ]
+              },
+              "errors": {
+                "type": "array",
+                "description": "Per-account errors (only present when action is 'failed')",
+                "items": {
+                  "$ref": "../core/error.json"
+                }
               },
               "warnings": {
+                "type": "array",
                 "description": "Non-fatal warnings about this account",
                 "items": {
                   "type": "string"
-                },
-                "type": "array"
+                }
+              },
+              "sandbox": {
+                "type": "boolean",
+                "description": "Whether this is a sandbox account, echoed from the request. Only present for implicit accounts."
               }
             },
             "required": [
@@ -298,16 +162,11 @@
               "action",
               "status"
             ],
-            "type": "object"
-          },
-          "type": "array"
+            "additionalProperties": true
+          }
         },
         "context": {
           "$ref": "../core/context.json"
-        },
-        "dry_run": {
-          "description": "Whether this was a dry run (no actual changes made)",
-          "type": "boolean"
         },
         "ext": {
           "$ref": "../core/ext.json"
@@ -316,12 +175,37 @@
       "required": [
         "accounts"
       ],
-      "title": "SyncAccountsSuccess",
-      "type": "object"
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "errors"
+        ]
+      }
     },
     {
-      "additionalProperties": true,
+      "title": "SyncAccountsError",
       "description": "Operation failed completely, no accounts were processed",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
+          "items": {
+            "$ref": "../core/error.json"
+          },
+          "minItems": 1
+        },
+        "context": {
+          "$ref": "../core/context.json"
+        },
+        "ext": {
+          "$ref": "../core/ext.json"
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "additionalProperties": true,
       "not": {
         "anyOf": [
           {
@@ -335,30 +219,146 @@
             ]
           }
         ]
-      },
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "errors": {
-          "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
-          "items": {
-            "$ref": "../core/error.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        }
-      },
-      "required": [
-        "errors"
-      ],
-      "title": "SyncAccountsError",
-      "type": "object"
+      }
     }
   ],
-  "title": "Sync Accounts Response",
-  "type": "object"
+  "examples": [
+    {
+      "description": "Mixed results \u2014 one active, one pending approval",
+      "data": {
+        "accounts": [
+          {
+            "account_id": "acc_spark_001",
+            "brand": {
+              "domain": "nova-brands.com",
+              "brand_id": "spark"
+            },
+            "operator": "pinnacle-media.com",
+            "name": "Spark (via Pinnacle)",
+            "action": "created",
+            "status": "active",
+            "billing": "operator",
+            "account_scope": "operator_brand"
+          },
+          {
+            "account_id": "acc_glow_pending",
+            "brand": {
+              "domain": "nova-brands.com",
+              "brand_id": "glow"
+            },
+            "operator": "pinnacle-media.com",
+            "name": "Glow",
+            "action": "created",
+            "status": "pending_approval",
+            "billing": "operator",
+            "account_scope": "operator_brand",
+            "setup": {
+              "url": "https://seller.example.com/advertiser-onboard",
+              "message": "Complete advertiser registration and credit application",
+              "expires_at": "2026-03-10T00:00:00Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "description": "Rejected account \u2014 no account_id assigned",
+      "data": {
+        "accounts": [
+          {
+            "brand": {
+              "domain": "acme-corp.com",
+              "brand_id": "clearance"
+            },
+            "operator": "acme-corp.com",
+            "action": "created",
+            "status": "rejected",
+            "warnings": [
+              "Account request declined: advertiser category not accepted on this platform."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "description": "Unsupported billing \u2014 seller rejects the request",
+      "data": {
+        "accounts": [
+          {
+            "brand": {
+              "domain": "acme-corp.com"
+            },
+            "operator": "acme-corp.com",
+            "action": "failed",
+            "status": "rejected",
+            "errors": [
+              {
+                "code": "BILLING_NOT_SUPPORTED",
+                "message": "Operator billing is not supported. This seller only accepts agent billing."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "description": "Advertiser billed directly with billing entity (bank details omitted in response)",
+      "data": {
+        "accounts": [
+          {
+            "account_id": "acc_acme_direct_bill",
+            "brand": {
+              "domain": "acme-corp.com"
+            },
+            "operator": "pinnacle-media.com",
+            "name": "Acme Corp (billed direct)",
+            "action": "created",
+            "status": "active",
+            "billing": "advertiser",
+            "billing_entity": {
+              "legal_name": "Acme Corporation GmbH",
+              "vat_id": "DE987654321",
+              "registration_number": "HRB 67890",
+              "address": {
+                "street": "Hauptstrasse 42",
+                "city": "Munich",
+                "postal_code": "80331",
+                "country": "DE"
+              },
+              "contacts": [
+                {
+                  "role": "billing",
+                  "name": "AP Department",
+                  "email": "billing@acme-corp.com"
+                }
+              ]
+            },
+            "account_scope": "operator_brand",
+            "payment_terms": "net_30"
+          }
+        ]
+      }
+    },
+    {
+      "description": "Unsupported payment terms \u2014 seller rejects the request",
+      "data": {
+        "accounts": [
+          {
+            "brand": {
+              "domain": "acme-corp.com"
+            },
+            "operator": "acme-corp.com",
+            "action": "failed",
+            "status": "rejected",
+            "errors": [
+              {
+                "code": "PAYMENT_TERMS_NOT_SUPPORTED",
+                "message": "Net-60 payment terms are not available. Omit payment_terms to accept this seller's default terms (net_30)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

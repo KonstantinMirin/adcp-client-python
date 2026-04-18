@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Account Status",
   "description": "Advertiser account status in the account lifecycle",
+  "type": "string",
   "enum": [
     "active",
     "pending_approval",
@@ -11,12 +13,10 @@
   ],
   "enumDescriptions": {
     "active": "Account is operational and can create media buys",
-    "closed": "Was active, now terminated \u2014 terminal state",
-    "payment_required": "Credit limit reached or funds depleted",
     "pending_approval": "Seller is reviewing the account (credit, contracts)",
     "rejected": "Seller declined the account request \u2014 terminal state",
-    "suspended": "Was active, now paused \u2014 operations gated"
-  },
-  "title": "Account Status",
-  "type": "string"
+    "payment_required": "Credit limit reached or funds depleted",
+    "suspended": "Was active, now paused \u2014 operations gated",
+    "closed": "Was active, now terminated \u2014 terminal state"
+  }
 }

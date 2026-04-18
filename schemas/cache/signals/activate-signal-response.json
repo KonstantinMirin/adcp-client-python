@@ -1,43 +1,66 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Activate Signal Response",
   "description": "Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.",
+  "type": "object",
   "oneOf": [
     {
-      "additionalProperties": true,
+      "title": "ActivateSignalSuccess",
       "description": "Success response - signal activated successfully to one or more deployment targets",
-      "not": {
-        "required": [
-          "errors"
-        ]
-      },
+      "type": "object",
       "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
         "deployments": {
+          "type": "array",
           "description": "Array of deployment results for each deployment target",
           "items": {
             "$ref": "../core/deployment.json"
-          },
-          "type": "array"
+          }
+        },
+        "sandbox": {
+          "type": "boolean",
+          "description": "When true, this response contains simulated data from sandbox mode."
+        },
+        "context": {
+          "$ref": "../core/context.json"
         },
         "ext": {
           "$ref": "../core/ext.json"
-        },
-        "sandbox": {
-          "description": "When true, this response contains simulated data from sandbox mode.",
-          "type": "boolean"
         }
       },
       "required": [
         "deployments"
       ],
-      "title": "ActivateSignalSuccess",
-      "type": "object"
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "errors"
+        ]
+      }
     },
     {
-      "additionalProperties": true,
+      "title": "ActivateSignalError",
       "description": "Error response - operation failed, signal not activated",
+      "type": "object",
+      "properties": {
+        "errors": {
+          "type": "array",
+          "description": "Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)",
+          "items": {
+            "$ref": "../core/error.json"
+          },
+          "minItems": 1
+        },
+        "context": {
+          "$ref": "../core/context.json"
+        },
+        "ext": {
+          "$ref": "../core/ext.json"
+        }
+      },
+      "required": [
+        "errors"
+      ],
+      "additionalProperties": true,
       "not": {
         "anyOf": [
           {
@@ -51,30 +74,7 @@
             ]
           }
         ]
-      },
-      "properties": {
-        "context": {
-          "$ref": "../core/context.json"
-        },
-        "errors": {
-          "description": "Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)",
-          "items": {
-            "$ref": "../core/error.json"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
-        "ext": {
-          "$ref": "../core/ext.json"
-        }
-      },
-      "required": [
-        "errors"
-      ],
-      "title": "ActivateSignalError",
-      "type": "object"
+      }
     }
-  ],
-  "title": "Activate Signal Response",
-  "type": "object"
+  ]
 }

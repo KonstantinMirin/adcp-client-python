@@ -1,36 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Rights Pricing Option",
   "description": "A pricing option for licensable rights. Separate from media-buy pricing options \u2014 rights pricing includes period, impression caps, overage rates, and use-type scoping.",
+  "type": "object",
   "properties": {
-    "currency": {
-      "description": "ISO 4217 currency code",
-      "pattern": "^[A-Z]{3}$",
-      "type": "string"
-    },
-    "description": {
-      "description": "Human-readable description of this pricing option",
-      "type": "string"
-    },
-    "ext": {
-      "$ref": "../core/ext.json"
-    },
-    "impression_cap": {
-      "description": "Maximum impressions included in this pricing option per period",
-      "minimum": 1,
-      "type": "integer"
+    "pricing_option_id": {
+      "type": "string",
+      "description": "Unique identifier for this pricing option. Referenced in acquire_rights and report_usage."
     },
     "model": {
       "$ref": "../enums/pricing-model.json",
       "description": "Pricing model (cpm, flat_rate, etc.)"
     },
-    "overage_cpm": {
-      "description": "CPM rate applied to impressions exceeding the impression_cap",
+    "price": {
+      "type": "number",
       "minimum": 0,
-      "type": "number"
+      "description": "Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO 4217 currency code"
+    },
+    "uses": {
+      "type": "array",
+      "description": "Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).",
+      "items": {
+        "$ref": "../enums/right-use.json"
+      },
+      "minItems": 1
     },
     "period": {
-      "description": "Billing period for flat_rate and time-based models",
+      "type": "string",
       "enum": [
         "daily",
         "weekly",
@@ -39,24 +40,24 @@
         "annual",
         "one_time"
       ],
-      "type": "string"
+      "description": "Billing period for flat_rate and time-based models"
     },
-    "price": {
-      "description": "Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.",
+    "impression_cap": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum impressions included in this pricing option per period"
+    },
+    "overage_cpm": {
+      "type": "number",
       "minimum": 0,
-      "type": "number"
+      "description": "CPM rate applied to impressions exceeding the impression_cap"
     },
-    "pricing_option_id": {
-      "description": "Unique identifier for this pricing option. Referenced in acquire_rights and report_usage.",
-      "type": "string"
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this pricing option"
     },
-    "uses": {
-      "description": "Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).",
-      "items": {
-        "$ref": "../enums/right-use.json"
-      },
-      "minItems": 1,
-      "type": "array"
+    "ext": {
+      "$ref": "../core/ext.json"
     }
   },
   "required": [
@@ -66,6 +67,5 @@
     "currency",
     "uses"
   ],
-  "title": "Rights Pricing Option",
-  "type": "object"
+  "additionalProperties": true
 }

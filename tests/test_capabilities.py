@@ -20,6 +20,7 @@ from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
     Execution,
     ExtensionsSupportedItem,
     GetAdcpCapabilitiesResponse,
+    Idempotency,
     MajorVersion,
     MediaBuy,
     Signals,
@@ -72,7 +73,10 @@ def _make_capabilities(
         extensions_supported = [ExtensionsSupportedItem(root=e) for e in extensions]
 
     return GetAdcpCapabilitiesResponse(
-        adcp=AdcpInfo(major_versions=[MajorVersion(root=3)]),
+        adcp=AdcpInfo(
+            major_versions=[MajorVersion(root=3)],
+            idempotency=Idempotency(replay_ttl_seconds=86400),
+        ),
         supported_protocols=supported,
         media_buy=media_buy,
         signals=signals,
@@ -110,31 +114,31 @@ class TestSupports:
 
     def test_media_buy_feature_true(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True, "conversion_tracking": True}
+            media_buy_features={"inline_creative_management": True, "property_list_filtering": True}
         )
         client = _client_with_caps(caps)
 
-        assert client.supports("audience_targeting") is True
-        assert client.supports("conversion_tracking") is True
+        assert client.supports("inline_creative_management") is True
+        assert client.supports("property_list_filtering") is True
 
     def test_media_buy_feature_false(self):
-        caps = _make_capabilities(media_buy_features={"audience_targeting": False})
+        caps = _make_capabilities(media_buy_features={"inline_creative_management": False})
         client = _client_with_caps(caps)
 
-        assert client.supports("audience_targeting") is False
+        assert client.supports("inline_creative_management") is False
 
     def test_media_buy_feature_absent(self):
         caps = _make_capabilities(media_buy_features={})
         client = _client_with_caps(caps)
 
-        assert client.supports("audience_targeting") is False
+        assert client.supports("inline_creative_management") is False
 
     def test_media_buy_features_none(self):
         """When media_buy exists but features is None."""
         caps = _make_capabilities(protocols=["media_buy"])
         client = _client_with_caps(caps)
 
-        assert client.supports("audience_targeting") is False
+        assert client.supports("inline_creative_management") is False
 
     def test_signals_feature_true(self):
         caps = _make_capabilities(
@@ -206,7 +210,7 @@ class TestSupports:
     def test_model_fields_guard_on_features(self):
         """Pydantic internals are not treated as features."""
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = _client_with_caps(caps)
 
@@ -216,7 +220,7 @@ class TestSupports:
 
     def test_unknown_feature_returns_false(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = _client_with_caps(caps)
 
@@ -227,13 +231,13 @@ class TestSupports:
         client = ADCPClient(_make_config())
 
         with pytest.raises(ADCPError, match="capabilities have not been fetched"):
-            client.supports("audience_targeting")
+            client.supports("inline_creative_management")
 
     @pytest.mark.asyncio
     async def test_fetch_then_supports(self):
         """fetch_capabilities() then supports() works."""
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = ADCPClient(_make_config())
 
@@ -243,7 +247,7 @@ class TestSupports:
             mock_get.return_value = _make_task_result(caps)
             await client.fetch_capabilities()
 
-        assert client.supports("audience_targeting") is True
+        assert client.supports("inline_creative_management") is True
         mock_get.assert_called_once()
 
 
@@ -263,25 +267,25 @@ class TestRequire:
 
     def test_require_all_present(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True, "conversion_tracking": True}
+            media_buy_features={"inline_creative_management": True, "property_list_filtering": True}
         )
         client = _client_with_caps(caps)
 
         # Should not raise
-        client.require("audience_targeting", "conversion_tracking")
+        client.require("inline_creative_management", "property_list_filtering")
 
     def test_require_missing_single(self):
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
         client = _client_with_caps(caps)
 
         with pytest.raises(ADCPFeatureUnsupportedError) as exc_info:
-            client.require("audience_targeting")
+            client.require("inline_creative_management")
 
         error = exc_info.value
-        assert "audience_targeting" in error.message
-        assert error.unsupported_features == ["audience_targeting"]
+        assert "inline_creative_management" in error.message
+        assert error.unsupported_features == ["inline_creative_management"]
 
     def test_require_missing_multiple(self):
         caps = _make_capabilities(
@@ -290,50 +294,50 @@ class TestRequire:
         client = _client_with_caps(caps)
 
         with pytest.raises(ADCPFeatureUnsupportedError) as exc_info:
-            client.require("audience_targeting", "conversion_tracking")
+            client.require("inline_creative_management", "property_list_filtering")
 
         error = exc_info.value
-        assert "audience_targeting" in error.message
-        assert "conversion_tracking" in error.message
+        assert "inline_creative_management" in error.message
+        assert "property_list_filtering" in error.message
         assert set(error.unsupported_features) == {
-            "audience_targeting",
-            "conversion_tracking",
+            "inline_creative_management",
+            "property_list_filtering",
         }
 
     def test_require_mixed_namespaces(self):
         """require() works across protocols, extensions, and features."""
         caps = _make_capabilities(
             protocols=["media_buy", "signals"],
-            media_buy_features={"audience_targeting": True},
+            media_buy_features={"inline_creative_management": True},
             extensions=["scope3"],
         )
         client = _client_with_caps(caps)
 
         # Should not raise
-        client.require("media_buy", "audience_targeting", "ext:scope3")
+        client.require("media_buy", "inline_creative_management", "ext:scope3")
 
     def test_require_error_lists_declared_features(self):
         """Error message includes what the seller does support."""
         caps = _make_capabilities(
             media_buy_features={
                 "inline_creative_management": True,
-                "conversion_tracking": True,
+                "property_list_filtering": True,
             }
         )
         client = _client_with_caps(caps)
 
         with pytest.raises(ADCPFeatureUnsupportedError) as exc_info:
-            client.require("audience_targeting")
+            client.require("inline_creative_management")
 
         error_str = str(exc_info.value)
-        assert "inline_creative_management" in error_str and "conversion_tracking" in error_str
+        assert "inline_creative_management" in error_str and "property_list_filtering" in error_str
 
     def test_require_includes_agent_context(self):
         caps = _make_capabilities()
         client = _client_with_caps(caps)
 
         with pytest.raises(ADCPFeatureUnsupportedError) as exc_info:
-            client.require("audience_targeting")
+            client.require("inline_creative_management")
 
         error = exc_info.value
         assert error.agent_id == "test-seller"
@@ -351,7 +355,7 @@ class TestCapabilitiesCaching:
     @pytest.mark.asyncio
     async def test_fetch_capabilities_caches(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = ADCPClient(_make_config())
 
@@ -369,7 +373,7 @@ class TestCapabilitiesCaching:
     @pytest.mark.asyncio
     async def test_refresh_capabilities_bypasses_cache(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = ADCPClient(_make_config())
 
@@ -386,7 +390,7 @@ class TestCapabilitiesCaching:
     @pytest.mark.asyncio
     async def test_cache_expires_after_ttl(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = ADCPClient(_make_config(), capabilities_ttl=0.0)
 
@@ -464,9 +468,9 @@ class TestValidateFeatures:
         client._validate_task_features("get_products")
 
     @pytest.mark.asyncio
-    async def test_sync_event_sources_requires_conversion_tracking(self):
+    async def test_sync_event_sources_requires_property_list_filtering(self):
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = _client_with_caps(caps, validate_features=True)
 
@@ -475,27 +479,27 @@ class TestValidateFeatures:
             account=AccountReference(account_id="acc1"),
         )
 
-        with pytest.raises(ADCPFeatureUnsupportedError, match="conversion_tracking"):
+        with pytest.raises(ADCPFeatureUnsupportedError, match="property_list_filtering"):
             await client.sync_event_sources(request)
 
     @pytest.mark.asyncio
-    async def test_log_event_requires_conversion_tracking(self):
+    async def test_log_event_requires_property_list_filtering(self):
         """validate_features raises before request validation."""
         caps = _make_capabilities(
-            media_buy_features={"audience_targeting": True}
+            media_buy_features={"inline_creative_management": True}
         )
         client = _client_with_caps(caps, validate_features=True)
 
         # Use _validate_task_features directly since LogEventRequest
         # requires events with min_length=1
-        with pytest.raises(ADCPFeatureUnsupportedError, match="conversion_tracking"):
+        with pytest.raises(ADCPFeatureUnsupportedError, match="property_list_filtering"):
             client._validate_task_features("log_event")
 
     @pytest.mark.asyncio
     async def test_validation_passes_when_feature_supported(self):
         """When the feature is supported, the call proceeds normally."""
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
         client = _client_with_caps(caps, validate_features=True)
 
@@ -528,7 +532,7 @@ class TestValidateFeatures:
         )
         with patch.object(client.adapter, "sync_event_sources", new_callable=AsyncMock) as mock:
             mock.return_value = mock_result
-            # Should NOT raise even though conversion_tracking is not declared
+            # Should NOT raise even though property_list_filtering is not declared
             result = await client.sync_event_sources(
                 SyncEventSourcesRequest(account=AccountReference(account_id="acc1"))
             )
@@ -564,15 +568,15 @@ class TestADCPFeatureUnsupportedError:
 
     def test_exception_fields(self):
         error = ADCPFeatureUnsupportedError(
-            unsupported_features=["audience_targeting"],
-            declared_features=["conversion_tracking", "inline_creative_management"],
+            unsupported_features=["inline_creative_management"],
+            declared_features=["property_list_filtering", "inline_creative_management"],
             agent_id="test-seller",
             agent_uri="https://seller.example.com",
         )
 
-        assert error.unsupported_features == ["audience_targeting"]
+        assert error.unsupported_features == ["inline_creative_management"]
         assert error.declared_features == [
-            "conversion_tracking",
+            "property_list_filtering",
             "inline_creative_management",
         ]
         assert error.agent_id == "test-seller"
@@ -580,17 +584,17 @@ class TestADCPFeatureUnsupportedError:
 
     def test_exception_message_format(self):
         error = ADCPFeatureUnsupportedError(
-            unsupported_features=["audience_targeting"],
-            declared_features=["conversion_tracking"],
+            unsupported_features=["inline_creative_management"],
+            declared_features=["property_list_filtering"],
             agent_id="test-seller",
             agent_uri="https://seller.example.com",
         )
 
         msg = str(error)
-        assert "audience_targeting" in msg
+        assert "inline_creative_management" in msg
         assert "test-seller" in msg
         assert "seller.example.com" in msg
-        assert "conversion_tracking" in msg
+        assert "property_list_filtering" in msg
 
     def test_exception_inherits_from_adcp_error(self):
         error = ADCPFeatureUnsupportedError(
@@ -610,31 +614,31 @@ class TestFeatureResolver:
     def test_resolver_supports(self):
         caps = _make_capabilities(
             protocols=["media_buy", "signals"],
-            media_buy_features={"audience_targeting": True},
+            media_buy_features={"inline_creative_management": True},
             extensions=["scope3"],
             targeting={"geo_countries": True},
         )
         resolver = FeatureResolver(caps)
 
         assert resolver.supports("media_buy") is True
-        assert resolver.supports("audience_targeting") is True
+        assert resolver.supports("inline_creative_management") is True
         assert resolver.supports("ext:scope3") is True
         assert resolver.supports("targeting.geo_countries") is True
-        assert resolver.supports("conversion_tracking") is False
+        assert resolver.supports("property_list_filtering") is False
 
     def test_resolver_require_raises(self):
         caps = _make_capabilities(media_buy_features={})
         resolver = FeatureResolver(caps)
 
         with pytest.raises(ADCPFeatureUnsupportedError) as exc_info:
-            resolver.require("audience_targeting", agent_id="test")
+            resolver.require("inline_creative_management", agent_id="test")
 
         assert exc_info.value.agent_id == "test"
 
     def test_resolver_get_declared_features(self):
         caps = _make_capabilities(
             protocols=["media_buy"],
-            media_buy_features={"audience_targeting": True, "conversion_tracking": True},
+            media_buy_features={"inline_creative_management": True, "property_list_filtering": True},
             extensions=["scope3"],
             targeting={"geo_countries": True},
         )
@@ -642,8 +646,8 @@ class TestFeatureResolver:
 
         declared = resolver.get_declared_features()
         assert "media_buy" in declared
-        assert "audience_targeting" in declared
-        assert "conversion_tracking" in declared
+        assert "inline_creative_management" in declared
+        assert "property_list_filtering" in declared
         assert "ext:scope3" in declared
         assert "targeting.geo_countries" in declared
 
@@ -667,12 +671,12 @@ class TestValidateCapabilities:
             pass  # Doesn't override anything
 
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
 
         warnings = validate_capabilities(MyHandler(), caps)
         assert len(warnings) > 0
-        assert any("conversion_tracking" in w for w in warnings)
+        assert any("property_list_filtering" in w for w in warnings)
         assert any("log_event" in w or "sync_event_sources" in w for w in warnings)
 
     def test_no_warnings_when_handler_overrides(self):
@@ -685,7 +689,7 @@ class TestValidateCapabilities:
                 return {"status": "ok"}
 
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
 
         warnings = validate_capabilities(MyHandler(), caps)
@@ -713,7 +717,7 @@ class TestValidateCapabilities:
             # sync_event_sources NOT overridden
 
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
 
         warnings = validate_capabilities(MyHandler(), caps)
@@ -734,7 +738,7 @@ class TestValidateCapabilities:
             pass  # Inherits overrides from mixin
 
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
 
         warnings = validate_capabilities(MyHandler(), caps)
@@ -747,7 +751,7 @@ class TestValidateCapabilities:
             pass
 
         caps = _make_capabilities(
-            media_buy_features={"conversion_tracking": True}
+            media_buy_features={"property_list_filtering": True}
         )
 
         warnings = validate_capabilities(MyHandler(), caps)
@@ -764,8 +768,8 @@ class TestTaskFeatureMapCompleteness:
 
         domains = set(TASK_FEATURE_MAP.values())
         expected = {
-            "conversion_tracking",
-            "audience_targeting",
+            "property_list_filtering",
+            "inline_creative_management",
             "catalog_management",
             "content_standards",
             "signals",
@@ -818,7 +822,7 @@ class TestSupportsV3:
 
     def test_v3_supported(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
-            adcp=AdcpInfo(major_versions=[MajorVersion(3)]),
+            adcp=AdcpInfo(major_versions=[MajorVersion(3)], idempotency=Idempotency(replay_ttl_seconds=86400)),
             supported_protocols=[SupportedProtocol("media_buy")],
         )
         resolver = FeatureResolver(caps)
@@ -826,7 +830,7 @@ class TestSupportsV3:
 
     def test_v2_only(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
-            adcp=AdcpInfo(major_versions=[MajorVersion(2)]),
+            adcp=AdcpInfo(major_versions=[MajorVersion(2)], idempotency=Idempotency(replay_ttl_seconds=86400)),
             supported_protocols=[SupportedProtocol("media_buy")],
         )
         resolver = FeatureResolver(caps)
@@ -834,7 +838,7 @@ class TestSupportsV3:
 
     def test_both_v2_and_v3(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
-            adcp=AdcpInfo(major_versions=[MajorVersion(2), MajorVersion(3)]),
+            adcp=AdcpInfo(major_versions=[MajorVersion(2), MajorVersion(3)], idempotency=Idempotency(replay_ttl_seconds=86400)),
             supported_protocols=[SupportedProtocol("media_buy")],
         )
         resolver = FeatureResolver(caps)

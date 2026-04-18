@@ -1,57 +1,57 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "additionalProperties": true,
+  "title": "Deadline Policy",
   "description": "Default deadline rules for installments that do not declare their own deadlines. Agents compute absolute deadlines from the installment's scheduled_at and these lead times. Installments with explicit deadlines override this policy. booking_lead_days SHOULD be >= cancellation_lead_days (bookings close before cancellation window closes).",
-  "minProperties": 1,
+  "type": "object",
   "properties": {
     "booking_lead_days": {
-      "description": "Days before scheduled_at by which the placement must be booked",
+      "type": "integer",
       "minimum": 0,
-      "type": "integer"
-    },
-    "business_days_only": {
-      "default": false,
-      "description": "When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.",
-      "type": "boolean"
+      "description": "Days before scheduled_at by which the placement must be booked"
     },
     "cancellation_lead_days": {
-      "description": "Days before scheduled_at by which cancellation is penalty-free",
+      "type": "integer",
       "minimum": 0,
-      "type": "integer"
+      "description": "Days before scheduled_at by which cancellation is penalty-free"
     },
     "material_stages": {
+      "type": "array",
       "description": "Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.",
       "items": {
-        "additionalProperties": true,
+        "type": "object",
         "properties": {
-          "label": {
-            "description": "What the seller needs at this stage",
-            "type": "string"
-          },
-          "lead_days": {
-            "description": "Days before scheduled_at this stage is due",
-            "minimum": 0,
-            "type": "integer"
-          },
           "stage": {
+            "type": "string",
             "description": "Stage identifier. Standard values: 'draft' (needs seller processing), 'final' (production-ready).",
             "examples": [
               "draft",
               "final"
-            ],
-            "type": "string"
+            ]
+          },
+          "lead_days": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Days before scheduled_at this stage is due"
+          },
+          "label": {
+            "type": "string",
+            "description": "What the seller needs at this stage"
           }
         },
         "required": [
           "stage",
           "lead_days"
         ],
-        "type": "object"
+        "additionalProperties": true
       },
-      "minItems": 1,
-      "type": "array"
+      "minItems": 1
+    },
+    "business_days_only": {
+      "type": "boolean",
+      "description": "When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.",
+      "default": false
     }
   },
-  "title": "Deadline Policy",
-  "type": "object"
+  "minProperties": 1,
+  "additionalProperties": true
 }

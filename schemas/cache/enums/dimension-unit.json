@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dimension Unit",
   "description": "Units of measurement for creative format dimensions",
+  "type": "string",
   "enum": [
     "px",
     "dp",
@@ -8,7 +10,5 @@
     "cm",
     "mm",
     "pt"
-  ],
-  "title": "Dimension Unit",
-  "type": "string"
+  ]
 }

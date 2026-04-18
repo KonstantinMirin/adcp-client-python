@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Outcome Type",
   "description": "The type of outcome reported to a campaign governance agent after a seller interaction.",
+  "type": "string",
   "enum": [
     "completed",
     "failed",
@@ -8,9 +10,7 @@
   ],
   "enumDescriptions": {
     "completed": "The action completed successfully. The seller confirmed the request.",
-    "delivery": "Periodic delivery report with pacing and performance metrics.",
-    "failed": "The action failed. No budget is committed."
-  },
-  "title": "Outcome Type",
-  "type": "string"
+    "failed": "The action failed. No budget is committed.",
+    "delivery": "Periodic delivery report with pacing and performance metrics."
+  }
 }

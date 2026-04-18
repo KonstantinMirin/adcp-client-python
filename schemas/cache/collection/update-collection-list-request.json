@@ -40,7 +40,7 @@
     "webhook_url": {
       "type": "string",
       "format": "uri",
-      "description": "Update the webhook URL for list change notifications (set to empty string to remove)"
+      "description": "Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/implementation/security#webhook-url-validation-ssrf."
     },
     "context": {
       "$ref": "../core/context.json"
@@ -52,10 +52,12 @@
       "type": "string",
       "description": "Client-generated unique key for at-most-once execution. If a request with the same key has already been processed, the server returns the original response without re-processing. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
       "minLength": 16,
-      "maxLength": 255
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     }
   },
   "required": [
+    "idempotency_key",
     "list_id"
   ],
   "additionalProperties": false

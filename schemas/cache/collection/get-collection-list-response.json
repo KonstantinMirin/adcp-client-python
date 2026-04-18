@@ -114,6 +114,9 @@
         }
       }
     },
+    "context": {
+      "$ref": "../core/context.json"
+    },
     "ext": {
       "$ref": "../core/ext.json"
     }
