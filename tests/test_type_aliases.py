@@ -140,11 +140,12 @@ def test_all_response_aliases_exported():
 
 
 def test_all_request_aliases_exported():
-    """Test that all expected request type aliases are exported."""
+    """Test that all expected request type aliases are exported.
+
+    PreviewCreativeRequest collapsed to a single class with a request_type
+    enum in ADCP 3.0 — the per-mode Request aliases were removed.
+    """
     expected_aliases = [
-        "PreviewCreativeSingleRequest",
-        "PreviewCreativeBatchRequest",
-        "PreviewCreativeVariantRequest",
         "UpdateMediaBuyPackagesRequest",
         "UpdateMediaBuyPropertiesRequest",
     ]

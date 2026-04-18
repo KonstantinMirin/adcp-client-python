@@ -67,17 +67,10 @@ class TestActivationKeyRenames:
 
 
 class TestPreviewAliasRenames:
-    """Upstream changed format/manifest → single/batch/variant discriminator."""
-
-    def test_preview_creative_format_request(self):
-        from adcp import PreviewCreativeFormatRequest, PreviewCreativeSingleRequest
-
-        assert PreviewCreativeFormatRequest is PreviewCreativeSingleRequest
-
-    def test_preview_creative_manifest_request(self):
-        from adcp import PreviewCreativeBatchRequest, PreviewCreativeManifestRequest
-
-        assert PreviewCreativeManifestRequest is PreviewCreativeBatchRequest
+    """PreviewCreativeRequest collapsed into a single class with a request_type
+    enum; the per-mode Request aliases (Format/Manifest/Static/Interactive, Single/
+    Batch/Variant) are no longer distinct types and their aliases were removed.
+    The per-mode Response aliases remain backward-compat."""
 
     def test_preview_creative_static_response(self):
         from adcp import PreviewCreativeSingleResponse, PreviewCreativeStaticResponse
@@ -88,16 +81,6 @@ class TestPreviewAliasRenames:
         from adcp import PreviewCreativeBatchResponse, PreviewCreativeInteractiveResponse
 
         assert PreviewCreativeInteractiveResponse is PreviewCreativeBatchResponse
-
-    def test_format_request_from_types(self):
-        from adcp.types import PreviewCreativeFormatRequest, PreviewCreativeSingleRequest
-
-        assert PreviewCreativeFormatRequest is PreviewCreativeSingleRequest
-
-    def test_manifest_request_from_types(self):
-        from adcp.types import PreviewCreativeBatchRequest, PreviewCreativeManifestRequest
-
-        assert PreviewCreativeManifestRequest is PreviewCreativeBatchRequest
 
 
 class TestStatusTypeBackwardCompat:
@@ -152,8 +135,6 @@ class TestAllBackwardCompatInAll:
             "VcpmFixedRatePricingOption",
             "PropertyIdActivationKey",
             "PropertyTagActivationKey",
-            "PreviewCreativeFormatRequest",
-            "PreviewCreativeManifestRequest",
             "PreviewCreativeStaticResponse",
             "PreviewCreativeInteractiveResponse",
         ]
@@ -170,8 +151,6 @@ class TestAllBackwardCompatInAll:
             "VcpmFixedRatePricingOption",
             "PropertyIdActivationKey",
             "PropertyTagActivationKey",
-            "PreviewCreativeFormatRequest",
-            "PreviewCreativeManifestRequest",
             "PreviewCreativeStaticResponse",
             "PreviewCreativeInteractiveResponse",
         ]

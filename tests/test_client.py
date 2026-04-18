@@ -412,8 +412,7 @@ async def test_all_client_methods():
             {
                 "request_id": "req-002",
                 "type": "identity_match_request",
-                "user_token": "opaque-token-123",
-                "uid_type": "uid2",
+                "identities": [{"user_token": "opaque-token-123", "uid_type": "uid2"}],
                 "package_ids": ["pkg-1"],
             },
         ),
@@ -448,7 +447,7 @@ async def test_all_client_methods():
         # V3 Compliance
         (
             "comply_test_controller",
-            "ComplyTestControllerRequest1",
+            "ComplyTestControllerRequest",
             {"scenario": "list_scenarios"},
         ),
         # Note: preview_creative, create_media_buy, update_media_buy, and build_creative
@@ -483,6 +482,8 @@ async def test_method_calls_correct_tool_name(method_name, request_class, reques
     if isinstance(request_cls, types.UnionType):
         request = validate_union(request_cls, request_data)
     else:
+        if "idempotency_key" in getattr(request_cls, "model_fields", {}):
+            request_data = {"idempotency_key": "test-idempotency-key", **request_data}
         request = request_cls(**request_data)
 
     mock_result = TaskResult(
@@ -903,7 +904,7 @@ async def test_get_media_buys_parses_snapshot_response():
 
         delivering = packages[0]
         assert delivering.snapshot is not None
-        assert delivering.snapshot.delivery_status == DeliveryStatus.delivering
+        assert delivering.snapshot.delivery_status.value == DeliveryStatus.delivering.value
         assert delivering.snapshot.impressions == 4500.0
         assert delivering.snapshot.spend == 225.50
         assert delivering.snapshot.staleness_seconds == 900
@@ -911,7 +912,7 @@ async def test_get_media_buys_parses_snapshot_response():
 
         not_delivering = packages[1]
         assert not_delivering.snapshot is not None
-        assert not_delivering.snapshot.delivery_status == DeliveryStatus.not_delivering
+        assert not_delivering.snapshot.delivery_status.value == DeliveryStatus.not_delivering.value
         assert not_delivering.snapshot.impressions == 0.0
 
         no_snapshot = packages[2]

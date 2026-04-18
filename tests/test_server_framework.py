@@ -148,9 +148,7 @@ class TestContentStandardsHandler:
                 )
 
             async def handle_calibrate_content(self, request, context=None):
-                return validate_union(
-                    CalibrateContentResponse, {"verdict": "pass"}
-                )
+                return validate_union(CalibrateContentResponse, {"verdict": "pass"})
 
             async def handle_validate_content_delivery(self, request, context=None):
                 return validate_union(
@@ -377,7 +375,7 @@ class TestGovernanceHandler:
         """Test campaign governance methods are wired through the handler."""
         handler = self.create_concrete_handler()
 
-        result = await handler.sync_plans({"plans": []})
+        result = await handler.sync_plans({"idempotency_key": "test-idempotency-key", "plans": []})
         assert isinstance(result, SyncPlansResponse)
 
         result = await handler.check_governance(
@@ -390,6 +388,7 @@ class TestGovernanceHandler:
 
         result = await handler.report_plan_outcome(
             {
+                "idempotency_key": "test-idempotency-key",
                 "plan_id": "plan_123",
                 "outcome": "completed",
                 "governance_context": "ctx-abc-123-governance",
@@ -430,7 +429,9 @@ class TestGovernanceHandler:
         """Test property list methods validate and delegate to handlers."""
         handler = self.create_concrete_handler()
 
-        result = await handler.create_property_list({"name": "test"})
+        result = await handler.create_property_list(
+            {"idempotency_key": "test-idempotency-key", "name": "test"}
+        )
         assert isinstance(result, CreatePropertyListResponse)
 
         result = await handler.get_property_list({"list_id": "pl-1"})
@@ -439,10 +440,14 @@ class TestGovernanceHandler:
         result = await handler.list_property_lists({})
         assert isinstance(result, ListPropertyListsResponse)
 
-        result = await handler.update_property_list({"list_id": "pl-1"})
+        result = await handler.update_property_list(
+            {"idempotency_key": "test-idempotency-key", "list_id": "pl-1"}
+        )
         assert isinstance(result, UpdatePropertyListResponse)
 
-        result = await handler.delete_property_list({"list_id": "pl-1"})
+        result = await handler.delete_property_list(
+            {"idempotency_key": "test-idempotency-key", "list_id": "pl-1"}
+        )
         assert isinstance(result, DeletePropertyListResponse)
 
     @pytest.mark.asyncio

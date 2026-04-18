@@ -158,6 +158,7 @@ def test_sync_catalogs_request_basic():
 
     req = SyncCatalogsRequest.model_validate(
         {
+            "idempotency_key": "test-idempotency-key",
             "account": {"account_id": "acct_123"},
             "catalogs": [
                 {
@@ -179,7 +180,9 @@ def test_sync_catalogs_request_discovery_only():
     """SyncCatalogsRequest accepts discovery-only mode (no catalogs)."""
     from adcp import SyncCatalogsRequest
 
-    req = SyncCatalogsRequest.model_validate({"account": {"account_id": "acct_123"}})
+    req = SyncCatalogsRequest.model_validate(
+        {"idempotency_key": "test-idempotency-key", "account": {"account_id": "acct_123"}}
+    )
     assert req.account.root.account_id == "acct_123"
     assert req.catalogs is None
 

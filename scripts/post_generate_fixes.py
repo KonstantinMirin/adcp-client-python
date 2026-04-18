@@ -332,6 +332,7 @@ _UNWRAP_TO_UNION: set[str] = {
     "ProvidePerformanceFeedbackResponse",
     "SyncAccountsResponse",
     "SyncAudiencesResponse",
+    "SyncGovernanceResponse",
     "SyncCatalogsResponse",
     "SyncCreativesResponse",
     "SyncEventSourcesResponse",
