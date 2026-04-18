@@ -75,6 +75,14 @@ from adcp.types.core import (
     TaskResult,
     TaskStatus,
 )
+
+# V3 Governance (Sync Governance) types
+from adcp.types.generated_poc.account.sync_governance_request import (
+    SyncGovernanceRequest,
+)
+from adcp.types.generated_poc.account.sync_governance_response import (
+    SyncGovernanceResponse,
+)
 from adcp.types.generated_poc.brand.acquire_rights_request import AcquireRightsRequest
 from adcp.types.generated_poc.brand.acquire_rights_response import (
     AcquireRightsResponse,
@@ -87,6 +95,38 @@ from adcp.types.generated_poc.brand.get_brand_identity_response import (
 )
 from adcp.types.generated_poc.brand.get_rights_request import GetRightsRequest
 from adcp.types.generated_poc.brand.get_rights_response import GetRightsResponse
+
+# V3 Governance (Collection Lists) types
+from adcp.types.generated_poc.collection.create_collection_list_request import (
+    CreateCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.create_collection_list_response import (
+    CreateCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.delete_collection_list_request import (
+    DeleteCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.delete_collection_list_response import (
+    DeleteCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.get_collection_list_request import (
+    GetCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.get_collection_list_response import (
+    GetCollectionListResponse,
+)
+from adcp.types.generated_poc.collection.list_collection_lists_request import (
+    ListCollectionListsRequest,
+)
+from adcp.types.generated_poc.collection.list_collection_lists_response import (
+    ListCollectionListsResponse,
+)
+from adcp.types.generated_poc.collection.update_collection_list_request import (
+    UpdateCollectionListRequest,
+)
+from adcp.types.generated_poc.collection.update_collection_list_response import (
+    UpdateCollectionListResponse,
+)
 from adcp.types.generated_poc.compliance.comply_test_controller_request import (
     ComplyTestControllerRequest,
 )
@@ -195,46 +235,6 @@ from adcp.types.generated_poc.property.update_property_list_request import (
 )
 from adcp.types.generated_poc.property.update_property_list_response import (
     UpdatePropertyListResponse,
-)
-
-# V3 Governance (Collection Lists) types
-from adcp.types.generated_poc.collection.create_collection_list_request import (
-    CreateCollectionListRequest,
-)
-from adcp.types.generated_poc.collection.create_collection_list_response import (
-    CreateCollectionListResponse,
-)
-from adcp.types.generated_poc.collection.delete_collection_list_request import (
-    DeleteCollectionListRequest,
-)
-from adcp.types.generated_poc.collection.delete_collection_list_response import (
-    DeleteCollectionListResponse,
-)
-from adcp.types.generated_poc.collection.get_collection_list_request import (
-    GetCollectionListRequest,
-)
-from adcp.types.generated_poc.collection.get_collection_list_response import (
-    GetCollectionListResponse,
-)
-from adcp.types.generated_poc.collection.list_collection_lists_request import (
-    ListCollectionListsRequest,
-)
-from adcp.types.generated_poc.collection.list_collection_lists_response import (
-    ListCollectionListsResponse,
-)
-from adcp.types.generated_poc.collection.update_collection_list_request import (
-    UpdateCollectionListRequest,
-)
-from adcp.types.generated_poc.collection.update_collection_list_response import (
-    UpdateCollectionListResponse,
-)
-
-# V3 Governance (Sync Governance) types
-from adcp.types.generated_poc.account.sync_governance_request import (
-    SyncGovernanceRequest,
-)
-from adcp.types.generated_poc.account.sync_governance_response import (
-    SyncGovernanceResponse,
 )
 
 # V3 Protocol Discovery types

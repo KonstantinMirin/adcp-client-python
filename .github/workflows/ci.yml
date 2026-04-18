@@ -111,10 +111,13 @@ jobs:
         run: |
           VERSION=$(cat src/adcp/ADCP_VERSION)
           echo "ADCP_VERSION=$VERSION"
-          # Check if version contains pre-release identifiers (alpha, beta, rc)
-          if echo "$VERSION" | grep -qE '(alpha|beta|rc)'; then
+          # Skip regeneration + drift check for pre-release tags (alpha/beta/rc)
+          # and for `latest`, which is a moving dev snapshot — the committed
+          # generated types are frozen against the bundle we last synced, and
+          # CI's fresh sync against today's `latest.tgz` is expected to drift.
+          if echo "$VERSION" | grep -qE '(alpha|beta|rc)' || [ "$VERSION" = "latest" ]; then
             echo "is_prerelease=true" >> $GITHUB_OUTPUT
-            echo "Pre-release version detected - will skip schema sync (may not be publicly accessible)"
+            echo "Pre-release / latest version detected - will skip schema sync"
           else
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
             echo "Stable version - will sync schemas from upstream"
