@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel
 
 from adcp.types.core import AgentConfig, TaskResult, TaskStatus
 from adcp.utils.response_parser import parse_json_or_text, parse_mcp_content
+
+if TYPE_CHECKING:
+    import httpx
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -34,6 +37,13 @@ class ProtocolAdapter(ABC):
         # ``use_idempotency_key`` so a key pinned on one client does not bleed
         # to sibling clients (cross-seller correlation risk per AdCP #2315).
         self.idempotency_client_token: str | None = None
+        # Optional httpx request event hook. ADCPClient installs one when a
+        # SigningConfig is present; the hook attaches RFC 9421 Signature-Input
+        # / Signature / Content-Digest headers to outgoing requests that the
+        # seller's capability policy says should be signed. A2A consumes this
+        # via its httpx client's event_hooks; MCP consumes it via a custom
+        # httpx_client_factory passed to streamablehttp_client.
+        self.signing_request_hook: Callable[[httpx.Request], Awaitable[None]] | None = None
 
     # ========================================================================
     # Helper methods for response parsing

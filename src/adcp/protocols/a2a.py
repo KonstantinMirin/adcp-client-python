@@ -29,6 +29,7 @@ from adcp.exceptions import (
     IdempotencyExpiredError,
 )
 from adcp.protocols.base import ProtocolAdapter
+from adcp.signing.autosign import current_operation as _signing_operation
 from adcp.types.core import AgentConfig, DebugInfo, TaskResult, TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -59,11 +60,33 @@ class A2AAdapter(ProtocolAdapter):
                 else:
                     headers[self.agent_config.auth_header] = self.agent_config.auth_token
 
-            self._httpx_client = httpx.AsyncClient(
-                limits=limits,
-                headers=headers,
-                timeout=self.agent_config.timeout,
-            )
+            # When ADCPClient installed a signing_request_hook, register it as
+            # an httpx request event hook so RFC 9421 signature headers are
+            # attached transparently to every outgoing request. The hook is
+            # a bound method, so each call reads the owning client's live
+            # state (signing config, cached capabilities) — it is *not* a
+            # snapshot. Out-of-band calls (e.g. agent-card fetch) no-op
+            # inside the hook because the autosign ContextVar isn't set.
+            #
+            # follow_redirects is forced off whenever signing is active: RFC
+            # 9421 binds the signature to the original `@authority`, so a 302
+            # would forward stale signature bytes to a new host. httpx's
+            # current default is False already, but pinning it matches the
+            # MCP factory's invariant and protects against future upstream
+            # changes or a2a-sdk overrides.
+            event_hooks: dict[str, list[Any]] = {}
+            client_kwargs: dict[str, Any] = {
+                "limits": limits,
+                "headers": headers,
+                "timeout": self.agent_config.timeout,
+            }
+            if self.signing_request_hook is not None:
+                event_hooks["request"] = [self.signing_request_hook]
+                client_kwargs["follow_redirects"] = False
+            if event_hooks:
+                client_kwargs["event_hooks"] = event_hooks
+
+            self._httpx_client = httpx.AsyncClient(**client_kwargs)
             logger.debug(
                 f"Created HTTP client with connection pooling for agent {self.agent_config.id}"
             )
@@ -196,6 +219,12 @@ class A2AAdapter(ProtocolAdapter):
                 "params": _idempotency.redact_params(params),
             }
 
+        # Stamp the AdCP operation name so the httpx request event hook
+        # installed by ADCPClient for RFC 9421 auto-signing can look up the
+        # right signing policy. Set only around send_message so out-of-band
+        # httpx calls (the agent-card fetch above, or unrelated work on
+        # sibling tasks) stay outside the signing scope.
+        signing_token = _signing_operation.set(tool_name)
         try:
             # Use official A2A client
             sdk_response = await a2a_client.send_message(request)
@@ -320,6 +349,8 @@ class A2AAdapter(ProtocolAdapter):
                 debug_info=debug_info,
                 idempotency_key=idempotency_key,
             )
+        finally:
+            _signing_operation.reset(signing_token)
 
     def _process_task_response(self, task: Task, debug_info: DebugInfo | None) -> TaskResult[Any]:
         """Process a Task response from A2A into our TaskResult format."""

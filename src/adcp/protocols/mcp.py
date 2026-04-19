@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from contextlib import AsyncExitStack
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -22,6 +23,7 @@ except NameError:
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    import httpx
     from mcp import ClientSession
 
 try:
@@ -34,12 +36,14 @@ except ImportError:
     MCP_AVAILABLE = False
 
 try:
+    import httpx as _httpx
     from httpx import HTTPStatusError
 
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
     HTTPStatusError = None  # type: ignore[assignment, misc]
+    _httpx = None  # type: ignore[assignment]
 
 import json
 
@@ -51,6 +55,7 @@ from adcp.exceptions import (
     IdempotencyExpiredError,
 )
 from adcp.protocols.base import ProtocolAdapter
+from adcp.signing.autosign import current_operation as _signing_operation
 from adcp.types.core import DebugInfo, TaskResult, TaskStatus
 
 # Spec-defined limits from docs/building/implementation/mcp-response-extraction.mdx
@@ -58,6 +63,43 @@ from adcp.types.core import DebugInfo, TaskResult, TaskStatus
 _MAX_TEXT_SIZE_BYTES = 1_048_576  # 1MB cap on text items before JSON.parse
 _MAX_ERROR_SIZE_BYTES = 4096  # total adcp_error JSON-serialized size
 _MAX_ERROR_CODE_LEN = 64
+
+
+def _make_signing_http_factory(
+    hook: Callable[[httpx.Request], Awaitable[None]],
+) -> Callable[..., httpx.AsyncClient]:
+    """Build an ``httpx_client_factory`` that installs a signing request hook.
+
+    ``streamablehttp_client`` accepts a factory with signature
+    ``(headers, timeout, auth) -> httpx.AsyncClient``. Our factory forwards
+    those kwargs, registers the signing hook as an httpx request event
+    hook, and disables redirect following: an RFC 9421 signature binds the
+    original ``@authority``, so a 302 to a different host would send the
+    signed request onward with a stale authority and fail verification.
+    """
+
+    def factory(
+        headers: dict[str, str] | None = None,
+        timeout: httpx.Timeout | None = None,
+        auth: httpx.Auth | None = None,
+        **extra: Any,
+    ) -> httpx.AsyncClient:
+        # Forward any future MCP-SDK kwargs (e.g. verify=, cert=) verbatim
+        # so adding a new factory parameter upstream doesn't break signing.
+        kwargs: dict[str, Any] = {
+            "follow_redirects": False,
+            "event_hooks": {"request": [hook]},
+            **extra,
+        }
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        if headers is not None:
+            kwargs["headers"] = headers
+        if auth is not None:
+            kwargs["auth"] = auth
+        return _httpx.AsyncClient(**kwargs)
+
+    return factory
 
 
 def _text_of(item: Any) -> str | None:
@@ -302,6 +344,24 @@ class MCPAdapter(ProtocolAdapter):
                 base_uri = self.agent_config.agent_uri.rstrip("/")
                 urls_to_try.append(f"{base_uri}/mcp")
 
+            # RFC 9421 auto-signing: if ADCPClient installed a signing request
+            # hook, wire it into streamable_http via a custom httpx client
+            # factory. SSE transport has no equivalent knob — warn the user
+            # and fall through to unsigned SSE.
+            streamable_http_extra: dict[str, Any] = {}
+            if self.signing_request_hook is not None:
+                if self.agent_config.mcp_transport == "streamable_http":
+                    streamable_http_extra["httpx_client_factory"] = (
+                        _make_signing_http_factory(self.signing_request_hook)
+                    )
+                else:
+                    logger.warning(
+                        "RFC 9421 auto-signing is not supported on MCP SSE "
+                        "transport for agent %s; use mcp_transport='streamable_http' "
+                        "to sign outgoing requests.",
+                        self.agent_config.id,
+                    )
+
             last_error = None
             for url in urls_to_try:
                 try:
@@ -310,7 +370,10 @@ class MCPAdapter(ProtocolAdapter):
                         # Use streamable HTTP transport (newer, bidirectional)
                         read, write, _get_session_id = await self._exit_stack.enter_async_context(
                             streamablehttp_client(
-                                url, headers=headers, timeout=self.agent_config.timeout
+                                url,
+                                headers=headers,
+                                timeout=self.agent_config.timeout,
+                                **streamable_http_extra,
                             )
                         )
                     else:
@@ -443,8 +506,17 @@ class MCPAdapter(ProtocolAdapter):
                     "transport": self.agent_config.mcp_transport,
                 }
 
-            # Call the tool using MCP client session
-            result = await session.call_tool(tool_name, params)
+            # Stamp the AdCP operation name so the httpx request event hook
+            # installed by ADCPClient (when a SigningConfig is present) can
+            # look up the seller's signing policy for this call. Scoped
+            # tightly around call_tool so session.initialize() above and
+            # other out-of-band traffic stay outside the signing scope.
+            signing_token = _signing_operation.set(tool_name)
+            try:
+                # Call the tool using MCP client session
+                result = await session.call_tool(tool_name, params)
+            finally:
+                _signing_operation.reset(signing_token)
 
             # Check if this is an error response
             is_error = hasattr(result, "isError") and result.isError
