@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/content-standards/validate-content-delivery-response.json",
   "title": "Validate Content Delivery Response",
   "description": "Response payload with per-record verdicts and optional feature breakdown",
   "type": "object",
@@ -71,7 +72,7 @@
                     },
                     "explanation": {
                       "type": "string",
-                      "description": "Directional human-readable explanation (e.g., 'Below minimum resolution for display placement'). Avoid quantitative thresholds \u2014 the evaluator is the oracle."
+                      "description": "Directional human-readable explanation (e.g., 'Below minimum resolution for display placement'). Avoid quantitative thresholds — the evaluator is the oracle."
                     },
                     "confidence": {
                       "type": "number",
@@ -187,7 +188,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.217Z",
+    "generatedAt": "2026-04-19T02:29:11.568Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/property/validate-property-delivery-request.json",
   "title": "Validate Property Delivery Request",
   "description": "Request payload for validate_property_delivery task. Validates delivery records against a property list to determine compliance.",
   "type": "object",
@@ -13,6 +14,152 @@
     "list_id": {
       "type": "string",
       "description": "ID of the property list to validate against"
+    },
+    "account": {
+      "title": "Account Reference",
+      "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.",
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "account_id": {
+              "type": "string",
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+            }
+          },
+          "required": [
+            "account_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "brand": {
+              "title": "Brand Reference",
+              "description": "Brand reference identifying the advertiser",
+              "type": "object",
+              "properties": {
+                "domain": {
+                  "type": "string",
+                  "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                },
+                "brand_id": {
+                  "title": "Brand ID",
+                  "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
+                  "type": "string",
+                  "pattern": "^[a-z0-9_]+$",
+                  "examples": [
+                    "tide",
+                    "cheerios",
+                    "air_jordan",
+                    "nike",
+                    "pampers"
+                  ]
+                },
+                "industries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json."
+                },
+                "data_subject_contestation": {
+                  "type": "object",
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "pattern": "^https://"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "languages": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "anyOf": [
+                    {
+                      "required": [
+                        "url"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "email"
+                      ]
+                    }
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "domain"
+              ],
+              "additionalProperties": false,
+              "examples": [
+                {
+                  "domain": "nova-brands.com",
+                  "brand_id": "spark"
+                },
+                {
+                  "domain": "nova-brands.com",
+                  "brand_id": "glow"
+                },
+                {
+                  "domain": "acme-corp.com"
+                }
+              ]
+            },
+            "operator": {
+              "type": "string",
+              "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+            },
+            "sandbox": {
+              "type": "boolean",
+              "description": "When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).",
+              "default": false
+            }
+          },
+          "required": [
+            "brand",
+            "operator"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "examples": [
+        {
+          "account_id": "acc_acme_001"
+        },
+        {
+          "brand": {
+            "domain": "acme-corp.com"
+          },
+          "operator": "acme-corp.com"
+        },
+        {
+          "brand": {
+            "domain": "nova-brands.com",
+            "brand_id": "spark"
+          },
+          "operator": "pinnacle-media.com"
+        },
+        {
+          "brand": {
+            "domain": "acme-corp.com"
+          },
+          "operator": "acme-corp.com",
+          "sandbox": true
+        }
+      ]
     },
     "records": {
       "type": "array",
@@ -74,7 +221,7 @@
                   "apple_podcast_id": "Apple Podcasts numeric ID",
                   "spotify_collection_id": "Spotify show or collection URI",
                   "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                  "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
+                  "station_id": "Broadcast station identifier — call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
                   "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)"
                 },
                 "examples": [
@@ -151,7 +298,7 @@
   ],
   "additionalProperties": false,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.471Z",
+    "generatedAt": "2026-04-19T02:29:11.849Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

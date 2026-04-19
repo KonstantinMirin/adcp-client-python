@@ -83,6 +83,7 @@ HANDLER_TO_DOMAIN: dict[str, str] = {
     "get_brand_identity": "brand",
     "get_rights": "brand",
     "acquire_rights": "brand",
+    "update_rights": "brand",
     # Collection Lists
     "create_collection_list": "governance",
     "get_collection_list": "governance",

@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/collection/collection-list-changed-webhook.json",
   "title": "Collection List Changed Webhook",
-  "description": "Webhook notification sent when a collection list's resolved collections change. Contains a summary only \u2014 recipients must call get_collection_list to retrieve the updated collections.",
+  "description": "Webhook notification sent when a collection list's resolved collections change. Contains a summary only — recipients must call get_collection_list to retrieve the updated collections.",
   "type": "object",
   "properties": {
     "event": {
@@ -48,17 +49,12 @@
     },
     "signature": {
       "type": "string",
-      "description": "HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only \u2014 the headers are authoritative. See docs/building/implementation/security#webhook-security."
+      "description": "HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only — the headers are authoritative. See docs/building/implementation/security#webhook-security."
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
-  "required": [
-    "event",
-    "list_id",
-    "resolved_at",
-    "signature"
-  ],
+  "required": ["event", "list_id", "resolved_at", "signature"],
   "additionalProperties": false
 }

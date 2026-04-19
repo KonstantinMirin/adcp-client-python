@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/creative/list-creative-formats-response.json",
   "title": "List Creative Formats Response (Creative Agent)",
   "description": "Response payload for list_creative_formats task from creative agent - returns full format definitions",
   "type": "object",
@@ -26,7 +27,7 @@
               },
               "asset_role": {
                 "type": "string",
-                "description": "Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
+                "description": "Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only — manifests key assets by asset_id, not asset_role."
               },
               "required": {
                 "type": "boolean",
@@ -140,7 +141,7 @@
               },
               "asset_role": {
                 "type": "string",
-                "description": "Descriptive label for this asset's purpose. For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
+                "description": "Descriptive label for this asset's purpose. For documentation and UI display only — manifests key assets by asset_id, not asset_role."
               },
               "required": {
                 "type": "boolean",
@@ -1397,7 +1398,7 @@
                             "properties": {
                               "asset_group_id": {
                                 "type": "string",
-                                "description": "The asset group this constraint applies to. Values are format-defined vocabulary \u2014 each format chooses its own group IDs (e.g., 'headlines', 'images', 'videos'). Buyers discover them via list_creative_formats."
+                                "description": "The asset group this constraint applies to. Values are format-defined vocabulary — each format chooses its own group IDs (e.g., 'headlines', 'images', 'videos'). Buyers discover them via list_creative_formats."
                               },
                               "asset_type": {
                                 "title": "Asset Content Type",
@@ -2137,10 +2138,10 @@
                         },
                         "field_bindings": {
                           "type": "array",
-                          "description": "Explicit mappings from format template slots to catalog item fields or typed asset pools. Optional \u2014 creative agents can infer mappings without them, but bindings make the relationship self-describing and enable validation. Covers scalar fields (asset_id \u2192 catalog_field), asset pools (asset_id \u2192 asset_group_id on the catalog item), and repeatable groups that iterate over catalog items.",
+                          "description": "Explicit mappings from format template slots to catalog item fields or typed asset pools. Optional — creative agents can infer mappings without them, but bindings make the relationship self-describing and enable validation. Covers scalar fields (asset_id → catalog_field), asset pools (asset_id → asset_group_id on the catalog item), and repeatable groups that iterate over catalog items.",
                           "items": {
                             "title": "Catalog Field Binding",
-                            "description": "Maps a format template slot to a catalog item field or typed asset pool. The 'kind' field identifies the binding variant. All bindings are optional \u2014 agents can still infer mappings without them.",
+                            "description": "Maps a format template slot to a catalog item field or typed asset pool. The 'kind' field identifies the binding variant. All bindings are optional — agents can still infer mappings without them.",
                             "definitions": {
                               "ScalarBinding": {
                                 "type": "object",
@@ -2259,7 +2260,7 @@
                             ],
                             "examples": [
                               {
-                                "description": "Scalar binding \u2014 hotel name to headline slot",
+                                "description": "Scalar binding — hotel name to headline slot",
                                 "data": {
                                   "kind": "scalar",
                                   "asset_id": "headline",
@@ -2267,7 +2268,7 @@
                                 }
                               },
                               {
-                                "description": "Scalar binding \u2014 nested field (nightly rate)",
+                                "description": "Scalar binding — nested field (nightly rate)",
                                 "data": {
                                   "kind": "scalar",
                                   "asset_id": "price_badge",
@@ -2275,7 +2276,7 @@
                                 }
                               },
                               {
-                                "description": "Asset pool binding \u2014 hero image from landscape pool",
+                                "description": "Asset pool binding — hero image from landscape pool",
                                 "data": {
                                   "kind": "asset_pool",
                                   "asset_id": "hero_image",
@@ -2283,7 +2284,7 @@
                                 }
                               },
                               {
-                                "description": "Asset pool binding \u2014 Snap vertical background from vertical pool",
+                                "description": "Asset pool binding — Snap vertical background from vertical pool",
                                 "data": {
                                   "kind": "asset_pool",
                                   "asset_id": "snap_background",
@@ -2291,7 +2292,7 @@
                                 }
                               },
                               {
-                                "description": "Catalog group binding \u2014 carousel where each slide is one hotel",
+                                "description": "Catalog group binding — carousel where each slide is one hotel",
                                 "data": {
                                   "kind": "catalog_group",
                                   "format_group_id": "slide",
@@ -3336,8 +3337,8 @@
                     "COLLECTION_NAME": "Program or collection name",
                     "INSTALLMENT_ID": "Installment identifier (podcast episode, print issue, etc.)",
                     "AUDIO_DURATION": "Audio content duration in seconds",
-                    "TMPX": "TMP exposure token \u2014 HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
-                    "AXEM": "AXE contextual metadata (encoded blob). Legacy \u2014 in TMP, use Offer macros for dynamic creative values and TMPX for exposure tracking.",
+                    "TMPX": "TMP exposure token — HPKE-encrypted identity tokens for per-user exposure tracking. Produced by Identity Match, substituted into creative tracking URLs, received by the buyer's impression pixel.",
+                    "AXEM": "AXE contextual metadata (encoded blob). Legacy — in TMP, use Offer macros for dynamic creative values and TMPX for exposure tracking.",
                     "CATALOG_ID": "Buyer-defined catalog identifier from the catalog's catalog_id field",
                     "SKU": "Product SKU identifier for the catalog item being rendered",
                     "GTIN": "Global Trade Item Number for the catalog item being rendered",
@@ -3550,7 +3551,7 @@
           },
           "supported_disclosure_positions": {
             "type": "array",
-            "description": "Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees \u2014 creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.",
+            "description": "Disclosure positions this format can render. Buyers use this to determine whether a format can satisfy their compliance requirements before submitting a creative. When omitted, the format makes no disclosure rendering guarantees — creative agents SHOULD treat this as incompatible with briefs that require specific disclosure positions. Values correspond to positions on creative-brief.json required_disclosures.",
             "items": {
               "title": "Disclosure Position",
               "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
@@ -3721,7 +3722,7 @@
             "description": "Pricing options for this format. Used by transformation and generation agents that charge per format adapted, per image generated, or per unit of work. Present when the request included include_pricing=true and account. Ad servers and library-based agents expose pricing on list_creatives instead.",
             "items": {
               "title": "Vendor Pricing Option",
-              "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array \u2014 vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
+              "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array — vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
               "allOf": [
                 {
                   "type": "object",
@@ -3775,7 +3776,7 @@
                     },
                     {
                       "title": "PercentOfMediaPricing",
-                      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+                      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
                       "type": "object",
                       "properties": {
                         "model": {
@@ -3790,7 +3791,7 @@
                         },
                         "max_cpm": {
                           "type": "number",
-                          "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
+                          "description": "Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).",
                           "minimum": 0
                         },
                         "currency": {
@@ -3867,7 +3868,7 @@
                         },
                         "unit": {
                           "type": "string",
-                          "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
+                          "description": "What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
                         },
                         "unit_price": {
                           "type": "number",
@@ -4041,7 +4042,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.256Z",
+    "generatedAt": "2026-04-19T02:29:11.615Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -70,6 +70,7 @@ if TYPE_CHECKING:
         UpdateContentStandardsRequest,
         UpdateMediaBuyRequest,
         UpdatePropertyListRequest,
+        UpdateRightsRequest,
         ValidateContentDeliveryRequest,
     )
 
@@ -691,6 +692,26 @@ class ADCPHandler(ABC):
         Override this in BrandHandler subclasses.
         """
         return self._not_supported("acquire_rights")
+
+    async def update_rights(
+        self, params: UpdateRightsRequest | dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        """Update terms of an existing rights acquisition.
+
+        Override this in BrandHandler subclasses. Partial update: the
+        request carries ``rights_id`` plus any subset of the mutable fields
+        (``end_date``, ``impression_cap``, ``pricing_option_id``, ``paused``).
+
+        Seller responsibilities you own when implementing this:
+
+        * Reject updates on expired or revoked acquisitions with an
+          appropriate error code — do not partial-commit.
+        * Reject ``pricing_option_id`` swaps to incompatible options — the
+          new option's terms must be a strict superset of the original.
+        * Apply all accepted fields atomically — callers should never
+          observe a half-applied update on failure.
+        """
+        return self._not_supported("update_rights")
 
     # ========================================================================
     # V3 Compliance Operations

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/property/update-property-list-response.json",
   "title": "Update Property List Response",
   "description": "Response payload for update_property_list task",
   "type": "object",
@@ -21,9 +22,151 @@
           "type": "string",
           "description": "Description of the list's purpose"
         },
-        "principal": {
-          "type": "string",
-          "description": "Principal identity that owns this list"
+        "account": {
+          "title": "Account Reference",
+          "description": "Account that owns this list. Returned as account_id form (seller-assigned identifier).",
+          "type": "object",
+          "oneOf": [
+            {
+              "properties": {
+                "account_id": {
+                  "type": "string",
+                  "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+                }
+              },
+              "required": [
+                "account_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "properties": {
+                "brand": {
+                  "title": "Brand Reference",
+                  "description": "Brand reference identifying the advertiser",
+                  "type": "object",
+                  "properties": {
+                    "domain": {
+                      "type": "string",
+                      "description": "Domain where /.well-known/brand.json is hosted, or the brand's operating domain",
+                      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                    },
+                    "brand_id": {
+                      "title": "Brand ID",
+                      "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
+                      "type": "string",
+                      "pattern": "^[a-z0-9_]+$",
+                      "examples": [
+                        "tide",
+                        "cheerios",
+                        "air_jordan",
+                        "nike",
+                        "pampers"
+                      ]
+                    },
+                    "industries": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json."
+                    },
+                    "data_subject_contestation": {
+                      "type": "object",
+                      "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "pattern": "^https://"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email"
+                        },
+                        "languages": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "anyOf": [
+                        {
+                          "required": [
+                            "url"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "email"
+                          ]
+                        }
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "domain"
+                  ],
+                  "additionalProperties": false,
+                  "examples": [
+                    {
+                      "domain": "nova-brands.com",
+                      "brand_id": "spark"
+                    },
+                    {
+                      "domain": "nova-brands.com",
+                      "brand_id": "glow"
+                    },
+                    {
+                      "domain": "acme-corp.com"
+                    }
+                  ]
+                },
+                "operator": {
+                  "type": "string",
+                  "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                },
+                "sandbox": {
+                  "type": "boolean",
+                  "description": "When true, references the sandbox account for this brand/operator pair. Defaults to false (production account).",
+                  "default": false
+                }
+              },
+              "required": [
+                "brand",
+                "operator"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "examples": [
+            {
+              "account_id": "acc_acme_001"
+            },
+            {
+              "brand": {
+                "domain": "acme-corp.com"
+              },
+              "operator": "acme-corp.com"
+            },
+            {
+              "brand": {
+                "domain": "nova-brands.com",
+                "brand_id": "spark"
+              },
+              "operator": "pinnacle-media.com"
+            },
+            {
+              "brand": {
+                "domain": "acme-corp.com"
+              },
+              "operator": "acme-corp.com",
+              "sandbox": true
+            }
+          ]
         },
         "base_properties": {
           "type": "array",
@@ -182,7 +325,7 @@
                             "apple_podcast_id": "Apple Podcasts numeric ID",
                             "spotify_collection_id": "Spotify show or collection URI",
                             "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                            "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
+                            "station_id": "Broadcast station identifier — call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
                             "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)"
                           },
                           "examples": [
@@ -280,7 +423,7 @@
                   "influencer": "Creator and influencer marketing partnerships",
                   "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
                   "product_placement": "Product placement, branded content, and sponsorship integrations",
-                  "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+                  "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
                 }
               },
               "minItems": 1
@@ -324,7 +467,7 @@
               "description": "Feature-based requirements. Property must pass ALL requirements (AND logic).",
               "items": {
                 "title": "Feature Requirement",
-                "description": "A feature-based requirement \u2014 a reusable predicate over a feature value. Used by property list filters today; designed for reuse in other surfaces (audience filters, creative gates) in future versions. Use min_value/max_value for quantitative features, allowed_values for binary/categorical features.",
+                "description": "A feature-based requirement — a reusable predicate over a feature value. Used by property list filters today; designed for reuse in other surfaces (audience filters, creative gates) in future versions. Use min_value/max_value for quantitative features, allowed_values for binary/categorical features.",
                 "type": "object",
                 "properties": {
                   "feature_id": {
@@ -356,7 +499,7 @@
                   },
                   "policy_id": {
                     "type": "string",
-                    "description": "Optional attribution \u2014 when this requirement exists to satisfy a specific policy, policy_id references the authorizing PolicyEntry. Reserved field; populated by producers in 3.1 and later (see issue #2303). Governance agents MAY ignore in 3.0."
+                    "description": "Optional attribution — when this requirement exists to satisfy a specific policy, policy_id references the authorizing PolicyEntry. Reserved field; populated by producers in 3.1 and later (see issue #2303). Governance agents MAY ignore in 3.0."
                   }
                 },
                 "required": [
@@ -421,7 +564,7 @@
                       "apple_podcast_id": "Apple Podcasts numeric ID",
                       "spotify_collection_id": "Spotify show or collection URI",
                       "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                      "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
+                      "station_id": "Broadcast station identifier — call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
                       "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)"
                     },
                     "examples": [
@@ -471,6 +614,47 @@
                 "nike",
                 "pampers"
               ]
+            },
+            "industries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json."
+            },
+            "data_subject_contestation": {
+              "type": "object",
+              "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "format": "uri",
+                  "pattern": "^https://"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "anyOf": [
+                {
+                  "required": [
+                    "url"
+                  ]
+                },
+                {
+                  "required": [
+                    "email"
+                  ]
+                }
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -521,7 +705,7 @@
           "description": "Pricing options for this property list. Present when the requesting account has a billing relationship with the list provider. The buyer passes the selected pricing_option_id in report_usage.",
           "items": {
             "title": "Vendor Pricing Option",
-            "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array \u2014 vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
+            "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array — vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
             "allOf": [
               {
                 "type": "object",
@@ -575,7 +759,7 @@
                   },
                   {
                     "title": "PercentOfMediaPricing",
-                    "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+                    "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
                     "type": "object",
                     "properties": {
                       "model": {
@@ -590,7 +774,7 @@
                       },
                       "max_cpm": {
                         "type": "number",
-                        "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
+                        "description": "Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).",
                         "minimum": 0
                       },
                       "currency": {
@@ -667,7 +851,7 @@
                       },
                       "unit": {
                         "type": "string",
-                        "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
+                        "description": "What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
                       },
                       "unit_price": {
                         "type": "number",
@@ -725,7 +909,7 @@
   ],
   "additionalProperties": false,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.470Z",
+    "generatedAt": "2026-04-19T02:29:11.847Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

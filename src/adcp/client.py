@@ -96,6 +96,10 @@ from adcp.types.generated_poc.brand.get_brand_identity_response import (
 )
 from adcp.types.generated_poc.brand.get_rights_request import GetRightsRequest
 from adcp.types.generated_poc.brand.get_rights_response import GetRightsResponse
+from adcp.types.generated_poc.brand.update_rights_request import UpdateRightsRequest
+from adcp.types.generated_poc.brand.update_rights_response import (
+    UpdateRightsResponse,
+)
 
 # V3 Governance (Collection Lists) types
 from adcp.types.generated_poc.collection.create_collection_list_request import (
@@ -2998,6 +3002,63 @@ class ADCPClient:
 
         return self.adapter._parse_response(raw_result, AcquireRightsResponse)
 
+    async def update_rights(
+        self,
+        request: UpdateRightsRequest,
+    ) -> TaskResult[UpdateRightsResponse]:
+        """Update terms of an existing rights acquisition.
+
+        Modifies a previously acquired rights record — typically to extend
+        the ``end_date``, raise the ``impression_cap``, pause/unpause via
+        ``paused``, or swap to a compatible ``pricing_option_id``. Partial
+        update: pass only the fields you want to change.
+
+        Failure modes (surface as ``TaskResult`` with ``success=False``):
+
+        * Acquisition is expired or revoked — the seller rejects the update
+          outright; mint a fresh ``acquire_rights`` instead.
+        * ``pricing_option_id`` swap to an incompatible option — rejected;
+          the new option's terms must be a strict superset / compatible
+          with the original acquisition.
+        * No partial-state mutations on rejection: the acquisition remains
+          at its prior state when any field fails validation.
+
+        Args:
+            request: Request with ``rights_id`` and at least one mutable
+                field (``end_date``, ``impression_cap``, ``paused``, or
+                ``pricing_option_id``).
+
+        Returns:
+            TaskResult containing UpdateRightsResponse (updated or error).
+        """
+        operation_id = create_operation_id()
+        params = request.model_dump(mode="json", exclude_none=True)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_REQUEST,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="update_rights",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        raw_result = await self.adapter.update_rights(params)
+
+        self._emit_activity(
+            Activity(
+                type=ActivityType.PROTOCOL_RESPONSE,
+                operation_id=operation_id,
+                agent_id=self.agent_config.id,
+                task_type="update_rights",
+                status=raw_result.status,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
+        return self.adapter._parse_response(raw_result, UpdateRightsResponse)
+
     # ========================================================================
     # V3 Protocol Methods - Compliance
     # ========================================================================
@@ -3238,6 +3299,7 @@ class ADCPClient:
             "get_brand_identity": GetBrandIdentityResponse,
             "get_rights": GetRightsResponse,
             "acquire_rights": AcquireRightsResponse,
+            "update_rights": UpdateRightsResponse,
             # Compliance
             "comply_test_controller": ComplyTestControllerResponse,
         }

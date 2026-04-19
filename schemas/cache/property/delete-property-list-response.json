@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/property/delete-property-list-response.json",
   "title": "Delete Property List Response",
   "description": "Response payload for delete_property_list task",
   "type": "object",
@@ -13,10 +14,10 @@
       "description": "ID of the deleted list"
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

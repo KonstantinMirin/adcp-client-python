@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/core/tasks-get-request.json",
   "title": "Tasks Get Request",
   "description": "Request parameters for retrieving a specific task by ID with optional conversation history across all AdCP domains",
   "type": "object",
@@ -52,7 +53,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.219Z",
+    "generatedAt": "2026-04-19T02:29:11.569Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

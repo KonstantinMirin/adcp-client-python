@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/sponsored-intelligence/si-initiate-session-request.json",
   "title": "SI Initiate Session Request",
   "description": "Host initiates a session with a brand agent",
   "type": "object",
@@ -302,7 +303,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.483Z",
+    "generatedAt": "2026-04-19T02:29:11.861Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

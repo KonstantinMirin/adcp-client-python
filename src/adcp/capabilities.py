@@ -76,6 +76,7 @@ TASK_FEATURE_MAP: dict[str, str] = {
     "get_brand_identity": "brand",
     "get_rights": "brand",
     "acquire_rights": "brand",
+    "update_rights": "brand",
 }
 
 # Bidirectional: feature -> list of tasks that require it.

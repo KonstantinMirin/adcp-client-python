@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/account/sync-accounts-response.json",
   "title": "Sync Accounts Response",
   "description": "Response from account sync operation. Returns per-account results with status and billing, or operation-level errors on complete failure.",
   "type": "object",
@@ -24,7 +25,7 @@
                 "description": "Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations."
               },
               "brand": {
-                "$ref": "../core/brand-ref.json",
+                "$ref": "/schemas/latest/core/brand-ref.json",
                 "description": "Brand reference, echoed from the request"
               },
               "operator": {
@@ -67,17 +68,12 @@
                 "description": "Who is invoiced on this account. Matches the requested billing model."
               },
               "billing_entity": {
-                "$ref": "../core/business-entity.json",
+                "$ref": "/schemas/latest/core/business-entity.json",
                 "description": "Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
               },
               "account_scope": {
                 "type": "string",
-                "enum": [
-                  "operator",
-                  "brand",
-                  "operator_brand",
-                  "agent"
-                ],
+                "enum": ["operator", "brand", "operator_brand", "agent"],
                 "description": "How the seller scoped this account. operator: shared across all brands for this operator. brand: shared across all operators for this brand. operator_brand: dedicated to this operator+brand pair. agent: the agent's default account."
               },
               "setup": {
@@ -141,7 +137,7 @@
                 "type": "array",
                 "description": "Per-account errors (only present when action is 'failed')",
                 "items": {
-                  "$ref": "../core/error.json"
+                  "$ref": "/schemas/latest/core/error.json"
                 }
               },
               "warnings": {
@@ -166,10 +162,10 @@
           }
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -191,15 +187,15 @@
           "type": "array",
           "description": "Operation-level errors (e.g., authentication failure, service unavailable)",
           "items": {
-            "$ref": "../core/error.json"
+            "$ref": "/schemas/latest/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -224,15 +220,12 @@
   ],
   "examples": [
     {
-      "description": "Mixed results \u2014 one active, one pending approval",
+      "description": "Mixed results — one active, one pending approval",
       "data": {
         "accounts": [
           {
             "account_id": "acc_spark_001",
-            "brand": {
-              "domain": "nova-brands.com",
-              "brand_id": "spark"
-            },
+            "brand": { "domain": "nova-brands.com", "brand_id": "spark" },
             "operator": "pinnacle-media.com",
             "name": "Spark (via Pinnacle)",
             "action": "created",
@@ -242,10 +235,7 @@
           },
           {
             "account_id": "acc_glow_pending",
-            "brand": {
-              "domain": "nova-brands.com",
-              "brand_id": "glow"
-            },
+            "brand": { "domain": "nova-brands.com", "brand_id": "glow" },
             "operator": "pinnacle-media.com",
             "name": "Glow",
             "action": "created",
@@ -262,14 +252,11 @@
       }
     },
     {
-      "description": "Rejected account \u2014 no account_id assigned",
+      "description": "Rejected account — no account_id assigned",
       "data": {
         "accounts": [
           {
-            "brand": {
-              "domain": "acme-corp.com",
-              "brand_id": "clearance"
-            },
+            "brand": { "domain": "acme-corp.com", "brand_id": "clearance" },
             "operator": "acme-corp.com",
             "action": "created",
             "status": "rejected",
@@ -281,13 +268,11 @@
       }
     },
     {
-      "description": "Unsupported billing \u2014 seller rejects the request",
+      "description": "Unsupported billing — seller rejects the request",
       "data": {
         "accounts": [
           {
-            "brand": {
-              "domain": "acme-corp.com"
-            },
+            "brand": { "domain": "acme-corp.com" },
             "operator": "acme-corp.com",
             "action": "failed",
             "status": "rejected",
@@ -307,9 +292,7 @@
         "accounts": [
           {
             "account_id": "acc_acme_direct_bill",
-            "brand": {
-              "domain": "acme-corp.com"
-            },
+            "brand": { "domain": "acme-corp.com" },
             "operator": "pinnacle-media.com",
             "name": "Acme Corp (billed direct)",
             "action": "created",
@@ -340,13 +323,11 @@
       }
     },
     {
-      "description": "Unsupported payment terms \u2014 seller rejects the request",
+      "description": "Unsupported payment terms — seller rejects the request",
       "data": {
         "accounts": [
           {
-            "brand": {
-              "domain": "acme-corp.com"
-            },
+            "brand": { "domain": "acme-corp.com" },
             "operator": "acme-corp.com",
             "action": "failed",
             "status": "rejected",

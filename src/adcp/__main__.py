@@ -296,6 +296,7 @@ def _get_dispatch_table() -> dict[str, tuple[str, TypeAdapter[Any] | None]]:
         "get_brand_identity": ("get_brand_identity", _ta(gen.GetBrandIdentityRequest)),
         "get_rights": ("get_rights", _ta(gen.GetRightsRequest)),
         "acquire_rights": ("acquire_rights", _ta(gen.AcquireRightsRequest)),
+        "update_rights": ("update_rights", _ta(gen.UpdateRightsRequest)),
         # V3 Compliance
         "comply_test_controller": ("comply_test_controller", _ta(gen.ComplyTestControllerRequest)),
     }

@@ -1,11 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/property/create-property-list-response.json",
   "title": "Create Property List Response",
   "description": "Response payload for create_property_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "property-list.json",
+      "$ref": "/schemas/latest/property/property-list.json",
       "description": "The created property list"
     },
     "auth_token": {
@@ -13,10 +14,10 @@
       "description": "Token that can be shared with sellers to authorize fetching this list. Store this - it is only returned at creation time."
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

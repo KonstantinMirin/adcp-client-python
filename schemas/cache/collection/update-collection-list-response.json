@@ -1,18 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/collection/update-collection-list-response.json",
   "title": "Update Collection List Response",
   "description": "Response payload for update_collection_list task",
   "type": "object",
   "properties": {
     "list": {
-      "$ref": "collection-list.json",
+      "$ref": "/schemas/latest/collection/collection-list.json",
       "description": "The updated collection list"
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

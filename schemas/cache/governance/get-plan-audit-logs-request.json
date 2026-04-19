@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/governance/get-plan-audit-logs-request.json",
   "title": "Get Plan Audit Logs Request",
   "description": "Retrieve governance state and audit trail for one or more plans.",
   "type": "object",
@@ -37,7 +38,7 @@
     "purchase_types": {
       "type": "array",
       "items": {
-        "$ref": "../enums/purchase-type.json"
+        "$ref": "/schemas/latest/enums/purchase-type.json"
       },
       "minItems": 1,
       "description": "Filter audit entries by purchase type. Returns only checks and outcomes matching these purchase types (e.g., ['rights_license'] to see all rights activity)."
@@ -48,10 +49,10 @@
       "default": false
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "anyOf": [

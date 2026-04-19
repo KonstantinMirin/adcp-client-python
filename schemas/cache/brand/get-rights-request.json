@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/brand/get-rights-request.json",
   "title": "Get Rights Request",
-  "description": "Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first \u2014 no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.",
+  "description": "Search for licensable rights across a brand agent's roster. Returns matches with pricing. Discovery is natural-language-first — no taxonomy for categories. The agent interprets intent from the query and filters based on the buyer's brand compatibility.",
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -19,12 +20,12 @@
       "type": "array",
       "description": "Rights uses being requested. The agent returns options covering these uses, potentially bundled into composite pricing.",
       "items": {
-        "$ref": "../enums/right-use.json"
+        "$ref": "/schemas/latest/enums/right-use.json"
       },
       "minItems": 1
     },
     "buyer_brand": {
-      "$ref": "../core/brand-ref.json",
+      "$ref": "/schemas/latest/core/brand-ref.json",
       "description": "The buyer's brand. The agent fetches the buyer's brand.json for compatibility filtering (e.g., dietary conflicts, competitor exclusions)."
     },
     "countries": {
@@ -40,7 +41,7 @@
       "description": "Search within a specific brand's rights. If omitted, searches across the agent's full roster."
     },
     "right_type": {
-      "$ref": "../enums/right-type.json",
+      "$ref": "/schemas/latest/enums/right-type.json",
       "description": "Filter by type of rights (talent, music, stock_media, etc.)"
     },
     "include_excluded": {
@@ -49,14 +50,14 @@
       "default": false
     },
     "pagination": {
-      "$ref": "../core/pagination-request.json",
+      "$ref": "/schemas/latest/core/pagination-request.json",
       "description": "Pagination parameters for large result sets"
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/core/assets/audio-asset.json",
   "title": "Audio Asset",
   "description": "Audio asset with URL and technical specifications",
   "type": "object",
@@ -33,21 +34,12 @@
     },
     "channels": {
       "type": "string",
-      "enum": [
-        "mono",
-        "stereo",
-        "5.1",
-        "7.1"
-      ],
+      "enum": ["mono", "stereo", "5.1", "7.1"],
       "description": "Channel configuration"
     },
     "bit_depth": {
       "type": "integer",
-      "enum": [
-        16,
-        24,
-        32
-      ],
+      "enum": [16, 24, 32],
       "description": "Bit depth"
     },
     "bitrate_kbps": {
@@ -70,7 +62,7 @@
       "x-accessibility": true
     },
     "provenance": {
-      "$ref": "../../core/provenance.json",
+      "$ref": "/schemas/latest/core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/media-buy/provide-performance-feedback-request.json",
   "title": "Provide Performance Feedback Request",
   "description": "Request payload for provide_performance_feedback task",
   "type": "object",
@@ -108,7 +109,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.422Z",
+    "generatedAt": "2026-04-19T02:29:11.791Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

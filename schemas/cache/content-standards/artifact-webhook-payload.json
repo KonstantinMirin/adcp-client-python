@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/content-standards/artifact-webhook-payload.json",
   "title": "Artifact Webhook Payload",
   "description": "Payload sent by sales agents to orchestrators when pushing content artifacts for governance validation. Complements get_media_buy_artifacts for push-based artifact delivery.",
   "type": "object",
@@ -24,7 +25,7 @@
         "type": "object",
         "properties": {
           "artifact": {
-            "$ref": "artifact.json",
+            "$ref": "/schemas/latest/content-standards/artifact.json",
             "description": "The content artifact"
           },
           "delivered_at": {
@@ -41,10 +42,7 @@
             "description": "Package within the media buy this artifact relates to"
           }
         },
-        "required": [
-          "artifact",
-          "delivered_at"
-        ]
+        "required": ["artifact", "delivered_at"]
       }
     },
     "pagination": {
@@ -66,14 +64,9 @@
       }
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
-  "required": [
-    "media_buy_id",
-    "batch_id",
-    "timestamp",
-    "artifacts"
-  ],
+  "required": ["media_buy_id", "batch_id", "timestamp", "artifacts"],
   "additionalProperties": true
 }

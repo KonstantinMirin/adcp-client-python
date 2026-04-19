@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/creative/list-creative-formats-request.json",
   "title": "List Creative Formats Request (Creative Agent)",
   "description": "Request parameters for discovering creative formats provided by this creative agent",
   "type": "object",
@@ -170,7 +171,7 @@
     },
     "output_format_ids": {
       "type": "array",
-      "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs \u2014 inspect each result's input_format_ids to see what inputs they accept.",
+      "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs — inspect each result's input_format_ids to see what inputs they accept.",
       "items": {
         "title": "Format ID",
         "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
@@ -220,7 +221,7 @@
     },
     "input_format_ids": {
       "type": "array",
-      "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input \u2014 inspect each result's output_format_ids to see what they can produce.",
+      "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input — inspect each result's output_format_ids to see what they can produce.",
       "items": {
         "title": "Format ID",
         "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
@@ -314,6 +315,47 @@
                     "nike",
                     "pampers"
                   ]
+                },
+                "industries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json."
+                },
+                "data_subject_contestation": {
+                  "type": "object",
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "pattern": "^https://"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "languages": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "anyOf": [
+                    {
+                      "required": [
+                        "url"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "email"
+                      ]
+                    }
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -412,7 +454,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.252Z",
+    "generatedAt": "2026-04-19T02:29:11.611Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+
 def _schema_task_names() -> set[str]:
     index_path = Path(__file__).resolve().parents[1] / "schemas" / "cache" / "index.json"
     index_data = json.loads(index_path.read_text())
@@ -67,6 +68,29 @@ def test_mcp_tool_definitions_cover_schema_index():
     tool_names = {tool["name"] for tool in ADCP_TOOL_DEFINITIONS}
     missing = sorted(name for name in _schema_task_names() if name not in tool_names)
     assert missing == []
+
+
+def test_feature_and_domain_maps_cover_brand_tasks() -> None:
+    """Every brand task appears in TASK_FEATURE_MAP and HANDLER_TO_DOMAIN.
+
+    A missing entry is a silent fail-open: client-side ``FeatureResolver``
+    skips the feature check, and decorator-style servers fail to advertise
+    the ``brand`` domain in auto-generated capabilities.
+
+    Scoped to brand tasks for now — extend as other task families adopt
+    feature-gated handlers.
+    """
+    from adcp.capabilities import TASK_FEATURE_MAP
+    from adcp.server.builder import HANDLER_TO_DOMAIN
+
+    brand_tasks = {
+        name for name, domain in HANDLER_TO_DOMAIN.items() if domain == "brand"
+    }
+    missing = sorted(t for t in brand_tasks if t not in TASK_FEATURE_MAP)
+    assert missing == [], (
+        f"brand tasks present in HANDLER_TO_DOMAIN but missing from "
+        f"TASK_FEATURE_MAP (fail-open gap): {missing}"
+    )
 
 
 def test_tool_filtering_by_handler_type():
