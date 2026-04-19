@@ -30,6 +30,8 @@ Determine these four things. Ask the user — don't guess.
 
 **Owned** — first-party data (retailer CDP, publisher contextual, CRM). `signal_id.source: "agent"`.
 
+**Custom** — agent-native segments built on demand from models, composites, or buyer inputs. `signal_id.source: "agent"`, `signal_type: "custom"`.
+
 ### 2. What Segments?
 
 Get specifics: names, definitions, what each represents. Push for 3-5 segments with variety. Each needs:
@@ -70,7 +72,7 @@ class MySignalsAgent(ADCPHandler):
             return adcp_error("SIGNAL_NOT_FOUND", f"Signal {segment_id} not found")
         return activate_signal_response(deployments)
 
-serve(MySignalsAgent(), name="my-signals-agent")
+serve(MySignalsAgent(), name="my-signals-agent", port=3001)
 ```
 
 ## Tools and Required Response Shapes
@@ -89,6 +91,8 @@ async def get_adcp_capabilities(self, params, context=None):
 
 1. `signal_spec` — natural language. Match against segment names and descriptions.
 2. `signal_ids` — exact lookup by ID.
+
+`get_signals` requires anyOf(`signal_spec`, `signal_ids`) per schema — an empty request is invalid.
 
 If `signal_spec` doesn't match anything specific, return all signals (discovery query).
 
@@ -110,8 +114,8 @@ async def get_signals(self, params, context=None):
 
     # Exact ID lookup
     if signal_ids := params.get("signal_ids"):
-        id_set = {sid.get("id") or sid for sid in signal_ids}
-        results = [s for s in results if s["signal_id"]["id"] in id_set]
+        id_set = {(sid["source"], sid["id"]) for sid in signal_ids}
+        results = [s for s in results if (s["signal_id"]["source"], s["signal_id"]["id"]) in id_set]
 
     # CPM filter
     filters = params.get("filters") or {}
@@ -151,6 +155,9 @@ Each signal must include:
 
 **`activate_signal`**
 ```python
+import uuid
+from datetime import datetime, timezone
+
 from adcp.server import adcp_error
 from adcp.server.responses import activate_signal_response
 
@@ -172,7 +179,7 @@ async def activate_signal(self, params, context=None):
                     "type": "segment_id",
                     "segment_id": f"plat-{uuid.uuid4().hex[:8]}",
                 },
-                "deployed_at": "2026-01-01T00:00:00Z",
+                "deployed_at": datetime.now(timezone.utc).isoformat(),
             })
         elif dest.get("type") == "agent":
             deployments.append({
@@ -184,7 +191,7 @@ async def activate_signal(self, params, context=None):
                     "key": "segment",
                     "value": segment_id,
                 },
-                "deployed_at": "2026-01-01T00:00:00Z",
+                "deployed_at": datetime.now(timezone.utc).isoformat(),
             })
 
     return activate_signal_response(deployments)
@@ -209,12 +216,28 @@ async def activate_signal(self, params, context=None):
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`.
 
+## Idempotency for activate_signal
+
+`idempotency_key` is REQUIRED on `activate_signal` per schema (`schemas/cache/signals/activate-signal-request.json`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe replays: same key + same payload returns the cached deployments; different payload returns an `IDEMPOTENCY_CONFLICT` error. Declare the capability so buyers know replays are safe.
+
+```python
+from adcp.server.idempotency import IdempotencyStore
+
+store = IdempotencyStore()
+
+async def get_adcp_capabilities(self, params, context=None):
+    return capabilities_response(["signals"], idempotency=store.capability())
+
+async def activate_signal(self, params, context=None):
+    return await store.wrap(params["idempotency_key"], params, self._do_activate)
+```
+
 ## Validation
 
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp signal_owned --json       # for owned data
-npx @adcp/client storyboard run http://localhost:3001/mcp signal_marketplace --json  # for marketplace
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp signal_owned --json       # for owned data
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp signal_marketplace --json  # for marketplace
 ```
 
 **Keep iterating until all steps pass.**
