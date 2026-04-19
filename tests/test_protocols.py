@@ -500,13 +500,18 @@ class TestMCPAdapter:
             assert result.message == "Found 42 creative formats"
 
     @pytest.mark.asyncio
-    async def test_call_tool_missing_structured_content(self, mcp_config):
-        """Test tool call fails when structuredContent is missing on successful response."""
+    async def test_call_tool_no_structured_adcp_data(self, mcp_config):
+        """Tool call fails when neither structuredContent nor text-JSON yields AdCP data.
+
+        Per AdCP spec §MCP Response Extraction: a response with plain text (not
+        JSON) and no structuredContent returns no structured data; the SDK
+        reports this as a FAILED TaskResult with a diagnostic message.
+        """
         adapter = MCPAdapter(mcp_config)
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        # Mock MCP result WITHOUT structuredContent and isError=False (invalid)
+        # Response has plain text content, no JSON, no structuredContent.
         mock_result.content = [{"type": "text", "text": "Success"}]
         mock_result.structuredContent = None
         mock_result.isError = False
@@ -515,10 +520,31 @@ class TestMCPAdapter:
         with patch.object(adapter, "_get_session", return_value=mock_session):
             result = await adapter._call_mcp_tool("get_products", {"brief": "test"})
 
-            # Verify error handling for missing structuredContent on success
             assert result.success is False
             assert result.status == TaskStatus.FAILED
-            assert "did not return structuredContent" in result.error
+            assert "no structured AdCP data" in result.error
+
+    @pytest.mark.asyncio
+    async def test_call_tool_text_json_fallback(self, mcp_config):
+        """Text-only JSON content is extracted per spec when structuredContent absent."""
+        adapter = MCPAdapter(mcp_config)
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        # Reference-agent shape: JSON inside TextContent, no structuredContent.
+        mock_result.content = [
+            {"type": "text", "text": '{"status":"completed","products":[]}'}
+        ]
+        mock_result.structuredContent = None
+        mock_result.isError = False
+        mock_session.call_tool.return_value = mock_result
+
+        with patch.object(adapter, "_get_session", return_value=mock_session):
+            result = await adapter._call_mcp_tool("get_products", {"brief": "test"})
+
+            assert result.success is True
+            assert result.status == TaskStatus.COMPLETED
+            assert result.data == {"status": "completed", "products": []}
 
     @pytest.mark.asyncio
     async def test_call_tool_error_without_structured_content(self, mcp_config):
