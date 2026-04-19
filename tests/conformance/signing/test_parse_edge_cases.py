@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     canonicalize_target_uri,
     parse_signature_input_header,
     split_structured_field,

@@ -12,19 +12,19 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     SignatureInputLabel,
     _lookup,
     build_signature_base,
 )
-from adcp.signing._constants import (
+from adcp.signing.constants import (
     DEFAULT_EXPIRES_IN_SECONDS,
     DEFAULT_TAG,
     MAX_WINDOW_SECONDS,
     NONCE_BYTES,
     SIG_LABEL_DEFAULT,
 )
-from adcp.signing._crypto import (
+from adcp.signing.crypto import (
     ALG_ED25519,
     ALG_ES256,
     ALLOWED_ALGS,
@@ -33,7 +33,7 @@ from adcp.signing._crypto import (
     format_signature_header,
     sign_signature_base,
 )
-from adcp.signing._digest import compute_content_digest_sha256
+from adcp.signing.digest import compute_content_digest_sha256
 
 
 @dataclass(frozen=True)

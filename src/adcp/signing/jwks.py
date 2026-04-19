@@ -25,7 +25,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from adcp.signing._errors import (
+from adcp.signing.errors import (
     REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
     REQUEST_SIGNATURE_JWKS_UNTRUSTED,
     SignatureVerificationError,

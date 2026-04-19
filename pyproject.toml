@@ -41,6 +41,7 @@ dependencies = [
 
 [project.scripts]
 adcp = "adcp.__main__:main"
+adcp-keygen = "adcp.signing.keygen:main"
 
 [project.optional-dependencies]
 dev = [

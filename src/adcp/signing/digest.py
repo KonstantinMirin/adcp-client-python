@@ -11,7 +11,7 @@ import base64
 import binascii
 import hashlib
 
-from adcp.signing._canonical import split_structured_field
+from adcp.signing.canonical import split_structured_field
 
 
 def compute_content_digest_sha256(body: bytes) -> str:

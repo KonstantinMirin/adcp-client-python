@@ -6,14 +6,14 @@ See: https://adcontextprotocol.org/docs/building/implementation/security#signed-
 
 from __future__ import annotations
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     SignatureInputLabel,
     build_signature_base,
     canonicalize_authority,
     canonicalize_target_uri,
     parse_signature_input_header,
 )
-from adcp.signing._constants import (
+from adcp.signing.constants import (
     DEFAULT_EXPIRES_IN_SECONDS,
     DEFAULT_SKEW_SECONDS,
     DEFAULT_TAG,
@@ -21,7 +21,7 @@ from adcp.signing._constants import (
     NONCE_BYTES,
     SIG_LABEL_DEFAULT,
 )
-from adcp.signing._crypto import (
+from adcp.signing.crypto import (
     ALG_ED25519,
     ALG_ES256,
     ALLOWED_ALGS,
@@ -35,8 +35,8 @@ from adcp.signing._crypto import (
     sign_signature_base,
     verify_signature,
 )
-from adcp.signing._digest import compute_content_digest_sha256, content_digest_matches
-from adcp.signing._errors import (
+from adcp.signing.digest import compute_content_digest_sha256, content_digest_matches
+from adcp.signing.errors import (
     REQUEST_SIGNATURE_ALG_NOT_ALLOWED,
     REQUEST_SIGNATURE_COMPONENTS_INCOMPLETE,
     REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED,
@@ -57,25 +57,25 @@ from adcp.signing._errors import (
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
 )
-from adcp.signing._jwks import (
+from adcp.signing.jwks import (
     CachingJwksResolver,
     SSRFValidationError,
     StaticJwksResolver,
     default_jwks_fetcher,
     validate_jwks_uri,
 )
-from adcp.signing._middleware import (
+from adcp.signing.middleware import (
     unauthorized_response_headers,
     verify_flask_request,
     verify_starlette_request,
 )
-from adcp.signing._replay import InMemoryReplayStore, ReplayStore
-from adcp.signing._revocation import RevocationChecker, RevocationList
-from adcp.signing._signer import (
+from adcp.signing.replay import InMemoryReplayStore, ReplayStore
+from adcp.signing.revocation import RevocationChecker, RevocationList
+from adcp.signing.signer import (
     SignedHeaders,
     sign_request,
 )
-from adcp.signing._verifier import (
+from adcp.signing.verifier import (
     JwksResolver,
     VerifiedSigner,
     VerifierCapability,

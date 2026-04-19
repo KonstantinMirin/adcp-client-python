@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from adcp.signing._errors import SignatureVerificationError
-from adcp.signing._verifier import (
+from adcp.signing.errors import SignatureVerificationError
+from adcp.signing.verifier import (
     VerifiedSigner,
     VerifyOptions,
     verify_request_signature,
