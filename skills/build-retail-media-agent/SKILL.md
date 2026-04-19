@@ -48,7 +48,7 @@ serve(MyRetailAgent(), name="my-retail-agent", test_controller=MyStore())
 
 Implement all tools from the seller skill. Copy the pattern from `examples/seller_agent.py`:
 
-- `get_adcp_capabilities` → `capabilities_response(["media_buy", "compliance_testing"])`
+- `get_adcp_capabilities` → `capabilities_response(["media_buy"])`
 - `sync_accounts` → `sync_accounts_response(results)`
 - `sync_governance` → `sync_governance_response(results)`
 - `get_products` → `products_response(PRODUCTS)`
@@ -93,6 +93,7 @@ async def log_event(self, params, context=None):
 **`provide_performance_feedback`** — accept buyer metrics
 ```python
 async def provide_performance_feedback(self, params, context=None):
+    # Return shape varies by success/error — consult `ProvidePerformanceFeedbackResponse` in `adcp.types`.
     return {"success": True, "sandbox": True}
 ```
 
@@ -129,8 +130,8 @@ All seller response builders apply, plus:
 
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --json
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_catalog_creative --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_seller --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_catalog_creative --json
 ```
 
 ## Common Mistakes
