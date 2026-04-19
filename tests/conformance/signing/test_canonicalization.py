@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     build_signature_base,
     parse_signature_input_header,
 )

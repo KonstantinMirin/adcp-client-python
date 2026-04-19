@@ -15,11 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     build_signature_base,
     parse_signature_input_header,
 )
-from adcp.signing._crypto import (
+from adcp.signing.crypto import (
     ALG_ED25519,
     ALG_ES256,
     alg_for_jwk,
@@ -142,7 +142,7 @@ def test_extract_signature_tolerates_standard_base64_with_plus_and_slash() -> No
 
 
 def test_jwk_with_wrong_length_x_rejected() -> None:
-    from adcp.signing._crypto import b64url_encode, public_key_from_jwk
+    from adcp.signing.crypto import b64url_encode, public_key_from_jwk
 
     bad = {
         "kty": "OKP",

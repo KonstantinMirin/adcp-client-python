@@ -26,7 +26,7 @@ from adcp.signing import (
     sign_request,
     verify_request_signature,
 )
-from adcp.signing._crypto import private_key_from_jwk
+from adcp.signing.crypto import private_key_from_jwk
 
 VECTORS_DIR = Path(__file__).parent.parent / "vectors" / "request-signing"
 KEYS = json.loads((VECTORS_DIR / "keys.json").read_text())["keys"]

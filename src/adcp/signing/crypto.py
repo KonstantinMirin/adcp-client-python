@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature,
 )
 
-from adcp.signing._canonical import split_structured_field
+from adcp.signing.canonical import split_structured_field
 
 PublicKey = ed25519.Ed25519PublicKey | ec.EllipticCurvePublicKey
 PrivateKey = ed25519.Ed25519PrivateKey | ec.EllipticCurvePrivateKey

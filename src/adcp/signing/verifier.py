@@ -13,18 +13,18 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 
-from adcp.signing._canonical import (
+from adcp.signing.canonical import (
     _lookup,
     build_signature_base,
     parse_signature_input_header,
 )
-from adcp.signing._constants import (
+from adcp.signing.constants import (
     DEFAULT_SKEW_SECONDS,
     DEFAULT_TAG,
     MAX_WINDOW_SECONDS,
     SIG_LABEL_DEFAULT,
 )
-from adcp.signing._crypto import (
+from adcp.signing.crypto import (
     ALG_ED25519,
     ALG_ES256,
     ALLOWED_ALGS,
@@ -33,8 +33,8 @@ from adcp.signing._crypto import (
     public_key_from_jwk,
     verify_signature,
 )
-from adcp.signing._digest import content_digest_matches
-from adcp.signing._errors import (
+from adcp.signing.digest import content_digest_matches
+from adcp.signing.errors import (
     REQUEST_SIGNATURE_ALG_NOT_ALLOWED,
     REQUEST_SIGNATURE_COMPONENTS_INCOMPLETE,
     REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED,
@@ -53,8 +53,8 @@ from adcp.signing._errors import (
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
 )
-from adcp.signing._replay import ReplayStore
-from adcp.signing._revocation import RevocationChecker, RevocationList
+from adcp.signing.replay import ReplayStore
+from adcp.signing.revocation import RevocationChecker, RevocationList
 
 CoversDigestPolicy = Literal["required", "forbidden", "either"]
 

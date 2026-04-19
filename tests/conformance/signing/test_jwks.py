@@ -43,7 +43,7 @@ def test_ssrf_rejects_non_http_scheme() -> None:
 def test_ssrf_allows_public_hostnames() -> None:
     # Mock getaddrinfo to return a public IP so we don't hit the real DNS
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
     ):
         validate_jwks_uri("https://example.com/jwks.json")
@@ -51,7 +51,7 @@ def test_ssrf_allows_public_hostnames() -> None:
 
 def test_ssrf_allow_private_override() -> None:
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=[(2, 1, 6, "", ("127.0.0.1", 0))],
     ):
         validate_jwks_uri("http://localhost:8080/jwks.json", allow_private=True)
@@ -59,7 +59,7 @@ def test_ssrf_allow_private_override() -> None:
 
 def test_ssrf_metadata_ip_blocked_even_with_allow_private() -> None:
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=[(2, 1, 6, "", ("169.254.169.254", 0))],
     ):
         with pytest.raises(SSRFValidationError):
@@ -71,7 +71,7 @@ def test_ssrf_rejects_ipv4_mapped_ipv6_metadata() -> None:
     # flag checks on this form are False; we must unwrap to the embedded IPv4
     # before checking, or the block list is silently bypassed.
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=[(10, 1, 6, "", ("::ffff:169.254.169.254", 0, 0, 0))],
     ):
         with pytest.raises(SSRFValidationError):
@@ -80,7 +80,7 @@ def test_ssrf_rejects_ipv4_mapped_ipv6_metadata() -> None:
 
 def test_ssrf_blocks_oracle_metadata() -> None:
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=[(2, 1, 6, "", ("192.0.0.192", 0))],
     ):
         with pytest.raises(SSRFValidationError):
@@ -92,7 +92,7 @@ def test_ssrf_caps_resolved_address_scan() -> None:
     # With the cap at 32, the scan stops before reaching the loopback address.
     infos = [(2, 1, 6, "", ("93.184.216.34", 0))] * 32 + [(2, 1, 6, "", ("127.0.0.1", 0))] * 68
     with patch(
-        "adcp.signing._jwks.socket.getaddrinfo",
+        "adcp.signing.jwks.socket.getaddrinfo",
         return_value=infos,
     ):
         # Must pass: the validator stops scanning before the internal IP.
