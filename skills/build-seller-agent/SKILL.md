@@ -476,7 +476,20 @@ Pass the store to `serve()`:
 serve(MySeller(), name="my-seller", test_controller=MyStore())
 ```
 
-The SDK's `serve(test_controller=store)` wires up the `compliance_testing` capability block automatically. You do NOT need to add it to `supported_protocols`.
+`compliance_testing` is a separate top-level capability block — not a `supported_protocols` value. `serve(test_controller=store)` registers the `comply_test_controller` tool but does NOT inject the capability block. Declare it yourself via the `compliance_testing=` kwarg on `capabilities_response()`:
+
+```python
+async def get_adcp_capabilities(self, params, context=None):
+    return capabilities_response(
+        ["media_buy"],
+        compliance_testing={"scenarios": [
+            "force_account_status",
+            "force_media_buy_status",
+            "simulate_delivery",
+            "simulate_budget_spend",
+        ]},
+    )
+```
 
 ## Emitting Webhooks
 
