@@ -21,18 +21,16 @@ CREATE TABLE IF NOT EXISTS adcp_replay (
     PRIMARY KEY (keyid, nonce)
 );
 
--- Supports the sweep query and the at_capacity COUNT.
+-- Supports the sweep query and the at_capacity COUNT. Postgres will
+-- use this for range predicates like ``expires_at > now()``, so
+-- ``at_capacity`` for a busy keyid is an index-assisted scan rather
+-- than a full table scan.
 CREATE INDEX IF NOT EXISTS adcp_replay_expires_idx
     ON adcp_replay (expires_at);
 
--- Partial index for the hot per-keyid live-count query. Postgres can
--- scan just this smaller index for at_capacity() instead of the full
--- table. The WHERE clause is immutable (references now()) so the
--- index must be created with a recent-enough Postgres (12+) and the
--- query must use a matching predicate structure. Most deployments can
--- safely rely on the primary index above; enable this one if profiling
--- shows at_capacity hot on a specific keyid.
---
--- CREATE INDEX adcp_replay_keyid_live_idx
---     ON adcp_replay (keyid)
---     WHERE expires_at > now();
+-- A partial index on (keyid) WHERE expires_at > now() is NOT usable —
+-- ``now()`` is STABLE, not IMMUTABLE, which Postgres forbids in index
+-- predicates. If ``at_capacity`` for a specific keyid becomes hot in
+-- profiling, the workable alternative is a composite
+-- ``(keyid, expires_at)`` index; the existing PK + single-column
+-- expires index already covers most patterns.

@@ -234,6 +234,56 @@ def test_bad_table_name_rejected(isolated_pool) -> None:
         PgReplayStore(pool=pool, table_name="")
 
 
+def test_non_ascii_table_name_rejected(isolated_pool) -> None:
+    """Unicode letters that ``str.islower()`` / ``str.isalpha()`` accept
+    MUST be rejected — otherwise a homoglyph like fullwidth ``ｔａｂｌｅ``
+    formats into SQL as a DIFFERENT table than operators configured.
+    """
+    pool, _ = isolated_pool
+    # Fullwidth Latin letters lowercase to themselves, not ASCII.
+    with pytest.raises(ValueError, match="ASCII"):
+        PgReplayStore(pool=pool, table_name="ｔａｂｌｅ")
+    # Latin small letter with accents — passes .islower() but not ASCII.
+    with pytest.raises(ValueError, match="ASCII"):
+        PgReplayStore(pool=pool, table_name="café_replay")
+    # Greek small letter mu — looks like "u" in some fonts.
+    with pytest.raises(ValueError, match="ASCII"):
+        PgReplayStore(pool=pool, table_name="µreplay")
+
+
+def test_remember_twice_with_shorter_ttl_keeps_longer_expiry(isolated_pool) -> None:
+    """Conditional ``DO UPDATE WHERE EXCLUDED.expires_at > current`` means
+    a shorter-TTL repeat must NOT shrink the cached expiry.
+    """
+    store = _store(isolated_pool)
+    store.remember("k", "n", ttl_seconds=60)
+    # Shorter TTL should be a no-op on the row.
+    store.remember("k", "n", ttl_seconds=1)
+    time.sleep(1.2)
+    # If the update had fired, the row would have expired by now.
+    assert store.seen("k", "n") is True
+
+
+def test_create_schema_idempotent(isolated_pool) -> None:
+    """``create_schema`` should run the packaged DDL and be safe to
+    call multiple times (the DDL uses IF NOT EXISTS).
+    """
+    pool, _ = isolated_pool
+    # The fixture already created a test-specific table; create_schema
+    # runs the packaged DDL which targets the canonical name
+    # "adcp_replay". Run it twice to prove idempotency, then clean up.
+    try:
+        PgReplayStore.create_schema(pool)
+        PgReplayStore.create_schema(pool)  # must not raise
+        with pool.connection() as conn, conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('adcp_replay') IS NOT NULL")
+            exists = cur.fetchone()
+            assert exists is not None and exists[0] is True
+    finally:
+        with pool.connection() as conn, conn.cursor() as cur:
+            cur.execute("DROP TABLE IF EXISTS adcp_replay")
+
+
 def test_collation_prevents_case_collapse(isolated_pool) -> None:
     """With COLLATE "C", keyid "Key-A" and "key-a" are distinct slots.
 

@@ -6,45 +6,82 @@ signature's validity window.
 
 The caller supplies a :class:`psycopg_pool.ConnectionPool`. We don't
 open, own, or close the pool — integrators typically already have one
-for their main database and sharing it is cleaner than a second pool.
+for their main database and sharing is cleaner than a second pool.
 
-Schema
-------
+End-to-end example
+------------------
 
-See :file:`adcp/signing/pg/replay_store.sql`. Run it once per
-deployment, then instantiate::
+::
 
     from psycopg_pool import ConnectionPool
-    from adcp.signing.pg import PgReplayStore
+    from adcp.signing import (
+        PgReplayStore,
+        StaticJwksResolver,
+        VerifierCapability,
+        VerifyOptions,
+        verify_request_signature,
+    )
 
     pool = ConnectionPool("postgresql://...", min_size=4, max_size=20)
+
+    # Bootstrap the schema once per deployment. Equivalent to running
+    # the DDL at src/adcp/signing/pg/replay_store.sql via psql / Alembic.
+    PgReplayStore.create_schema(pool)
+
     replay = PgReplayStore(pool=pool)
 
-Sweep
------
+    options = VerifyOptions(
+        now=...,
+        capability=VerifierCapability(required_for=frozenset({"create_media_buy"})),
+        operation="create_media_buy",
+        jwks_resolver=StaticJwksResolver({"keys": [...]}),
+        replay_store=replay,  # <-- plug in here
+    )
+    signer = verify_request_signature(
+        method="POST", url=..., headers=..., body=..., options=options,
+    )
+
+REQUIRED: sweep job
+-------------------
 
 :meth:`seen` self-filters via ``expires_at > now()``, so lookups never
-return stale entries. Rows accumulate, though — schedule a periodic
-sweep (pg cron, app cron, whatever) running::
+return stale entries. Rows accumulate, though — you MUST run a
+periodic sweep or the table grows unbounded. Two options:
 
-    DELETE FROM adcp_replay WHERE expires_at <= now();
+1. **pg_cron** (or any out-of-process scheduler)::
 
-Or call :meth:`sweep_expired` from an admin endpoint if you prefer an
-in-process sweep.
+     DELETE FROM adcp_replay WHERE expires_at <= now();
+
+2. **In-process loop** — call :meth:`sweep_expired` on a timer::
+
+     async def sweep_forever(store: PgReplayStore, interval: float = 60.0) -> None:
+         while True:
+             store.sweep_expired()
+             await asyncio.sleep(interval)
+
+Pick one. An instance without a sweep is a memory leak waiting to
+page your oncall.
 
 Failure mode
 ------------
 
-Transport or connection errors propagate as-is (psycopg's
-``OperationalError``, etc.). The verifier treats any exception from
-the replay store as a verification failure — this matches the
-fail-closed posture the spec requires: a broken replay store MUST
-reject requests, never silently pass.
+Transport or connection errors propagate from psycopg unchanged
+(``OperationalError``, ``PoolTimeout``, etc.). The current verifier
+does not catch them — so a pool hiccup raises out of
+:func:`~adcp.signing.verify_request_signature`, and the enclosing
+framework returns a 5xx. That's fail-closed from the client's
+perspective (no 2xx on a broken store), but it's the framework's
+default, not a SignatureVerificationError the caller can cleanly
+handle. If your handler wraps verifier calls in a
+``except Exception: return 503``, you're good; if it only catches
+``SignatureVerificationError``, a broken store bubbles up as an
+uncaught exception.
 """
 
 from __future__ import annotations
 
-import logging
+import re
+from importlib.resources import files
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -59,13 +96,20 @@ except ImportError:
     PG_AVAILABLE = False
 
 
-logger = logging.getLogger(__name__)
-
 DEFAULT_TABLE_NAME = "adcp_replay"
+
+# Byte-level ASCII identifier match. ``str.islower()`` / ``str.isalpha()``
+# return True for non-ASCII Unicode letters (``é``, fullwidth Latin
+# ``ｔ``, ``µ``, ``ß`` etc.) — which would then format verbatim into SQL
+# as a DIFFERENT table from the one the operator thinks they configured.
+# Under multi-tenant config where ``table_name`` can be attacker-
+# influenced, that's a real replay-bypass vector. The regex here is
+# ASCII-range-by-construction.
+_SAFE_IDENTIFIER_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 
 _INSTALL_HINT = (
     "PgReplayStore requires psycopg3 and psycopg-pool. Install the 'pg' "
-    "extra: `pip install 'adcp[pg]'`."
+    "extra: `pip install 'adcp[pg]'` (Poetry: `poetry add 'adcp[pg]'`)."
 )
 
 
@@ -111,7 +155,9 @@ class PgReplayStore:
         if not PG_AVAILABLE:
             raise ImportError(_INSTALL_HINT)
         if not _is_safe_identifier(table_name):
-            raise ValueError(f"table_name must be [a-z_][a-z0-9_]*, got {table_name!r}")
+            raise ValueError(
+                f"table_name must match [a-z_][a-z0-9_]* (ASCII only), " f"got {table_name!r}"
+            )
         self._pool = pool
         self._per_keyid_cap = per_keyid_cap
         self._table = table_name
@@ -122,17 +168,44 @@ class PgReplayStore:
             f"SELECT 1 FROM {self._table} "  # noqa: S608 — table name is whitelisted
             f"WHERE keyid = %s AND nonce = %s AND expires_at > now()"
         )
+        # ``WHERE EXCLUDED.expires_at > {table}.expires_at`` avoids write
+        # amplification on the common case (a row is already present
+        # with a later-or-equal expiry). Without the predicate, every
+        # remember() would re-write the MVCC tuple even when the new
+        # TTL is shorter or equal.
         self._sql_remember = (
             f"INSERT INTO {self._table} (keyid, nonce, expires_at) "  # noqa: S608
             f"VALUES (%s, %s, now() + make_interval(secs => %s)) "
             f"ON CONFLICT (keyid, nonce) DO UPDATE "
-            f"SET expires_at = EXCLUDED.expires_at"
+            f"SET expires_at = EXCLUDED.expires_at "
+            f"WHERE EXCLUDED.expires_at > {self._table}.expires_at"
         )
         self._sql_at_capacity = (
             f"SELECT COUNT(*) >= %s FROM {self._table} "  # noqa: S608
             f"WHERE keyid = %s AND expires_at > now()"
         )
         self._sql_sweep = f"DELETE FROM {self._table} WHERE expires_at <= now()"  # noqa: S608
+
+    # -- schema bootstrap --------------------------------------------
+
+    @classmethod
+    def create_schema(cls, pool: ConnectionPool) -> None:
+        """Run the packaged DDL to create the ``adcp_replay`` table + indexes.
+
+        Equivalent to running :file:`src/adcp/signing/pg/replay_store.sql`
+        via psql / Alembic / Flyway. Idempotent (the DDL uses
+        ``IF NOT EXISTS``), so calling from app startup on every boot
+        is safe.
+
+        Integrators using a migration tool should prefer that route so
+        the DDL lives alongside their other schema; this helper is for
+        single-service deployments that want a one-line bootstrap.
+        """
+        if not PG_AVAILABLE:
+            raise ImportError(_INSTALL_HINT)
+        sql = (files("adcp.signing.pg") / "replay_store.sql").read_text()
+        with pool.connection() as conn, conn.cursor() as cur:
+            cur.execute(sql)
 
     # -- ReplayStore Protocol -----------------------------------------
 
@@ -155,13 +228,21 @@ class PgReplayStore:
     def at_capacity(self, keyid: str) -> bool:
         """Return True iff the live row count for ``keyid`` meets the cap.
 
-        Implementation note: ``COUNT(*) >= cap`` with the partial index
-        on ``(keyid) WHERE expires_at > now()`` is the fast path.
-        Without the partial index, this is a PK+predicate scan — still
-        O(live rows for keyid) but an index-only scan. For the
-        spec-recommended 1M cap, the expensive case is exactly when a
-        signer is misbehaving, so paying for accuracy is the right
-        trade.
+        Implementation note: ``COUNT(*) >= cap`` uses the PK for the
+        keyid filter and the expires index for the time predicate.
+        For the spec-recommended 1M cap, the expensive case is exactly
+        when a signer is misbehaving, so paying for accuracy is the
+        right trade.
+
+        For deployments that need faster short-circuiting on a hot
+        keyid, an alternative shape is::
+
+            SELECT 1 FROM {table}
+             WHERE keyid = %s AND expires_at > now()
+             OFFSET %s LIMIT 1
+
+        which stops scanning once ``cap+1`` rows are seen. Swap in if
+        profiling identifies ``at_capacity`` as hot.
         """
         with self._pool.connection() as conn, conn.cursor() as cur:
             cur.execute(self._sql_at_capacity, (self._per_keyid_cap, keyid))
@@ -203,21 +284,16 @@ class PgReplayStore:
 
 
 def _is_safe_identifier(name: str) -> bool:
-    """Allow only lowercase ASCII identifiers for the table-name kwarg.
+    """Allow only byte-ASCII lowercase identifiers for the table-name kwarg.
 
-    We format this value into SQL statically (once at construction),
-    so the injection surface is already tiny — but the validation here
-    keeps the contract obvious to future maintainers. Matches what
-    Postgres considers a "simple" identifier (no quoting required).
+    The table name is static-formatted into SQL at construction; this
+    validator is the sole guard against injection OR silent table-name
+    substitution via Unicode homoglyphs. Must stay ASCII-byte-exact
+    (see :data:`_SAFE_IDENTIFIER_RE`).
+
+    Postgres's NAMEDATALEN default caps identifiers at 63 bytes.
     """
-    if not name:
-        return False
-    if not (name[0].isalpha() or name[0] == "_"):
-        return False
-    for ch in name:
-        if not (ch.islower() or ch.isdigit() or ch == "_"):
-            return False
-    return len(name) <= 63  # Postgres NAMEDATALEN default
+    return _SAFE_IDENTIFIER_RE.fullmatch(name) is not None
 
 
 __all__ = ["PG_AVAILABLE", "DEFAULT_TABLE_NAME", "PgReplayStore"]
