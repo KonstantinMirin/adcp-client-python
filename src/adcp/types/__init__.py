@@ -732,6 +732,8 @@ __all__ = [
     "GetPlanAuditLogsResponse",
     "ReportPlanOutcomeRequest",
     "ReportPlanOutcomeResponse",
+    "SyncGovernanceRequest",
+    "SyncGovernanceResponse",
     "SyncPlansRequest",
     "SyncPlansResponse",
     # Forecasting types

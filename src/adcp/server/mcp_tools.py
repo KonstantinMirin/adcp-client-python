@@ -821,10 +821,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Compliance
     {
         "name": "comply_test_controller",
-        "description": (
-            "Compliance test controller. Sandbox only,"
-            " not for production use."
-        ),
+        "description": ("Compliance test controller. Sandbox only," " not for production use."),
         "annotations": _MUT,
         "inputSchema": {
             "type": "object",
@@ -914,16 +911,20 @@ for _handler_name, _tools in _HANDLER_TOOLS.items():
 # Pydantic schema generation — spec-accurate input schemas
 # ============================================================================
 
+
 def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
     """Generate JSON schemas from Pydantic request models.
 
     Maps tool names to their corresponding request Pydantic types,
-    then generates JSON Schema via model_json_schema(). This produces
+    then generates JSON Schema via ``model_json_schema()``. This produces
     spec-accurate schemas with proper field types, descriptions,
-    required fields, and nested definitions.
+    required fields, and nested ``$defs``.
 
-    Falls back to hand-crafted schemas for tools without a matching
-    Pydantic request type.
+    The result is applied to ``ADCP_TOOL_DEFINITIONS`` at import time
+    by :func:`_apply_pydantic_schemas`. Any tool whose generation
+    fails (or whose request model has no mapping here) silently keeps
+    its hand-crafted stub; ``tests/test_mcp_schema_drift.py`` guards
+    against that regression by asserting every tool has an entry here.
     """
     try:
         from pydantic import TypeAdapter
@@ -978,6 +979,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             SyncCatalogsRequest,
             SyncCreativesRequest,
             SyncEventSourcesRequest,
+            SyncGovernanceRequest,
             SyncPlansRequest,
             UpdateCollectionListRequest,
             UpdateContentStandardsRequest,
@@ -1018,6 +1020,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
         "sync_event_sources": SyncEventSourcesRequest,
         "sync_audiences": SyncAudiencesRequest,
         "sync_catalogs": SyncCatalogsRequest,
+        "sync_governance": SyncGovernanceRequest,
         # Feedback
         "provide_performance_feedback": ProvidePerformanceFeedbackRequest,
         # Protocol Discovery
@@ -1165,9 +1168,7 @@ def create_tool_caller(
 
     method = getattr(handler, method_name)
 
-    async def call_tool(
-        params: dict[str, Any], context: ToolContext | None = None
-    ) -> Any:
+    async def call_tool(params: dict[str, Any], context: ToolContext | None = None) -> Any:
         ctx = context if context is not None else ToolContext()
         result = await method(params, ctx)
         # Convert Pydantic models to JSON-safe dicts for MCP serialization
