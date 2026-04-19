@@ -444,10 +444,119 @@ class TestBackendPutFailure:
         assert any("cache put failed" in rec.message for rec in caplog.records)
 
 
+class TestWireTranslation:
+    """IdempotencyConflictError raised from a wrapped handler must surface on
+    the wire as IDEMPOTENCY_CONFLICT — not a generic 500 — on both MCP and A2A.
+    """
+
+    @pytest.mark.asyncio
+    async def test_mcp_conflict_translates_to_tool_error(self) -> None:
+        # MCP path: serve.py's _register_tool wraps caller in try/except ADCPError
+        # → translate_error → ToolError. Verify the translation chain directly.
+        from mcp.server.fastmcp.exceptions import ToolError
+
+        from adcp.exceptions import ADCPError
+        from adcp.server.translate import translate_error
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class H(_FakeHandler):
+            @store.wrap
+            async def create_media_buy(  # type: ignore[override]
+                self, params: dict[str, Any], context: Any = None
+            ) -> dict[str, Any]:
+                return await super().create_media_buy(params, context)
+
+        h = H()
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="principal-a")
+        await h.create_media_buy({"idempotency_key": key, "brand": "A"}, ctx)
+
+        # Mirror the serve._register_tool wrapping shape that runs in
+        # production. The conflict surfaces as an ADCPError which the wrapper
+        # translates to a ToolError.
+        async def serve_fn(params: dict[str, Any]) -> dict[str, Any]:
+            try:
+                return await h.create_media_buy(params, ctx)
+            except ADCPError as exc:
+                raise translate_error(exc, protocol="mcp") from exc
+
+        with pytest.raises(ToolError) as exc_info:
+            await serve_fn({"idempotency_key": key, "brand": "B"})
+        assert "IDEMPOTENCY_CONFLICT" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_a2a_conflict_emits_failed_task_with_adcp_error(self) -> None:
+        # A2A path: ADCPAgentExecutor._send_adcp_error emits a TaskState.failed
+        # with a DataPart carrying {"adcp_error": {"code":..., "recovery":...}}
+        # per transport-errors.mdx §A2A Binding.
+        from a2a.types import DataPart, TaskState
+
+        from adcp.exceptions import IdempotencyConflictError
+        from adcp.server.a2a_server import ADCPAgentExecutor
+        from adcp.server.base import ADCPHandler
+
+        # Use a bare ADCPHandler subclass — executor setup walks tool defs.
+        class NoopSeller(ADCPHandler):
+            pass
+
+        executor = ADCPAgentExecutor(NoopSeller())
+        captured: list[Any] = []
+
+        class FakeQueue:
+            async def enqueue_event(self, event: Any) -> None:
+                captured.append(event)
+
+        err = IdempotencyConflictError(
+            "create_media_buy",
+            [{"code": "IDEMPOTENCY_CONFLICT", "message": "drift"}],
+        )
+        await executor._send_adcp_error(FakeQueue(), _make_context_shim(), err)
+        assert captured, "executor produced no event"
+        task = captured[0]
+        assert task.status.state == TaskState.failed
+        assert task.artifacts, "failed task missing artifacts"
+        data_parts = [
+            p.root for p in task.artifacts[0].parts if isinstance(p.root, DataPart)
+        ]
+        assert data_parts, "failed task missing DataPart"
+        adcp_error = data_parts[0].data.get("adcp_error")
+        assert adcp_error is not None
+        assert adcp_error["code"] == "IDEMPOTENCY_CONFLICT"
+        assert adcp_error["recovery"] == "terminal"
+
+
+def _make_context_shim() -> Any:
+    """Minimal RequestContext stub with only the attributes _make_task reads."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(task_id=None, context_id=None, message=None)
+
+
 class TestCapability:
     def test_capability_fragment(self) -> None:
         store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
         assert store.capability() == {"replay_ttl_seconds": 86400}
+
+    def test_capabilities_response_accepts_idempotency(self) -> None:
+        from adcp.server.responses import capabilities_response
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+        resp = capabilities_response(["media_buy"], idempotency=store.capability())
+        assert resp["adcp"]["idempotency"] == {"replay_ttl_seconds": 86400}
+
+    def test_capabilities_response_idempotency_omitted_when_none(self) -> None:
+        from adcp.server.responses import capabilities_response
+
+        resp = capabilities_response(["media_buy"])
+        assert "idempotency" not in resp["adcp"]
+
+    def test_server_reexports(self) -> None:
+        from adcp.server import IdempotencyStore as Store
+        from adcp.server import MemoryBackend as Backend
+
+        assert Store is IdempotencyStore
+        assert Backend is MemoryBackend
 
     def test_ttl_bounds_enforced_low(self) -> None:
         with pytest.raises(ValueError, match="3600"):
@@ -469,20 +578,20 @@ class TestCapability:
 class TestTTLExpiry:
     @pytest.mark.asyncio
     async def test_cached_response_expires_after_ttl(self) -> None:
-        # Use the minimum TTL allowed by the store (1h), patch time to simulate.
-        import unittest.mock
+        # Inject a fake clock so the test doesn't have to monkeypatch time.
+        current = [1_000_000.0]
 
-        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=3600)
+        def fake_clock() -> float:
+            return current[0]
+
+        backend = MemoryBackend(clock=fake_clock)
+        store = IdempotencyStore(backend=backend, ttl_seconds=3600, clock=fake_clock)
         handler = _FakeHandler()
         wrapped = store.wrap(_FakeHandler.create_media_buy)
         key = str(uuid.uuid4())
         ctx = ToolContext(caller_identity="principal-a")
         await wrapped(handler, {"idempotency_key": key, "b": 1}, ctx)
-        # Move time forward past the TTL.
-        with unittest.mock.patch(
-            "adcp.server.idempotency.backends.time.time",
-            return_value=time.time() + 7200,
-        ):
-            await wrapped(handler, {"idempotency_key": key, "b": 1}, ctx)
-        # Handler ran twice: once fresh, once after expiry.
+        # Advance past the TTL.
+        current[0] += 7200
+        await wrapped(handler, {"idempotency_key": key, "b": 1}, ctx)
         assert handler.call_count == 2

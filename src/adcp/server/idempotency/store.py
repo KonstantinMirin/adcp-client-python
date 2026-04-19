@@ -60,6 +60,8 @@ class IdempotencyStore:
         backend: IdempotencyBackend,
         ttl_seconds: int = 86400,
         hash_fn: Callable[[dict[str, Any]], str] = canonical_json_sha256,
+        *,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         if not _MIN_TTL_SECONDS <= ttl_seconds <= _MAX_TTL_SECONDS:
             raise ValueError(
@@ -70,6 +72,7 @@ class IdempotencyStore:
         self.backend = backend
         self.ttl_seconds = ttl_seconds
         self._hash_fn = hash_fn
+        self._clock = clock
 
     def capability(self) -> dict[str, Any]:
         """Return the capabilities fragment declaring this store's replay window.
@@ -146,7 +149,7 @@ class IdempotencyStore:
             entry = CachedResponse(
                 payload_hash=payload_hash,
                 response=response_dict,
-                expires_at_epoch=time.time() + self.ttl_seconds,
+                expires_at_epoch=self._clock() + self.ttl_seconds,
             )
             # Commit cache AFTER handler returns. Atomicity with the handler's
             # side effects depends on the backend: MemoryBackend is best-effort

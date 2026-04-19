@@ -11,7 +11,8 @@ The spec contract lives at
 
 Typical usage::
 
-    from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+    from adcp.server import ADCPHandler, IdempotencyStore, MemoryBackend, ToolContext
+    from adcp.server.responses import capabilities_response
 
     idempotency = IdempotencyStore(
         backend=MemoryBackend(),
@@ -21,13 +22,26 @@ Typical usage::
     class MySeller(ADCPHandler):
         @idempotency.wrap
         async def create_media_buy(self, params, context=None):
-            # Business logic — response will be cached under (principal, key)
+            # ``params`` carries ``idempotency_key``; ``context.caller_identity``
+            # identifies the principal. Without either, the middleware falls
+            # through to this handler with no dedup (schema validation above
+            # us rejects missing keys per AdCP #2315).
             return my_create_logic(params)
 
         async def get_adcp_capabilities(self, params, context=None):
-            caps = build_base_caps(...)
-            caps.adcp.idempotency = idempotency.capability()
-            return caps
+            return capabilities_response(
+                ["media_buy"],
+                idempotency=idempotency.capability(),
+            )
+
+Callers who invoke the handler directly (tests, non-HTTP code paths) must
+pass a :class:`adcp.server.base.ToolContext` with ``caller_identity`` set —
+it's how the middleware scopes the cache namespace per-principal::
+
+    ctx = ToolContext(caller_identity="buyer-acme")
+    result = await seller.create_media_buy(
+        {"idempotency_key": key, ...}, ctx
+    )
 
 Backends:
 

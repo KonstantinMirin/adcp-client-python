@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -89,11 +90,16 @@ class MemoryBackend(IdempotencyBackend):
     mutations of the shared dict. Reads go through the lock too; for a pure
     in-process backend this is cheap and prevents torn reads across concurrent
     ``get``/``put`` interleaving.
+
+    :param clock: Callable returning the current epoch seconds. Override for
+        tests that need to advance time deterministically without monkeypatching
+        :mod:`time`. Defaults to :func:`time.time`.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, clock: Callable[[], float] = time.time) -> None:
         self._store: dict[tuple[str, str], CachedResponse] = {}
         self._lock = asyncio.Lock()
+        self._clock = clock
 
     async def get(
         self, principal_id: str, key: str
@@ -102,7 +108,7 @@ class MemoryBackend(IdempotencyBackend):
             entry = self._store.get((principal_id, key))
             if entry is None:
                 return None
-            if entry.expires_at_epoch <= time.time():
+            if entry.expires_at_epoch <= self._clock():
                 # Lazy expiry — drop the stale entry so the next request
                 # treats the slot as fresh and races to repopulate.
                 del self._store[(principal_id, key)]
@@ -119,12 +125,21 @@ class MemoryBackend(IdempotencyBackend):
             self._store[(principal_id, key)] = entry
 
     async def delete_expired(self, now_epoch: float | None = None) -> int:
-        cutoff = now_epoch if now_epoch is not None else time.time()
+        cutoff = now_epoch if now_epoch is not None else self._clock()
         async with self._lock:
             stale = [k for k, v in self._store.items() if v.expires_at_epoch <= cutoff]
             for k in stale:
                 del self._store[k]
             return len(stale)
+
+    async def clear(self) -> None:
+        """Remove all cached entries.
+
+        Test-suite hook — handy for resetting state between fixtures when a
+        single :class:`MemoryBackend` is shared across multiple tests.
+        """
+        async with self._lock:
+            self._store.clear()
 
     async def _size(self) -> int:
         """Test-only: return the current entry count."""
@@ -133,25 +148,49 @@ class MemoryBackend(IdempotencyBackend):
 
 
 class PgBackend(IdempotencyBackend):
-    """PostgreSQL-backed store (scaffold — implementation follows).
+    """PostgreSQL-backed store — **scaffold, not yet implemented**.
 
-    The intent: share a transaction with the handler's business writes so the
-    cache entry commits atomically with side effects. Without that, a crash
-    between ``handler success`` and ``cache commit`` causes the retry to
-    re-execute the handler, duplicating side effects.
+    .. warning::
+       Calling ``PgBackend(...)`` raises ``NotImplementedError`` today. Use
+       :class:`MemoryBackend` for tests, or implement your own
+       :class:`IdempotencyBackend` subclass against the database of your
+       choice until this implementation lands. Tracked at
+       https://github.com/adcontextprotocol/adcp-client-python/issues/182.
 
-    Approach sketch for the next PR:
+    **Design intent.** Share a transaction with the handler's business
+    writes so the cache entry commits atomically with side effects. Without
+    that, a crash between ``handler success`` and ``cache commit`` causes
+    the retry to re-execute the handler, duplicating side effects.
 
-    * Create table
-      ``adcp_idempotency(principal_id TEXT, key TEXT, payload_hash TEXT,
-      response JSONB, expires_at TIMESTAMPTZ, PRIMARY KEY (principal_id, key))``.
+    **Schema sketch for the implementer.**
+
+    .. code-block:: sql
+
+        CREATE TABLE adcp_idempotency (
+            principal_id TEXT       COLLATE "C" NOT NULL,
+            key          TEXT       COLLATE "C" NOT NULL,
+            payload_hash TEXT       NOT NULL,
+            response     JSONB      NOT NULL,
+            expires_at   TIMESTAMPTZ NOT NULL,
+            PRIMARY KEY (principal_id, key)
+        );
+
+    Notes:
+
+    * ``COLLATE "C"`` (or ``CITEXT`` with a deliberate case policy) — avoid
+      the default locale collation on the identifier columns. On some
+      locales ``Principal-A`` and ``principal-a`` compare equal, which
+      would collapse distinct tenants into the same cache slot.
+    * Queries MUST filter on ``principal_id`` in the ``WHERE`` clause even
+      with the composite PK — row-level security (RLS) enforced via a
+      policy like ``USING (principal_id = current_setting('adcp.principal_id')::text)``
+      gives belt-and-suspenders protection against accidental cross-tenant
+      reads in future handlers.
     * ``get`` uses ``SELECT ... WHERE expires_at > now()``.
     * ``put`` uses ``INSERT ... ON CONFLICT (principal_id, key) DO UPDATE``.
     * Accept a SQLAlchemy/asyncpg session factory so the caller can thread
-      the handler's transaction through for atomic commit.
-
-    The class exists now as a discoverable API surface; calling it raises
-    ``NotImplementedError``.
+      the handler's transaction through for atomic commit — the atomicity
+      guarantee is the whole reason to use a SQL backend.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -159,7 +198,8 @@ class PgBackend(IdempotencyBackend):
             "PgBackend is scaffolded but not yet implemented. Use MemoryBackend "
             "for tests, or implement your own IdempotencyBackend subclass "
             "against your database of choice until the PgBackend implementation "
-            "lands (tracked as a follow-up to #182)."
+            "lands. Tracking: "
+            "https://github.com/adcontextprotocol/adcp-client-python/issues/182."
         )
 
     async def get(

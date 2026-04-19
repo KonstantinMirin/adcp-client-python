@@ -47,6 +47,7 @@ def capabilities_response(
     major_versions: list[int] | None = None,
     sandbox: bool = True,
     features: dict[str, Any] | None = None,
+    idempotency: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a get_adcp_capabilities response.
 
@@ -56,9 +57,27 @@ def capabilities_response(
         major_versions: AdCP major versions. Defaults to [3].
         sandbox: Whether this is a sandbox agent. Defaults to True.
         features: Additional feature flags.
+        idempotency: Optional idempotency declaration, nested under
+            ``adcp.idempotency`` per AdCP #2315. Pass the output of
+            :meth:`adcp.server.idempotency.IdempotencyStore.capability` here
+            to declare the seller's ``replay_ttl_seconds``.
+
+    Example::
+
+        from adcp.server.responses import capabilities_response
+        from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+        return capabilities_response(
+            ["media_buy"],
+            idempotency=store.capability(),
+        )
     """
+    adcp_info: dict[str, Any] = {"major_versions": major_versions or [3]}
+    if idempotency:
+        adcp_info["idempotency"] = idempotency
     resp: dict[str, Any] = {
-        "adcp": {"major_versions": major_versions or [3]},
+        "adcp": adcp_info,
         "supported_protocols": supported_protocols,
         "sandbox": sandbox,
     }
