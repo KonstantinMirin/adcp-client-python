@@ -571,6 +571,12 @@ def test_replay_older_list_rejected() -> None:
     # revoked.
     advance(15 * 60)  # 14:30
     assert checker("compromised") is True
+    # Pin the invariant directly: the cached list is still the NEWER one.
+    # If the replay check had been removed, the older list would have
+    # overwritten the cache and `_current_list.updated` would now equal
+    # "2026-04-18T14:00:00Z".
+    assert checker._current_list is not None
+    assert checker._current_list.updated == "2026-04-18T14:10:00Z"
 
 
 def test_from_issuer_origin_builds_spec_path() -> None:
@@ -760,3 +766,124 @@ def test_compact_jws_with_alternate_encoding_rejected_or_handled_safely() -> Non
     )
     with pytest.raises(RevocationListSignatureError):
         checker("k")
+
+
+# -- round-2 reviewer-fix coverage -------------------------------------
+
+
+def test_issuer_rejects_userinfo() -> None:
+    """Round-2: configured issuer with userinfo is rejected at init."""
+    from adcp.signing.revocation_fetcher import _normalize_issuer
+
+    with pytest.raises(ValueError, match="userinfo"):
+        _normalize_issuer("https://attacker@gov.example.com")
+
+
+def test_issuer_homoglyph_normalizes_to_distinct_punycode() -> None:
+    """Round-2: homoglyph hosts produce a byte-distinct punycode form so
+    byte-equal comparison with the legitimate origin fails."""
+    from adcp.signing.revocation_fetcher import _normalize_issuer
+
+    legit = _normalize_issuer("https://gov.example.com")
+    # U+1D20 LATIN LETTER SMALL CAPITAL V — visually similar to 'v'.
+    homoglyph = _normalize_issuer("https://go\u1d20.example.com")
+    assert legit != homoglyph
+    # The homoglyph form is a punycode ASCII representation, not the
+    # visual lookalike — so a seller configured with the legit origin
+    # will reject a payload with the homoglyph origin.
+    assert "xn--" in homoglyph
+
+
+def test_issuer_normalizes_idna_host() -> None:
+    """Round-2: legit IDN hosts encode to punycode and compare stably."""
+    from adcp.signing.revocation_fetcher import _normalize_issuer
+
+    # Two equivalent representations of a punycode IDN domain.
+    form_a = _normalize_issuer("https://bücher.example/")
+    form_b = _normalize_issuer("https://xn--bcher-kva.example/")
+    assert form_a == form_b
+
+
+def test_last_modified_header_injection_rejected() -> None:
+    """Round-2: CRLF-injection-shaped Last-Modified values are dropped at write."""
+    from adcp.signing.revocation_fetcher import _sanitize_last_modified
+
+    assert _sanitize_last_modified("Sat, 18 Apr 2026 14:00:00 GMT") == (
+        "Sat, 18 Apr 2026 14:00:00 GMT"
+    )
+    # CRLF injection attempt
+    assert _sanitize_last_modified("Sat, 18 Apr 2026\r\nX-Injected: evil") is None
+    # Length cap
+    assert _sanitize_last_modified("A" * 65) is None
+    # None passes through
+    assert _sanitize_last_modified(None) is None
+
+
+def test_304_slides_next_update_forward() -> None:
+    """Round-2: successive 304s advance the cached next_update so the
+    checker doesn't hit the refresh-cooldown path on every call past the
+    original next_update."""
+    private, _, jwks_resolver = _key_and_jwks()
+    token = _sign_jws_compact(_make_payload(), private=private)
+    fetcher = _ScriptedFetcher()
+    fetcher.enqueue(FetchResult(body=token, etag='"v1"', not_modified=False))
+    fetcher.enqueue(FetchResult(body="", etag='"v1"', not_modified=True))
+    # If next_update wasn't advanced on 304, the next two calls past 14:30
+    # would each try to refetch (subject to the 60s cooldown). We only
+    # queue ONE more fetcher response, so if the invariant breaks, one of
+    # the later calls raises AssertionError from the scripted fetcher.
+
+    wall_clock, mono_clock, advance = _controllable_clock(
+        datetime(2026, 4, 18, 14, 1, tzinfo=timezone.utc)
+    )
+    checker = CachingRevocationChecker(
+        revocation_uri=REVOCATION_URI,
+        issuer=ISSUER,
+        jwks_resolver=jwks_resolver,
+        fetcher=fetcher,
+        wall_clock=wall_clock,
+        clock=mono_clock,
+    )
+    checker("k")  # 1 fetch → initial
+    advance(15 * 60 + 30)  # 14:16:30, past original next_update (14:15)
+    checker("k")  # 2 fetches → 304, should slide next_update to 14:30
+
+    # Now at 14:16:30. Cached next_update was 14:15, now should be 14:30.
+    assert checker._current_list is not None
+    assert checker._current_list.next_update.startswith("2026-04-18T14:30:00")
+
+    # Additional calls WITHIN the new window should NOT refetch.
+    advance(60)  # 14:17:30
+    checker("k")  # still no fetch — we're before the new 14:30 next_update
+    assert len(fetcher.calls) == 2
+
+
+def test_clock_footgun_rejects_time_time() -> None:
+    """Round-2: passing time.time as clock is rejected."""
+    import time as _time
+
+    _, _, jwks_resolver = _key_and_jwks()
+    with pytest.raises(ValueError, match="monotonic"):
+        CachingRevocationChecker(
+            revocation_uri=REVOCATION_URI,
+            issuer=ISSUER,
+            jwks_resolver=jwks_resolver,
+            clock=_time.time,
+        )
+
+
+def test_clock_footgun_rejects_identical_sources() -> None:
+    """Round-2: passing the same callable to clock and wall_clock is rejected."""
+    _, _, jwks_resolver = _key_and_jwks()
+
+    def both() -> float:
+        raise RuntimeError("never called")
+
+    with pytest.raises(ValueError, match="different sources"):
+        CachingRevocationChecker(
+            revocation_uri=REVOCATION_URI,
+            issuer=ISSUER,
+            jwks_resolver=jwks_resolver,
+            clock=both,
+            wall_clock=both,  # type: ignore[arg-type]
+        )

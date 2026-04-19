@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
 
 import httpx
@@ -53,6 +54,18 @@ MAX_POLLING_INTERVAL_SECONDS = 15 * 60  # spec ceiling for execution phase
 # calls fail closed. Spec recommends 2×.
 DEFAULT_GRACE_MULTIPLIER = 2.0
 
+# Shape-validate `Last-Modified` before persisting it for the next
+# `If-Modified-Since` request. The value comes from a (potentially
+# untrusted) origin; echoing it verbatim into an outbound request header
+# is header-injection-adjacent. We only accept an RFC 7231 HTTP-date
+# shape, length-capped.
+_HTTP_DATE_MAX_LEN = 64
+# RFC 7231 §7.1.1.1 defines three formats; IMF-fixdate is the normative
+# one. We accept all three shapes loosely via regex on the visible
+# characters — no attempt to parse as a real date, since the server
+# hands it back to us opaquely.
+_HTTP_DATE_PATTERN = re.compile(r"^[A-Za-z0-9 ,:+\-]+$")
+
 
 class RevocationListFetchError(Exception):
     """The fetcher cannot retrieve the list (network / HTTP / SSRF).
@@ -71,6 +84,9 @@ class RevocationListParseError(Exception):
     edge. Parse errors within the grace window fall back to the cached
     list; past the grace window they surface as
     :class:`RevocationListFreshnessError`.
+
+    :class:`RevocationListSignatureError` is a subclass of this class —
+    callers that catch this exception catch signature failures too.
     """
 
 
@@ -80,6 +96,10 @@ class RevocationListSignatureError(RevocationListParseError):
     Subclass of :class:`RevocationListParseError` so callers that catch
     parse errors catch this too. Mapped to
     ``request_signature_revocation_stale`` at the verifier edge.
+
+    Not re-exported from :mod:`adcp.signing` — import from
+    :mod:`adcp.signing.revocation_fetcher` if you specifically want to
+    distinguish signature failures from other parse failures.
     """
 
 
@@ -174,7 +194,7 @@ def default_revocation_list_fetcher(
         )
 
     etag = response.headers.get("ETag")
-    last_modified = response.headers.get("Last-Modified")
+    last_modified = _sanitize_last_modified(response.headers.get("Last-Modified"))
     raw_body = response.text.strip()
 
     # General JSON serialization starts with `{`; compact form is three
@@ -202,6 +222,25 @@ def default_revocation_list_fetcher(
     )
 
 
+def _sanitize_last_modified(raw: str | None) -> str | None:
+    """Validate a ``Last-Modified`` header value before persisting it.
+
+    Returns the value if it matches RFC 7231 HTTP-date shape (letters,
+    digits, space, comma, colon, plus, hyphen) and fits in
+    :data:`_HTTP_DATE_MAX_LEN` bytes. Returns ``None`` otherwise — the
+    caller then skips conditional-request fallback and relies on ETag
+    alone. An attacker-controlled origin cannot inject CRLF or arbitrary
+    bytes into our next outbound request header this way.
+    """
+    if raw is None:
+        return None
+    if len(raw) > _HTTP_DATE_MAX_LEN:
+        return None
+    if not _HTTP_DATE_PATTERN.match(raw):
+        return None
+    return raw
+
+
 def _parse_iso8601(ts: str) -> datetime:
     """Accept ``2026-04-18T14:00:00Z`` (the spec format) and other ISO-8601 shapes."""
     raw = ts
@@ -217,18 +256,36 @@ def _normalize_issuer(issuer: str) -> str:
     """Normalize an origin string for byte-equal comparison.
 
     RFC 6454 origin: ``scheme://host[:port]`` — scheme is case-insensitive,
-    host is case-insensitive, trailing slash is not part of the origin.
-    We normalize both sides (configured + payload) identically so
-    ``https://Gov.Example.com/`` and ``https://gov.example.com`` compare
-    equal. Any path (even ``/``) beyond origin is a seller-config error
-    and is stripped but logged-worthy.
+    host is case-insensitive (and IDNA-canonicalized), trailing slash is
+    not part of the origin. Rejects userinfo (``user:pass@host``) because
+    there's no legitimate reason for a governance issuer to include it
+    and accepting it opens impersonation via ``attacker@gov.example.com``.
+
+    Rejects any host that can't be encoded as ASCII via IDNA — blocks
+    homoglyph attacks like ``https://goᴠ.example.com`` (U+1D20) that
+    lowercase-fold to something visually but not byte-wise equal to the
+    configured origin.
     """
     from urllib.parse import urlsplit, urlunsplit
 
     parts = urlsplit(issuer)
+    if parts.scheme not in ("http", "https"):
+        raise ValueError(f"issuer must be http or https, got {parts.scheme!r}")
+    if parts.username or parts.password:
+        raise ValueError("issuer must not contain userinfo (user:pass@host)")
+    if not parts.hostname:
+        raise ValueError(f"issuer has no host: {issuer!r}")
+
+    # IDNA-encode the host to collapse unicode homoglyphs to ASCII
+    # punycode. ``host.encode("idna")`` raises on characters outside the
+    # IDNA allowlist — which is the failure mode we want.
+    try:
+        host_ascii = parts.hostname.encode("idna").decode("ascii").lower()
+    except (UnicodeError, UnicodeEncodeError) as exc:
+        raise ValueError(f"issuer host {parts.hostname!r} is not IDNA-valid: {exc}") from exc
+
+    netloc = f"{host_ascii}:{parts.port}" if parts.port else host_ascii
     scheme = parts.scheme.lower()
-    netloc = parts.netloc.lower()
-    # Strip path, query, fragment — origin is scheme://netloc only.
     return urlunsplit((scheme, netloc, "", "", ""))
 
 
@@ -253,7 +310,13 @@ def _build_list_from_payload(payload: dict[str, Any], expected_issuer: str) -> R
     issuer = payload.get("issuer")
     if not isinstance(issuer, str):
         raise RevocationListParseError("revocation list missing string field 'issuer'")
-    if _normalize_issuer(issuer) != expected_issuer:
+    try:
+        normalized_issuer = _normalize_issuer(issuer)
+    except ValueError as exc:
+        raise RevocationListParseError(
+            f"revocation list issuer {issuer!r} is not a valid origin: {exc}"
+        ) from exc
+    if normalized_issuer != expected_issuer:
         raise RevocationListParseError(
             f"revocation list issuer {issuer!r} does not match expected {expected_issuer!r} "
             f"(normalized comparison)"
@@ -292,7 +355,19 @@ class CachingRevocationChecker:
 
     The checker does not fetch at construction time — the first call is
     the trigger. This keeps ``__init__`` side-effect-free and defers
-    network I/O to the first verification.
+    network I/O to the first verification. Call :meth:`prime` at startup
+    to fail-fast on misconfiguration.
+
+    Thread safety
+    -------------
+    This class is NOT thread-safe. Concurrent ``__call__`` s that each
+    trigger a refresh can race the ``self._current_list`` assignment —
+    the later writer wins, which for our replay-rejection check means
+    only the most recent fetch's list ends up cached (still consistent,
+    but two HTTP round-trips happen instead of one). Wrap instances in
+    an external lock if you run the verifier from a thread pool. An
+    ``asyncio``-driven verifier (single-threaded event loop) is fine
+    unmodified.
 
     Parameters
     ----------
@@ -337,6 +412,26 @@ class CachingRevocationChecker:
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     ) -> None:
+        # Reject the common footgun of passing time.time (wall-clock
+        # seconds) as the `clock` kwarg — `_ensure_fresh` assumes
+        # monotonicity for cooldown math. Requiring `time.monotonic`
+        # (or a dedicated monotonic test fake) keeps cooldowns correct
+        # across wall-clock jumps.
+        if clock is time.time:
+            raise ValueError(
+                "clock must be a monotonic time source (use time.monotonic, "
+                "not time.time); wall-clock jumps would break cooldown math"
+            )
+        # Cast via Any so mypy doesn't complain about the differing
+        # declared return types (float vs datetime) — we're asking
+        # whether the caller bound the SAME callable to both slots.
+        if clock is wall_clock:  # type: ignore[comparison-overlap]
+            raise ValueError(
+                "clock and wall_clock must be different sources — clock is "
+                "monotonic seconds (cooldown timing), wall_clock is a UTC "
+                "datetime source (freshness evaluation)"
+            )
+
         self._revocation_uri = revocation_uri
         self._issuer = _normalize_issuer(issuer)
         self._jwks_resolver = jwks_resolver
@@ -424,6 +519,13 @@ class CachingRevocationChecker:
         return jti in self._current_list.revoked_jtis
 
     def __call__(self, keyid: str) -> bool:
+        """Return True iff ``keyid`` is in the cached list's ``revoked_kids``.
+
+        This is the RFC 9421 request-signing path (verifier checklist
+        step 9). For governance-token verification (seller-verification
+        checklist step 14) check both the signing ``kid`` here AND the
+        token's ``jti`` via :meth:`is_jti_revoked`.
+        """
         self._ensure_fresh()
         if self._current_list is None:
             # Unreachable in practice — _ensure_fresh raises on unsuccessful
@@ -484,9 +586,25 @@ class CachingRevocationChecker:
             if_modified_since=if_modified_since,
         )
         if result.not_modified:
-            # 304: server confirms the cached list is still current. Update the
-            # refresh-success timestamp so the grace window slides forward.
+            # 304: server confirms the cached list is still current. Advance
+            # the cached list's `next_update` by the declared polling
+            # interval so subsequent calls don't re-enter the past-
+            # next_update branch on every request — without this, the 60s
+            # cooldown gate would fire once per verification request once
+            # we cross the original next_update.
             self._last_successful_refresh = now_mono
+            if self._current_list is not None and self._last_polling_interval_seconds:
+                prior = _parse_iso8601(self._current_list.next_update)
+                new_next_update = prior + timedelta(
+                    seconds=self._last_polling_interval_seconds
+                )
+                self._current_list = RevocationList(
+                    issuer=self._current_list.issuer,
+                    updated=self._current_list.updated,
+                    next_update=new_next_update.isoformat().replace("+00:00", "Z"),
+                    revoked_kids=self._current_list.revoked_kids,
+                    revoked_jtis=self._current_list.revoked_jtis,
+                )
             return
 
         try:
@@ -539,7 +657,9 @@ class CachingRevocationChecker:
 
         self._current_list = revocation_list
         self._current_etag = result.etag
-        self._current_last_modified = result.last_modified
+        # Sanitize again at write-side: custom fetcher impls may not have
+        # validated the value before constructing FetchResult.
+        self._current_last_modified = _sanitize_last_modified(result.last_modified)
         self._last_successful_refresh = now_mono
         # Declared cadence is already validated >= 60s and bounded above
         # at parse time; clamp to the spec ceiling as defense against an
@@ -565,3 +685,9 @@ __all__ = [
     "RevocationListParseError",
     "default_revocation_list_fetcher",
 ]
+
+# ``RevocationListSignatureError`` is intentionally not in __all__ and
+# not re-exported from ``adcp.signing``. It remains a subclass of
+# ``RevocationListParseError`` so callers who want to catch it can
+# import it from this module directly; catching the parent covers the
+# common case.
