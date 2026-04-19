@@ -33,6 +33,10 @@ dependencies = [
     "mcp>=1.23.2",
     "email-validator>=2.0.0",
     "cryptography>=41.0.0",
+    # RFC 8785 JSON Canonicalization Scheme — used by the server-side
+    # idempotency middleware to compute the spec-mandated payload hash for
+    # replay detection. Tiny pure-Python dep, no transitive weight.
+    "rfc8785>=0.1.4",
 ]
 
 [project.scripts]
