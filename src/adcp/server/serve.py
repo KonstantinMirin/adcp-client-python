@@ -215,6 +215,15 @@ def _register_tool(
     from adcp.server.translate import translate_error
 
     async def fn(**kwargs: Any) -> dict[str, Any]:
+        # Note on caller identity: FastMCP does not expose an authenticated
+        # principal to tool handlers at the SDK level — ``Context.client_id``
+        # is a session hint, not an authenticated user identifier. Sellers
+        # who need per-principal server middleware (e.g. the idempotency
+        # store's per-principal scoping) should wire their own FastMCP auth
+        # middleware and either pre-populate ``params`` with a principal
+        # hint their handler reads, or override ``create_tool_caller`` to
+        # build a ToolContext from their auth layer. The A2A transport
+        # derives caller_identity from ServerCallContext.user automatically.
         try:
             result = await caller(kwargs)
         except ADCPError as exc:

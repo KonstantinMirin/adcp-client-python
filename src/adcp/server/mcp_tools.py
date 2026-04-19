@@ -1114,7 +1114,7 @@ def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict
 def create_tool_caller(
     handler: ADCPHandler,
     method_name: str,
-) -> Callable[[dict[str, Any]], Any]:
+) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
 
     Automatically injects context passthrough: if the request contains a
@@ -1126,15 +1126,23 @@ def create_tool_caller(
         method_name: Name of the method to call
 
     Returns:
-        Async callable that invokes the handler method
+        Async callable ``call_tool(params, context=None)``. The ``context``
+        parameter is optional — transports that can extract caller identity
+        from their auth layer (A2A's ``ServerCallContext.user``, custom
+        FastMCP auth middleware, etc.) should pass a populated
+        :class:`ToolContext` so the server middleware layer (idempotency
+        per-principal scoping, audit logging) gets the real principal. When
+        no context is supplied, a bare :class:`ToolContext` is used.
     """
     from adcp.server.helpers import inject_context
 
     method = getattr(handler, method_name)
 
-    async def call_tool(params: dict[str, Any]) -> Any:
-        context = ToolContext()
-        result = await method(params, context)
+    async def call_tool(
+        params: dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
+        ctx = context if context is not None else ToolContext()
+        result = await method(params, ctx)
         # Convert Pydantic models to JSON-safe dicts for MCP serialization
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json", exclude_none=True)
