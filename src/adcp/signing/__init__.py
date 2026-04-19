@@ -117,6 +117,15 @@ from adcp.signing.verifier import (
     verify_request_signature,
 )
 
+# Conditional import: PgReplayStore needs the [pg] extra. We expose it
+# on the top-level adcp.signing namespace when available, but fall
+# through silently when psycopg isn't installed so the core SDK stays
+# importable without SQL dependencies.
+try:
+    from adcp.signing.pg import PgReplayStore  # noqa: F401
+except ImportError:  # pragma: no cover — exercised by the [pg] extra tests
+    PgReplayStore = None  # type: ignore[assignment,misc]
+
 __all__ = [
     "ALG_ED25519",
     "ALG_ES256",
@@ -141,6 +150,7 @@ __all__ = [
     "JwsUnknownKeyError",
     "MAX_WINDOW_SECONDS",
     "NONCE_BYTES",
+    "PgReplayStore",
     "REQUEST_SIGNATURE_ALG_NOT_ALLOWED",
     "REQUEST_SIGNATURE_COMPONENTS_INCOMPLETE",
     "REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED",
