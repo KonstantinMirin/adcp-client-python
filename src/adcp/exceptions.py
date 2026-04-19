@@ -217,6 +217,34 @@ class ADCPFeatureUnsupportedError(ADCPError):
         super().__init__(message, agent_id, agent_uri, suggestion)
 
 
+class ADCPSigningRequiredError(ADCPError):
+    """Raised when an operation in the seller's ``request_signing.required_for``
+    is called without a ``SigningConfig`` on the client.
+
+    Signing a ``required_for`` operation is mandatory — sending it unsigned
+    would produce a ``request_signature_required`` rejection from the seller.
+    Raising locally before the wire call saves a round-trip and gives the
+    caller a clear, actionable error.
+    """
+
+    def __init__(
+        self,
+        operation: str,
+        agent_id: str | None = None,
+        agent_uri: str | None = None,
+    ):
+        self.operation = operation
+        message = (
+            f"Operation {operation!r} is in the seller's request_signing.required_for "
+            f"list; signing is mandatory but no SigningConfig was provided"
+        )
+        suggestion = (
+            "Pass signing=SigningConfig(private_key=..., key_id=...) when "
+            "constructing ADCPClient. See adcp-keygen for key generation."
+        )
+        super().__init__(message, agent_id, agent_uri, suggestion)
+
+
 class AdagentsValidationError(ADCPError):
     """Base error for adagents.json validation issues."""
 

@@ -6,6 +6,11 @@ See: https://adcontextprotocol.org/docs/building/implementation/security#signed-
 
 from __future__ import annotations
 
+from adcp.signing.autosign import (
+    SigningConfig,
+    SigningDecision,
+    operation_needs_signing,
+)
 from adcp.signing.canonical import (
     SignatureInputLabel,
     build_signature_base,
@@ -121,6 +126,8 @@ __all__ = [
     "SignatureInputLabel",
     "SignatureVerificationError",
     "SignedHeaders",
+    "SigningConfig",
+    "SigningDecision",
     "StaticJwksResolver",
     "VerifiedSigner",
     "VerifierCapability",
@@ -136,6 +143,7 @@ __all__ = [
     "default_jwks_fetcher",
     "extract_signature_bytes",
     "format_signature_header",
+    "operation_needs_signing",
     "parse_signature_input_header",
     "private_key_from_jwk",
     "public_key_from_jwk",
