@@ -53,8 +53,10 @@ def capabilities_response(
     """Build a get_adcp_capabilities response.
 
     Args:
-        supported_protocols: e.g. ["media_buy"], ["media_buy", "signals"],
-            ["media_buy", "compliance_testing"].
+        supported_protocols: e.g. ["media_buy"], ["media_buy", "signals"].
+            Valid values: media_buy, signals, governance, creative, brand,
+            sponsored_intelligence. ``compliance_testing`` is NOT a protocol —
+            pass it via the ``compliance_testing`` kwarg.
         major_versions: AdCP major versions. Defaults to [3].
         sandbox: Whether this is a sandbox agent. Defaults to True.
         features: Additional feature flags.

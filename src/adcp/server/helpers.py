@@ -39,7 +39,7 @@ STANDARD_ERROR_CODES: dict[str, dict[str, str]] = {
     "CREATIVE_DEADLINE_EXCEEDED": {
         "recovery": "correctable",
         "message": "Creative deadline passed",
-    },  # noqa: E501
+    },
     "AUDIENCE_TOO_SMALL": {"recovery": "correctable", "message": "Audience too small"},
     "MEDIA_BUY_NOT_FOUND": {"recovery": "correctable", "message": "Media buy not found"},
     "PACKAGE_NOT_FOUND": {"recovery": "correctable", "message": "Package not found"},
