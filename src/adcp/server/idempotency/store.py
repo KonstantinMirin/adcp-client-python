@@ -23,6 +23,7 @@ from __future__ import annotations
 import copy
 import logging
 import time
+import warnings
 from collections.abc import Awaitable, Callable
 from functools import wraps
 from typing import Any
@@ -198,8 +199,34 @@ class IdempotencyStore:
             # per-principal scope; anything else is a cross-principal replay
             # attack surface. Fall through to the handler (which will process
             # the request normally — no dedup, but no security regression).
+            self._warn_missing_principal_once()
             return None, None, params_dict
         return principal_id, idempotency_key, params_dict
+
+    _missing_principal_warned: bool = False
+
+    def _warn_missing_principal_once(self) -> None:
+        """Emit a one-time warning when the middleware sees a key but no principal.
+
+        Silent fall-through is the worst DX: the seller drops in
+        ``@idempotency.wrap``, ships, and doesn't discover until incident
+        review that no dedup ever happened. Fire once per store instance so
+        operators see the signal without filling logs on every request.
+        """
+        if self._missing_principal_warned:
+            return
+        self._missing_principal_warned = True
+        warnings.warn(
+            "IdempotencyStore received a request with idempotency_key but no "
+            "caller_identity on ToolContext — dedup is SKIPPED. This usually "
+            "means your transport isn't populating the authenticated principal. "
+            "A2A: wire an a2a-sdk auth middleware that sets ServerCallContext.user; "
+            "MCP: populate ToolContext.caller_identity from your FastMCP auth "
+            "middleware (see adcp.server.idempotency README). "
+            "This warning fires once per IdempotencyStore instance.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def _to_dict(value: Any) -> dict[str, Any]:

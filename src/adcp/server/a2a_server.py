@@ -36,7 +36,7 @@ from a2a.types import (
 )
 
 from adcp.exceptions import ADCPError, ADCPTaskError
-from adcp.server.base import ADCPHandler
+from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.helpers import STANDARD_ERROR_CODES
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 from adcp.server.test_controller import TestControllerStore, _handle_test_controller
@@ -80,7 +80,9 @@ class ADCPAgentExecutor(AgentExecutor):
     def _register_test_controller(self, store: TestControllerStore) -> None:
         """Register comply_test_controller as a callable skill."""
 
-        async def _call_test_controller(params: dict[str, Any]) -> Any:
+        async def _call_test_controller(
+            params: dict[str, Any], context: ToolContext | None = None
+        ) -> Any:
             return await _handle_test_controller(store, params)
 
         self._tool_callers["comply_test_controller"] = _call_test_controller
@@ -103,8 +105,9 @@ class ADCPAgentExecutor(AgentExecutor):
             )
             return
 
+        tool_context = _tool_context_from_request(context)
         try:
-            result = await self._tool_callers[skill_name](params)
+            result = await self._tool_callers[skill_name](params, tool_context)
             await self._send_result(event_queue, context, skill_name, result)
         except ADCPError as exc:
             # Application-layer AdCP error (IdempotencyConflictError etc.).
@@ -261,6 +264,44 @@ class ADCPAgentExecutor(AgentExecutor):
             message=exc.message,
         )
         await event_queue.enqueue_event(task)
+
+
+# ------------------------------------------------------------------
+# Request context helpers
+# ------------------------------------------------------------------
+
+
+def _tool_context_from_request(request: RequestContext) -> ToolContext:
+    """Derive a :class:`ToolContext` from an A2A :class:`RequestContext`.
+
+    Extracts the authenticated principal from ``request.call_context.user``
+    when present. Unauthenticated / anonymous requests get a bare
+    ``ToolContext`` — server middleware that requires a principal (e.g. the
+    idempotency store's per-principal scoping) falls through to its
+    no-principal default rather than collapsing everyone into a shared
+    namespace.
+
+    Security invariant: ``ServerCallContext`` is populated by the seller's
+    server-side auth middleware from verified transport material (bearer
+    token, mTLS cert, OAuth identity). A malicious client cannot flip
+    ``is_authenticated`` or set ``user_name`` from the message payload.
+    The ``is_authenticated and user_name`` gate below relies on this
+    invariant — do not relax it.
+
+    PII note: the ``user_name`` string becomes ``caller_identity``, which
+    the idempotency middleware logs prefix-truncated at DEBUG. If your auth
+    layer sets ``user_name`` to an email address, treat idempotency debug
+    logs as containing PII. Prefer opaque principal IDs.
+    """
+    ctx = ToolContext(request_id=request.task_id)
+    call_context = getattr(request, "call_context", None)
+    user = getattr(call_context, "user", None)
+    if user is not None:
+        is_auth = getattr(user, "is_authenticated", False)
+        user_name = getattr(user, "user_name", "") or ""
+        if is_auth and user_name:
+            ctx.caller_identity = user_name
+    return ctx
 
 
 # ------------------------------------------------------------------
