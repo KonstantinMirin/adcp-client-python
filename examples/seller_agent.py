@@ -39,7 +39,8 @@ from adcp.server.responses import (
 )
 from adcp.server.test_controller import TestControllerError, TestControllerStore
 
-AGENT_URL = "http://localhost:3001/mcp"
+PORT = int(os.environ.get("ADCP_PORT") or os.environ.get("PORT") or 3001)
+AGENT_URL = f"http://localhost:{PORT}/mcp"
 
 accounts: dict[str, dict[str, Any]] = {}
 media_buys: dict[str, dict[str, Any]] = {}
@@ -404,6 +405,6 @@ if __name__ == "__main__":
     serve(
         DemoSeller(),
         name="demo-seller",
-        port=int(os.environ.get("PORT", 3001)),
+        port=PORT,
         test_controller=DemoStore(),
     )
