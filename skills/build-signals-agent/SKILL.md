@@ -228,8 +228,11 @@ store = IdempotencyStore()
 async def get_adcp_capabilities(self, params, context=None):
     return capabilities_response(["signals"], idempotency=store.capability())
 
+@store.wrap
 async def activate_signal(self, params, context=None):
-    return await store.wrap(params["idempotency_key"], params, self._do_activate)
+    # idempotency_key is required; @store.wrap dedups replays per (caller, key).
+    # Same key + same payload → cached deployments; different payload → IDEMPOTENCY_CONFLICT.
+    return activate_signal_response(deployments=[...])
 ```
 
 ## Validation

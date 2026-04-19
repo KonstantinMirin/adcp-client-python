@@ -151,19 +151,18 @@ from adcp.server.idempotency import IdempotencyStore, MemoryBackend
 
 idempotency = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
 
+@idempotency.wrap
 async def build_creative(self, params, context=None):
-    key = params["idempotency_key"]  # required by schema
-    if cached := await idempotency.get(key):
-        return cached
+    # idempotency_key is required by schema; @idempotency.wrap dedups replays per (caller, key).
     manifest = {
         "promoted_offering": params.get("promoted_offering"),
         "format_id": params["format_id"],
         "assets": [{"asset_id": "image", "url": "https://cdn.example/generated.jpg"}],
     }
-    response = build_creative_response(manifest)
-    await idempotency.put(key, response)
-    return response
+    return build_creative_response(manifest)
 ```
+
+Declare idempotency in your capabilities response so replays are advertised: `capabilities_response(["media_buy"], idempotency=idempotency.capability())`.
 
 **`preview_creative`** — return pre-render previews for a built manifest. Responses wrap a list of `{preview_id, input, renders}`:
 
