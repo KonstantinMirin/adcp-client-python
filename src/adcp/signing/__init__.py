@@ -1,7 +1,45 @@
 """AdCP RFC 9421 request-signing profile.
 
-Implements the transport-layer signed-request profile from the AdCP specification.
-See: https://adcontextprotocol.org/docs/building/implementation/security#signed-requests-transport-layer
+Implements the transport-layer signed-request profile from the AdCP
+specification. See:
+https://adcontextprotocol.org/docs/building/implementation/security#signed-requests-transport-layer
+
+Quickstart
+==========
+
+The core names you'll reach for (everything else is for advanced use):
+
+**Buyers** (signing outgoing requests):
+
+* :func:`sign_request` — produce ``Signature`` / ``Signature-Input``
+  headers for one request
+* :func:`load_private_key_pem` — rehydrate the PEM ``adcp-keygen`` wrote
+* :class:`SigningConfig` — bundle key material for auto-signing via
+  ``ADCPClient(signing=...)``
+
+**Sellers** (verifying incoming requests):
+
+* :func:`verify_starlette_request` / :func:`verify_flask_request` —
+  framework-shaped wrappers around :func:`verify_request_signature`
+* :class:`VerifyOptions` — the knobs (capability, jwks_resolver,
+  replay_store, revocation_checker)
+* :class:`VerifierCapability` — what the seller advertises (e.g.
+  ``required_for={"create_media_buy"}``)
+* :class:`StaticJwksResolver` — for testing; use
+  :class:`CachingJwksResolver` against a live ``jwks_uri``
+* :class:`SignatureVerificationError` — raised on rejection; ``.code``
+  is the spec error string
+* :func:`unauthorized_response_headers` — builds the 401
+  ``WWW-Authenticate: Signature error="..."`` header
+* :class:`InMemoryReplayStore` for single-process deployments;
+  :class:`PgReplayStore` (behind ``[pg]`` extra) for multi-worker
+
+**Governance agents**:
+
+* :class:`CachingRevocationChecker` — fetches + caches a signed
+  revocation list from ``{issuer}/.well-known/governance-revocations.json``
+* Async variants: :class:`AsyncCachingJwksResolver`,
+  :class:`AsyncCachingRevocationChecker`
 """
 
 from __future__ import annotations
@@ -35,6 +73,7 @@ from adcp.signing.crypto import (
     b64url_encode,
     extract_signature_bytes,
     format_signature_header,
+    load_private_key_pem,
     private_key_from_jwk,
     public_key_from_jwk,
     sign_signature_base,
@@ -117,6 +156,31 @@ from adcp.signing.verifier import (
     verify_request_signature,
 )
 
+# Conditional import: PgReplayStore needs the [pg] extra. Always expose
+# the name — if psycopg isn't installed we fall through to a stub class
+# whose constructor raises ImportError with the install hint. Exposing
+# None would give callers a confusing ``TypeError: 'NoneType' object is
+# not callable`` on instantiation; the stub turns that into a
+# self-explanatory error at the right moment.
+try:
+    from adcp.signing.pg import PgReplayStore  # noqa: F401
+except ImportError:  # pragma: no cover — exercised by the [pg] extra tests
+
+    class PgReplayStore:  # type: ignore[no-redef]
+        """Stub raised when ``adcp[pg]`` isn't installed.
+
+        Attempting to instantiate raises :class:`ImportError` with the
+        install-hint text from :mod:`adcp.signing.pg.replay_store`.
+        """
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise ImportError(
+                "PgReplayStore requires psycopg3 and psycopg-pool. Install the "
+                "'pg' extra: `pip install 'adcp[pg]'` (Poetry: "
+                "`poetry add 'adcp[pg]'`)."
+            )
+
+
 __all__ = [
     "ALG_ED25519",
     "ALG_ES256",
@@ -141,6 +205,7 @@ __all__ = [
     "JwsUnknownKeyError",
     "MAX_WINDOW_SECONDS",
     "NONCE_BYTES",
+    "PgReplayStore",
     "REQUEST_SIGNATURE_ALG_NOT_ALLOWED",
     "REQUEST_SIGNATURE_COMPONENTS_INCOMPLETE",
     "REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED",
@@ -195,6 +260,7 @@ __all__ = [
     "default_revocation_list_fetcher",
     "extract_signature_bytes",
     "format_signature_header",
+    "load_private_key_pem",
     "operation_needs_signing",
     "parse_signature_input_header",
     "private_key_from_jwk",

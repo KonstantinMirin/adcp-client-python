@@ -39,6 +39,48 @@ jobs:
         run: |
           pytest tests/ -v --cov=src/adcp --cov-report=term-missing
 
+  pg-replay-store:
+    name: PgReplayStore tests (Postgres 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # CI-local ephemeral database. POSTGRES_HOST_AUTH_METHOD=trust
+        # avoids shipping any password literal (real or placeholder) in
+        # this workflow — GitHub's default CI network is already the
+        # trust boundary for this throwaway service.
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: adcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (with [pg] extra)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,pg]"
+
+      - name: Run PgReplayStore tests (unit + full-wire e2e)
+        env:
+          ADCP_PG_TEST_URL: postgresql://postgres@localhost:5432/adcp_test
+        run: |
+          pytest tests/conformance/signing/test_pg_replay_store.py \
+                 tests/conformance/signing/test_pg_replay_store_e2e.py \
+                 -v
+
   conventional-commits:
     name: Validate conventional commit format
     runs-on: ubuntu-latest
