@@ -64,10 +64,18 @@ from adcp.signing.errors import (
 )
 from adcp.signing.jwks import (
     CachingJwksResolver,
+    JwksResolver,
     SSRFValidationError,
     StaticJwksResolver,
     default_jwks_fetcher,
     validate_jwks_uri,
+)
+from adcp.signing.jws import (
+    JwsError,
+    JwsMalformedError,
+    JwsSignatureInvalidError,
+    JwsUnknownKeyError,
+    verify_jws_document,
 )
 from adcp.signing.middleware import (
     unauthorized_response_headers,
@@ -76,12 +84,22 @@ from adcp.signing.middleware import (
 )
 from adcp.signing.replay import InMemoryReplayStore, ReplayStore
 from adcp.signing.revocation import RevocationChecker, RevocationList
+from adcp.signing.revocation_fetcher import (
+    DEFAULT_GRACE_MULTIPLIER,
+    REVOCATION_LIST_TYP,
+    CachingRevocationChecker,
+    FetchResult,
+    RevocationListFetcher,
+    RevocationListFetchError,
+    RevocationListFreshnessError,
+    RevocationListParseError,
+    default_revocation_list_fetcher,
+)
 from adcp.signing.signer import (
     SignedHeaders,
     sign_request,
 )
 from adcp.signing.verifier import (
-    JwksResolver,
     VerifiedSigner,
     VerifierCapability,
     VerifyOptions,
@@ -93,11 +111,18 @@ __all__ = [
     "ALG_ES256",
     "ALLOWED_ALGS",
     "CachingJwksResolver",
+    "CachingRevocationChecker",
     "DEFAULT_EXPIRES_IN_SECONDS",
+    "DEFAULT_GRACE_MULTIPLIER",
     "DEFAULT_SKEW_SECONDS",
     "DEFAULT_TAG",
+    "FetchResult",
     "InMemoryReplayStore",
     "JwksResolver",
+    "JwsError",
+    "JwsMalformedError",
+    "JwsSignatureInvalidError",
+    "JwsUnknownKeyError",
     "MAX_WINDOW_SECONDS",
     "NONCE_BYTES",
     "REQUEST_SIGNATURE_ALG_NOT_ALLOWED",
@@ -118,9 +143,14 @@ __all__ = [
     "REQUEST_SIGNATURE_REVOCATION_STALE",
     "REQUEST_SIGNATURE_TAG_INVALID",
     "REQUEST_SIGNATURE_WINDOW_INVALID",
+    "REVOCATION_LIST_TYP",
     "ReplayStore",
     "RevocationChecker",
     "RevocationList",
+    "RevocationListFetchError",
+    "RevocationListFetcher",
+    "RevocationListFreshnessError",
+    "RevocationListParseError",
     "SIG_LABEL_DEFAULT",
     "SSRFValidationError",
     "SignatureInputLabel",
@@ -141,6 +171,7 @@ __all__ = [
     "compute_content_digest_sha256",
     "content_digest_matches",
     "default_jwks_fetcher",
+    "default_revocation_list_fetcher",
     "extract_signature_bytes",
     "format_signature_header",
     "operation_needs_signing",
@@ -152,6 +183,7 @@ __all__ = [
     "unauthorized_response_headers",
     "validate_jwks_uri",
     "verify_flask_request",
+    "verify_jws_document",
     "verify_request_signature",
     "verify_signature",
     "verify_starlette_request",

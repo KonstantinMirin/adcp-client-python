@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Literal, Protocol
+from typing import Any, Literal
 
 from adcp.signing.canonical import (
     _lookup,
@@ -53,6 +53,7 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
 )
+from adcp.signing.jwks import JwksResolver
 from adcp.signing.replay import ReplayStore
 from adcp.signing.revocation import RevocationChecker, RevocationList
 
@@ -66,12 +67,6 @@ _STR_PARAMS = frozenset({"nonce", "keyid", "alg", "tag"})
 # Defensive upper bound against log/dict-key poisoning. RFC 7517 has no hard kid
 # limit; 256 bytes is plenty for any real-world kid/nonce.
 _MAX_PARAM_LEN = 256
-
-
-class JwksResolver(Protocol):
-    """Resolves a keyid to a JWK (or None if unknown)."""
-
-    def __call__(self, keyid: str) -> dict[str, Any] | None: ...
 
 
 @dataclass(frozen=True)
