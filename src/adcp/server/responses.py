@@ -48,6 +48,7 @@ def capabilities_response(
     sandbox: bool = True,
     features: dict[str, Any] | None = None,
     idempotency: dict[str, Any] | None = None,
+    compliance_testing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a get_adcp_capabilities response.
 
@@ -61,6 +62,9 @@ def capabilities_response(
             ``adcp.idempotency`` per AdCP #2315. Pass the output of
             :meth:`adcp.server.idempotency.IdempotencyStore.capability` here
             to declare the seller's ``replay_ttl_seconds``.
+        compliance_testing: Optional top-level ``compliance_testing`` block
+            to advertise compliance-testing capabilities. When provided,
+            emitted as a sibling of ``adcp`` in the response.
 
     Example::
 
@@ -83,6 +87,8 @@ def capabilities_response(
     }
     if features:
         resp["features"] = features
+    if compliance_testing is not None:
+        resp["compliance_testing"] = compliance_testing
     return resp
 
 
@@ -304,7 +310,7 @@ def sync_creatives_response(
     """Build a sync_creatives success response.
 
     Each creative dict should include: creative_id, action ("created"|"updated").
-    Optionally: status ("accepted"|"pending_review"|"rejected").
+    Optionally: status ("processing"|"pending_review"|"approved"|"rejected"|"archived").
     Matches SyncCreativesResponse1 schema (field: "creatives").
     """
     return {"creatives": creatives, "sandbox": sandbox}

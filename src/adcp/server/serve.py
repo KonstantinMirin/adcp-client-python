@@ -34,7 +34,6 @@ def serve(
     *,
     name: str = "adcp-agent",
     port: int | None = None,
-    mount: str = "/mcp",
     transport: str = "streamable-http",
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
@@ -51,7 +50,6 @@ def serve(
         handler: An ADCPHandler subclass instance with your tool implementations.
         name: Server name shown to clients / in the A2A agent card.
         port: Port to listen on. Defaults to PORT env var, then 3001.
-        mount: URL path to mount MCP endpoint on (MCP only).
         transport: ``"streamable-http"`` (default, MCP) or ``"a2a"``.
         instructions: Optional system instructions for the agent (MCP only).
         test_controller: Optional TestControllerStore instance for storyboard testing.
@@ -143,9 +141,7 @@ def _serve_a2a(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
-    app = create_a2a_server(
-        handler, name=name, port=resolved_port, test_controller=test_controller
-    )
+    app = create_a2a_server(handler, name=name, port=resolved_port, test_controller=test_controller)
     uvicorn.run(app, host="0.0.0.0", port=resolved_port)
 
 
