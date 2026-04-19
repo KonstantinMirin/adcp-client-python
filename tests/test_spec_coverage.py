@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 
 def _schema_task_names() -> set[str]:
@@ -83,9 +82,7 @@ def test_feature_and_domain_maps_cover_brand_tasks() -> None:
     from adcp.capabilities import TASK_FEATURE_MAP
     from adcp.server.builder import HANDLER_TO_DOMAIN
 
-    brand_tasks = {
-        name for name, domain in HANDLER_TO_DOMAIN.items() if domain == "brand"
-    }
+    brand_tasks = {name for name, domain in HANDLER_TO_DOMAIN.items() if domain == "brand"}
     missing = sorted(t for t in brand_tasks if t not in TASK_FEATURE_MAP)
     assert missing == [], (
         f"brand tasks present in HANDLER_TO_DOMAIN but missing from "
@@ -107,21 +104,33 @@ def test_tool_filtering_by_handler_type():
 
     gov_tools = {t["name"] for t in get_tools_for_handler(GovernanceHandler)}
     assert gov_tools == {
-        "get_creative_features", "sync_plans", "check_governance",
-        "report_plan_outcome", "get_plan_audit_logs",
-        "create_property_list", "get_property_list", "list_property_lists",
-        "update_property_list", "delete_property_list",
-        "create_collection_list", "get_collection_list", "list_collection_lists",
-        "update_collection_list", "delete_collection_list",
+        "get_creative_features",
+        "sync_plans",
+        "check_governance",
+        "report_plan_outcome",
+        "get_plan_audit_logs",
+        "create_property_list",
+        "get_property_list",
+        "list_property_lists",
+        "update_property_list",
+        "delete_property_list",
+        "create_collection_list",
+        "get_collection_list",
+        "list_collection_lists",
+        "update_collection_list",
+        "delete_collection_list",
         "get_adcp_capabilities",
     }
 
     # ContentStandardsHandler: content standards tools + protocol discovery
     cs_tools = {t["name"] for t in get_tools_for_handler(ContentStandardsHandler)}
     assert cs_tools == {
-        "create_content_standards", "get_content_standards",
-        "list_content_standards", "update_content_standards",
-        "calibrate_content", "validate_content_delivery",
+        "create_content_standards",
+        "get_content_standards",
+        "list_content_standards",
+        "update_content_standards",
+        "calibrate_content",
+        "validate_content_delivery",
         "get_media_buy_artifacts",
         "get_adcp_capabilities",
     }
@@ -129,8 +138,10 @@ def test_tool_filtering_by_handler_type():
     # SponsoredIntelligenceHandler: SI tools + protocol discovery
     si_tools = {t["name"] for t in get_tools_for_handler(SponsoredIntelligenceHandler)}
     assert si_tools == {
-        "si_get_offering", "si_initiate_session",
-        "si_send_message", "si_terminate_session",
+        "si_get_offering",
+        "si_initiate_session",
+        "si_send_message",
+        "si_terminate_session",
         "get_adcp_capabilities",
     }
 
@@ -146,51 +157,19 @@ def test_tool_filtering_by_handler_type():
     assert subclass_tools == gov_tools
 
 
-def _collect_all_properties(schema: dict[str, Any]) -> set[str]:
-    """Extract all top-level property names from a JSON schema.
-
-    Handles plain objects, oneOf/anyOf union schemas, and $defs references.
-    """
-    defs = schema.get("$defs", {})
-
-    def _props_from_subschema(sub: dict[str, Any]) -> set[str]:
-        if "properties" in sub:
-            return set(sub["properties"].keys())
-        if "$ref" in sub:
-            ref_name = sub["$ref"].rsplit("/", 1)[-1]
-            ref_schema = defs.get(ref_name, {})
-            return set(ref_schema.get("properties", {}).keys())
-        return set()
-
-    # Direct properties on the schema
-    if "properties" in schema:
-        return set(schema["properties"].keys())
-
-    # Union types produce oneOf or anyOf at top level
-    for key in ("oneOf", "anyOf"):
-        if key in schema:
-            props: set[str] = set()
-            for variant in schema[key]:
-                props |= _props_from_subschema(variant)
-            return props
-
-    return set()
-
-
 def test_mcp_tool_input_schema_matches_pydantic_models():
-    """MCP tool inputSchema properties stay in sync with Pydantic request models.
+    """MCP tool inputSchemas are generated from Pydantic request models.
 
-    For each MCP tool that has a corresponding Pydantic request model, verify
-    that no *new* fields have appeared on the model without being reflected in
-    the hand-written MCP inputSchema.
-
-    Known gaps (fields the MCP schema intentionally omits) are recorded below.
-    If a Pydantic model gains a field that is not in the MCP inputSchema AND
-    not in the known-gaps set, this test fails -- signaling that the MCP tool
-    definition needs updating.
+    The ``ADCP_TOOL_DEFINITIONS[*].inputSchema`` is overwritten at import
+    time by ``_apply_pydantic_schemas()`` with the output of
+    ``model_json_schema()`` on the corresponding ``<ToolName>Request``
+    model. This test is a coarse guard that every tool with a mapped
+    request model carries a schema advertising every field of that
+    model. For byte-level drift enforcement, see
+    ``tests/test_mcp_schema_drift.py``.
     """
     from adcp.__main__ import _get_dispatch_table
-    from adcp.server.mcp_tools import ADCP_TOOL_DEFINITIONS
+    from adcp.server.mcp_tools import _PYDANTIC_SCHEMAS, ADCP_TOOL_DEFINITIONS
 
     dispatch_table = _get_dispatch_table()
     tool_schemas = {
@@ -199,194 +178,30 @@ def test_mcp_tool_input_schema_matches_pydantic_models():
     }
 
     # Tools with no request type or that intentionally diverge
-    SKIP_TOOLS = {"list_tools", "get_info"}
-
-    # Fields the MCP inputSchema intentionally omits per tool.
-    # When adding a field to a Pydantic model, either add it to the MCP
-    # inputSchema in mcp_tools.py or add it here with a comment explaining why.
-    KNOWN_GAPS: dict[str, set[str]] = {
-        "get_products": {
-            "account", "brand", "brief", "buyer_campaign_ref", "buying_mode",
-            "catalog", "ext", "preferred_delivery_types", "property_list",
-            "refine", "required_policies", "time_budget",
-        },
-        "list_creative_formats": {
-            "asset_types", "context", "disclosure_persistence",
-            "disclosure_positions", "ext", "format_ids", "input_format_ids",
-            "is_responsive", "max_height", "max_width", "min_height",
-            "min_width", "name_search", "output_format_ids", "wcag_level",
-        },
-        "preview_creative": {
-            "context", "creative_id", "ext", "inputs", "item_limit", "quality",
-            "request_type", "requests", "template_id", "variant_id",
-        },
-        "build_creative": {
-            "brand", "concept_id", "context", "creative_id",
-            "creative_manifest", "ext", "idempotency_key", "include_preview",
-            "item_limit", "macro_values", "media_buy_id", "message",
-            "package_id", "preview_inputs", "preview_output_format",
-            "preview_quality", "quality", "target_format_id",
-            "target_format_ids",
-        },
-        "sync_creatives": {
-            "account", "assignments", "context", "creative_ids",
-            "delete_missing", "dry_run", "ext", "idempotency_key",
-            "push_notification_config", "validation_mode",
-        },
-        "list_creatives": {
-            "context", "ext", "include_assignments", "include_items",
-            "include_snapshot", "include_variables", "sort",
-        },
-        "create_media_buy": {
-            "account", "advertiser_industry", "artifact_webhook", "brand",
-            "buyer_campaign_ref", "buyer_ref", "context", "end_time", "ext",
-            "idempotency_key", "invoice_recipient", "io_acceptance",
-            "plan_id", "po_number", "push_notification_config",
-            "reporting_webhook", "start_time", "total_budget",
-        },
-        "update_media_buy": {
-            "buyer_ref", "canceled", "cancellation_reason", "context",
-            "end_time", "ext", "idempotency_key", "invoice_recipient",
-            "new_packages", "paused", "push_notification_config",
-            "reporting_webhook", "revision", "start_time", "status_filter",
-            "total_budget",
-        },
-        "get_media_buy_delivery": {
-            "account", "attribution_window", "buyer_refs", "context",
-            "end_date", "ext", "fields", "include_creative_breakdown",
-            "include_package_daily_breakdown", "media_buy_ids",
-            "metrics_granularity", "package_ids", "pagination",
-            "reporting_dimensions", "start_date", "status_filter",
-        },
-        "get_media_buys": {
-            "context", "ext", "fields", "include_delivery_snapshot",
-            "include_history", "include_packages", "include_snapshot",
-            "status_filter",
-        },
-        "get_signals": {
-            "account", "buyer_campaign_ref", "context", "countries",
-            "destinations", "ext", "max_results", "signal_ids", "signal_spec",
-        },
-        "activate_signal": {
-            "account", "action", "buyer_campaign_ref", "context",
-            "destinations", "ext", "idempotency_key", "pricing_option_id",
-            "signal_agent_segment_id",
-        },
-        "provide_performance_feedback": {
-            "buyer_ref", "context", "creative_id", "ext", "feedback_source",
-            "idempotency_key", "measurement_period", "metric_type",
-            "package_id", "performance_index",
-        },
-        "list_accounts": {"context", "ext", "sandbox", "status"},
-        "sync_accounts": {
-            "context", "delete_missing", "dry_run", "ext",
-            "push_notification_config",
-        },
-        "get_account_financials": {"context", "ext", "period"},
-        "report_usage": {"context", "ext", "idempotency_key", "reporting_period"},
-        "log_event": {"context", "event_source_id", "ext", "idempotency_key", "test_event_code"},
-        "sync_event_sources": {"account", "context", "delete_missing", "ext"},
-        "sync_audiences": {"context", "delete_missing", "ext"},
-        "sync_catalogs": {
-            "catalog_ids", "context", "delete_missing", "dry_run", "ext",
-            "push_notification_config", "validation_mode",
-        },
-        "get_creative_delivery": {
-            "account", "context", "end_date", "ext", "max_variants",
-            "media_buy_buyer_refs", "pagination", "start_date",
-        },
-        "get_adcp_capabilities": {"context", "ext", "protocols"},
-        "create_content_standards": {
-            "calibration_exemplars", "context", "ext", "idempotency_key",
-            "policy", "registry_policy_ids", "scope",
-        },
-        "get_content_standards": {"context", "ext", "standards_id"},
-        "list_content_standards": {
-            "channels", "context", "countries", "ext", "languages",
-        },
-        "update_content_standards": {
-            "calibration_exemplars", "context", "ext", "idempotency_key",
-            "policy", "registry_policy_ids", "scope", "standards_id",
-        },
-        "calibrate_content": {"artifact", "idempotency_key", "standards_id"},
-        "validate_content_delivery": {
-            "context", "ext", "feature_ids", "include_passed", "records",
-            "standards_id",
-        },
-        "get_media_buy_artifacts": {
-            "account", "context", "ext", "failures_only", "package_ids",
-            "pagination", "sampling", "time_range",
-        },
-        "get_creative_features": {"ext", "feature_ids"},
-        "check_governance": {
-            "buyer_ref", "delivery_metrics", "invoice_recipient",
-            "media_buy_id", "modification_summary", "phase",
-            "planned_delivery",
-        },
-        "si_get_offering": {
-            "context", "ext", "include_products", "offering_id",
-            "product_limit",
-        },
-        "report_plan_outcome": {
-            "governance_context", "idempotency_key",
-        },
-        "si_initiate_session": {
-            "context", "ext", "idempotency_key", "identity", "media_buy_id",
-            "offering_id", "offering_token", "placement",
-            "supported_capabilities",
-        },
-        "si_send_message": {"action_response", "ext"},
-        "si_terminate_session": {"ext", "reason", "termination_context"},
-        "create_property_list": {"brand", "context", "ext", "idempotency_key"},
-        "get_property_list": {"context", "ext"},
-        "list_property_lists": {"context", "ext", "name_contains"},
-        "update_property_list": {
-            "base_properties", "brand", "context", "ext", "idempotency_key",
-            "webhook_url",
-        },
-        "delete_property_list": {"context", "ext", "idempotency_key"},
-        # Collection Lists + sync_governance: envelope fields
-        "create_collection_list": {"context", "ext", "idempotency_key"},
-        "get_collection_list": {"context", "ext"},
-        "list_collection_lists": {"context", "ext"},
-        "update_collection_list": {"context", "ext", "idempotency_key"},
-        "delete_collection_list": {"context", "ext", "idempotency_key"},
-        "sync_governance": {
-            "adcp_major_version", "context", "ext", "idempotency_key",
-        },
-        # TMP: envelope fields optional for agents
-        "context_match": {
-            "$schema", "artifact", "property_id", "protocol_version",
-        },
-        "identity_match": {"$schema", "protocol_version"},
-        # Brand Rights: envelope fields
-        "get_brand_identity": {"context", "ext"},
-        "get_rights": {"buyer_brand", "context", "ext"},
-        "acquire_rights": {"context", "ext", "push_notification_config"},
-        # Compliance: envelope field
-        "comply_test_controller": {"ext"},
-    }
+    skip_tools = {"list_tools", "get_info"}
 
     drift: list[str] = []
-
     for tool_name, (_, type_adapter) in dispatch_table.items():
-        if tool_name in SKIP_TOOLS or type_adapter is None:
+        if tool_name in skip_tools or type_adapter is None:
             continue
         if tool_name not in tool_schemas:
             continue
+        # If generation failed for this tool, the inputSchema is the
+        # hand-crafted stub — covered by tests/test_mcp_schema_drift.py's
+        # test_every_tool_has_pydantic_generated_schema.
+        if tool_name not in _PYDANTIC_SCHEMAS:
+            continue
 
-        model_schema = type_adapter.json_schema()
-        model_props = _collect_all_properties(model_schema)
+        model_props = set(type_adapter.json_schema().get("properties", {}).keys())
         mcp_props = tool_schemas[tool_name]
-        known = KNOWN_GAPS.get(tool_name, set())
-
-        missing = sorted(model_props - mcp_props - known)
+        missing = sorted(model_props - mcp_props)
         if missing:
-            drift.append(f"{tool_name}: model has {missing} not in MCP inputSchema")
+            drift.append(f"{tool_name}: model has {missing} not in inputSchema")
 
     assert drift == [], (
         "MCP tool inputSchema fields have drifted from Pydantic models.\n"
-        "Either add the field to ADCP_TOOL_DEFINITIONS in mcp_tools.py,\n"
-        "or add it to KNOWN_GAPS in this test with a comment explaining why.\n"
+        "The inputSchema is auto-generated from the request model at\n"
+        "import time; this drift shouldn't be possible unless schema\n"
+        "generation is broken. See tests/test_mcp_schema_drift.py.\n"
         + "\n".join(f"  - {d}" for d in drift)
     )
