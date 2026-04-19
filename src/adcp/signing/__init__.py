@@ -63,10 +63,15 @@ from adcp.signing.errors import (
     SignatureVerificationError,
 )
 from adcp.signing.jwks import (
+    AsyncCachingJwksResolver,
+    AsyncJwksFetcher,
+    AsyncJwksResolver,
     CachingJwksResolver,
     JwksResolver,
     SSRFValidationError,
     StaticJwksResolver,
+    as_async_resolver,
+    async_default_jwks_fetcher,
     default_jwks_fetcher,
     validate_jwks_uri,
 )
@@ -75,6 +80,9 @@ from adcp.signing.jws import (
     JwsMalformedError,
     JwsSignatureInvalidError,
     JwsUnknownKeyError,
+    averify_detached_jws,
+    averify_jws_document,
+    verify_detached_jws,
     verify_jws_document,
 )
 from adcp.signing.middleware import (
@@ -87,12 +95,15 @@ from adcp.signing.revocation import RevocationChecker, RevocationList
 from adcp.signing.revocation_fetcher import (
     DEFAULT_GRACE_MULTIPLIER,
     REVOCATION_LIST_TYP,
+    AsyncCachingRevocationChecker,
+    AsyncRevocationListFetcher,
     CachingRevocationChecker,
     FetchResult,
     RevocationListFetcher,
     RevocationListFetchError,
     RevocationListFreshnessError,
     RevocationListParseError,
+    async_default_revocation_list_fetcher,
     default_revocation_list_fetcher,
 )
 from adcp.signing.signer import (
@@ -110,6 +121,11 @@ __all__ = [
     "ALG_ED25519",
     "ALG_ES256",
     "ALLOWED_ALGS",
+    "AsyncCachingJwksResolver",
+    "AsyncCachingRevocationChecker",
+    "AsyncJwksFetcher",
+    "AsyncJwksResolver",
+    "AsyncRevocationListFetcher",
     "CachingJwksResolver",
     "CachingRevocationChecker",
     "DEFAULT_EXPIRES_IN_SECONDS",
@@ -163,6 +179,11 @@ __all__ = [
     "VerifierCapability",
     "VerifyOptions",
     "alg_for_jwk",
+    "as_async_resolver",
+    "async_default_jwks_fetcher",
+    "async_default_revocation_list_fetcher",
+    "averify_detached_jws",
+    "averify_jws_document",
     "b64url_decode",
     "b64url_encode",
     "build_signature_base",
@@ -182,6 +203,7 @@ __all__ = [
     "sign_signature_base",
     "unauthorized_response_headers",
     "validate_jwks_uri",
+    "verify_detached_jws",
     "verify_flask_request",
     "verify_jws_document",
     "verify_request_signature",

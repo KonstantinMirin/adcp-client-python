@@ -13,12 +13,25 @@ poll the list, verify its JWS, and reject tokens signed under a revoked
   :class:`adcp.signing.revocation.RevocationChecker` Protocol. Handles
   first fetch, refetch near ``next_update``, 304s, and the spec's
   fail-closed rule past ``next_update + grace``.
+* :class:`AsyncCachingRevocationChecker` and
+  :func:`async_default_revocation_list_fetcher` — async counterparts
+  for verifiers running on an asyncio event loop.
 
 The verifier plugs it into :class:`VerifyOptions.revocation_checker`.
+
+Naming conventions
+------------------
+* Classes use the ``Async`` CapWords prefix
+  (``AsyncCachingRevocationChecker``).
+* Free functions use the ``async_`` snake_case prefix
+  (``async_default_revocation_list_fetcher``).
+* Methods use the ``a`` prefix (``aprime``) — matches ``httpx`` /
+  ``anyio`` ecosystem idioms.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -32,11 +45,13 @@ import httpx
 
 from adcp.signing.jwks import (
     DEFAULT_JWKS_TIMEOUT_SECONDS,
+    AsyncJwksResolver,
     JwksResolver,
     validate_jwks_uri,
 )
 from adcp.signing.jws import (
     JwsError,
+    averify_jws_document,
     verify_jws_document,
 )
 from adcp.signing.revocation import RevocationList
@@ -150,56 +165,59 @@ class RevocationListFetcher(Protocol):
     ) -> FetchResult: ...
 
 
-def default_revocation_list_fetcher(
-    uri: str,
-    *,
-    if_none_match: str | None = None,
-    if_modified_since: str | None = None,
-    allow_private: bool = False,
-    timeout: float = DEFAULT_JWKS_TIMEOUT_SECONDS,
-) -> FetchResult:
-    """HTTPS GET the revocation list, honoring SSRF rules and conditional requests.
+class AsyncRevocationListFetcher(Protocol):
+    """Async variant of :class:`RevocationListFetcher`.
 
-    Reuses ``validate_jwks_uri`` — the SSRF controls are identical (same
-    reserved-range rejection, same cloud-metadata block). ``httpx``
-    re-resolves the hostname on connect, which is the TOCTOU window
-    tracked separately in #190. Sends ``If-None-Match`` when an ETag is
-    supplied and ``If-Modified-Since`` when a ``Last-Modified`` is
-    supplied; the spec accepts either (sellers SHOULD use both when
-    available).
+    Used by :class:`AsyncCachingRevocationChecker` so async verifier
+    pipelines don't block the event loop on revocation-list fetches.
     """
-    validate_jwks_uri(uri, allow_private=allow_private)
+
+    async def __call__(
+        self,
+        uri: str,
+        *,
+        if_none_match: str | None = None,
+        if_modified_since: str | None = None,
+    ) -> FetchResult: ...
+
+
+def _build_fetch_headers(
+    *, if_none_match: str | None, if_modified_since: str | None
+) -> dict[str, str]:
     headers = {"Accept": "application/jose+json, application/json, application/jose"}
     if if_none_match is not None:
         headers["If-None-Match"] = if_none_match
     if if_modified_since is not None:
         headers["If-Modified-Since"] = if_modified_since
+    return headers
 
-    try:
-        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
-            response = client.get(uri, headers=headers)
-    except httpx.HTTPError as exc:
-        raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
 
-    if response.status_code == 304:
+def _fetch_result_from_response(
+    uri: str,
+    status_code: int,
+    response_text: str,
+    response_headers: Any,
+    *,
+    if_none_match: str | None,
+    if_modified_since: str | None,
+) -> FetchResult:
+    """Shared response → FetchResult conversion for sync + async fetchers."""
+    if status_code == 304:
         return FetchResult(
             body="",
             etag=if_none_match,
             last_modified=if_modified_since,
             not_modified=True,
         )
-    if response.status_code != 200:
+    if status_code != 200:
         raise RevocationListFetchError(
-            f"revocation list {uri!r} returned HTTP {response.status_code}"
+            f"revocation list {uri!r} returned HTTP {status_code}"
         )
 
-    etag = response.headers.get("ETag")
-    last_modified = _sanitize_last_modified(response.headers.get("Last-Modified"))
-    raw_body = response.text.strip()
+    etag = response_headers.get("ETag")
+    last_modified = _sanitize_last_modified(response_headers.get("Last-Modified"))
+    raw_body = response_text.strip()
 
-    # General JSON serialization starts with `{`; compact form is three
-    # base64url segments separated by dots. Dispatch by first-byte shape
-    # rather than trusting Content-Type, which is unreliable in practice.
     if not raw_body:
         raise RevocationListFetchError(f"revocation list {uri!r} returned empty body")
 
@@ -219,6 +237,78 @@ def default_revocation_list_fetcher(
         etag=etag,
         last_modified=last_modified,
         not_modified=False,
+    )
+
+
+def default_revocation_list_fetcher(
+    uri: str,
+    *,
+    if_none_match: str | None = None,
+    if_modified_since: str | None = None,
+    allow_private: bool = False,
+    timeout: float = DEFAULT_JWKS_TIMEOUT_SECONDS,
+) -> FetchResult:
+    """HTTPS GET the revocation list, honoring SSRF rules and conditional requests.
+
+    Reuses ``validate_jwks_uri`` — the SSRF controls are identical (same
+    reserved-range rejection, same cloud-metadata block). ``httpx``
+    re-resolves the hostname on connect, which is the TOCTOU window
+    tracked separately in #190. Sends ``If-None-Match`` when an ETag is
+    supplied and ``If-Modified-Since`` when a ``Last-Modified`` is
+    supplied; the spec accepts either (sellers SHOULD use both when
+    available).
+    """
+    validate_jwks_uri(uri, allow_private=allow_private)
+    headers = _build_fetch_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since
+    )
+    try:
+        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+            response = client.get(uri, headers=headers)
+    except httpx.HTTPError as exc:
+        raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
+
+    return _fetch_result_from_response(
+        uri,
+        response.status_code,
+        response.text,
+        response.headers,
+        if_none_match=if_none_match,
+        if_modified_since=if_modified_since,
+    )
+
+
+async def async_default_revocation_list_fetcher(
+    uri: str,
+    *,
+    if_none_match: str | None = None,
+    if_modified_since: str | None = None,
+    allow_private: bool = False,
+    timeout: float = DEFAULT_JWKS_TIMEOUT_SECONDS,
+) -> FetchResult:
+    """Async counterpart to :func:`default_revocation_list_fetcher`.
+
+    Same SSRF + conditional-request behavior, but uses
+    :class:`httpx.AsyncClient` so the event loop isn't blocked during
+    the round-trip.
+    """
+    validate_jwks_uri(uri, allow_private=allow_private)
+    headers = _build_fetch_headers(
+        if_none_match=if_none_match, if_modified_since=if_modified_since
+    )
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            response = await client.get(uri, headers=headers)
+    except httpx.HTTPError as exc:
+        raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
+
+    return _fetch_result_from_response(
+        uri,
+        response.status_code,
+        response.text,
+        response.headers,
+        if_none_match=if_none_match,
+        if_modified_since=if_modified_since,
     )
 
 
@@ -289,6 +379,149 @@ def _normalize_issuer(issuer: str) -> str:
     return urlunsplit((scheme, netloc, "", "", ""))
 
 
+def _slide_next_update(
+    current: RevocationList, polling_interval_seconds: float
+) -> RevocationList:
+    """Return ``current`` with ``next_update`` advanced by one polling interval.
+
+    Used on a 304 response so the cached list's freshness window slides
+    forward without needing a fresh JWS. Preserves every other field.
+    """
+    prior = _parse_iso8601(current.next_update)
+    new_next_update = prior + timedelta(seconds=polling_interval_seconds)
+    return RevocationList(
+        issuer=current.issuer,
+        updated=current.updated,
+        next_update=new_next_update.isoformat().replace("+00:00", "Z"),
+        revoked_kids=current.revoked_kids,
+        revoked_jtis=current.revoked_jtis,
+    )
+
+
+def _post_jws_validation(
+    payload: dict[str, Any],
+    *,
+    expected_issuer: str,
+    now_wall: datetime,
+    current_list: RevocationList | None,
+) -> RevocationList:
+    """Schema + clock-skew + replay check on an already-verified JWS payload.
+
+    Everything in this helper is pure CPU — runs identically from sync
+    and async refresh paths. Raises :class:`RevocationListParseError` on
+    any violation.
+    """
+    revocation_list = _build_list_from_payload(payload, expected_issuer=expected_issuer)
+
+    updated = _parse_iso8601(revocation_list.updated)
+    next_update = _parse_iso8601(revocation_list.next_update)
+
+    # Verify `updated` is not in the future beyond clock skew. An issuer
+    # whose clock is far ahead would otherwise force an immediate stale
+    # rejection.
+    if updated > now_wall.replace(microsecond=0):
+        delta = (updated - now_wall).total_seconds()
+        if delta > 60:  # 60s clock skew tolerance, mirrors JWS exp/iat rules
+            raise RevocationListParseError(
+                f"revocation list updated={revocation_list.updated!r} is "
+                f"{delta:.0f}s in the future"
+            )
+    if next_update <= updated:
+        raise RevocationListParseError(
+            f"revocation list next_update {revocation_list.next_update!r} is not "
+            f"after updated {revocation_list.updated!r}"
+        )
+
+    # Reject a freshly-fetched list whose `updated` is older than the
+    # one we already have cached. Defense against CDN replay or
+    # compromised operator serving an older list with revocations
+    # removed. The spec doesn't permit un-revocation.
+    if current_list is not None:
+        current_updated = _parse_iso8601(current_list.updated)
+        if updated < current_updated:
+            raise RevocationListParseError(
+                f"revocation list updated={revocation_list.updated!r} is older "
+                f"than cached list updated={current_list.updated!r} — "
+                f"refusing to roll back"
+            )
+
+    return revocation_list
+
+
+def _polling_interval_seconds(revocation_list: RevocationList) -> float:
+    """Compute the clamped polling interval for a list.
+
+    Parse-time already enforces declared cadence >= 60s and we clamp
+    the ceiling at :data:`MAX_POLLING_INTERVAL_SECONDS` as defense
+    against an issuer declaring an out-of-bounds ceiling value.
+    """
+    updated = _parse_iso8601(revocation_list.updated)
+    next_update = _parse_iso8601(revocation_list.next_update)
+    return min(MAX_POLLING_INTERVAL_SECONDS, (next_update - updated).total_seconds())
+
+
+class _CheckerState:
+    """Mixin for the mutable cache state shared by sync + async checkers.
+
+    Both checkers carry identical cache fields and run identical
+    post-fetch transitions (304-slide, commit, grace calculation).
+    Keeping this as a mixin lets either class inherit without
+    duplicating the methods — the alternative (module-level helpers
+    that take a mutable state dict) reads worse and loses type info.
+    """
+
+    _current_list: RevocationList | None
+    _current_etag: str | None
+    _current_last_modified: str | None
+    _last_successful_refresh: float | None
+    _last_polling_interval_seconds: float | None
+    _last_refresh_attempt: float | None
+    _grace_multiplier: float
+
+    def _init_state(self) -> None:
+        self._current_list = None
+        self._current_etag = None
+        self._current_last_modified = None
+        self._last_successful_refresh = None
+        self._last_polling_interval_seconds = None
+        self._last_refresh_attempt = None
+
+    def _handle_not_modified(self, *, now_mono: float) -> None:
+        """Slide ``next_update`` forward on a 304 response.
+
+        Without this, subsequent calls past the original ``next_update``
+        would re-enter the refresh branch on every verification (gated
+        only by the 60s cooldown). Advancing the cached
+        ``next_update`` by one polling interval lets the hot path
+        short-circuit cleanly.
+        """
+        self._last_successful_refresh = now_mono
+        if self._current_list is not None and self._last_polling_interval_seconds:
+            self._current_list = _slide_next_update(
+                self._current_list, self._last_polling_interval_seconds
+            )
+
+    def _commit(
+        self,
+        *,
+        result: FetchResult,
+        revocation_list: RevocationList,
+        now_mono: float,
+    ) -> None:
+        """Commit a validated list to the cache."""
+        self._current_list = revocation_list
+        self._current_etag = result.etag
+        # Sanitize again at write-side: custom fetcher impls may not have
+        # validated the value before constructing FetchResult.
+        self._current_last_modified = _sanitize_last_modified(result.last_modified)
+        self._last_successful_refresh = now_mono
+        self._last_polling_interval_seconds = _polling_interval_seconds(revocation_list)
+
+    def _grace_seconds(self) -> float:
+        interval = self._last_polling_interval_seconds or MAX_POLLING_INTERVAL_SECONDS
+        return interval * self._grace_multiplier
+
+
 def _build_list_from_payload(payload: dict[str, Any], expected_issuer: str) -> RevocationList:
     """Validate the JWS payload schema and assemble a ``RevocationList``.
 
@@ -343,7 +576,7 @@ def _build_list_from_payload(payload: dict[str, Any], expected_issuer: str) -> R
     return RevocationList.from_dict(payload)
 
 
-class CachingRevocationChecker:
+class CachingRevocationChecker(_CheckerState):
     """Live revocation checker with caching, refetch, grace, and fail-closed.
 
     Implements the ``RevocationChecker`` Protocol — callable as
@@ -440,16 +673,7 @@ class CachingRevocationChecker:
         self._clock = clock
         self._wall_clock = wall_clock
 
-        self._current_list: RevocationList | None = None
-        self._current_etag: str | None = None
-        self._current_last_modified: str | None = None
-        self._last_successful_refresh: float | None = None
-        self._last_polling_interval_seconds: float | None = None
-        # Cooldown state: when a refresh attempt fails, we don't retry
-        # until at least MIN_POLLING_INTERVAL_SECONDS of monotonic time
-        # have elapsed. Stops a high-traffic verifier from hammering a
-        # dead revocation endpoint.
-        self._last_refresh_attempt: float | None = None
+        self._init_state()
 
     @classmethod
     def from_issuer_origin(
@@ -586,25 +810,7 @@ class CachingRevocationChecker:
             if_modified_since=if_modified_since,
         )
         if result.not_modified:
-            # 304: server confirms the cached list is still current. Advance
-            # the cached list's `next_update` by the declared polling
-            # interval so subsequent calls don't re-enter the past-
-            # next_update branch on every request — without this, the 60s
-            # cooldown gate would fire once per verification request once
-            # we cross the original next_update.
-            self._last_successful_refresh = now_mono
-            if self._current_list is not None and self._last_polling_interval_seconds:
-                prior = _parse_iso8601(self._current_list.next_update)
-                new_next_update = prior + timedelta(
-                    seconds=self._last_polling_interval_seconds
-                )
-                self._current_list = RevocationList(
-                    issuer=self._current_list.issuer,
-                    updated=self._current_list.updated,
-                    next_update=new_next_update.isoformat().replace("+00:00", "Z"),
-                    revoked_kids=self._current_list.revoked_kids,
-                    revoked_jtis=self._current_list.revoked_jtis,
-                )
+            self._handle_not_modified(now_mono=now_mono)
             return
 
         try:
@@ -618,63 +824,235 @@ class CachingRevocationChecker:
                 f"revocation list JWS verification failed: {exc}"
             ) from exc
 
-        revocation_list = _build_list_from_payload(payload, expected_issuer=self._issuer)
+        revocation_list = _post_jws_validation(
+            payload,
+            expected_issuer=self._issuer,
+            now_wall=now_wall,
+            current_list=self._current_list,
+        )
+        self._commit(result=result, revocation_list=revocation_list, now_mono=now_mono)
 
-        updated = _parse_iso8601(revocation_list.updated)
-        next_update = _parse_iso8601(revocation_list.next_update)
 
-        # Verify `updated` is not in the future beyond clock skew. An issuer
-        # whose clock is far ahead would otherwise force an immediate stale
-        # rejection.
-        if updated > now_wall.replace(microsecond=0):
-            delta = (updated - now_wall).total_seconds()
-            if delta > 60:  # 60s clock skew tolerance, mirrors JWS exp/iat rules
-                raise RevocationListParseError(
-                    f"revocation list updated={revocation_list.updated!r} is "
-                    f"{delta:.0f}s in the future"
-                )
-        if next_update <= updated:
-            raise RevocationListParseError(
-                f"revocation list next_update {revocation_list.next_update!r} is not "
-                f"after updated {revocation_list.updated!r}"
+class AsyncCachingRevocationChecker(_CheckerState):
+    """Async counterpart to :class:`CachingRevocationChecker`.
+
+    Same state machine, identical semantics — see the sync class for
+    full behavior documentation. Differences:
+
+    * ``__call__(keyid)`` is awaitable.
+    * :meth:`aprime` replaces :meth:`prime`.
+    * :meth:`is_jti_revoked` is awaitable.
+    * The ``jwks_resolver`` is an :class:`AsyncJwksResolver`.
+    * The ``fetcher`` is an :class:`AsyncRevocationListFetcher`.
+    * A single ``asyncio.Lock`` serializes refreshes so N concurrent
+      verifying tasks that all miss on the first verification fire
+      exactly one fetch. (The sync class is documented single-threaded;
+      async concurrency is the typical case.)
+
+    Wire it into :class:`adcp.signing.VerifyOptions.revocation_checker`
+    only if you have an async verifier pipeline — the sync
+    ``verify_request_signature`` expects a sync ``RevocationChecker``
+    and will not await this class.
+    """
+
+    def __init__(
+        self,
+        *,
+        revocation_uri: str,
+        issuer: str,
+        jwks_resolver: AsyncJwksResolver,
+        fetcher: AsyncRevocationListFetcher | None = None,
+        grace_multiplier: float = DEFAULT_GRACE_MULTIPLIER,
+        clock: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
+        if clock is time.time:
+            raise ValueError(
+                "clock must be a monotonic time source (use time.monotonic, "
+                "not time.time); wall-clock jumps would break cooldown math"
+            )
+        if clock is wall_clock:  # type: ignore[comparison-overlap]
+            raise ValueError(
+                "clock and wall_clock must be different sources — clock is "
+                "monotonic seconds (cooldown timing), wall_clock is a UTC "
+                "datetime source (freshness evaluation)"
             )
 
-        # Reject a freshly-fetched list whose `updated` is older than the
-        # one we already have cached. Defense-in-depth against:
-        # - CDN replaying a stale list after a kid has been revoked,
-        # - operator-key compromise where an attacker serves an older list
-        #   with revocations removed.
-        # The spec doesn't permit un-revocation, so `updated` MUST be
-        # monotonically non-decreasing across refreshes.
-        if self._current_list is not None:
-            current_updated = _parse_iso8601(self._current_list.updated)
-            if updated < current_updated:
-                raise RevocationListParseError(
-                    f"revocation list updated={revocation_list.updated!r} is older "
-                    f"than cached list updated={self._current_list.updated!r} — "
-                    f"refusing to roll back"
-                )
+        self._revocation_uri = revocation_uri
+        self._issuer = _normalize_issuer(issuer)
+        self._jwks_resolver = jwks_resolver
+        self._fetcher: AsyncRevocationListFetcher = (
+            fetcher or async_default_revocation_list_fetcher
+        )
+        self._grace_multiplier = grace_multiplier
+        self._clock = clock
+        self._wall_clock = wall_clock
+        self._init_state()
+        # Eager lock construction: lazy-init was racy (two tasks both
+        # seeing self._lock is None construct separate Locks and skip
+        # serialization). In Python 3.10+ asyncio.Lock() does not
+        # require a running loop at construction time. Instances are
+        # per-loop — don't reuse a checker across asyncio.run boundaries.
+        self._lock: asyncio.Lock = asyncio.Lock()
 
-        self._current_list = revocation_list
-        self._current_etag = result.etag
-        # Sanitize again at write-side: custom fetcher impls may not have
-        # validated the value before constructing FetchResult.
-        self._current_last_modified = _sanitize_last_modified(result.last_modified)
-        self._last_successful_refresh = now_mono
-        # Declared cadence is already validated >= 60s and bounded above
-        # at parse time; clamp to the spec ceiling as defense against an
-        # issuer declaring an out-of-bounds ceiling value.
-        self._last_polling_interval_seconds = min(
-            MAX_POLLING_INTERVAL_SECONDS,
-            (next_update - updated).total_seconds(),
+    @classmethod
+    def from_issuer_origin(
+        cls,
+        origin: str,
+        *,
+        jwks_resolver: AsyncJwksResolver,
+        fetcher: AsyncRevocationListFetcher | None = None,
+        grace_multiplier: float = DEFAULT_GRACE_MULTIPLIER,
+        clock: Callable[[], float] = time.monotonic,
+        wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> AsyncCachingRevocationChecker:
+        """Async variant of :meth:`CachingRevocationChecker.from_issuer_origin`."""
+        normalized = _normalize_issuer(origin)
+        revocation_uri = f"{normalized}/.well-known/governance-revocations.json"
+        return cls(
+            revocation_uri=revocation_uri,
+            issuer=normalized,
+            jwks_resolver=jwks_resolver,
+            fetcher=fetcher,
+            grace_multiplier=grace_multiplier,
+            clock=clock,
+            wall_clock=wall_clock,
         )
 
-    def _grace_seconds(self) -> float:
-        interval = self._last_polling_interval_seconds or MAX_POLLING_INTERVAL_SECONDS
-        return interval * self._grace_multiplier
+    async def aprime(self) -> None:
+        """Fetch and verify the revocation list. Call at startup for fail-fast.
+
+        Async counterpart to :meth:`CachingRevocationChecker.prime`.
+        """
+        await self._ensure_fresh()
+
+    async def __call__(self, keyid: str) -> bool:
+        """Return True iff ``keyid`` is in the cached list's ``revoked_kids``.
+
+        See :meth:`CachingRevocationChecker.__call__`. For
+        governance-token ``jti`` checks use :meth:`is_jti_revoked`.
+        """
+        await self._ensure_fresh()
+        if self._current_list is None:
+            raise RevocationListFreshnessError("revocation list not available")
+        return self._current_list.is_revoked(keyid)
+
+    async def is_jti_revoked(self, jti: str) -> bool:
+        """Async variant of :meth:`CachingRevocationChecker.is_jti_revoked`."""
+        await self._ensure_fresh()
+        if self._current_list is None:
+            raise RevocationListFreshnessError("revocation list not available")
+        return jti in self._current_list.revoked_jtis
+
+    async def _ensure_fresh(self) -> None:
+        if self._current_list is None:
+            async with self._lock:
+                if self._current_list is None:
+                    # Recompute clocks inside the lock: the awaiting task
+                    # may have been queued behind a slow refresh, so the
+                    # pre-lock clocks could be stale.
+                    now_wall = self._wall_clock()
+                    now_mono = self._clock()
+                    await self._refresh(
+                        conditional=False, now_wall=now_wall, now_mono=now_mono
+                    )
+            return
+
+        next_update = _parse_iso8601(self._current_list.next_update)
+        now_wall = self._wall_clock()
+        if now_wall < next_update:
+            return
+
+        now_mono = self._clock()
+        since_last_attempt = (
+            now_mono - self._last_refresh_attempt
+            if self._last_refresh_attempt is not None
+            else float("inf")
+        )
+        if since_last_attempt >= MIN_POLLING_INTERVAL_SECONDS:
+            try:
+                async with self._lock:
+                    # Re-check under the lock with fresh clock reads.
+                    now_mono_inside = self._clock()
+                    if self._last_refresh_attempt is None or (
+                        now_mono_inside - self._last_refresh_attempt
+                        >= MIN_POLLING_INTERVAL_SECONDS
+                    ):
+                        now_wall_inside = self._wall_clock()
+                        await self._refresh(
+                            conditional=True,
+                            now_wall=now_wall_inside,
+                            now_mono=now_mono_inside,
+                        )
+                return
+            except (RevocationListFetchError, RevocationListParseError) as exc:
+                last_exc: Exception = exc
+        else:
+            last_exc = RevocationListFetchError(
+                f"refresh cooldown not elapsed ({since_last_attempt:.0f}s < "
+                f"{MIN_POLLING_INTERVAL_SECONDS}s)"
+            )
+
+        grace_seconds = self._grace_seconds()
+        if now_wall.timestamp() >= next_update.timestamp() + grace_seconds:
+            raise RevocationListFreshnessError(
+                f"revocation list {self._revocation_uri!r} past next_update "
+                f"({self._current_list.next_update}) + grace ({grace_seconds:.0f}s); "
+                f"last refresh error: {last_exc}"
+            ) from last_exc
+
+    async def _refresh(
+        self, *, conditional: bool, now_wall: datetime, now_mono: float
+    ) -> None:
+        # Stamp the attempt BEFORE the awaitable. On CancelledError the
+        # finally block rolls it back so a cancelled task doesn't burn
+        # the 60s cooldown for the next caller — non-cancellation
+        # failures keep the cooldown (correct: a server rejection still
+        # counts as "recently tried"). Requires try/finally rather than
+        # setting post-fetch so the cooldown fires if the server replies
+        # before the caller cancels.
+        prior_attempt = self._last_refresh_attempt
+        self._last_refresh_attempt = now_mono
+        try:
+            if_none_match = self._current_etag if conditional else None
+            if_modified_since = self._current_last_modified if conditional else None
+            result = await self._fetcher(
+                self._revocation_uri,
+                if_none_match=if_none_match,
+                if_modified_since=if_modified_since,
+            )
+        except asyncio.CancelledError:
+            # Cancellation doesn't count as "tried" — don't burn the
+            # cooldown for the next (non-cancelled) caller.
+            self._last_refresh_attempt = prior_attempt
+            raise
+        if result.not_modified:
+            self._handle_not_modified(now_mono=now_mono)
+            return
+
+        try:
+            payload = await averify_jws_document(
+                result.body,
+                jwks_resolver=self._jwks_resolver,
+                expected_typ=REVOCATION_LIST_TYP,
+            )
+        except JwsError as exc:
+            raise RevocationListSignatureError(
+                f"revocation list JWS verification failed: {exc}"
+            ) from exc
+
+        revocation_list = _post_jws_validation(
+            payload,
+            expected_issuer=self._issuer,
+            now_wall=now_wall,
+            current_list=self._current_list,
+        )
+        self._commit(result=result, revocation_list=revocation_list, now_mono=now_mono)
 
 
 __all__ = [
+    "AsyncCachingRevocationChecker",
+    "AsyncRevocationListFetcher",
     "CachingRevocationChecker",
     "DEFAULT_GRACE_MULTIPLIER",
     "FetchResult",
@@ -683,6 +1061,7 @@ __all__ = [
     "RevocationListFetcher",
     "RevocationListFreshnessError",
     "RevocationListParseError",
+    "async_default_revocation_list_fetcher",
     "default_revocation_list_fetcher",
 ]
 
