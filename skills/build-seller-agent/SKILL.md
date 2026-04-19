@@ -64,7 +64,7 @@ from adcp.server.test_controller import TestControllerStore
 
 class MySeller(ADCPHandler):
     async def get_adcp_capabilities(self, params, context=None):
-        return capabilities_response(["media_buy", "compliance_testing"])
+        return capabilities_response(["media_buy"])
 
     async def get_products(self, params, context=None):
         return products_response(MY_PRODUCTS)
@@ -79,6 +79,8 @@ serve(MySeller(), name="my-seller", test_controller=MyStore())
 Every product needs `description`, `reporting_capabilities`, and `delivery_measurement` — these are required by the schema and the storyboard validator.
 
 ```python
+AGENT_URL = "http://localhost:3001/mcp"
+
 PRODUCTS = [
     {
         "product_id": "premium-homepage",
@@ -108,8 +110,6 @@ PRODUCTS = [
             "timezone": "UTC",
         },
         "delivery_measurement": {
-            "measurement_type": "server_side",
-            "verification": "internal",
             "provider": "internal",
         },
     },
@@ -182,10 +182,10 @@ async def get_products(self, params, context=None):
             "status": "draft",
             "packages": proposal.get("packages", []),
         }
-        return products_response(PRODUCTS, proposal={
+        return {**products_response(PRODUCTS), "proposals": [{
             "proposal_id": proposal_id,
             "status": "draft",
-        })
+        }]}
 
     # Default brief mode - return all matching products
     return products_response(PRODUCTS)
@@ -219,7 +219,7 @@ Every tool below uses a response builder from `adcp.server.responses`. Use the b
 from adcp.server.responses import capabilities_response
 
 async def get_adcp_capabilities(self, params, context=None):
-    return capabilities_response(["media_buy", "compliance_testing"])
+    return capabilities_response(["media_buy"])
 ```
 
 **`sync_accounts`**
@@ -476,10 +476,7 @@ Pass the store to `serve()`:
 serve(MySeller(), name="my-seller", test_controller=MyStore())
 ```
 
-Declare `compliance_testing` in supported_protocols:
-```python
-return capabilities_response(["media_buy", "compliance_testing"])
-```
+The SDK's `serve(test_controller=store)` wires up the `compliance_testing` capability block automatically. You do NOT need to add it to `supported_protocols`.
 
 ## Emitting Webhooks
 
@@ -548,7 +545,7 @@ Notes:
 | `cancel_media_buy_response(id, "buyer"/"seller")` | Cancellation with auto-defaults |
 | `resolve_account(params, resolver)` | Account resolution with auto-error |
 | `valid_actions_for_status(status)` | Status-to-actions mapping |
-| `serve(handler, transport="a2a"\|"streamable-http", port=3001, test_controller=store)` | Start MCP or A2A server. Context passthrough is automatic. |
+| `serve(handler, *, name=..., port=3001, transport="streamable-http"\|"a2a", test_controller=None)` | Start MCP or A2A server (default transport is `streamable-http`). Context passthrough is automatic. |
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`. Import types from `adcp.types`.
 
@@ -557,8 +554,9 @@ Import helpers from `adcp.server`. Import response builders from `adcp.server.re
 **After writing the agent, validate it. Fix failures. Repeat.**
 
 ```bash
+# agent.py ends with: serve(handler, port=3001)
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_seller --json
 ```
 
 **Keep iterating until all steps pass.**
@@ -571,6 +569,14 @@ npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --jso
 | `deterministic_testing` | Test controller state machine validation |
 | `media_buy_non_guaranteed` | Auction flow with bid adjustment |
 | `media_buy_guaranteed_approval` | IO approval workflow |
+
+## Production Deployment
+
+- Publish `.well-known/adagents.json` using the `adcp.adagents` module so buyer agents can discover capabilities.
+- Wrap mutating tools (`create_media_buy`, `update_media_buy`, `sync_creatives`) with `adcp.server.idempotency.IdempotencyStore` to deduplicate retries.
+- Sign outgoing webhooks with `adcp.webhooks` + `adcp.signing` so receivers can verify authenticity.
+- Persist accounts, media buys, and creatives — in-memory dicts are fine for storyboards but lose state on restart.
+- Front `serve()` with a process manager (systemd, Kubernetes) and terminate TLS upstream.
 
 ## Common Mistakes
 
