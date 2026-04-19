@@ -207,7 +207,8 @@ async def build_creative(self, params, context=None):
                 break
 
     if not creative:
-        return adcp_error("CREATIVE_NOT_FOUND", f"No creative found for format {target_format_id}", field="target_format_id")
+        format_label = target_format.get("id", "<none>") if isinstance(target_format, dict) else (target_format or "<none>")
+        return adcp_error("CREATIVE_NOT_FOUND", f"No creative found for format {format_label}", field="target_format_id")
 
     format_id = target_format or (creative or {}).get("format_id", {})
 
