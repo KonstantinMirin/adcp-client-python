@@ -817,6 +817,10 @@ class A2AAdapter(ProtocolAdapter):
         """Acquire rights for brand content usage."""
         return await self._call_a2a_tool("acquire_rights", params)
 
+    async def update_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Update terms of an existing rights acquisition."""
+        return await self._call_a2a_tool("update_rights", params)
+
     # ========================================================================
     # V3 Protocol Methods - Compliance
     # ========================================================================

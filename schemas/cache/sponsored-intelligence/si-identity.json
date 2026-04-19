@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/sponsored-intelligence/si-identity.json",
   "title": "SI Identity",
   "description": "User identity shared with brand agent (with explicit consent)",
   "type": "object",
@@ -17,13 +18,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": [
-          "name",
-          "email",
-          "shipping_address",
-          "phone",
-          "locale"
-        ]
+        "enum": ["name", "email", "shipping_address", "phone", "locale"]
       },
       "description": "What data was consented to share"
     },
@@ -68,21 +63,11 @@
           "type": "object",
           "description": "User's shipping address for accurate pricing",
           "properties": {
-            "street": {
-              "type": "string"
-            },
-            "city": {
-              "type": "string"
-            },
-            "state": {
-              "type": "string"
-            },
-            "postal_code": {
-              "type": "string"
-            },
-            "country": {
-              "type": "string"
-            }
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "state": { "type": "string" },
+            "postal_code": { "type": "string" },
+            "country": { "type": "string" }
           },
           "additionalProperties": true
         }
@@ -94,8 +79,6 @@
       "description": "Session ID for anonymous users (when consent_granted is false)"
     }
   },
-  "required": [
-    "consent_granted"
-  ],
+  "required": ["consent_granted"],
   "additionalProperties": true
 }

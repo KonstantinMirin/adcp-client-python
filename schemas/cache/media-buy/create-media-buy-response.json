@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/media-buy/create-media-buy-response.json",
   "title": "Create Media Buy Response",
   "description": "Response payload for create_media_buy task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the media buy is either fully created or not created at all.",
   "type": "object",
@@ -14,15 +15,15 @@
           "description": "Seller's unique identifier for the created media buy"
         },
         "account": {
-          "$ref": "../core/account.json",
+          "$ref": "/schemas/latest/core/account.json",
           "description": "Account billed for this media buy. Includes advertiser, billing proxy (if any), and rate card applied."
         },
         "invoice_recipient": {
-          "$ref": "../core/business-entity.json",
+          "$ref": "/schemas/latest/core/business-entity.json",
           "description": "Per-buy invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         },
         "status": {
-          "$ref": "../enums/media-buy-status.json",
+          "$ref": "/schemas/latest/enums/media-buy-status.json",
           "description": "Initial media buy status. Either 'pending_creatives' (awaiting creative assets), 'pending_start' (ready to serve, waiting for flight date), or 'active' (immediate activation)."
         },
         "confirmed_at": {
@@ -45,27 +46,18 @@
           "description": "Actions the buyer can perform on this media buy after creation. Saves a round-trip to get_media_buys.",
           "items": {
             "type": "string",
-            "enum": [
-              "pause",
-              "resume",
-              "cancel",
-              "update_budget",
-              "update_dates",
-              "update_packages",
-              "add_packages",
-              "sync_creatives"
-            ]
+            "enum": ["pause", "resume", "cancel", "update_budget", "update_dates", "update_packages", "add_packages", "sync_creatives"]
           }
         },
         "packages": {
           "type": "array",
           "description": "Array of created packages with complete state information",
           "items": {
-            "$ref": "../core/package.json"
+            "$ref": "/schemas/latest/core/package.json"
           }
         },
         "planned_delivery": {
-          "$ref": "../core/planned-delivery.json",
+          "$ref": "/schemas/latest/core/planned-delivery.json",
           "description": "The seller's interpreted delivery parameters. Describes what the seller will actually run -- geo, channels, flight dates, frequency caps, and budget. Present when the account has governance_agents or when the seller chooses to provide delivery transparency."
         },
         "sandbox": {
@@ -73,10 +65,10 @@
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -99,15 +91,15 @@
           "type": "array",
           "description": "Array of errors explaining why the operation failed",
           "items": {
-            "$ref": "../core/error.json"
+            "$ref": "/schemas/latest/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [

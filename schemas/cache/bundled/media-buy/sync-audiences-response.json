@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/media-buy/sync-audiences-response.json",
   "title": "Sync Audiences Response",
   "description": "Response from audience sync operation. Returns either per-audience results OR operation-level errors.",
   "type": "object",
@@ -45,7 +46,7 @@
                   "ready",
                   "too_small"
                 ],
-                "description": "Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed. 'processing': platform is still matching members against its user base. 'ready': audience is available for targeting, matched_count is populated. 'too_small': matched audience is below the platform's minimum size \u2014 add more members and re-sync."
+                "description": "Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed. 'processing': platform is still matching members against its user base. 'ready': audience is available for targeting, matched_count is populated. 'too_small': matched audience is below the platform's minimum size — add more members and re-sync."
               },
               "uploaded_count": {
                 "type": "integer",
@@ -113,7 +114,7 @@
                     },
                     "match_rate": {
                       "type": "number",
-                      "description": "Match rate for this identifier type (matched / submitted). Server-authoritative \u2014 consumers should prefer this value over computing their own.",
+                      "description": "Match rate for this identifier type (matched / submitted). Server-authoritative — consumers should prefer this value over computing their own.",
                       "minimum": 0,
                       "maximum": 1
                     }
@@ -321,7 +322,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.423Z",
+    "generatedAt": "2026-04-19T02:29:11.793Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -457,6 +457,11 @@ class ProtocolAdapter(ABC):
         """Acquire rights for brand content usage."""
         pass
 
+    @abstractmethod
+    async def update_rights(self, params: dict[str, Any]) -> TaskResult[Any]:
+        """Update terms of an existing rights acquisition."""
+        pass
+
     # ========================================================================
     # V3 Protocol Methods - Compliance
     # ========================================================================

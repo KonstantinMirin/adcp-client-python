@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/content-standards/calibrate-content-response.json",
   "title": "Calibrate Content Response",
   "description": "Response payload with verdict and detailed explanations for collaborative calibration",
   "type": "object",
@@ -160,7 +161,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.169Z",
+    "generatedAt": "2026-04-19T02:29:11.514Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/enums/collection-status.json",
   "title": "Collection Status",
   "description": "Lifecycle status of a collection",
   "type": "string",

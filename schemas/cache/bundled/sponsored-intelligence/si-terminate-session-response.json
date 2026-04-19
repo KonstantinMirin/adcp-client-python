@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/sponsored-intelligence/si-terminate-session-response.json",
   "title": "SI Terminate Session Response",
   "description": "Confirmation of session termination",
   "type": "object",
@@ -147,7 +148,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.487Z",
+    "generatedAt": "2026-04-19T02:29:11.865Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

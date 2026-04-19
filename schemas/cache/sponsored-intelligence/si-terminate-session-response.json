@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/sponsored-intelligence/si-terminate-session-response.json",
   "title": "SI Terminate Session Response",
   "description": "Confirmation of session termination",
   "type": "object",
@@ -13,7 +14,7 @@
       "description": "Whether session was successfully terminated"
     },
     "session_status": {
-      "$ref": "../enums/si-session-status.json",
+      "$ref": "/schemas/latest/enums/si-session-status.json",
       "description": "Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated."
     },
     "acp_handoff": {
@@ -65,14 +66,14 @@
     "errors": {
       "type": "array",
       "items": {
-        "$ref": "../core/error.json"
+        "$ref": "/schemas/latest/core/error.json"
       }
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

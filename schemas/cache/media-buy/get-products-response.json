@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/media-buy/get-products-response.json",
   "title": "Get Products Response",
   "description": "Response payload for get_products task",
   "type": "object",
@@ -8,21 +9,21 @@
       "type": "array",
       "description": "Array of matching products",
       "items": {
-        "$ref": "../core/product.json"
+        "$ref": "/schemas/latest/core/product.json"
       }
     },
     "proposals": {
       "type": "array",
       "description": "Optional array of proposed media plans with budget allocations across products. Publishers include proposals when they can provide strategic guidance based on the brief. Proposals are actionable - buyers can refine them via follow-up get_products calls within the same session, or execute them directly via create_media_buy.",
       "items": {
-        "$ref": "../core/proposal.json"
+        "$ref": "/schemas/latest/core/proposal.json"
       }
     },
     "errors": {
       "type": "array",
       "description": "Task-specific errors and warnings (e.g., product filtering issues)",
       "items": {
-        "$ref": "../core/error.json"
+        "$ref": "/schemas/latest/core/error.json"
       }
     },
     "property_list_applied": {
@@ -41,11 +42,7 @@
         "properties": {
           "scope": {
             "type": "string",
-            "enum": [
-              "request",
-              "product",
-              "proposal"
-            ],
+            "enum": ["request", "product", "proposal"],
             "description": "Echoes the scope from the corresponding refine entry. Allows orchestrators to cross-validate alignment."
           },
           "id": {
@@ -54,21 +51,15 @@
           },
           "status": {
             "type": "string",
-            "enum": [
-              "applied",
-              "partial",
-              "unable"
-            ],
-            "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled \u2014 see notes for details. 'unable': the seller could not fulfill the ask \u2014 see notes for why."
+            "enum": ["applied", "partial", "unable"],
+            "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why."
           },
           "notes": {
             "type": "string",
             "description": "Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."
           }
         },
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "additionalProperties": false
       }
     },
@@ -81,12 +72,7 @@
         "properties": {
           "scope": {
             "type": "string",
-            "enum": [
-              "products",
-              "pricing",
-              "forecast",
-              "proposals"
-            ],
+            "enum": ["products", "pricing", "forecast", "proposals"],
             "description": "'products': not all inventory sources were searched. 'pricing': products returned but pricing is absent or unconfirmed. 'forecast': products returned but forecast data is absent. 'proposals': proposals were not generated or are incomplete."
           },
           "description": {
@@ -94,33 +80,26 @@
             "description": "Human-readable explanation of what is missing and why."
           },
           "estimated_wait": {
-            "allOf": [
-              {
-                "$ref": "../core/duration.json"
-              }
-            ],
+            "allOf": [{ "$ref": "/schemas/latest/core/duration.json" }],
             "description": "How much additional time would resolve this scope. Allows the buyer to decide whether to retry with a larger time_budget."
           }
         },
-        "required": [
-          "scope",
-          "description"
-        ],
+        "required": ["scope", "description"],
         "additionalProperties": false
       }
     },
     "pagination": {
-      "$ref": "../core/pagination-response.json"
+      "$ref": "/schemas/latest/core/pagination-response.json"
     },
     "sandbox": {
       "type": "boolean",
       "description": "When true, this response contains simulated data from sandbox mode."
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

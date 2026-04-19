@@ -794,6 +794,30 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             ],
         },
     },
+    {
+        "name": "update_rights",
+        "description": (
+            "Update terms of an existing rights acquisition."
+            " Partial update — include only the fields to change"
+            " (end_date, impression_cap, paused, or a compatible"
+            " pricing_option_id swap). Rejects updates on expired or"
+            " revoked acquisitions."
+        ),
+        "annotations": _MUT,
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "rights_id": {"type": "string"},
+                "end_date": {"type": "string"},
+                "impression_cap": {"type": "integer"},
+                "pricing_option_id": {"type": "string"},
+                "paused": {"type": "boolean"},
+                "push_notification_config": {"type": "object"},
+                "idempotency_key": {"type": "string"},
+            },
+            "required": ["rights_id", "idempotency_key"],
+        },
+    },
     # V3 Compliance
     {
         "name": "comply_test_controller",
@@ -871,6 +895,7 @@ _HANDLER_TOOLS: dict[str, set[str]] = {
         "get_brand_identity",
         "get_rights",
         "acquire_rights",
+        "update_rights",
     },
     "ComplianceHandler": {
         "comply_test_controller",
@@ -958,6 +983,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             UpdateContentStandardsRequest,
             UpdateMediaBuyRequest,
             UpdatePropertyListRequest,
+            UpdateRightsRequest,
             ValidateContentDeliveryRequest,
         )
     except ImportError:
@@ -1033,6 +1059,7 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
         "get_brand_identity": GetBrandIdentityRequest,
         "get_rights": GetRightsRequest,
         "acquire_rights": AcquireRightsRequest,
+        "update_rights": UpdateRightsRequest,
         # TMP
         "context_match": ContextMatchRequest,
         "identity_match": IdentityMatchRequest,

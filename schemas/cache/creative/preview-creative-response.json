@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/creative/preview-creative-response.json",
   "title": "Preview Creative Response",
   "description": "Response containing preview links for one or more creatives. Format matches the request: single preview response for single requests, batch results for batch requests.",
   "oneOf": [
@@ -27,7 +28,7 @@
                 "type": "array",
                 "description": "Array of rendered pieces for this preview variant. Most formats render as a single piece. Companion ad formats (video + banner), multi-placement formats, and adaptive formats render as multiple pieces.",
                 "items": {
-                  "$ref": "preview-render.json"
+                  "$ref": "/schemas/latest/creative/preview-render.json"
                 },
                 "minItems": 1
               },
@@ -75,10 +76,10 @@
           "description": "ISO 8601 timestamp when preview links expire"
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -128,7 +129,7 @@
                         "renders": {
                           "type": "array",
                           "items": {
-                            "$ref": "preview-render.json"
+                            "$ref": "/schemas/latest/creative/preview-render.json"
                           },
                           "minItems": 1
                         },
@@ -180,7 +181,7 @@
                 "type": "array",
                 "description": "Errors for failed requests",
                 "items": {
-                  "$ref": "../core/error.json"
+                  "$ref": "/schemas/latest/core/error.json"
                 },
                 "minItems": 1
               }
@@ -221,10 +222,10 @@
           "minItems": 1
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -265,7 +266,7 @@
                 "type": "array",
                 "description": "Rendered pieces for this variant",
                 "items": {
-                  "$ref": "preview-render.json"
+                  "$ref": "/schemas/latest/creative/preview-render.json"
                 },
                 "minItems": 1
               }
@@ -278,8 +279,8 @@
           "minItems": 1
         },
         "manifest": {
-          "$ref": "../core/creative-manifest.json",
-          "description": "The rendered creative manifest for this variant \u2014 the actual output that was served, not the input assets"
+          "$ref": "/schemas/latest/core/creative-manifest.json",
+          "description": "The rendered creative manifest for this variant — the actual output that was served, not the input assets"
         },
         "expires_at": {
           "type": "string",
@@ -287,10 +288,10 @@
           "description": "ISO 8601 timestamp when preview links expire"
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [

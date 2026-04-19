@@ -356,6 +356,8 @@ from adcp.types._generated import (
     UpdateMediaBuyResponse,
     UpdatePropertyListRequest,
     UpdatePropertyListResponse,
+    UpdateRightsRequest,
+    UpdateRightsResponse,
     UrlAsset,
     UrlAssetType,
     ValidateContentDeliveryRequest,
@@ -800,6 +802,8 @@ __all__ = [
     "PropertyListReference",
     "UpdatePropertyListRequest",
     "UpdatePropertyListResponse",
+    "UpdateRightsRequest",
+    "UpdateRightsResponse",
     # Catalog types
     "Catalog",
     "CatalogAction",

@@ -613,6 +613,41 @@ serve(MySeller(), name="my-seller")
 
 **Principal contract.** `caller_identity` MUST be a stable, globally-unique identifier per tenant — an opaque buyer ID, not an email or display name. Email reuse after account deletion would cause cross-principal cache collisions. The value is logged at DEBUG (prefix-truncated) and keyed on in the cache; treat it as you would any user-scoping identifier.
 
+### AdCP 3.0.0-rc.4 migration
+
+**`plan.budget.authority_level` removed.** The single enum (`agent_full` / `agent_limited` / `human_required`) is replaced by two orthogonal fields on `plan.budget`, plus a new top-level flag on `plan`:
+
+| Old (removed) | New |
+|---|---|
+| `budget.authority_level: agent_full` | `budget.reallocation_unlimited: true` |
+| `budget.authority_level: agent_limited` | `budget.reallocation_threshold: <amount>` (in `budget.currency`) |
+| `budget.authority_level: human_required` | Set `plan.human_review_required: true` **and** `budget.reallocation_threshold: 0` |
+
+`reallocation_threshold` and `reallocation_unlimited` are mutually exclusive — pick one. `plan.human_review_required` is a separate field governing decisions that affect data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III; set it independently from the budget reallocation autonomy.
+
+```python
+# Before (rc.3 and earlier)
+plan = SyncPlansRequest(plans=[{
+    "plan_id": "...",
+    "budget": {"total": 100000, "currency": "USD", "authority_level": "agent_limited"},
+}])
+
+# After (rc.4+)
+plan = SyncPlansRequest(plans=[{
+    "plan_id": "...",
+    "budget": {
+        "total": 100000,
+        "currency": "USD",
+        "reallocation_threshold": 5000,  # agent may reallocate up to $5K per change
+    },
+    "human_review_required": False,  # defaults to False; set True for GDPR Art 22 gating
+}])
+```
+
+Any hand-coded `plan.budget` payload using `authority_level` will fail Pydantic validation against the rc.4 schema with `extra fields not permitted`. The SDK itself has no code references to the old enum; downstream consumers need to update their payloads.
+
+**`update_rights` task added.** Buyers can now modify an existing rights acquisition without re-acquiring. See `client.update_rights(request)` or the MCP/A2A `update_rights` tool.
+
 ## Available Tools
 
 All AdCP tools with full type safety:

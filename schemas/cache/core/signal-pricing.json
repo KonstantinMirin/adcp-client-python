@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/core/signal-pricing.json",
   "title": "Vendor Pricing",
   "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), or 'per_unit' (fixed price per unit of work).",
   "type": "object",
@@ -24,19 +25,15 @@
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
-      "required": [
-        "model",
-        "cpm",
-        "currency"
-      ],
+      "required": ["model", "cpm", "currency"],
       "additionalProperties": true
     },
     {
       "title": "PercentOfMediaPricing",
-      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
       "type": "object",
       "properties": {
         "model": {
@@ -51,7 +48,7 @@
         },
         "max_cpm": {
           "type": "number",
-          "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
+          "description": "Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).",
           "minimum": 0
         },
         "currency": {
@@ -60,14 +57,10 @@
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
-      "required": [
-        "model",
-        "percent",
-        "currency"
-      ],
+      "required": ["model", "percent", "currency"],
       "additionalProperties": true
     },
     {
@@ -86,12 +79,7 @@
         },
         "period": {
           "type": "string",
-          "enum": [
-            "monthly",
-            "quarterly",
-            "annual",
-            "campaign"
-          ],
+          "enum": ["monthly", "quarterly", "annual", "campaign"],
           "description": "Billing period for the flat fee."
         },
         "currency": {
@@ -100,15 +88,10 @@
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
-      "required": [
-        "model",
-        "amount",
-        "period",
-        "currency"
-      ],
+      "required": ["model", "amount", "period", "currency"],
       "additionalProperties": true
     },
     {
@@ -122,7 +105,7 @@
         },
         "unit": {
           "type": "string",
-          "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
+          "description": "What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
         },
         "unit_price": {
           "type": "number",
@@ -135,15 +118,10 @@
           "pattern": "^[A-Z]{3}$"
         },
         "ext": {
-          "$ref": "ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
-      "required": [
-        "model",
-        "unit",
-        "unit_price",
-        "currency"
-      ],
+      "required": ["model", "unit", "unit_price", "currency"],
       "additionalProperties": true
     }
   ]

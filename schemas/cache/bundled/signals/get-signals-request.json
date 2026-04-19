@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/bundled/signals/get-signals-request.json",
   "title": "Get Signals Request",
   "description": "Request parameters for discovering and refining signals. Use signal_spec for natural language discovery, signal_ids for exact lookups, or both to refine previous results (signal_ids anchor the starting set, signal_spec guides adjustments).",
   "type": "object",
@@ -51,6 +52,47 @@
                     "nike",
                     "pampers"
                   ]
+                },
+                "industries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Inline override for the brand's industries. Useful when the caller cannot modify the brand's canonical brand.json but needs to declare industries for governance (e.g., Annex III vertical detection). brand.json remains the canonical source; when omitted here, governance agents SHOULD resolve from brand.json."
+                },
+                "data_subject_contestation": {
+                  "type": "object",
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "pattern": "^https://"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "languages": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "anyOf": [
+                    {
+                      "required": [
+                        "url"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "email"
+                      ]
+                    }
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -271,7 +313,7 @@
             ],
             "enumDescriptions": {
               "marketplace": "Resold third-party segments (provider authorization verifiable via the provider's adagents.json)",
-              "custom": "Agent-native segment built on demand from models, composites, or buyer inputs \u2014 not attributable to a standing upstream provider",
+              "custom": "Agent-native segment built on demand from models, composites, or buyer inputs — not attributable to a standing upstream provider",
               "owned": "First-party segments derived from data the signal agent directly owns (retailer purchase data, publisher behavioral data, telco data)"
             }
           },
@@ -356,7 +398,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-18T19:54:51.479Z",
+    "generatedAt": "2026-04-19T02:29:11.858Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

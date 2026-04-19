@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/governance/report-plan-outcome-response.json",
   "title": "Report Plan Outcome Response",
   "description": "Response from reporting an action outcome. Only returned to the orchestrator (buyer-side agent) that manages the plan. Sellers report delivery data via check_governance with phase 'delivery', not via this task.",
   "type": "object",
@@ -31,7 +32,7 @@
             "description": "Which validation category flagged the issue."
           },
           "severity": {
-            "$ref": "../enums/escalation-severity.json",
+            "$ref": "/schemas/latest/enums/escalation-severity.json",
             "description": "Finding severity."
           },
           "explanation": {
@@ -68,10 +69,10 @@
       "additionalProperties": false
     },
     "context": {
-      "$ref": "../core/context.json"
+      "$ref": "/schemas/latest/core/context.json"
     },
     "ext": {
-      "$ref": "../core/ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
   "required": [

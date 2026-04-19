@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/core/mcp-webhook-payload.json",
   "title": "MCP Webhook Payload",
   "description": "Standard envelope for HTTP-based push notifications (MCP). This defines the wire format sent to the URL configured in `pushNotificationConfig`. NOTE: This envelope is NOT used in A2A integration, which uses native Task/TaskStatusUpdateEvent messages with the AdCP payload nested in `status.message.parts[].data`.",
   "type": "object",
@@ -13,15 +14,15 @@
       "description": "Unique identifier for this task. Use this to correlate webhook notifications with the original task submission."
     },
     "task_type": {
-      "$ref": "../enums/task-type.json",
+      "$ref": "/schemas/latest/enums/task-type.json",
       "description": "Type of AdCP operation that triggered this webhook. Enables webhook handlers to route to appropriate processing logic."
     },
     "protocol": {
-      "$ref": "../enums/adcp-protocol.json",
+      "$ref": "/schemas/latest/enums/adcp-protocol.json",
       "description": "AdCP protocol this task belongs to. Helps classify the operation type at a high level."
     },
     "status": {
-      "$ref": "../enums/task-status.json",
+      "$ref": "/schemas/latest/enums/task-status.json",
       "description": "Current task status. Webhooks are triggered for status changes after initial submission."
     },
     "timestamp": {
@@ -38,7 +39,7 @@
       "description": "Session/conversation identifier. Use this to continue the conversation if input-required status needs clarification or additional parameters."
     },
     "result": {
-      "$ref": "async-response-data.json",
+      "$ref": "/schemas/latest/core/async-response-data.json",
       "description": "Task-specific payload matching the status. For completed/failed, contains the full task response. For working/input-required/submitted, contains status-specific data. This is the data layer that AdCP specs - same structure used in A2A status.message.parts[].data."
     }
   },

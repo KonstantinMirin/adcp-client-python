@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/core/audience-member.json",
   "title": "Audience Member",
-  "description": "A CRM audience member identified by a buyer-assigned external_id and at least one matchable identifier. All identifiers must be normalized before hashing: emails to lowercase+trim, phone numbers to E.164 format (e.g. +12065551234). Providing multiple identifiers for the same person improves match rates. Composite identifiers (e.g. hashed first name + last name + zip for Google Customer Match) are not yet standardized \u2014 use the ext field for platform-specific extensions.",
+  "description": "A CRM audience member identified by a buyer-assigned external_id and at least one matchable identifier. All identifiers must be normalized before hashing: emails to lowercase+trim, phone numbers to E.164 format (e.g. +12065551234). Providing multiple identifiers for the same person improves match rates. Composite identifiers (e.g. hashed first name + last name + zip for Google Customer Match) are not yet standardized — use the ext field for platform-specific extensions.",
   "type": "object",
   "properties": {
     "external_id": {
@@ -25,7 +26,7 @@
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "../enums/uid-type.json",
+            "$ref": "/schemas/latest/enums/uid-type.json",
             "description": "Universal ID type"
           },
           "value": {
@@ -33,37 +34,20 @@
             "description": "Universal ID value"
           }
         },
-        "required": [
-          "type",
-          "value"
-        ],
+        "required": ["type", "value"],
         "additionalProperties": true
       },
       "minItems": 1
     },
     "ext": {
-      "$ref": "ext.json"
+      "$ref": "/schemas/latest/core/ext.json"
     }
   },
-  "required": [
-    "external_id"
-  ],
+  "required": ["external_id"],
   "anyOf": [
-    {
-      "required": [
-        "hashed_email"
-      ]
-    },
-    {
-      "required": [
-        "hashed_phone"
-      ]
-    },
-    {
-      "required": [
-        "uids"
-      ]
-    }
+    { "required": ["hashed_email"] },
+    { "required": ["hashed_phone"] },
+    { "required": ["uids"] }
   ],
   "additionalProperties": true
 }

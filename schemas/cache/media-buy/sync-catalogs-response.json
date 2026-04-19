@@ -1,5 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "/schemas/latest/media-buy/sync-catalogs-response.json",
   "title": "Sync Catalogs Response",
   "description": "Response from catalog sync operation. Returns either per-catalog results (best-effort processing) OR operation-level errors (complete failure). Platforms may approve, reject, or flag individual items within each catalog (similar to Google Merchant Center product review).",
   "type": "object",
@@ -24,7 +25,7 @@
                 "description": "Catalog ID from the request"
               },
               "action": {
-                "$ref": "../enums/catalog-action.json",
+                "$ref": "/schemas/latest/enums/catalog-action.json",
                 "description": "Action taken for this catalog"
               },
               "platform_id": {
@@ -62,7 +63,7 @@
                       "description": "ID of the catalog item with an issue"
                     },
                     "status": {
-                      "$ref": "../enums/catalog-item-status.json",
+                      "$ref": "/schemas/latest/enums/catalog-item-status.json",
                       "description": "Item review status"
                     },
                     "reasons": {
@@ -73,10 +74,7 @@
                       }
                     }
                   },
-                  "required": [
-                    "item_id",
-                    "status"
-                  ],
+                  "required": ["item_id", "status"],
                   "additionalProperties": true
                 }
               },
@@ -101,7 +99,7 @@
                 "type": "array",
                 "description": "Validation or processing errors (only present when action='failed')",
                 "items": {
-                  "$ref": "../core/error.json"
+                  "$ref": "/schemas/latest/core/error.json"
                 }
               },
               "warnings": {
@@ -124,10 +122,10 @@
           "description": "When true, this response contains simulated data from sandbox mode."
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
@@ -149,15 +147,15 @@
           "type": "array",
           "description": "Operation-level errors that prevented processing any catalogs (e.g., authentication failure, service unavailable, invalid request format)",
           "items": {
-            "$ref": "../core/error.json"
+            "$ref": "/schemas/latest/core/error.json"
           },
           "minItems": 1
         },
         "context": {
-          "$ref": "../core/context.json"
+          "$ref": "/schemas/latest/core/context.json"
         },
         "ext": {
-          "$ref": "../core/ext.json"
+          "$ref": "/schemas/latest/core/ext.json"
         }
       },
       "required": [
