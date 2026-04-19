@@ -221,9 +221,9 @@ Import helpers from `adcp.server`. Import response builders from `adcp.server.re
 `idempotency_key` is REQUIRED on `activate_signal` per schema (`schemas/cache/signals/activate-signal-request.json`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe replays: same key + same payload returns the cached deployments; different payload returns an `IDEMPOTENCY_CONFLICT` error. Declare the capability so buyers know replays are safe.
 
 ```python
-from adcp.server.idempotency import IdempotencyStore
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
 
-store = IdempotencyStore()
+store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)  # 24h per spec minimum
 
 async def get_adcp_capabilities(self, params, context=None):
     return capabilities_response(["signals"], idempotency=store.capability())

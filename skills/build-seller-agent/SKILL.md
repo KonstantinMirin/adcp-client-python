@@ -184,7 +184,12 @@ async def get_products(self, params, context=None):
         }
         return {**products_response(PRODUCTS), "proposals": [{
             "proposal_id": proposal_id,
+            "name": proposal.get("name", "Draft proposal"),
             "status": "draft",
+            "allocations": [
+                {"product_id": p["product_id"], "packages": []}
+                for p in proposal.get("packages", [])
+            ],
         }]}
 
     # Default brief mode - return all matching products
