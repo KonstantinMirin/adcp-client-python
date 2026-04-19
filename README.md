@@ -562,6 +562,49 @@ client = ADCPClient(agent, strict_idempotency=True)  # default: False
 
 **Security note on logs.** The SDK redacts `idempotency_key` in its own debug captures, but the underlying `httpx`/`httpcore` loggers log full request bodies at `DEBUG`. If you enable `logging.basicConfig(level=logging.DEBUG)` in production, raise those two loggers back to `INFO` — otherwise full keys end up in logs during the seller's replay TTL window and become a retry-pattern oracle for anyone who can read them.
 
+### Building a seller: idempotency middleware
+
+If you're building an AdCP seller, the companion middleware handles the `(principal, key, canonical-hash)` bookkeeping so you don't hand-roll it per tool handler. Drop `@idempotency.wrap` above each mutating handler and declare your replay window in capabilities:
+
+```python
+from adcp.server import ADCPHandler, IdempotencyStore, MemoryBackend, serve
+from adcp.server.responses import capabilities_response
+
+idempotency = IdempotencyStore(
+    backend=MemoryBackend(),  # PgBackend with transactional commit is a follow-up
+    ttl_seconds=86400,        # 24h, spec-recommended floor
+)
+
+class MySeller(ADCPHandler):
+    async def get_adcp_capabilities(self, params, context=None):
+        return capabilities_response(
+            ["media_buy"],
+            idempotency=idempotency.capability(),
+        )
+
+    @idempotency.wrap
+    async def create_media_buy(self, params, context=None):
+        # Same key + canonical-equivalent payload → this body is skipped,
+        # the cached response is returned. Same key + different payload →
+        # IdempotencyConflictError raised before this runs, which the
+        # framework translates to IDEMPOTENCY_CONFLICT on the wire.
+        return my_business_logic(params)
+
+serve(MySeller(), name="my-seller")
+```
+
+**What the middleware does for you:**
+
+- Extracts `idempotency_key` from `params`, scopes lookups by `context.caller_identity` (per-principal — a security requirement from AdCP §2315)
+- Hashes the payload with RFC 8785 JCS + SHA-256, stripping the spec's closed exclusion list (`idempotency_key`, `context`, `governance_context`, `push_notification_config.authentication.credentials`)
+- On cache hit with matching hash: returns the cached response verbatim, skips your handler (deep-copied so caller mutation can't poison future replays)
+- On cache hit with different hash: raises `IdempotencyConflictError`, which the framework surfaces as `IDEMPOTENCY_CONFLICT` on both MCP (`is_error=true` + text) and A2A (failed task with `adcp_error` DataPart)
+- On cache miss: runs your handler, then commits the response
+
+**Backends:** `MemoryBackend` ships now (tests, single-process agents). `PgBackend` is scaffolded — it raises `NotImplementedError` with a pointer to the follow-up issue. For production use across multiple workers, implement your own `IdempotencyBackend` subclass against Redis, Postgres, etc.
+
+**Atomicity caveat:** `MemoryBackend` commits the cache entry AFTER your handler returns, so a crash between `handler success` and `cache commit` causes the retry to re-execute. `PgBackend` (follow-up) will commit the cache row in the same transaction as your business writes. Read the module docstring at `adcp.server.idempotency` before shipping this against a production database.
+
 ## Available Tools
 
 All AdCP tools with full type safety:

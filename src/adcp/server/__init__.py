@@ -79,6 +79,7 @@ from adcp.server.helpers import (  # noqa: F401
     resolve_account,
     valid_actions_for_status,
 )
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
 from adcp.server.mcp_tools import MCPToolSet, create_mcp_tools, get_tools_for_handler
 from adcp.server.proposal import ProposalBuilder, ProposalNotSupported
 from adcp.server.responses import (
@@ -138,6 +139,9 @@ __all__ = [
     # A2A integration
     "ADCPAgentExecutor",
     "create_a2a_server",
+    # Idempotency middleware (AdCP #2315 seller side)
+    "IdempotencyStore",
+    "MemoryBackend",
     # Test controller
     "TestControllerStore",
     "TestControllerError",

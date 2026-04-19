@@ -35,7 +35,9 @@ from a2a.types import (
     TextPart,
 )
 
+from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler
+from adcp.server.helpers import STANDARD_ERROR_CODES
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 from adcp.server.test_controller import TestControllerStore, _handle_test_controller
 
@@ -104,6 +106,16 @@ class ADCPAgentExecutor(AgentExecutor):
         try:
             result = await self._tool_callers[skill_name](params)
             await self._send_result(event_queue, context, skill_name, result)
+        except ADCPError as exc:
+            # Application-layer AdCP error (IdempotencyConflictError etc.).
+            # Emit a failed task with the adcp_error in a DataPart per
+            # transport-errors.mdx §A2A Binding, plus a human-readable text
+            # part. The JSON-RPC channel is reserved for transport-level
+            # errors (auth rejected, rate-limited pre-dispatch).
+            logger.info(
+                "AdCP application error for skill %s: %s", skill_name, exc
+            )
+            await self._send_adcp_error(event_queue, context, exc)
         except Exception:
             logger.exception("Error executing skill %s", skill_name)
             await self._send_error(
@@ -209,6 +221,44 @@ class ADCPAgentExecutor(AgentExecutor):
             context,
             state=TaskState.failed,
             message=error_msg,
+        )
+        await event_queue.enqueue_event(task)
+
+    async def _send_adcp_error(
+        self,
+        event_queue: EventQueue,
+        context: RequestContext,
+        exc: ADCPError,
+    ) -> None:
+        """Publish a failed task carrying an AdCP ``adcp_error`` payload.
+
+        Follows transport-errors.mdx §A2A Binding: failed task with artifact
+        containing a ``DataPart`` keyed under ``adcp_error`` plus a terse
+        ``TextPart`` for human/LLM consumption.
+        """
+        # Derive the spec error code. ADCPTaskError carries a list of codes
+        # (e.g. IdempotencyConflictError → IDEMPOTENCY_CONFLICT); fall back
+        # to a generic INTERNAL_ERROR when the exception doesn't supply one.
+        code = "INTERNAL_ERROR"
+        if isinstance(exc, ADCPTaskError) and exc.error_codes:
+            code = str(exc.error_codes[0])
+
+        adcp_error: dict[str, Any] = {
+            "code": code,
+            "message": exc.message,
+        }
+        recovery = STANDARD_ERROR_CODES.get(code, {}).get("recovery")
+        if recovery:
+            adcp_error["recovery"] = recovery
+        suggestion = getattr(exc, "suggestion", None)
+        if suggestion:
+            adcp_error["suggestion"] = suggestion
+
+        task = _make_task(
+            context,
+            state=TaskState.failed,
+            data={"adcp_error": adcp_error},
+            message=exc.message,
         )
         await event_queue.enqueue_event(task)
 

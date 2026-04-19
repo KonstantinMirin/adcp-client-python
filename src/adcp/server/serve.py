@@ -211,8 +211,20 @@ def _register_tool(
     from mcp.server.fastmcp.utilities.func_metadata import ArgModelBase, FuncMetadata
     from pydantic import ConfigDict
 
+    from adcp.exceptions import ADCPError
+    from adcp.server.translate import translate_error
+
     async def fn(**kwargs: Any) -> dict[str, Any]:
-        result = await caller(kwargs)
+        try:
+            result = await caller(kwargs)
+        except ADCPError as exc:
+            # Translate AdCP-typed exceptions (IdempotencyConflictError,
+            # ADCPTaskError with a spec code, etc.) into a ToolError so FastMCP
+            # surfaces ``is_error=true`` with the spec error code in the
+            # message text. Clients per AdCP §transport-errors will extract
+            # the code via either structuredContent.adcp_error (if populated)
+            # or the text-fallback path.
+            raise translate_error(exc, protocol="mcp") from exc
         if hasattr(result, "model_dump"):
             return result.model_dump(mode="json", exclude_none=True)  # type: ignore[no-any-return]
         if isinstance(result, dict):

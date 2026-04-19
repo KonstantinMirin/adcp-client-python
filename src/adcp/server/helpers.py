@@ -55,6 +55,17 @@ STANDARD_ERROR_CODES: dict[str, dict[str, str]] = {
     "ACCOUNT_NOT_FOUND": {"recovery": "terminal", "message": "Account not found"},
     "ACCOUNT_SUSPENDED": {"recovery": "terminal", "message": "Account suspended"},
     "UNSUPPORTED_FEATURE": {"recovery": "terminal", "message": "Feature not supported"},
+    # Idempotency (AdCP #2315). Both are "terminal" from a retry-behavior
+    # standpoint — the caller MUST take a specific action (mint a fresh key or
+    # reconcile state) rather than blindly retry.
+    "IDEMPOTENCY_CONFLICT": {
+        "recovery": "terminal",
+        "message": "idempotency_key reused with a different payload",
+    },
+    "IDEMPOTENCY_EXPIRED": {
+        "recovery": "terminal",
+        "message": "Idempotency replay window has expired",
+    },
     # --- SDK extensions (not in spec enum) ---
     "NOT_SUPPORTED": {"recovery": "terminal", "message": "Operation not supported"},
 }
