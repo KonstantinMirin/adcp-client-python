@@ -101,6 +101,12 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
 )
+from adcp.signing.ip_pinned_transport import (
+    AsyncIpPinnedTransport,
+    IpPinnedTransport,
+    abuild_ip_pinned_transport,
+    build_ip_pinned_transport,
+)
 from adcp.signing.jwks import (
     AsyncCachingJwksResolver,
     AsyncJwksFetcher,
@@ -112,6 +118,7 @@ from adcp.signing.jwks import (
     as_async_resolver,
     async_default_jwks_fetcher,
     default_jwks_fetcher,
+    resolve_and_validate_host,
     validate_jwks_uri,
 )
 from adcp.signing.jws import (
@@ -187,6 +194,7 @@ __all__ = [
     "ALLOWED_ALGS",
     "AsyncCachingJwksResolver",
     "AsyncCachingRevocationChecker",
+    "AsyncIpPinnedTransport",
     "AsyncJwksFetcher",
     "AsyncJwksResolver",
     "AsyncRevocationListFetcher",
@@ -198,6 +206,7 @@ __all__ = [
     "DEFAULT_TAG",
     "FetchResult",
     "InMemoryReplayStore",
+    "IpPinnedTransport",
     "JwksResolver",
     "JwsError",
     "JwsMalformedError",
@@ -244,6 +253,7 @@ __all__ = [
     "VerifierCapability",
     "VerifyOptions",
     "alg_for_jwk",
+    "abuild_ip_pinned_transport",
     "as_async_resolver",
     "async_default_jwks_fetcher",
     "async_default_revocation_list_fetcher",
@@ -251,6 +261,7 @@ __all__ = [
     "averify_jws_document",
     "b64url_decode",
     "b64url_encode",
+    "build_ip_pinned_transport",
     "build_signature_base",
     "canonicalize_authority",
     "canonicalize_target_uri",
@@ -265,6 +276,7 @@ __all__ = [
     "parse_signature_input_header",
     "private_key_from_jwk",
     "public_key_from_jwk",
+    "resolve_and_validate_host",
     "sign_request",
     "sign_signature_base",
     "unauthorized_response_headers",
