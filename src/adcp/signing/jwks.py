@@ -60,6 +60,18 @@ class JwksFetcher(Protocol):
     def __call__(self, uri: str, *, allow_private: bool = False) -> dict[str, Any]: ...
 
 
+class JwksResolver(Protocol):
+    """Resolves a keyid to a JWK, or returns None if unknown.
+
+    The canonical Protocol used by both the RFC 9421 verifier and the JWS
+    document verifier. Implementations include
+    :class:`StaticJwksResolver` (in-memory, for tests) and
+    :class:`CachingJwksResolver` (fetches + caches from a URI).
+    """
+
+    def __call__(self, keyid: str) -> dict[str, Any] | None: ...
+
+
 def validate_jwks_uri(uri: str, *, allow_private: bool = False) -> None:
     """Raise SSRFValidationError if `uri` resolves to a blocked IP or has a bad scheme."""
     parts = urlsplit(uri)
@@ -194,6 +206,7 @@ __all__ = [
     "DEFAULT_JWKS_COOLDOWN_SECONDS",
     "DEFAULT_JWKS_TIMEOUT_SECONDS",
     "JwksFetcher",
+    "JwksResolver",
     "SSRFValidationError",
     "StaticJwksResolver",
     "default_jwks_fetcher",
