@@ -605,6 +605,14 @@ serve(MySeller(), name="my-seller")
 
 **Atomicity caveat:** `MemoryBackend` commits the cache entry AFTER your handler returns, so a crash between `handler success` and `cache commit` causes the retry to re-execute. `PgBackend` (follow-up) will commit the cache row in the same transaction as your business writes. Read the module docstring at `adcp.server.idempotency` before shipping this against a production database.
 
+**How caller identity gets populated.** The middleware scopes its cache by `(caller_identity, idempotency_key)` — same key from two buyers must hit different cache slots, and a buyer's retry must replay only against its own prior call. `caller_identity` comes from `ToolContext`, which the transport layer builds per request:
+
+- **A2A** — the framework derives `caller_identity` from `ServerCallContext.user.user_name` when the user is authenticated. Wire your [a2a-sdk auth middleware](https://a2aproject.github.io/) (bearer tokens, mTLS, OAuth) and `@idempotency.wrap` works automatically. Unauthenticated requests → no identity → dedup is skipped (fail-closed, with a one-time `UserWarning` so you notice).
+
+- **MCP** — FastMCP exposes a session `client_id` but not an authenticated principal. The SDK does NOT auto-populate `caller_identity` for MCP tools today. If you're serving via MCP, wire your own FastMCP auth middleware and populate `ToolContext.caller_identity` before the idempotency middleware runs — either by overriding `adcp.server.mcp_tools.create_tool_caller` or by wrapping your handlers directly. Without this, `@idempotency.wrap` is a no-op on MCP (you'll get the one-time warning above).
+
+**Principal contract.** `caller_identity` MUST be a stable, globally-unique identifier per tenant — an opaque buyer ID, not an email or display name. Email reuse after account deletion would cause cross-principal cache collisions. The value is logged at DEBUG (prefix-truncated) and keyed on in the cache; treat it as you would any user-scoping identifier.
+
 ## Available Tools
 
 All AdCP tools with full type safety:

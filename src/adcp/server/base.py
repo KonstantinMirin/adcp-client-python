@@ -80,6 +80,16 @@ class ToolContext:
 
     Contains metadata about the current request that may be useful
     for logging, authorization, or other cross-cutting concerns.
+
+    :param caller_identity: The authenticated principal making the request.
+        **MUST** be a stable, globally-unique identifier within the seller's
+        tenant — never an email, display name, or any other mutable handle.
+        The server-side idempotency middleware keys its cache by
+        ``(caller_identity, idempotency_key)`` — reuse of the same string for
+        two distinct principals (e.g. email reuse after account deletion)
+        causes cross-principal replay (confidentiality leak). Populated by
+        the transport layer (A2A: ``ServerCallContext.user.user_name``; MCP:
+        seller's FastMCP auth middleware).
     """
 
     request_id: str | None = None

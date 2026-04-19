@@ -198,7 +198,7 @@ def _register_tool(
     name: str,
     description: str,
     input_schema: dict[str, Any],
-    caller: Callable[[dict[str, Any]], Any],
+    caller: Callable[..., Any],
 ) -> None:
     """Register a single ADCP tool on a FastMCP server.
 

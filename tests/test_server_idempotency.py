@@ -329,12 +329,19 @@ class TestIdempotencyStoreWrap:
     async def test_no_caller_identity_falls_through(self) -> None:
         # Fail-closed: without a principal we can't safely scope the key,
         # so skip dedup rather than collapse every buyer into one namespace.
+        # Also fires a one-time UserWarning so operators notice.
         store = self._make_store()
         handler = _FakeHandler()
         wrapped = store.wrap(_FakeHandler.create_media_buy)
         params = {"idempotency_key": str(uuid.uuid4()), "brand": "A"}
-        r1 = await wrapped(handler, params, None)
-        r2 = await wrapped(handler, params, None)
+        with pytest.warns(UserWarning, match="dedup is SKIPPED"):
+            r1 = await wrapped(handler, params, None)
+        # Second call in the same store: warning must NOT fire again.
+        import warnings as _warnings
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            r2 = await wrapped(handler, params, None)
         assert handler.call_count == 2
         assert r1 != r2
 

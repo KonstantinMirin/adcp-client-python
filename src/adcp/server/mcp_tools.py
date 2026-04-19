@@ -1168,7 +1168,7 @@ class MCPToolSet:
         """
         self.handler = handler
         self._filtered_definitions = get_tools_for_handler(handler)
-        self._tools: dict[str, Callable[[dict[str, Any]], Any]] = {}
+        self._tools: dict[str, Callable[..., Any]] = {}
 
         # Create tool callers only for filtered tools
         for tool_def in self._filtered_definitions:

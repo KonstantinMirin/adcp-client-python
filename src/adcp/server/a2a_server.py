@@ -280,6 +280,18 @@ def _tool_context_from_request(request: RequestContext) -> ToolContext:
     idempotency store's per-principal scoping) falls through to its
     no-principal default rather than collapsing everyone into a shared
     namespace.
+
+    Security invariant: ``ServerCallContext`` is populated by the seller's
+    server-side auth middleware from verified transport material (bearer
+    token, mTLS cert, OAuth identity). A malicious client cannot flip
+    ``is_authenticated`` or set ``user_name`` from the message payload.
+    The ``is_authenticated and user_name`` gate below relies on this
+    invariant — do not relax it.
+
+    PII note: the ``user_name`` string becomes ``caller_identity``, which
+    the idempotency middleware logs prefix-truncated at DEBUG. If your auth
+    layer sets ``user_name`` to an email address, treat idempotency debug
+    logs as containing PII. Prefer opaque principal IDs.
     """
     ctx = ToolContext(request_id=request.task_id)
     call_context = getattr(request, "call_context", None)
