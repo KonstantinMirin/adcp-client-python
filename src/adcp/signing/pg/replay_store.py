@@ -23,12 +23,8 @@ End-to-end example
     )
 
     pool = ConnectionPool("postgresql://...", min_size=4, max_size=20)
-
-    # Bootstrap the schema once per deployment. Equivalent to running
-    # the DDL at src/adcp/signing/pg/replay_store.sql via psql / Alembic.
-    PgReplayStore.create_schema(pool)
-
     replay = PgReplayStore(pool=pool)
+    replay.create_schema()  # bootstrap once per deployment; idempotent
 
     options = VerifyOptions(
         now=...,
@@ -81,7 +77,6 @@ uncaught exception.
 from __future__ import annotations
 
 import re
-from importlib.resources import files
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -188,24 +183,32 @@ class PgReplayStore:
 
     # -- schema bootstrap --------------------------------------------
 
-    @classmethod
-    def create_schema(cls, pool: ConnectionPool) -> None:
-        """Run the packaged DDL to create the ``adcp_replay`` table + indexes.
+    def create_schema(self) -> None:
+        """Create the replay table + indexes for this store's ``table_name``.
 
-        Equivalent to running :file:`src/adcp/signing/pg/replay_store.sql`
-        via psql / Alembic / Flyway. Idempotent (the DDL uses
-        ``IF NOT EXISTS``), so calling from app startup on every boot
-        is safe.
+        Honors the ``table_name`` kwarg the store was constructed with —
+        integrators using per-tenant tables get the right DDL without
+        extra plumbing. Idempotent via ``CREATE ... IF NOT EXISTS``;
+        safe to call on every app boot.
 
-        Integrators using a migration tool should prefer that route so
-        the DDL lives alongside their other schema; this helper is for
-        single-service deployments that want a one-line bootstrap.
+        The equivalent raw DDL ships at
+        :file:`src/adcp/signing/pg/replay_store.sql` for integrators
+        using a migration tool (Alembic, Flyway, psql) — that file
+        uses the canonical ``adcp_replay`` name.
         """
-        if not PG_AVAILABLE:
-            raise ImportError(_INSTALL_HINT)
-        sql = (files("adcp.signing.pg") / "replay_store.sql").read_text()
-        with pool.connection() as conn, conn.cursor() as cur:
-            cur.execute(sql)
+        table = self._table  # already validated at __init__
+        ddl = (
+            f"CREATE TABLE IF NOT EXISTS {table} ("  # noqa: S608 — validated
+            f'    keyid      TEXT        COLLATE "C" NOT NULL,'
+            f'    nonce      TEXT        COLLATE "C" NOT NULL,'
+            f"    expires_at TIMESTAMPTZ NOT NULL,"
+            f"    PRIMARY KEY (keyid, nonce)"
+            f");"
+            f"CREATE INDEX IF NOT EXISTS {table}_expires_idx "  # noqa: S608
+            f"    ON {table} (expires_at);"
+        )
+        with self._pool.connection() as conn, conn.cursor() as cur:
+            cur.execute(ddl)
 
     # -- ReplayStore Protocol -----------------------------------------
 

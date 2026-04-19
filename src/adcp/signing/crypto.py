@@ -18,7 +18,7 @@ import binascii
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from cryptography.hazmat.primitives.asymmetric.utils import (
     decode_dss_signature,
@@ -48,6 +48,50 @@ def b64url_decode(s: str) -> bytes:
 def b64url_encode(b: bytes) -> str:
     """Encode bytes as base64url without padding."""
     return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
+
+
+def load_private_key_pem(pem: bytes, *, password: bytes | None = None) -> PrivateKey:
+    """Load an Ed25519 or P-256 private key from PKCS8 PEM bytes.
+
+    Closes the loop between ``adcp-keygen`` (which writes a PEM) and
+    :func:`sign_request` (which takes a ``PrivateKey`` object), so
+    integrators don't need a direct ``cryptography`` import just to
+    rehydrate the key.
+
+    Parameters
+    ----------
+    pem:
+        PEM-encoded PKCS8 private key as bytes. Read via
+        ``pathlib.Path(...).read_bytes()``.
+    password:
+        Passphrase if the PEM is encrypted (``adcp-keygen --encrypt``).
+        Passed through to the cryptography loader as bytes.
+
+    Returns
+    -------
+    PrivateKey
+        An :class:`Ed25519PrivateKey` or
+        :class:`EllipticCurvePrivateKey` ready to pass into
+        :func:`sign_request`.
+
+    Raises
+    ------
+    ValueError
+        The PEM is not Ed25519 or ES256 (P-256). These are the only
+        algorithms the AdCP request-signing profile allows.
+    """
+    key = serialization.load_pem_private_key(pem, password=password)
+    if not isinstance(key, (ed25519.Ed25519PrivateKey, ec.EllipticCurvePrivateKey)):
+        raise ValueError(
+            f"unsupported private key type {type(key).__name__} — "
+            f"AdCP signing accepts Ed25519 or ECDSA-P-256 only"
+        )
+    if isinstance(key, ec.EllipticCurvePrivateKey) and not isinstance(key.curve, ec.SECP256R1):
+        raise ValueError(
+            f"EC key curve {key.curve.name} is not supported — only "
+            f"P-256 (SECP256R1) is allowed"
+        )
+    return key
 
 
 def public_key_from_jwk(jwk: dict[str, Any]) -> PublicKey:

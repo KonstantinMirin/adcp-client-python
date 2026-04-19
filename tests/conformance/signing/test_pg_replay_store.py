@@ -264,24 +264,24 @@ def test_remember_twice_with_shorter_ttl_keeps_longer_expiry(isolated_pool) -> N
     assert store.seen("k", "n") is True
 
 
-def test_create_schema_idempotent(isolated_pool) -> None:
-    """``create_schema`` should run the packaged DDL and be safe to
-    call multiple times (the DDL uses IF NOT EXISTS).
+def test_create_schema_honors_table_name(isolated_pool) -> None:
+    """create_schema must create the table the store was built for —
+    not a hardcoded name. Integrators using per-tenant tables would
+    break silently if this regresses.
     """
-    pool, _ = isolated_pool
-    # The fixture already created a test-specific table; create_schema
-    # runs the packaged DDL which targets the canonical name
-    # "adcp_replay". Run it twice to prove idempotency, then clean up.
+    pool, _existing_table = isolated_pool
+    custom_table = f"custom_{secrets.token_hex(4)}_replay"
+    store = PgReplayStore(pool=pool, table_name=custom_table)
     try:
-        PgReplayStore.create_schema(pool)
-        PgReplayStore.create_schema(pool)  # must not raise
-        with pool.connection() as conn, conn.cursor() as cur:
-            cur.execute("SELECT to_regclass('adcp_replay') IS NOT NULL")
-            exists = cur.fetchone()
-            assert exists is not None and exists[0] is True
+        store.create_schema()
+        store.create_schema()  # idempotent — second call must not error
+        # Actually use the store — proves the DDL + runtime queries
+        # target the same table.
+        store.remember("k", "n", ttl_seconds=60)
+        assert store.seen("k", "n") is True
     finally:
         with pool.connection() as conn, conn.cursor() as cur:
-            cur.execute("DROP TABLE IF EXISTS adcp_replay")
+            cur.execute(f"DROP TABLE IF EXISTS {custom_table}")
 
 
 def test_collation_prevents_case_collapse(isolated_pool) -> None:

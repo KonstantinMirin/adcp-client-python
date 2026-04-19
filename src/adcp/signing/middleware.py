@@ -34,10 +34,28 @@ def verify_flask_request(request: Any, *, options: VerifyOptions) -> VerifiedSig
 
 
 async def verify_starlette_request(request: Any, *, options: VerifyOptions) -> VerifiedSigner:
-    """Verify a Starlette / FastAPI `Request` object against the AdCP profile.
+    """Verify a Starlette / FastAPI ``Request`` object against the AdCP profile.
 
-    Consumes `await request.body()` — if downstream code also needs the body,
-    it must read `request.state` or the returned `VerifiedSigner`-side context.
+    Consumes ``await request.body()`` once — Starlette caches the result
+    internally, so downstream handlers calling ``request.body()`` or
+    ``request.json()`` again will get the same bytes. If your handler
+    needs the parsed body AFTER this verifier succeeds, call
+    ``await request.body()`` yourself downstream; there's no hidden
+    side channel on the returned :class:`VerifiedSigner`.
+
+    Returns
+    -------
+    VerifiedSigner
+        On success — carries the verified ``key_id`` and metadata.
+
+    Raises
+    ------
+    SignatureVerificationError
+        On any failure of the AdCP verifier checklist. The ``.code``
+        attribute holds the spec's error code string (e.g.
+        ``request_signature_replayed``) and ``.step`` points at the
+        failed checklist step. Frameworks typically map this to a 401
+        with :func:`unauthorized_response_headers`.
     """
     body = await request.body()
     return verify_request_signature(
