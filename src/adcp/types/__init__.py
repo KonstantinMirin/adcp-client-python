@@ -690,8 +690,6 @@ __all__ = [
     "LogEventResponse",
     "SyncEventSourcesRequest",
     "SyncEventSourcesResponse",
-    "SyncGovernanceRequest",
-    "SyncGovernanceResponse",
     "Totals",
     "UpdateMediaBuyRequest",
     "UpdateMediaBuyResponse",

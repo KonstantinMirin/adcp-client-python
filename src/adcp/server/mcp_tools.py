@@ -821,7 +821,7 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # V3 Compliance
     {
         "name": "comply_test_controller",
-        "description": ("Compliance test controller. Sandbox only," " not for production use."),
+        "description": "Compliance test controller. Sandbox only, not for production use.",
         "annotations": _MUT,
         "inputSchema": {
             "type": "object",
