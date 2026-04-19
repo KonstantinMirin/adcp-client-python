@@ -35,21 +35,24 @@ from adcp.server import ADCPHandler, serve
 from adcp.server.responses import (
     capabilities_response, products_response, media_buy_response,
     delivery_response, creative_formats_response, sync_creatives_response,
+    build_creative_response, preview_creative_response,
 )
 from adcp.server.test_controller import TestControllerStore
+
+AGENT_URL = "http://localhost:3001/mcp"
 
 class MyGenerativeSeller(ADCPHandler):
     # All seller tools (see seller skill) with modified creative handling
     ...
 
-serve(MyGenerativeSeller(), name="my-gen-seller", test_controller=MyStore())
+serve(MyGenerativeSeller(), name="my-gen-seller", port=3001, test_controller=MyStore())
 ```
 
 ## Seller Tools (Required)
 
 Implement all tools from the seller skill. Copy the pattern from `examples/seller_agent.py`:
 
-- `get_adcp_capabilities` → `capabilities_response(["media_buy", "compliance_testing"])`
+- `get_adcp_capabilities` → `capabilities_response(["media_buy"])`
 - `sync_accounts` → `sync_accounts_response(results)`
 - `sync_governance` → `sync_governance_response(results)`
 - `get_products` → `products_response(PRODUCTS)`
@@ -112,9 +115,9 @@ async def sync_creatives(self, params, context=None):
             creatives[creative_id] = {**c, "status": "pending_review"}
             results.append({"creative_id": creative_id, "action": "created", "status": "pending_review"})
         else:
-            # Standard upload: immediate accept
-            creatives[creative_id] = {**c, "status": "accepted"}
-            results.append({"creative_id": creative_id, "action": "created", "status": "accepted"})
+            # Standard upload: immediate approve
+            creatives[creative_id] = {**c, "status": "approved"}
+            results.append({"creative_id": creative_id, "action": "created", "status": "approved"})
 
     return sync_creatives_response(results)
 ```
@@ -124,7 +127,7 @@ async def sync_creatives(self, params, context=None):
 Same as the seller skill. Copy the `TestControllerStore` from `examples/seller_agent.py`:
 
 ```python
-serve(MyGenerativeSeller(), name="my-gen-seller", test_controller=MyStore())
+serve(MyGenerativeSeller(), name="my-gen-seller", port=3001, test_controller=MyStore())
 ```
 
 ## SDK Quick Reference
@@ -136,11 +139,50 @@ All seller response builders apply. The generative delta is in `list_creative_fo
 | `creative_formats_response(formats)` | `list_creative_formats` response |
 | `sync_creatives_response(creatives)` | `sync_creatives` response |
 
+## Generative Tools (Required)
+
+`ADCPHandler` advertises `build_creative` and `preview_creative` by default and returns `not_supported` unless you override them. A generative seller MUST implement both, or the storyboard fails at the generation step.
+
+**`build_creative`** — render a creative manifest from a brief. `idempotency_key` is a REQUIRED request field (pattern `^[A-Za-z0-9_.:-]{16,255}$`, see `src/adcp/types/generated_poc/media_buy/build_creative_request.py:157-165`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe retries:
+
+```python
+from adcp.server.responses import build_creative_response
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+
+idempotency = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+async def build_creative(self, params, context=None):
+    key = params["idempotency_key"]  # required by schema
+    if cached := await idempotency.get(key):
+        return cached
+    manifest = {
+        "promoted_offering": params.get("promoted_offering"),
+        "format_id": params["format_id"],
+        "assets": [{"asset_id": "image", "url": "https://cdn.example/generated.jpg"}],
+    }
+    response = build_creative_response(manifest)
+    await idempotency.put(key, response)
+    return response
+```
+
+**`preview_creative`** — return pre-render previews for a built manifest. Responses wrap a list of `{preview_id, input, renders}`:
+
+```python
+from adcp.server.responses import preview_creative_response
+
+async def preview_creative(self, params, context=None):
+    return preview_creative_response([{
+        "preview_id": f"prev-{uuid.uuid4().hex[:8]}",
+        "input": params,
+        "renders": [{"width": 300, "height": 250, "url": "https://cdn.example/preview.png"}],
+    }])
+```
+
 ## Validation
 
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_generative_seller --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_generative_seller --json
 ```
 
 ## Common Mistakes
