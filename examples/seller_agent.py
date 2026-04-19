@@ -105,7 +105,18 @@ class DemoSeller(ADCPHandler):
     async def get_adcp_capabilities(
         self, params: dict[str, Any], context: Any = None
     ) -> dict[str, Any]:
-        return capabilities_response(["media_buy"])
+        return capabilities_response(
+            ["media_buy"],
+            compliance_testing={
+                "scenarios": [
+                    "force_account_status",
+                    "force_media_buy_status",
+                    "force_creative_status",
+                    "simulate_delivery",
+                    "simulate_budget_spend",
+                ],
+            },
+        )
 
     async def sync_accounts(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
         results = []

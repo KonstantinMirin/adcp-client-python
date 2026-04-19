@@ -490,6 +490,7 @@ async def get_adcp_capabilities(self, params, context=None):
         compliance_testing={"scenarios": [
             "force_account_status",
             "force_media_buy_status",
+            "force_creative_status",
             "simulate_delivery",
             "simulate_budget_spend",
         ]},
