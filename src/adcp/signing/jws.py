@@ -33,7 +33,7 @@ from adcp.signing.crypto import (
     public_key_from_jwk,
     verify_signature,
 )
-from adcp.signing.jwks import JwksResolver
+from adcp.signing.jwks import AsyncJwksResolver, JwksResolver
 
 # JWS uses RFC 7518 algorithm names; RFC 9421 uses the IANA HTTP Signature
 # names. We convert at the JWS boundary so the rest of the module speaks
@@ -138,6 +138,81 @@ def parse_general_json_jws(doc: dict[str, Any]) -> tuple[str, str, bytes]:
     return b64_header, b64_payload, signature
 
 
+def _validate_header(
+    b64_protected: str,
+    *,
+    expected_typ: str,
+    allowed_algs: frozenset[str],
+) -> tuple[str, str]:
+    """Parse + validate the protected header; return ``(internal_alg, kid)``.
+
+    Shared by sync and async verify paths — everything here is pure CPU.
+    """
+    header = _decode_protected_header(b64_protected)
+
+    alg = header.get("alg")
+    if not isinstance(alg, str) or alg == "none" or alg not in allowed_algs:
+        raise JwsMalformedError(
+            f"JWS alg {alg!r} not allowed; permitted values: {sorted(allowed_algs)}"
+        )
+    internal_alg = JWS_ALG_TO_INTERNAL[alg]
+
+    typ = header.get("typ")
+    if typ != expected_typ:
+        raise JwsMalformedError(
+            f"JWS typ {typ!r} does not match expected {expected_typ!r}"
+        )
+
+    crit = header.get("crit")
+    if crit is not None and (not isinstance(crit, list) or len(crit) > 0):
+        raise JwsMalformedError("JWS 'crit' header is not supported for this profile")
+
+    kid = header.get("kid")
+    if not isinstance(kid, str) or not kid:
+        raise JwsMalformedError("JWS protected header must include a non-empty 'kid'")
+
+    return internal_alg, kid
+
+
+def _verify_signature_and_decode_payload(
+    *,
+    b64_protected: str,
+    b64_payload: str,
+    signature: bytes,
+    jwk: dict[str, Any],
+    internal_alg: str,
+    kid: str,
+) -> dict[str, Any]:
+    """Run the cryptographic verify + decode the payload as JSON.
+
+    Signing input uses the ORIGINAL base64url strings — don't decode-
+    then-re-encode, since ``urlsafe_b64decode`` is lenient and a
+    round-trip can produce different bytes than the wire form.
+    """
+    signing_input = (b64_protected + "." + b64_payload).encode("ascii")
+
+    public_key = public_key_from_jwk(jwk)
+    if not verify_signature(
+        alg=internal_alg,
+        public_key=public_key,
+        signature_base=signing_input,
+        signature=signature,
+    ):
+        raise JwsSignatureInvalidError(f"signature did not verify for kid {kid!r}")
+
+    try:
+        payload_bytes = b64url_decode(b64_payload)
+    except (ValueError, binascii.Error) as exc:
+        raise JwsMalformedError(f"JWS payload is not valid base64url: {exc}") from exc
+    try:
+        decoded_payload = json.loads(payload_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise JwsMalformedError(f"JWS payload is not valid JSON: {exc}") from exc
+    if not isinstance(decoded_payload, dict):
+        raise JwsMalformedError("JWS payload is not a JSON object")
+    return decoded_payload
+
+
 def verify_detached_jws(
     *,
     b64_protected: str,
@@ -155,79 +230,56 @@ def verify_detached_jws(
     3. Reject if ``typ`` is not exactly ``expected_typ`` (byte equality, no
        normalization — matches the AdCP spec).
     4. Resolve ``kid`` via ``jwks_resolver``; reject unknown.
-    5. Reconstruct the signature base
-       (``b64_protected + "." + b64_payload``) using the ORIGINAL
-       base64url strings and verify the signature bytes with the existing
-       HTTP-signature crypto. Using the original strings (not decode +
-       re-encode) defends against lenient-decode mismatches.
+    5. Verify the detached signature against the original b64 strings.
     6. Decode the payload as JSON and return it.
 
     Any failure raises a :class:`JwsError` subclass. The caller maps these
     to transport-error codes (e.g. ``request_signature_revocation_stale``).
     """
-    header = _decode_protected_header(b64_protected)
-
-    alg = header.get("alg")
-    if not isinstance(alg, str) or alg == "none" or alg not in allowed_algs:
-        raise JwsMalformedError(
-            f"JWS alg {alg!r} not allowed; permitted values: {sorted(allowed_algs)}"
-        )
-    internal_alg = JWS_ALG_TO_INTERNAL[alg]
-
-    typ = header.get("typ")
-    if typ != expected_typ:
-        raise JwsMalformedError(
-            f"JWS typ {typ!r} does not match expected {expected_typ!r}"
-        )
-
-    # crit handling: the AdCP profile defines no extensions, so any
-    # unrecognized crit entry means the caller can't safely process it.
-    # Only allow crit if it's empty / absent.
-    crit = header.get("crit")
-    if crit is not None and (not isinstance(crit, list) or len(crit) > 0):
-        raise JwsMalformedError(
-            "JWS 'crit' header is not supported for this profile"
-        )
-
-    kid = header.get("kid")
-    if not isinstance(kid, str) or not kid:
-        raise JwsMalformedError("JWS protected header must include a non-empty 'kid'")
-
+    internal_alg, kid = _validate_header(
+        b64_protected, expected_typ=expected_typ, allowed_algs=allowed_algs
+    )
     jwk = jwks_resolver(kid)
     if jwk is None:
         raise JwsUnknownKeyError(f"no JWK for kid {kid!r}")
-
-    # Reconstruct the detached signature base per RFC 7515 §5.1 step 5:
-    # ASCII(BASE64URL(protected header)) || "." || ASCII(BASE64URL(payload)).
-    # Use the ORIGINAL base64url strings — don't decode-then-re-encode, since
-    # ``urlsafe_b64decode`` is lenient (accepts padding, tolerates some
-    # alphabet variants) and a round-trip can produce different bytes than
-    # the wire form. Verifying against the re-encoded bytes would let a
-    # crafted token verify against bytes the signer never signed.
-    signing_input = (b64_protected + "." + b64_payload).encode("ascii")
-
-    public_key = public_key_from_jwk(jwk)
-    if not verify_signature(
-        alg=internal_alg,
-        public_key=public_key,
-        signature_base=signing_input,
+    return _verify_signature_and_decode_payload(
+        b64_protected=b64_protected,
+        b64_payload=b64_payload,
         signature=signature,
-    ):
-        raise JwsSignatureInvalidError(f"signature did not verify for kid {kid!r}")
+        jwk=jwk,
+        internal_alg=internal_alg,
+        kid=kid,
+    )
 
-    # Now that the signature is verified, decode the payload bytes from the
-    # trusted b64 string and parse as JSON.
-    try:
-        payload_bytes = b64url_decode(b64_payload)
-    except (ValueError, binascii.Error) as exc:
-        raise JwsMalformedError(f"JWS payload is not valid base64url: {exc}") from exc
-    try:
-        decoded_payload = json.loads(payload_bytes.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise JwsMalformedError(f"JWS payload is not valid JSON: {exc}") from exc
-    if not isinstance(decoded_payload, dict):
-        raise JwsMalformedError("JWS payload is not a JSON object")
-    return decoded_payload
+
+async def averify_detached_jws(
+    *,
+    b64_protected: str,
+    b64_payload: str,
+    signature: bytes,
+    jwks_resolver: AsyncJwksResolver,
+    expected_typ: str,
+    allowed_algs: frozenset[str] = ALLOWED_JWS_ALGS,
+) -> dict[str, Any]:
+    """Async variant of :func:`verify_detached_jws`.
+
+    Awaits an :class:`AsyncJwksResolver` on the ``kid`` lookup; all
+    other work is pure CPU and runs inline.
+    """
+    internal_alg, kid = _validate_header(
+        b64_protected, expected_typ=expected_typ, allowed_algs=allowed_algs
+    )
+    jwk = await jwks_resolver(kid)
+    if jwk is None:
+        raise JwsUnknownKeyError(f"no JWK for kid {kid!r}")
+    return _verify_signature_and_decode_payload(
+        b64_protected=b64_protected,
+        b64_payload=b64_payload,
+        signature=signature,
+        jwk=jwk,
+        internal_alg=internal_alg,
+        kid=kid,
+    )
 
 
 def verify_jws_document(
@@ -260,14 +312,47 @@ def verify_jws_document(
     )
 
 
+async def averify_jws_document(
+    doc: str | dict[str, Any],
+    *,
+    jwks_resolver: AsyncJwksResolver,
+    expected_typ: str,
+    allowed_algs: frozenset[str] = ALLOWED_JWS_ALGS,
+) -> dict[str, Any]:
+    """Async variant of :func:`verify_jws_document`.
+
+    Accepts an :class:`AsyncJwksResolver`; parsing and signature verify
+    are pure CPU and run inline.
+    """
+    if isinstance(doc, str):
+        b64_header, b64_payload, signature = parse_compact_jws(doc)
+    elif isinstance(doc, dict):
+        b64_header, b64_payload, signature = parse_general_json_jws(doc)
+    else:
+        raise JwsMalformedError(
+            "JWS document must be a compact string or JSON general-serialization object"
+        )
+    return await averify_detached_jws(
+        b64_protected=b64_header,
+        b64_payload=b64_payload,
+        signature=signature,
+        jwks_resolver=jwks_resolver,
+        expected_typ=expected_typ,
+        allowed_algs=allowed_algs,
+    )
+
+
 __all__ = [
     "ALLOWED_JWS_ALGS",
+    "AsyncJwksResolver",
     "JWS_ALG_TO_INTERNAL",
     "JwksResolver",
     "JwsError",
     "JwsMalformedError",
     "JwsSignatureInvalidError",
     "JwsUnknownKeyError",
+    "averify_detached_jws",
+    "averify_jws_document",
     "parse_compact_jws",
     "parse_general_json_jws",
     "verify_detached_jws",
