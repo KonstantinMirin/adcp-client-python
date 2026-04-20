@@ -951,8 +951,6 @@ async def test_middleware_can_short_circuit_without_invoking_handler():
     """Middleware that returns without calling ``call_next`` stops the
     chain and its return value becomes the dispatch result. Rate
     limiters and feature flags rely on this."""
-    from a2a.types import TaskStatus  # noqa: F401 (unused but document
-
     handler_called = False
 
     class _TrackingHandler(ADCPHandler):
@@ -1054,3 +1052,74 @@ def test_create_a2a_server_threads_middleware_into_executor():
     executor = handler.agent_executor
     assert isinstance(executor, ADCPAgentExecutor)
     assert executor._middleware == (noop_mw,)
+
+
+async def test_middleware_can_invoke_call_next_multiple_times_for_retry():
+    """Retry-on-transient-error middleware calls ``call_next()`` more
+    than once — each call builds a fresh inner chain. This locks the
+    re-entrant composition contract a naive loop-variable closure would
+    break."""
+    call_counts = {"mw": 0, "handler": 0}
+
+    async def retry_middleware(skill_name, params, context, call_next):
+        last_exc: Exception | None = None
+        for _ in range(3):
+            call_counts["mw"] += 1
+            try:
+                return await call_next()
+            except RuntimeError as exc:
+                last_exc = exc
+        raise last_exc if last_exc else RuntimeError("unreachable")
+
+    class _TransientFailHandler(ADCPHandler):
+        async def get_adcp_capabilities(self, params: Any, context: Any = None) -> Any:
+            return {}
+
+        async def get_products(self, params: Any, context: Any = None) -> Any:
+            call_counts["handler"] += 1
+            if call_counts["handler"] < 3:
+                raise RuntimeError("transient")
+            return {"products": [{"id": "finally"}]}
+
+    executor = ADCPAgentExecutor(_TransientFailHandler(), middleware=[retry_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert call_counts["mw"] == 3
+    assert call_counts["handler"] == 3
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+
+async def test_middleware_can_transform_result_on_return_side():
+    """Middleware can mutate or replace the value of ``call_next()``
+    before returning it. The transformed value is what the client
+    sees — covers the annotation / enrichment use case distinct from
+    short-circuiting."""
+
+    async def enriching_middleware(skill_name, params, context, call_next):
+        result = await call_next()
+        # Wrap handler's return with a marker the test observes.
+        if isinstance(result, dict):
+            return {**result, "middleware_marker": "wrapped"}
+        return result
+
+    executor = ADCPAgentExecutor(_TestHandler(), middleware=[enriching_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+    data_parts = [
+        p.root
+        for p in event.artifacts[0].parts
+        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+    ]
+    result = data_parts[0].data
+    assert result["middleware_marker"] == "wrapped"
+    # And the handler's original payload is still there.
+    assert result["products"][0]["id"] == "p1"
