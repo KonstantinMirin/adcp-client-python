@@ -171,18 +171,19 @@ class TestResolveAccountIntoContext:
     """Tests for resolve_account_into_context — the context-populating variant."""
 
     @pytest.mark.asyncio
-    async def test_populates_account_aware_context(self) -> None:
+    async def test_populates_from_spec_account_shape(self) -> None:
+        """Default attr is account_id — matches the spec's Account type."""
         from dataclasses import dataclass
 
         from adcp.server import AccountAwareToolContext
 
         @dataclass
-        class _Account:
-            id: str
+        class _SpecAccount:
+            account_id: str
             name: str
 
-        async def resolver(ref: dict) -> _Account:
-            return _Account(id=ref["account_id"], name="Acme")
+        async def resolver(ref: dict) -> _SpecAccount:
+            return _SpecAccount(account_id=ref["account_id"], name="Acme")
 
         ctx = AccountAwareToolContext(caller_identity="alice")
         err = await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
@@ -221,19 +222,63 @@ class TestResolveAccountIntoContext:
         assert ctx.account_id is None
 
     @pytest.mark.asyncio
-    async def test_plain_tool_context_is_not_mutated(self) -> None:
-        """Given a plain ToolContext (not Account-aware), resolution runs for
-        the error path but the context isn't mutated (no matching field)."""
+    async def test_plain_tool_context_warns_on_silent_skip(self) -> None:
+        """Passing a plain ToolContext (not Account-aware) MUST emit a
+        UserWarning — silent-skip would break the multi-tenant scope
+        contract by scoping downstream caches on ``None``."""
+        from dataclasses import dataclass
+
         from adcp.server import ToolContext
 
-        async def resolver(ref: dict) -> dict:
-            return {"id": "a1"}
+        @dataclass
+        class _Account:
+            account_id: str
+
+        async def resolver(ref: dict) -> _Account:
+            return _Account(account_id="a1")
 
         ctx = ToolContext(caller_identity="alice")
-        err = await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
+        with pytest.warns(UserWarning, match="AccountAwareToolContext"):
+            err = await resolve_account_into_context(
+                {"account": {"account_id": "a1"}},
+                ctx,  # type: ignore[arg-type]
+                resolver,
+            )
 
         assert err is None
         assert not hasattr(ctx, "account_id")
+
+    @pytest.mark.asyncio
+    async def test_missing_id_attr_raises(self) -> None:
+        """Wrong account_id_attr must raise rather than silently setting
+        None — silent-None scopes downstream keys to None, masking bugs."""
+        from dataclasses import dataclass
+
+        from adcp.server import AccountAwareToolContext
+
+        @dataclass
+        class _Account:
+            name: str  # deliberately no id field
+
+        async def resolver(ref: dict) -> _Account:
+            return _Account(name="Acme")
+
+        ctx = AccountAwareToolContext()
+        with pytest.raises(ValueError, match="account_id_attr"):
+            await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
+
+    @pytest.mark.asyncio
+    async def test_resolver_runtime_error_propagates(self) -> None:
+        """Non-AccountError exceptions propagate — resolver bugs must not be
+        silently converted to ACCOUNT_NOT_FOUND."""
+        from adcp.server import AccountAwareToolContext
+
+        async def resolver(ref: dict) -> None:
+            raise RuntimeError("DB outage")
+
+        ctx = AccountAwareToolContext()
+        with pytest.raises(RuntimeError, match="DB outage"):
+            await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
 
     @pytest.mark.asyncio
     async def test_custom_id_attr(self) -> None:

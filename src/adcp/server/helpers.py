@@ -13,9 +13,12 @@ and context passthrough so developers focus on business logic.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
+
+from adcp.server.base import AccountAwareToolContext
 
 # All 32 codes from the ADCP spec (enums/error-code.json) plus SDK extensions.
 # Recovery classification: transient (retry), correctable (fix request), terminal.
@@ -245,10 +248,10 @@ async def resolve_account(
 
 async def resolve_account_into_context(
     params: dict[str, Any],
-    context: Any | None,
+    context: AccountAwareToolContext | None,
     resolver: AccountResolver | None,
     *,
-    account_id_attr: str = "id",
+    account_id_attr: str = "account_id",
 ) -> dict[str, Any] | None:
     """Resolve an account reference and populate an
     :class:`~adcp.server.AccountAwareToolContext`.
@@ -266,28 +269,51 @@ async def resolve_account_into_context(
                 return err
             return products_response(catalog.for_account(context.account_id))
 
-    When ``context`` is ``None`` or isn't an ``AccountAwareToolContext``
-    (e.g. a transport forgot to populate it), resolution still runs so
-    the error path is consistent, but the context is not mutated.
-
     :param params: The request params dict, expected to carry an
         ``account`` key with an ``AccountReference``.
     :param context: The handler's context. Must be
         :class:`~adcp.server.AccountAwareToolContext` (or a subclass of
-        it) to receive the resolved fields.
+        it) to receive the resolved fields. Passing a plain
+        ``ToolContext`` runs resolution for the error path but logs a
+        ``UserWarning`` — the silent-skip would otherwise break the
+        multi-tenant scope contract.
     :param resolver: An :data:`AccountResolver` — same shape as
         :func:`resolve_account` accepts.
     :param account_id_attr: Attribute name on the resolver's account
-        object that holds the stable id. Defaults to ``"id"``.
+        object that holds the stable id. Defaults to ``"account_id"``
+        — matches the SDK's spec-generated :class:`~adcp.types.Account`
+        type. Override when your resolver returns a domain object
+        using a different attr name.
     """
-    from adcp.server.base import AccountAwareToolContext
-
     account, err = await resolve_account(params, resolver)
     if err is not None:
         return err
-    if account is not None and isinstance(context, AccountAwareToolContext):
-        context.account = account
-        context.account_id = getattr(account, account_id_attr, None)
+    if account is None:
+        return None
+
+    if not isinstance(context, AccountAwareToolContext):
+        warnings.warn(
+            "resolve_account_into_context received a context that isn't an "
+            "AccountAwareToolContext — account was resolved but context not "
+            "mutated. Populate your handler's context_factory to return "
+            "AccountAwareToolContext (or a subclass), or parameterise your "
+            "handler with ADCPHandler[AccountAwareToolContext]. Silent skip "
+            "means downstream cache/audit keys will scope to None.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
+
+    if not hasattr(account, account_id_attr):
+        raise ValueError(
+            f"Resolved account of type {type(account).__name__!r} has no "
+            f"{account_id_attr!r} attribute. Pass account_id_attr= to "
+            f"resolve_account_into_context() if your resolver returns a "
+            f"domain object using a different field name."
+        )
+
+    context.account = account
+    context.account_id = getattr(account, account_id_attr)
     return None
 
 

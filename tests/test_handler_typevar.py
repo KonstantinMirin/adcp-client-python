@@ -338,35 +338,55 @@ def test_handler_method_signatures_preserve_parameter_order():
 # ---------------------------------------------------------------------------
 
 
-def test_account_aware_context_flows_through_handler():
-    """The shipped ``AccountAwareToolContext`` must work with the same
-    ``ADCPHandler[Ctx]`` pattern as any user-defined subclass — it's
-    the canonical example we point sellers at."""
+async def test_account_aware_context_flows_through_a2a_executor():
+    """End-to-end: the shipped ``AccountAwareToolContext`` must flow
+    through ``ADCPAgentExecutor`` dispatch preserving its subclass
+    identity and populated fields. This is the path salesagent exercises
+    and the canonical example we point sellers at — a dispatch test is
+    the only test that catches regressions in the transport's context
+    plumbing against the shipped subclass."""
+    from a2a.server.agent_execution.context import RequestContext
+    from a2a.server.events.event_queue import EventQueue
+    from a2a.types import DataPart, Message, MessageSendParams, Part, Role, Task
+
     from adcp.server import AccountAwareToolContext
+    from adcp.server.a2a_server import ADCPAgentExecutor
 
     received: list[Any] = []
 
-    class _TypedAgent(ADCPHandler[AccountAwareToolContext]):
+    class _AccountAwareAgent(ADCPHandler[AccountAwareToolContext]):
         _agent_type = "account-aware"
 
         async def get_adcp_capabilities(self, params, context=None):
             received.append(context)
-            return {"adcp": {"major_versions": [3]}}
+            return {"adcp": {"major_versions": [3]}, "supported_protocols": ["media_buy"]}
 
-    import asyncio
+    def _factory(meta):
+        return AccountAwareToolContext(
+            caller_identity="p-1",
+            tenant_id="t-1",
+            account_id="acct-42",
+        )
 
-    agent = _TypedAgent()
-    ctx = AccountAwareToolContext(
-        caller_identity="p-1",
-        tenant_id="t-1",
-        account_id="acct-42",
+    executor = ADCPAgentExecutor(_AccountAwareAgent(), context_factory=_factory)
+    msg = Message(
+        message_id="m-1",
+        role=Role.user,
+        parts=[Part(root=DataPart(data={"skill": "get_adcp_capabilities", "parameters": {}}))],
     )
-    asyncio.run(agent.get_adcp_capabilities({}, ctx))
+    ctx = RequestContext(request=MessageSendParams(message=msg))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
 
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+    assert len(received) == 1
     got = received[0]
     assert isinstance(got, AccountAwareToolContext)
     assert got.account_id == "acct-42"
-    assert got.caller_identity == "p-1"
+    assert got.tenant_id == "t-1"
 
 
 if __name__ == "__main__":
