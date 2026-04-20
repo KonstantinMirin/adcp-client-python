@@ -27,6 +27,7 @@ from adcp.server.mcp_tools import (
     _PYDANTIC_SCHEMAS,
     ADCP_TOOL_DEFINITIONS,
     _generate_pydantic_schemas,
+    _inline_refs,
 )
 
 
@@ -140,3 +141,254 @@ def test_spot_check_real_fields_reach_clients() -> None:
         assert req in create_media_buy.get(
             "required", []
         ), f"create_media_buy should require {req!r}"
+
+
+# ---------------------------------------------------------------------------
+# $defs inlining invariants (closes #208)
+# ---------------------------------------------------------------------------
+
+
+def test_no_dollar_ref_in_any_advertised_schema() -> None:
+    """Every tool's inputSchema must be ``$ref``-free. MCP clients that
+    don't implement JSON Schema reference resolution (a surprisingly
+    large slice of the ecosystem) see ``{"$ref": ...}`` as an empty
+    object — which means "this tool takes no params" in their
+    interpretation. Inlining is the only way to give those clients the
+    full tool surface. Regression here silently re-breaks discovery for
+    those clients."""
+    for tool in ADCP_TOOL_DEFINITIONS:
+        serialized = json.dumps(tool["inputSchema"])
+        assert '"$ref"' not in serialized, (
+            f"tool {tool['name']!r} inputSchema contains unresolved $ref. "
+            "Check _inline_refs in adcp.server.mcp_tools."
+        )
+
+
+def test_no_dollar_defs_in_any_advertised_schema() -> None:
+    """After inlining, ``$defs`` serves no purpose and is noise on the
+    wire. Drop it so the advertised schema is minimal."""
+    for tool in ADCP_TOOL_DEFINITIONS:
+        serialized = json.dumps(tool["inputSchema"])
+        assert '"$defs"' not in serialized, (
+            f"tool {tool['name']!r} inputSchema retains $defs block after "
+            "inlining. Check _inline_refs drop-when-resolved path."
+        )
+
+
+# ---------------------------------------------------------------------------
+# _inline_refs unit tests — behavior-level guarantees
+# ---------------------------------------------------------------------------
+
+
+def test_inline_refs_replaces_local_ref_with_body() -> None:
+    """The core transform: ``{"$ref": "#/$defs/X"}`` becomes the body
+    of ``$defs["X"]``."""
+    schema = {
+        "type": "object",
+        "properties": {"user": {"$ref": "#/$defs/User"}},
+        "$defs": {
+            "User": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    assert result["properties"]["user"] == {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+    }
+    assert "$defs" not in result
+
+
+def test_inline_refs_resolves_nested_refs() -> None:
+    """A $def that itself references another $def must be fully
+    resolved in one pass. Without recursion, the second level stays
+    as a $ref."""
+    schema = {
+        "type": "object",
+        "properties": {"order": {"$ref": "#/$defs/Order"}},
+        "$defs": {
+            "Order": {
+                "type": "object",
+                "properties": {"customer": {"$ref": "#/$defs/Customer"}},
+            },
+            "Customer": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+            },
+        },
+    }
+    result = _inline_refs(schema)
+    # Both levels resolved in the output.
+    assert result["properties"]["order"]["properties"]["customer"]["properties"]["id"] == {
+        "type": "string"
+    }
+    assert '"$ref"' not in json.dumps(result)
+
+
+def test_inline_refs_sibling_keys_override_resolved_body() -> None:
+    """JSON Schema 2020-12 §8.2: sibling keys on the $ref node
+    override the resolved body's same-named keys. Field-level
+    descriptions on the $ref site must survive inlining."""
+    schema = {
+        "properties": {
+            "account": {
+                "$ref": "#/$defs/Account",
+                "description": "This one is special — overrides the generic description.",
+            }
+        },
+        "$defs": {
+            "Account": {
+                "type": "object",
+                "description": "Generic account description.",
+                "properties": {"id": {"type": "string"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    assert (
+        result["properties"]["account"]["description"]
+        == "This one is special — overrides the generic description."
+    )
+    assert result["properties"]["account"]["properties"] == {"id": {"type": "string"}}
+
+
+def test_inline_refs_protects_against_cycles() -> None:
+    """Pydantic doesn't emit cyclic refs today, but a future request
+    model could. Cycle protection must leave the original ``$ref``
+    intact (and keep $defs) so the caller still has resolvable data."""
+    schema = {
+        "type": "object",
+        "properties": {"node": {"$ref": "#/$defs/Node"}},
+        "$defs": {
+            "Node": {
+                "type": "object",
+                "properties": {"child": {"$ref": "#/$defs/Node"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    # Cycle detected — the inner $ref survives because it'd recurse
+    # forever. $defs stays so it's still resolvable for spec-compliant
+    # clients.
+    assert '"$ref"' in json.dumps(result)
+    assert "$defs" in result
+
+
+def test_inline_refs_dangling_ref_leaves_schema_alone() -> None:
+    """A $ref pointing at a non-existent $def is a spec error, but the
+    inliner shouldn't crash — leave both the $ref and the (empty)
+    $defs intact so a spec-compliant client's error surface fires
+    with the right shape."""
+    schema = {
+        "type": "object",
+        "properties": {"bad": {"$ref": "#/$defs/NotThere"}},
+        "$defs": {},
+    }
+    result = _inline_refs(schema)
+    # Dangling $ref survives; $defs kept because the ref didn't resolve.
+    assert '"$ref"' in json.dumps(result)
+
+
+def test_inline_refs_ignores_external_refs() -> None:
+    """External $refs (``http://…``, relative paths) are spec-valid
+    but aren't something Pydantic emits for our request models. If
+    one ever shows up, leave it alone — silently stripping it would
+    corrupt the schema."""
+    schema = {
+        "type": "object",
+        "properties": {"x": {"$ref": "https://example.com/schema.json"}},
+    }
+    result = _inline_refs(schema)
+    assert result["properties"]["x"] == {"$ref": "https://example.com/schema.json"}
+
+
+def test_inline_refs_preserves_required_arrays() -> None:
+    """Inlining must not lose the ``required`` array on a resolved
+    definition. Agents constructing payloads read this to know which
+    fields are mandatory."""
+    schema = {
+        "type": "object",
+        "properties": {"user": {"$ref": "#/$defs/User"}},
+        "$defs": {
+            "User": {
+                "type": "object",
+                "required": ["name", "email"],
+                "properties": {
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                },
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    assert result["properties"]["user"]["required"] == ["name", "email"]
+
+
+def test_inline_refs_handles_arrays_of_refs() -> None:
+    """``items: {"$ref": "..."}`` must resolve just like top-level
+    property refs."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "users": {
+                "type": "array",
+                "items": {"$ref": "#/$defs/User"},
+            }
+        },
+        "$defs": {
+            "User": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    assert result["properties"]["users"]["items"]["properties"] == {"id": {"type": "string"}}
+    assert "$defs" not in result
+
+
+def test_inline_refs_does_not_mutate_input() -> None:
+    """The inliner must return a new object — callers may want to keep
+    the pre-inline form (e.g. for comparison against Pydantic's fresh
+    output). Mutating the input silently breaks that contract."""
+    schema = {
+        "properties": {"user": {"$ref": "#/$defs/User"}},
+        "$defs": {"User": {"type": "object"}},
+    }
+    before = json.dumps(schema, sort_keys=True)
+    _inline_refs(schema)
+    after = json.dumps(schema, sort_keys=True)
+    assert before == after, "inliner must not mutate its input"
+
+
+# ---------------------------------------------------------------------------
+# End-to-end — inlined schema accepts the same valid input as Pydantic
+# ---------------------------------------------------------------------------
+
+
+def test_inlined_schema_still_validates_real_request() -> None:
+    """The inlined schema must accept every payload the original
+    Pydantic model accepts. Structural equivalence — the shape is
+    preserved, just flattened. Round-trip via jsonschema's validator
+    against a concrete minimal valid payload."""
+    import jsonschema
+    import pytest
+
+    from adcp.types import GetProductsRequest
+
+    tool_schemas = {t["name"]: t["inputSchema"] for t in ADCP_TOOL_DEFINITIONS}
+    get_products = tool_schemas["get_products"]
+
+    # Minimal valid payload per the model.
+    payload = {"buying_mode": "brief"}
+
+    # Build validator from the inlined schema; payload must pass.
+    try:
+        jsonschema.validate(payload, get_products)
+    except jsonschema.ValidationError as exc:  # pragma: no cover
+        pytest.fail(f"inlined schema rejected a valid payload: {exc}")
+
+    # And Pydantic still accepts it — both sides of the equivalence.
+    GetProductsRequest.model_validate(payload)
