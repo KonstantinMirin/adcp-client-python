@@ -39,12 +39,14 @@ from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from a2a.server.tasks.push_notification_config_store import (
         PushNotificationConfigStore,
     )
     from a2a.server.tasks.task_store import TaskStore
 
-    from adcp.server.serve import ContextFactory
+    from adcp.server.serve import ContextFactory, SkillMiddleware
 from adcp.server.helpers import STANDARD_ERROR_CODES
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 from adcp.server.test_controller import TestControllerStore, _handle_test_controller
@@ -69,9 +71,16 @@ class ADCPAgentExecutor(AgentExecutor):
         test_controller: TestControllerStore | None = None,
         *,
         context_factory: ContextFactory | None = None,
+        middleware: Sequence[SkillMiddleware] | None = None,
     ) -> None:
         self._handler = handler
         self._context_factory = context_factory
+        # Store as a tuple so the executor can't be mutated from underneath
+        # at runtime (a flaky test or a handler reaching self._middleware
+        # can't corrupt the dispatch chain). Tuple ordering = runtime
+        # ordering; first entry wraps outermost (see ``SkillMiddleware``
+        # docstring for the composition semantics).
+        self._middleware: tuple[SkillMiddleware, ...] = tuple(middleware or ())
         self._tool_callers: dict[str, Any] = {}
 
         # Build tool callers for all tools this handler supports.
@@ -117,7 +126,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
         tool_context = self._build_tool_context(skill_name, context)
         try:
-            result = await self._tool_callers[skill_name](params, tool_context)
+            result = await self._dispatch_with_middleware(skill_name, params, tool_context)
             await self._send_result(event_queue, context, skill_name, result)
         except ADCPError as exc:
             # Application-layer AdCP error (IdempotencyConflictError etc.).
@@ -130,6 +139,43 @@ class ADCPAgentExecutor(AgentExecutor):
         except Exception:
             logger.exception("Error executing skill %s", skill_name)
             await self._send_error(event_queue, context, f"Skill execution failed: {skill_name}")
+
+    async def _dispatch_with_middleware(
+        self,
+        skill_name: str,
+        params: dict[str, Any],
+        tool_context: ToolContext,
+    ) -> Any:
+        """Run the handler wrapped in the configured middleware chain.
+
+        Middleware composes outermost-first: the first entry in
+        ``self._middleware`` sees every call *before* the later entries
+        and *before* the handler. This matches Starlette / ASGI
+        conventions so sellers porting from those stacks aren't
+        surprised. Composition is done via a small recursive dispatcher
+        (no mutable indices, no lambdas closing over loop variables) —
+        the chain reads the same whether you have zero or ten
+        middlewares.
+
+        Middleware exceptions propagate to the executor's normal error
+        handling path in ``execute()``; this method does no try/except
+        so short-circuiting, transform, and exception-observation all
+        work the same way they do for the underlying handler.
+        """
+        if not self._middleware:
+            return await self._tool_callers[skill_name](params, tool_context)
+
+        async def _step(index: int) -> Any:
+            if index >= len(self._middleware):
+                return await self._tool_callers[skill_name](params, tool_context)
+            middleware = self._middleware[index]
+
+            async def call_next() -> Any:
+                return await _step(index + 1)
+
+            return await middleware(skill_name, params, tool_context, call_next)
+
+        return await _step(0)
 
     def _build_tool_context(self, skill_name: str, request: RequestContext) -> ToolContext:
         """Build the :class:`ToolContext` handed to the skill dispatcher.
@@ -445,6 +491,7 @@ def create_a2a_server(
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -492,6 +539,14 @@ def create_a2a_server(
             (via a ``ContextVar`` your auth middleware populates) or by
             composition with a tenant-scoped ``TaskStore`` — the reference
             impl shows the ContextVar pattern.
+        middleware: Optional sequence of :data:`~adcp.server.SkillMiddleware`
+            callables wrapping every A2A skill dispatch. Composes
+            outermost-first (first entry sees the call before later
+            entries and before the handler). Use for audit logging,
+            activity-feed hooks, rate limiting, per-skill tracing. See
+            :data:`~adcp.server.SkillMiddleware` for the signature,
+            composition semantics, and the exception-capture pattern
+            audit hooks need.
 
     Returns:
         A Starlette app ready to be run with uvicorn.
@@ -501,7 +556,10 @@ def create_a2a_server(
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
     executor = ADCPAgentExecutor(
-        handler, test_controller=test_controller, context_factory=context_factory
+        handler,
+        test_controller=test_controller,
+        context_factory=context_factory,
+        middleware=middleware,
     )
 
     agent_card = _build_agent_card(

@@ -866,3 +866,260 @@ async def test_sqlite_push_config_store_synthesises_config_id_when_omitted():
             "fallback config_id must synthesise a unique value to prevent "
             "silent overwrite."
         )
+
+
+# ---------------------------------------------------------------------------
+# Per-skill middleware hook (issue #226)
+# ---------------------------------------------------------------------------
+
+
+async def test_middleware_runs_and_sees_skill_context_and_result():
+    """Single middleware observes the skill name, params, ToolContext,
+    and the handler's return value. This is the audit/activity-feed
+    happy path that closes #226."""
+    from adcp.server import SkillMiddleware  # noqa: F401 (type import)
+
+    observed: list[dict[str, Any]] = []
+
+    async def audit_middleware(
+        skill_name: str,
+        params: dict[str, Any],
+        context: Any,
+        call_next: Any,
+    ) -> Any:
+        observed.append(
+            {
+                "phase": "before",
+                "skill_name": skill_name,
+                "params": params,
+                "caller_identity": getattr(context, "caller_identity", None),
+            }
+        )
+        result = await call_next()
+        observed.append({"phase": "after", "skill_name": skill_name, "result": result})
+        return result
+
+    executor = ADCPAgentExecutor(_TestHandler(), middleware=[audit_middleware])
+    ctx = RequestContext(
+        request=MessageSendParams(message=_make_datapart_msg("get_products", {"brief": "coffee"}))
+    )
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert len(observed) == 2, f"expected before+after, got {observed}"
+    assert observed[0]["phase"] == "before"
+    assert observed[0]["skill_name"] == "get_products"
+    assert observed[0]["params"] == {"brief": "coffee"}
+    assert observed[1]["phase"] == "after"
+    assert "products" in observed[1]["result"]
+
+
+async def test_middleware_composes_outermost_first():
+    """Multiple middlewares compose in order: the first entry wraps
+    everything later. Matches Starlette/ASGI semantics — the contract
+    documented in SkillMiddleware's docstring."""
+    call_order: list[str] = []
+
+    def _mw(name: str) -> Any:
+        async def middleware(skill_name, params, context, call_next):
+            call_order.append(f"{name}-enter")
+            try:
+                return await call_next()
+            finally:
+                call_order.append(f"{name}-exit")
+
+        return middleware
+
+    executor = ADCPAgentExecutor(
+        _TestHandler(), middleware=[_mw("outer"), _mw("middle"), _mw("inner")]
+    )
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert call_order == [
+        "outer-enter",
+        "middle-enter",
+        "inner-enter",
+        "inner-exit",
+        "middle-exit",
+        "outer-exit",
+    ], call_order
+
+
+async def test_middleware_can_short_circuit_without_invoking_handler():
+    """Middleware that returns without calling ``call_next`` stops the
+    chain and its return value becomes the dispatch result. Rate
+    limiters and feature flags rely on this."""
+    handler_called = False
+
+    class _TrackingHandler(ADCPHandler):
+        async def get_adcp_capabilities(self, params: Any, context: Any = None) -> Any:
+            return {"adcp": {"major_versions": [3]}}
+
+        async def get_products(self, params: Any, context: Any = None) -> Any:
+            nonlocal handler_called
+            handler_called = True
+            return {"products": []}
+
+    async def rate_limit_middleware(skill_name, params, context, call_next):
+        # Don't call call_next — short-circuit.
+        return {"products": [], "sandbox": True, "rate_limited": True}
+
+    executor = ADCPAgentExecutor(_TrackingHandler(), middleware=[rate_limit_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+    data_parts = [
+        p.root
+        for p in event.artifacts[0].parts
+        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+    ]
+    result = data_parts[0].data
+    assert result.get("rate_limited") is True
+    assert handler_called is False, (
+        "middleware short-circuited but the handler still ran — call_next "
+        "was invoked despite the middleware not calling it"
+    )
+
+
+async def test_middleware_observes_handler_exceptions():
+    """Audit middleware needs to see failures, not just successes. The
+    issue's leaning-toward-option-A reasoning cited this explicitly."""
+    captured_exceptions: list[Exception] = []
+
+    async def audit_middleware(skill_name, params, context, call_next):
+        try:
+            return await call_next()
+        except Exception as exc:
+            captured_exceptions.append(exc)
+            raise
+
+    class _FailingHandler(ADCPHandler):
+        async def get_adcp_capabilities(self, params: Any, context: Any = None) -> Any:
+            return {}
+
+        async def get_products(self, params: Any, context: Any = None) -> Any:
+            raise RuntimeError("deliberate handler failure")
+
+    executor = ADCPAgentExecutor(_FailingHandler(), middleware=[audit_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert len(captured_exceptions) == 1
+    assert isinstance(captured_exceptions[0], RuntimeError)
+    # And the executor's normal failure path still runs — the client
+    # gets a failed task, not a 500, because middleware re-raised.
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "failed"
+
+
+async def test_no_middleware_preserves_direct_dispatch():
+    """Sellers who don't pass ``middleware`` see zero behavior change —
+    the dispatch chain short-circuits to direct handler invocation,
+    and nothing in the chain allocates per-call middleware state."""
+    executor = ADCPAgentExecutor(_TestHandler())
+    assert executor._middleware == ()
+
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
+def test_create_a2a_server_threads_middleware_into_executor():
+    """Kwarg on ``create_a2a_server`` reaches the executor. Paranoid
+    contract test: if a refactor accidentally drops the kwarg from the
+    ``ADCPAgentExecutor(...)`` construction, this fires."""
+
+    async def noop_mw(skill_name, params, context, call_next):
+        return await call_next()
+
+    app = create_a2a_server(_TestHandler(), name="mw-test", middleware=[noop_mw])
+    handler = _extract_default_request_handler(app)
+    executor = handler.agent_executor
+    assert isinstance(executor, ADCPAgentExecutor)
+    assert executor._middleware == (noop_mw,)
+
+
+async def test_middleware_can_invoke_call_next_multiple_times_for_retry():
+    """Retry-on-transient-error middleware calls ``call_next()`` more
+    than once — each call builds a fresh inner chain. This locks the
+    re-entrant composition contract a naive loop-variable closure would
+    break."""
+    call_counts = {"mw": 0, "handler": 0}
+
+    async def retry_middleware(skill_name, params, context, call_next):
+        last_exc: Exception | None = None
+        for _ in range(3):
+            call_counts["mw"] += 1
+            try:
+                return await call_next()
+            except RuntimeError as exc:
+                last_exc = exc
+        raise last_exc if last_exc else RuntimeError("unreachable")
+
+    class _TransientFailHandler(ADCPHandler):
+        async def get_adcp_capabilities(self, params: Any, context: Any = None) -> Any:
+            return {}
+
+        async def get_products(self, params: Any, context: Any = None) -> Any:
+            call_counts["handler"] += 1
+            if call_counts["handler"] < 3:
+                raise RuntimeError("transient")
+            return {"products": [{"id": "finally"}]}
+
+    executor = ADCPAgentExecutor(_TransientFailHandler(), middleware=[retry_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert call_counts["mw"] == 3
+    assert call_counts["handler"] == 3
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+
+async def test_middleware_can_transform_result_on_return_side():
+    """Middleware can mutate or replace the value of ``call_next()``
+    before returning it. The transformed value is what the client
+    sees — covers the annotation / enrichment use case distinct from
+    short-circuiting."""
+
+    async def enriching_middleware(skill_name, params, context, call_next):
+        result = await call_next()
+        # Wrap handler's return with a marker the test observes.
+        if isinstance(result, dict):
+            return {**result, "middleware_marker": "wrapped"}
+        return result
+
+    executor = ADCPAgentExecutor(_TestHandler(), middleware=[enriching_middleware])
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+    data_parts = [
+        p.root
+        for p in event.artifacts[0].parts
+        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+    ]
+    result = data_parts[0].data
+    assert result["middleware_marker"] == "wrapped"
+    # And the handler's original payload is still there.
+    assert result["products"][0]["id"] == "p1"

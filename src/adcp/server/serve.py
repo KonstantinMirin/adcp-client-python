@@ -19,7 +19,7 @@ Stand up an ADCP-compliant server with a single function call:
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -27,6 +27,8 @@ from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from a2a.server.tasks.push_notification_config_store import (
         PushNotificationConfigStore,
     )
@@ -59,6 +61,118 @@ class RequestMetadata:
     tool_name: str
     transport: Literal["mcp", "a2a"]
     request_id: str | None = None
+
+
+SkillMiddleware = Callable[
+    [str, dict[str, Any], ToolContext, Callable[[], Awaitable[Any]]],
+    Awaitable[Any],
+]
+"""Middleware that wraps A2A skill dispatch — the audit / activity-feed /
+rate-limiter / tracing hook for the A2A transport.
+
+Signature (conceptually a Protocol; declared as a ``Callable`` alias so
+it's importable and consistent with ``ContextFactory``)::
+
+    async def middleware(
+        skill_name: str,
+        params: dict[str, Any],
+        context: ToolContext,
+        call_next: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        ...
+
+Middleware wraps ``call_next()`` — call it (possibly more than once to
+implement retry, or never to short-circuit) to invoke the rest of the
+chain plus the underlying handler. Anything the middleware returns
+becomes the dispatch result the A2A transport serialises back to the
+client, so middleware can short-circuit (skip the handler entirely) or
+transform the result on the return side.
+
+Middleware observes both success and failure — catch exceptions around
+``call_next()`` to implement audit-on-failure or retry-classifier hooks.
+Middleware re-raising propagates to the executor's normal error path
+(application ``ADCPError`` → failed task w/ ``adcp_error`` DataPart;
+other exceptions → opaque failed task per the spec's error-sanitisation
+rule). **Swallowing an exception and returning a substitute result is
+allowed but almost always wrong** — in particular, swallowing
+``ADCPError`` subclasses (``IdempotencyConflictError``,
+``ADCPTaskError``) serves a fake success for a failed mutation, which
+double-bills / double-allocates in production.
+
+``params`` is the parsed request dict passed to every middleware in
+the chain and to the handler. Middleware cannot mutate what the next
+layer sees by mutating ``params`` — transforms happen on the return
+side only, by modifying the value returned from ``call_next()``.
+
+Multiple middlewares compose outermost-first, matching Starlette/ASGI
+semantics — if you pass ``middleware=[Audit(), RateLimit(), Metrics()]``,
+the runtime order is::
+
+    Audit.__call__ →  RateLimit.__call__ →  Metrics.__call__ →  handler
+
+**Put audit outermost.** Middleware that short-circuits (rate limiter,
+feature-flag gate) never calls ``call_next()``, so anything deeper in
+the chain never sees the request. If your audit middleware sits
+*after* the rate limiter, rejected calls disappear from the audit
+trail — often the most interesting events for security review.
+
+``call_next()`` runs in the same asyncio task as the middleware that
+invoked it, so ``ContextVar`` values set before the call are visible
+to downstream middleware and the handler. Don't ``asyncio.create_task``
+your way around this unless you need the isolation.
+
+**Security — middleware is a data processor for the full skill payload.**
+``params`` is decoded business content (buyer briefs, budgets, brand
+references, proposal text, PII in message parts). ``context`` carries
+``caller_identity``, ``tenant_id``, and anything your ``context_factory``
+populates. Installing a third-party middleware (observability vendor,
+SaaS audit pipeline, external tracing) hands that vendor the complete
+skill payload surface — treat it as a data processor under your
+GDPR/CCPA controller-processor relationships and review the blast
+radius before wiring vendors here.
+
+**Security — do not format ``params`` or ``context.caller_identity``
+into exception messages.** Middleware-raised exceptions pass through
+``logger.exception`` in the executor (server-side trace with the raw
+message) before the executor's sanitisation kicks in for the client
+response. Exception text ends up in operator logs verbatim; keep it
+opaque.
+
+**Security — short-circuit caches MUST include principal + tenant in
+the cache key.** A middleware that caches on ``skill_name + params``
+alone and returns a cached result without calling ``call_next()``
+will serve principal A's data to principal B on a matching-params
+call. Key on ``(skill_name, params, context.caller_identity,
+context.tenant_id)``.
+
+Example — audit logging with exception capture::
+
+    from adcp.server import SkillMiddleware, ToolContext
+
+    async def audit_middleware(
+        skill_name: str,
+        params: dict[str, Any],
+        context: ToolContext,
+        call_next: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        started_at = time.monotonic()
+        try:
+            result = await call_next()
+        except Exception as exc:
+            # Keep exception text opaque — this ends up in server logs.
+            audit_log.failure(
+                skill_name, context.caller_identity, type(exc).__name__
+            )
+            raise
+        audit_log.success(
+            skill_name,
+            context.caller_identity,
+            elapsed_ms=(time.monotonic() - started_at) * 1000,
+        )
+        return result
+
+    create_a2a_server(MyAgent(), middleware=[audit_middleware])
+"""
 
 
 ContextFactory = Callable[[RequestMetadata], ToolContext]
@@ -112,6 +226,7 @@ def serve(
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -140,6 +255,12 @@ def serve(
             ``UnsupportedOperationError`` — clients cannot register
             subscriptions at all. See ``examples/a2a_db_tasks.py`` for
             a durable reference implementation.
+        middleware: Optional sequence of :data:`SkillMiddleware` callables
+            wrapping every A2A skill dispatch (A2A transport only). Use
+            for audit logging, activity-feed hooks, rate limiting,
+            tracing. Composes outermost-first. See
+            :data:`SkillMiddleware` for the signature and composition
+            semantics.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -187,6 +308,7 @@ def serve(
             context_factory=context_factory,
             task_store=task_store,
             push_config_store=push_config_store,
+            middleware=middleware,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -315,6 +437,7 @@ def _serve_a2a(
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -331,6 +454,7 @@ def _serve_a2a(
         context_factory=context_factory,
         task_store=task_store,
         push_config_store=push_config_store,
+        middleware=middleware,
     )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:

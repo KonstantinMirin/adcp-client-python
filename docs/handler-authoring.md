@@ -328,14 +328,95 @@ share one push-notif bucket across every unauthenticated caller. The
 warning is the signal your auth middleware isn't populating the
 ContextVar — treat it as a P0.
 
+### Per-skill middleware (audit, activity feeds, rate limiting, tracing)
+
+Every A2A skill dispatch can be wrapped in a chain of middleware
+callables. Pass them as `middleware=[...]` to `create_a2a_server` /
+`serve` / `ADCPAgentExecutor` — first entry wraps outermost, matching
+Starlette/ASGI ordering:
+
+```python
+from adcp.server import SkillMiddleware, ToolContext, serve
+
+async def audit_middleware(
+    skill_name: str,
+    params: dict,
+    context: ToolContext,
+    call_next,
+) -> Any:
+    started = time.monotonic()
+    try:
+        result = await call_next()
+    except Exception as exc:
+        audit_log.failure(skill_name, context.caller_identity, exc)
+        raise
+    audit_log.success(
+        skill_name,
+        context.caller_identity,
+        elapsed_ms=(time.monotonic() - started) * 1000,
+    )
+    return result
+
+serve(MyAgent(), transport="a2a", middleware=[audit_middleware])
+```
+
+**Semantics worth knowing:**
+
+- **Composition — put audit outermost.** `middleware=[Audit(),
+  RateLimit(), Metrics()]` runs `Audit → RateLimit → Metrics →
+  handler` on the way in and unwinds in the opposite order. **If you
+  put rate-limiting before audit, rejected requests disappear from
+  your audit log** — often the most interesting events for security
+  review. Audit always outermost.
+- **Short-circuit — cache keys MUST include principal + tenant.** A
+  middleware that returns without calling `call_next()` stops the
+  chain; its return value becomes the dispatch result. Rate limiters
+  / feature flags use this. **Caching middleware that short-circuits
+  must key on `(skill_name, params, context.caller_identity,
+  context.tenant_id)`** — a cache keyed only on `skill_name + params`
+  serves principal A's data to principal B on a matching-params call.
+- **Exception observation — never swallow an `ADCPError`.** Catch
+  around `await call_next()` to log failures. Re-raise to let the
+  executor's normal error path take over (`ADCPError` → failed task
+  with `adcp_error` DataPart; other exceptions → opaque failed task).
+  Swallowing an `ADCPError` (especially `IdempotencyConflictError` or
+  `ADCPTaskError`) and returning a fake-success dict silently converts
+  a rejected mutation into a "completed" task — double-billing,
+  double-allocation, duplicated side effects. Don't.
+- **Exception messages end up in server logs.** Middleware-raised
+  exceptions flow through `logger.exception` in the executor before
+  client-facing sanitisation. Don't format `params` or
+  `context.caller_identity` into exception text — operators read those
+  logs.
+- **Retry is supported.** Call `call_next()` more than once (e.g.
+  retry-on-transient-error middleware). Each call gets a fresh
+  inner chain — composition is re-entrant by design.
+- **Transform on return, not on input.** `params` passed in is the
+  same dict every middleware sees. Mutating it doesn't change what
+  the next layer receives. Transforms happen on the *return* side by
+  modifying the value of `await call_next()`.
+- **Context access**: the middleware sees the `ToolContext` produced
+  by the `context_factory` (or the a2a-sdk fallback). Tenant id,
+  caller identity, anything your factory populates. `ContextVar`s set
+  before `call_next()` propagate to the handler — no `asyncio.create_task`
+  needed.
+
+**Security — middleware is a data processor for the full skill
+payload.** `params` carries decoded buyer briefs, budgets, brand
+refs, proposal text, PII in message parts. `context` carries
+`caller_identity` + `tenant_id`. Installing a third-party middleware
+(SaaS audit, observability vendor, bespoke tracing) hands that vendor
+the complete skill surface. Treat it as a data processor under your
+GDPR/CCPA controller-processor agreements.
+
+MCP transport has its own middleware story (see "Pattern 2 —
+in-process HTTP middleware" above); `SkillMiddleware` is A2A-only.
+
 ### Known gaps
 
-- Per-skill middleware hooks for audit logging / activity feeds don't
-  exist yet — tracked at
-  [#226](https://github.com/adcontextprotocol/adcp-client-python/issues/226).
-
-Once #226 lands, A2A adoption reaches parity with MCP for production
-agents.
+All three Phase-2 A2A hooks (#224 TaskStore, #225 PushNotificationConfigStore,
+#226 SkillMiddleware) have landed. A2A adoption now reaches parity with
+MCP for production agents.
 
 ## Testing
 
