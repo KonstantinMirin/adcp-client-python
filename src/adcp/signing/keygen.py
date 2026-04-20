@@ -1,13 +1,32 @@
 """Key generation helpers for AdCP request signing.
 
-Writes a PEM private key and prints the matching JWK (public half) with
-`adcp_use: "request-signing"` — paste that JWK into your agent's JWKS at the
-URL advertised in brand.json.
+Two equivalent entry points — pick whichever fits your calling context:
 
-Usage:
+- :func:`generate_signing_keypair` — programmatic API returning
+  ``(pem_bytes, public_jwk)``. Use from tests, provisioning scripts, and
+  any non-shell code where spawning a subprocess is the wrong shape.
+- ``adcp-keygen`` CLI (:func:`main`) — wraps the same helper plus
+  file-writing and stdout printing, so CI / shell pipelines stay
+  ergonomic.
+
+Both paths produce the same PEM and JWK. Publish the JWK (public half)
+at your agent's ``jwks_uri`` — the ``adcp_use`` claim (``request-signing``
+or ``webhook-signing``) pins the key to one signing profile; verifiers
+reject keys used in the wrong surface.
+
+Usage (CLI):
     adcp-keygen --alg ed25519 --out private-key.pem
     adcp-keygen --alg es256 --out private-key.pem
     adcp-keygen --alg ed25519 --encrypt --out private-key.pem
+
+Usage (programmatic):
+    from adcp.signing import generate_signing_keypair
+
+    pem_bytes, public_jwk = generate_signing_keypair(
+        alg="ed25519", purpose="webhook-signing"
+    )
+    Path("key.pem").write_bytes(pem_bytes)
+    publish_to_jwks_uri(public_jwk)
 """
 
 from __future__ import annotations
@@ -20,7 +39,7 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
@@ -88,6 +107,66 @@ def generate_es256(
         "y": b64url_encode(numbers.y.to_bytes(32, "big")),
     }
     return pem, jwk
+
+
+def _default_kid(alg: str) -> str:
+    """Default ``kid`` derived from alg + UTC date. Callers who care
+    about key rotation should pass an explicit ``kid``."""
+    return f"adcp-{alg}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+
+
+def generate_signing_keypair(
+    *,
+    alg: Literal["ed25519", "es256"] = "ed25519",
+    kid: str | None = None,
+    purpose: Literal["request-signing", "webhook-signing"] = "request-signing",
+    passphrase: bytes | None = None,
+) -> tuple[bytes, dict[str, Any]]:
+    """Generate an AdCP signing keypair.
+
+    Programmatic companion to the ``adcp-keygen`` CLI — call this from
+    tests, provisioning scripts, or any non-shell context where spawning
+    a subprocess is the wrong shape.
+
+    :param alg: Signature algorithm. ``"ed25519"`` (default; tiny keys,
+        recommended) or ``"es256"`` (ECDSA over P-256, broader ecosystem
+        support).
+    :param kid: Key ID to embed in the JWK. Defaults to
+        ``"adcp-{alg}-{YYYYMMDD}"`` — fine for one-off keys, but callers
+        managing rotation should supply an explicit kid so rotated keys
+        don't collide.
+    :param purpose: Which AdCP signing profile this key is for. Sets the
+        JWK ``adcp_use`` claim. **Request-signing and webhook-signing
+        keys MUST be distinct** — a signature from one surface cannot
+        replay as the other, and every conformant verifier enforces the
+        claim. Generate separate keys per purpose.
+    :param passphrase: When provided, the PEM is encrypted with
+        ``BestAvailableEncryption``. Typical only for dev-laptop keys;
+        automated deployments usually leave the PEM unencrypted and
+        rely on filesystem perms (the CLI writes mode 0600).
+
+    :returns: ``(pem_bytes, public_jwk)``. The PEM is PKCS#8
+        (optionally encrypted); the JWK is the public half, ready to
+        publish at your ``jwks_uri``. The private scalar is NOT in the
+        JWK — only in the PEM.
+
+    :raises ValueError: ``alg`` or ``purpose`` is unsupported.
+
+    Example:
+        >>> pem, jwk = generate_signing_keypair(
+        ...     alg="ed25519", purpose="webhook-signing"
+        ... )
+        >>> jwk["adcp_use"]
+        'webhook-signing'
+    """
+    if alg not in ("ed25519", "es256"):
+        raise ValueError(f"alg must be 'ed25519' or 'es256', got {alg!r}")
+    if purpose not in _ADCP_USE_VALUES:
+        raise ValueError(f"purpose must be one of {_ADCP_USE_VALUES}, got {purpose!r}")
+    resolved_kid = kid or _default_kid(alg)
+    if alg == "ed25519":
+        return generate_ed25519(resolved_kid, passphrase=passphrase, adcp_use=purpose)
+    return generate_es256(resolved_kid, passphrase=passphrase, adcp_use=purpose)
 
 
 def _prompt_passphrase_bytes() -> bytes:
@@ -164,13 +243,13 @@ def main(argv: list[str] | None = None) -> int:
 
     passphrase = _prompt_passphrase_bytes() if args.encrypt else None
 
-    kid = args.kid or f"adcp-{args.alg}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
-    if args.alg == "ed25519":
-        pem, jwk = generate_ed25519(kid, passphrase=passphrase, adcp_use=args.purpose)
-        alg_rfc = ALG_ED25519
-    else:
-        pem, jwk = generate_es256(kid, passphrase=passphrase, adcp_use=args.purpose)
-        alg_rfc = ALG_ES256
+    pem, jwk = generate_signing_keypair(
+        alg=args.alg,
+        kid=args.kid,
+        purpose=args.purpose,
+        passphrase=passphrase,
+    )
+    alg_rfc = ALG_ED25519 if args.alg == "ed25519" else ALG_ES256
 
     # `--force` clobbers in two steps (non-atomic on overwrite), but the
     # happy-path create is atomic via O_EXCL | mode=0o600 so there is no window
