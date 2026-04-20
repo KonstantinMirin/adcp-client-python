@@ -53,7 +53,14 @@ What the framework does automatically:
 from __future__ import annotations
 
 from adcp.capabilities import validate_capabilities
-from adcp.server.a2a_server import ADCPAgentExecutor, create_a2a_server
+from adcp.server.a2a_server import ADCPAgentExecutor, MessageParser, create_a2a_server
+from adcp.server.auth import (
+    BearerTokenAuthMiddleware,
+    Principal,
+    TokenValidator,
+    auth_context_factory,
+    constant_time_token_match,
+)
 from adcp.server.base import (
     AccountAwareToolContext,
     ADCPHandler,
@@ -161,8 +168,15 @@ __all__ = [
     "validate_discovery_set",
     # A2A integration
     "ADCPAgentExecutor",
+    "MessageParser",
     "SkillMiddleware",
     "create_a2a_server",
+    # Bearer-token auth middleware (seller-facing recipe)
+    "BearerTokenAuthMiddleware",
+    "Principal",
+    "TokenValidator",
+    "auth_context_factory",
+    "constant_time_token_match",
     # Idempotency middleware (AdCP #2315 seller side)
     "IdempotencyStore",
     "MemoryBackend",

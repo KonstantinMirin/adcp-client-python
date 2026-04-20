@@ -167,17 +167,47 @@ authenticated requests. The SDK trusts the proxy's decision. Simplest,
 and the right choice when your identity provider and tool endpoints run
 behind the same gateway.
 
-### Pattern 2 — in-process HTTP middleware
+### Pattern 2 — in-process HTTP middleware (recommended)
 
-Call `mcp.streamable_http_app()` to get the Starlette ASGI app, then
-`app.add_middleware(YourAuthMiddleware)`. The middleware validates
-credentials, stashes the resolved principal + tenant somewhere the
-`context_factory` can read (ContextVars are recommended), and calls
-`context_factory=` on `create_mcp_server()` to inject a typed
-`ToolContext` per call.
+Use `BearerTokenAuthMiddleware` and `auth_context_factory` from
+`adcp.server`. The SDK owns the four security-critical concerns
+(ContextVar carrier, `hmac.compare_digest`, discovery-method bypass,
+reset-in-finally); you supply only `validate_token`:
+
+```python
+from adcp.server import (
+    BearerTokenAuthMiddleware,
+    Principal,
+    auth_context_factory,
+    create_mcp_server,
+)
+
+async def validate_token(token: str) -> Principal | None:
+    row = await db.fetch_token(token)
+    if row is None or row.revoked:
+        return None
+    return Principal(caller_identity=row.principal_id, tenant_id=row.tenant_id)
+
+mcp = create_mcp_server(MyAgent(), context_factory=auth_context_factory)
+app = mcp.streamable_http_app()
+app.add_middleware(BearerTokenAuthMiddleware, validate_token=validate_token)
+```
+
+`validate_token` may be sync or async — whichever matches your token
+store. Return `None` to reject; don't raise (exceptions become 500s
+and leak the presence of an auth path to attackers).
 
 Full worked example: `examples/mcp_with_auth_middleware.py`. Integration
 test proving the composition: `tests/test_mcp_middleware_composition.py`.
+
+#### Pattern 2a — custom middleware (when the shipped one doesn't fit)
+
+Subclass `BearerTokenAuthMiddleware` to tighten the discovery bypass,
+add extra headers, or customise the 401 response. For non-bearer auth
+(mTLS, signed requests, API key via header), write a Starlette
+middleware that populates `adcp.server.auth.current_principal` /
+`current_tenant` yourself and keep using `auth_context_factory` — the
+`ContextVar`s are the contract, not the middleware class.
 
 ### Discovery tools bypass auth
 
@@ -241,6 +271,38 @@ The integration test at
 locks the default posture with a positive assertion that `tools/list`
 returns 200 without credentials and a negative control that the gate
 still lets it through when an invalid bearer is present.
+
+## Custom tools alongside ADCP tools
+
+Some agents need to expose vendor-specific tools (an internal
+`list_publishers` endpoint, a custom storyboard hook) that aren't part
+of the AdCP spec. `create_mcp_server()` returns a bare FastMCP
+instance — register custom tools on it with FastMCP's standard
+`@mcp.tool()` decorator:
+
+```python
+from adcp.server import create_mcp_server
+
+mcp = create_mcp_server(MyAgent(), name="my-agent")
+
+@mcp.tool()
+async def list_publishers(region: str) -> list[dict]:
+    """Vendor-specific — not in the AdCP spec."""
+    return await my_db.publishers_in(region)
+
+mcp.run(transport="streamable-http")
+```
+
+Custom tools appear in `tools/list` alongside the ADCP tools, carry
+whatever schema FastMCP generates from the function signature, and do
+**not** run through ADCP's spec-driven validation or the `SkillMiddleware`
+chain — they're off-spec by construction. Use them for genuinely
+vendor-specific surfaces; don't use them to "extend" AdCP operations
+(that's what discriminated-union request subclasses are for).
+
+`tools/list` consumers that validate against the ADCP spec will flag
+custom tools as unknown. Set expectations accordingly with clients
+your agent talks to.
 
 ## Request-body size cap
 
@@ -519,10 +581,12 @@ ContextVar — treat it as a P0.
 
 ### Per-skill middleware (audit, activity feeds, rate limiting, tracing)
 
-Every A2A skill dispatch can be wrapped in a chain of middleware
-callables. Pass them as `middleware=[...]` to `create_a2a_server` /
-`serve` / `ADCPAgentExecutor` — first entry wraps outermost, matching
-Starlette/ASGI ordering:
+Every skill dispatch — on **both** the MCP and A2A transports — can be
+wrapped in a chain of middleware callables. Pass them as
+`middleware=[...]` to `create_mcp_server` / `create_a2a_server` /
+`serve` — first entry wraps outermost, matching Starlette/ASGI
+ordering. The same list works across transports; write once, apply to
+both:
 
 ```python
 from adcp.server import SkillMiddleware, ToolContext, serve
@@ -546,6 +610,10 @@ async def audit_middleware(
     )
     return result
 
+# Works on MCP:
+serve(MyAgent(), middleware=[audit_middleware])
+
+# Same middleware list, A2A transport:
 serve(MyAgent(), transport="a2a", middleware=[audit_middleware])
 ```
 
@@ -598,8 +666,37 @@ refs, proposal text, PII in message parts. `context` carries
 the complete skill surface. Treat it as a data processor under your
 GDPR/CCPA controller-processor agreements.
 
-MCP transport has its own middleware story (see "Pattern 2 —
-in-process HTTP middleware" above); `SkillMiddleware` is A2A-only.
+`SkillMiddleware` applies on both transports — pass the same list to
+`create_mcp_server(middleware=...)` and `create_a2a_server(middleware=...)`,
+or to `serve(middleware=...)`. Per-transport HTTP middleware (the
+`BearerTokenAuthMiddleware` from Pattern 2 above, for instance) is a
+separate concern — HTTP middleware runs before JSON-RPC decode;
+`SkillMiddleware` runs after skill dispatch is resolved.
+
+### Alternative A2A wire formats
+
+The default `ADCPAgentExecutor` parses incoming messages expecting
+`DataPart(data={"skill": "<name>", "parameters": {...}})` with a
+TextPart JSON fallback. Sellers fronting clients that send a
+different shape (JSON-RPC 2.0 bodies, vendor-specific DataParts, bare
+TextPart with a different skill layout) can pass a custom
+`message_parser`:
+
+```python
+from adcp.server import MessageParser, create_a2a_server
+
+def my_parser(context):
+    # Parse your wire shape; return (skill_name, params) or (None, {}).
+    msg = context.message
+    ...
+    return skill_name, params
+
+app = create_a2a_server(MyAgent(), message_parser=my_parser)
+```
+
+Compose with the default when accepting both shapes — call
+`ADCPAgentExecutor._default_parse_request` as a fallback after your
+parser returns `(None, {})` for legacy clients.
 
 ### Known gaps
 

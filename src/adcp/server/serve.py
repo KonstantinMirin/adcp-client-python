@@ -18,10 +18,13 @@ Stand up an ADCP-compliant server with a single function call:
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
+
+logger = logging.getLogger("adcp.server")
 
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
@@ -34,6 +37,7 @@ if TYPE_CHECKING:
     )
     from a2a.server.tasks.task_store import TaskStore
 
+    from adcp.server.a2a_server import MessageParser
     from adcp.server.test_controller import TestControllerStore
 
 
@@ -67,8 +71,11 @@ SkillMiddleware = Callable[
     [str, dict[str, Any], ToolContext, Callable[[], Awaitable[Any]]],
     Awaitable[Any],
 ]
-"""Middleware that wraps A2A skill dispatch — the audit / activity-feed /
-rate-limiter / tracing hook for the A2A transport.
+"""Middleware that wraps skill dispatch on both the MCP and A2A
+transports — the audit / activity-feed / rate-limiter / tracing hook.
+Composition semantics are identical across transports (shared
+composer); middleware written against one transport works unchanged
+on the other.
 
 Signature (conceptually a Protocol; declared as a ``Callable`` alias so
 it's importable and consistent with ``ContextFactory``)::
@@ -172,7 +179,85 @@ Example — audit logging with exception capture::
         return result
 
     create_a2a_server(MyAgent(), middleware=[audit_middleware])
+
+The same middleware list also composes on the MCP side — pass it to
+``create_mcp_server(middleware=...)`` or the transport-agnostic
+``serve(middleware=...)``.
 """
+
+
+def _log_advertised_tools(
+    *,
+    transport: Literal["mcp", "a2a"],
+    handler: ADCPHandler[Any],
+    advertise_all: bool,
+    registered: list[str],
+) -> None:
+    """Log which tools the server just advertised, plus the delta vs the
+    full spec surface the handler class could have supported.
+
+    Operators occasionally rename a handler method and silently drop it
+    from ``tools/list`` — discovering that during incident review is
+    the wrong time. Emitting the advertised set and the unadvertised
+    delta at startup turns a silent gap into a searchable log line.
+
+    Registered at ``INFO`` because operators routinely tail this; the
+    delta at ``DEBUG`` because it's noisy on fully-implemented handlers.
+    """
+    registered_set = set(registered)
+    full_defs = get_tools_for_handler(handler, advertise_all=True)
+    full_names = {t["name"] for t in full_defs}
+    unadvertised = sorted(full_names - registered_set)
+
+    logger.info(
+        "%s server advertising %d of %d tools%s",
+        transport,
+        len(registered_set),
+        len(full_names),
+        " (advertise_all=True)" if advertise_all else "",
+    )
+    if unadvertised and not advertise_all:
+        logger.debug("%s server unadvertised tools: %s", transport, ", ".join(unadvertised))
+
+
+async def _dispatch_with_middleware(
+    middleware: tuple[SkillMiddleware, ...] | Sequence[SkillMiddleware],
+    skill_name: str,
+    params: dict[str, Any],
+    context: ToolContext,
+    call_handler: Callable[[], Awaitable[Any]],
+) -> Any:
+    """Run ``call_handler`` wrapped in the supplied middleware chain.
+
+    Shared by the MCP and A2A dispatch paths so composition semantics
+    stay identical across transports — middleware porting between
+    ``create_mcp_server(middleware=...)`` and
+    ``create_a2a_server(middleware=...)`` needs zero changes.
+
+    Outermost-first composition: the first entry in ``middleware`` sees
+    every call *before* later entries and *before* the handler. No
+    mutable indices, no loop-variable captures — a small recursive
+    dispatcher reads the same with zero or ten middlewares.
+
+    Middleware exceptions propagate to the caller unchanged; this
+    function does no try/except so short-circuiting, transform, and
+    exception-observation behaviors are owned by the transport-level
+    executor, not the composer.
+    """
+    if not middleware:
+        return await call_handler()
+
+    async def _step(index: int) -> Any:
+        if index >= len(middleware):
+            return await call_handler()
+        mw = middleware[index]
+
+        async def call_next() -> Any:
+            return await _step(index + 1)
+
+        return await mw(skill_name, params, context, call_next)
+
+    return await _step(0)
 
 
 ContextFactory = Callable[[RequestMetadata], ToolContext]
@@ -227,6 +312,7 @@ def serve(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    message_parser: MessageParser | None = None,
     advertise_all: bool = False,
     max_request_size: int | None = None,
 ) -> None:
@@ -258,11 +344,19 @@ def serve(
             subscriptions at all. See ``examples/a2a_db_tasks.py`` for
             a durable reference implementation.
         middleware: Optional sequence of :data:`SkillMiddleware` callables
-            wrapping every A2A skill dispatch (A2A transport only). Use
-            for audit logging, activity-feed hooks, rate limiting,
-            tracing. Composes outermost-first. See
+            wrapping every skill dispatch on both the MCP and A2A
+            transports. Use for audit logging, activity-feed hooks,
+            rate limiting, tracing. Composes outermost-first. See
             :data:`SkillMiddleware` for the signature and composition
             semantics.
+        message_parser: Optional
+            :data:`~adcp.server.a2a_server.MessageParser` callable for
+            alternative A2A wire shapes (A2A transport only). The
+            default parser handles ``DataPart(data={"skill": ...,
+            "parameters": ...})`` plus a TextPart JSON fallback; supply
+            this hook to accept JSON-RPC 2.0 message bodies or vendor-
+            specific DataPart schemas. MCP does not use this kwarg
+            (FastMCP owns the wire shape).
         advertise_all: When True, advertise every tool the handler type
             supports even if the subclass didn't override the method.
             Defaults to ``False`` — ``tools/list`` only shows tools the
@@ -325,6 +419,7 @@ def serve(
             task_store=task_store,
             push_config_store=push_config_store,
             middleware=middleware,
+            message_parser=message_parser,
             advertise_all=advertise_all,
             max_request_size=max_request_size,
         )
@@ -337,6 +432,7 @@ def serve(
             instructions=instructions,
             test_controller=test_controller,
             context_factory=context_factory,
+            middleware=middleware,
             advertise_all=advertise_all,
             max_request_size=max_request_size,
         )
@@ -431,6 +527,7 @@ def _serve_mcp(
     instructions: str | None,
     test_controller: TestControllerStore | None,
     context_factory: ContextFactory | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
     max_request_size: int | None = None,
 ) -> None:
@@ -442,6 +539,7 @@ def _serve_mcp(
         instructions=instructions,
         include_test_controller=test_controller is not None,
         context_factory=context_factory,
+        middleware=middleware,
         advertise_all=advertise_all,
     )
 
@@ -503,6 +601,7 @@ def _serve_a2a(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    message_parser: MessageParser | None = None,
     advertise_all: bool = False,
     max_request_size: int | None = None,
 ) -> None:
@@ -522,6 +621,7 @@ def _serve_a2a(
         task_store=task_store,
         push_config_store=push_config_store,
         middleware=middleware,
+        message_parser=message_parser,
         advertise_all=advertise_all,
     )
     app = _wrap_with_size_limit(app, max_request_size)
@@ -547,6 +647,7 @@ def create_mcp_server(
     instructions: str | None = None,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
@@ -577,6 +678,12 @@ def create_mcp_server(
             :data:`ContextFactory` for the recommended contextvars
             pattern. When ``None``, handlers receive a bare
             ``ToolContext()`` (no caller identity, no tenant).
+        middleware: Optional sequence of :data:`SkillMiddleware` callables
+            wrapping every tool dispatch. Symmetric with A2A's
+            ``create_a2a_server(middleware=...)`` — the same list works
+            on both transports. Use for audit logging, rate limiting,
+            tracing, activity-feed hooks. See :data:`SkillMiddleware`
+            for signature and composition semantics.
         advertise_all: When True, advertise every tool the handler type
             supports — even those whose method is still the SDK's
             ``not_supported`` default. Defaults to ``False``, which
@@ -643,6 +750,7 @@ def create_mcp_server(
         handler,
         include_test_controller=include_test_controller,
         context_factory=context_factory,
+        middleware=middleware,
         advertise_all=advertise_all,
     )
     return mcp
@@ -654,10 +762,17 @@ def _register_handler_tools(
     *,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
 ) -> None:
     """Register all ADCP tools from a handler onto a FastMCP server."""
+    # Freeze middleware ordering at registration time. Tuple both guards
+    # against a mutable list being reshuffled mid-request and matches the
+    # A2A executor's handling.
+    middleware_tuple: tuple[SkillMiddleware, ...] = tuple(middleware or ())
+
     tool_defs = get_tools_for_handler(handler, advertise_all=advertise_all)
+    registered: list[str] = []
     for tool_def in tool_defs:
         tool_name = tool_def["name"]
         # Gate comply_test_controller on explicit opt-in. The handler base
@@ -675,7 +790,16 @@ def _register_handler_tools(
             input_schema,
             caller,
             context_factory=context_factory,
+            middleware=middleware_tuple,
         )
+        registered.append(tool_name)
+
+    _log_advertised_tools(
+        transport="mcp",
+        handler=handler,
+        advertise_all=advertise_all,
+        registered=registered,
+    )
 
 
 def _register_tool(
@@ -686,6 +810,7 @@ def _register_tool(
     caller: Callable[..., Any],
     *,
     context_factory: ContextFactory | None = None,
+    middleware: tuple[SkillMiddleware, ...] = (),
 ) -> None:
     """Register a single ADCP tool on a FastMCP server.
 
@@ -722,8 +847,23 @@ def _register_tool(
                     f"context_factory for tool {name!r} returned "
                     f"{type(context).__name__}, not a ToolContext instance"
                 )
+
+        async def _call_handler() -> Any:
+            return await caller(kwargs, context=context)
+
         try:
-            result = await caller(kwargs, context=context)
+            if middleware:
+                # Middleware requires a concrete ToolContext to match the
+                # declared SkillMiddleware signature; synthesise an empty
+                # one when no factory is configured so the chain still
+                # runs. Handler itself keeps receiving ``None`` semantics
+                # via ``context`` closed over by _call_handler.
+                mw_context = context if context is not None else ToolContext()
+                result = await _dispatch_with_middleware(
+                    middleware, name, kwargs, mw_context, _call_handler
+                )
+            else:
+                result = await _call_handler()
         except ADCPError as exc:
             # Translate AdCP-typed exceptions (IdempotencyConflictError,
             # ADCPTaskError with a spec code, etc.) into a ToolError so FastMCP
