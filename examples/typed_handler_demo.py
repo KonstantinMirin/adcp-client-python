@@ -83,4 +83,8 @@ class TypedSeller(ADCPHandler):
 
 
 if __name__ == "__main__":
+    # Demo only — ``serve()`` defaults to binding 0.0.0.0 with no auth.
+    # For production, wrap with an auth middleware (see
+    # ``examples/mcp_with_auth_middleware.py``) and restrict the host
+    # via reverse-proxy config or the ``port=`` / bind-host hooks.
     serve(TypedSeller(), name="typed-demo-seller", transport="streamable-http")

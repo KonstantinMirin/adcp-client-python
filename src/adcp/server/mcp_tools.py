@@ -1415,7 +1415,17 @@ def _resolve_params_pydantic_model(method: Any) -> type[Any] | None:
 
     try:
         hints = typing.get_type_hints(method)
-    except Exception:  # forward-ref failure, missing import, etc.
+    except Exception as exc:  # forward-ref failure, missing import, etc.
+        # Log at debug so an author whose typed annotation silently
+        # failed to resolve (typo in the class name, import not at
+        # module top-level, PEP 563 name bound in a local scope) can
+        # find out why their handler is dispatching via the dict path.
+        logger.debug(
+            "typed params annotation failed to resolve for %r: %s; "
+            "falling back to dict dispatch",
+            method,
+            exc,
+        )
         return None
     annotation = hints.get("params")
     if annotation is None:
@@ -1485,7 +1495,19 @@ def create_tool_caller(
                 # INVALID_REQUEST with a field-level pointer instead of
                 # a raw Pydantic traceback. translate_error maps this
                 # to ToolError (MCP) / ServerError (A2A) per transport.
-                errors_list = exc.errors()
+                #
+                # Strip ``input``/``ctx``/``url`` from the Pydantic error
+                # details — they echo the raw offending value verbatim
+                # (``input`` in particular). In multi-hop agent chains the
+                # response flows through intermediaries, so echoing the
+                # user-supplied value is a PII/secret-leak vector: a
+                # mistyped API key or secret-shaped idempotency_key could
+                # land in the broker's logs. The field path in
+                # ``Error.field`` is all clients need to programmatically
+                # locate the bad value in their own request.
+                errors_list = exc.errors(
+                    include_input=False, include_context=False, include_url=False
+                )
                 first: dict[str, Any] = dict(errors_list[0]) if errors_list else {}
                 field_path = ".".join(str(loc) for loc in first.get("loc", ()))
                 message = first.get("msg", "validation failed")
@@ -1499,8 +1521,9 @@ def create_tool_caller(
                     errors=[
                         Error(
                             code="INVALID_REQUEST",
+                            field=field_path or None,
                             message=suggestion,
-                            details={"validation_errors": exc.errors()},
+                            details={"validation_errors": errors_list},
                         )
                     ],
                 ) from exc

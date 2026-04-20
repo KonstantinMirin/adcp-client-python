@@ -131,7 +131,10 @@ coexist on the same handler.
 dispatcher picks the first Pydantic branch and deserialises. Existing
 handlers that do defensive `GetProductsRequest.model_validate(params)`
 inside the method still work: Pydantic's `model_validate` on an
-already-typed instance is a no-op.
+already-typed instance is a no-op (returns the same object; field
+validators are skipped — so a custom `@field_validator` layered on a
+params model won't fire twice, and won't fire again on the defensive
+re-call inside the handler).
 
 **Custom models too.** You aren't restricted to the SDK's generated
 request classes. Any `BaseModel` subclass declared on `params`

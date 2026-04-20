@@ -257,9 +257,9 @@ async def test_handler_returning_already_typed_params_no_double_validation():
     """When the handler calls ``Model.model_validate(params)`` itself
     (the specialized SDK bases still do this today), the typed
     dispatch passing a typed instance must NOT break it. Pydantic
-    ``model_validate`` on an existing instance returns a new validated
-    instance — still works, just wasteful. Verify the existing
-    specialized-base pattern is unaffected."""
+    ``model_validate`` on an already-typed instance is a no-op —
+    returns the same object, validators are skipped. Verify the
+    existing specialized-base pattern is unaffected."""
     from adcp.types import GetProductsResponse
 
     received_types: list[type] = []
@@ -276,21 +276,15 @@ async def test_handler_returning_already_typed_params_no_double_validation():
             # Specialized-base pattern: defensively re-validate.
             req = GetProductsRequest.model_validate(params)
             received_types.append(type(req))
-            return GetProductsResponse(products=cast_empty_products())
+            return GetProductsResponse(products=[])
 
     caller = create_tool_caller(_Agent(), "get_products")
     await caller({"buying_mode": "brief"})
 
     # Dispatch handed the method a typed instance; the method's
-    # defensive model_validate just returned another typed instance.
-    # No crash, no error — the existing pattern keeps working.
+    # defensive model_validate was a no-op pass-through. No crash,
+    # no error — the existing pattern keeps working.
     assert received_types == [GetProductsRequest]
-
-
-def cast_empty_products() -> list[Any]:
-    """Helper — GetProductsResponse needs a list but the content
-    doesn't matter for this test."""
-    return []
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +292,7 @@ def cast_empty_products() -> list[Any]:
 # ---------------------------------------------------------------------------
 
 
-class _StrictGetProducts(BaseModel):
+class _StrictGetProductsRequest(BaseModel):
     """Module-level custom model.
 
     Defined at module scope because ``typing.get_type_hints`` needs to
@@ -327,7 +321,9 @@ async def test_custom_pydantic_model_also_works():
             return {"adcp": {"major_versions": [3]}}
 
         async def get_products(
-            self, params: _StrictGetProducts, context: ToolContext | None = None
+            self,
+            params: _StrictGetProductsRequest,
+            context: ToolContext | None = None,
         ) -> Any:
             received.append(params)
             return {"products": []}
@@ -335,7 +331,7 @@ async def test_custom_pydantic_model_also_works():
     caller = create_tool_caller(_Agent(), "get_products")
     await caller({"buying_mode": "brief", "promoted_offering": "test"})
 
-    assert isinstance(received[0], _StrictGetProducts)
+    assert isinstance(received[0], _StrictGetProductsRequest)
     assert received[0].buying_mode == "brief"
 
 
