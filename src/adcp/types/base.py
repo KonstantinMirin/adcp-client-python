@@ -2,13 +2,40 @@ from __future__ import annotations
 
 """Base model for AdCP types with spec-compliant serialization."""
 
+import os
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
 # Type alias to shorten long type annotations
 MessageFormatter = Callable[[Any], str]
+
+
+def _resolve_extra_policy() -> Literal["ignore", "forbid"]:
+    """Choose the ``extra`` policy for :class:`AdCPBaseModel`.
+
+    ``ignore`` (default) silently drops unknown fields, preserving
+    forward compatibility when newer spec versions add fields. This is
+    the production-safe default — a client on spec N sending to a
+    server on spec N+1 keeps working.
+
+    ``forbid`` raises on unknown fields so CI catches the silent-drop
+    case that production-safe defaults obscure. Most useful during
+    upgrades: right after a major spec revision, run tests with
+    ``ADCP_STRICT_VALIDATION=1`` to surface every place the upgrade
+    dropped a renamed field, then ship with the flag unset for the
+    forward-compat default.
+
+    Values accepted: ``"1"``, ``"true"``, ``"yes"``, ``"on"`` (any
+    case). Anything else — including empty string and ``"0"`` — keeps
+    the ``ignore`` default.
+    """
+    raw = os.environ.get("ADCP_STRICT_VALIDATION", "").strip().lower()
+    return "forbid" if raw in {"1", "true", "yes", "on"} else "ignore"
+
+
+_EXTRA_POLICY: Literal["ignore", "forbid"] = _resolve_extra_policy()
 
 
 def _pluralize(count: int, singular: str, plural: str | None = None) -> str:
@@ -180,14 +207,29 @@ def _provide_performance_feedback_error_message(self: Any) -> str:
 class AdCPBaseModel(BaseModel):
     """Base model for AdCP types with spec-compliant serialization.
 
-    Defaults to ``extra='ignore'`` so that unknown fields from newer spec
-    versions are silently dropped rather than causing validation errors.
-    Generated types whose schemas set ``additionalProperties: true``
-    override this with ``extra='allow'`` in their own ``model_config``.
-    Consumers who want strict validation can override with ``extra='forbid'``.
+    Defaults to ``extra='ignore'`` so unknown fields from newer spec
+    versions are silently dropped rather than causing validation
+    errors. Generated types whose schemas set
+    ``additionalProperties: true`` override this with ``extra='allow'``
+    in their own ``model_config``.
+
+    Set ``ADCP_STRICT_VALIDATION=1`` in the environment (``"1"``,
+    ``"true"``, ``"yes"``, ``"on"`` are accepted) to flip the default
+    to ``extra='forbid'``. Use this during spec upgrades to catch
+    silently-dropped renamed fields in tests. See :func:`_resolve_extra_policy`.
+
+    .. important::
+       The env var is resolved **once at module import time**. Set it
+       in your shell or CI environment **before** ``import adcp`` runs
+       — mutating ``os.environ["ADCP_STRICT_VALIDATION"]`` after the
+       first ``adcp`` import has no effect on already-imported model
+       classes (they captured the policy at class-body evaluation).
+
+    Consumers who want per-model strict validation can override
+    ``model_config`` on their subclass.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra=_EXTRA_POLICY)
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         if "exclude_none" not in kwargs:
