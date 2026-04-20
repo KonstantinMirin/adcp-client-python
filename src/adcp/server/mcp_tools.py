@@ -18,7 +18,7 @@ Provides utilities for registering ADCP handlers with MCP servers.
 
 from __future__ import annotations
 
-import json
+import copy
 import logging
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -1033,6 +1033,93 @@ for _handler_name, _tools in _HANDLER_TOOLS.items():
 # ============================================================================
 
 
+def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Resolve every local ``$ref`` into the referenced ``$defs`` body.
+
+    Pydantic emits nested models as ``{"$ref": "#/$defs/Name"}`` with the
+    actual shape under ``$defs``. That's spec-valid JSON Schema, but the
+    MCP client ecosystem is mixed — several popular consumers (including
+    some of the cheaper agent runtimes we see in validation runs) don't
+    implement ``$ref`` resolution. Tool discovery that looks correct in
+    MCP Inspector shows up as ``{}`` to those clients, producing silent
+    "this tool takes no params" confusion.
+
+    The inliner walks the schema tree and replaces each ``$ref`` with a
+    deep copy of the referenced definition. Sibling keys on the ``$ref``
+    node (``description``, ``title``) are merged on top of the resolved
+    body. Note: this is an annotation-level override that matches what
+    Pydantic actually emits at reference sites — it is NOT spec §8.2
+    merge semantics (which would evaluate siblings as an implicit
+    ``allOf``). If a future Pydantic version starts emitting
+    assertion-level siblings (``type``, ``enum``, etc.) the merge
+    would silently change validation; today it doesn't.
+
+    Only handles local refs (``#/$defs/X``). External refs are left in
+    place — Pydantic doesn't emit them for our request models, but if
+    one ever appears it surfaces to the caller rather than being
+    silently stripped.
+
+    Cycles are protected by a ``seen`` set threaded through recursion.
+    Pydantic request models don't generate cyclic refs today; the guard
+    exists so a future schema shape can't turn inlining into a
+    RecursionError. When the walk leaves at least one ``$ref``
+    unresolved (cycle or dangling), ``$defs`` is kept in place so a
+    spec-compliant client can still resolve what we couldn't.
+    """
+    defs = schema.get("$defs", {})
+    # Track whether we emitted any $ref in the output — tells the
+    # caller whether it's safe to drop $defs. Avoids a
+    # stringify-the-whole-tree scan post-walk, and sidesteps false
+    # positives from legitimate ``"$ref"`` values inside enum / const
+    # / description strings.
+    unresolved = [False]
+
+    def _resolve(node: Any, seen: frozenset[str]) -> Any:
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str):
+                if not ref.startswith("#/$defs/"):
+                    # External ref (http://…, relative path). Pydantic
+                    # doesn't emit these for our request models; leave
+                    # untouched rather than risk silent corruption.
+                    unresolved[0] = True
+                    return {k: _resolve(v, seen) for k, v in node.items()}
+                def_name = ref[len("#/$defs/") :]
+                if def_name in seen:
+                    # Cycle — leave the $ref intact so a spec-compliant
+                    # client can still resolve via $defs.
+                    unresolved[0] = True
+                    return {k: _resolve(v, seen) for k, v in node.items()}
+                body = defs.get(def_name)
+                if body is None:
+                    # Dangling ref — nothing in $defs matches. Leave
+                    # the $ref for consumers to error on; preserving
+                    # the shape is safer than silently stripping.
+                    unresolved[0] = True
+                    return {k: _resolve(v, seen) for k, v in node.items()}
+                resolved = _resolve(copy.deepcopy(body), seen | {def_name})
+                # Annotation-level merge — sibling description/title
+                # on the $ref node wins over the resolved body's
+                # same-named keys.
+                merged = dict(resolved) if isinstance(resolved, dict) else resolved
+                if isinstance(merged, dict):
+                    for k, v in node.items():
+                        if k == "$ref":
+                            continue
+                        merged[k] = _resolve(v, seen)
+                return merged
+            return {k: _resolve(v, seen) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_resolve(item, seen) for item in node]
+        return node
+
+    result = _resolve(schema, frozenset())
+    if isinstance(result, dict) and not unresolved[0]:
+        result.pop("$defs", None)
+    assert isinstance(result, dict)
+    return result
+
+
 def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
     """Generate JSON schemas from Pydantic request models.
 
@@ -1207,11 +1294,11 @@ def _generate_pydantic_schemas() -> dict[str, dict[str, Any]]:
             if "anyOf" in schema or "$ref" in schema:
                 continue
 
-            # Only strip $defs if no $ref references exist in the schema.
-            # If nested properties use $ref, keep $defs so references resolve.
-            schema_str = json.dumps(schema)
-            if '"$ref"' not in schema_str:
-                schema.pop("$defs", None)
+            # Inline every $ref into its $defs body so MCP clients that
+            # don't resolve JSON-Schema references (a surprisingly large
+            # slice of the ecosystem) still see the full tool surface.
+            # Spec-wise the schema is equivalent — just flat.
+            schema = _inline_refs(schema)
 
             schemas[tool_name] = schema
         except Exception:
