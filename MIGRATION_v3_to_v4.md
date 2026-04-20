@@ -177,6 +177,56 @@ Aliases for all discriminated-union success/error variants live in
 `adcp/types/aliases.py`. If a variant you need isn't aliased, file an issue —
 aliasing is the supported path; direct `Assets*` imports aren't.
 
+### Creative format asset slots: `<Type>FormatAsset` aliases
+
+Format definitions enumerate asset slots with a discriminated union on
+`asset_type`. These are the classes salesagent hit when `Assets5`/`Assets14`
+renumbered to `Assets57`/`Assets149`. The stable names are:
+
+| Generated class    | Semantic alias                | `asset_type`       |
+|--------------------|-------------------------------|--------------------|
+| `Assets` (base)    | `ImageFormatAsset`            | `image`            |
+| `Assets81`         | `VideoFormatAsset`            | `video`            |
+| `Assets82`         | `AudioFormatAsset`            | `audio`            |
+| `Assets83`         | `TextFormatAsset`             | `text`             |
+| `Assets84`         | `MarkdownFormatAsset`         | `markdown`         |
+| `Assets85`         | `HtmlFormatAsset`             | `html`             |
+| `Assets86`         | `CssFormatAsset`              | `css`              |
+| `Assets87`         | `JavascriptFormatAsset`       | `javascript`       |
+| `Assets88`         | `VastFormatAsset`             | `vast`             |
+| `Assets89`         | `DaastFormatAsset`            | `daast`            |
+| `Assets90`         | `UrlFormatAsset`              | `url`              |
+| `Assets91`         | `WebhookFormatAsset`          | `webhook`          |
+| `Assets92`         | `BriefFormatAsset`            | `brief`            |
+| `Assets93`         | `CatalogFormatAsset`          | `catalog`          |
+| `Assets94`         | `RepeatableAssetGroup`        | `repeatable_group` |
+| `Assets95…Assets106` | `ImageFormatGroupAsset` etc.| (same type inside a group) |
+
+The `Format` prefix disambiguates these *format-slot* types from the
+separate *asset-content* types (`VideoAsset`, `HtmlAsset`, `ImageAsset`,
+etc. in `adcp.types`), which describe the actual asset payload (codec,
+duration, file URL) delivered by creative sync — a distinct concept.
+
+`tests/test_asset_aliases_stable.py` pins each alias to its expected
+`asset_type` discriminator default. When upstream renumbers, that test
+fails and points at the specific alias that drifted — fix the numbered
+import in `src/adcp/types/aliases.py`, not your call sites.
+
+### Deep-submodule `format_category` shim
+
+Some older import sites reach into the raw generated path:
+
+```python
+from adcp.types.generated_poc.enums.format_category import FormatCategory
+```
+
+4.0 registers a ``sys.modules`` shim for this path so the import raises
+an ``ImportError`` with the same migration pointer as the top-level
+``from adcp import FormatCategory``, instead of a bare
+``ModuleNotFoundError``. If you're seeing the deep path in your code,
+switch to the migration above — the shim is a safety net, not a
+permanent export.
+
 ## Public vs. internal imports
 
 `adcp.types.generated_poc.*` is internal. Generated module paths and class

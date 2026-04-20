@@ -27,6 +27,36 @@ Type Coercion:
 
 from __future__ import annotations
 
+import sys as _sys
+import types as _types
+
+# Deprecation shim for the removed ``format_category`` submodule.
+# ``FormatCategory`` was replaced by free-form ``FormatId`` strings in
+# AdCP 3.0. The top-level ``adcp`` package already raises a guided
+# ``ImportError`` for ``from adcp import FormatCategory``; this shim
+# covers the deeper submodule import path some downstream import sites
+# still use (``from adcp.types.generated_poc.enums.format_category import
+# FormatCategory``) so they get the same pointer instead of a bare
+# ``ModuleNotFoundError``. See MIGRATION_v3_to_v4.md.
+_FORMAT_CATEGORY_DEPRECATED_MSG = (
+    "adcp.types.generated_poc.enums.format_category was removed in AdCP 3.0. "
+    "Use free-form format-id strings (e.g. 'goog:video_responsive_ad') via "
+    "adcp.types.FormatId. See MIGRATION_v3_to_v4.md for details."
+)
+
+_format_category_shim = _types.ModuleType("adcp.types.generated_poc.enums.format_category")
+_format_category_shim.__doc__ = _FORMAT_CATEGORY_DEPRECATED_MSG
+
+
+def _format_category_getattr(name: str) -> object:
+    if name == "FormatCategory":
+        raise ImportError(_FORMAT_CATEGORY_DEPRECATED_MSG)
+    raise AttributeError(f"module {_format_category_shim.__name__!r} has no attribute {name!r}")
+
+
+_format_category_shim.__getattr__ = _format_category_getattr  # type: ignore[method-assign]
+_sys.modules.setdefault("adcp.types.generated_poc.enums.format_category", _format_category_shim)
+
 # Apply type coercion to generated types (must be imported before other types)
 from adcp.types import (
     _ergonomic,  # noqa: F401
@@ -396,6 +426,8 @@ from adcp.types.aliases import (
     ActivateSignalSuccessResponse,
     AgentDeployment,
     AgentDestination,
+    AudioFormatAsset,
+    AudioFormatGroupAsset,
     AuthorizedAgent,
     AuthorizedAgentsByInlineProperties,
     AuthorizedAgentsByPropertyId,
@@ -404,10 +436,12 @@ from adcp.types.aliases import (
     AuthorizedAgentsBySignalId,
     AuthorizedAgentsBySignalTag,
     BothPreviewRender,
+    BriefFormatAsset,
     BuildCreativeErrorResponse,
     BuildCreativeSuccessResponse,
     CalibrateContentErrorResponse,
     CalibrateContentSuccessResponse,
+    CatalogFormatAsset,
     CatalogGroupBinding,
     ComplyErrorResponse,
     ComplyListScenariosResponse,
@@ -418,6 +452,10 @@ from adcp.types.aliases import (
     CreateContentStandardsSuccessResponse,
     CreateMediaBuyErrorResponse,
     CreateMediaBuySuccessResponse,
+    CssFormatAsset,
+    CssFormatGroupAsset,
+    DaastFormatAsset,
+    DaastFormatGroupAsset,
     Deployment,
     Destination,
     GetAccountFinancialsErrorResponse,
@@ -442,14 +480,22 @@ from adcp.types.aliases import (
     GetRightsSuccessResponse,
     GetSignalsDiscoveryRequest,
     GetSignalsLookupRequest,
+    HtmlFormatAsset,
+    HtmlFormatGroupAsset,
     HtmlPreviewRender,
+    ImageFormatAsset,
+    ImageFormatGroupAsset,
     InlineDaastAsset,
     InlineVastAsset,
+    JavascriptFormatAsset,
+    JavascriptFormatGroupAsset,
     KeyValueActivationKey,
     ListContentStandardsErrorResponse,
     ListContentStandardsSuccessResponse,
     LogEventErrorResponse,
     LogEventSuccessResponse,
+    MarkdownFormatAsset,
+    MarkdownFormatGroupAsset,
     MediaBuyDeliveryStatus,
     PlatformDeployment,
     PlatformDestination,
@@ -467,6 +513,7 @@ from adcp.types.aliases import (
     PublisherPropertiesAll,
     PublisherPropertiesById,
     PublisherPropertiesByTag,
+    RepeatableAssetGroup,
     SegmentIdActivationKey,
     SiSendActionResponseRequest,
     SiSendTextMessageRequest,
@@ -483,6 +530,8 @@ from adcp.types.aliases import (
     SyncCreativesSuccessResponse,
     SyncEventSourcesErrorResponse,
     SyncEventSourcesSuccessResponse,
+    TextFormatAsset,
+    TextFormatGroupAsset,
     UpdateContentStandardsErrorResponse,
     UpdateContentStandardsSuccessResponse,
     UpdateMediaBuyErrorResponse,
@@ -490,10 +539,18 @@ from adcp.types.aliases import (
     UpdateMediaBuyPropertiesRequest,
     UpdateMediaBuySuccessResponse,
     UrlDaastAsset,
+    UrlFormatAsset,
+    UrlFormatGroupAsset,
     UrlPreviewRender,
     UrlVastAsset,
     ValidateContentDeliveryErrorResponse,
     ValidateContentDeliverySuccessResponse,
+    VastFormatAsset,
+    VastFormatGroupAsset,
+    VideoFormatAsset,
+    VideoFormatGroupAsset,
+    WebhookFormatAsset,
+    WebhookFormatGroupAsset,
 )
 
 # Re-export core types (not in generated, but part of public API)
@@ -1108,6 +1165,35 @@ __all__ = [
     "ComplyStateTransitionResponse",
     "ComplySimulationResponse",
     "ComplyErrorResponse",
+    # Creative format asset slot aliases (item_type='individual')
+    "ImageFormatAsset",
+    "VideoFormatAsset",
+    "AudioFormatAsset",
+    "TextFormatAsset",
+    "MarkdownFormatAsset",
+    "HtmlFormatAsset",
+    "CssFormatAsset",
+    "JavascriptFormatAsset",
+    "VastFormatAsset",
+    "DaastFormatAsset",
+    "UrlFormatAsset",
+    "WebhookFormatAsset",
+    "BriefFormatAsset",
+    "CatalogFormatAsset",
+    # Creative format asset slot aliases (repeatable groups)
+    "RepeatableAssetGroup",
+    "ImageFormatGroupAsset",
+    "VideoFormatGroupAsset",
+    "AudioFormatGroupAsset",
+    "TextFormatGroupAsset",
+    "MarkdownFormatGroupAsset",
+    "HtmlFormatGroupAsset",
+    "CssFormatGroupAsset",
+    "JavascriptFormatGroupAsset",
+    "VastFormatGroupAsset",
+    "DaastFormatGroupAsset",
+    "UrlFormatGroupAsset",
+    "WebhookFormatGroupAsset",
     # Audiences responses
     "MediaBuyDeliveryStatus",
     "SyncAudiencesErrorResponse",
