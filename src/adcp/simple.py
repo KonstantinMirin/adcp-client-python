@@ -129,7 +129,7 @@ class SimpleAPI:
         For full control over error handling, use client.get_products() instead.
 
         Args:
-            **kwargs: Arguments for GetProductsRequest (brief, brand_manifest, etc.)
+            **kwargs: Arguments for GetProductsRequest (brief, brand, etc.)
 
         Returns:
             GetProductsResponse directly (no TaskResult wrapper)
@@ -385,7 +385,7 @@ class SimpleAPI:
 
         Example:
             media_buy = await client.simple.create_media_buy(
-                brand_manifest=brand,
+                brand=brand,
                 packages=[package_request],
                 publisher_properties=properties
             )

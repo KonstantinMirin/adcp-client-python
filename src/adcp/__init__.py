@@ -7,6 +7,9 @@ Official Python client for the Ad Context Protocol (AdCP).
 Supports both A2A and MCP protocols with full type safety.
 """
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
 from adcp.adagents import (
     AuthorizationContext,
     domain_matches,
@@ -87,12 +90,14 @@ from adcp.types import (
     # Audience & Targeting
     ActivateSignalRequest,
     ActivateSignalResponse,
+    AdvertiserIndustry,
     # Creative types
     ArtifactWebhookPayload,
     AssetContentType,
     AudienceSource,
     # Core domain types
     BrandReference,
+    BrandSource,
     # Creative Operations
     BuildCreativeRequest,
     BuildCreativeResponse,
@@ -175,6 +180,7 @@ from adcp.types import (
     Gtin,
     IdentityMatchRequest,
     IdentityMatchResponse,
+    KellerType,
     # Account Operations
     ListAccountsRequest,
     ListAccountsResponse,
@@ -240,6 +246,7 @@ from adcp.types import (
     SyncEventSourcesResponse,
     SyncPlansRequest,
     SyncPlansResponse,
+    TargetingOverlay,
     TimeBasedPricingOption,
     TimeUnit,
     Transform,
@@ -430,7 +437,37 @@ from adcp.webhooks import (
     sign_webhook,
 )
 
-__version__ = "3.12.0"
+try:
+    __version__ = _pkg_version("adcp")
+except PackageNotFoundError:
+    # Running from a source tree without an installed distribution.
+    __version__ = "0.0.0+unknown"
+
+
+# Types removed in 4.0 — raise an informative ImportError instead of the
+# default "cannot import name" traceback, and point at the migration guide.
+# See MIGRATION_v3_to_v4.md.
+_REMOVED_IN_V4 = {
+    "BrandManifest": (
+        "use `BrandReference(domain=...)` on requests; read "
+        "`ResolvedBrand.brand` from the registry"
+    ),
+    "FormatCategory": "removed without replacement — format metadata carries category info",
+    "DeliverTo": "use `publisher_properties` on the request instead",
+    "PromotedProducts": "use the spec-current `offerings` shape",
+    "PromotedOfferings": "use the spec-current `offerings` shape",
+    "Pricing": "use the discriminated pricing classes (e.g. `CpmFixedRatePricingOption`)",
+    "PackageStatus": "package status moved onto `MediaBuyStatus`",
+}
+
+
+def __getattr__(name: str) -> object:
+    if name in _REMOVED_IN_V4:
+        raise ImportError(
+            f"`{name}` was removed in adcp 4.0: {_REMOVED_IN_V4[name]}. "
+            "See MIGRATION_v3_to_v4.md."
+        )
+    raise AttributeError(f"module 'adcp' has no attribute {name!r}")
 
 
 def get_adcp_version() -> str:
@@ -629,9 +666,11 @@ __all__ = [
     "SignalCatalogType",
     # Core domain types (from stable API)
     "AccountScope",
+    "AdvertiserIndustry",
     "ArtifactWebhookPayload",
     "AudienceSource",
     "BrandReference",
+    "BrandSource",
     "BuyingMode",
     "CatalogGroupBinding",
     "ContextObject",
@@ -649,6 +688,7 @@ __all__ = [
     "ErrorCode",
     "EventType",
     "ExtensionObject",
+    "KellerType",
     "MediaBuy",
     "MediaBuyDeliveryStatus",
     "MediaBuyPackage",
@@ -664,6 +704,7 @@ __all__ = [
     "ReportPlanOutcomeResponse",
     "Snapshot",
     "SnapshotUnavailableReason",
+    "TargetingOverlay",
     "WcagLevel",
     # Status enums (for control flow)
     "CreativeStatus",

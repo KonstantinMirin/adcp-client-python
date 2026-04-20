@@ -52,6 +52,7 @@ from adcp.types._generated import (
     AcquireRightsResponse,
     ActivateSignalRequest,
     ActivateSignalResponse,
+    AdvertiserIndustry,
     AggregatedTotals,
     Artifact,
     ArtifactWebhookPayload,
@@ -213,6 +214,7 @@ from adcp.types._generated import (
     Input,
     JavascriptAsset,
     JavascriptModuleType,
+    KellerType,
     LandingPageRequirement,
     ListAccountsRequest,
     ListAccountsResponse,
@@ -550,6 +552,7 @@ from adcp.types.guards import (  # noqa: F401
     is_update_media_buy_success,
     is_validate_content_delivery_success,
 )
+from adcp.types.registry import BrandSource
 
 # Semantic aliases for auto-generated field enum names
 ListCreativesField = Field1
@@ -824,8 +827,10 @@ __all__ = [
     "Asset",
     "AssetContentType",
     "AssetType",  # Deprecated
+    "AdvertiserIndustry",
     "AudienceSource",
     "BrandReference",
+    "BrandSource",
     "BuyingMode",
     "ContextObject",
     "DateRange",
@@ -866,6 +871,7 @@ __all__ = [
     "FormatIdParameter",
     "Identifier",
     "Input",
+    "KellerType",
     "LandingPageRequirement",
     "Logo",
     "ListCreativesField",

@@ -17,15 +17,6 @@ BRAND_DATA = {
     "brand_name": "Nike",
     "keller_type": "master",
     "source": "brand_json",
-    "brand_manifest": {"name": "Nike"},
-}
-
-BRAND_DATA_NEW = {
-    "canonical_id": "nike.com",
-    "canonical_domain": "nike.com",
-    "brand_name": "Nike",
-    "keller_type": "master",
-    "source": "brand_json",
     "brand": {"name": "Nike"},
 }
 
@@ -201,19 +192,6 @@ class TestLookupBrand:
         result = await rc.lookup_brand("nike.com")
         assert result is not None
         assert result.extra_field == "extra_value"  # type: ignore[attr-defined]
-
-    @pytest.mark.asyncio
-    async def test_resolves_brand_with_new_brand_field(self):
-        """Registry returns 'brand' field (new API); both brand and brand_manifest accessible."""
-        mock_client = MagicMock()
-        mock_client.get = AsyncMock(return_value=_mock_response(200, BRAND_DATA_NEW))
-
-        rc = RegistryClient(client=mock_client)
-        result = await rc.lookup_brand("nike.com")
-
-        assert result is not None
-        assert result.brand == {"name": "Nike"}
-        assert result.brand_manifest == {"name": "Nike"}
 
     @pytest.mark.asyncio
     async def test_raises_on_invalid_response_data(self):
@@ -626,31 +604,12 @@ class TestRegistryTypes:
         }
         brand = ResolvedBrand.model_validate(minimal)
         assert brand.keller_type is None
-        assert brand.brand_manifest is None
         assert brand.brand is None
         assert brand.house_domain is None
 
-    def test_resolved_brand_new_field_populates_brand_manifest(self):
-        """New API returns 'brand' field; brand_manifest must still be accessible."""
-        brand = ResolvedBrand.model_validate(BRAND_DATA_NEW)
-        assert brand.brand == {"name": "Nike"}
-        assert brand.brand_manifest == {"name": "Nike"}
-
-    def test_resolved_brand_old_field_populates_brand(self):
-        """Old API returns 'brand_manifest'; brand field must be populated too."""
+    def test_resolved_brand_reads_brand_field(self):
         brand = ResolvedBrand.model_validate(BRAND_DATA)
-        assert brand.brand_manifest == {"name": "Nike"}
         assert brand.brand == {"name": "Nike"}
-
-    def test_resolved_brand_both_fields_present(self):
-        """When both fields are present, each keeps its own value."""
-        data = {
-            **BRAND_DATA,
-            "brand": {"name": "Nike (brand.json)"},
-        }
-        brand = ResolvedBrand.model_validate(data)
-        assert brand.brand_manifest == {"name": "Nike"}
-        assert brand.brand == {"name": "Nike (brand.json)"}
 
     def test_resolved_property_validates(self):
         prop = ResolvedProperty.model_validate(PROPERTY_DATA)
@@ -849,9 +808,7 @@ class TestListPolicies:
     @pytest.mark.asyncio
     async def test_empty_policy_list(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"policies": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"policies": []}))
 
         rc = RegistryClient(client=mock_client)
         policies = await rc.list_policies()
@@ -869,9 +826,7 @@ class TestListPolicies:
     @pytest.mark.asyncio
     async def test_sends_correct_params(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"policies": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"policies": []}))
 
         rc = RegistryClient(
             base_url="https://test.example.com",
@@ -908,9 +863,7 @@ class TestListPolicies:
     @pytest.mark.asyncio
     async def test_omits_none_params(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"policies": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"policies": []}))
 
         rc = RegistryClient(client=mock_client)
         await rc.list_policies(category="standard")
@@ -961,9 +914,7 @@ class TestResolvePolicy:
     @pytest.mark.asyncio
     async def test_returns_none_for_404(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(404, {"error": "Policy not found"})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(404, {"error": "Policy not found"}))
 
         rc = RegistryClient(client=mock_client)
         result = await rc.resolve_policy("unknown_policy")
@@ -1031,9 +982,7 @@ class TestResolvePolicy:
     @pytest.mark.asyncio
     async def test_raises_on_invalid_response_data(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"unexpected": "data"})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"unexpected": "data"}))
 
         rc = RegistryClient(client=mock_client)
         with pytest.raises(RegistryError, match="invalid response"):
@@ -1097,9 +1046,7 @@ class TestResolvePolicies:
     async def test_policy_absent_from_response_defaults_to_none(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(
-                200, {"results": {"gdpr_consent": POLICY_DATA}}
-            )
+            return_value=_mock_response(200, {"results": {"gdpr_consent": POLICY_DATA}})
         )
 
         rc = RegistryClient(client=mock_client)
@@ -1135,9 +1082,7 @@ class TestPolicyHistory:
     @pytest.mark.asyncio
     async def test_retrieves_history(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, POLICY_HISTORY_DATA)
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, POLICY_HISTORY_DATA))
 
         rc = RegistryClient(client=mock_client)
         result = await rc.policy_history("gdpr_consent")
@@ -1293,8 +1238,12 @@ class TestSavePolicy:
         rc = RegistryClient(client=mock_client)
         with pytest.raises(RegistryError) as exc_info:
             await rc.save_policy(
-                policy_id="x", version="1.0.0", name="X",
-                category="standard", enforcement="should", policy="text",
+                policy_id="x",
+                version="1.0.0",
+                name="X",
+                category="standard",
+                enforcement="should",
+                policy="text",
                 auth_token="bad_token",
             )
         assert exc_info.value.status_code == 401
@@ -1307,8 +1256,12 @@ class TestSavePolicy:
         rc = RegistryClient(client=mock_client)
         with pytest.raises(RegistryError) as exc_info:
             await rc.save_policy(
-                policy_id="gdpr_consent", version="1.0.0", name="X",
-                category="regulation", enforcement="must", policy="text",
+                policy_id="gdpr_consent",
+                version="1.0.0",
+                name="X",
+                category="regulation",
+                enforcement="must",
+                policy="text",
                 auth_token="sk_key",
             )
         assert exc_info.value.status_code == 409
@@ -1321,8 +1274,12 @@ class TestSavePolicy:
         rc = RegistryClient(client=mock_client)
         with pytest.raises(RegistryError, match="timed out"):
             await rc.save_policy(
-                policy_id="x", version="1.0.0", name="X",
-                category="standard", enforcement="should", policy="text",
+                policy_id="x",
+                version="1.0.0",
+                name="X",
+                category="standard",
+                enforcement="should",
+                policy="text",
                 auth_token="sk_key",
             )
 
@@ -1407,10 +1364,12 @@ class TestPolicyTypes:
 
     def test_policy_exemplars_pass_alias(self):
         """The 'pass' field uses alias since 'pass' is a Python keyword."""
-        exemplars = PolicyExemplars.model_validate({
-            "pass": [{"scenario": "ok", "explanation": "fine"}],
-            "fail": [{"scenario": "bad", "explanation": "not fine"}],
-        })
+        exemplars = PolicyExemplars.model_validate(
+            {
+                "pass": [{"scenario": "ok", "explanation": "fine"}],
+                "fail": [{"scenario": "bad", "explanation": "not fine"}],
+            }
+        )
         assert len(exemplars.pass_) == 1
         assert len(exemplars.fail) == 1
 

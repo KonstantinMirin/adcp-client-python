@@ -342,3 +342,60 @@ def test_list_creative_formats_request_filter_params_types():
     data = request.model_dump(exclude_none=True)
     assert data["is_responsive"] is True
     assert data["name_search"] == "mobile"
+
+
+def test_removed_v4_types_raise_informative_import_error():
+    """Removed-in-4.0 names should raise a clear ImportError pointing at MIGRATION."""
+    import pytest
+
+    import adcp
+
+    for name in ("BrandManifest", "FormatCategory", "DeliverTo", "Pricing", "PackageStatus"):
+        with pytest.raises(ImportError) as exc:
+            getattr(adcp, name)
+        assert "MIGRATION_v3_to_v4.md" in str(exc.value)
+        assert "4.0" in str(exc.value)
+
+
+def test_public_api_surface_matches_snapshot():
+    """Fail when `adcp.__all__` or `adcp.types.__all__` drifts from the snapshot.
+
+    Regenerate after an intentional change:
+
+        python scripts/regenerate_public_api_snapshot.py
+
+    Note: this test tracks names only. A name whose underlying class identity
+    changes (e.g., aliased to a different generated class) won't be caught
+    here — review the diff on `adcp/types/aliases.py` separately for that.
+    """
+    import json
+    from pathlib import Path
+
+    import adcp
+    import adcp.types
+
+    snapshot_path = Path(__file__).parent / "fixtures" / "public_api_snapshot.json"
+    snapshot = json.loads(snapshot_path.read_text())
+    regen_cmd = "python scripts/regenerate_public_api_snapshot.py"
+
+    current = {
+        "adcp": sorted(adcp.__all__),
+        "adcp.types": sorted(adcp.types.__all__),
+    }
+
+    for module_name in ("adcp", "adcp.types"):
+        expected = set(snapshot[module_name])
+        actual = set(current[module_name])
+        removed = sorted(expected - actual)
+        added = sorted(actual - expected)
+        assert not removed, (
+            f"Public names removed from {module_name}: {removed}. "
+            "Removals are breaking changes — add a CHANGELOG entry and, for "
+            "a major version bump, a MIGRATION note, then regenerate the "
+            f"snapshot with `{regen_cmd}`."
+        )
+        assert not added, (
+            f"Public names added to {module_name}: {added}. "
+            f"Once the addition is intentional, regenerate the snapshot with "
+            f"`{regen_cmd}`."
+        )

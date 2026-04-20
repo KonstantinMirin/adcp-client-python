@@ -267,7 +267,7 @@ Full type hints with Pydantic validation and auto-generated types from the AdCP 
 ```python
 from adcp import (
     GetProductsRequest,
-    BrandManifest,
+    BrandReference,
     Package,
     CpmFixedRatePricingOption,
     MediaBuyStatus,
@@ -297,10 +297,12 @@ if media_buy.status == MediaBuyStatus.active:
 ```
 
 **Exported from main package:**
-- **Core domain types**: `BrandManifest`, `Creative`, `CreativeManifest`, `MediaBuy`, `Package`
-- **Status enums**: `CreativeStatus`, `MediaBuyStatus`, `PackageStatus`, `PricingModel`
+- **Core domain types**: `BrandReference`, `Creative`, `CreativeManifest`, `MediaBuy`, `Package`, `PackageRequest`, `TargetingOverlay`
+- **AdCP status enums**: `CreativeStatus`, `DeliveryStatus`, `MediaBuyStatus`, `PricingModel`
 - **All 9 pricing options**: `CpcPricingOption`, `CpmFixedRatePricingOption`, `VcpmAuctionPricingOption`, etc.
 - **Request/Response types**: All 16 operations with full request/response types
+
+For types not on the top-level surface, import from `adcp.types` (e.g., `from adcp.types import AssetStatus`). If a type you need isn't in `adcp.types`, open an issue — we'll add an alias. The `adcp.types.generated_poc.*` modules are internal; class names and module paths shift on every schema regeneration and are not a supported API.
 
 #### Semantic Type Aliases
 
@@ -332,7 +334,7 @@ See `examples/type_aliases_demo.py` for more examples.
 **Import guidelines:**
 - ✅ **DO**: Import from main package: `from adcp import GetProductsRequest`
 - ✅ **DO**: Use semantic aliases: `from adcp import CreateMediaBuySuccessResponse`
-- ⚠️ **AVOID**: Import from internal modules: `from adcp.types._generated import CreateMediaBuyResponse1`
+- ⚠️ **AVOID**: Import from `adcp.types.generated_poc.*` — paths and class names (including numbered `Assets*` variants) change on every schema regeneration.
 
 The main package exports provide a stable API while internal generated types may change.
 
@@ -784,7 +786,7 @@ A typical media buy workflow involves discovering products, creating the buy, an
 
 ```python
 from adcp import ADCPClient, AgentConfig, GetProductsRequest, CreateMediaBuyRequest
-from adcp import BrandManifest, PublisherPropertiesAll
+from adcp import BrandReference, PublisherPropertiesAll
 
 # 1. Connect to agent
 config = AgentConfig(id="sales_agent", agent_uri="https://...", protocol="mcp")
@@ -802,19 +804,14 @@ async with ADCPClient(config) as client:
     # 3. Create media buy reservation
     media_buy_result = await client.create_media_buy(
         CreateMediaBuyRequest(
-            brand_manifest=BrandManifest(
-                name="Coffee Co",
-                brand_url="https://coffeeco.com",
-                logo_url="https://coffeeco.com/logo.png",
-                # ... additional brand details
-            ),
+            brand=BrandReference(domain="coffeeco.com"),
             packages=[{
                 "package_id": product.packages[0].package_id,
-                "quantity": 1000000  # impressions
+                "quantity": 1000000,  # impressions
             }],
             publisher_properties=PublisherPropertiesAll(
-                selection_type="all"  # Target all authorized properties
-            )
+                selection_type="all",  # Target all authorized properties
+            ),
         )
     )
 
@@ -901,8 +898,8 @@ async with ADCPClient(config) as client:
 Combine both workflows for a complete campaign setup:
 
 ```python
-from adcp import ADCPMultiAgentClient, AgentConfig
-from adcp import GetProductsRequest, CreateMediaBuyRequest, BuildCreativeRequest
+from adcp import ADCPMultiAgentClient, AgentConfig, BrandReference, PublisherPropertiesAll
+from adcp import BuildCreativeRequest, CreateMediaBuyRequest
 
 # Connect to both sales and creative agents
 async with ADCPMultiAgentClient(
@@ -927,17 +924,17 @@ async with ADCPMultiAgentClient(
     creative_result = await creative_agent.build_creative(
         BuildCreativeRequest(
             manifest=creative_manifest,
-            target_format_id=formats.formats[0].format_id.id
+            target_format_id=formats.formats[0].format_id.id,
         )
     )
 
     # 4. Create media buy with creative
     media_buy_result = await sales_agent.create_media_buy(
         CreateMediaBuyRequest(
-            brand_manifest=brand_manifest,
+            brand=BrandReference(domain="coffeeco.com"),
             packages=[{"package_id": products.products[0].packages[0].package_id}],
-            publisher_properties=publisher_properties,
-            creative_urls=[creative_result.data.assets[0].url]
+            publisher_properties=PublisherPropertiesAll(selection_type="all"),
+            creative_urls=[creative_result.data.assets[0].url],
         )
     )
 
