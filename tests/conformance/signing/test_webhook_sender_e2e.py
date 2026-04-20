@@ -198,6 +198,19 @@ async def test_send_raw_requires_idempotency_key_at_signature() -> None:
 
 
 @pytest.mark.asyncio
+async def test_send_raw_enforces_body_size_cap() -> None:
+    """Oversized bodies raise before signing — matches adcp.webhooks.deliver."""
+    app, _ = _build_receiver_app()
+    async with _build_sender(app) as sender:
+        with pytest.raises(ValueError, match="10,485,760"):
+            await sender.send_raw(
+                url="http://test/webhooks/adcp",
+                idempotency_key="whk_cap_test_0000000000000000",
+                payload={"blob": "x" * (11 * 1024 * 1024)},
+            )
+
+
+@pytest.mark.asyncio
 async def test_from_jwk_rejects_wrong_adcp_use() -> None:
     """Guardrail at construction: a request-signing JWK silently produces
     signatures no webhook receiver will accept. Fail fast."""
