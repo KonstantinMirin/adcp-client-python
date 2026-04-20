@@ -1246,41 +1246,85 @@ Kept alongside ``_HANDLER_TOOLS`` so they can't drift."""
 
 
 def _is_method_overridden(handler_cls: type, method_name: str) -> bool:
-    """True when ``handler_cls.method_name`` is a subclass override of
-    the SDK's default implementation.
+    """True when ``handler_cls`` implements ``method_name`` rather than
+    falling through to the SDK's ``not_supported`` default.
 
-    Compares the function object attached to ``handler_cls.__mro__[0]``
-    (the final class) against the function attached to the nearest SDK
-    base that defined the method. If they're the same function object,
-    the subclass inherited the default (``_not_supported``) rather than
-    implementing the tool. Callers use this to decide whether to
-    advertise a tool — no point listing a tool the handler answers with
-    ``not_supported``.
+    Invariant: **the nearest SDK base in the MRO owns the baseline**.
+    Walking stops at the first SDK base that defines ``method_name``;
+    every other SDK base lower in the MRO is ignored. Specialized
+    handler bases (``GovernanceHandler``, ``ContentStandardsHandler``,
+    ``SponsoredIntelligenceHandler``, etc.) override the baseline from
+    ``ADCPHandler`` with validation wrappers that delegate to abstract
+    ``handle_<tool>`` methods. That baseline is what subclasses compose
+    against — comparing against ``ADCPHandler`` directly would mis-flag
+    the specialized wrappers as "overrides."
+
+    Two override patterns count as implemented:
+
+    1. **Direct**: ``handler_cls`` replaces the public method (typical
+       when subclassing ``ADCPHandler`` directly — the subclass writes
+       its own ``async def update_property_list(...)``).
+    2. **Delegation**: ``handler_cls`` inherits the public method from a
+       specialized SDK base unchanged, but provides a concrete
+       ``handle_<method>`` where the SDK base declared it abstract.
+       This is the documented pattern for ``GovernanceHandler``,
+       ``ContentStandardsHandler``, and ``SponsoredIntelligenceHandler``.
+       Without this branch, subclasses of those bases that follow the
+       documented pattern would advertise zero tools.
+
+    Returns ``False`` when the public method is inherited unchanged AND
+    no concrete ``handle_<method>`` is provided below the SDK base — the
+    tool will answer every call with ``not_supported`` and should not
+    appear in ``tools/list``.
 
     Returns ``False`` for methods that don't exist on the handler at all
-    (pathological case — every ADCP tool method is defined on the base).
+    (pathological case — every ADCP tool method is defined on
+    ``ADCPHandler``).
     """
     handler_method = getattr(handler_cls, method_name, None)
     if handler_method is None:
         return False
 
+    # Find the nearest SDK base that defines the public method.
+    sdk_base: type | None = None
+    base_method: Any | None = None
     for base in handler_cls.__mro__[1:]:
-        # Only SDK bases provide default implementations we care about.
         if base.__name__ not in _SDK_BASE_CLASS_NAMES:
             continue
-        base_method = base.__dict__.get(method_name)
-        if base_method is None:
+        found = base.__dict__.get(method_name)
+        if found is None:
             continue
-        # If the handler's method is the same function object as the
-        # SDK base's, the subclass did not override it.
-        # ``handler_cls.<method>`` returns the function via the descriptor
-        # protocol; ``base.__dict__[<method>]`` returns it directly.
-        # When unchanged, both resolve to the same function.
-        return handler_method is not base_method
+        sdk_base = base
+        base_method = found
+        break
 
-    # No SDK base owns this method (custom method name). Conservative:
-    # treat as overridden so the caller doesn't silently drop it.
-    return True
+    if sdk_base is None:
+        # Method not owned by any SDK base. Custom surface — conservative:
+        # treat as overridden so we don't silently drop it.
+        return True
+
+    # Pattern 1: direct override of the public method.
+    if handler_method is not base_method:
+        return True
+
+    # Pattern 2: delegation via handle_<tool>. Specialized SDK bases
+    # declare ``handle_<method>`` as an abstractmethod. If the subclass
+    # (anywhere between ``sdk_base`` and ``handler_cls``) provides a
+    # concrete implementation, the tool is implemented.
+    handle_name = f"handle_{method_name}"
+    sdk_handle = getattr(sdk_base, handle_name, None)
+    if sdk_handle is None or not getattr(sdk_handle, "__isabstractmethod__", False):
+        # SDK base doesn't use the handle_<tool> delegation pattern here;
+        # the public method really is the baseline, and the subclass did
+        # not override it.
+        return False
+
+    subclass_handle = getattr(handler_cls, handle_name, None)
+    if subclass_handle is None:
+        return False
+    # If still abstract on the final class, the class itself is abstract
+    # (ABC would refuse to instantiate it). Don't advertise.
+    return not getattr(subclass_handle, "__isabstractmethod__", False)
 
 
 def get_tools_for_handler(

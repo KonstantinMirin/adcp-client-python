@@ -98,49 +98,34 @@ def test_multiple_overrides_advertise_every_override():
     assert tools == expected
 
 
-def test_protocol_handler_subclass_advertises_only_implemented_protocol_tools():
-    """A ``GovernanceHandler`` subclass that implements 2 out of the 15
-    governance tools advertises only those 2 (plus discovery) — not all
-    15. The handler-type filter and override filter intersect."""
+def test_specialized_handler_delegation_pattern_counts_as_override():
+    """**Threat 3 regression**: when a subclass of a specialized handler
+    base (``GovernanceHandler``, ``ContentStandardsHandler``,
+    ``SponsoredIntelligenceHandler``) follows the documented pattern —
+    implementing ``handle_<tool>`` and inheriting the public method
+    unchanged — the override gate must still count the tool as
+    implemented. Before the fix, such a seller advertised **zero**
+    governance tools (e.g. ``update_property_list``, ``acquire_rights``
+    silently disappeared from ``tools/list``), because the gate only
+    checked the public method and saw it unchanged from the SDK base.
 
-    class _PartialGovernance(GovernanceHandler):
-        _agent_type = "partial governance"
+    A fully-implemented ``GovernanceHandler`` subclass must advertise
+    every governance tool, regardless of whether the subclass reopens
+    the public method.
+    """
+
+    class _FullGovernance(GovernanceHandler):
+        _agent_type = "full governance"
 
         async def get_adcp_capabilities(self, params, context=None):
             return {"adcp": {"major_versions": [3]}}
 
-        async def handle_get_property_list(self, request: Any, context: Any = None) -> Any:
+        # Implement every abstract handle_* via the delegation pattern.
+        # None of these reopen the public method.
+        async def handle_get_creative_features(self, request: Any, context: Any = None) -> Any:
             return {}
 
-        async def handle_list_property_lists(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        # Other abstract handle_* methods implemented as stubs so the
-        # class is instantiable. They're not user-facing overrides of
-        # the tool methods (``get_property_list`` etc.), so the gate
-        # should NOT advertise them.
-        async def handle_create_property_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_update_property_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_delete_property_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_create_collection_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_update_collection_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_delete_collection_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_get_collection_list(self, request: Any, context: Any = None) -> Any:
-            return {}
-
-        async def handle_list_collection_lists(self, request: Any, context: Any = None) -> Any:
+        async def handle_sync_plans(self, request: Any, context: Any = None) -> Any:
             return {}
 
         async def handle_check_governance(self, request: Any, context: Any = None) -> Any:
@@ -149,31 +134,113 @@ def test_protocol_handler_subclass_advertises_only_implemented_protocol_tools():
         async def handle_report_plan_outcome(self, request: Any, context: Any = None) -> Any:
             return {}
 
-        async def handle_sync_plans(self, request: Any, context: Any = None) -> Any:
-            return {}
-
         async def handle_get_plan_audit_logs(self, request: Any, context: Any = None) -> Any:
             return {}
 
-        async def handle_get_creative_features(self, request: Any, context: Any = None) -> Any:
+        async def handle_create_property_list(self, request: Any, context: Any = None) -> Any:
             return {}
 
-        async def get_property_list(self, params, context=None):
+        async def handle_get_property_list(self, request: Any, context: Any = None) -> Any:
             return {}
 
-        async def list_property_lists(self, params, context=None):
+        async def handle_list_property_lists(self, request: Any, context: Any = None) -> Any:
             return {}
 
-    tools = {t["name"] for t in get_tools_for_handler(_PartialGovernance())}
+        async def handle_update_property_list(self, request: Any, context: Any = None) -> Any:
+            return {}
+
+        async def handle_delete_property_list(self, request: Any, context: Any = None) -> Any:
+            return {}
+
+    tools = {t["name"] for t in get_tools_for_handler(_FullGovernance())}
+    # Every governance tool the handler implements via handle_<tool>
+    # must appear — including security-sensitive mutations like
+    # update_property_list and delete_property_list. Plus the protocol
+    # discovery tool set.
+    expected = {
+        "get_adcp_capabilities",
+        "get_creative_features",
+        "sync_plans",
+        "check_governance",
+        "report_plan_outcome",
+        "get_plan_audit_logs",
+        "create_property_list",
+        "get_property_list",
+        "list_property_lists",
+        "update_property_list",
+        "delete_property_list",
+    } | DISCOVERY_TOOLS
+    assert tools == expected
+
+
+def _make_concrete_subclass(base: type) -> type:
+    """Build a concrete subclass of ``base`` that stubs every
+    ``@abstractmethod handle_<tool>`` it declares. Used by the Threat-3
+    regression tests — Python's ABC machinery requires the concrete
+    methods to be in the class namespace at creation time, not
+    ``setattr``-ed after.
+    """
+    abstracts = {
+        name
+        for name in dir(base)
+        if name.startswith("handle_")
+        and getattr(getattr(base, name, None), "__isabstractmethod__", False)
+    }
+
+    async def _capabilities(self, params, context=None):  # noqa: ARG001
+        return {"adcp": {"major_versions": [3]}}
+
+    async def _stub(self, request, context=None):  # noqa: ARG001
+        return {}
+
+    namespace: dict[str, Any] = {"get_adcp_capabilities": _capabilities}
+    for _name in abstracts:
+        namespace[_name] = _stub
+
+    return type(f"_{base.__name__}Concrete", (base,), namespace)
+
+
+def test_specialized_handler_mutation_tools_never_silently_hidden():
+    """**Threat 3 regression guard**: the security-sensitive mutation
+    tools on ``GovernanceHandler``, ``ContentStandardsHandler``, and
+    ``SponsoredIntelligenceHandler`` must appear in ``tools/list`` when
+    the subclass follows the documented delegation pattern. Hiding them
+    silently would let callers infer the seller can't accept those
+    calls when the seller is actively listening for them — a correctness
+    and security hazard. This test lists the exact tool names so any
+    regression in override detection fails loudly with a named miss.
+    """
+    from adcp.server import ContentStandardsHandler, SponsoredIntelligenceHandler
+
+    gov_tools = {
+        t["name"] for t in get_tools_for_handler(_make_concrete_subclass(GovernanceHandler)())
+    }
+    # Property-list tools are the ones GovernanceHandler actually
+    # declares abstract ``handle_<tool>`` for — these are the
+    # security-sensitive mutations the security reviewer called out.
+    # (The collection-list tools live in the GovernanceHandler tool set
+    # but aren't plumbed through a ``handle_<tool>`` pattern yet, so
+    # they're correctly hidden until someone wires them up — a separate
+    # gap, not a Threat 3 regression.)
+    assert {
+        "update_property_list",
+        "delete_property_list",
+    }.issubset(gov_tools), "Threat 3: governance mutation tools hidden from tools/list"
+
+    content_tools = {
+        t["name"] for t in get_tools_for_handler(_make_concrete_subclass(ContentStandardsHandler)())
+    }
     assert (
-        tools
-        == {
-            "get_adcp_capabilities",
-            "get_property_list",
-            "list_property_lists",
-        }
-        | DISCOVERY_TOOLS
-    )
+        "update_content_standards" in content_tools
+    ), "Threat 3: content-standards mutation tools hidden from tools/list"
+
+    si_tools = {
+        t["name"]
+        for t in get_tools_for_handler(_make_concrete_subclass(SponsoredIntelligenceHandler)())
+    }
+    assert (
+        "si_terminate_session" in si_tools
+    ), "Threat 3: SI destructive tools hidden from tools/list"
 
 
 # ---------------------------------------------------------------------------
@@ -269,17 +336,84 @@ def test_adcp_agent_executor_advertise_all_restores_full_surface():
 
 
 # ---------------------------------------------------------------------------
+# Decorator-wrapped overrides
+# ---------------------------------------------------------------------------
+
+
+def test_decorator_wrapped_override_counts_as_override():
+    """Overriding a tool method with a decorator that rebinds the
+    function (``@functools.wraps`` around a new closure) produces a
+    different function object than the SDK base's. The gate uses
+    identity comparison — decorator-wrapped overrides must still flip
+    the bit, because the wrapper IS the override.
+    """
+    import functools
+
+    def _noop_decorator(fn):
+        @functools.wraps(fn)
+        async def _wrapped(self, params, context=None):
+            return await fn(self, params, context)
+
+        return _wrapped
+
+    class _Decorated(ADCPHandler):
+        async def get_adcp_capabilities(self, params, context=None):
+            return {"adcp": {"major_versions": [3]}}
+
+        @_noop_decorator
+        async def get_products(self, params, context=None):
+            return {"products": []}
+
+    tools = {t["name"] for t in get_tools_for_handler(_Decorated())}
+    assert "get_products" in tools
+
+
+# ---------------------------------------------------------------------------
+# Coupling invariant — _SDK_BASE_CLASS_NAMES must stay in sync with _HANDLER_TOOLS
+# ---------------------------------------------------------------------------
+
+
+def test_sdk_base_class_names_stays_in_sync_with_handler_tools():
+    """``_SDK_BASE_CLASS_NAMES`` is derived from ``_HANDLER_TOOLS.keys()``
+    and the override detector walks the MRO looking for name matches. If
+    someone adds a new specialized base (e.g. ``RetailMediaHandler``) to
+    ``_HANDLER_TOOLS`` without touching ``_SDK_BASE_CLASS_NAMES``, the
+    detector will skip it and silently mis-classify every subclass's
+    overrides. This test locks the two names together.
+    """
+    from adcp.server.mcp_tools import _HANDLER_TOOLS, _SDK_BASE_CLASS_NAMES
+
+    assert set(_SDK_BASE_CLASS_NAMES) == set(_HANDLER_TOOLS.keys()), (
+        "_SDK_BASE_CLASS_NAMES must be derived from _HANDLER_TOOLS.keys(). "
+        "Adding a new specialized handler base requires updating both."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Agent card reflects the filter
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.skipif(
-    True,
-    reason=(
-        "Python 3.10 — a2a-sdk's agent-card builder imports the Starlette "
-        "integration which needs 3.11+. The card-shape is covered by the "
-        "test_a2a_server.py agent-card tests under the correct skipif."
-    ),
+    __import__("sys").version_info < (3, 11),
+    reason="a2a-sdk's Starlette integration requires Python 3.11+",
 )
-def test_agent_card_uses_override_filter_by_default():  # pragma: no cover
-    pass
+def test_agent_card_skills_shrink_under_override_filter():
+    """The A2A agent card's ``skills`` list mirrors the gate's output.
+    A minimal handler's card should advertise only the discovery tool
+    set, not the full 57-tool surface. Under ``advertise_all=True`` the
+    skill count returns to the full handler-type surface.
+    """
+    from adcp.server.a2a_server import _build_agent_card
+
+    class _Minimal(ADCPHandler):
+        async def get_adcp_capabilities(self, params, context=None):
+            return {"adcp": {"major_versions": [3]}}
+
+    filtered_card = _build_agent_card(_Minimal(), name="minimal", port=0)
+    filtered_skill_ids = {s.id for s in filtered_card.skills}
+    assert filtered_skill_ids == {"get_adcp_capabilities"} | DISCOVERY_TOOLS
+
+    full_card = _build_agent_card(_Minimal(), name="minimal", port=0, advertise_all=True)
+    assert len(full_card.skills) >= 50
+    assert filtered_skill_ids.issubset({s.id for s in full_card.skills})
