@@ -13,7 +13,10 @@ to rebuild middleware that already exists.
 - **Need auth in front of tools?** → If your proxy already validates
   credentials, use "Pattern 1 — reverse-proxy auth". Otherwise copy
   `examples/mcp_with_auth_middleware.py` — it covers the ContextVars
-  pattern, the `DISCOVERY_TOOLS` bypass, and `hmac.compare_digest`.
+  pattern, the `DISCOVERY_METHODS` + `DISCOVERY_TOOLS` composed bypass
+  (note: `tools/list` is pre-auth by default — see
+  [tools/list is unauthenticated by default](#toolslist-is-unauthenticated-by-default)),
+  and `hmac.compare_digest`.
 - **Multi-tenant?** → Subclass `ToolContext`, populate `tenant_id` in
   your `context_factory`, and read the
   [Multi-tenant typing](#multi-tenant-typing) section. The idempotency
@@ -106,18 +109,61 @@ be able to call it before authenticating. The SDK exports the list as a
 frozenset:
 
 ```python
-from adcp.server import DISCOVERY_TOOLS
+from adcp.server import DISCOVERY_METHODS, DISCOVERY_TOOLS
 
 async def dispatch(self, request, call_next):
-    tool_name = _peek_tool_name(request)
-    if tool_name not in DISCOVERY_TOOLS:
+    method, tool_name = _peek_jsonrpc(request)
+    is_discovery = method in DISCOVERY_METHODS or (
+        method == "tools/call" and tool_name in DISCOVERY_TOOLS
+    )
+    if not is_discovery:
         self._require_valid_token(request)
     return await call_next(request)
 ```
 
 Your agent may have additional public discovery tools outside the AdCP
 spec (e.g. a public `list_public_formats`); extend with `DISCOVERY_TOOLS
-| {"your_tool"}` rather than redefining the set.
+| {"your_tool"}` rather than redefining the set. See also
+[tools/list is unauthenticated by default](#toolslist-is-unauthenticated-by-default)
+for the MCP-layer handshake methods this same gate covers.
+
+### `tools/list` is unauthenticated by default
+
+MCP's streamable-HTTP transport accepts three JSON-RPC methods as
+pre-auth handshake: `initialize` (session setup),
+`notifications/initialized` (handshake-completion notification), and
+`tools/list` (inventory advertisement). All three are exported as
+`DISCOVERY_METHODS` for the composed gate above. This is consistent
+with the MCP spec — discovery is a handshake concern — and with the
+AdCP spec, where `get_adcp_capabilities` is pre-auth.
+
+An unauthenticated client POSTing `{"method": "tools/list"}` receives
+the full tool inventory: names, input schemas, descriptions, and
+annotations. The SDK treats tool names and input schemas as
+non-sensitive — they are public AdCP spec surface, and AdCP's discovery
+flow presumes clients can see them before deciding whether to
+authenticate. Freeform description strings are the one leakage vector.
+If your deployment:
+
+- **Adds tools outside the AdCP spec** with custom descriptions that
+  embed deployment hints (internal names, rollout flags,
+  customer-specific surfaces), either scrub the descriptions or gate
+  `tools/list`.
+- **Ships only spec-defined tools**, the descriptions come from
+  `ADCP_TOOL_DEFINITIONS` — already public upstream — and no
+  scrubbing is needed.
+
+To gate `tools/list` behind auth, remove it from `DISCOVERY_METHODS`
+in your middleware and run the same credential check you run for
+`tools/call`. Clients that support auth-on-handshake work fine;
+clients that expect pre-auth discovery will break and need an
+out-of-band tool manifest.
+
+The integration test at
+[`tests/test_mcp_middleware_composition.py`](../tests/test_mcp_middleware_composition.py)
+locks the default posture with a positive assertion that `tools/list`
+returns 200 without credentials and a negative control that the gate
+still lets it through when an invalid bearer is present.
 
 ## Idempotency
 

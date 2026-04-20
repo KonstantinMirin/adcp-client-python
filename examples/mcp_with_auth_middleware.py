@@ -4,10 +4,20 @@ This is the recipe for multi-tenant sales agents that need to:
 
 1. Validate bearer tokens (or any other credential) in front of
    :func:`adcp.server.create_mcp_server`-registered tools.
-2. Allow the AdCP discovery handshake (``get_adcp_capabilities``) to go
-   through unauthenticated — per :data:`adcp.server.DISCOVERY_TOOLS`.
+2. Allow the MCP handshake (``initialize``, ``tools/list``) and the AdCP
+   discovery handshake (``get_adcp_capabilities``) to go through
+   unauthenticated — per :data:`adcp.server.DISCOVERY_METHODS` and
+   :data:`adcp.server.DISCOVERY_TOOLS`.
 3. Pass the authenticated principal + tenant to handlers as a typed
    :class:`adcp.server.ToolContext`.
+
+Pre-auth posture: ``tools/list`` returns the full tool inventory
+(names, input schemas, descriptions) without authentication — per MCP
+spec, discovery is a handshake concern. Tool metadata is treated as
+non-sensitive by default. Operators who consider their tool surface
+sensitive should strip ``tools/list`` from ``DISCOVERY_METHODS`` in
+their own middleware and gate it behind the same credential check as
+``tools/call``.
 
 Run::
 
@@ -32,6 +42,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from adcp.server import (
+    DISCOVERY_METHODS,
     DISCOVERY_TOOLS,
     ADCPHandler,
     RequestMetadata,
@@ -87,20 +98,25 @@ def _lookup_token(token: str) -> tuple[str, str] | None:
 
 
 # ----------------------------------------------------------------------
-# HTTP middleware — auth gate, honors DISCOVERY_TOOLS.
+# HTTP middleware — auth gate, honors DISCOVERY_METHODS + DISCOVERY_TOOLS.
 # ----------------------------------------------------------------------
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Any) -> Any:
-        tool = await _peek_tool_name(request)
+        method, tool = await _peek_jsonrpc(request)
 
         principal_token = None
         tenant_token = None
         try:
-            # AdCP spec: ``get_adcp_capabilities`` is the discovery handshake —
-            # clients MUST be able to call it without authenticating.
-            if tool in DISCOVERY_TOOLS:
+            # MCP spec: ``initialize`` + ``tools/list`` are the handshake /
+            # discovery layer — pre-auth by spec.
+            # AdCP spec: ``get_adcp_capabilities`` is the capability handshake —
+            # pre-auth by spec.
+            is_discovery = method in DISCOVERY_METHODS or (
+                method == "tools/call" and tool in DISCOVERY_TOOLS
+            )
+            if is_discovery:
                 principal_token = _principal.set(None)
                 tenant_token = _tenant.set(None)
                 return await call_next(request)
@@ -126,22 +142,33 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
                 _tenant.reset(tenant_token)
 
 
-async def _peek_tool_name(request: Request) -> str | None:
-    """Inspect the JSON-RPC body without consuming it for downstream handlers."""
+async def _peek_jsonrpc(request: Request) -> tuple[str | None, str | None]:
+    """Inspect the JSON-RPC body without consuming it for downstream handlers.
+
+    Returns ``(method, tool_name)``. ``tool_name`` is set only when the
+    method is ``tools/call``; for ``initialize``, ``tools/list``, and
+    other methods it is ``None``.
+    """
     body = await request.body()
     if not body:
-        return None
+        return None, None
     import json
 
     try:
         payload = json.loads(body)
     except ValueError:
-        return None
-    if payload.get("method") != "tools/call":
-        return None
+        return None, None
+    # JSON-RPC 2.0 allows batch arrays. Fail closed — let auth run — so a
+    # client can't smuggle a mutation past the gate inside a batch.
+    if not isinstance(payload, dict):
+        return None, None
+    method = payload.get("method")
+    method = method if isinstance(method, str) else None
+    if method != "tools/call":
+        return method, None
     params = payload.get("params") or {}
     name = params.get("name")
-    return name if isinstance(name, str) else None
+    return method, (name if isinstance(name, str) else None)
 
 
 # ----------------------------------------------------------------------

@@ -81,6 +81,7 @@ from adcp.server.helpers import (  # noqa: F401
 )
 from adcp.server.idempotency import IdempotencyStore, MemoryBackend
 from adcp.server.mcp_tools import (
+    DISCOVERY_METHODS,
     DISCOVERY_TOOLS,
     MCPToolSet,
     create_mcp_tools,
@@ -144,6 +145,7 @@ __all__ = [
     "ProposalNotSupported",
     # MCP integration
     "ContextFactory",
+    "DISCOVERY_METHODS",
     "DISCOVERY_TOOLS",
     "MCPToolSet",
     "RequestMetadata",

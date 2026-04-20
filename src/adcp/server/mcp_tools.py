@@ -875,6 +875,46 @@ _PROTOCOL_TOOLS: set[str] = {"get_adcp_capabilities"}
 DISCOVERY_TOOLS: frozenset[str] = frozenset({"get_adcp_capabilities"})
 
 
+# JSON-RPC method names that MCP treats as handshake / capability-discovery
+# and therefore allows pre-auth by spec:
+#
+# - ``initialize`` — session handshake (protocol version, client info).
+# - ``notifications/initialized`` — client-to-server handshake-completion
+#   notification. Gating this behind auth breaks the handshake state
+#   machine.
+# - ``tools/list`` — inventory advertisement (tool names, input schemas,
+#   descriptions). One protocol layer below ``tools/call``, where
+#   ``DISCOVERY_TOOLS`` applies.
+#
+# The set is intentionally minimal. Operators narrow it (remove
+# ``tools/list`` when they consider the inventory sensitive); they should
+# not extend it. Other MCP surfaces (``resources/*``, ``prompts/*``,
+# ``logging/setLevel``, ``completion/complete``) are intentionally
+# auth-gated — the AdCP SDK does not expose resources or prompts today,
+# and adding them to the pre-auth set would unauthenticate data reads.
+#
+# Composed middleware gate (the recommended pre-auth posture)::
+#
+#     from adcp.server import DISCOVERY_METHODS, DISCOVERY_TOOLS
+#
+#     async def dispatch(self, request, call_next):
+#         method, tool = _peek_jsonrpc(request)
+#         is_discovery = method in DISCOVERY_METHODS or (
+#             method == "tools/call" and tool in DISCOVERY_TOOLS
+#         )
+#         if not is_discovery:
+#             self._require_valid_token(request)
+#         return await call_next(request)
+#
+# Tool names and input schemas are treated as non-sensitive by default —
+# they are public AdCP spec surface. Freeform description strings are
+# the one leakage vector; operators who embed deployment hints there
+# should either scrub or gate ``tools/list``.
+DISCOVERY_METHODS: frozenset[str] = frozenset(
+    {"initialize", "notifications/initialized", "tools/list"}
+)
+
+
 def validate_discovery_set(tools: Iterable[str]) -> None:
     """Fail-closed validation for an auth-optional tool set.
 
