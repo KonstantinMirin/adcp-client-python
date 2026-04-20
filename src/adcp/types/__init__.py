@@ -66,7 +66,6 @@ from adcp.types._generated import (
     AssignedPackage,
     Assignments,
     AudienceSource,
-    AudioAsset,
     Authentication,
     AuthenticationScheme,
     AuthorizedAgents,
@@ -131,7 +130,6 @@ from adcp.types._generated import (
     CreativePolicy,
     CreativeStatus,
     CreativeVariant,
-    CssAsset,
     DaastTrackingEvent,
     DaastVersion,
     DailyBreakdownItem,
@@ -210,14 +208,11 @@ from adcp.types._generated import (
     GetSignalsRequest,
     GetSignalsResponse,
     Gtin,
-    HtmlAsset,
     HttpMethod,
     Identifier,
     IdentityMatchRequest,
     IdentityMatchResponse,
-    ImageAsset,
     Input,
-    JavascriptAsset,
     JavascriptModuleType,
     KellerType,
     LandingPageRequirement,
@@ -350,7 +345,6 @@ from adcp.types._generated import (
     Tags,
     TargetingOverlay,
     TaskType,
-    TextAsset,
     TimeBasedPricingOption,
     TimeUnit,
     TmpError,
@@ -367,7 +361,6 @@ from adcp.types._generated import (
     UpdatePropertyListResponse,
     UpdateRightsRequest,
     UpdateRightsResponse,
-    UrlAsset,
     UrlAssetType,
     ValidateContentDeliveryRequest,
     ValidateContentDeliveryResponse,
@@ -376,16 +369,41 @@ from adcp.types._generated import (
     VastVersion,
     VcpmPricingOption,
     VenueBreakdownItem,
-    VideoAsset,
     ViewThreshold,
     WcagLevel,
-    WebhookAsset,
     WebhookResponseType,
+)
+from adcp.types._generated import (
+    AudioAsset as AudioContent,
+)
+from adcp.types._generated import (
+    CssAsset as CssContent,
+)
+from adcp.types._generated import (
+    HtmlAsset as HtmlContent,
+)
+from adcp.types._generated import (
+    ImageAsset as ImageContent,
+)
+from adcp.types._generated import (
+    JavascriptAsset as JavascriptContent,
 )
 from adcp.types._generated import (
     Offer as TmpOffer,
 )
 from adcp.types._generated import TaskStatus as GeneratedTaskStatus
+from adcp.types._generated import (
+    TextAsset as TextContent,
+)
+from adcp.types._generated import (
+    UrlAsset as UrlContent,
+)
+from adcp.types._generated import (
+    VideoAsset as VideoContent,
+)
+from adcp.types._generated import (
+    WebhookAsset as WebhookContent,
+)
 from adcp.types._generated import _ErrorFromError as Error
 from adcp.types._generated import _PackageFromPackage as Package
 
@@ -1014,16 +1032,17 @@ __all__ = [
     "ReportingWebhook",
     "AuthenticationScheme",
     "Security",
-    # Assets
-    "AudioAsset",
-    "CssAsset",
-    "HtmlAsset",
-    "ImageAsset",
-    "JavascriptAsset",
-    "TextAsset",
-    "UrlAsset",
-    "VideoAsset",
-    "WebhookAsset",
+    # Asset-content types (payload describing types — distinct from
+    # the `<Type>FormatAsset` slot types in aliases.py)
+    "AudioContent",
+    "CssContent",
+    "HtmlContent",
+    "ImageContent",
+    "JavascriptContent",
+    "TextContent",
+    "UrlContent",
+    "VideoContent",
+    "WebhookContent",
     # Core types
     "AgentConfig",
     "Member",
