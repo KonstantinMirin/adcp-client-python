@@ -55,8 +55,12 @@ At least one pricing option per signal:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
+import os
 from adcp.server import ADCPHandler, serve, adcp_error
 from adcp.server.responses import capabilities_response, signals_response, activate_signal_response
+
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 class MySignalsAgent(ADCPHandler):
     async def get_adcp_capabilities(self, params, context=None):
@@ -154,7 +158,7 @@ Each signal must include:
     }],
     "signal_id": {                               # required — shape depends on type
         "source": "agent",                       # "agent" for owned, "catalog" for marketplace
-        "agent_url": "http://localhost:3001/mcp", # for owned
+        "agent_url": AGENT_URL,                  # for owned
         "id": "seg-001",
     },
     "value_type": "binary",                      # recommended: "binary" | "categorical" | "numeric"
@@ -242,6 +246,26 @@ async def activate_signal(self, params, context=None):
     # Same key + same payload → cached deployments; different payload → IDEMPOTENCY_CONFLICT.
     return activate_signal_response(deployments=[...])
 ```
+
+## Governance Tracks (Optional)
+
+Marketplace signals agents with compliance review flows MUST also implement `sync_accounts` and `sync_governance`. The `signal_marketplace/governance_denied` sub-track exercises both — without them, the storyboard fails before it reaches activation. Skip for pure owned-data agents.
+
+```python
+from adcp.server.responses import sync_accounts_response, sync_governance_response
+
+async def sync_accounts(self, params, context=None):
+    # Echo brand + operator back; assign an account_id, store, return "active".
+    # See examples/seller_agent.py for the full shape.
+    return sync_accounts_response([...])
+
+async def sync_governance(self, params, context=None):
+    # Echo account + governance_agents (url + categories) back as "synced".
+    # See examples/seller_agent.py for the full shape.
+    return sync_governance_response([...])
+```
+
+Required to PASS `signal_marketplace/governance_denied`.
 
 ## Validation
 

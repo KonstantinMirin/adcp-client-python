@@ -39,7 +39,10 @@ from adcp.server.responses import (
 )
 from adcp.server.test_controller import TestControllerStore
 
-AGENT_URL = "http://localhost:3001/mcp"
+import os
+
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 class MyGenerativeSeller(ADCPHandler):
     # All seller tools (see seller skill) with modified creative handling

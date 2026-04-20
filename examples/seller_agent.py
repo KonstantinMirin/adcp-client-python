@@ -159,13 +159,39 @@ class DemoSeller(ADCPHandler):
         if params.get("buying_mode") == "refine":
             proposal = params.get("proposal", {}) or {}
             proposal_id = proposal.get("proposal_id") or f"prop-{uuid.uuid4().hex[:8]}"
+            incoming_packages = proposal.get("packages", []) or []
             proposals[proposal_id] = {
                 "status": "draft",
-                "packages": proposal.get("packages", []),
+                "packages": incoming_packages,
             }
+            # proposal.json requires: proposal_id, name, allocations (minItems: 1).
+            # Each allocation requires product_id + allocation_percentage (sum to 100).
+            if incoming_packages:
+                even_split = round(100 / len(incoming_packages), 2)
+                allocations = [
+                    {
+                        "product_id": p["product_id"],
+                        "allocation_percentage": even_split,
+                    }
+                    for p in incoming_packages
+                ]
+            else:
+                allocations = [
+                    {
+                        "product_id": PRODUCTS[0]["product_id"],
+                        "allocation_percentage": 100.0,
+                    }
+                ]
             return {
                 **products_response(PRODUCTS),
-                "proposals": [{"proposal_id": proposal_id, "status": "draft"}],
+                "proposals": [
+                    {
+                        "proposal_id": proposal_id,
+                        "name": proposal.get("name", "Draft proposal"),
+                        "proposal_status": "draft",
+                        "allocations": allocations,
+                    }
+                ],
             }
         return products_response(PRODUCTS)
 

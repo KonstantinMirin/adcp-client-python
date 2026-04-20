@@ -80,9 +80,11 @@ async def get_adcp_capabilities(self, params, context=None):
 
 **`list_creative_formats`**
 ```python
+import os
 from adcp.server.responses import creative_formats_response
 
-AGENT_URL = "http://localhost:3001/mcp"
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 async def list_creative_formats(self, params, context=None):
     return creative_formats_response([

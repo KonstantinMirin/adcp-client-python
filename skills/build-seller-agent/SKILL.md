@@ -79,7 +79,10 @@ serve(MySeller(), name="my-seller", test_controller=MyStore())
 Every product needs `description`, `reporting_capabilities`, and `delivery_measurement` — these are required by the schema and the storyboard validator.
 
 ```python
-AGENT_URL = "http://localhost:3001/mcp"
+import os
+
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 PRODUCTS = [
     {
@@ -162,40 +165,41 @@ class MySeller(ADCPHandler):
 
 ## Emitting Webhooks
 
-Sellers emit webhooks to notify buyers asynchronously. AdCP 3.0 uses RFC 9421 HTTP Message Signatures as the baseline — use `adcp.webhooks.WebhookSender` (one-liner) or `sign_webhook` for more control.
+Sellers emit webhooks to notify buyers asynchronously. AdCP 3.0 uses RFC 9421 HTTP Message Signatures — use `adcp.webhooks.WebhookSender` (one-call helper) or `sign_webhook` for lower-level control.
 
 **When to emit:**
-- Async-approval media buy transitions (e.g., `pending_activation` → `active`, or `→ rejected`)
+- Async-approval media buy transitions (`pending_activation` → `active`, or `→ rejected`)
 - Artifact-ready notifications after long-running operations
 - Delivery reports the buyer subscribed to via `reporting_webhook` on `create_media_buy`
 
-**Idempotency keys.** Generate one per distinct event with `generate_webhook_idempotency_key()` and reuse the same key on retry — receivers dedupe on it. A retry is a byte-identical re-POST; don't regenerate the key or re-sign.
+**Idempotency keys.** Build with `generate_webhook_idempotency_key()` (or let `send_mcp` mint one via `create_mcp_webhook_payload`). Persist per event and reuse on retry — receivers dedupe on it. Prefer `sender.resend(result)` for retries: it replays the exact signed bytes under a fresh signature.
 
 ```python
 from adcp.types import GeneratedTaskStatus
-from adcp.webhooks import (
-    WebhookSender,
-    create_mcp_webhook_payload,
-    generate_webhook_idempotency_key,
-)
+from adcp.webhooks import WebhookSender, generate_webhook_idempotency_key
 
-sender = WebhookSender(key_id="seller-key-1", private_key_pem=PRIVATE_KEY_PEM)
+# JWK must include the private `d` field and `adcp_use: "webhook-signing"`.
+sender = WebhookSender.from_jwk(WEBHOOK_SIGNING_JWK)
 
 async def notify_media_buy_active(webhook_url: str, mb_id: str, mb: dict) -> None:
-    payload = create_mcp_webhook_payload(
-        task_id=mb_id,
-        task_type="create_media_buy",
-        status=GeneratedTaskStatus.completed,
-        result={"media_buy_id": mb_id, "status": "active", "packages": mb["packages"]},
-        message="Media buy approved and activated",
-    )
-    idem_key = generate_webhook_idempotency_key()  # persist this per-event; reuse on retry
-    await sender.send(webhook_url, payload, idempotency_key=idem_key)
+    idem_key = generate_webhook_idempotency_key()  # persist per-event; reuse on retry
+    async with sender:
+        result = await sender.send_mcp(
+            url=webhook_url,
+            task_id=mb_id,
+            task_type="create_media_buy",
+            status=GeneratedTaskStatus.completed,
+            result={"media_buy_id": mb_id, "status": "active", "packages": mb["packages"]},
+            message="Media buy approved and activated",
+            idempotency_key=idem_key,
+        )
+        if not result.ok:
+            await sender.resend(result)  # replays exact bytes, fresh signature
 ```
 
-**Legacy HMAC.** `get_adcp_signed_headers_for_webhook` is 3.x-only and deprecated in 4.0 — use it only when a receiver can't yet verify 9421 signatures. See the `adcp.webhooks` module docstring for the migration path.
+**Legacy HMAC.** `get_adcp_signed_headers_for_webhook` is 3.x-only and deprecated in 4.0 — use only when a receiver can't yet verify 9421 signatures. See `adcp.webhooks` module docstring for the migration path.
 
-**Receiving webhooks.** Sellers that receive webhooks from other agents (audit agents, governance, etc.) should use `adcp.webhooks.WebhookReceiver` — it handles 9421 verification, replay dedup, and legacy HMAC fallback. See the module docstring for a worked example.
+**Receiving webhooks.** Sellers that receive webhooks from other agents (audit, governance) should use `adcp.webhooks.WebhookReceiver` — it handles 9421 verification, replay dedup, and legacy HMAC fallback.
 
 ## Proposal Workflow (Guaranteed Deals)
 
