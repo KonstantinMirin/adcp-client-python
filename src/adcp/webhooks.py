@@ -335,7 +335,8 @@ def sign_legacy_webhook(
 
     Example:
         >>> signed, body = sign_legacy_webhook("shared-secret", payload)
-        >>> await client.post(url, content=body, headers={**signed, "Content-Type": "application/json"})
+        >>> headers = {**signed, "Content-Type": "application/json"}
+        >>> await client.post(url, content=body, headers=headers)
     """
     signature_headers, body_bytes = _compute_legacy_signature(
         secret=secret, timestamp=timestamp, payload=payload
