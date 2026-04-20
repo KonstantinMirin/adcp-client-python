@@ -28,6 +28,8 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 
+from adcp.server.idempotency.backends import MemoryBackend as MemoryBackend
+from adcp.server.idempotency.webhook_dedup import WebhookDedupStore as WebhookDedupStore
 from adcp.signing.webhook_hmac import (
     LegacyWebhookHmacError,
     LegacyWebhookHmacOptions,
@@ -603,6 +605,9 @@ __all__ = [
     "WebhookPayload",
     "WebhookReceiver",
     "WebhookReceiverConfig",
+    # Receiver — dedup store (required by WebhookReceiverConfig)
+    "MemoryBackend",
+    "WebhookDedupStore",
     # Receiver — payload extraction (legacy helper)
     "extract_webhook_result_data",
 ]

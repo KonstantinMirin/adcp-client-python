@@ -415,10 +415,18 @@ from adcp.validation import (
     validate_publisher_properties_item,
 )
 from adcp.webhooks import (
+    LegacyHmacFallback,
+    MemoryBackend,
+    WebhookDedupStore,
+    WebhookReceiver,
+    WebhookReceiverConfig,
+    WebhookVerifyOptions,
     create_a2a_webhook_payload,
     create_mcp_webhook_payload,
     extract_webhook_result_data,
+    generate_webhook_idempotency_key,
     get_adcp_signed_headers_for_webhook,
+    sign_webhook,
 )
 
 __version__ = "3.12.0"
@@ -497,6 +505,14 @@ __all__ = [
     "create_a2a_webhook_payload",
     "get_adcp_signed_headers_for_webhook",
     "extract_webhook_result_data",
+    "generate_webhook_idempotency_key",
+    "sign_webhook",
+    "WebhookReceiver",
+    "WebhookReceiverConfig",
+    "WebhookVerifyOptions",
+    "WebhookDedupStore",
+    "MemoryBackend",
+    "LegacyHmacFallback",
     "McpWebhookPayload",
     # Account operations
     "AccountReference",
