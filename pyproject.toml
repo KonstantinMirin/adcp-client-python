@@ -27,6 +27,14 @@ classifiers = [
 
 dependencies = [
     "httpx>=0.24.0",
+    # httpcore is a transitive dep of httpx, but we import from it
+    # directly (``adcp.signing.ip_pinned_transport`` subclasses
+    # ``SyncBackend`` / ``AnyIOBackend`` from ``httpcore._backends.*``).
+    # Pin the major so a breaking upgrade fails at install rather than
+    # at runtime. The contract test in
+    # ``tests/conformance/signing/test_ip_pinned_transport_contract.py``
+    # guards the specific API shapes we rely on.
+    "httpcore>=1.0,<2.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.5.0",
     "a2a-sdk>=0.3.0",

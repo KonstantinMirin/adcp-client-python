@@ -47,7 +47,6 @@ from adcp.signing.jwks import (
     DEFAULT_JWKS_TIMEOUT_SECONDS,
     AsyncJwksResolver,
     JwksResolver,
-    validate_jwks_uri,
 )
 from adcp.signing.jws import (
     JwsError,
@@ -210,9 +209,7 @@ def _fetch_result_from_response(
             not_modified=True,
         )
     if status_code != 200:
-        raise RevocationListFetchError(
-            f"revocation list {uri!r} returned HTTP {status_code}"
-        )
+        raise RevocationListFetchError(f"revocation list {uri!r} returned HTTP {status_code}")
 
     etag = response_headers.get("ETag")
     last_modified = _sanitize_last_modified(response_headers.get("Last-Modified"))
@@ -250,20 +247,28 @@ def default_revocation_list_fetcher(
 ) -> FetchResult:
     """HTTPS GET the revocation list, honoring SSRF rules and conditional requests.
 
-    Reuses ``validate_jwks_uri`` — the SSRF controls are identical (same
-    reserved-range rejection, same cloud-metadata block). ``httpx``
-    re-resolves the hostname on connect, which is the TOCTOU window
-    tracked separately in #190. Sends ``If-None-Match`` when an ETag is
+    Reuses the JWKS SSRF controls (same reserved-range rejection, same
+    cloud-metadata block) via an IP-pinned transport so the hostname
+    is resolved once and connections target that validated IP — no
+    DNS-rebinding TOCTOU. Sends ``If-None-Match`` when an ETag is
     supplied and ``If-Modified-Since`` when a ``Last-Modified`` is
     supplied; the spec accepts either (sellers SHOULD use both when
     available).
     """
-    validate_jwks_uri(uri, allow_private=allow_private)
-    headers = _build_fetch_headers(
-        if_none_match=if_none_match, if_modified_since=if_modified_since
-    )
+    from adcp.signing.ip_pinned_transport import build_ip_pinned_transport
+
+    transport = build_ip_pinned_transport(uri, allow_private=allow_private)
+    headers = _build_fetch_headers(if_none_match=if_none_match, if_modified_since=if_modified_since)
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=False) as client:
+        # trust_env=False keeps HTTPS_PROXY env vars from routing through
+        # an attacker-controlled proxy that would bypass the IP-pinned
+        # transport. See default_jwks_fetcher docstring.
+        with httpx.Client(
+            transport=transport,
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
+        ) as client:
             response = client.get(uri, headers=headers)
     except httpx.HTTPError as exc:
         raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
@@ -288,16 +293,21 @@ async def async_default_revocation_list_fetcher(
 ) -> FetchResult:
     """Async counterpart to :func:`default_revocation_list_fetcher`.
 
-    Same SSRF + conditional-request behavior, but uses
+    Same SSRF + IP-pinned + conditional-request behavior, but uses
     :class:`httpx.AsyncClient` so the event loop isn't blocked during
     the round-trip.
     """
-    validate_jwks_uri(uri, allow_private=allow_private)
-    headers = _build_fetch_headers(
-        if_none_match=if_none_match, if_modified_since=if_modified_since
-    )
+    from adcp.signing.ip_pinned_transport import build_async_ip_pinned_transport
+
+    transport = build_async_ip_pinned_transport(uri, allow_private=allow_private)
+    headers = _build_fetch_headers(if_none_match=if_none_match, if_modified_since=if_modified_since)
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        async with httpx.AsyncClient(
+            transport=transport,
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
+        ) as client:
             response = await client.get(uri, headers=headers)
     except httpx.HTTPError as exc:
         raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
@@ -379,9 +389,7 @@ def _normalize_issuer(issuer: str) -> str:
     return urlunsplit((scheme, netloc, "", "", ""))
 
 
-def _slide_next_update(
-    current: RevocationList, polling_interval_seconds: float
-) -> RevocationList:
+def _slide_next_update(current: RevocationList, polling_interval_seconds: float) -> RevocationList:
     """Return ``current`` with ``next_update`` advanced by one polling interval.
 
     Used on a 304 response so the cached list's freshness window slides
@@ -881,9 +889,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
         self._revocation_uri = revocation_uri
         self._issuer = _normalize_issuer(issuer)
         self._jwks_resolver = jwks_resolver
-        self._fetcher: AsyncRevocationListFetcher = (
-            fetcher or async_default_revocation_list_fetcher
-        )
+        self._fetcher: AsyncRevocationListFetcher = fetcher or async_default_revocation_list_fetcher
         self._grace_multiplier = grace_multiplier
         self._clock = clock
         self._wall_clock = wall_clock
@@ -953,9 +959,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
                     # pre-lock clocks could be stale.
                     now_wall = self._wall_clock()
                     now_mono = self._clock()
-                    await self._refresh(
-                        conditional=False, now_wall=now_wall, now_mono=now_mono
-                    )
+                    await self._refresh(conditional=False, now_wall=now_wall, now_mono=now_mono)
             return
 
         next_update = _parse_iso8601(self._current_list.next_update)
@@ -975,8 +979,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
                     # Re-check under the lock with fresh clock reads.
                     now_mono_inside = self._clock()
                     if self._last_refresh_attempt is None or (
-                        now_mono_inside - self._last_refresh_attempt
-                        >= MIN_POLLING_INTERVAL_SECONDS
+                        now_mono_inside - self._last_refresh_attempt >= MIN_POLLING_INTERVAL_SECONDS
                     ):
                         now_wall_inside = self._wall_clock()
                         await self._refresh(
@@ -1001,9 +1004,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
                 f"last refresh error: {last_exc}"
             ) from last_exc
 
-    async def _refresh(
-        self, *, conditional: bool, now_wall: datetime, now_mono: float
-    ) -> None:
+    async def _refresh(self, *, conditional: bool, now_wall: datetime, now_mono: float) -> None:
         # Stamp the attempt BEFORE the awaitable. On CancelledError the
         # finally block rolls it back so a cancelled task doesn't burn
         # the 60s cooldown for the next caller — non-cancellation

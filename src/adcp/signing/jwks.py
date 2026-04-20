@@ -72,9 +72,7 @@ class JwksFetcher(Protocol):
 class AsyncJwksFetcher(Protocol):
     """Async variant of :class:`JwksFetcher`."""
 
-    async def __call__(
-        self, uri: str, *, allow_private: bool = False
-    ) -> dict[str, Any]: ...
+    async def __call__(self, uri: str, *, allow_private: bool = False) -> dict[str, Any]: ...
 
 
 class JwksResolver(Protocol):
@@ -107,19 +105,86 @@ class AsyncJwksResolver(Protocol):
 
 
 def validate_jwks_uri(uri: str, *, allow_private: bool = False) -> None:
-    """Raise SSRFValidationError if `uri` resolves to a blocked IP or has a bad scheme."""
+    """Raise SSRFValidationError if `uri` resolves to a blocked IP or has a bad scheme.
+
+    This is kept as a standalone no-return helper for callers that only
+    want validation — :func:`resolve_and_validate_host` returns the
+    accepted IP when the caller needs it for IP-pinned connects.
+    """
+    resolve_and_validate_host(uri, allow_private=allow_private)
+
+
+def resolve_and_validate_host(
+    uri: str,
+    *,
+    allow_private: bool = False,
+) -> tuple[str, str, int]:
+    """Resolve the URI's hostname once and return ``(hostname, ip, port)``.
+
+    Runs the full SSRF validation — reserved-range rejection + cloud-
+    metadata blocklist — and returns the first IP that passes. Callers
+    that connect by IP (see :class:`adcp.signing.IpPinnedTransport`)
+    use the returned IP to close the DNS-rebinding TOCTOU: they resolve
+    ONCE through this helper, then pin subsequent connects to that IP.
+
+    The returned IP is always ASCII (no IPv6 scope id, no IPv4-mapped
+    IPv6 wrapping) so it can be handed verbatim to
+    :func:`socket.create_connection`.
+
+    Parameters
+    ----------
+    uri:
+        A full URL. Only ``http`` and ``https`` schemes are accepted.
+    allow_private:
+        Skip the reserved-range check. For tests only; cloud-metadata
+        IPs remain blocked unconditionally.
+
+    Returns
+    -------
+    tuple[str, str, int]
+        ``(hostname, ip, port)`` — hostname and port are parsed from
+        the URI; IP is the validated resolution.
+
+    Raises
+    ------
+    SSRFValidationError
+        Scheme is not ``http``/``https``, the hostname doesn't resolve,
+        or every resolved IP is in a blocked range.
+    """
     parts = urlsplit(uri)
     if parts.scheme not in ("http", "https"):
-        raise SSRFValidationError(f"unsupported scheme for JWKS URI: {parts.scheme!r}")
+        raise SSRFValidationError(
+            f"unsupported URI scheme for SSRF-validated fetch: "
+            f"{parts.scheme!r} (only http/https allowed)"
+        )
     host = parts.hostname
     if host is None or host == "":
-        raise SSRFValidationError("JWKS URI has no host")
+        raise SSRFValidationError(f"URI has no host: {uri!r}")
+    # Strip a single trailing dot (FQDN form) so the pin matches what
+    # httpx / httpcore pass on subsequent requests. Without this, a
+    # caller who constructs with ``https://host./`` and then requests
+    # ``https://host/`` (or vice versa) sees the backend's
+    # hostname-match fail and falls through to unpinned resolution.
+    if host.endswith("."):
+        host = host[:-1]
+    # IDNA-encode so Unicode hostnames match the ASCII form httpx
+    # produces before calling into httpcore. urlsplit preserves the
+    # raw Unicode; httpx encodes it. A mismatch here breaks the
+    # hostname-match in the backend override and silently reopens
+    # the TOCTOU for IDN hosts.
+    try:
+        host = host.encode("idna").decode("ascii").lower()
+    except (UnicodeError, UnicodeEncodeError) as exc:
+        raise SSRFValidationError(f"URI host {host!r} is not IDNA-valid: {exc}") from exc
+    port = parts.port if parts.port is not None else (443 if parts.scheme == "https" else 80)
 
     try:
         infos = socket.getaddrinfo(host, None)
     except OSError as exc:
         raise SSRFValidationError(f"cannot resolve host {host!r}: {exc}") from exc
 
+    accepted_ip: str | None = None
+    last_rejection: str | None = None
     for _family, _, _, _, sockaddr in infos[:_MAX_RESOLVED_ADDRESSES]:
         ip_raw = sockaddr[0]
         ip_str = str(ip_raw)
@@ -135,9 +200,7 @@ def validate_jwks_uri(uri: str, *, allow_private: bool = False) -> None:
             ip = ip.ipv4_mapped
         if str(ip) in BLOCKED_METADATA_IPS:
             raise SSRFValidationError(f"cloud metadata IP {ip} blocked")
-        if allow_private:
-            continue
-        if (
+        if not allow_private and (
             ip.is_private
             or ip.is_loopback
             or ip.is_link_local
@@ -145,16 +208,50 @@ def validate_jwks_uri(uri: str, *, allow_private: bool = False) -> None:
             or ip.is_reserved
             or ip.is_unspecified
         ):
-            raise SSRFValidationError(f"resolved IP {ip} is in a reserved range")
+            last_rejection = f"resolved IP {ip} is in a reserved range"
+            # Historical behavior of validate_jwks_uri was to raise on
+            # ANY reserved IP in the result list, not to skip-and-try-
+            # the-next-one. Preserve that: reject immediately so a host
+            # with mixed public + private results doesn't silently pin
+            # the public one.
+            raise SSRFValidationError(last_rejection)
+        if accepted_ip is None:
+            accepted_ip = str(ip)
+
+    if accepted_ip is None:
+        # Shouldn't happen — getaddrinfo with results + no raise means
+        # at least one entry passed. Belt-and-braces.
+        raise SSRFValidationError(
+            f"host {host!r} resolved but no usable IP ({last_rejection or 'unknown'})"
+        )
+    return host, accepted_ip, port
 
 
 def default_jwks_fetcher(uri: str, *, allow_private: bool = False) -> dict[str, Any]:
-    """Validate the URI against SSRF rules, then GET the JWKS document."""
-    validate_jwks_uri(uri, allow_private=allow_private)
-    # follow_redirects=False is explicit: httpx already defaults to no-follow,
-    # but an attacker controlling the JWKS origin could 302 us to an IP that
-    # `validate_jwks_uri` already cleared.
-    with httpx.Client(timeout=DEFAULT_JWKS_TIMEOUT_SECONDS, follow_redirects=False) as client:
+    """Validate + resolve the URI once, then GET the JWKS over an IP-pinned
+    transport.
+
+    Pinning closes the DNS-rebinding TOCTOU that would otherwise let a
+    ``TTL=0`` attacker pass SSRF validation with one IP and connect to
+    a different one. See :mod:`adcp.signing.ip_pinned_transport`.
+    """
+    # Import lazily to avoid a module-load cycle with the transport module
+    # (which imports from this file).
+    from adcp.signing.ip_pinned_transport import build_ip_pinned_transport
+
+    transport = build_ip_pinned_transport(uri, allow_private=allow_private)
+    # follow_redirects=False: a 302 to a different hostname would
+    # bypass the pin. trust_env=False: httpx's default True picks up
+    # HTTPS_PROXY / HTTP_PROXY from the environment and routes the
+    # request through an HTTPProxy pool that ignores our pinned
+    # backend entirely — a process with HTTPS_PROXY set to an
+    # attacker-controlled endpoint would bypass the TOCTOU fix.
+    with httpx.Client(
+        transport=transport,
+        timeout=DEFAULT_JWKS_TIMEOUT_SECONDS,
+        follow_redirects=False,
+        trust_env=False,
+    ) as client:
         response = client.get(uri, headers={"Accept": "application/json"})
         response.raise_for_status()
         body = response.json()
@@ -239,18 +336,23 @@ class StaticJwksResolver:
 # ---------------------------------------------------------------------------
 
 
-async def async_default_jwks_fetcher(
-    uri: str, *, allow_private: bool = False
-) -> dict[str, Any]:
+async def async_default_jwks_fetcher(uri: str, *, allow_private: bool = False) -> dict[str, Any]:
     """Async counterpart to :func:`default_jwks_fetcher`.
 
-    Uses :class:`httpx.AsyncClient` so callers on an asyncio event loop
-    don't block the loop on JWKS fetches. Same SSRF + follow-redirects
-    rules as the sync version.
+    Uses :class:`httpx.AsyncClient` with an IP-pinned transport so
+    callers on an asyncio event loop don't block the loop on JWKS
+    fetches AND the DNS-rebinding TOCTOU stays closed. Same SSRF +
+    follow-redirects rules as the sync version.
     """
-    validate_jwks_uri(uri, allow_private=allow_private)
+    from adcp.signing.ip_pinned_transport import build_async_ip_pinned_transport
+
+    transport = build_async_ip_pinned_transport(uri, allow_private=allow_private)
+    # See default_jwks_fetcher for why trust_env=False matters.
     async with httpx.AsyncClient(
-        timeout=DEFAULT_JWKS_TIMEOUT_SECONDS, follow_redirects=False
+        transport=transport,
+        timeout=DEFAULT_JWKS_TIMEOUT_SECONDS,
+        follow_redirects=False,
+        trust_env=False,
     ) as client:
         response = await client.get(uri, headers={"Accept": "application/json"})
         response.raise_for_status()
@@ -313,8 +415,7 @@ class AsyncCachingJwksResolver:
                     return self._cache[keyid]
                 now = self._clock()
                 if not self._primed or (
-                    self._last_attempt is not None
-                    and now - self._last_attempt >= self._cooldown
+                    self._last_attempt is not None and now - self._last_attempt >= self._cooldown
                 ):
                     await self._refresh(now)
         return self._cache.get(keyid)
@@ -369,5 +470,6 @@ __all__ = [
     "as_async_resolver",
     "async_default_jwks_fetcher",
     "default_jwks_fetcher",
+    "resolve_and_validate_host",
     "validate_jwks_uri",
 ]

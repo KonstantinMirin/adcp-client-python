@@ -40,6 +40,19 @@ The core names you'll reach for (everything else is for advanced use):
   revocation list from ``{issuer}/.well-known/governance-revocations.json``
 * Async variants: :class:`AsyncCachingJwksResolver`,
   :class:`AsyncCachingRevocationChecker`
+
+**Custom fetchers** (rolling your own JWKS / revocation transport):
+
+* :func:`build_ip_pinned_transport` /
+  :func:`build_async_ip_pinned_transport` — returns an
+  :class:`httpx.HTTPTransport` wired to resolve the URI's host once
+  (with SSRF validation) and pin subsequent connects to that IP.
+  Closes the DNS-rebinding TOCTOU for anything built on
+  :class:`httpx.Client`.
+* :func:`resolve_and_validate_host` — returns ``(host, ip, port)``;
+  same SSRF rules as :func:`validate_jwks_uri`. Use this if you're
+  wiring your own transport and only need the resolved + validated
+  IP.
 """
 
 from __future__ import annotations
@@ -101,6 +114,13 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
 )
+from adcp.signing.ip_pinned_transport import (
+    AsyncIpPinnedTransport,
+    IpPinnedTransport,
+    abuild_ip_pinned_transport,
+    build_async_ip_pinned_transport,
+    build_ip_pinned_transport,
+)
 from adcp.signing.jwks import (
     AsyncCachingJwksResolver,
     AsyncJwksFetcher,
@@ -112,6 +132,7 @@ from adcp.signing.jwks import (
     as_async_resolver,
     async_default_jwks_fetcher,
     default_jwks_fetcher,
+    resolve_and_validate_host,
     validate_jwks_uri,
 )
 from adcp.signing.jws import (
@@ -187,6 +208,7 @@ __all__ = [
     "ALLOWED_ALGS",
     "AsyncCachingJwksResolver",
     "AsyncCachingRevocationChecker",
+    "AsyncIpPinnedTransport",
     "AsyncJwksFetcher",
     "AsyncJwksResolver",
     "AsyncRevocationListFetcher",
@@ -198,6 +220,7 @@ __all__ = [
     "DEFAULT_TAG",
     "FetchResult",
     "InMemoryReplayStore",
+    "IpPinnedTransport",
     "JwksResolver",
     "JwsError",
     "JwsMalformedError",
@@ -244,6 +267,7 @@ __all__ = [
     "VerifierCapability",
     "VerifyOptions",
     "alg_for_jwk",
+    "abuild_ip_pinned_transport",
     "as_async_resolver",
     "async_default_jwks_fetcher",
     "async_default_revocation_list_fetcher",
@@ -251,6 +275,8 @@ __all__ = [
     "averify_jws_document",
     "b64url_decode",
     "b64url_encode",
+    "build_async_ip_pinned_transport",
+    "build_ip_pinned_transport",
     "build_signature_base",
     "canonicalize_authority",
     "canonicalize_target_uri",
@@ -265,6 +291,7 @@ __all__ = [
     "parse_signature_input_header",
     "private_key_from_jwk",
     "public_key_from_jwk",
+    "resolve_and_validate_host",
     "sign_request",
     "sign_signature_base",
     "unauthorized_response_headers",
