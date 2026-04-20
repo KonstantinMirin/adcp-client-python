@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from adcp.server.base import ADCPHandler
+from typing import Generic
+
+from adcp.server.base import ADCPHandler, TContext
 
 
-class TmpHandler(ADCPHandler):
+class TmpHandler(ADCPHandler[TContext], Generic[TContext]):
     """Handler for Temporal Matching Protocol operations.
 
     Subclass this to implement context matching and identity matching.

@@ -5,6 +5,15 @@ can be served over both MCP and A2A transports.
 
     from adcp.server import ADCPHandler, serve
     serve(MyHandler(), name="my-agent", transport="a2a")
+
+.. note::
+    Function signatures here use ``ADCPHandler[Any]`` rather than a
+    propagated ``TContext`` TypeVar. This module dispatches by tool
+    name and never reads typed fields off the context, so ``Any`` is
+    both correct and keeps the call sites tidy — downstream code that
+    needs typed context (their own handler subclass) keeps the TypeVar
+    all the way to dispatch via :class:`ADCPHandler`. See the matching
+    note in :mod:`adcp.server.mcp_tools`.
 """
 
 from __future__ import annotations
@@ -67,7 +76,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
     def __init__(
         self,
-        handler: ADCPHandler,
+        handler: ADCPHandler[Any],
         test_controller: TestControllerStore | None = None,
         *,
         context_factory: ContextFactory | None = None,
@@ -435,7 +444,7 @@ def _make_task(
 
 
 def _build_agent_card(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str,
     port: int,
@@ -481,7 +490,7 @@ def _build_agent_card(
 
 
 def create_a2a_server(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str = "adcp-agent",
     port: int | None = None,

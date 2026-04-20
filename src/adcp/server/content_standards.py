@@ -7,11 +7,11 @@ Non-Content-Standards operations return 'not supported' via the base class.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Generic
 
 from pydantic import ValidationError
 
-from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
+from adcp.server.base import ADCPHandler, NotImplementedResponse, TContext
 from adcp.types import (
     CalibrateContentRequest,
     CalibrateContentResponse,
@@ -31,7 +31,7 @@ from adcp.types import (
 )
 
 
-class ContentStandardsHandler(ADCPHandler):
+class ContentStandardsHandler(ADCPHandler[TContext], Generic[TContext]):
     """Handler for Content Standards protocol.
 
     Subclass this to implement a Content Standards agent. All Content Standards
@@ -47,7 +47,7 @@ class ContentStandardsHandler(ADCPHandler):
             async def handle_create_content_standards(
                 self,
                 request: CreateContentStandardsRequest,
-                context: ToolContext | None = None
+                context: TContext | None = None
             ) -> CreateContentStandardsResponse:
                 # Your implementation
                 return CreateContentStandardsResponse(...)
@@ -62,7 +62,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def create_content_standards(
         self,
         params: CreateContentStandardsRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> CreateContentStandardsResponse | NotImplementedResponse:
         """Create content standards configuration.
 
@@ -81,7 +81,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def get_content_standards(
         self,
         params: GetContentStandardsRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> GetContentStandardsResponse | NotImplementedResponse:
         """Get content standards configuration.
 
@@ -100,7 +100,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def list_content_standards(
         self,
         params: ListContentStandardsRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> ListContentStandardsResponse | NotImplementedResponse:
         """List content standards configurations.
 
@@ -119,7 +119,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def update_content_standards(
         self,
         params: UpdateContentStandardsRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> UpdateContentStandardsResponse | NotImplementedResponse:
         """Update content standards configuration.
 
@@ -138,7 +138,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def calibrate_content(
         self,
         params: CalibrateContentRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> CalibrateContentResponse | NotImplementedResponse:
         """Calibrate content against standards.
 
@@ -157,7 +157,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def validate_content_delivery(
         self,
         params: ValidateContentDeliveryRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> ValidateContentDeliveryResponse | NotImplementedResponse:
         """Validate content delivery against standards.
 
@@ -176,7 +176,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def get_media_buy_artifacts(
         self,
         params: GetMediaBuyArtifactsRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> GetMediaBuyArtifactsResponse | NotImplementedResponse:
         """Get artifacts associated with a media buy.
 
@@ -200,7 +200,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_create_content_standards(
         self,
         request: CreateContentStandardsRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> CreateContentStandardsResponse:
         """Handle create content standards request."""
         ...
@@ -209,7 +209,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_get_content_standards(
         self,
         request: GetContentStandardsRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> GetContentStandardsResponse:
         """Handle get content standards request."""
         ...
@@ -218,7 +218,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_list_content_standards(
         self,
         request: ListContentStandardsRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> ListContentStandardsResponse:
         """Handle list content standards request."""
         ...
@@ -227,7 +227,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_update_content_standards(
         self,
         request: UpdateContentStandardsRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> UpdateContentStandardsResponse:
         """Handle update content standards request."""
         ...
@@ -236,7 +236,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_calibrate_content(
         self,
         request: CalibrateContentRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> CalibrateContentResponse:
         """Handle calibrate content request."""
         ...
@@ -245,7 +245,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_validate_content_delivery(
         self,
         request: ValidateContentDeliveryRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> ValidateContentDeliveryResponse:
         """Handle validate content delivery request."""
         ...
@@ -254,7 +254,7 @@ class ContentStandardsHandler(ADCPHandler):
     async def handle_get_media_buy_artifacts(
         self,
         request: GetMediaBuyArtifactsRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> GetMediaBuyArtifactsResponse:
         """Handle get media buy artifacts request."""
         ...

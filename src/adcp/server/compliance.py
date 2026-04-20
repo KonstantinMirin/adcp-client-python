@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from adcp.server.base import ADCPHandler
+from typing import Generic
+
+from adcp.server.base import ADCPHandler, TContext
 
 
-class ComplianceHandler(ADCPHandler):
+class ComplianceHandler(ADCPHandler[TContext], Generic[TContext]):
     """Handler for compliance test operations.
 
     Subclass this to implement compliance sandbox testing.

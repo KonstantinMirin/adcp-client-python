@@ -2,6 +2,18 @@
 """MCP server integration helpers.
 
 Provides utilities for registering ADCP handlers with MCP servers.
+
+.. note::
+    Function signatures in this module use ``ADCPHandler[Any]`` rather
+    than a propagated ``TContext`` TypeVar. The rationale: these
+    functions (``get_tools_for_handler``, ``create_mcp_tools``, etc.)
+    treat the handler opaquely — they walk the MRO and dispatch by tool
+    name without ever touching the ``context`` argument's typed fields.
+    Binding a TypeVar here would force callers to narrow at the call
+    site for no runtime benefit, and cascade the TypeVar through every
+    plumbing function in :mod:`adcp.server.serve`. ``Any`` keeps the
+    plumbing honest: the static type says "this code works with any
+    ``ToolContext`` subclass," which is exactly true.
 """
 
 from __future__ import annotations
@@ -1227,7 +1239,9 @@ def _apply_pydantic_schemas() -> None:
 _apply_pydantic_schemas()
 
 
-def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict[str, Any]]:
+def get_tools_for_handler(
+    handler: ADCPHandler[Any] | type[ADCPHandler[Any]],
+) -> list[dict[str, Any]]:
     """Return tool definitions filtered by handler type.
 
     Walks the MRO to find the matching handler base class, so subclasses
@@ -1251,7 +1265,7 @@ def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict
 
 
 def create_tool_caller(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     method_name: str,
 ) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
@@ -1297,7 +1311,7 @@ class MCPToolSet:
     Provides tool definitions and handlers for registering with an MCP server.
     """
 
-    def __init__(self, handler: ADCPHandler):
+    def __init__(self, handler: ADCPHandler[Any]):
         """Create tool set from handler.
 
         Args:
@@ -1339,7 +1353,7 @@ class MCPToolSet:
         return list(self._tools.keys())
 
 
-def create_mcp_tools(handler: ADCPHandler) -> MCPToolSet:
+def create_mcp_tools(handler: ADCPHandler[Any]) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
     This is the main entry point for MCP server integration.

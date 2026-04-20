@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from adcp.server.base import ADCPHandler
+from typing import Generic
+
+from adcp.server.base import ADCPHandler, TContext
 
 
-class BrandHandler(ADCPHandler):
+class BrandHandler(ADCPHandler[TContext], Generic[TContext]):
     """Handler for brand rights operations.
 
     Subclass this to implement brand identity and rights management.

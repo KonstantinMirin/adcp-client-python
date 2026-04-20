@@ -126,14 +126,8 @@ class ADCPServerBuilder:
             raise AttributeError(task_name)
 
         def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
-            if (
-                task_name not in HANDLER_TO_DOMAIN
-                and task_name != "get_adcp_capabilities"
-            ):
-                raise ValueError(
-                    f"'{task_name}' is not a known ADCP task. "
-                    f"Check for typos."
-                )
+            if task_name not in HANDLER_TO_DOMAIN and task_name != "get_adcp_capabilities":
+                raise ValueError(f"'{task_name}' is not a known ADCP task. " f"Check for typos.")
             self._handlers[task_name] = fn
             return fn
 
@@ -148,7 +142,7 @@ class ADCPServerBuilder:
                 domains.add(domain)
         return sorted(domains)
 
-    def build_handler(self) -> ADCPHandler:
+    def build_handler(self) -> ADCPHandler[Any]:
         """Build an ADCPHandler from registered decorators.
 
         If ``get_adcp_capabilities`` is not registered, it will be
@@ -162,15 +156,16 @@ class ADCPServerBuilder:
             if domains:
                 from adcp.server.responses import capabilities_response
 
-                async def auto_capabilities(
-                    params: Any, context: Any = None
-                ) -> dict[str, Any]:
+                async def auto_capabilities(params: Any, context: Any = None) -> dict[str, Any]:
                     return capabilities_response(domains)
 
                 handlers["get_adcp_capabilities"] = auto_capabilities
 
-        # Create a dynamic subclass
-        class DynamicHandler(ADCPHandler):
+        # Create a dynamic subclass. ``ADCPHandler[Any]`` because the
+        # decorator-builder path doesn't thread a specific ToolContext
+        # subclass — callers who want typed context go through the
+        # class-based ``ADCPHandler[MyContext]`` route instead.
+        class DynamicHandler(ADCPHandler[Any]):
             pass
 
         for task_name, fn in handlers.items():
