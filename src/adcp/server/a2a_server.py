@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from a2a.server.agent_execution.agent_executor import AgentExecutor
@@ -37,6 +37,9 @@ from a2a.types import (
 
 from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
+
+if TYPE_CHECKING:
+    from adcp.server.serve import ContextFactory
 from adcp.server.helpers import STANDARD_ERROR_CODES
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 from adcp.server.test_controller import TestControllerStore, _handle_test_controller
@@ -59,8 +62,11 @@ class ADCPAgentExecutor(AgentExecutor):
         self,
         handler: ADCPHandler,
         test_controller: TestControllerStore | None = None,
+        *,
+        context_factory: ContextFactory | None = None,
     ) -> None:
         self._handler = handler
+        self._context_factory = context_factory
         self._tool_callers: dict[str, Any] = {}
 
         # Build tool callers for all tools this handler supports.
@@ -104,7 +110,7 @@ class ADCPAgentExecutor(AgentExecutor):
             await self._send_error(event_queue, context, f"Unknown skill: {skill_name}")
             return
 
-        tool_context = _tool_context_from_request(context)
+        tool_context = self._build_tool_context(skill_name, context)
         try:
             result = await self._tool_callers[skill_name](params, tool_context)
             await self._send_result(event_queue, context, skill_name, result)
@@ -119,6 +125,49 @@ class ADCPAgentExecutor(AgentExecutor):
         except Exception:
             logger.exception("Error executing skill %s", skill_name)
             await self._send_error(event_queue, context, f"Skill execution failed: {skill_name}")
+
+    def _build_tool_context(self, skill_name: str, request: RequestContext) -> ToolContext:
+        """Build the :class:`ToolContext` handed to the skill dispatcher.
+
+        When ``context_factory`` is configured, call it with a
+        :class:`RequestMetadata` describing this A2A invocation; overlay the
+        transport-derived ``caller_identity`` / ``request_id`` afterwards
+        **only when the factory left them unset**, so factories that already
+        know the principal (e.g. from a ContextVar the seller's auth layer
+        populated) aren't clobbered.
+
+        When no factory is configured, fall back to the A2A-only path that
+        derives ``caller_identity`` from ``ServerCallContext.user`` —
+        preserving behavior for sellers who haven't adopted
+        ``context_factory=`` yet.
+        """
+        if self._context_factory is None:
+            return _tool_context_from_request(request)
+
+        from adcp.server.serve import RequestMetadata
+
+        meta = RequestMetadata(
+            tool_name=skill_name,
+            transport="a2a",
+            request_id=request.task_id,
+        )
+        ctx = self._context_factory(meta)
+        if not isinstance(ctx, ToolContext):
+            raise TypeError(
+                f"context_factory for skill {skill_name!r} returned "
+                f"{type(ctx).__name__}, not a ToolContext instance"
+            )
+        # Fill in transport-derived fields the factory didn't set. This
+        # preserves the pre-factory A2A security invariant: if the seller
+        # didn't explicitly populate caller_identity in their factory,
+        # fall through to ServerCallContext.user (verified by the a2a-sdk
+        # auth middleware) rather than silently sending None.
+        if ctx.caller_identity is None:
+            fallback = _tool_context_from_request(request)
+            ctx.caller_identity = fallback.caller_identity
+        if ctx.request_id is None:
+            ctx.request_id = request.task_id
+        return ctx
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """ADCP operations are synchronous; cancellation sets state to canceled."""
@@ -388,6 +437,7 @@ def create_a2a_server(
     description: str | None = None,
     version: str = "1.0.0",
     test_controller: TestControllerStore | None = None,
+    context_factory: ContextFactory | None = None,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -398,6 +448,15 @@ def create_a2a_server(
         description: Agent description for the agent card.
         version: Agent version string.
         test_controller: Optional TestControllerStore for storyboard testing.
+        context_factory: Optional callable invoked per skill call to build
+            a :class:`ToolContext` from :class:`RequestMetadata`. Mirrors
+            the MCP-side ``context_factory=`` on
+            :func:`~adcp.server.create_mcp_server` so a single factory
+            populates tenant/adapter fields on both transports. When
+            unset, the executor falls back to deriving ``caller_identity``
+            from ``ServerCallContext.user`` — preserving pre-factory
+            behavior. See :data:`~adcp.server.ContextFactory` for the
+            recommended contextvars pattern.
 
     Returns:
         A Starlette app ready to be run with uvicorn.
@@ -406,7 +465,9 @@ def create_a2a_server(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
-    executor = ADCPAgentExecutor(handler, test_controller=test_controller)
+    executor = ADCPAgentExecutor(
+        handler, test_controller=test_controller, context_factory=context_factory
+    )
 
     agent_card = _build_agent_card(
         handler,

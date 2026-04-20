@@ -1280,28 +1280,64 @@ from adcp.types.generated_poc.core.format import (
 )
 
 ImageFormatAsset = _ImageFormatAssetInternal
-"""Image asset slot in a creative format (asset_type='image')."""
+"""Image asset slot in a creative format (asset_type='image').
+
+Distinct from ``ImageAsset`` in ``adcp.types`` (the asset-content type
+describing an actual image payload — dimensions, file URL, etc.). This
+alias names the slot shape used inside a format definition.
+"""
 
 VideoFormatAsset = _VideoFormatAssetInternal
-"""Video asset slot in a creative format (asset_type='video')."""
+"""Video asset slot in a creative format (asset_type='video').
+
+Distinct from ``VideoAsset`` in ``adcp.types`` (the asset-content type
+describing an actual video payload — codec, duration, file URL). This
+alias names the slot shape used inside a format definition.
+"""
 
 AudioFormatAsset = _AudioFormatAssetInternal
-"""Audio asset slot in a creative format (asset_type='audio')."""
+"""Audio asset slot in a creative format (asset_type='audio').
+
+Distinct from ``AudioAsset`` in ``adcp.types`` (the asset-content type
+describing an actual audio payload). This alias names the slot shape
+used inside a format definition.
+"""
 
 TextFormatAsset = _TextFormatAssetInternal
-"""Text asset slot in a creative format (asset_type='text')."""
+"""Text asset slot in a creative format (asset_type='text').
+
+Distinct from ``TextAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
 
 MarkdownFormatAsset = _MarkdownFormatAssetInternal
-"""Markdown asset slot in a creative format (asset_type='markdown')."""
+"""Markdown asset slot in a creative format (asset_type='markdown').
+
+Distinct from the asset-content type in ``adcp.types``. This alias names
+the slot shape used inside a format definition.
+"""
 
 HtmlFormatAsset = _HtmlFormatAssetInternal
-"""HTML asset slot in a creative format (asset_type='html')."""
+"""HTML asset slot in a creative format (asset_type='html').
+
+Distinct from ``HtmlAsset`` in ``adcp.types`` (the asset-content type
+describing actual HTML payload). This alias names the slot shape used
+inside a format definition.
+"""
 
 CssFormatAsset = _CssFormatAssetInternal
-"""CSS asset slot in a creative format (asset_type='css')."""
+"""CSS asset slot in a creative format (asset_type='css').
+
+Distinct from ``CssAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
 
 JavascriptFormatAsset = _JavascriptFormatAssetInternal
-"""JavaScript asset slot in a creative format (asset_type='javascript')."""
+"""JavaScript asset slot in a creative format (asset_type='javascript').
+
+Distinct from ``JavascriptAsset`` in ``adcp.types``. This alias names
+the slot shape used inside a format definition.
+"""
 
 VastFormatAsset = _VastFormatAssetInternal
 """VAST asset slot in a creative format (asset_type='vast').
@@ -1319,16 +1355,32 @@ the DAAST content itself is delivered (url vs inline payload).
 """
 
 UrlFormatAsset = _UrlFormatAssetInternal
-"""URL asset slot in a creative format (asset_type='url')."""
+"""URL asset slot in a creative format (asset_type='url').
+
+Distinct from ``UrlAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
 
 WebhookFormatAsset = _WebhookFormatAssetInternal
-"""Webhook asset slot in a creative format (asset_type='webhook')."""
+"""Webhook asset slot in a creative format (asset_type='webhook').
+
+Distinct from ``WebhookAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
 
 BriefFormatAsset = _BriefFormatAssetInternal
-"""Brief asset slot in a creative format (asset_type='brief')."""
+"""Brief asset slot in a creative format (asset_type='brief').
+
+Distinct from ``BriefAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
 
 CatalogFormatAsset = _CatalogFormatAssetInternal
-"""Catalog asset slot in a creative format (asset_type='catalog')."""
+"""Catalog asset slot in a creative format (asset_type='catalog').
+
+Distinct from ``CatalogAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
 
 RepeatableAssetGroup = _RepeatableAssetGroupInternal
 """Repeatable asset group in a creative format (item_type='repeatable_group').

@@ -17,6 +17,8 @@ with ``aliases.py`` so the public API remains stable across generator runs.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
 
 from adcp import types as adcp_types
@@ -54,8 +56,31 @@ GROUP_ASSET_EXPECTATIONS: dict[str, str] = {
 }
 
 
-def _default_value(cls, field_name: str) -> str:
-    return cls.model_fields[field_name].default
+def _literal_value(cls, field_name: str) -> str | None:
+    """Return the single literal value on a Pydantic discriminator field.
+
+    Parses the field's ``annotation`` (the ``Literal[...]`` type) rather
+    than reading ``FieldInfo.default`` — several generated discriminator
+    fields declare the literal as the annotation without also setting a
+    default, which would make ``FieldInfo.default`` return
+    ``PydanticUndefined`` and any equality comparison vacuously pass.
+    Reading the annotation catches renumbering even when defaults aren't
+    populated on the field.
+    """
+    from typing import get_args, get_origin
+
+    field = cls.model_fields[field_name]
+    annotation = field.annotation
+    if get_origin(annotation) is Literal:
+        args = get_args(annotation)
+        if len(args) == 1 and isinstance(args[0], str):
+            return args[0]
+    # Fall back to FieldInfo.default when the annotation isn't a bare
+    # Literal (Annotated[Literal[...], Field(default=...)] shape).
+    default = field.default
+    if isinstance(default, str):
+        return default
+    return None
 
 
 @pytest.mark.parametrize(
@@ -66,15 +91,16 @@ def test_individual_asset_alias_resolves_to_expected_discriminator(
     alias_name: str, expected_asset_type: str
 ) -> None:
     cls = getattr(adcp_types, alias_name)
-    assert _default_value(cls, "asset_type") == expected_asset_type, (
-        f"{alias_name} resolved to class with asset_type="
-        f"{_default_value(cls, 'asset_type')!r}; expected {expected_asset_type!r}. "
-        "The generator likely renumbered AssetsNN — update the numbered import "
-        "in src/adcp/types/aliases.py to point at the class matching this asset_type."
+    asset_type = _literal_value(cls, "asset_type")
+    assert asset_type == expected_asset_type, (
+        f"{alias_name} resolved to class with asset_type={asset_type!r}; "
+        f"expected {expected_asset_type!r}. The generator likely renumbered "
+        "AssetsNN — update the numbered import in src/adcp/types/aliases.py "
+        "to point at the class matching this asset_type."
     )
-    assert _default_value(cls, "item_type") == "individual", (
-        f"{alias_name} resolved to class with item_type="
-        f"{_default_value(cls, 'item_type')!r}; expected 'individual'."
+    item_type = _literal_value(cls, "item_type")
+    assert item_type == "individual", (
+        f"{alias_name} resolved to class with item_type={item_type!r}; " "expected 'individual'."
     )
 
 
@@ -86,20 +112,20 @@ def test_group_asset_alias_resolves_to_expected_discriminator(
     alias_name: str, expected_asset_type: str
 ) -> None:
     cls = getattr(adcp_types, alias_name)
-    assert _default_value(cls, "asset_type") == expected_asset_type, (
-        f"{alias_name} resolved to class with asset_type="
-        f"{_default_value(cls, 'asset_type')!r}; expected {expected_asset_type!r}. "
-        "The generator likely renumbered AssetsNN — update the numbered import "
-        "in src/adcp/types/aliases.py to point at the class matching this asset_type."
+    asset_type = _literal_value(cls, "asset_type")
+    assert asset_type == expected_asset_type, (
+        f"{alias_name} resolved to class with asset_type={asset_type!r}; "
+        f"expected {expected_asset_type!r}. The generator likely renumbered "
+        "AssetsNN — update the numbered import in src/adcp/types/aliases.py "
+        "to point at the class matching this asset_type."
     )
 
 
 def test_repeatable_asset_group_discriminator_is_stable() -> None:
     cls = adcp_types.RepeatableAssetGroup
-    item_type_annotation = cls.model_fields["item_type"].annotation
-    assert "repeatable_group" in str(item_type_annotation), (
-        f"RepeatableAssetGroup.item_type={item_type_annotation!r}; "
-        "expected the 'repeatable_group' literal."
+    item_type = _literal_value(cls, "item_type")
+    assert item_type == "repeatable_group", (
+        f"RepeatableAssetGroup.item_type={item_type!r}; " "expected 'repeatable_group'."
     )
 
 

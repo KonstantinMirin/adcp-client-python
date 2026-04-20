@@ -85,6 +85,7 @@ from adcp.server.mcp_tools import (
     MCPToolSet,
     create_mcp_tools,
     get_tools_for_handler,
+    validate_discovery_set,
 )
 from adcp.server.proposal import ProposalBuilder, ProposalNotSupported
 from adcp.server.responses import (
@@ -108,7 +109,12 @@ from adcp.server.responses import (
     sync_governance_response,
     update_media_buy_response,
 )
-from adcp.server.serve import ContextFactory, create_mcp_server, serve
+from adcp.server.serve import (
+    ContextFactory,
+    RequestMetadata,
+    create_mcp_server,
+    serve,
+)
 from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
 from adcp.server.test_controller import (
     TestControllerError,
@@ -139,10 +145,12 @@ __all__ = [
     "ContextFactory",
     "DISCOVERY_TOOLS",
     "MCPToolSet",
+    "RequestMetadata",
     "create_mcp_tools",
     "create_mcp_server",
     "get_tools_for_handler",
     "serve",
+    "validate_discovery_set",
     # A2A integration
     "ADCPAgentExecutor",
     "create_a2a_server",

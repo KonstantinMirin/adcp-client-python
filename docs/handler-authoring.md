@@ -6,6 +6,21 @@ creative agents, governance agents, signals agents — on top of
 and production-grade, plus the hooks the SDK provides so you don't have
 to rebuild middleware that already exists.
 
+## 15-minute decision tree
+
+- **Just want an agent running?** → Start with "The one-file starting
+  point" below, then `serve()`.
+- **Need auth in front of tools?** → If your proxy already validates
+  credentials, use "Pattern 1 — reverse-proxy auth". Otherwise copy
+  `examples/mcp_with_auth_middleware.py` — it covers the ContextVars
+  pattern, the `DISCOVERY_TOOLS` bypass, and `hmac.compare_digest`.
+- **Multi-tenant?** → Subclass `ToolContext`, populate `tenant_id` in
+  your `context_factory`, and read the
+  [Multi-tenant typing](#multi-tenant-typing) section. The idempotency
+  middleware uses `(tenant_id, caller_identity)` for scope isolation —
+  populating `tenant_id` is required for cross-tenant safety.
+- **Full context?** → Keep reading.
+
 ## The one-file starting point
 
 ```python
@@ -155,19 +170,25 @@ One per AdCP operation. Read the `adcp.server.responses` docstrings.
 
 ## Multi-tenant typing
 
-The feedback from early adopters pointed out that `ToolContext` is
-thinner than their `ResolvedIdentity` (tenant + principal + adapter +
-testing hooks). The 4.0 surface addresses this with:
+Production multi-tenant agents usually carry `tenant + principal +
+adapter + testing hooks` in their own identity type. `ToolContext`
+exposes the fields those handlers need:
 
 - `ToolContext.tenant_id: str | None` — first-class field; populate from
-  your `context_factory`.
+  your `context_factory`. **Required** for multi-tenant deployments
+  whose principal IDs are only unique within a tenant (Okta group-scoped,
+  SCIM per-tenant, seller-internal employee IDs) — the idempotency
+  store keys its cache on `(tenant_id, caller_identity)`, so leaving
+  `tenant_id` unset collapses distinct tenants into the same scope and
+  enables cross-tenant response replay.
 - `ToolContext.metadata: dict[str, Any]` — escape hatch for adapter
   instance handles, testing hooks, per-tenant config blobs.
-- Subclassing `ToolContext` is supported — pass the subclass through the
-  `context_factory` and your handler methods receive the typed subclass.
+- Subclassing `ToolContext` is supported — return the subclass from your
+  `context_factory` and your handler methods `isinstance(context,
+  MyContext)` (or `cast(MyContext, context)` if you've established the
+  invariant via the factory) to reach the extra fields.
 
-When in doubt, subclass: `metadata: dict[str, Any]` loses type safety,
-which is exactly the problem downstream flagged.
+When in doubt, subclass: `metadata: dict[str, Any]` loses type safety.
 
 ## A2A transport
 

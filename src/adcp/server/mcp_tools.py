@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
@@ -873,6 +873,50 @@ _PROTOCOL_TOOLS: set[str] = {"get_adcp_capabilities"}
 #             self._require_valid_token(request)
 #         return await call_next(request)
 DISCOVERY_TOOLS: frozenset[str] = frozenset({"get_adcp_capabilities"})
+
+
+def validate_discovery_set(tools: Iterable[str]) -> None:
+    """Fail-closed validation for an auth-optional tool set.
+
+    Downstream that extends :data:`DISCOVERY_TOOLS` (``DISCOVERY_TOOLS |
+    {"my_public_tool"}``) risks accidentally including a mutation tool,
+    which would silently unauthenticate writes over HTTP. This helper
+    asserts every name in the set resolves to a known ADCP tool whose
+    annotations declare ``readOnlyHint: True`` — it refuses to pass
+    anything mutating, destructive, or unknown.
+
+    Call this at server startup on the effective set your middleware
+    uses::
+
+        from adcp.server import DISCOVERY_TOOLS, validate_discovery_set
+
+        MY_DISCOVERY = DISCOVERY_TOOLS | {"list_public_formats"}
+        validate_discovery_set(MY_DISCOVERY)  # raises early if misconfigured
+
+    :raises ValueError: if any name in ``tools`` is unknown or resolves
+        to a non-read-only tool.
+    """
+    by_name = {t["name"]: t for t in ADCP_TOOL_DEFINITIONS}
+    unknown: list[str] = []
+    mutating: list[str] = []
+    for name in tools:
+        tool = by_name.get(name)
+        if tool is None:
+            unknown.append(name)
+            continue
+        annotations = tool.get("annotations") or {}
+        if not annotations.get("readOnlyHint"):
+            mutating.append(name)
+    problems: list[str] = []
+    if unknown:
+        problems.append(f"unknown tool(s): {sorted(unknown)}")
+    if mutating:
+        problems.append(
+            f"non-read-only tool(s) {sorted(mutating)} — adding these to the "
+            "auth-optional set would silently unauthenticate mutations"
+        )
+    if problems:
+        raise ValueError("validate_discovery_set rejected the set: " + "; ".join(problems))
 
 
 # Tools specific to each specialized handler type

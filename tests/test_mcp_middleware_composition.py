@@ -28,11 +28,18 @@ from typing import Any
 
 import httpx
 import pytest
+from asgi_lifespan import LifespanManager
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from adcp.server import DISCOVERY_TOOLS, ADCPHandler, ToolContext, create_mcp_server
+from adcp.server import (
+    DISCOVERY_TOOLS,
+    ADCPHandler,
+    RequestMetadata,
+    ToolContext,
+    create_mcp_server,
+)
 
 _current_principal: ContextVar[str | None] = ContextVar("test_current_principal", default=None)
 _current_tenant: ContextVar[str | None] = ContextVar("test_current_tenant", default=None)
@@ -111,10 +118,12 @@ async def _peek_tool_name(request: Request) -> str | None:
     return name if isinstance(name, str) else None
 
 
-def _build_context() -> ToolContext:
+def _build_context(meta: RequestMetadata) -> ToolContext:
     return ToolContext(
+        request_id=meta.request_id,
         caller_identity=_current_principal.get(),
         tenant_id=_current_tenant.get(),
+        metadata={"tool_name": meta.tool_name, "transport": meta.transport},
     )
 
 
@@ -138,60 +147,16 @@ async def handler_and_client() -> Any:
 
     # FastMCP's streamable HTTP session manager initializes a TaskGroup
     # via the Starlette app lifespan. httpx.ASGITransport does not run
-    # lifespan by default; this manages it manually so the session
-    # manager has a live TaskGroup during requests.
-    async with _StarletteLifespan(app):
+    # lifespan by default — asgi-lifespan handles startup/shutdown and
+    # surfaces exceptions raised during startup so test failures report
+    # the real error instead of hanging.
+    async with LifespanManager(app):
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://localhost",
             follow_redirects=True,
         ) as client:
             yield handler, client
-
-
-class _StarletteLifespan:
-    """Async context manager that runs a Starlette app's lifespan."""
-
-    def __init__(self, app: Any) -> None:
-        self._app = app
-        self._scope = {"type": "lifespan"}
-        self._startup_complete: Any = None
-        self._shutdown_event: Any = None
-        self._task: Any = None
-
-    async def __aenter__(self) -> None:
-        import asyncio
-
-        self._startup_complete = asyncio.Event()
-        self._shutdown_event = asyncio.Event()
-        startup_done = asyncio.Event()
-        shutdown_done = asyncio.Event()
-
-        send_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-
-        async def receive() -> dict[str, Any]:
-            if not self._startup_complete.is_set():
-                self._startup_complete.set()
-                return {"type": "lifespan.startup"}
-            await self._shutdown_event.wait()
-            return {"type": "lifespan.shutdown"}
-
-        async def send(message: dict[str, Any]) -> None:
-            await send_queue.put(message)
-            if message["type"] == "lifespan.startup.complete":
-                startup_done.set()
-            elif message["type"] == "lifespan.shutdown.complete":
-                shutdown_done.set()
-
-        self._task = asyncio.create_task(self._app(self._scope, receive, send))
-        self._startup_done = startup_done
-        self._shutdown_done = shutdown_done
-        await startup_done.wait()
-
-    async def __aexit__(self, *exc: Any) -> None:
-        self._shutdown_event.set()
-        await self._shutdown_done.wait()
-        await self._task
 
 
 @pytest.mark.asyncio
@@ -250,6 +215,36 @@ def test_discovery_tools_frozenset_contract() -> None:
     # Protects against accidental widening/narrowing of the spec-mandated
     # auth-optional set. Callers extend via ``DISCOVERY_TOOLS | {...}``.
     assert DISCOVERY_TOOLS == frozenset({"get_adcp_capabilities"})
+
+
+def test_validate_discovery_set_accepts_base_set() -> None:
+    from adcp.server import validate_discovery_set
+
+    # The base DISCOVERY_TOOLS set must always validate — any regression
+    # here means we added a mutation tool to the spec-mandated handshake.
+    validate_discovery_set(DISCOVERY_TOOLS)
+
+
+def test_validate_discovery_set_accepts_read_only_extension() -> None:
+    from adcp.server import validate_discovery_set
+
+    # list_creative_formats is annotated read-only — downstream that
+    # wants to make format listing public should be allowed to.
+    validate_discovery_set(DISCOVERY_TOOLS | {"list_creative_formats"})
+
+
+def test_validate_discovery_set_rejects_mutation_tool() -> None:
+    from adcp.server import validate_discovery_set
+
+    with pytest.raises(ValueError, match="non-read-only"):
+        validate_discovery_set(DISCOVERY_TOOLS | {"create_media_buy"})
+
+
+def test_validate_discovery_set_rejects_unknown_tool() -> None:
+    from adcp.server import validate_discovery_set
+
+    with pytest.raises(ValueError, match="unknown tool"):
+        validate_discovery_set(DISCOVERY_TOOLS | {"not_a_real_tool"})
 
 
 # ----------------------------------------------------------------------

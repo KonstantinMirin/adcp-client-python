@@ -383,7 +383,9 @@ def unwrap_rootmodel_unions():
         lines = content.split("\n")
 
         # Collect classes to unwrap (process in reverse order to preserve line numbers)
-        replacements: list[tuple[int, int, str, str]] = []  # (start_line, end_line, name, union_types)
+        replacements: list[tuple[int, int, str, str]] = (
+            []
+        )  # (start_line, end_line, name, union_types)
 
         for node in ast.walk(tree):
             if not isinstance(node, ast.ClassDef) or node.name not in _UNWRAP_TO_UNION:
@@ -423,9 +425,7 @@ def unwrap_rootmodel_unions():
             if "\n" in union_types:
                 # Re-indent continuation lines to 4 spaces
                 union_lines = [ln.strip() for ln in union_types.split("\n")]
-                indented = union_lines[0] + "\n" + "\n".join(
-                    f"    {ln}" for ln in union_lines[1:]
-                )
+                indented = union_lines[0] + "\n" + "\n".join(f"    {ln}" for ln in union_lines[1:])
                 replacement = f"{type_name} = (\n    {indented}\n)"
             else:
                 replacement = f"{type_name} = {union_types}"
@@ -480,9 +480,7 @@ def add_rootmodel_getattr_proxy():
         # Ensure Any is imported before parsing AST (avoids line number shift)
         if "from typing import Any" not in source and "Any," not in source:
             if "from typing import " in source:
-                source = source.replace(
-                    "from typing import ", "from typing import Any, ", 1
-                )
+                source = source.replace("from typing import ", "from typing import Any, ", 1)
             else:
                 source = "from typing import Any\n" + source
 
@@ -554,8 +552,8 @@ def fix_list_field_shadowing():
 
     # Replace list[identifier...] and dict[str, list[identifier...]] patterns
     content = re.sub(
-        r'(?<![._a-zA-Z])list\[identifier\.',
-        '_list[identifier.',
+        r"(?<![._a-zA-Z])list\[identifier\.",
+        "_list[identifier.",
         content,
     )
 
@@ -601,6 +599,50 @@ def fix_reuse_model_discriminator_bug():
         print("  No Literal['reuse'] subclasses found")
 
 
+def restore_format_category_deprecation_shim():
+    """Restore the removed-type ``format_category`` module after codegen.
+
+    ``scripts/generate_types.py`` wipes ``generated_poc/`` before
+    regenerating. The deprecation shim file for the removed
+    ``format_category`` submodule lives inside that tree so downstream
+    imports of ``adcp.types.generated_poc.enums.format_category`` hit an
+    ``ImportError`` with a migration pointer instead of
+    ``ModuleNotFoundError``. This function re-writes the shim after each
+    regen. Keep the message in sync with ``_REMOVED_IN_V4`` in
+    ``src/adcp/__init__.py``.
+    """
+    target = OUTPUT_DIR / "enums" / "format_category.py"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    content = (
+        '"""Deprecation shim for the removed ``format_category`` submodule.\n'
+        "\n"
+        "``FormatCategory`` was replaced by free-form ``FormatId`` strings in\n"
+        "AdCP 3.0. See MIGRATION_v3_to_v4.md for the full migration path.\n"
+        "\n"
+        "Importing this module raises :class:`ImportError` with a pointer to the\n"
+        "migration guide — so downstream import sites like::\n"
+        "\n"
+        "    from adcp.types.generated_poc.enums.format_category import FormatCategory\n"
+        "\n"
+        "get the same pointer as the top-level ``from adcp import FormatCategory``,\n"
+        "instead of a bare ``ModuleNotFoundError``.\n"
+        "\n"
+        "This file is restored after every codegen run by\n"
+        "``scripts/post_generate_fixes.py`` (which wipes ``generated_poc/``).\n"
+        '"""\n'
+        "\n"
+        "raise ImportError(\n"
+        '    "adcp.types.generated_poc.enums.format_category was removed in AdCP 3.0. "\n'
+        "    \"Use free-form format-id strings (e.g. 'goog:video_responsive_ad') via \"\n"
+        '    "adcp.types.FormatId. See MIGRATION_v3_to_v4.md#creative-format-asset-slots-formataasset-aliases "\n'
+        '    "for details."\n'
+        ")\n"
+    )
+    target.write_text(content)
+    rel = target.relative_to(REPO_ROOT)
+    print(f"  ✓ Restored format_category deprecation shim at {rel}")
+
+
 def main():
     """Apply all post-generation fixes."""
     print("Applying post-generation fixes...")
@@ -616,6 +658,7 @@ def main():
     add_rootmodel_getattr_proxy()
     fix_list_field_shadowing()
     fix_reuse_model_discriminator_bug()
+    restore_format_category_deprecation_shim()
 
     print("\n✓ Post-generation fixes complete\n")
 

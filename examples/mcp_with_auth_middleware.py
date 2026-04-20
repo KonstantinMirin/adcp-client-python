@@ -22,6 +22,8 @@ terminates TLS and handles rate limiting.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 from contextvars import ContextVar
 from typing import Any
 
@@ -32,6 +34,7 @@ from starlette.responses import JSONResponse
 from adcp.server import (
     DISCOVERY_TOOLS,
     ADCPHandler,
+    RequestMetadata,
     ToolContext,
     create_mcp_server,
 )
@@ -41,18 +44,46 @@ from adcp.server.responses import capabilities_response, products_response
 # Per-request auth state — populated by middleware, read by context_factory.
 # ContextVars are the recommended carrier: they compose cleanly with
 # async tasks and don't leak across requests the way module globals do.
+# IMPORTANT: always pair ``.set(x)`` with ``.reset(token)`` in a ``finally:``
+# block so the value doesn't linger in the current context past the
+# response — otherwise a subsequent task reusing the same context reads a
+# stale principal (cross-request confidentiality leak).
 # ----------------------------------------------------------------------
 
 _principal: ContextVar[str | None] = ContextVar("adcp_principal", default=None)
 _tenant: ContextVar[str | None] = ContextVar("adcp_tenant", default=None)
 
 
-# Toy token→principal database. Real agents look this up in Postgres /
-# Vault / identity provider / etc.
-_TOKENS: dict[str, tuple[str, str]] = {
-    "token-acme": ("principal-acme-ops", "tenant-acme"),
-    "token-globex": ("principal-globex-ops", "tenant-globex"),
+# Real agents look tokens up in Postgres / Vault / an identity provider /
+# etc. This dict is a stand-in: it stores a per-token SHA-256 so the
+# example's token-compare path uses ``hmac.compare_digest`` (constant-time)
+# against a hash rather than comparing raw bearer tokens with ``==`` or
+# ``in``. Never ship plain-text token equality against a user-supplied
+# bearer token — it leaks information via timing, and dict lookups short-
+# circuit on hash mismatch.
+_TOKEN_HASHES: dict[str, tuple[str, str]] = {
+    hashlib.sha256(raw.encode()).hexdigest(): (principal, tenant)
+    for raw, (principal, tenant) in {
+        "token-acme": ("principal-acme-ops", "tenant-acme"),
+        "token-globex": ("principal-globex-ops", "tenant-globex"),
+    }.items()
 }
+
+
+def _lookup_token(token: str) -> tuple[str, str] | None:
+    """Constant-time bearer-token lookup.
+
+    Iterate all known hashes with ``hmac.compare_digest`` so the wall-clock
+    runtime doesn't depend on how much of the candidate matches any entry —
+    the dict-lookup-then-equality pattern leaks that.
+    """
+    if not token:
+        return None
+    candidate = hashlib.sha256(token.encode()).hexdigest()
+    for stored_hash, identity in _TOKEN_HASHES.items():
+        if hmac.compare_digest(candidate, stored_hash):
+            return identity
+    return None
 
 
 # ----------------------------------------------------------------------
@@ -64,23 +95,35 @@ class BearerAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Any) -> Any:
         tool = await _peek_tool_name(request)
 
-        # AdCP spec: ``get_adcp_capabilities`` is the discovery handshake —
-        # clients MUST be able to call it without authenticating.
-        if tool in DISCOVERY_TOOLS:
-            _principal.set(None)
-            _tenant.set(None)
+        principal_token = None
+        tenant_token = None
+        try:
+            # AdCP spec: ``get_adcp_capabilities`` is the discovery handshake —
+            # clients MUST be able to call it without authenticating.
+            if tool in DISCOVERY_TOOLS:
+                principal_token = _principal.set(None)
+                tenant_token = _tenant.set(None)
+                return await call_next(request)
+
+            # Everything else requires a bearer token.
+            auth_header = request.headers.get("authorization", "")
+            bearer = auth_header.removeprefix("Bearer ").strip()
+            identity = _lookup_token(bearer)
+            if identity is None:
+                return JSONResponse({"error": "unauthenticated"}, status_code=401)
+
+            principal_id, tenant_id = identity
+            principal_token = _principal.set(principal_id)
+            tenant_token = _tenant.set(tenant_id)
             return await call_next(request)
-
-        # Everything else requires a bearer token.
-        auth_header = request.headers.get("authorization", "")
-        token = auth_header.removeprefix("Bearer ").strip()
-        if token not in _TOKENS:
-            return JSONResponse({"error": "unauthenticated"}, status_code=401)
-
-        principal_id, tenant_id = _TOKENS[token]
-        _principal.set(principal_id)
-        _tenant.set(tenant_id)
-        return await call_next(request)
+        finally:
+            # Reset unconditionally. Without this, a later task running in
+            # the same context reads the leftover principal — a
+            # cross-request confidentiality leak.
+            if principal_token is not None:
+                _principal.reset(principal_token)
+            if tenant_token is not None:
+                _tenant.reset(tenant_token)
 
 
 async def _peek_tool_name(request: Request) -> str | None:
@@ -107,10 +150,12 @@ async def _peek_tool_name(request: Request) -> str | None:
 # ----------------------------------------------------------------------
 
 
-def build_context() -> ToolContext:
+def build_context(meta: RequestMetadata) -> ToolContext:
     return ToolContext(
+        request_id=meta.request_id,
         caller_identity=_principal.get(),
         tenant_id=_tenant.get(),
+        metadata={"tool_name": meta.tool_name, "transport": meta.transport},
     )
 
 

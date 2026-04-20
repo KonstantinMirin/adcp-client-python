@@ -3,7 +3,8 @@
 Responsibilities:
 
 1. Extract ``idempotency_key`` from the incoming request.
-2. Scope lookups by ``(principal_id, key)`` via the backend.
+2. Scope lookups by ``(scope_key, key)`` via the backend, where ``scope_key``
+   composes ``tenant_id`` (when present) with ``caller_identity``.
 3. On cache hit with matching canonical payload hash: return the cached response
    and mark ``replayed=True`` on the envelope.
 4. On cache hit with a different hash: raise
@@ -11,10 +12,17 @@ Responsibilities:
 5. On miss: run the wrapped handler, then commit ``(hash, response)`` to the
    backend.
 
-Per-principal scoping is a hard security requirement (AdCP #2315): a key from
-principal A on seller S has no meaning for principal B. The store pulls the
-principal id from :class:`adcp.server.base.ToolContext.caller_identity`. If no
-context / no caller_identity is supplied, the store refuses to proceed —
+Per-scope scoping is a hard security requirement (AdCP #2315): a key from
+principal A on tenant T has no meaning for principal B or tenant T'. The store
+pulls both ``tenant_id`` and ``caller_identity`` from
+:class:`adcp.server.base.ToolContext` and composes them into a single scope
+key — sellers whose principal ids are only unique *within* a tenant (Okta
+group-scoped IDs, seller-internal employee IDs, SCIM per-tenant IDs) must
+populate ``tenant_id`` so the store can keep those tenants isolated. When no
+``tenant_id`` is set, the scope collapses to ``caller_identity`` alone
+(safe for single-tenant deployments).
+
+If no context / no caller_identity is supplied, the store refuses to proceed —
 fail-closed rather than collapse every buyer into a shared namespace.
 """
 
@@ -113,8 +121,8 @@ class IdempotencyStore:
             *args: Any,
             **kwargs: Any,
         ) -> Any:
-            principal_id, idempotency_key, params_dict = self._prepare(params, context)
-            if principal_id is None or idempotency_key is None:
+            scope_key, idempotency_key, params_dict = self._prepare(params, context)
+            if scope_key is None or idempotency_key is None:
                 # No key → spec says the server MUST reject with INVALID_REQUEST.
                 # We let the handler run so validation layers above us (Pydantic,
                 # FastAPI, etc.) can reject with a typed error; the middleware's
@@ -123,12 +131,12 @@ class IdempotencyStore:
 
             payload_hash = self._hash_fn(params_dict)
 
-            cached = await self.backend.get(principal_id, idempotency_key)
+            cached = await self.backend.get(scope_key, idempotency_key)
             if cached is not None:
                 if cached.payload_hash == payload_hash:
                     logger.debug(
-                        "idempotency replay: principal=%s key_prefix=%s",
-                        principal_id,
+                        "idempotency replay: scope=%s key_prefix=%s",
+                        scope_key,
                         idempotency_key[:8],
                     )
                     return _clone_response(cached.response)
@@ -168,14 +176,14 @@ class IdempotencyStore:
             # operators, return the result, and accept that the next retry
             # with this key will re-execute.
             try:
-                await self.backend.put(principal_id, idempotency_key, entry)
+                await self.backend.put(scope_key, idempotency_key, entry)
             except Exception:
                 logger.warning(
-                    "Idempotency cache put failed for principal=%s key_prefix=%s — "
+                    "Idempotency cache put failed for scope=%s key_prefix=%s — "
                     "handler completed but a subsequent retry with this key will "
                     "re-execute rather than replay. This indicates an operational "
                     "issue with the idempotency backend.",
-                    principal_id,
+                    scope_key,
                     idempotency_key[:8],
                     exc_info=True,
                 )
@@ -184,7 +192,11 @@ class IdempotencyStore:
         return _wrapped
 
     def _prepare(self, params: Any, context: Any) -> tuple[str | None, str | None, dict[str, Any]]:
-        """Normalize inputs and extract the (principal, key, params_dict) tuple.
+        """Normalize inputs and extract the (scope_key, key, params_dict) tuple.
+
+        ``scope_key`` composes ``tenant_id`` (when present) with
+        ``caller_identity`` so cache entries are isolated across tenants even
+        if the seller's principal IDs are only unique within each tenant.
 
         Returns ``(None, None, params_dict)`` when idempotency doesn't apply
         (no caller identity or no key supplied). The caller falls through to
@@ -195,15 +207,15 @@ class IdempotencyStore:
         idempotency_key = params_dict.get("idempotency_key")
         if not isinstance(idempotency_key, str) or not idempotency_key:
             return None, None, params_dict
-        principal_id = _extract_principal_id(context)
-        if principal_id is None:
+        scope_key = _extract_scope_key(context)
+        if scope_key is None:
             # No caller identity: we can't safely scope the key. Spec requires
             # per-principal scope; anything else is a cross-principal replay
             # attack surface. Fall through to the handler (which will process
             # the request normally — no dedup, but no security regression).
             self._warn_missing_principal_once()
             return None, None, params_dict
-        return principal_id, idempotency_key, params_dict
+        return scope_key, idempotency_key, params_dict
 
     _missing_principal_warned: bool = False
 
@@ -244,37 +256,73 @@ def _to_dict(value: Any) -> dict[str, Any]:
     raise TypeError(f"Cannot coerce {type(value).__name__} to dict for idempotency caching")
 
 
-def _extract_principal_id(context: Any) -> str | None:
-    """Pull the principal id from a ToolContext or equivalent shape.
+# \x1e (ASCII 0x1e "record separator") is used between tenant and principal —
+# distinct from anything a tenant/principal id would contain, and the resulting
+# scope key stays opaque to callers. Downstream backends compare it as a plain
+# string; the separator is only meaningful internally.
+_SCOPE_SEP = "\x1e"
+
+
+def _extract_scope_key(context: Any) -> str | None:
+    """Pull the idempotency scope key from a ToolContext or equivalent shape.
+
+    The scope key composes ``tenant_id`` (when present) with
+    ``caller_identity`` so cache entries can't collide across tenants whose
+    principal IDs are only locally unique. Returns ``None`` when no caller
+    identity is available — idempotency then falls through to the handler
+    (no dedup, but no cross-principal leakage either).
 
     Accepts:
 
-    * :class:`adcp.server.base.ToolContext` with ``caller_identity``
-    * Any object exposing ``caller_identity`` / ``principal_id`` / ``principal.id``
+    * :class:`adcp.server.base.ToolContext` with ``caller_identity`` and
+      optional ``tenant_id``
+    * Any object exposing ``caller_identity`` / ``principal_id`` /
+      ``principal.id`` (and optional ``tenant_id``)
     * A dict with any of the above keys
     """
     if context is None:
         return None
+
+    principal_id: str | None = None
+    tenant_id: str | None = None
+
     for attr in ("caller_identity", "principal_id"):
         val = getattr(context, attr, None)
         if isinstance(val, str) and val:
-            return val
-    principal = getattr(context, "principal", None)
-    if principal is not None:
-        val = getattr(principal, "id", None)
-        if isinstance(val, str) and val:
-            return val
-    if isinstance(context, dict):
+            principal_id = val
+            break
+    if principal_id is None:
+        principal = getattr(context, "principal", None)
+        if principal is not None:
+            val = getattr(principal, "id", None)
+            if isinstance(val, str) and val:
+                principal_id = val
+    val = getattr(context, "tenant_id", None)
+    if isinstance(val, str) and val:
+        tenant_id = val
+
+    if principal_id is None and isinstance(context, dict):
         for key in ("caller_identity", "principal_id"):
             val = context.get(key)
             if isinstance(val, str) and val:
-                return val
-        principal = context.get("principal")
-        if isinstance(principal, dict):
-            val = principal.get("id")
+                principal_id = val
+                break
+        if principal_id is None:
+            principal = context.get("principal")
+            if isinstance(principal, dict):
+                val = principal.get("id")
+                if isinstance(val, str) and val:
+                    principal_id = val
+        if tenant_id is None:
+            val = context.get("tenant_id")
             if isinstance(val, str) and val:
-                return val
-    return None
+                tenant_id = val
+
+    if principal_id is None:
+        return None
+    if tenant_id is None:
+        return principal_id
+    return f"{tenant_id}{_SCOPE_SEP}{principal_id}"
 
 
 def _clone_response(response: dict[str, Any]) -> dict[str, Any]:

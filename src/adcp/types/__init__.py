@@ -27,37 +27,12 @@ Type Coercion:
 
 from __future__ import annotations
 
-import sys as _sys
-import types as _types
-
-# Deprecation shim for the removed ``format_category`` submodule.
-# ``FormatCategory`` was replaced by free-form ``FormatId`` strings in
-# AdCP 3.0. The top-level ``adcp`` package already raises a guided
-# ``ImportError`` for ``from adcp import FormatCategory``; this shim
-# covers the deeper submodule import path some downstream import sites
-# still use (``from adcp.types.generated_poc.enums.format_category import
-# FormatCategory``) so they get the same pointer instead of a bare
-# ``ModuleNotFoundError``. See MIGRATION_v3_to_v4.md.
-_FORMAT_CATEGORY_DEPRECATED_MSG = (
-    "adcp.types.generated_poc.enums.format_category was removed in AdCP 3.0. "
-    "Use free-form format-id strings (e.g. 'goog:video_responsive_ad') via "
-    "adcp.types.FormatId. See MIGRATION_v3_to_v4.md for details."
-)
-
-_format_category_shim = _types.ModuleType("adcp.types.generated_poc.enums.format_category")
-_format_category_shim.__doc__ = _FORMAT_CATEGORY_DEPRECATED_MSG
-
-
-def _format_category_getattr(name: str) -> object:
-    if name == "FormatCategory":
-        raise ImportError(_FORMAT_CATEGORY_DEPRECATED_MSG)
-    raise AttributeError(f"module {_format_category_shim.__name__!r} has no attribute {name!r}")
-
-
-_format_category_shim.__getattr__ = _format_category_getattr  # type: ignore[method-assign]
-_sys.modules.setdefault("adcp.types.generated_poc.enums.format_category", _format_category_shim)
-
 # Apply type coercion to generated types (must be imported before other types)
+# Note: the deprecation shim for the removed ``format_category`` submodule
+# lives as a real file at ``generated_poc/enums/format_category.py`` — no
+# sys.modules dance needed; Python's import system picks it up natively.
+# ``scripts/post_generate_fixes.py`` restores that file after codegen wipes
+# ``generated_poc/``.
 from adcp.types import (
     _ergonomic,  # noqa: F401
     aliases,  # noqa: F401

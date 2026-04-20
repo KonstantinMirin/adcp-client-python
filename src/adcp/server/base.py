@@ -100,9 +100,13 @@ class ToolContext:
     :param tenant_id: Multi-tenant agents may populate this with the tenant
         the request is scoped to. Typed as a first-class field so
         multi-tenant handlers don't have to smuggle it through ``metadata``.
-        A ``tenant_id`` + ``caller_identity`` pair uniquely identifies a
-        principal across tenants; idempotency keys remain scoped by
-        ``caller_identity`` alone (principals are unique within a tenant).
+        The server-side idempotency middleware composes the cache scope key
+        from ``(tenant_id, caller_identity)`` when ``tenant_id`` is set —
+        sellers whose principal IDs are only unique *within* a tenant (Okta
+        group-scoped, SCIM per-tenant, seller-internal employee IDs) **MUST**
+        populate this so cross-tenant response replay can't happen. When
+        unset, the scope collapses to ``caller_identity`` alone (safe for
+        single-tenant deployments).
     :param metadata: Open extension point for transport-specific or
         agent-specific fields (e.g. adapter instance handles, request
         headers, testing hooks). Downstream agents may subclass
