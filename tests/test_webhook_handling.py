@@ -202,6 +202,7 @@ class TestMCPWebhooks:
             operation_id="op_333",
             signature=signature,
             timestamp=header_timestamp,
+            raw_body=payload_json.encode("utf-8"),
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -292,6 +293,7 @@ class TestMCPWebhooks:
             operation_id="op_ts1",
             signature=signature,
             timestamp=header_timestamp,
+            raw_body=payload_json.encode("utf-8"),
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -1269,6 +1271,65 @@ class TestHMACTestVectors:
 
         assert headers["X-AdCP-Signature"] == expected
         assert headers["X-AdCP-Timestamp"] == str(timestamp)
+
+    @pytest.mark.asyncio
+    async def test_verify_fails_closed_when_raw_body_missing(self):
+        """Per adcontextprotocol/adcp#2478, verifiers MUST fail closed when
+        they cannot capture raw body bytes. Re-serializing a parsed payload
+        to reconstruct the signed bytes silently fails against signers whose
+        output differs in separator choice, key order, unicode escape policy,
+        or number formatting — masking the signer bugs the verifier should
+        surface.
+        """
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(config, webhook_secret="test_secret")
+
+        import hashlib
+        import hmac
+
+        valid_payload = {
+            "task_id": "t1",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_1", "buyer_ref": "ref_1", "packages": []},
+        }
+        # Compute what would have been a valid signature under the old
+        # re-serialize-from-payload fallback. Under the fail-closed rule,
+        # this must no longer verify — even with a real HMAC over a real
+        # serialization, if raw_body isn't captured, reject.
+        timestamp = str(int(time.time()))
+        body_bytes = json.dumps(valid_payload, separators=(",", ":")).encode("utf-8")
+        signed_message = f"{timestamp}.{body_bytes.decode('utf-8')}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        with pytest.raises(ADCPWebhookSignatureError):
+            await client.handle_webhook(
+                valid_payload,
+                task_type="create_media_buy",
+                operation_id="op_fail_closed",
+                signature=f"sha256={signature}",
+                timestamp=timestamp,
+                # raw_body intentionally omitted — MUST reject
+            )
+
+        # Same call WITH raw_body must succeed, proving the rejection is
+        # specifically about the missing raw_body, not the signature itself.
+        result = await client.handle_webhook(
+            valid_payload,
+            task_type="create_media_buy",
+            operation_id="op_fail_closed_ok",
+            signature=f"sha256={signature}",
+            timestamp=timestamp,
+            raw_body=body_bytes,
+        )
+        assert result.status == TaskStatus.COMPLETED
 
     def test_signer_matches_httpx_json_wire_form(self):
         """Signer must produce the same bytes httpx writes for `json=payload`.
