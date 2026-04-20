@@ -489,6 +489,95 @@ is the shape you can copy for your own middleware tests. Key pieces:
   guard.
 - Run the app's lifespan manually if you're exercising HTTP endpoints.
 
+## Testing hooks — storyboard + header-driven composition
+
+Two orthogonal test-runtime shapes exist in the wild. Compose them via
+the same `context_factory` you already wire for auth:
+
+**Storyboard-driven** (SDK-native). Sellers register a
+`TestControllerStore` and clients invoke the `comply_test_controller`
+skill with a scenario name (`force_media_buy_status`, `simulate_delivery`,
+etc.). This is the AdCP spec's compliance-test shape and what the
+conformance suite exercises.
+
+**Header-driven** (downstream pattern, e.g. salesagent's
+`AdCPTestContext.from_headers(request.headers)`). Clients pass HTTP
+headers like `X-AdCP-Test-Mode: slow` and the server adjusts mock
+behavior. Useful for scenario-wide state that doesn't fit the
+storyboard frame — "every update in this request returns pending",
+"this request simulates a delayed ad server".
+
+Before SDK 3.x you had to pick one. As of #227 both compose through
+the existing `context_factory`:
+
+```python
+from contextvars import ContextVar
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from adcp.server import RequestMetadata, ToolContext, create_mcp_server
+from adcp.server.test_controller import (
+    TestControllerStore,
+    register_test_controller,
+)
+
+# 1. ContextVar the HTTP middleware populates from request headers.
+_test_context: ContextVar[AdCPTestContext | None] = ContextVar(
+    "test_context", default=None
+)
+
+
+# 2. Starlette middleware reads headers into the ContextVar per request.
+class TestHeaderMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        _test_context.set(AdCPTestContext.from_headers(request.headers))
+        return await call_next(request)
+
+
+# 3. context_factory snapshots the ContextVar onto ToolContext.
+def build_context(meta: RequestMetadata) -> ToolContext:
+    return ToolContext(
+        metadata={"test_context": _test_context.get()},
+    )
+
+
+# 4. Store methods that want header-driven state accept `context`.
+class MyStore(TestControllerStore):
+    async def force_media_buy_status(
+        self,
+        media_buy_id: str,
+        status: str,
+        rejection_reason: str | None = None,
+        *,
+        context: ToolContext | None = None,
+    ) -> dict[str, Any]:
+        test_ctx = (context.metadata.get("test_context") if context else None)
+        if test_ctx and test_ctx.slow_ad_server:
+            status = "pending"  # header-driven behavior override
+        self.media_buys[media_buy_id] = status
+        return {"previous_state": "active", "current_state": status}
+
+
+# 5. Wire the same factory into both create_mcp_server AND
+#    register_test_controller. Regular handler methods and
+#    comply_test_controller both see the same context.
+mcp = create_mcp_server(MySeller(), name="my-agent", context_factory=build_context)
+register_test_controller(mcp, MyStore(), context_factory=build_context)
+
+app = mcp.streamable_http_app()
+app.add_middleware(TestHeaderMiddleware)
+```
+
+**Backward compatibility**: stores whose methods don't declare
+`context` keep working. The dispatcher inspects the signature and
+only passes `context` to methods that opt in. `serve(..., test_controller=...)`
+automatically threads `context_factory` through, so no extra wiring is
+needed if you use the `serve()` helper.
+
+**When to pick which**: the storyboard skill is for spec-level
+compliance tests (scenarios named by the AdCP test suite). Headers are
+for your own mock-ad-server behaviors that sit outside the spec.
+Sellers typically need both.
+
 ## What not to build
 
 - Don't write per-tool `@mcp.tool()` wrappers. `create_mcp_server()`
