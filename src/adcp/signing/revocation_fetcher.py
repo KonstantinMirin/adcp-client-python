@@ -260,7 +260,15 @@ def default_revocation_list_fetcher(
     transport = build_ip_pinned_transport(uri, allow_private=allow_private)
     headers = _build_fetch_headers(if_none_match=if_none_match, if_modified_since=if_modified_since)
     try:
-        with httpx.Client(transport=transport, timeout=timeout, follow_redirects=False) as client:
+        # trust_env=False keeps HTTPS_PROXY env vars from routing through
+        # an attacker-controlled proxy that would bypass the IP-pinned
+        # transport. See default_jwks_fetcher docstring.
+        with httpx.Client(
+            transport=transport,
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
+        ) as client:
             response = client.get(uri, headers=headers)
     except httpx.HTTPError as exc:
         raise RevocationListFetchError(f"revocation list GET {uri!r} failed: {exc}") from exc
@@ -289,13 +297,16 @@ async def async_default_revocation_list_fetcher(
     :class:`httpx.AsyncClient` so the event loop isn't blocked during
     the round-trip.
     """
-    from adcp.signing.ip_pinned_transport import abuild_ip_pinned_transport
+    from adcp.signing.ip_pinned_transport import build_async_ip_pinned_transport
 
-    transport = abuild_ip_pinned_transport(uri, allow_private=allow_private)
+    transport = build_async_ip_pinned_transport(uri, allow_private=allow_private)
     headers = _build_fetch_headers(if_none_match=if_none_match, if_modified_since=if_modified_since)
     try:
         async with httpx.AsyncClient(
-            transport=transport, timeout=timeout, follow_redirects=False
+            transport=transport,
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
         ) as client:
             response = await client.get(uri, headers=headers)
     except httpx.HTTPError as exc:

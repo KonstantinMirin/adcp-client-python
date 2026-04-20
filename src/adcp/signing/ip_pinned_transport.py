@@ -26,9 +26,11 @@ Naming conventions
 
 * Classes use the ``Async`` CapWords prefix
   (:class:`AsyncIpPinnedTransport`).
-* Free functions use the ``async_``/``a`` prefix
-  (:func:`abuild_ip_pinned_transport`) — matches the rest of this
-  sub-package.
+* Factory functions that BUILD an async transport use
+  ``build_async_*`` (:func:`build_async_ip_pinned_transport`). The
+  factory itself is synchronous — it returns an async transport.
+* The legacy ``abuild_*`` alias remains for backward-compatibility
+  but is deprecated.
 
 Dependency on httpcore internals
 --------------------------------
@@ -55,6 +57,7 @@ Mitigations:
 from __future__ import annotations
 
 import ssl
+import warnings
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
@@ -69,10 +72,7 @@ import httpx
 from httpcore._backends.anyio import AnyIOBackend as _AnyIOBackend
 from httpcore._backends.sync import SyncBackend as _SyncBackend
 
-from adcp.signing.jwks import (
-    DEFAULT_JWKS_TIMEOUT_SECONDS,
-    resolve_and_validate_host,
-)
+from adcp.signing.jwks import resolve_and_validate_host
 
 if TYPE_CHECKING:
     from httpcore._backends.base import SOCKET_OPTION
@@ -81,7 +81,8 @@ if TYPE_CHECKING:
 __all__ = [
     "AsyncIpPinnedTransport",
     "IpPinnedTransport",
-    "abuild_ip_pinned_transport",
+    "abuild_ip_pinned_transport",  # deprecated alias; remove next release
+    "build_async_ip_pinned_transport",
     "build_ip_pinned_transport",
 ]
 
@@ -95,17 +96,42 @@ def _build_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context()
 
 
+def _normalize_pin_host(host: str) -> str:
+    """Normalize a hostname for byte-equal comparison.
+
+    Lowercases, strips a single trailing dot, and IDNA-encodes so
+    Unicode hostnames compare equal to the punycode form httpx
+    passes to httpcore.
+    """
+    host = host.lower()
+    if host.endswith("."):
+        host = host[:-1]
+    try:
+        return host.encode("idna").decode("ascii")
+    except (UnicodeError, UnicodeEncodeError):
+        # Caller already stored the normalized form; fall through
+        # with the lowercased input so the comparison just fails
+        # cleanly instead of raising inside connect_tcp.
+        return host
+
+
 class _IpPinnedSyncBackend(_SyncBackend):
     """httpcore sync backend that connects by IP for one pinned hostname.
 
     Delegates to the parent's ``connect_tcp`` after swapping the
     host argument from the hostname to the pre-resolved IP. All
     other methods (``connect_unix_socket``) pass through unchanged.
+
+    **Fails closed on wrong-host reuse.** If the caller reuses this
+    transport for a DIFFERENT hostname (stored in a dict keyed by
+    origin, for example), we raise instead of falling through to an
+    unpinned ``connect_tcp`` — that fall-through is exactly the
+    TOCTOU the pin exists to close. Build a new transport per host.
     """
 
     def __init__(self, *, hostname: str, resolved_ip: str) -> None:
         super().__init__()
-        self._hostname = hostname.lower()
+        self._hostname = _normalize_pin_host(hostname)
         self._resolved_ip = resolved_ip
 
     def connect_tcp(
@@ -116,10 +142,15 @@ class _IpPinnedSyncBackend(_SyncBackend):
         local_address: str | None = None,
         socket_options: Iterable[SOCKET_OPTION] | None = None,
     ) -> Any:
-        if host.lower() == self._hostname:
-            host = self._resolved_ip
+        normalized = _normalize_pin_host(host)
+        if normalized != self._hostname:
+            raise RuntimeError(
+                f"IpPinnedTransport is pinned to {self._hostname!r}; "
+                f"refusing connect to {host!r} — build a new transport per host "
+                f"(see build_ip_pinned_transport)"
+            )
         return super().connect_tcp(
-            host=host,
+            host=self._resolved_ip,
             port=port,
             timeout=timeout,
             local_address=local_address,
@@ -128,11 +159,15 @@ class _IpPinnedSyncBackend(_SyncBackend):
 
 
 class _IpPinnedAsyncBackend(_AnyIOBackend):
-    """Async counterpart to :class:`_IpPinnedSyncBackend`."""
+    """Async counterpart to :class:`_IpPinnedSyncBackend`.
+
+    See :class:`_IpPinnedSyncBackend` for the fail-closed contract
+    on wrong-host reuse.
+    """
 
     def __init__(self, *, hostname: str, resolved_ip: str) -> None:
         super().__init__()
-        self._hostname = hostname.lower()
+        self._hostname = _normalize_pin_host(hostname)
         self._resolved_ip = resolved_ip
 
     async def connect_tcp(
@@ -143,10 +178,15 @@ class _IpPinnedAsyncBackend(_AnyIOBackend):
         local_address: str | None = None,
         socket_options: Iterable[SOCKET_OPTION] | None = None,
     ) -> Any:
-        if host.lower() == self._hostname:
-            host = self._resolved_ip
+        normalized = _normalize_pin_host(host)
+        if normalized != self._hostname:
+            raise RuntimeError(
+                f"AsyncIpPinnedTransport is pinned to {self._hostname!r}; "
+                f"refusing connect to {host!r} — build a new transport per host "
+                f"(see abuild_ip_pinned_transport)"
+            )
         return await super().connect_tcp(
-            host=host,
+            host=self._resolved_ip,
             port=port,
             timeout=timeout,
             local_address=local_address,
@@ -173,10 +213,18 @@ class IpPinnedTransport(httpx.HTTPTransport):
         resolved_ip: str,
         verify: bool = True,
         retries: int = 0,
+        max_connections: int | None = 100,
+        max_keepalive_connections: int | None = 20,
     ) -> None:
         if verify:
             ssl_context = _build_ssl_context()
         else:
+            warnings.warn(
+                "IpPinnedTransport constructed with verify=False — TLS cert "
+                "validation is disabled. Use only for tests against local "
+                "origins; NEVER in production.",
+                stacklevel=2,
+            )
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
@@ -184,13 +232,18 @@ class IpPinnedTransport(httpx.HTTPTransport):
         backend = _IpPinnedSyncBackend(hostname=hostname, resolved_ip=resolved_ip)
         # Build the ConnectionPool ourselves (rather than super().__init__
         # and then reassign ._pool) so the TLS + backend config is set
-        # up atomically and we don't briefly own a vanilla pool.
+        # up atomically and we don't briefly own a vanilla pool. Match
+        # httpx's default connection limits explicitly — httpcore's
+        # ConnectionPool default is 10/_ which would be a surprise
+        # downgrade for callers who expect httpx-shaped pool sizing.
         self._pool = httpcore.ConnectionPool(
             ssl_context=ssl_context,
             network_backend=backend,
             http1=True,
             http2=False,
             retries=retries,
+            max_connections=max_connections,
+            max_keepalive_connections=max_keepalive_connections,
         )
 
 
@@ -204,10 +257,18 @@ class AsyncIpPinnedTransport(httpx.AsyncHTTPTransport):
         resolved_ip: str,
         verify: bool = True,
         retries: int = 0,
+        max_connections: int | None = 100,
+        max_keepalive_connections: int | None = 20,
     ) -> None:
         if verify:
             ssl_context = _build_ssl_context()
         else:
+            warnings.warn(
+                "AsyncIpPinnedTransport constructed with verify=False — TLS "
+                "cert validation is disabled. Use only for tests against "
+                "local origins; NEVER in production.",
+                stacklevel=2,
+            )
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
@@ -219,6 +280,8 @@ class AsyncIpPinnedTransport(httpx.AsyncHTTPTransport):
             http1=True,
             http2=False,
             retries=retries,
+            max_connections=max_connections,
+            max_keepalive_connections=max_keepalive_connections,
         )
 
 
@@ -244,24 +307,40 @@ def build_ip_pinned_transport(
     return IpPinnedTransport(hostname=hostname, resolved_ip=resolved_ip, verify=verify)
 
 
+def build_async_ip_pinned_transport(
+    uri: str,
+    *,
+    allow_private: bool = False,
+    verify: bool = True,
+) -> AsyncIpPinnedTransport:
+    """Build an :class:`AsyncIpPinnedTransport` for ``uri``.
+
+    Resolve + validate run synchronously (``socket.getaddrinfo``); this
+    function itself is not awaitable. The returned transport plugs
+    into :class:`httpx.AsyncClient`.
+    """
+    hostname, resolved_ip, _port = resolve_and_validate_host(uri, allow_private=allow_private)
+    return AsyncIpPinnedTransport(hostname=hostname, resolved_ip=resolved_ip, verify=verify)
+
+
 def abuild_ip_pinned_transport(
     uri: str,
     *,
     allow_private: bool = False,
     verify: bool = True,
 ) -> AsyncIpPinnedTransport:
-    """Async counterpart to :func:`build_ip_pinned_transport`.
+    """Deprecated alias for :func:`build_async_ip_pinned_transport`.
 
-    The resolution itself is synchronous (``socket.getaddrinfo``);
-    this function is not actually awaitable, but the prefix matches
-    the rest of the sub-package's naming and the returned transport
-    is async.
+    The ``a``-prefix convention in this package means "awaitable
+    coroutine" (``averify_detached_jws`` etc.) — but this factory is
+    synchronous. Renamed during PR #206 review; kept for one release
+    so downstream callers have time to migrate.
     """
-    hostname, resolved_ip, _port = resolve_and_validate_host(uri, allow_private=allow_private)
-    return AsyncIpPinnedTransport(hostname=hostname, resolved_ip=resolved_ip, verify=verify)
-
-
-# Quiet the unused-import warning — DEFAULT_JWKS_TIMEOUT_SECONDS is
-# imported for re-export convenience and callers who want to pair the
-# transport with a matching timeout.
-_ = DEFAULT_JWKS_TIMEOUT_SECONDS
+    warnings.warn(
+        "abuild_ip_pinned_transport is deprecated; use "
+        "build_async_ip_pinned_transport (factory is sync, returns "
+        "an AsyncIpPinnedTransport).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return build_async_ip_pinned_transport(uri, allow_private=allow_private, verify=verify)

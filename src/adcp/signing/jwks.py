@@ -153,10 +153,29 @@ def resolve_and_validate_host(
     """
     parts = urlsplit(uri)
     if parts.scheme not in ("http", "https"):
-        raise SSRFValidationError(f"unsupported scheme for JWKS URI: {parts.scheme!r}")
+        raise SSRFValidationError(
+            f"unsupported URI scheme for SSRF-validated fetch: "
+            f"{parts.scheme!r} (only http/https allowed)"
+        )
     host = parts.hostname
     if host is None or host == "":
-        raise SSRFValidationError("JWKS URI has no host")
+        raise SSRFValidationError(f"URI has no host: {uri!r}")
+    # Strip a single trailing dot (FQDN form) so the pin matches what
+    # httpx / httpcore pass on subsequent requests. Without this, a
+    # caller who constructs with ``https://host./`` and then requests
+    # ``https://host/`` (or vice versa) sees the backend's
+    # hostname-match fail and falls through to unpinned resolution.
+    if host.endswith("."):
+        host = host[:-1]
+    # IDNA-encode so Unicode hostnames match the ASCII form httpx
+    # produces before calling into httpcore. urlsplit preserves the
+    # raw Unicode; httpx encodes it. A mismatch here breaks the
+    # hostname-match in the backend override and silently reopens
+    # the TOCTOU for IDN hosts.
+    try:
+        host = host.encode("idna").decode("ascii").lower()
+    except (UnicodeError, UnicodeEncodeError) as exc:
+        raise SSRFValidationError(f"URI host {host!r} is not IDNA-valid: {exc}") from exc
     port = parts.port if parts.port is not None else (443 if parts.scheme == "https" else 80)
 
     try:
@@ -221,14 +240,17 @@ def default_jwks_fetcher(uri: str, *, allow_private: bool = False) -> dict[str, 
     from adcp.signing.ip_pinned_transport import build_ip_pinned_transport
 
     transport = build_ip_pinned_transport(uri, allow_private=allow_private)
-    # follow_redirects=False is explicit: httpx already defaults to no-follow,
-    # but an attacker controlling the JWKS origin could 302 us to a
-    # hostname our pinned transport doesn't cover, re-introducing the
-    # TOCTOU. Keep redirects off.
+    # follow_redirects=False: a 302 to a different hostname would
+    # bypass the pin. trust_env=False: httpx's default True picks up
+    # HTTPS_PROXY / HTTP_PROXY from the environment and routes the
+    # request through an HTTPProxy pool that ignores our pinned
+    # backend entirely — a process with HTTPS_PROXY set to an
+    # attacker-controlled endpoint would bypass the TOCTOU fix.
     with httpx.Client(
         transport=transport,
         timeout=DEFAULT_JWKS_TIMEOUT_SECONDS,
         follow_redirects=False,
+        trust_env=False,
     ) as client:
         response = client.get(uri, headers={"Accept": "application/json"})
         response.raise_for_status()
@@ -322,13 +344,15 @@ async def async_default_jwks_fetcher(uri: str, *, allow_private: bool = False) -
     fetches AND the DNS-rebinding TOCTOU stays closed. Same SSRF +
     follow-redirects rules as the sync version.
     """
-    from adcp.signing.ip_pinned_transport import abuild_ip_pinned_transport
+    from adcp.signing.ip_pinned_transport import build_async_ip_pinned_transport
 
-    transport = abuild_ip_pinned_transport(uri, allow_private=allow_private)
+    transport = build_async_ip_pinned_transport(uri, allow_private=allow_private)
+    # See default_jwks_fetcher for why trust_env=False matters.
     async with httpx.AsyncClient(
         transport=transport,
         timeout=DEFAULT_JWKS_TIMEOUT_SECONDS,
         follow_redirects=False,
+        trust_env=False,
     ) as client:
         response = await client.get(uri, headers={"Accept": "application/json"})
         response.raise_for_status()

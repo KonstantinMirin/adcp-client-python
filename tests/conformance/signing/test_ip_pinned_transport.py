@@ -31,6 +31,7 @@ from adcp.signing import (
     IpPinnedTransport,
     SSRFValidationError,
     abuild_ip_pinned_transport,
+    build_async_ip_pinned_transport,
     build_ip_pinned_transport,
     resolve_and_validate_host,
 )
@@ -101,8 +102,44 @@ def test_resolve_defaults_http_port_80() -> None:
 
 
 def test_resolve_rejects_non_http_scheme() -> None:
-    with pytest.raises(SSRFValidationError, match="scheme"):
+    # Error wording is generic (not "JWKS URI") since the helper is
+    # used by revocation fetchers and custom-transport callers too.
+    with pytest.raises(SSRFValidationError, match="SSRF-validated"):
         resolve_and_validate_host("ftp://example.com/jwks")
+
+
+def test_resolve_normalizes_idn_hostname_to_punycode() -> None:
+    """Unicode hostnames get IDNA-encoded to the ASCII form httpx
+    passes to httpcore — otherwise the backend's hostname-match fails
+    and the pin silently falls through to the parent's unpinned
+    connect_tcp, reopening the TOCTOU.
+    """
+
+    # Patch getaddrinfo to short-circuit DNS for the IDN test host.
+    def fake_getaddrinfo(host, _port, *_args, **_kwargs):
+        # Must be called with the ASCII-encoded form.
+        assert (
+            host == "xn--mnchen-3ya.example"
+        ), f"resolve_and_validate_host should IDNA-encode; got {host!r}"
+        return [(socket.AF_INET, 0, 0, "", ("8.8.8.8", 0))]
+
+    with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
+        host, _ip, _port = resolve_and_validate_host("https://münchen.example/")
+    assert host == "xn--mnchen-3ya.example"
+
+
+def test_resolve_strips_trailing_dot_fqdn() -> None:
+    """An FQDN URL form (trailing dot) must compare equal to the
+    non-FQDN form so the backend pin fires either way.
+    """
+
+    def fake_getaddrinfo(host, _port, *_args, **_kwargs):
+        assert host == "example.com", f"trailing dot not stripped; got {host!r}"
+        return [(socket.AF_INET, 0, 0, "", ("8.8.8.8", 0))]
+
+    with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
+        host, _ip, _port = resolve_and_validate_host("https://example.com./jwks")
+    assert host == "example.com"
 
 
 def test_resolve_rejects_private_result_without_allow_private() -> None:
@@ -170,13 +207,26 @@ def test_async_transport_pins_first_resolution_against_rebinding() -> None:
         return [(socket.AF_INET, 0, 0, "", ("1.1.1.1", 0))]
 
     with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
-        transport = abuild_ip_pinned_transport("https://attacker.example/")
+        transport = build_async_ip_pinned_transport("https://attacker.example/")
 
     assert call_count["n"] == 1
     pool = transport._pool
     backend = pool._network_backend  # type: ignore[attr-defined]
     assert backend._resolved_ip == "1.1.1.1"
     assert backend._hostname == "attacker.example"
+
+
+def test_abuild_alias_emits_deprecation_warning() -> None:
+    """Legacy alias still works but warns. Remove after downstream
+    migration lands."""
+
+    def fake_getaddrinfo(_host, _port, *_args, **_kwargs):
+        return [(socket.AF_INET, 0, 0, "", ("8.8.8.8", 0))]
+
+    with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
+        with pytest.warns(DeprecationWarning, match="build_async_ip_pinned_transport"):
+            transport = abuild_ip_pinned_transport("https://example.com/")
+    assert isinstance(transport, AsyncIpPinnedTransport)
 
 
 def test_backend_connect_tcp_swaps_hostname_for_pinned_ip() -> None:
@@ -201,13 +251,30 @@ def test_backend_connect_tcp_swaps_hostname_for_pinned_ip() -> None:
     assert captured["port"] == 443
 
 
-def test_backend_connect_tcp_leaves_other_hosts_unchanged() -> None:
-    """If some code path reuses the transport for a DIFFERENT host
-    (misuse), the backend MUST NOT silently route it to the pinned IP.
+def test_backend_connect_tcp_refuses_wrong_host() -> None:
+    """Reuse of a transport for a DIFFERENT host MUST raise.
+
+    Falling through to the parent's unpinned ``connect_tcp`` would
+    silently re-open the DNS-rebinding TOCTOU — exactly what the
+    pin exists to close. Agents observed caching one transport in
+    a dict keyed by base URL and reusing it, which would hit this
+    path in production.
     """
     from adcp.signing.ip_pinned_transport import _IpPinnedSyncBackend
 
     backend = _IpPinnedSyncBackend(hostname="attacker.example", resolved_ip="198.51.100.40")
+    with pytest.raises(RuntimeError, match="pinned to 'attacker.example'"):
+        backend.connect_tcp(host="other.example", port=443)
+
+
+def test_backend_accepts_trailing_dot_fqdn_form() -> None:
+    """A caller pinning ``host.`` and connecting to ``host`` (or vice
+    versa) must still fire the pin — trailing dots are stripped on
+    both sides.
+    """
+    from adcp.signing.ip_pinned_transport import _IpPinnedSyncBackend
+
+    backend = _IpPinnedSyncBackend(hostname="attacker.example.", resolved_ip="198.51.100.45")
     captured = {}
 
     def _fake_parent_connect(self, *, host, port, timeout, local_address, socket_options):
@@ -215,9 +282,29 @@ def test_backend_connect_tcp_leaves_other_hosts_unchanged() -> None:
         return object()
 
     with patch.object(SyncBackend, "connect_tcp", _fake_parent_connect):
-        backend.connect_tcp(host="other.example", port=443)
+        backend.connect_tcp(host="attacker.example", port=443)
+    assert captured["host"] == "198.51.100.45"
 
-    assert captured["host"] == "other.example"
+
+def test_backend_accepts_idn_punycode_form() -> None:
+    """httpx IDNA-encodes Unicode hostnames before calling httpcore.
+    The backend stored the punycode form, so the comparison against
+    a punycode input must succeed and the pin must fire.
+    """
+    from adcp.signing.ip_pinned_transport import _IpPinnedSyncBackend
+
+    # Pin the Unicode form; _normalize_pin_host encodes it to punycode.
+    backend = _IpPinnedSyncBackend(hostname="münchen.example", resolved_ip="198.51.100.55")
+    captured = {}
+
+    def _fake_parent_connect(self, *, host, port, timeout, local_address, socket_options):
+        captured["host"] = host
+        return object()
+
+    with patch.object(SyncBackend, "connect_tcp", _fake_parent_connect):
+        # httpx passes the punycode form.
+        backend.connect_tcp(host="xn--mnchen-3ya.example", port=443)
+    assert captured["host"] == "198.51.100.55"
 
 
 def test_backend_hostname_match_is_case_insensitive() -> None:
@@ -275,6 +362,6 @@ def test_transport_type_is_httpx_httptransport() -> None:
     assert isinstance(transport, httpx.HTTPTransport)
     assert isinstance(transport, IpPinnedTransport)
 
-    atransport = abuild_ip_pinned_transport("https://example.com/")
+    atransport = build_async_ip_pinned_transport("https://example.com/")
     assert isinstance(atransport, httpx.AsyncHTTPTransport)
     assert isinstance(atransport, AsyncIpPinnedTransport)
