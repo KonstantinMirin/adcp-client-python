@@ -117,7 +117,13 @@ def _serve_mcp(
     test_controller: TestControllerStore | None,
 ) -> None:
     """Start an MCP server."""
-    mcp = create_mcp_server(handler, name=name, port=port, instructions=instructions)
+    mcp = create_mcp_server(
+        handler,
+        name=name,
+        port=port,
+        instructions=instructions,
+        include_test_controller=test_controller is not None,
+    )
 
     if test_controller is not None:
         from adcp.server.test_controller import register_test_controller
@@ -151,6 +157,7 @@ def create_mcp_server(
     name: str = "adcp-agent",
     port: int | None = None,
     instructions: str | None = None,
+    include_test_controller: bool = False,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -162,6 +169,13 @@ def create_mcp_server(
         name: Server name.
         port: Port to listen on.
         instructions: Optional system instructions.
+        include_test_controller: When False (default), skip registering
+            ``comply_test_controller`` as a handler tool. Sellers who want
+            compliance-testing support should pass ``test_controller=`` to
+            :func:`serve`, which registers a store-backed implementation
+            via :func:`register_test_controller` and sets this flag
+            implicitly. Registering the handler stub unconditionally would
+            advertise a tool the seller didn't opt into.
 
     Returns:
         A configured FastMCP server instance. Call mcp.run() to start.
@@ -174,15 +188,22 @@ def create_mcp_server(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
     mcp = FastMCP(name, instructions=instructions, port=resolved_port)
-    _register_handler_tools(mcp, handler)
+    _register_handler_tools(mcp, handler, include_test_controller=include_test_controller)
     return mcp
 
 
-def _register_handler_tools(mcp: Any, handler: ADCPHandler) -> None:
+def _register_handler_tools(
+    mcp: Any, handler: ADCPHandler, *, include_test_controller: bool = False
+) -> None:
     """Register all ADCP tools from a handler onto a FastMCP server."""
     tool_defs = get_tools_for_handler(handler)
     for tool_def in tool_defs:
         tool_name = tool_def["name"]
+        # Gate comply_test_controller on explicit opt-in. The handler base
+        # class has a not-supported stub; registering it as an MCP tool
+        # would advertise compliance-testing the seller didn't declare.
+        if tool_name == "comply_test_controller" and not include_test_controller:
+            continue
         description = tool_def.get("description", "")
         input_schema = tool_def.get("inputSchema", {"type": "object", "properties": {}})
         caller = create_tool_caller(handler, tool_name)

@@ -63,10 +63,15 @@ class ADCPAgentExecutor(AgentExecutor):
         self._handler = handler
         self._tool_callers: dict[str, Any] = {}
 
-        # Build tool callers for all tools this handler supports
+        # Build tool callers for all tools this handler supports.
+        # Skip comply_test_controller unless the seller passed a
+        # TestControllerStore; otherwise we would advertise a skill
+        # backed only by the handler's not-supported stub.
         tool_defs = get_tools_for_handler(handler)
         for tool_def in tool_defs:
             name = tool_def["name"]
+            if name == "comply_test_controller" and test_controller is None:
+                continue
             self._tool_callers[name] = create_tool_caller(handler, name)
 
         if test_controller is not None:
@@ -87,22 +92,16 @@ class ADCPAgentExecutor(AgentExecutor):
 
         self._tool_callers["comply_test_controller"] = _call_test_controller
 
-    async def execute(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> None:
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Execute an ADCP skill from an incoming A2A message."""
         skill_name, params = self._parse_request(context)
 
         if skill_name is None:
-            await self._send_error(
-                event_queue, context, "No skill specified in message"
-            )
+            await self._send_error(event_queue, context, "No skill specified in message")
             return
 
         if skill_name not in self._tool_callers:
-            await self._send_error(
-                event_queue, context, f"Unknown skill: {skill_name}"
-            )
+            await self._send_error(event_queue, context, f"Unknown skill: {skill_name}")
             return
 
         tool_context = _tool_context_from_request(context)
@@ -115,19 +114,13 @@ class ADCPAgentExecutor(AgentExecutor):
             # transport-errors.mdx §A2A Binding, plus a human-readable text
             # part. The JSON-RPC channel is reserved for transport-level
             # errors (auth rejected, rate-limited pre-dispatch).
-            logger.info(
-                "AdCP application error for skill %s: %s", skill_name, exc
-            )
+            logger.info("AdCP application error for skill %s: %s", skill_name, exc)
             await self._send_adcp_error(event_queue, context, exc)
         except Exception:
             logger.exception("Error executing skill %s", skill_name)
-            await self._send_error(
-                event_queue, context, f"Skill execution failed: {skill_name}"
-            )
+            await self._send_error(event_queue, context, f"Skill execution failed: {skill_name}")
 
-    async def cancel(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> None:
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """ADCP operations are synchronous; cancellation sets state to canceled."""
         event = _make_task(
             context,
@@ -140,9 +133,7 @@ class ADCPAgentExecutor(AgentExecutor):
     # Message parsing
     # ------------------------------------------------------------------
 
-    def _parse_request(
-        self, context: RequestContext
-    ) -> tuple[str | None, dict[str, Any]]:
+    def _parse_request(self, context: RequestContext) -> tuple[str | None, dict[str, Any]]:
         """Extract skill name and parameters from the A2A message.
 
         Supports two formats:
@@ -173,9 +164,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
         return None, {}
 
-    def _parse_text_request(
-        self, text: str
-    ) -> tuple[str | None, dict[str, Any]]:
+    def _parse_text_request(self, text: str) -> tuple[str | None, dict[str, Any]]:
         """Best-effort parse of a text request for skill + params."""
         try:
             data = json.loads(text)
@@ -354,8 +343,16 @@ def _build_agent_card(
     version: str = "1.0.0",
     extra_skills: list[AgentSkill] | None = None,
 ) -> AgentCard:
-    """Build an A2A AgentCard from an ADCPHandler's tool definitions."""
+    """Build an A2A AgentCard from an ADCPHandler's tool definitions.
+
+    ``comply_test_controller`` is excluded from the card skills list unless
+    the caller supplied it via ``extra_skills`` (which is how
+    :func:`create_a2a_server` opts in when a ``TestControllerStore`` is
+    wired). Extra skills are deduped by id so advertising the test
+    controller never produces two entries.
+    """
     tool_defs = get_tools_for_handler(handler)
+    extra_ids = {s.id for s in extra_skills} if extra_skills else set()
 
     skills = [
         AgentSkill(
@@ -365,6 +362,7 @@ def _build_agent_card(
             tags=["adcp"],
         )
         for td in tool_defs
+        if td["name"] != "comply_test_controller" and td["name"] not in extra_ids
     ]
 
     if extra_skills:
