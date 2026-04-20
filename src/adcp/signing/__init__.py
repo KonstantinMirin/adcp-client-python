@@ -17,6 +17,36 @@ The core names you'll reach for (everything else is for advanced use):
 * :class:`SigningConfig` — bundle key material for auto-signing via
   ``ADCPClient(signing=...)``
 
+**Provisioning** (new keypairs):
+
+* :func:`generate_signing_keypair` — programmatic counterpart to the
+  ``adcp-keygen`` CLI. Returns ``(pem_bytes, public_jwk)`` so tests,
+  provisioning scripts, and any non-shell context can mint keys
+  without spawning a subprocess. Both paths share the same spine — a
+  PEM generated here is indistinguishable from one the CLI wrote.
+
+  .. code-block:: python
+
+      import os
+
+      from adcp.signing import generate_signing_keypair
+
+      # CLI equivalence:
+      #   adcp-keygen --alg ed25519 --purpose webhook-signing
+      pem, public_jwk = generate_signing_keypair(
+          alg="ed25519", purpose="webhook-signing"
+      )
+
+      # Mode 0600, O_EXCL so an existing file is never overwritten.
+      # Path.write_bytes inherits the process umask (often 0644 =
+      # world-readable) — don't use it for private-key material.
+      fd = os.open("webhook-key.pem", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+      try:
+          os.write(fd, pem)
+      finally:
+          os.close(fd)
+      publish_to_jwks_uri(public_jwk)
+
 **Sellers** (verifying incoming requests):
 
 * :func:`verify_starlette_request` / :func:`verify_flask_request` —
@@ -145,6 +175,7 @@ from adcp.signing.jws import (
     verify_detached_jws,
     verify_jws_document,
 )
+from adcp.signing.keygen import generate_signing_keypair
 from adcp.signing.middleware import (
     unauthorized_response_headers,
     verify_flask_request,
@@ -286,6 +317,7 @@ __all__ = [
     "default_revocation_list_fetcher",
     "extract_signature_bytes",
     "format_signature_header",
+    "generate_signing_keypair",
     "load_private_key_pem",
     "operation_needs_signing",
     "parse_signature_input_header",
