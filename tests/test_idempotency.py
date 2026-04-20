@@ -337,7 +337,7 @@ class TestStrictIdempotencyCapabilityCheck:
         assert client.adapter.idempotency_capability_check is None
 
     @pytest.mark.asyncio
-    async def test_strict_raises_when_ttl_missing(self) -> None:
+    async def test_strict_raises_when_idempotency_missing(self) -> None:
         cfg = _cfg()
         client = ADCPClient(cfg, strict_idempotency=True)
         caps = MagicMock()
@@ -347,11 +347,31 @@ class TestStrictIdempotencyCapabilityCheck:
                 await client._ensure_idempotency_capability()
 
     @pytest.mark.asyncio
-    async def test_strict_passes_when_ttl_declared(self) -> None:
+    async def test_strict_raises_when_supported_false(self) -> None:
         cfg = _cfg()
         client = ADCPClient(cfg, strict_idempotency=True)
         caps = MagicMock()
-        caps.adcp = MagicMock(idempotency=MagicMock(replay_ttl_seconds=86400))
+        caps.adcp = MagicMock(idempotency=MagicMock(supported=False, replay_ttl_seconds=86400))
+        with patch.object(client, "fetch_capabilities", AsyncMock(return_value=caps)):
+            with pytest.raises(IdempotencyUnsupportedError):
+                await client._ensure_idempotency_capability()
+
+    @pytest.mark.asyncio
+    async def test_strict_raises_when_supported_true_but_ttl_missing(self) -> None:
+        cfg = _cfg()
+        client = ADCPClient(cfg, strict_idempotency=True)
+        caps = MagicMock()
+        caps.adcp = MagicMock(idempotency=MagicMock(supported=True, replay_ttl_seconds=None))
+        with patch.object(client, "fetch_capabilities", AsyncMock(return_value=caps)):
+            with pytest.raises(IdempotencyUnsupportedError):
+                await client._ensure_idempotency_capability()
+
+    @pytest.mark.asyncio
+    async def test_strict_passes_when_supported_and_ttl_declared(self) -> None:
+        cfg = _cfg()
+        client = ADCPClient(cfg, strict_idempotency=True)
+        caps = MagicMock()
+        caps.adcp = MagicMock(idempotency=MagicMock(supported=True, replay_ttl_seconds=86400))
         with patch.object(client, "fetch_capabilities", AsyncMock(return_value=caps)):
             await client._ensure_idempotency_capability()
             # Second call is a no-op (cached)
@@ -371,7 +391,7 @@ class TestStrictIdempotencyCapabilityCheck:
         cfg = _cfg()
         client = ADCPClient(cfg, strict_idempotency=True)
         caps = MagicMock()
-        caps.adcp = MagicMock(idempotency=MagicMock(replay_ttl_seconds=86400))
+        caps.adcp = MagicMock(idempotency=MagicMock(supported=True, replay_ttl_seconds=86400))
         fetch = AsyncMock(return_value=caps)
         with patch.object(client, "fetch_capabilities", fetch):
             await client._ensure_idempotency_capability()

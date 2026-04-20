@@ -386,12 +386,15 @@ class ADCPClient:
         self.simple = SimpleAPI(self)
 
     async def _ensure_idempotency_capability(self) -> None:
-        """Verify the seller declared idempotency.replay_ttl_seconds in capabilities.
+        """Verify the seller positively declares idempotency support in capabilities.
 
         Called before every mutating request when ``strict_idempotency=True``.
         Fetches capabilities on first invocation; subsequent calls are no-ops
         once the declaration has been observed. Raises
-        ``IdempotencyUnsupportedError`` when the seller is missing the field.
+        ``IdempotencyUnsupportedError`` when ``adcp.idempotency`` is missing,
+        declares ``supported=False`` (seller does not dedupe — naive retry
+        would double-process), or declares ``supported=True`` without a
+        ``replay_ttl_seconds`` window.
 
         Sets ``_idempotency_capability_verified = True`` BEFORE calling
         ``fetch_capabilities`` so any recursive dispatch through the adapter
@@ -409,14 +412,31 @@ class ADCPClient:
             caps = await self.fetch_capabilities()
             adcp_info = getattr(caps, "adcp", None)
             idempotency_info = getattr(adcp_info, "idempotency", None) if adcp_info else None
-            ttl = (
-                getattr(idempotency_info, "replay_ttl_seconds", None) if idempotency_info else None
-            )
 
+            if idempotency_info is None:
+                raise IdempotencyUnsupportedError(
+                    agent_id=self.agent_config.id,
+                    agent_uri=self.agent_config.agent_uri,
+                    reason="seller did not declare adcp.idempotency",
+                )
+
+            supported = getattr(idempotency_info, "supported", None)
+            if supported is False:
+                raise IdempotencyUnsupportedError(
+                    agent_id=self.agent_config.id,
+                    agent_uri=self.agent_config.agent_uri,
+                    reason="seller declared adcp.idempotency.supported=false",
+                )
+
+            ttl = getattr(idempotency_info, "replay_ttl_seconds", None)
             if ttl is None:
                 raise IdempotencyUnsupportedError(
                     agent_id=self.agent_config.id,
                     agent_uri=self.agent_config.agent_uri,
+                    reason=(
+                        "seller declared adcp.idempotency.supported=true but omitted "
+                        "replay_ttl_seconds"
+                    ),
                 )
         except Exception:
             self._idempotency_capability_verified = False
