@@ -328,10 +328,38 @@ def list_creatives_response(
 
     Each creative should include: creative_id, name, format_id, status.
     Matches ListCreativesResponse schema.
+
+    Timestamp defaults: every Creative item in the spec requires
+    ``created_date`` and ``updated_date`` (ISO 8601 UTC). For any dict
+    item that omits either field, this helper fills it with the current
+    UTC timestamp (``datetime.now(timezone.utc).isoformat()``). Both
+    fields default to the same value when neither is provided, which
+    matches the intuitive meaning for a freshly-listed item. Explicit
+    caller-provided values are always preserved. Pydantic model items
+    are passed through ``_serialize`` unchanged — callers using typed
+    Creative models should set timestamps on the model.
     """
-    count = len(creatives)
+    now = datetime.now(timezone.utc).isoformat()
+    filled: list[Any] = []
+    for item in creatives:
+        if isinstance(item, dict):
+            has_created = "created_date" in item and item["created_date"] is not None
+            has_updated = "updated_date" in item and item["updated_date"] is not None
+            if has_created and has_updated:
+                filled.append(item)
+                continue
+            patched = dict(item)
+            if not has_created:
+                patched["created_date"] = now
+            if not has_updated:
+                patched["updated_date"] = now
+            filled.append(patched)
+        else:
+            filled.append(item)
+
+    count = len(filled)
     return {
-        "creatives": _serialize(creatives),
+        "creatives": _serialize(filled),
         "pagination": pagination or {"total": count, "has_more": False},
         "query_summary": {"total_results": count, "total_matching": count, "returned": count},
         "sandbox": sandbox,

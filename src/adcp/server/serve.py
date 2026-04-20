@@ -107,6 +107,43 @@ def serve(
         raise ValueError(f"Unknown transport {transport!r}. Valid: {valid}")
 
 
+def _bind_reusable_socket(host: str, port: int) -> Any:
+    """Create a listening socket with SO_REUSEADDR set.
+
+    Without ``SO_REUSEADDR``, rapid restarts (common during tests and
+    storyboard runs) hit ``TIME_WAIT`` on the prior socket and the new
+    process hangs on bind for up to 2×MSL (roughly a minute on macOS).
+    Setting ``SO_REUSEADDR`` on the listening socket is the standard,
+    portable fix on Linux and macOS; it is safe because listeners are
+    unique by (addr, port) and the kernel still rejects a second live
+    listener on the same tuple.
+
+    On Windows ``SO_REUSEADDR`` has different semantics (it allows
+    hijacking a live listener). FastMCP's streamable-http and uvicorn
+    support Windows, so we guard with ``SO_EXCLUSIVEADDRUSE`` there —
+    but since the ADCP server primarily targets Linux/macOS and the
+    Windows path is rarely exercised, the guard is best-effort.
+    """
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if os.name == "nt":
+            # Windows: prevent hijacking; don't set SO_REUSEADDR.
+            exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+            if exclusive is not None:
+                sock.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        else:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, port))
+        sock.listen(128)
+        sock.set_inheritable(True)
+    except Exception:
+        sock.close()
+        raise
+    return sock
+
+
 def _serve_mcp(
     handler: ADCPHandler,
     *,
@@ -130,7 +167,45 @@ def _serve_mcp(
 
         register_test_controller(mcp, test_controller)
 
-    mcp.run(transport=transport)
+    if transport in ("streamable-http", "sse"):
+        _run_mcp_http(mcp, transport=transport)
+    else:
+        # stdio — no listening socket, nothing to configure.
+        mcp.run(transport=transport)
+
+
+def _run_mcp_http(mcp: Any, *, transport: str) -> None:
+    """Run FastMCP's HTTP transports with a pre-bound SO_REUSEADDR socket.
+
+    FastMCP builds its own ``uvicorn.Server(config).serve()`` inside
+    ``run_*_async`` and does not expose hooks to pass a pre-bound socket,
+    so we reproduce the minimal setup here and hand uvicorn the socket
+    directly via ``Server.serve([sock])``. This keeps the public surface
+    (``serve()``) unchanged while fixing the readiness-flake on reruns.
+    """
+    import anyio
+    import uvicorn
+
+    host = getattr(mcp.settings, "host", "0.0.0.0")
+    port = int(mcp.settings.port)
+    log_level = getattr(mcp.settings, "log_level", "INFO").lower()
+
+    if transport == "streamable-http":
+        app = mcp.streamable_http_app()
+    else:
+        app = mcp.sse_app()
+
+    sock = _bind_reusable_socket(host, port)
+    try:
+        config = uvicorn.Config(app, log_level=log_level)
+        server = uvicorn.Server(config)
+
+        async def _serve() -> None:
+            await server.serve(sockets=[sock])
+
+        anyio.run(_serve)
+    finally:
+        sock.close()
 
 
 def _serve_a2a(
@@ -148,7 +223,18 @@ def _serve_a2a(
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
     app = create_a2a_server(handler, name=name, port=resolved_port, test_controller=test_controller)
-    uvicorn.run(app, host="0.0.0.0", port=resolved_port)
+    sock = _bind_reusable_socket("0.0.0.0", resolved_port)
+    try:
+        config = uvicorn.Config(app)
+        server = uvicorn.Server(config)
+        import anyio
+
+        async def _serve() -> None:
+            await server.serve(sockets=[sock])
+
+        anyio.run(_serve)
+    finally:
+        sock.close()
 
 
 def create_mcp_server(

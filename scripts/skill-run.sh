@@ -51,5 +51,59 @@ set +e
 npx -y -p @adcp/client adcp storyboard run "$URL" "$STORY" --json >"$OUT"
 RC=$?
 set -e
-[[ "$RC" == 0 ]] && echo "[run] PASS — $OUT" || echo "[run] FAIL (rc=$RC) — $OUT"
-exit "$RC"
+
+# The storyboard runner exits 0 even on partial/failing overall_status, so
+# the process return code alone is not enough to tell a clean pass from a
+# buried failure. Parse the JSON it writes to distinguish passing / partial
+# / failing, and surface that in the final log line.
+STATUS=""
+if [[ -s "$OUT" ]]; then
+  STATUS=$(python3 -c '
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        doc = json.load(f)
+except Exception:
+    sys.exit(0)
+overall = doc.get("overall_status") or ""
+summary = doc.get("summary") or {}
+passed = summary.get("tracks_passed", 0)
+partial = summary.get("tracks_partial", 0)
+failed = summary.get("tracks_failed", 0)
+total = passed + partial + failed + summary.get("tracks_skipped", 0)
+headline = summary.get("headline") or ""
+print(f"{overall}\t{passed}\t{partial}\t{failed}\t{total}\t{headline}")
+' "$OUT" 2>/dev/null || echo "")
+fi
+
+if [[ -z "$STATUS" ]]; then
+  echo "[run] FAIL: no storyboard output — $OUT"
+  exit 1
+fi
+
+OVERALL=$(printf '%s' "$STATUS" | cut -f1)
+PASSED=$(printf '%s' "$STATUS" | cut -f2)
+PARTIAL=$(printf '%s' "$STATUS" | cut -f3)
+FAILED=$(printf '%s' "$STATUS" | cut -f4)
+TOTAL=$(printf '%s' "$STATUS" | cut -f5)
+HEADLINE=$(printf '%s' "$STATUS" | cut -f6)
+
+case "$OVERALL" in
+  passing)
+    echo "[run] PASS — $OUT"
+    exit 0
+    ;;
+  partial)
+    echo "[run] WARN: partial — $PASSED of $TOTAL tracks passing ($PARTIAL partial, $FAILED failed) — $OUT"
+    exit 0
+    ;;
+  failing)
+    REASON="${HEADLINE:-overall_status=failing}"
+    echo "[run] FAIL: $REASON — $OUT"
+    exit 1
+    ;;
+  *)
+    echo "[run] FAIL: no storyboard output — $OUT"
+    exit 1
+    ;;
+esac

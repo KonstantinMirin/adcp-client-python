@@ -22,9 +22,9 @@ from adcp.server.responses import (
     products_response,
     signals_response,
     sync_accounts_response,
-    sync_governance_response,
     sync_catalogs_response,
     sync_creatives_response,
+    sync_governance_response,
     update_media_buy_response,
 )
 from adcp.server.test_controller import (
@@ -33,7 +33,6 @@ from adcp.server.test_controller import (
     _handle_test_controller,
     _list_scenarios,
 )
-
 
 # ============================================================================
 # Response builder tests — match actual AdCP spec schemas
@@ -153,7 +152,9 @@ class TestDeliveryResponse:
 
 class TestCreativeFormatsResponse:
     def test_basic(self):
-        formats = [{"format_id": {"agent_url": "http://localhost", "id": "d300"}, "name": "Display"}]
+        formats = [
+            {"format_id": {"agent_url": "http://localhost", "id": "d300"}, "name": "Display"}
+        ]
         result = creative_formats_response(formats)
         assert result["formats"] == formats
         assert result["sandbox"] is True
@@ -173,9 +174,46 @@ class TestListCreativesResponse:
     def test_basic(self):
         creatives = [{"creative_id": "c1", "name": "Test", "status": "accepted"}]
         result = list_creatives_response(creatives)
-        assert result["creatives"] == creatives
+        # Helper injects timestamps when caller omits them; identity compare
+        # no longer holds, but payload shape and original fields do.
+        assert len(result["creatives"]) == 1
+        assert result["creatives"][0]["creative_id"] == "c1"
         assert result["pagination"]["total"] == 1
         assert result["query_summary"]["total_results"] == 1
+
+    def test_fills_missing_timestamps(self):
+        """Caller omits created_date/updated_date — helper fills both with now()."""
+        import re
+
+        creatives = [{"creative_id": "c1", "name": "Test", "status": "accepted"}]
+        result = list_creatives_response(creatives)
+        item = result["creatives"][0]
+        assert "created_date" in item
+        assert "updated_date" in item
+        # ISO 8601 with timezone offset.
+        iso_re = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(\+\d{2}:\d{2}|Z)$")
+        assert iso_re.match(item["created_date"]), item["created_date"]
+        assert iso_re.match(item["updated_date"]), item["updated_date"]
+        # When both are defaulted in a single call, they share the same value.
+        assert item["created_date"] == item["updated_date"]
+
+    def test_preserves_caller_provided_timestamps(self):
+        """Explicit timestamps are preserved verbatim."""
+        created = "2024-01-15T10:00:00+00:00"
+        updated = "2024-02-20T15:30:00+00:00"
+        creatives = [
+            {
+                "creative_id": "c1",
+                "name": "Test",
+                "status": "accepted",
+                "created_date": created,
+                "updated_date": updated,
+            }
+        ]
+        result = list_creatives_response(creatives)
+        item = result["creatives"][0]
+        assert item["created_date"] == created
+        assert item["updated_date"] == updated
 
 
 class TestPreviewCreativeResponse:
@@ -284,7 +322,8 @@ class TestTestControllerError:
 
         store = ErrorStore()
         result = await _handle_test_controller(
-            store, {"scenario": "force_account_status", "params": {"account_id": "x", "status": "active"}}
+            store,
+            {"scenario": "force_account_status", "params": {"account_id": "x", "status": "active"}},
         )
         assert result["success"] is False
         assert result["error"] == "NOT_FOUND"
@@ -296,12 +335,17 @@ class TestTestControllerError:
             async def force_media_buy_status(
                 self, media_buy_id: str, status: str, rejection_reason: str | None = None
             ) -> dict[str, Any]:
-                raise TestControllerError("INVALID_TRANSITION", "Cannot transition", current_state="completed")
+                raise TestControllerError(
+                    "INVALID_TRANSITION", "Cannot transition", current_state="completed"
+                )
 
         store = ErrorStore()
         result = await _handle_test_controller(
             store,
-            {"scenario": "force_media_buy_status", "params": {"media_buy_id": "mb-1", "status": "active"}},
+            {
+                "scenario": "force_media_buy_status",
+                "params": {"media_buy_id": "mb-1", "status": "active"},
+            },
         )
         assert result["error"] == "INVALID_TRANSITION"
         assert result["current_state"] == "completed"
@@ -321,7 +365,10 @@ class TestHandleTestController:
         store = MinimalStore()
         result = await _handle_test_controller(
             store,
-            {"scenario": "force_account_status", "params": {"account_id": "acct-1", "status": "suspended"}},
+            {
+                "scenario": "force_account_status",
+                "params": {"account_id": "acct-1", "status": "suspended"},
+            },
         )
         assert result["success"] is True
         assert result["current_state"] == "suspended"
@@ -388,9 +435,8 @@ class TestRegisterTestController:
 class TestServeWithTestController:
     def test_serve_accepts_test_controller(self):
         """Verify serve() signature accepts test_controller kwarg."""
-        from adcp.server.serve import create_mcp_server
-
         from adcp.server import ADCPHandler
+        from adcp.server.serve import create_mcp_server
 
         class TestHandler(ADCPHandler):
             async def get_adcp_capabilities(self, params, context=None):
@@ -400,6 +446,7 @@ class TestServeWithTestController:
         mcp = create_mcp_server(TestHandler(), name="test")
         store = MinimalStore()
         from adcp.server.test_controller import register_test_controller
+
         register_test_controller(mcp, store)
 
         tool_names = [t.name for t in mcp._tool_manager.list_tools()]
@@ -435,5 +482,11 @@ class TestPydanticSchemas:
     def test_key_tools_have_pydantic_schemas(self):
         from adcp.server.mcp_tools import _PYDANTIC_SCHEMAS
 
-        for tool in ["get_products", "create_media_buy", "sync_accounts", "get_signals", "activate_signal"]:
+        for tool in [
+            "get_products",
+            "create_media_buy",
+            "sync_accounts",
+            "get_signals",
+            "activate_signal",
+        ]:
             assert tool in _PYDANTIC_SCHEMAS, f"{tool} missing Pydantic schema"
