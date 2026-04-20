@@ -14,6 +14,9 @@ test proves the composition path works end-to-end:
    (``contextvars.ContextVar``).
 4. Tools in :data:`adcp.server.DISCOVERY_TOOLS` are callable without
    auth (the spec-mandated handshake path).
+5. JSON-RPC methods in :data:`adcp.server.DISCOVERY_METHODS`
+   (``initialize``, ``notifications/initialized``, ``tools/list``) are
+   callable pre-auth — MCP treats handshake + inventory as discovery.
 
 If any of this regresses, salesagent and every other downstream has to
 keep their wrapper layer (``mcp_context_wrapper.py``, custom
@@ -34,6 +37,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from adcp.server import (
+    DISCOVERY_METHODS,
     DISCOVERY_TOOLS,
     ADCPHandler,
     RequestMetadata,
@@ -65,9 +69,11 @@ class _RecordingHandler(ADCPHandler):
 class _AuthMiddleware(BaseHTTPMiddleware):
     """Middleware that validates Authorization headers.
 
-    Rejects any tool call except :data:`DISCOVERY_TOOLS` without a valid
-    token. On a valid token, stashes principal + tenant in ContextVars
-    so the handler-side ``context_factory`` can read them.
+    Lets the MCP discovery layer through (``DISCOVERY_METHODS`` +
+    ``tools/call`` → ``DISCOVERY_TOOLS``) without a token; rejects
+    anything else lacking a valid token. On a valid token, stashes
+    principal + tenant in ContextVars so the handler-side
+    ``context_factory`` can read them.
     """
 
     VALID_TOKENS: dict[str, tuple[str, str]] = {
@@ -76,9 +82,12 @@ class _AuthMiddleware(BaseHTTPMiddleware):
     }
 
     async def dispatch(self, request: Request, call_next: Any) -> Any:
-        tool_name = await _peek_tool_name(request)
+        method, tool_name = await _peek_jsonrpc(request)
+        is_discovery = method in DISCOVERY_METHODS or (
+            method == "tools/call" and tool_name in DISCOVERY_TOOLS
+        )
 
-        if tool_name not in DISCOVERY_TOOLS:
+        if not is_discovery:
             auth = request.headers.get("authorization", "")
             token = auth.removeprefix("Bearer ").strip()
             if token not in self.VALID_TOKENS:
@@ -97,25 +106,31 @@ class _AuthMiddleware(BaseHTTPMiddleware):
             _current_tenant.reset(_tenant_token)
 
 
-async def _peek_tool_name(request: Request) -> str | None:
-    """Extract the MCP tool name from the incoming JSON-RPC body without
-    consuming the request body for downstream handlers."""
+async def _peek_jsonrpc(request: Request) -> tuple[str | None, str | None]:
+    """Extract ``(method, tool_name)`` from the incoming JSON-RPC body
+    without consuming it for downstream handlers. ``tool_name`` is set
+    only for ``tools/call``."""
     # Starlette caches ``request._body`` on first read, so subsequent
     # reads inside the app still see the bytes.
     body = await request.body()
     if not body:
-        return None
+        return None, None
     try:
         import json
 
         payload = json.loads(body)
     except ValueError:
-        return None
-    if payload.get("method") != "tools/call":
-        return None
+        return None, None
+    # JSON-RPC 2.0 batch arrays fall through to auth (fail closed).
+    if not isinstance(payload, dict):
+        return None, None
+    method = payload.get("method")
+    method = method if isinstance(method, str) else None
+    if method != "tools/call":
+        return method, None
     params = payload.get("params") or {}
     name = params.get("name")
-    return name if isinstance(name, str) else None
+    return method, (name if isinstance(name, str) else None)
 
 
 def _build_context(meta: RequestMetadata) -> ToolContext:
@@ -211,10 +226,70 @@ async def test_missing_token_blocks_non_discovery_tool(handler_and_client: Any) 
     )
 
 
+@pytest.mark.asyncio
+async def test_initialize_is_callable_without_auth(handler_and_client: Any) -> None:
+    """``initialize`` is pre-auth per MCP spec. Pins the contract so a
+    future tightening of the gate breaks here, not in every fixture."""
+    _, client = handler_and_client
+
+    response = await _initialize_session(client)
+
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.asyncio
+async def test_tools_list_is_callable_without_auth(handler_and_client: Any) -> None:
+    """``tools/list`` is pre-auth per MCP spec (discovery handshake).
+
+    An unauthenticated client gets the tool inventory. Operators who
+    consider the inventory sensitive can strip ``tools/list`` from
+    ``DISCOVERY_METHODS`` in their own middleware — this test locks in
+    the default posture.
+    """
+    _, client = handler_and_client
+
+    await _initialize_session(client)
+    response = await _list_tools(client)
+
+    assert response.status_code == 200, response.text
+    payload = _parse_event_stream(response.text)
+    assert "result" in payload, payload
+    tools = payload["result"].get("tools", [])
+    # Handler only overrides two tools but the base class advertises
+    # the full AdCP surface — just assert the list was returned.
+    assert isinstance(tools, list)
+    assert tools, "tools/list returned an empty inventory"
+
+
+@pytest.mark.asyncio
+async def test_tools_list_bypasses_gate_even_with_invalid_token(
+    handler_and_client: Any,
+) -> None:
+    """Negative control: an invalid ``Authorization`` header must NOT
+    cause the gate to reject ``tools/list``. Proves the gate is
+    consulting :data:`DISCOVERY_METHODS` rather than missing-header
+    being coincidentally treated as 'no auth attempt'."""
+    _, client = handler_and_client
+
+    await _initialize_session(client)
+    response = await _list_tools(client, headers={"Authorization": "Bearer not-valid"})
+
+    assert response.status_code == 200, response.text
+
+
 def test_discovery_tools_frozenset_contract() -> None:
     # Protects against accidental widening/narrowing of the spec-mandated
     # auth-optional set. Callers extend via ``DISCOVERY_TOOLS | {...}``.
     assert DISCOVERY_TOOLS == frozenset({"get_adcp_capabilities"})
+
+
+def test_discovery_methods_frozenset_contract() -> None:
+    # The MCP discovery layer is ``initialize`` (session handshake),
+    # ``notifications/initialized`` (handshake-completion notification),
+    # and ``tools/list`` (inventory). Widening this set silently lets
+    # mutations through the auth gate; narrowing breaks clients that
+    # expect pre-auth discovery.
+    assert DISCOVERY_METHODS == frozenset({"initialize", "notifications/initialized", "tools/list"})
 
 
 def test_validate_discovery_set_accepts_base_set() -> None:
@@ -296,6 +371,22 @@ async def _call_tool(
         "method": "tools/call",
         "params": {"name": tool_name, "arguments": arguments},
     }
+    return await client.post("/mcp/", json=body, headers=request_headers)
+
+
+async def _list_tools(
+    client: httpx.AsyncClient,
+    *,
+    headers: dict[str, str] | None = None,
+) -> httpx.Response:
+    """POST a JSON-RPC ``tools/list`` to the MCP endpoint."""
+    request_headers = {
+        "content-type": "application/json",
+        "accept": "application/json, text/event-stream",
+    }
+    if headers:
+        request_headers.update(headers)
+    body = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
     return await client.post("/mcp/", json=body, headers=request_headers)
 
 
