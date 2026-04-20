@@ -39,6 +39,8 @@ from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
 
 if TYPE_CHECKING:
+    from a2a.server.tasks.task_store import TaskStore
+
     from adcp.server.serve import ContextFactory
 from adcp.server.helpers import STANDARD_ERROR_CODES
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
@@ -438,6 +440,7 @@ def create_a2a_server(
     version: str = "1.0.0",
     test_controller: TestControllerStore | None = None,
     context_factory: ContextFactory | None = None,
+    task_store: TaskStore | None = None,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -457,6 +460,16 @@ def create_a2a_server(
             from ``ServerCallContext.user`` — preserving pre-factory
             behavior. See :data:`~adcp.server.ContextFactory` for the
             recommended contextvars pattern.
+        task_store: Optional a2a-sdk :class:`~a2a.server.tasks.task_store.TaskStore`
+            instance for persisting A2A task state. Defaults to
+            :class:`~a2a.server.tasks.inmemory_task_store.InMemoryTaskStore`,
+            which is single-process and non-durable — fine for demos and
+            local development, but tasks vanish on restart and don't share
+            across workers. Production agents pass a durable subclass
+            (Postgres, Redis, etc.). See ``examples/a2a_db_tasks.py`` for
+            a reference SQLite-backed implementation and
+            ``docs/handler-authoring.md`` for the persistence caveats on
+            the default store.
 
     Returns:
         A Starlette app ready to be run with uvicorn.
@@ -478,7 +491,8 @@ def create_a2a_server(
         extra_skills=_test_controller_skills() if test_controller else None,
     )
 
-    task_store = InMemoryTaskStore()
+    if task_store is None:
+        task_store = InMemoryTaskStore()
 
     request_handler = DefaultRequestHandler(
         agent_executor=executor,

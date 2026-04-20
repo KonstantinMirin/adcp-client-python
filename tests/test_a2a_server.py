@@ -35,14 +35,10 @@ from adcp.server.test_controller import TestControllerError, TestControllerStore
 class _TestHandler(ADCPHandler):
     """Minimal handler that supports get_adcp_capabilities and get_products."""
 
-    async def get_adcp_capabilities(
-        self, params: Any, context: Any = None
-    ) -> dict[str, Any]:
+    async def get_adcp_capabilities(self, params: Any, context: Any = None) -> dict[str, Any]:
         return {"adcp": {"major_versions": [3]}, "supported_protocols": ["media_buy"]}
 
-    async def get_products(
-        self, params: Any, context: Any = None
-    ) -> dict[str, Any]:
+    async def get_products(self, params: Any, context: Any = None) -> dict[str, Any]:
         return {
             "products": [{"id": "p1", "name": "Display"}],
             "sandbox": True,
@@ -53,11 +49,7 @@ def _make_datapart_msg(skill: str, parameters: dict[str, Any] | None = None) -> 
     return Message(
         message_id="msg-1",
         role=Role.user,
-        parts=[
-            Part(
-                root=DataPart(data={"skill": skill, "parameters": parameters or {}})
-            )
-        ],
+        parts=[Part(root=DataPart(data={"skill": skill, "parameters": parameters or {}}))],
     )
 
 
@@ -140,9 +132,7 @@ async def test_context_auto_injected():
 async def test_execute_unknown_skill():
     """Executor returns failed task for unknown skills."""
     executor = ADCPAgentExecutor(_TestHandler())
-    ctx = RequestContext(
-        request=MessageSendParams(message=_make_datapart_msg("nonexistent_skill"))
-    )
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("nonexistent_skill")))
     queue = EventQueue()
 
     await executor.execute(ctx, queue)
@@ -190,9 +180,7 @@ async def test_execute_handler_exception():
             raise RuntimeError("secret database connection string leaked")
 
     executor = ADCPAgentExecutor(_BrokenHandler())
-    ctx = RequestContext(
-        request=MessageSendParams(message=_make_datapart_msg("get_products"))
-    )
+    ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
     queue = EventQueue()
 
     await executor.execute(ctx, queue)
@@ -202,9 +190,7 @@ async def test_execute_handler_exception():
     assert event.status.state == "failed"
 
     # Verify exception details are NOT in the error message
-    text_parts = [
-        p.root for p in event.artifacts[0].parts if hasattr(p.root, "text")
-    ]
+    text_parts = [p.root for p in event.artifacts[0].parts if hasattr(p.root, "text")]
     error_text = text_parts[0].text
     assert "secret database" not in error_text
     assert "get_products" in error_text
@@ -384,7 +370,125 @@ async def test_execute_test_controller_error():
 )
 def test_create_a2a_server_with_test_controller():
     """create_a2a_server includes comply_test_controller in agent card."""
-    app = create_a2a_server(
-        _TestHandler(), name="test-agent", test_controller=_TestStore()
-    )
+    app = create_a2a_server(_TestHandler(), name="test-agent", test_controller=_TestStore())
     assert hasattr(app, "routes")
+
+
+# ---------------------------------------------------------------------------
+# Pluggable TaskStore (issue #224)
+# ---------------------------------------------------------------------------
+
+
+class _RecordingTaskStore:
+    """TaskStore that records every save/get/delete for test assertions.
+
+    Implements the a2a-sdk ``TaskStore`` protocol via duck-typing. Tests
+    inject this to prove ``create_a2a_server(task_store=...)`` actually
+    threads the store through to ``DefaultRequestHandler`` — the whole
+    point of the hook.
+    """
+
+    def __init__(self) -> None:
+        self.saves: list[str] = []
+        self.gets: list[str] = []
+        self.deletes: list[str] = []
+        self._store: dict[str, Any] = {}
+
+    async def save(self, task: Any, context: Any = None) -> None:
+        self.saves.append(task.id)
+        self._store[task.id] = task
+
+    async def get(self, task_id: str, context: Any = None) -> Any | None:
+        self.gets.append(task_id)
+        return self._store.get(task_id)
+
+    async def delete(self, task_id: str, context: Any = None) -> None:
+        self.deletes.append(task_id)
+        self._store.pop(task_id, None)
+
+
+def _extract_default_request_handler(app: Any) -> Any:
+    """Walk the a2a-sdk Starlette app graph to the DefaultRequestHandler.
+
+    Structure is ``Starlette.routes[*].endpoint.__self__ →
+    A2AStarletteApplication.handler (JSONRPCHandler) → .request_handler``.
+    Touching this indirection in one place localises the blast radius if
+    a2a-sdk changes its internals.
+    """
+    from a2a.server.request_handlers.default_request_handler import (
+        DefaultRequestHandler,
+    )
+
+    for route in app.routes:
+        endpoint = getattr(route, "endpoint", None)
+        a2a_app = getattr(endpoint, "__self__", None) if endpoint else None
+        if a2a_app is None:
+            continue
+        jsonrpc_handler = getattr(a2a_app, "handler", None)
+        request_handler = getattr(jsonrpc_handler, "request_handler", None)
+        if isinstance(request_handler, DefaultRequestHandler):
+            return request_handler
+    raise AssertionError(
+        "Could not locate the DefaultRequestHandler on the A2A app — "
+        "a2a-sdk internals likely changed. Update _extract_default_request_handler "
+        "but keep the contract: task_store= on create_a2a_server must thread "
+        "through to DefaultRequestHandler.task_store."
+    )
+
+
+def test_create_a2a_server_defaults_to_in_memory_task_store():
+    """Default behavior preserved: omitting task_store falls back to
+    InMemoryTaskStore, so existing adopters see no change."""
+    from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
+
+    app = create_a2a_server(_TestHandler(), name="test-agent")
+    handler = _extract_default_request_handler(app)
+    assert isinstance(handler.task_store, InMemoryTaskStore), (
+        "Default task_store should be InMemoryTaskStore when no override "
+        "is provided, preserving pre-#224 behavior."
+    )
+
+
+def test_create_a2a_server_accepts_custom_task_store():
+    """Custom TaskStore instance must be threaded through to the A2A
+    DefaultRequestHandler — the whole point of the hook."""
+    store = _RecordingTaskStore()
+    app = create_a2a_server(_TestHandler(), name="test-agent", task_store=store)
+    handler = _extract_default_request_handler(app)
+    assert handler.task_store is store, (
+        "create_a2a_server(task_store=...) dropped the custom store. "
+        "DefaultRequestHandler.task_store is instead "
+        f"{type(handler.task_store).__name__}."
+    )
+
+
+async def test_task_store_survives_server_recreation():
+    """A shared TaskStore instance outlives the Starlette app it's attached
+    to. This is the end-to-end property: restart the server, keep the
+    store, tasks come back.
+
+    We simulate "restart" by creating two successive A2A apps sharing the
+    same store and verifying the second sees what the first wrote.
+    """
+    store = _RecordingTaskStore()
+
+    # First "run" — save a task directly through the shared store.
+    from a2a.types import TaskStatus
+
+    task_1 = Task(
+        id="task-persistence-1",
+        context_id="ctx-1",
+        status=TaskStatus(state="completed"),
+    )
+    await store.save(task_1)
+
+    # Recreate the server. In production this is a process restart; here
+    # it's just a second create_a2a_server call reusing the store.
+    create_a2a_server(_TestHandler(), name="test-agent-v2", task_store=store)
+
+    # The store retains the task across the "restart".
+    retrieved = await store.get("task-persistence-1")
+    assert retrieved is not None
+    assert retrieved.id == "task-persistence-1"
+    # And the gets were recorded on the same instance we passed in.
+    assert "task-persistence-1" in store.gets

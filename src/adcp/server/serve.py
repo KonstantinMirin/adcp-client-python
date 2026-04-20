@@ -27,6 +27,8 @@ from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 
 if TYPE_CHECKING:
+    from a2a.server.tasks.task_store import TaskStore
+
     from adcp.server.test_controller import TestControllerStore
 
 
@@ -105,6 +107,7 @@ def serve(
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
     context_factory: ContextFactory | None = None,
+    task_store: TaskStore | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -121,6 +124,12 @@ def serve(
         transport: ``"streamable-http"`` (default, MCP) or ``"a2a"``.
         instructions: Optional system instructions for the agent (MCP only).
         test_controller: Optional TestControllerStore instance for storyboard testing.
+        context_factory: Optional factory that builds a :class:`ToolContext`
+            per tool call — see :data:`ContextFactory`.
+        task_store: Optional a2a-sdk ``TaskStore`` for durable A2A task
+            persistence (A2A transport only). Defaults to ``InMemoryTaskStore``
+            — tasks don't survive restart. See
+            ``examples/a2a_db_tasks.py`` for the production pattern.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -166,6 +175,7 @@ def serve(
             port=port,
             test_controller=test_controller,
             context_factory=context_factory,
+            task_store=task_store,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -292,6 +302,7 @@ def _serve_a2a(
     port: int | None,
     test_controller: TestControllerStore | None,
     context_factory: ContextFactory | None = None,
+    task_store: TaskStore | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -306,6 +317,7 @@ def _serve_a2a(
         port=resolved_port,
         test_controller=test_controller,
         context_factory=context_factory,
+        task_store=task_store,
     )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:
