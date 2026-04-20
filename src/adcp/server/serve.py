@@ -228,6 +228,7 @@ def serve(
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
+    max_request_size: int | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -269,6 +270,13 @@ def serve(
             advertised surface. Turn on for spec-compliance storyboards
             or when you want to signal ``not_supported`` on a specific
             tool to clients.
+        max_request_size: Maximum request body size in bytes. Defaults
+            to 10 MB. Set higher for sellers that legitimately transmit
+            very large creative asset payloads; set lower for stricter
+            public-facing deployments. Set to ``0`` to disable the cap
+            entirely (not recommended — the cap is the only guard
+            against adversarial payloads exhausting Pydantic validation
+            CPU/memory). See :mod:`adcp.server._size_limit`.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -318,6 +326,7 @@ def serve(
             push_config_store=push_config_store,
             middleware=middleware,
             advertise_all=advertise_all,
+            max_request_size=max_request_size,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -329,10 +338,29 @@ def serve(
             test_controller=test_controller,
             context_factory=context_factory,
             advertise_all=advertise_all,
+            max_request_size=max_request_size,
         )
     else:
         valid = ", ".join(sorted(("a2a", "streamable-http", "sse", "stdio")))
         raise ValueError(f"Unknown transport {transport!r}. Valid: {valid}")
+
+
+def _wrap_with_size_limit(app: Any, max_request_size: int | None) -> Any:
+    """Wrap an ASGI app with the request-body size cap.
+
+    ``None`` = use the module default (10 MB). ``0`` = disable — skip
+    the middleware entirely so sellers who genuinely need unlimited
+    bodies can opt out. Any positive int overrides the default.
+    """
+    from adcp.server._size_limit import (
+        DEFAULT_MAX_REQUEST_BYTES,
+        RequestSizeLimitMiddleware,
+    )
+
+    if max_request_size is not None and max_request_size <= 0:
+        return app
+    cap = max_request_size if max_request_size is not None else DEFAULT_MAX_REQUEST_BYTES
+    return RequestSizeLimitMiddleware(app, max_bytes=cap)
 
 
 def _bind_reusable_socket(host: str, port: int) -> Any:
@@ -382,6 +410,7 @@ def _serve_mcp(
     test_controller: TestControllerStore | None,
     context_factory: ContextFactory | None = None,
     advertise_all: bool = False,
+    max_request_size: int | None = None,
 ) -> None:
     """Start an MCP server."""
     mcp = create_mcp_server(
@@ -400,13 +429,13 @@ def _serve_mcp(
         register_test_controller(mcp, test_controller, context_factory=context_factory)
 
     if transport in ("streamable-http", "sse"):
-        _run_mcp_http(mcp, transport=transport)
+        _run_mcp_http(mcp, transport=transport, max_request_size=max_request_size)
     else:
         # stdio — no listening socket, nothing to configure.
         mcp.run(transport=transport)
 
 
-def _run_mcp_http(mcp: Any, *, transport: str) -> None:
+def _run_mcp_http(mcp: Any, *, transport: str, max_request_size: int | None = None) -> None:
     """Run FastMCP's HTTP transports with a pre-bound SO_REUSEADDR socket.
 
     FastMCP builds its own ``uvicorn.Server(config).serve()`` inside
@@ -426,6 +455,8 @@ def _run_mcp_http(mcp: Any, *, transport: str) -> None:
         app = mcp.streamable_http_app()
     else:
         app = mcp.sse_app()
+
+    app = _wrap_with_size_limit(app, max_request_size)
 
     sock = _bind_reusable_socket(host, port)
     try:
@@ -451,6 +482,7 @@ def _serve_a2a(
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
+    max_request_size: int | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -470,6 +502,7 @@ def _serve_a2a(
         middleware=middleware,
         advertise_all=advertise_all,
     )
+    app = _wrap_with_size_limit(app, max_request_size)
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:
         config = uvicorn.Config(app)

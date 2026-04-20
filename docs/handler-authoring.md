@@ -242,6 +242,46 @@ locks the default posture with a positive assertion that `tools/list`
 returns 200 without credentials and a negative control that the gate
 still lets it through when an invalid bearer is present.
 
+## Request-body size cap
+
+`serve()` installs an ASGI middleware that caps incoming request
+bodies at **10 MB by default**. Bodies above the cap are rejected with
+HTTP 413 at the ASGI boundary — before FastMCP or a2a-sdk parses the
+JSON, and before typed-dispatch runs `model_validate`. This is the
+only guard against adversarial callers exhausting validation CPU or
+memory with arbitrarily large payloads.
+
+Two layers of enforcement:
+
+1. **Content-Length fast-fail.** If the client advertises a body size
+   over the cap, the middleware rejects immediately without reading a
+   byte.
+2. **Streaming accounting.** For chunked transfers (no
+   Content-Length), the middleware totals bytes as they arrive and
+   rejects the moment the total crosses the cap.
+
+`GET`, `HEAD`, `OPTIONS` bypass the check (no request body).
+
+Tune via `serve(..., max_request_size=N)`:
+
+```python
+# Legitimate multi-package media buys with embedded creative assets
+# can run over 10 MB. Bump the cap for those deployments.
+serve(MyAgent(), max_request_size=50 * 1024 * 1024)
+
+# Public-facing deployments that only accept small payloads can
+# tighten the cap.
+serve(MyAgent(), max_request_size=256 * 1024)
+
+# Sellers with genuinely unbounded payloads (not recommended) can
+# opt out entirely. You become responsible for enforcing bounds at
+# a different layer — usually your reverse proxy or WAF.
+serve(MyAgent(), max_request_size=0)
+```
+
+Applies to both MCP (streamable-http, sse) and A2A transports. stdio
+transport skips the cap since there's no HTTP body to police.
+
 ## Idempotency
 
 The SDK ships an `IdempotencyStore` middleware that honors the
