@@ -1247,11 +1247,12 @@ class TestHMACTestVectors:
             pytest.skip("non-JSON raw_body")
             return
 
-        # If json.dumps(payload_dict) reproduces the raw_body exactly,
-        # then get_adcp_signed_headers_for_webhook should match
-        reserialized = json.dumps(payload_dict)
+        # The signer writes compact-separator bytes (matching httpx json=),
+        # so the test vector only round-trips cleanly when its raw_body was
+        # captured in the same form. Skip vectors that used spaced/pretty JSON.
+        reserialized = json.dumps(payload_dict, separators=(",", ":"))
         if reserialized != raw_body:
-            pytest.skip("raw_body uses different serialization than json.dumps default")
+            pytest.skip("raw_body uses different serialization than compact json.dumps")
             return
 
         headers = get_adcp_signed_headers_for_webhook(
@@ -1263,6 +1264,45 @@ class TestHMACTestVectors:
 
         assert headers["X-AdCP-Signature"] == expected
         assert headers["X-AdCP-Timestamp"] == str(timestamp)
+
+    def test_signer_matches_httpx_json_wire_form(self):
+        """Signer must produce the same bytes httpx writes for `json=payload`.
+
+        Regression guard for the round-4 blocker: default json.dumps uses
+        ", "/": " separators while httpx writes compact ","/":" — sellers
+        using the documented ``client.post(url, json=payload, headers=signed)``
+        pattern got silent 401s. Verifying directly against httpx's wire
+        bytes means any future drift fails loudly in CI.
+        """
+        import hashlib
+        import hmac
+
+        import httpx
+
+        payload = {
+            "task_id": "task_123",
+            "status": "completed",
+            "result": {"products": [{"id": "p1", "price": 12.5}]},
+            "nested": {"a": 1, "b": None, "c": [1, 2, 3]},
+        }
+        timestamp = "1700000000"
+        secret = "test_secret"
+
+        headers = get_adcp_signed_headers_for_webhook(
+            headers={},
+            secret=secret,
+            timestamp=timestamp,
+            payload=payload,
+        )
+
+        # The bytes httpx actually sends on the wire for json=
+        httpx_wire = httpx.Request("POST", "http://localhost/", json=payload).content
+        signed_message = f"{timestamp}.{httpx_wire.decode()}"
+        expected_sig = hmac.new(
+            secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        assert headers["X-AdCP-Signature"] == f"sha256={expected_sig}"
 
     @pytest.mark.parametrize(
         "vector",

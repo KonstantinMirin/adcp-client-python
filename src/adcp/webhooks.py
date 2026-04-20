@@ -109,8 +109,10 @@ def create_mcp_webhook_payload(
         task_type: Optionally type of AdCP operation (e.g., "get_products", "create_media_buy")
         timestamp: When the webhook was generated (defaults to current UTC time)
         result: Task-specific payload (AdCP response data)
-        operation_id: Publisher-defined operation identifier (deprecated from payload,
-            should be in URL routing, but included for backward compatibility)
+        operation_id: Publisher-defined operation identifier. The AdCP spec
+            recommends carrying this in URL routing rather than the payload
+            body, but the SDK emits it into the payload when provided for
+            compatibility with receivers that still read it there.
         message: Human-readable summary of task state
         context_id: Session/conversation identifier
         domain: AdCP domain this task belongs to
@@ -274,9 +276,12 @@ def get_adcp_signed_headers_for_webhook(
     else:
         payload_dict = payload
 
-    # Serialize payload to JSON with default formatting (matches what json= kwarg sends on the wire)
-    # This aligns with the JS reference implementation's JSON.stringify() behavior
-    payload_json = json.dumps(payload_dict)
+    # Serialize payload with compact separators to match the wire bytes httpx
+    # (and most HTTP clients) produce for `json=payload`. Default json.dumps
+    # output has ", " / ": " separators, which diverges from httpx's compact
+    # form and caused silent 401s when sellers signed with default separators
+    # and posted via `client.post(url, json=payload, headers=signed)`.
+    payload_json = json.dumps(payload_dict, separators=(",", ":"))
 
     # Construct signed message: timestamp.payload
     # Including timestamp prevents replay attacks
