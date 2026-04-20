@@ -26,6 +26,17 @@ Invocation::
 The dry run is the default — you always see what would change before
 anything moves. ``--apply`` writes files in place; commit your tree
 before running it so ``git diff`` is the review view.
+
+.. important::
+   The codemod matches identifiers textually (word-boundary regex, not
+   AST). That's deliberate — attribute accesses, imports, type
+   annotations, and f-string-interpolated type names all need the
+   rename, and a text-match catches every context a caller cares
+   about. The tradeoff: a string literal like
+   ``ERROR_MSG = "AudioAsset deprecated"`` or a comment mentioning
+   ``AudioAsset`` will rewrite. Review the ``git diff`` for these
+   cases (usually trivially reverted) — they are the one class of
+   false positive the regex approach produces.
 """
 
 from __future__ import annotations
@@ -158,12 +169,29 @@ _SKIP_DIRS: frozenset[str] = frozenset(
 
 
 def _iter_python_files(root: Path) -> list[Path]:
-    """Walk ``root`` for ``*.py`` files, skipping common build/dep dirs."""
+    """Walk ``root`` for ``*.py`` files, skipping common build/dep dirs.
+
+    Skip-dir matching is applied to path components *relative to
+    ``root``*, not absolute parts. A seller's repo checked out at
+    ``/home/ci/build/myrepo/src`` (where ``build`` is a CI-scratch
+    ancestor directory) previously had every file silently skipped —
+    the absolute-path check hit ``build`` and dropped the whole tree.
+    Relative matching makes the skip honour user intent: skip
+    ``myrepo/src/build/output.py`` while still scanning
+    ``/home/ci/build/myrepo/src/app.py``.
+    """
     if root.is_file():
         return [root] if root.suffix == ".py" else []
+    resolved_root = root.resolve()
     files: list[Path] = []
     for p in root.rglob("*.py"):
-        if any(part in _SKIP_DIRS for part in p.parts):
+        try:
+            rel_parts = p.resolve().relative_to(resolved_root).parts
+        except ValueError:
+            # rglob can return paths outside root when root contains a
+            # symlink; fall back to the raw parts for those.
+            rel_parts = p.parts
+        if any(part in _SKIP_DIRS for part in rel_parts):
             continue
         files.append(p)
     return sorted(files)
@@ -174,16 +202,32 @@ def _iter_python_files(root: Path) -> list[Path]:
 _RENAME_PATTERNS = {name: re.compile(rf"\b{re.escape(name)}\b") for name in ASSET_CONTENT_RENAMES}
 _REMOVED_PATTERNS = {name: re.compile(rf"\b{re.escape(name)}\b") for name in REMOVED_TYPES}
 
+# Attribute access patterns — word-boundary regex prevents
+# ``my.brand_manifest_v2`` / ``brand_manifest_foo`` false positives
+# that a plain ``in`` substring check would fire on.
+_REMOVED_ATTRIBUTE_PATTERNS = {
+    attr: re.compile(rf"{re.escape(attr)}\b") for attr in REMOVED_ATTRIBUTE_ACCESSES
+}
+
 
 def scan_file(path: Path, *, apply_changes: bool) -> tuple[list[Finding], str | None]:
     """Scan one file. Returns (findings, new_contents_or_None).
 
     new_contents_or_None is None when apply_changes=False or when no
     renames fired; the caller uses it as the signal to rewrite.
+
+    Reads with ``utf-8-sig`` so UTF-8-BOM-prefixed source files (legal
+    Python, common on Windows) migrate correctly. Uses ``newline=""``
+    on read and write so CRLF line endings are preserved verbatim —
+    Windows sellers otherwise get a giant noise diff where every line
+    flips to LF.
     """
     findings: list[Finding] = []
     try:
-        original = path.read_text(encoding="utf-8")
+        # Use ``open(..., newline="")`` over ``Path.read_text(newline=)``
+        # — the latter was added in 3.13 but the SDK supports 3.10+.
+        with open(path, encoding="utf-8-sig", newline="") as fh:
+            original = fh.read()
     except (UnicodeDecodeError, OSError):
         # Skip unreadable or non-UTF8 files; migration targets Python source.
         return findings, None
@@ -254,16 +298,17 @@ def scan_file(path: Path, *, apply_changes: bool) -> tuple[list[Finding], str | 
                     )
                 )
 
-        # Removed attribute accesses (.brand_manifest etc.).
+        # Removed attribute accesses (.brand_manifest etc.). Regex with
+        # trailing word boundary prevents false-positives on
+        # ``.brand_manifest_v2``, ``.brand_manifest_override``, etc.
         for attr, hint in REMOVED_ATTRIBUTE_ACCESSES.items():
-            if attr in line:
-                col = line.index(attr) + 1
+            for match in _REMOVED_ATTRIBUTE_PATTERNS[attr].finditer(line):
                 findings.append(
                     Finding(
                         kind="flag_attribute",
                         path=str(path),
                         line=lineno,
-                        column=col,
+                        column=match.start() + 1,
                         before=attr,
                         hint=hint,
                     )
@@ -286,7 +331,11 @@ def run(root: Path, *, apply_changes: bool = False) -> Report:
         for f in findings:
             report.add(f)
         if new_contents is not None:
-            path.write_text(new_contents, encoding="utf-8")
+            # newline="" preserves whatever line endings were read
+            # (including mixed — unusual but possible). Pair with the
+            # ``open(..., newline="")`` read in ``scan_file``.
+            with open(path, "w", encoding="utf-8", newline="") as fh:
+                fh.write(new_contents)
             report.rewritten_files += 1
     return report
 

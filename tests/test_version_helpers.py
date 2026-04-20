@@ -4,6 +4,10 @@ version helpers (splits the legacy single-name API).
 
 from __future__ import annotations
 
+import warnings
+
+import pytest
+
 import adcp
 
 
@@ -25,7 +29,17 @@ def test_legacy_get_adcp_version_still_returns_spec_version() -> None:
     """``get_adcp_version`` is the pre-4.1 name. Kept as a thin alias
     returning the spec version, so callers pinning to the old name
     keep working."""
-    assert adcp.get_adcp_version() == adcp.get_adcp_spec_version()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert adcp.get_adcp_version() == adcp.get_adcp_spec_version()
+
+
+def test_legacy_get_adcp_version_emits_deprecation_warning() -> None:
+    """Silent alias wouldn't nudge callers to migrate; emit
+    ``DeprecationWarning`` so IDEs / linters / test runners surface
+    the rename."""
+    with pytest.warns(DeprecationWarning, match="get_adcp_spec_version"):
+        adcp.get_adcp_version()
 
 
 def test_spec_and_sdk_versions_are_distinct_concepts() -> None:

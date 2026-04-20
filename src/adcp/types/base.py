@@ -218,6 +218,13 @@ class AdCPBaseModel(BaseModel):
     to ``extra='forbid'``. Use this during spec upgrades to catch
     silently-dropped renamed fields in tests. See :func:`_resolve_extra_policy`.
 
+    .. important::
+       The env var is resolved **once at module import time**. Set it
+       in your shell or CI environment **before** ``import adcp`` runs
+       — mutating ``os.environ["ADCP_STRICT_VALIDATION"]`` after the
+       first ``adcp`` import has no effect on already-imported model
+       classes (they captured the policy at class-body evaluation).
+
     Consumers who want per-model strict validation can override
     ``model_config`` on their subclass.
     """

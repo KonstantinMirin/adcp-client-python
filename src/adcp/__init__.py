@@ -521,11 +521,10 @@ def get_adcp_spec_version() -> str:
 def get_adcp_sdk_version() -> str:
     """Get this SDK's package version (e.g., ``"4.0.0b1"``).
 
-    Equivalent to :attr:`adcp.__version__` — the semver package
-    version from ``pyproject.toml`` / installed metadata. Use the
-    function form when you want a consistent call-site style with
-    :func:`get_adcp_spec_version`; otherwise ``adcp.__version__``
-    reads just as clearly.
+    Prefer this function when pairing with :func:`get_adcp_spec_version`
+    — the symmetric function form makes call sites read unambiguously.
+    For a single-value import without the spec-vs-SDK context, use
+    :attr:`adcp.__version__` directly.
 
     Returns:
         SDK package version string. Falls back to ``"0.0.0+unknown"``
@@ -544,6 +543,15 @@ def get_adcp_version() -> str:
         package version) — the split disambiguates what the caller
         actually wants at the call site.
     """
+    import warnings
+
+    warnings.warn(
+        "get_adcp_version() is deprecated; use get_adcp_spec_version() "
+        "for the AdCP spec version or get_adcp_sdk_version() / "
+        "adcp.__version__ for the SDK package version.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return get_adcp_spec_version()
 
 

@@ -192,6 +192,24 @@ def test_flags_removed_attribute_accesses(tmp_path: Path) -> None:
     assert attr[0].before == ".brand_manifest"
 
 
+def test_brand_manifest_word_boundary_no_false_positive(tmp_path: Path) -> None:
+    """``.brand_manifest_v2`` / ``.brand_manifest_override`` are
+    seller-specific extensions that happen to share a prefix. They
+    MUST NOT be flagged — the regex requires a trailing word boundary."""
+    _write(
+        tmp_path,
+        "code.py",
+        "x = seller.brand_manifest_v2\n"
+        "y = obj.brand_manifest_override = True\n"
+        "z = other.brand_manifest_custom()\n",
+    )
+
+    report = v3_to_v4.run(tmp_path, apply_changes=False)
+
+    flagged = [f for f in report.flagged if f.kind == "flag_attribute"]
+    assert flagged == [], f"false-positive on brand_manifest_* suffixes: {flagged}"
+
+
 # ---------------------------------------------------------------------------
 # Skips + file-iteration safety
 # ---------------------------------------------------------------------------
@@ -213,6 +231,31 @@ def test_skips_common_build_and_dep_dirs(tmp_path: Path) -> None:
     # Only user.py scanned.
     assert report.scanned_files == 1
     assert {f.path for f in report.applied} == {str(tmp_path / "user.py")}
+
+
+def test_skip_dirs_are_relative_to_root_not_absolute(tmp_path: Path) -> None:
+    """Repos frequently sit under ancestor directories named ``build``,
+    ``dist``, etc. (common CI path: ``/home/ci/build/repo/src``). A
+    too-eager absolute-path check would skip the whole project. The
+    skip list must apply only to components *below* the scan root."""
+    # Simulate running against a tree mounted under an ancestor named
+    # "build". Create an actual directory on disk to exercise this.
+    ancestor_dir = tmp_path / "build" / "myrepo"
+    ancestor_dir.mkdir(parents=True)
+    user_code = ancestor_dir / "app.py"
+    user_code.write_text("from adcp.types import AudioAsset\n")
+
+    # Scan from the repo root (inside the ancestor named "build"). The
+    # skip list should NOT match "build" because it is not below the
+    # scan root.
+    report = v3_to_v4.run(ancestor_dir, apply_changes=False)
+
+    assert report.scanned_files == 1, (
+        "Scan was skipped when repo sits under an ancestor named like a "
+        "skip-dir (e.g. /home/ci/build/repo). Skip-dirs must be relative "
+        "to the scan root, not the absolute path."
+    )
+    assert len(report.applied) == 1
 
 
 def test_empty_directory_yields_empty_report(tmp_path: Path) -> None:
@@ -239,6 +282,86 @@ def test_single_file_path_scans_one_file(tmp_path: Path) -> None:
 
     assert report.scanned_files == 1
     assert len(report.applied) == 1
+
+
+def test_crlf_line_endings_preserved(tmp_path: Path) -> None:
+    """Windows sellers commit CRLF-terminated Python source. The
+    migration MUST preserve CRLF on read+write, otherwise every line
+    flips to LF and ``git diff`` is polluted with thousands of
+    whitespace-only lines."""
+    path = tmp_path / "code.py"
+    path.write_bytes(b"from adcp.types import AudioAsset\r\nx = AudioAsset()\r\n")
+
+    v3_to_v4.run(tmp_path, apply_changes=True)
+
+    # Read raw bytes to check line endings preserved.
+    rewritten = path.read_bytes()
+    assert b"\r\n" in rewritten, f"CRLF line endings lost during rewrite. Got: {rewritten!r}"
+    # LF-only mixed in would indicate a split/join bug.
+    assert b"\n" not in rewritten.replace(
+        b"\r\n", b""
+    ), f"Mixed line endings after rewrite: {rewritten!r}"
+    assert b"AudioContent" in rewritten
+
+
+def test_utf8_bom_source_migrates(tmp_path: Path) -> None:
+    """UTF-8 BOM is legal at the start of Python source (Windows
+    editors sometimes add it). The codemod must read and rewrite it
+    correctly rather than silently skipping the file as 'binary'."""
+    path = tmp_path / "code.py"
+    path.write_bytes(b"\xef\xbb\xbffrom adcp.types import AudioAsset\n")
+
+    report = v3_to_v4.run(tmp_path, apply_changes=True)
+
+    assert report.scanned_files == 1
+    assert len(report.applied) == 1
+    rewritten = path.read_text(encoding="utf-8-sig")
+    assert "AudioContent" in rewritten
+    assert "AudioAsset" not in rewritten
+
+
+def test_multiline_import_rewrites_correctly(tmp_path: Path) -> None:
+    """Most real codebases write parenthesised multi-line imports. The
+    rewrite MUST handle a name mid-parenthesis."""
+    path = _write(
+        tmp_path,
+        "code.py",
+        "from adcp.types import (\n"
+        "    AudioAsset,\n"
+        "    VideoAsset,\n"
+        "    BuyingMode,\n"
+        ")\n"
+        "x = AudioAsset()\n"
+        "y = VideoAsset()\n",
+    )
+
+    v3_to_v4.run(tmp_path, apply_changes=True)
+
+    rewritten = path.read_text()
+    assert "AudioAsset" not in rewritten
+    assert "VideoAsset" not in rewritten
+    assert "AudioContent" in rewritten
+    assert "VideoContent" in rewritten
+    # BuyingMode is unrelated — must stay untouched.
+    assert "BuyingMode" in rewritten
+
+
+def test_idempotent(tmp_path: Path) -> None:
+    """Running the migration twice must leave the file identical to
+    running it once — no double-rewrite, no double-flag, nothing
+    drifts between runs. Pins the contract for sellers who may re-run
+    the codemod after a partial apply."""
+    path = _write(tmp_path, "code.py", "from adcp.types import AudioAsset\n")
+
+    v3_to_v4.run(tmp_path, apply_changes=True)
+    after_first = path.read_text()
+
+    report = v3_to_v4.run(tmp_path, apply_changes=True)
+    after_second = path.read_text()
+
+    assert after_first == after_second
+    assert report.applied == []  # second run has nothing to rewrite
+    assert report.rewritten_files == 0
 
 
 # ---------------------------------------------------------------------------
