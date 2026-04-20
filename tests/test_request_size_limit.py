@@ -197,6 +197,43 @@ async def test_chunked_body_exceeding_cap_mid_stream_rejects():
     assert app.calls == []
 
 
+async def test_single_chunk_exceeding_cap_rejects():
+    """**Regression guard**: a single ``http.request`` message whose
+    body alone exceeds the cap must still be rejected. No Content-
+    Length, one giant chunk — the streaming accounting check fires
+    on iteration 1. Easy to regress with a naive "read at least one
+    chunk" refactor."""
+    app = _MockApp()
+    mw = RequestSizeLimitMiddleware(app, max_bytes=100)
+
+    result = await _run(
+        mw,
+        _scope("POST"),
+        [{"type": "http.request", "body": b"x" * 10_000, "more_body": False}],
+    )
+
+    assert result["status"] == 413
+    assert app.calls == []
+
+
+async def test_413_body_includes_cap_value():
+    """Legitimate clients need to know the limit they hit — the cap
+    isn't a secret, and a bare "too large" forces adopters to grep
+    docs. Include the number."""
+    app = _MockApp()
+    mw = RequestSizeLimitMiddleware(app, max_bytes=1024)
+
+    result = await _run(
+        mw,
+        _scope("POST", headers=[(b"content-length", b"9999")]),
+        _body_messages(b""),
+    )
+
+    assert result["status"] == 413
+    assert b"1024" in result["body"]
+    assert b"bytes" in result["body"]
+
+
 async def test_chunked_body_under_cap_passes_through():
     """Chunked body totalling less than the cap is forwarded to the
     app verbatim — inner app sees the full body reassembled."""
@@ -331,3 +368,40 @@ async def test_explicit_cap_in_wrapper_overrides_default():
     wrapped = _wrap_with_size_limit(inner, 5_000_000)
     assert isinstance(wrapped, RequestSizeLimitMiddleware)
     assert wrapped.max_bytes == 5_000_000
+
+
+def test_negative_cap_raises_value_error():
+    """Negative values don't have a meaningful interpretation —
+    probably a typo. Fail loud at configure time instead of silently
+    opting out."""
+    import pytest
+
+    from adcp.server.serve import _wrap_with_size_limit
+
+    async def inner(scope: Any, receive: Any, send: Any) -> None:
+        return None
+
+    with pytest.raises(ValueError, match="max_request_size must be >= 0"):
+        _wrap_with_size_limit(inner, -1)
+
+
+async def test_zero_cap_emits_warning_log(caplog):
+    """**Load-bearing breadcrumb**: a seller who configures
+    ``max_request_size=0`` (typo or intentional) should see a warning
+    in the startup log so they know the only Pydantic-validation DoS
+    guard is disabled. A silent opt-out that only surfaces when an
+    attacker finds it is the failure mode we're preventing."""
+    import logging
+
+    from adcp.server.serve import _wrap_with_size_limit
+
+    async def inner(scope: Any, receive: Any, send: Any) -> None:
+        return None
+
+    with caplog.at_level(logging.WARNING, logger="adcp.server"):
+        _wrap_with_size_limit(inner, 0)
+
+    assert any(
+        "max_request_size=0" in record.message and "disables" in record.message
+        for record in caplog.records
+    ), "warning log must fire when size cap is disabled"

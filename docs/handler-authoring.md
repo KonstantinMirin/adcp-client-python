@@ -282,6 +282,24 @@ serve(MyAgent(), max_request_size=0)
 Applies to both MCP (streamable-http, sse) and A2A transports. stdio
 transport skips the cap since there's no HTTP body to police.
 
+**What this cap does NOT bound.** The middleware caps **bytes** per
+request, not **duration**. A slow-loris caller sending 1 byte every
+30 seconds stays under the cap forever while tying up a worker. Bound
+duration at the layer above:
+
+- `uvicorn --timeout-keep-alive N` caps keep-alive connection idle
+  time (but doesn't cover request-body reads).
+- Reverse-proxy read timeouts do: nginx `client_body_timeout`, Envoy
+  `request_timeout`, Caddy `timeouts.read`.
+- Under serverless / platform-managed runtimes (Fly.io, Cloud Run),
+  the platform's per-request timeout is the effective upper bound.
+
+For adversarial-tenant deployments, also budget memory: the middleware
+buffers the full body up to the cap before replaying to the handler,
+so worst-case RSS runs `workers × concurrency × max_request_size`. An
+upstream reverse proxy enforcing a smaller per-connection cap is the
+right lever if this is too generous.
+
 ## Idempotency
 
 The SDK ships an `IdempotencyStore` middleware that honors the

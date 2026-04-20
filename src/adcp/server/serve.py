@@ -351,13 +351,35 @@ def _wrap_with_size_limit(app: Any, max_request_size: int | None) -> Any:
     ``None`` = use the module default (10 MB). ``0`` = disable — skip
     the middleware entirely so sellers who genuinely need unlimited
     bodies can opt out. Any positive int overrides the default.
+
+    Negative values raise ``ValueError`` — they have no meaningful
+    interpretation and almost certainly indicate a typo (e.g. the
+    author meant ``0`` for "disable" or a positive cap for "N bytes").
+    Failing loudly at configure time beats a silent opt-out that only
+    surfaces when an attacker finds it.
     """
+    import logging
+
     from adcp.server._size_limit import (
         DEFAULT_MAX_REQUEST_BYTES,
         RequestSizeLimitMiddleware,
     )
 
-    if max_request_size is not None and max_request_size <= 0:
+    if max_request_size is not None and max_request_size < 0:
+        raise ValueError(
+            f"max_request_size must be >= 0 (got {max_request_size}). "
+            "Use 0 to disable the cap entirely, or a positive int in bytes."
+        )
+    if max_request_size == 0:
+        # Load-bearing warning — 0 disables the only Pydantic-validation
+        # DoS guard. Operators should know, and a typo that lands on 0
+        # should leave a breadcrumb in the startup log rather than
+        # silently opt out.
+        logging.getLogger("adcp.server").warning(
+            "max_request_size=0 disables ASGI body cap; relying on upstream "
+            "proxy or WAF to bound request size. This is a security-relevant "
+            "configuration choice."
+        )
         return app
     cap = max_request_size if max_request_size is not None else DEFAULT_MAX_REQUEST_BYTES
     return RequestSizeLimitMiddleware(app, max_bytes=cap)

@@ -10,11 +10,31 @@ typed-dispatch made per-request validation unconditional.)
 Installed once at server bind time — before FastMCP or the a2a-sdk
 ``Starlette`` app handle the request — so oversized bodies are cut
 off at the ASGI boundary, well before any parser allocates for them.
+
+.. note::
+   **What this guard does NOT bound.** The middleware caps bytes per
+   request, not duration. A slow-loris caller sending 1 byte every 30
+   seconds stays under the cap forever while tying up a worker.
+   Bound duration at the layer above — uvicorn ``--timeout-keep-alive``
+   and a reverse-proxy read timeout (nginx ``client_body_timeout``,
+   Envoy ``request_timeout``) are the standard levers. Docs at
+   ``docs/handler-authoring.md`` spell this out alongside the size cap.
+
+   **Memory budgeting.** The middleware buffers the full body up to
+   the cap before replaying to the inner app (simpler than streaming
+   passthrough, and the cap bounds the allocation). Operators sizing
+   worker counts should budget roughly ``workers × concurrency ×
+   max_request_size`` of RSS. Upstream proxies enforcing a smaller
+   per-connection cap reduce this ceiling for hostile-tenant
+   deployments.
 """
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # 10 MB — generous enough for realistic AdCP payloads (multi-package
 # create_media_buy with embedded creatives/assets can run ~1–2 MB) but
@@ -65,10 +85,17 @@ class RequestSizeLimitMiddleware:
                 try:
                     declared = int(value)
                 except ValueError:
-                    # Malformed header; fall through to streaming check.
+                    # Malformed header; fall through to the streaming
+                    # check. RFC 9110 §8.6 allows rejecting with 400,
+                    # but the cap governs regardless of how the client
+                    # framed the request.
+                    logger.debug(
+                        "malformed Content-Length header (%r); falling through to streaming check",
+                        value,
+                    )
                     break
                 if declared > self.max_bytes:
-                    await self._send_413(send)
+                    await self._send_413(send, self.max_bytes)
                     return
                 break
 
@@ -85,19 +112,27 @@ class RequestSizeLimitMiddleware:
             msg = await receive()
             msg_type = msg.get("type")
             if msg_type == "http.disconnect":
-                # Client gave up before sending the full body. Pass
-                # through — nothing to do.
+                # Client gave up before sending the full body. The
+                # inner app hasn't been invoked yet, so there's nothing
+                # to unwind — just drop the request on the floor
+                # silently. If the app were invoked earlier, we'd need
+                # to propagate the disconnect; it isn't, so we don't.
                 return
             if msg_type != "http.request":
-                # Unexpected message type; forward verbatim via a fresh
-                # receive loop by replaying what we have and letting the
-                # app handle the rest.
-                chunks.append(b"")
-                break
+                # ASGI http scope only defines http.request and
+                # http.disconnect (spec §HTTP). Anything else is a
+                # protocol bug upstream. Skip defensively — don't
+                # truncate the body to an empty chunk as a silent
+                # fallback.
+                logger.debug(
+                    "unexpected ASGI message type %r in http scope; skipping",
+                    msg_type,
+                )
+                continue
             body = msg.get("body", b"")
             total += len(body)
             if total > self.max_bytes:
-                await self._send_413(send)
+                await self._send_413(send, self.max_bytes)
                 return
             chunks.append(body)
             more_body = bool(msg.get("more_body", False))
@@ -123,9 +158,15 @@ class RequestSizeLimitMiddleware:
         await self.app(scope, replay_receive, send)
 
     @staticmethod
-    async def _send_413(send: Any) -> None:
-        """Emit a minimal HTTP 413 Payload Too Large response."""
-        body = b"Payload too large.\n"
+    async def _send_413(send: Any, max_bytes: int) -> None:
+        """Emit an HTTP 413 Payload Too Large response.
+
+        Includes the cap in the body so legitimate clients know the
+        limit they hit — the cap isn't a secret (documented SDK
+        default + deployment config), and a bare "too large" without
+        a number forces adopters to grep the source or docs.
+        """
+        body = f"Payload too large. Maximum request body size is {max_bytes} bytes.\n".encode()
         await send(
             {
                 "type": "http.response.start",
