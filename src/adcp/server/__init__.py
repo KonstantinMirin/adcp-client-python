@@ -57,6 +57,7 @@ from adcp.server.a2a_server import ADCPAgentExecutor, create_a2a_server
 from adcp.server.base import (
     ADCPHandler,
     NotImplementedResponse,
+    TContext,
     ToolContext,
     not_supported,
 )
@@ -129,6 +130,7 @@ __all__ = [
     "ADCPHandler",
     "BrandHandler",
     "ComplianceHandler",
+    "TContext",
     "TmpHandler",
     "ToolContext",
     "NotImplementedResponse",

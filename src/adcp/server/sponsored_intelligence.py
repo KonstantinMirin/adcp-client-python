@@ -7,11 +7,11 @@ Non-SI operations return 'not supported' via the base class.
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Generic
 
 from pydantic import ValidationError
 
-from adcp.server.base import ADCPHandler, NotImplementedResponse, ToolContext
+from adcp.server.base import ADCPHandler, NotImplementedResponse, TContext
 from adcp.types import (
     Error,
     SiGetOfferingRequest,
@@ -25,7 +25,7 @@ from adcp.types import (
 )
 
 
-class SponsoredIntelligenceHandler(ADCPHandler):
+class SponsoredIntelligenceHandler(ADCPHandler[TContext], Generic[TContext]):
     """Handler for Sponsored Intelligence protocol.
 
     Subclass this to implement a Sponsored Intelligence agent. All SI
@@ -41,7 +41,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
             async def handle_si_get_offering(
                 self,
                 request: SiGetOfferingRequest,
-                context: ToolContext | None = None
+                context: TContext | None = None
             ) -> SiGetOfferingResponse:
                 # Your implementation
                 return SiGetOfferingResponse(...)
@@ -56,7 +56,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def si_get_offering(
         self,
         params: SiGetOfferingRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiGetOfferingResponse | NotImplementedResponse:
         """Get sponsored intelligence offering.
 
@@ -75,7 +75,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def si_initiate_session(
         self,
         params: SiInitiateSessionRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiInitiateSessionResponse | NotImplementedResponse:
         """Initiate sponsored intelligence session.
 
@@ -94,7 +94,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def si_send_message(
         self,
         params: SiSendMessageRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiSendMessageResponse | NotImplementedResponse:
         """Send message in sponsored intelligence session.
 
@@ -113,7 +113,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def si_terminate_session(
         self,
         params: SiTerminateSessionRequest | dict[str, Any],
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiTerminateSessionResponse | NotImplementedResponse:
         """Terminate sponsored intelligence session.
 
@@ -137,7 +137,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def handle_si_get_offering(
         self,
         request: SiGetOfferingRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiGetOfferingResponse:
         """Handle get offering request."""
         ...
@@ -146,7 +146,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def handle_si_initiate_session(
         self,
         request: SiInitiateSessionRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiInitiateSessionResponse:
         """Handle initiate session request."""
         ...
@@ -155,7 +155,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def handle_si_send_message(
         self,
         request: SiSendMessageRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiSendMessageResponse:
         """Handle send message request."""
         ...
@@ -164,7 +164,7 @@ class SponsoredIntelligenceHandler(ADCPHandler):
     async def handle_si_terminate_session(
         self,
         request: SiTerminateSessionRequest,
-        context: ToolContext | None = None,
+        context: TContext | None = None,
     ) -> SiTerminateSessionResponse:
         """Handle terminate session request."""
         ...

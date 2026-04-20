@@ -216,7 +216,7 @@ Example using ``contextvars`` (recommended — middleware-agnostic)::
 
 
 def serve(
-    handler: ADCPHandler | Any,
+    handler: ADCPHandler[Any] | Any,
     *,
     name: str = "adcp-agent",
     port: int | None = None,
@@ -363,7 +363,7 @@ def _bind_reusable_socket(host: str, port: int) -> Any:
 
 
 def _serve_mcp(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str,
     port: int | None,
@@ -429,7 +429,7 @@ def _run_mcp_http(mcp: Any, *, transport: str) -> None:
 
 
 def _serve_a2a(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str,
     port: int | None,
@@ -471,7 +471,7 @@ def _serve_a2a(
 
 
 def create_mcp_server(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str = "adcp-agent",
     port: int | None = None,
@@ -571,7 +571,7 @@ def create_mcp_server(
 
 def _register_handler_tools(
     mcp: Any,
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,

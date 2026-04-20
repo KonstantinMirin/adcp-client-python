@@ -67,7 +67,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
     def __init__(
         self,
-        handler: ADCPHandler,
+        handler: ADCPHandler[Any],
         test_controller: TestControllerStore | None = None,
         *,
         context_factory: ContextFactory | None = None,
@@ -435,7 +435,7 @@ def _make_task(
 
 
 def _build_agent_card(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str,
     port: int,
@@ -481,7 +481,7 @@ def _build_agent_card(
 
 
 def create_a2a_server(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     *,
     name: str = "adcp-agent",
     port: int | None = None,

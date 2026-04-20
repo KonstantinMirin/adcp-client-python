@@ -1187,7 +1187,9 @@ def _apply_pydantic_schemas() -> None:
 _apply_pydantic_schemas()
 
 
-def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict[str, Any]]:
+def get_tools_for_handler(
+    handler: ADCPHandler[Any] | type[ADCPHandler[Any]],
+) -> list[dict[str, Any]]:
     """Return tool definitions filtered by handler type.
 
     Walks the MRO to find the matching handler base class, so subclasses
@@ -1211,7 +1213,7 @@ def get_tools_for_handler(handler: ADCPHandler | type[ADCPHandler]) -> list[dict
 
 
 def create_tool_caller(
-    handler: ADCPHandler,
+    handler: ADCPHandler[Any],
     method_name: str,
 ) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
@@ -1257,7 +1259,7 @@ class MCPToolSet:
     Provides tool definitions and handlers for registering with an MCP server.
     """
 
-    def __init__(self, handler: ADCPHandler):
+    def __init__(self, handler: ADCPHandler[Any]):
         """Create tool set from handler.
 
         Args:
@@ -1299,7 +1301,7 @@ class MCPToolSet:
         return list(self._tools.keys())
 
 
-def create_mcp_tools(handler: ADCPHandler) -> MCPToolSet:
+def create_mcp_tools(handler: ADCPHandler[Any]) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
     This is the main entry point for MCP server integration.
