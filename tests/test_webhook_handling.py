@@ -26,13 +26,8 @@ from a2a.types import (
 
 from adcp.client import ADCPClient
 from adcp.exceptions import ADCPWebhookSignatureError
-from adcp.types import GeneratedTaskStatus
 from adcp.types.core import AgentConfig, Protocol, TaskStatus
-from adcp.webhooks import (
-    create_mcp_webhook_payload,
-    extract_webhook_result_data,
-    get_adcp_signed_headers_for_webhook,
-)
+from adcp.webhooks import extract_webhook_result_data, get_adcp_signed_headers_for_webhook
 
 
 class TestMCPWebhooks:
@@ -1297,6 +1292,7 @@ class TestHMACTestVectors:
         import hmac
 
         valid_payload = {
+            "idempotency_key": "whk_fail_closed_test",
             "task_id": "t1",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -1526,5 +1522,3 @@ class TestHMACTestVectors:
             raw_body=raw_body,
         )
         assert result is False, f"Verifier accepted rejection vector {vector['description']!r}"
-
-
