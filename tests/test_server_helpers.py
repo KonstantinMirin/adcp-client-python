@@ -13,6 +13,7 @@ from adcp.server.helpers import (
     inject_context,
     is_terminal_status,
     resolve_account,
+    resolve_account_into_context,
     valid_actions_for_status,
 )
 
@@ -125,9 +126,7 @@ class TestResolveAccount:
         async def resolver(ref: dict) -> dict:
             return {"id": ref["account_id"], "name": "Acme"}
 
-        account, error = await resolve_account(
-            {"account": {"account_id": "a1"}}, resolver
-        )
+        account, error = await resolve_account({"account": {"account_id": "a1"}}, resolver)
         assert account == {"id": "a1", "name": "Acme"}
         assert error is None
 
@@ -136,9 +135,7 @@ class TestResolveAccount:
         async def resolver(ref: dict) -> None:
             return None
 
-        account, error = await resolve_account(
-            {"account": {"account_id": "bad"}}, resolver
-        )
+        account, error = await resolve_account({"account": {"account_id": "bad"}}, resolver)
         assert account is None
         assert error is not None
         assert error["errors"][0]["code"] == "ACCOUNT_NOT_FOUND"
@@ -150,9 +147,7 @@ class TestResolveAccount:
         async def resolver(ref: dict) -> None:
             raise AccountError("ACCOUNT_SUSPENDED", "Account is suspended")
 
-        account, error = await resolve_account(
-            {"account": {"account_id": "a1"}}, resolver
-        )
+        account, error = await resolve_account({"account": {"account_id": "a1"}}, resolver)
         assert account is None
         assert error is not None
         assert error["errors"][0]["code"] == "ACCOUNT_SUSPENDED"
@@ -167,11 +162,147 @@ class TestResolveAccount:
                 suggestion="Update payment at https://billing.example.com",
             )
 
-        account, error = await resolve_account(
-            {"account": {"account_id": "a1"}}, resolver
-        )
+        account, error = await resolve_account({"account": {"account_id": "a1"}}, resolver)
         assert error["errors"][0]["code"] == "ACCOUNT_PAYMENT_REQUIRED"
         assert "billing" in error["errors"][0]["suggestion"]
+
+
+class TestResolveAccountIntoContext:
+    """Tests for resolve_account_into_context — the context-populating variant."""
+
+    @pytest.mark.asyncio
+    async def test_populates_from_spec_account_shape(self) -> None:
+        """Default attr is account_id — matches the spec's Account type."""
+        from dataclasses import dataclass
+
+        from adcp.server import AccountAwareToolContext
+
+        @dataclass
+        class _SpecAccount:
+            account_id: str
+            name: str
+
+        async def resolver(ref: dict) -> _SpecAccount:
+            return _SpecAccount(account_id=ref["account_id"], name="Acme")
+
+        ctx = AccountAwareToolContext(caller_identity="alice")
+        err = await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
+
+        assert err is None
+        assert ctx.account_id == "a1"
+        assert ctx.account is not None
+        assert ctx.account.name == "Acme"
+
+    @pytest.mark.asyncio
+    async def test_not_found_returns_error_and_leaves_context_untouched(self) -> None:
+        from adcp.server import AccountAwareToolContext
+
+        async def resolver(ref: dict) -> None:
+            return None
+
+        ctx = AccountAwareToolContext(caller_identity="alice")
+        err = await resolve_account_into_context({"account": {"account_id": "bad"}}, ctx, resolver)
+
+        assert err is not None
+        assert err["errors"][0]["code"] == "ACCOUNT_NOT_FOUND"
+        assert ctx.account_id is None
+        assert ctx.account is None
+
+    @pytest.mark.asyncio
+    async def test_no_account_field_is_noop(self) -> None:
+        from adcp.server import AccountAwareToolContext
+
+        async def resolver(ref: dict) -> dict:
+            return {"id": "x"}
+
+        ctx = AccountAwareToolContext(caller_identity="alice")
+        err = await resolve_account_into_context({"brief": "test"}, ctx, resolver)
+
+        assert err is None
+        assert ctx.account_id is None
+
+    @pytest.mark.asyncio
+    async def test_plain_tool_context_warns_on_silent_skip(self) -> None:
+        """Passing a plain ToolContext (not Account-aware) MUST emit a
+        UserWarning — silent-skip would break the multi-tenant scope
+        contract by scoping downstream caches on ``None``."""
+        from dataclasses import dataclass
+
+        from adcp.server import ToolContext
+
+        @dataclass
+        class _Account:
+            account_id: str
+
+        async def resolver(ref: dict) -> _Account:
+            return _Account(account_id="a1")
+
+        ctx = ToolContext(caller_identity="alice")
+        with pytest.warns(UserWarning, match="AccountAwareToolContext"):
+            err = await resolve_account_into_context(
+                {"account": {"account_id": "a1"}},
+                ctx,  # type: ignore[arg-type]
+                resolver,
+            )
+
+        assert err is None
+        assert not hasattr(ctx, "account_id")
+
+    @pytest.mark.asyncio
+    async def test_missing_id_attr_raises(self) -> None:
+        """Wrong account_id_attr must raise rather than silently setting
+        None — silent-None scopes downstream keys to None, masking bugs."""
+        from dataclasses import dataclass
+
+        from adcp.server import AccountAwareToolContext
+
+        @dataclass
+        class _Account:
+            name: str  # deliberately no id field
+
+        async def resolver(ref: dict) -> _Account:
+            return _Account(name="Acme")
+
+        ctx = AccountAwareToolContext()
+        with pytest.raises(ValueError, match="account_id_attr"):
+            await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
+
+    @pytest.mark.asyncio
+    async def test_resolver_runtime_error_propagates(self) -> None:
+        """Non-AccountError exceptions propagate — resolver bugs must not be
+        silently converted to ACCOUNT_NOT_FOUND."""
+        from adcp.server import AccountAwareToolContext
+
+        async def resolver(ref: dict) -> None:
+            raise RuntimeError("DB outage")
+
+        ctx = AccountAwareToolContext()
+        with pytest.raises(RuntimeError, match="DB outage"):
+            await resolve_account_into_context({"account": {"account_id": "a1"}}, ctx, resolver)
+
+    @pytest.mark.asyncio
+    async def test_custom_id_attr(self) -> None:
+        from dataclasses import dataclass
+
+        from adcp.server import AccountAwareToolContext
+
+        @dataclass
+        class _Account:
+            account_pk: str
+
+        async def resolver(ref: dict) -> _Account:
+            return _Account(account_pk="pk-123")
+
+        ctx = AccountAwareToolContext()
+        err = await resolve_account_into_context(
+            {"account": {"account_id": "a1"}},
+            ctx,
+            resolver,
+            account_id_attr="account_pk",
+        )
+
+        assert err is None
+        assert ctx.account_id == "pk-123"
 
 
 class TestInjectContext:
@@ -212,9 +343,7 @@ class TestCancelMediaBuyResponse:
         assert resp["canceled_at"].endswith("+00:00") or "Z" in resp["canceled_at"]
 
     def test_custom_timestamp(self) -> None:
-        resp = cancel_media_buy_response(
-            "mb_123", "buyer", canceled_at="2026-01-01T00:00:00Z"
-        )
+        resp = cancel_media_buy_response("mb_123", "buyer", canceled_at="2026-01-01T00:00:00Z")
         assert resp["canceled_at"] == "2026-01-01T00:00:00Z"
 
     def test_invalid_canceled_by_raises(self) -> None:
@@ -254,7 +383,5 @@ class TestMediaBuyResponseAutoActions:
     def test_explicit_actions_override(self) -> None:
         from adcp.server.responses import media_buy_response
 
-        resp = media_buy_response(
-            "mb_1", [], status="active", valid_actions=["cancel"]
-        )
+        resp = media_buy_response("mb_1", [], status="active", valid_actions=["cancel"])
         assert resp["valid_actions"] == ["cancel"]

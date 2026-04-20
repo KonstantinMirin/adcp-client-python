@@ -185,6 +185,8 @@ async with ADCPMultiAgentClient(
 
 - **[API Reference](https://adcontextprotocol.github.io/adcp-client-python/)** - Complete API documentation with type signatures and examples
 - **[Protocol Spec](https://github.com/adcontextprotocol/adcp)** - Ad Context Protocol specification
+- **[Handler authoring](docs/handler-authoring.md)** - Building an AdCP-compliant agent on `adcp.server`
+- **[Multi-tenant contract](docs/multi-tenant-contract.md)** - Scope invariants every multi-tenant agent must satisfy
 - **[Examples](examples/)** - Code examples and usage patterns
 
 The API reference documentation is automatically generated from the code and includes:
