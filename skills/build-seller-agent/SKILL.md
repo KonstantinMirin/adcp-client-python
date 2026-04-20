@@ -481,6 +481,48 @@ Declare `compliance_testing` in supported_protocols:
 return capabilities_response(["media_buy", "compliance_testing"])
 ```
 
+## Emitting Webhooks
+
+When a long-running operation finishes (or progresses), POST a webhook to the buyer's `push_notification_config` / `reporting_webhook`. The SDK gives you two helpers; pick based on the buyer's authentication profile.
+
+**AdCP 4.0 default — RFC 9421 signing** (use `WebhookSender`):
+```python
+from adcp.webhooks import WebhookSender, create_mcp_webhook_payload
+
+sender = WebhookSender.from_jwk(webhook_signing_jwk_with_private_d)
+async with sender:
+    result = await sender.send_mcp(
+        url=str(config.url),
+        task_id=task_id,
+        task_type="create_media_buy",
+        status="completed",
+        result=response_dict,
+    )
+    if not result.ok:
+        retry = await sender.resend(result)  # byte-identical replay
+```
+
+**AdCP 3.x legacy — Bearer or HMAC-SHA256** (use `deliver`):
+```python
+from adcp.webhooks import deliver, create_mcp_webhook_payload
+
+response = await deliver(
+    config,  # PushNotificationConfig or ReportingWebhook from the request
+    create_mcp_webhook_payload(
+        task_id=task_id, task_type="create_media_buy",
+        status="completed", result=response_dict,
+    ),
+)
+response.raise_for_status()
+```
+
+Notes:
+- `deliver` hashes/signs the exact bytes it POSTs for HMAC-SHA256; for Bearer it attaches the credential as `Authorization`. Either way, the signer and the wire cannot disagree.
+- `deliver` emits a `DeprecationWarning` on first use; migrate to `WebhookSender` for 4.0.
+- If your buyer relies on `config.token` echo, pass `token_field="push_token"` (pick a name you and the receiver agree on — there is no spec-defined field name).
+- In production pass a shared `httpx.AsyncClient` to `deliver` (or `client=` to `WebhookSender`) with a transport that blocks private/link-local IPs — the helper validates URL scheme but not egress destination.
+- Retries: call `deliver` again with the same payload (deterministic serialization). For byte-identical HTTP envelopes including headers, use `WebhookSender.resend()`.
+
 ## SDK Quick Reference
 
 **Response builders** (from `adcp.server.responses`):

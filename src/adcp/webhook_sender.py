@@ -49,6 +49,11 @@ from adcp.webhooks import (
 # re-enter send_*() with the same idempotency_key — the body is re-signed
 # but dedup still fires at the receiver.
 _DEFAULT_TIMEOUT_SECONDS = 10.0
+# 10MB serialized-body cap — matches adcp.webhooks.deliver and typical
+# buyer-side reverse-proxy limits. Guards against OOM when a caller passes
+# an adversarial payload: json.dumps holds dict + str concurrently, and
+# .encode() transiently triples memory, so a 1GB body is multiple GB RSS.
+_MAX_BODY_BYTES = 10 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -340,6 +345,12 @@ class WebhookSender:
         # gets signed AND posted. Do not allow an httpx `json=` path anywhere
         # in the stack because it would reserialize and break the digest.
         body = json.dumps(body_dict).encode("utf-8")
+        if len(body) > _MAX_BODY_BYTES:
+            raise ValueError(
+                f"serialized webhook body is {len(body):,} bytes, over the "
+                f"{_MAX_BODY_BYTES:,}-byte cap. Split into smaller webhooks "
+                "or use batch-reporting endpoints."
+            )
         return await self._send_bytes(
             url=url,
             body=body,
