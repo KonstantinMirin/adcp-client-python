@@ -19,6 +19,7 @@ from adcp.signing.canonical import (
     parse_signature_input_header,
 )
 from adcp.signing.constants import (
+    ADCP_USE_REQUEST,
     DEFAULT_SKEW_SECONDS,
     DEFAULT_TAG,
     MAX_WINDOW_SECONDS,
@@ -109,6 +110,7 @@ class VerifyOptions:
     max_window_seconds: int = MAX_WINDOW_SECONDS
     label: str = SIG_LABEL_DEFAULT
     expected_tag: str = DEFAULT_TAG
+    expected_adcp_use: str = ADCP_USE_REQUEST
     allowed_algs: frozenset[str] = ALLOWED_ALGS
     agent_url: str | None = None
 
@@ -208,7 +210,7 @@ def verify_request_signature(
         )
 
     alg = str(parsed.params["alg"])
-    _check_key_purpose(jwk, alg)
+    _check_key_purpose(jwk, alg, expected_adcp_use=options.expected_adcp_use)
 
     if options.revocation_list is not None:
         as_of = datetime.fromtimestamp(options.now, tz=timezone.utc)
@@ -436,7 +438,7 @@ def _check_components(
         )
 
 
-def _check_key_purpose(jwk: Mapping[str, Any], alg: str) -> None:
+def _check_key_purpose(jwk: Mapping[str, Any], alg: str, *, expected_adcp_use: str) -> None:
     if jwk.get("use") != "sig":
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_KEY_PURPOSE_INVALID,
@@ -450,11 +452,11 @@ def _check_key_purpose(jwk: Mapping[str, Any], alg: str) -> None:
             step=8,
             message=f"JWK.key_ops {key_ops!r} missing 'verify'",
         )
-    if jwk.get("adcp_use") != "request-signing":
+    if jwk.get("adcp_use") != expected_adcp_use:
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_KEY_PURPOSE_INVALID,
             step=8,
-            message=f"JWK.adcp_use {jwk.get('adcp_use')!r} != 'request-signing'",
+            message=f"JWK.adcp_use {jwk.get('adcp_use')!r} != {expected_adcp_use!r}",
         )
     try:
         jwk_alg = alg_for_jwk(dict(jwk))
