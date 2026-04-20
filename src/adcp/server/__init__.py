@@ -55,6 +55,7 @@ from __future__ import annotations
 from adcp.capabilities import validate_capabilities
 from adcp.server.a2a_server import ADCPAgentExecutor, create_a2a_server
 from adcp.server.base import (
+    AccountAwareToolContext,
     ADCPHandler,
     NotImplementedResponse,
     TContext,
@@ -78,6 +79,7 @@ from adcp.server.helpers import (  # noqa: F401
     inject_context,
     is_terminal_status,
     resolve_account,
+    resolve_account_into_context,
     valid_actions_for_status,
 )
 from adcp.server.idempotency import IdempotencyStore, MemoryBackend
@@ -128,6 +130,7 @@ from adcp.server.tmp import TmpHandler
 
 __all__ = [
     # Base classes
+    "AccountAwareToolContext",
     "ADCPHandler",
     "BrandHandler",
     "ComplianceHandler",
@@ -177,6 +180,7 @@ __all__ = [
     "inject_context",
     "is_terminal_status",
     "resolve_account",
+    "resolve_account_into_context",
     "valid_actions_for_status",
     # Response builders
     "activate_signal_response",

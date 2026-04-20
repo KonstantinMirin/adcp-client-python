@@ -333,5 +333,41 @@ def test_handler_method_signatures_preserve_parameter_order():
         assert "context" in params
 
 
+# ---------------------------------------------------------------------------
+# AccountAwareToolContext — shipped subclass exercised through the TypeVar
+# ---------------------------------------------------------------------------
+
+
+def test_account_aware_context_flows_through_handler():
+    """The shipped ``AccountAwareToolContext`` must work with the same
+    ``ADCPHandler[Ctx]`` pattern as any user-defined subclass — it's
+    the canonical example we point sellers at."""
+    from adcp.server import AccountAwareToolContext
+
+    received: list[Any] = []
+
+    class _TypedAgent(ADCPHandler[AccountAwareToolContext]):
+        _agent_type = "account-aware"
+
+        async def get_adcp_capabilities(self, params, context=None):
+            received.append(context)
+            return {"adcp": {"major_versions": [3]}}
+
+    import asyncio
+
+    agent = _TypedAgent()
+    ctx = AccountAwareToolContext(
+        caller_identity="p-1",
+        tenant_id="t-1",
+        account_id="acct-42",
+    )
+    asyncio.run(agent.get_adcp_capabilities({}, ctx))
+
+    got = received[0]
+    assert isinstance(got, AccountAwareToolContext)
+    assert got.account_id == "acct-42"
+    assert got.caller_identity == "p-1"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

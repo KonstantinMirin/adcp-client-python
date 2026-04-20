@@ -120,6 +120,45 @@ class ToolContext:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class AccountAwareToolContext(ToolContext):
+    """ToolContext subclass carrying a resolved account scope.
+
+    AdCP is account-aware: many operations accept an ``account`` field
+    (:class:`~adcp.types.AccountReference`) that the seller resolves to
+    a concrete account before executing the request. Handlers that need
+    ``account_id`` throughout their business logic shouldn't have to
+    re-derive it on every call — this subclass carries the resolved
+    result on the context itself.
+
+    The typical flow::
+
+        class MyAgent(ADCPHandler[AccountAwareToolContext]):
+            async def get_products(self, params, context=None):
+                err = await resolve_account_into_context(
+                    params, context, my_resolver,
+                )
+                if err:
+                    return err  # ACCOUNT_NOT_FOUND / SUSPENDED / etc.
+                # context.account_id is now populated
+                return products_response(self.catalog.for_account(context.account_id))
+
+    Sellers whose account scope is fixed by the authenticated principal
+    (e.g. per-tenant API keys that map 1:1 to an account) can populate
+    ``account_id`` directly in their ``context_factory`` and skip the
+    per-call resolution entirely.
+
+    :param account_id: The resolved, stable account identifier. Safe to
+        use as a cache key, audit log field, or authorization scope.
+    :param account: The resolver's opaque account object — whatever the
+        seller's :func:`resolve_account` resolver returned. Typed as
+        ``Any`` so sellers aren't forced to match the SDK's shape.
+    """
+
+    account_id: str | None = None
+    account: Any | None = None
+
+
 class NotImplementedResponse(BaseModel):
     """Standard response for operations not supported by this handler."""
 

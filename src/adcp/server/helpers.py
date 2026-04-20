@@ -243,6 +243,54 @@ async def resolve_account(
     return account, None
 
 
+async def resolve_account_into_context(
+    params: dict[str, Any],
+    context: Any | None,
+    resolver: AccountResolver | None,
+    *,
+    account_id_attr: str = "id",
+) -> dict[str, Any] | None:
+    """Resolve an account reference and populate an
+    :class:`~adcp.server.AccountAwareToolContext`.
+
+    Collapses the standard three-line boilerplate (resolve → check error
+    → extract id) into one call. Returns ``None`` on success (or when
+    there's nothing to resolve); returns an error dict to be returned
+    directly from the handler otherwise::
+
+        async def get_products(self, params, context=None):
+            err = await resolve_account_into_context(
+                params, context, my_resolver,
+            )
+            if err:
+                return err
+            return products_response(catalog.for_account(context.account_id))
+
+    When ``context`` is ``None`` or isn't an ``AccountAwareToolContext``
+    (e.g. a transport forgot to populate it), resolution still runs so
+    the error path is consistent, but the context is not mutated.
+
+    :param params: The request params dict, expected to carry an
+        ``account`` key with an ``AccountReference``.
+    :param context: The handler's context. Must be
+        :class:`~adcp.server.AccountAwareToolContext` (or a subclass of
+        it) to receive the resolved fields.
+    :param resolver: An :data:`AccountResolver` — same shape as
+        :func:`resolve_account` accepts.
+    :param account_id_attr: Attribute name on the resolver's account
+        object that holds the stable id. Defaults to ``"id"``.
+    """
+    from adcp.server.base import AccountAwareToolContext
+
+    account, err = await resolve_account(params, resolver)
+    if err is not None:
+        return err
+    if account is not None and isinstance(context, AccountAwareToolContext):
+        context.account = account
+        context.account_id = getattr(account, account_id_attr, None)
+    return None
+
+
 # ============================================================================
 # Context Passthrough
 # ============================================================================

@@ -368,8 +368,16 @@ exposes the fields those handlers need:
   `context_factory` and your handler methods `isinstance(context,
   MyContext)` (or `cast(MyContext, context)` if you've established the
   invariant via the factory) to reach the extra fields.
+- `AccountAwareToolContext` is a shipped subclass that adds
+  `account_id` + `account` for handlers that need per-request account
+  scope. Pair it with `resolve_account_into_context(params, context,
+  resolver)` to collapse the standard three-line boilerplate.
 
 When in doubt, subclass: `metadata: dict[str, Any]` loses type safety.
+
+For the full set of scope invariants — what each field means, how
+cache keys are composed, what leaks if you populate fields wrong — see
+[docs/multi-tenant-contract.md](./multi-tenant-contract.md).
 
 ## A2A transport
 
