@@ -224,7 +224,7 @@ def _controller_error(error: str, detail: str, current_state: str | None = None)
 
 
 def _accepts_context_kwarg(method: Any) -> bool:
-    """True when ``method``'s signature accepts a ``context`` keyword.
+    """True when ``method``'s signature accepts ``context=`` by keyword.
 
     TestControllerStore subclasses written against the original API
     (pre-#227) don't declare ``context``; passing it would raise
@@ -232,15 +232,38 @@ def _accepts_context_kwarg(method: Any) -> bool:
     dispatcher backward-compatible while letting stores opt in to
     header-driven context by simply adding ``context=None`` to their
     override.
+
+    Counts as an opt-in:
+
+    - ``*, context: ...`` — keyword-only (the documented recipe).
+    - ``context: ...`` as a regular positional-or-keyword parameter.
+    - ``**kwargs`` — accepts any keyword, including ``context``.
+
+    Does **not** count:
+
+    - ``context`` as positional-only (before ``/``) — passing by
+      keyword raises ``TypeError``.
+    - ``context`` as ``*args`` (it's never a variadic positional).
+
+    Caveat: ``inspect.signature`` follows ``__wrapped__`` set by
+    ``@functools.wraps``. A decorator that wraps a legacy store method
+    and exposes the legacy signature will look "not opted in" even if
+    the wrapper itself would accept ``context``. This matches the
+    behavior callers expect — the wrapped callable signature is the
+    authoritative contract.
     """
     try:
         sig = inspect.signature(method)
     except (TypeError, ValueError):
         return False
+    allowed = {
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        inspect.Parameter.KEYWORD_ONLY,
+    }
     for param in sig.parameters.values():
         if param.kind == inspect.Parameter.VAR_KEYWORD:
             return True
-        if param.name == "context":
+        if param.name == "context" and param.kind in allowed:
             return True
     return False
 

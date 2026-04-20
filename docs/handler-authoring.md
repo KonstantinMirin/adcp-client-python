@@ -527,10 +527,17 @@ _test_context: ContextVar[AdCPTestContext | None] = ContextVar(
 
 
 # 2. Starlette middleware reads headers into the ContextVar per request.
+#    Always reset the token in a finally block — otherwise the set
+#    value leaks into the next request that reuses this asyncio task
+#    (cross-request state bleed; see PR #232's cross-tenant idempotency
+#    scoping for the analogous failure mode).
 class TestHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        _test_context.set(AdCPTestContext.from_headers(request.headers))
-        return await call_next(request)
+        token = _test_context.set(AdCPTestContext.from_headers(request.headers))
+        try:
+            return await call_next(request)
+        finally:
+            _test_context.reset(token)
 
 
 # 3. context_factory snapshots the ContextVar onto ToolContext.

@@ -89,6 +89,99 @@ def test_accepts_context_kwarg_rejects_methods_without_context():
     assert _accepts_context_kwarg(fn) is False
 
 
+def test_accepts_context_kwarg_rejects_positional_only_context():
+    """``context`` before a ``/`` is positional-only — the dispatcher
+    passes ``context=ctx`` by keyword, so a positional-only declaration
+    would raise TypeError. Must be treated as not-opted-in."""
+    import textwrap
+
+    # positional-only syntax (PEP 570) works in Py 3.8+; use exec so
+    # the file still parses cleanly without introducing a sigil.
+    ns: dict[str, Any] = {}
+    exec(
+        textwrap.dedent(
+            """
+            async def fn(self, context, /, account_id, status):
+                return {}
+            """
+        ),
+        ns,
+    )
+    assert _accepts_context_kwarg(ns["fn"]) is False
+
+
+def test_accepts_context_kwarg_follows_functools_wraps():
+    """``inspect.signature`` follows ``__wrapped__``. A decorator using
+    ``@functools.wraps`` exposes the wrapped signature — which is the
+    authoritative contract. Verify the detection pipeline respects it
+    so operators can reason about which methods opt in."""
+    import functools
+
+    async def legacy(self, account_id: str, status: str) -> dict[str, Any]:
+        return {}
+
+    @functools.wraps(legacy)
+    async def wrapper(self, *args, **kwargs):
+        return await legacy(self, *args, **kwargs)
+
+    # Wrapper preserves the legacy signature — no context visible.
+    assert _accepts_context_kwarg(wrapper) is False
+
+    async def modern(self, account_id: str, status: str, *, context: Any = None) -> dict[str, Any]:
+        return {}
+
+    @functools.wraps(modern)
+    async def modern_wrapper(self, *args, **kwargs):
+        return await modern(self, *args, **kwargs)
+
+    # Wrapped signature preserves the kwarg — opt-in survives.
+    assert _accepts_context_kwarg(modern_wrapper) is True
+
+
+def test_dispatcher_finds_override_on_intermediate_base():
+    """A store may compose behavior across an inheritance chain
+    (``MyStore(Mixin, TestControllerStore)``). The dispatcher must find
+    the override wherever it lives in the MRO — and the context-kwarg
+    detection must work on the bound method even when the implementing
+    class is an intermediate base, not the leaf."""
+
+    class _Mixin:
+        async def force_media_buy_status(
+            self,
+            media_buy_id: str,
+            status: str,
+            rejection_reason: str | None = None,
+            *,
+            context: ToolContext | None = None,
+        ) -> dict[str, Any]:
+            return {
+                "previous_state": "active",
+                "current_state": status,
+                "from_mixin": True,
+                "saw_context": context is not None,
+            }
+
+    class _Store(_Mixin, TestControllerStore):
+        pass
+
+    ctx = ToolContext(caller_identity="p-x", metadata={"test_context": {"x": 1}})
+    import asyncio
+
+    result = asyncio.run(
+        _handle_test_controller(
+            _Store(),
+            {
+                "scenario": "force_media_buy_status",
+                "params": {"media_buy_id": "mb-1", "status": "paused"},
+            },
+            context=ctx,
+        )
+    )
+    assert result["success"] is True
+    assert result["from_mixin"] is True
+    assert result["saw_context"] is True
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher threads context into store methods that opt in
 # ---------------------------------------------------------------------------
