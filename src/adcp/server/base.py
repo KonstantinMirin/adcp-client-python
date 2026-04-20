@@ -83,6 +83,11 @@ class ToolContext:
     Contains metadata about the current request that may be useful
     for logging, authorization, or other cross-cutting concerns.
 
+    Subclassing is supported. Multi-tenant agents commonly define a
+    subclass carrying typed tenant + adapter fields (see
+    ``docs/handler-authoring.md``) and populate it from a
+    ``context_factory`` passed to :func:`create_mcp_server`.
+
     :param caller_identity: The authenticated principal making the request.
         **MUST** be a stable, globally-unique identifier within the seller's
         tenant — never an email, display name, or any other mutable handle.
@@ -92,10 +97,22 @@ class ToolContext:
         causes cross-principal replay (confidentiality leak). Populated by
         the transport layer (A2A: ``ServerCallContext.user.user_name``; MCP:
         seller's FastMCP auth middleware).
+    :param tenant_id: Multi-tenant agents may populate this with the tenant
+        the request is scoped to. Typed as a first-class field so
+        multi-tenant handlers don't have to smuggle it through ``metadata``.
+        A ``tenant_id`` + ``caller_identity`` pair uniquely identifies a
+        principal across tenants; idempotency keys remain scoped by
+        ``caller_identity`` alone (principals are unique within a tenant).
+    :param metadata: Open extension point for transport-specific or
+        agent-specific fields (e.g. adapter instance handles, request
+        headers, testing hooks). Downstream agents may subclass
+        :class:`ToolContext` for typed fields; ``metadata`` is the escape
+        hatch when subclassing isn't worth it.
     """
 
     request_id: str | None = None
     caller_identity: str | None = None
+    tenant_id: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

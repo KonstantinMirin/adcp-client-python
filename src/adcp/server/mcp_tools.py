@@ -850,6 +850,31 @@ ADCP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
 # Protocol discovery tool included for all handler types
 _PROTOCOL_TOOLS: set[str] = {"get_adcp_capabilities"}
 
+
+# Tools the AdCP spec allows callers to invoke without an authenticated
+# principal. ``get_adcp_capabilities`` is the handshake tool — any client
+# has to call it before auth to discover which ops the agent supports and
+# what auth scheme to use. Everything else requires a principal.
+#
+# Sellers wiring their own auth middleware (the SDK explicitly punts auth
+# to the transport layer — see :func:`adcp.server.create_mcp_server`)
+# should import this and skip auth enforcement for any tool name in the
+# set. Downstream MAY extend it for discovery tools outside the AdCP spec
+# (e.g. a public ``list_public_formats`` surface). The base set is the
+# spec-mandated floor, not a cap.
+#
+# Example::
+#
+#     from adcp.server import DISCOVERY_TOOLS
+#
+#     async def dispatch(self, request, call_next):
+#         tool = _extract_tool_name(request)
+#         if tool not in DISCOVERY_TOOLS:
+#             self._require_valid_token(request)
+#         return await call_next(request)
+DISCOVERY_TOOLS: frozenset[str] = frozenset({"get_adcp_capabilities"})
+
+
 # Tools specific to each specialized handler type
 _HANDLER_TOOLS: dict[str, set[str]] = {
     "GovernanceHandler": {

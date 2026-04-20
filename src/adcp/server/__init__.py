@@ -80,7 +80,12 @@ from adcp.server.helpers import (  # noqa: F401
     valid_actions_for_status,
 )
 from adcp.server.idempotency import IdempotencyStore, MemoryBackend
-from adcp.server.mcp_tools import MCPToolSet, create_mcp_tools, get_tools_for_handler
+from adcp.server.mcp_tools import (
+    DISCOVERY_TOOLS,
+    MCPToolSet,
+    create_mcp_tools,
+    get_tools_for_handler,
+)
 from adcp.server.proposal import ProposalBuilder, ProposalNotSupported
 from adcp.server.responses import (
     activate_signal_response,
@@ -103,7 +108,7 @@ from adcp.server.responses import (
     sync_governance_response,
     update_media_buy_response,
 )
-from adcp.server.serve import create_mcp_server, serve
+from adcp.server.serve import ContextFactory, create_mcp_server, serve
 from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
 from adcp.server.test_controller import (
     TestControllerError,
@@ -131,6 +136,8 @@ __all__ = [
     "ProposalBuilder",
     "ProposalNotSupported",
     # MCP integration
+    "ContextFactory",
+    "DISCOVERY_TOOLS",
     "MCPToolSet",
     "create_mcp_tools",
     "create_mcp_server",
