@@ -81,6 +81,7 @@ class ADCPAgentExecutor(AgentExecutor):
         *,
         context_factory: ContextFactory | None = None,
         middleware: Sequence[SkillMiddleware] | None = None,
+        advertise_all: bool = False,
     ) -> None:
         self._handler = handler
         self._context_factory = context_factory
@@ -96,7 +97,7 @@ class ADCPAgentExecutor(AgentExecutor):
         # Skip comply_test_controller unless the seller passed a
         # TestControllerStore; otherwise we would advertise a skill
         # backed only by the handler's not-supported stub.
-        tool_defs = get_tools_for_handler(handler)
+        tool_defs = get_tools_for_handler(handler, advertise_all=advertise_all)
         for tool_def in tool_defs:
             name = tool_def["name"]
             if name == "comply_test_controller" and test_controller is None:
@@ -451,6 +452,7 @@ def _build_agent_card(
     description: str | None = None,
     version: str = "1.0.0",
     extra_skills: list[AgentSkill] | None = None,
+    advertise_all: bool = False,
 ) -> AgentCard:
     """Build an A2A AgentCard from an ADCPHandler's tool definitions.
 
@@ -459,8 +461,12 @@ def _build_agent_card(
     :func:`create_a2a_server` opts in when a ``TestControllerStore`` is
     wired). Extra skills are deduped by id so advertising the test
     controller never produces two entries.
+
+    Honors the same ``advertise_all`` semantic as
+    :func:`~adcp.server.get_tools_for_handler` so the published agent
+    card reflects what the executor will actually dispatch.
     """
-    tool_defs = get_tools_for_handler(handler)
+    tool_defs = get_tools_for_handler(handler, advertise_all=advertise_all)
     extra_ids = {s.id for s in extra_skills} if extra_skills else set()
 
     skills = [
@@ -501,6 +507,7 @@ def create_a2a_server(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    advertise_all: bool = False,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -556,6 +563,13 @@ def create_a2a_server(
             :data:`~adcp.server.SkillMiddleware` for the signature,
             composition semantics, and the exception-capture pattern
             audit hooks need.
+        advertise_all: When True, advertise every tool the handler type
+            supports — including ones whose method is still the SDK's
+            ``not_supported`` default. Defaults to ``False``, which
+            reflects only overridden methods in the agent card's
+            ``skills`` list and in the executor's tool-caller registry.
+            Turn on for spec-compliance storyboards or when the agent
+            deliberately wants clients to see a ``not_supported`` tool.
 
     Returns:
         A Starlette app ready to be run with uvicorn.
@@ -569,6 +583,7 @@ def create_a2a_server(
         test_controller=test_controller,
         context_factory=context_factory,
         middleware=middleware,
+        advertise_all=advertise_all,
     )
 
     agent_card = _build_agent_card(
@@ -578,6 +593,7 @@ def create_a2a_server(
         description=description,
         version=version,
         extra_skills=_test_controller_skills() if test_controller else None,
+        advertise_all=advertise_all,
     )
 
     if task_store is None:

@@ -44,6 +44,17 @@ That's a complete AdCP agent. All 57+ other tools return `not_supported`
 automatically via the `ADCPHandler` default methods; override only what
 your agent actually implements.
 
+**`tools/list` reflects your overrides, not the full spec surface.**
+By default the SDK advertises only the tools whose methods your
+subclass overrode (plus spec-mandated discovery). The minimal
+``MySeller`` above would surface two tools to MCP clients
+(``get_adcp_capabilities`` + ``get_products``), not 57 — dropping
+~20-30K tokens of unused tool schemas from every client's context.
+Pass ``advertise_all=True`` to ``serve()`` / ``create_mcp_server()`` /
+``create_a2a_server()`` to restore the full surface (spec-compliance
+storyboards, agents that deliberately signal
+``not_supported`` on specific tools).
+
 ## The `_impl` pattern (production-grade)
 
 Production agents usually don't put business logic directly on handler
