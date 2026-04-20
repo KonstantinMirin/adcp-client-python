@@ -4,7 +4,30 @@
 removed several types and renamed fields; this guide lists each change with
 before/after code.
 
+## Automated migration
+
+Run the bundled codemod against your source tree first — it rewrites the 9
+mechanical `<Type>Asset` → `<Type>Content` renames and prints a structured
+report of every removed-type usage that still needs a manual replacement:
+
+```bash
+# Dry run — see the plan before anything moves.
+python -m adcp.migrate v3-to-v4 ./src
+
+# Rewrite in place. Commit first so `git diff` is your review.
+python -m adcp.migrate v3-to-v4 ./src --apply
+
+# Structured JSON for CI / editor integrations.
+python -m adcp.migrate v3-to-v4 ./src --json
+```
+
+The CLI exits 1 when there are manual-review findings (removed types, numbered
+`Assets` imports, `adcp.types.generated_poc` imports) — wire it into CI to
+gate merges until every flagged usage is addressed.
+
 ## Audit your exposure first
+
+If you'd rather stick with grep:
 
 ```bash
 grep -rnE "BrandManifest|FormatCategory|DeliverTo|PromotedProducts|PromotedOfferings|PackageStatus|from adcp import Pricing|\.brand_manifest|adcp\.types\.generated_poc|(Audio|Css|Html|Image|Javascript|Text|Url|Video|Webhook)Asset\b" src/

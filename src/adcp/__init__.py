@@ -491,25 +491,60 @@ def __getattr__(name: str) -> object:
     raise AttributeError(f"module 'adcp' has no attribute {name!r}")
 
 
-def get_adcp_version() -> str:
-    """
-    Get the target AdCP specification version this SDK is built for.
+def get_adcp_spec_version() -> str:
+    """Get the AdCP specification version this SDK is built against.
 
-    This version determines which AdCP schemas are used for type generation
-    and validation. The SDK is designed to work with this specific version
-    of the AdCP specification.
+    Pinned at build time from the ``ADCP_VERSION`` file packaged with
+    the SDK. The version determines which AdCP schemas
+    (``adcp.types.generated_poc``) ship with this release.
+
+    Use this when you need to surface spec version to clients (agent
+    cards, capability responses, debug endpoints) or validate
+    cross-compatibility with a peer agent's advertised spec version.
+
+    For the SDK package version (``4.0.0b1``, ``4.1.2``, etc.), use
+    :func:`get_adcp_sdk_version` or the ``adcp.__version__`` attribute.
 
     Returns:
-        AdCP specification version (e.g., "2.5.0")
+        AdCP specification version (e.g., ``"2.5.0"``, ``"latest"``).
 
     Raises:
-        FileNotFoundError: If ADCP_VERSION file is missing from package
+        FileNotFoundError: If the packaged ``ADCP_VERSION`` file is
+            missing — typically an indicator of a corrupt install.
     """
     from importlib.resources import files
 
-    # Read from ADCP_VERSION file in package
     version_file = files("adcp") / "ADCP_VERSION"
     return version_file.read_text().strip()
+
+
+def get_adcp_sdk_version() -> str:
+    """Get this SDK's package version (e.g., ``"4.0.0b1"``).
+
+    Equivalent to :attr:`adcp.__version__` — the semver package
+    version from ``pyproject.toml`` / installed metadata. Use the
+    function form when you want a consistent call-site style with
+    :func:`get_adcp_spec_version`; otherwise ``adcp.__version__``
+    reads just as clearly.
+
+    Returns:
+        SDK package version string. Falls back to ``"0.0.0+unknown"``
+        when running from an uninstalled source tree.
+    """
+    return __version__
+
+
+def get_adcp_version() -> str:
+    """Return the AdCP *spec* version (legacy name).
+
+    .. deprecated:: 4.1
+        Kept for backwards compatibility with pre-4.1 callers. Prefer
+        :func:`get_adcp_spec_version` (spec version) or
+        :func:`get_adcp_sdk_version` / :attr:`adcp.__version__` (SDK
+        package version) — the split disambiguates what the caller
+        actually wants at the call site.
+    """
+    return get_adcp_spec_version()
 
 
 __all__ = [
