@@ -1123,3 +1123,159 @@ async def test_middleware_can_transform_result_on_return_side():
     assert result["middleware_marker"] == "wrapped"
     # And the handler's original payload is still there.
     assert result["products"][0]["id"] == "p1"
+
+
+# --------------------------------------------------------------------
+# Custom message_parser hook (alternative A2A wire formats)
+# --------------------------------------------------------------------
+
+
+async def test_custom_message_parser_receives_request_context():
+    """A custom parser is called with the RequestContext and owns the
+    (skill_name, params) extraction — enabling JSON-RPC, bare-text, or
+    vendor-specific DataPart layouts without subclassing the executor."""
+
+    class _ParserHandler(ADCPHandler):
+        async def get_products(self, params, context=None):
+            return {"products": [{"id": params.get("id", "?")}]}
+
+    received: list[Any] = []
+
+    def my_parser(ctx: RequestContext) -> tuple[str | None, dict[str, Any]]:
+        received.append(ctx)
+        # Pretend the client sends ``{"operation": "get_products", "body": {...}}``.
+        msg = ctx.message
+        assert msg is not None
+        for part in msg.parts:
+            inner = part.root if hasattr(part, "root") else part
+            if isinstance(inner, DataPart) and isinstance(inner.data, dict):
+                op = inner.data.get("operation")
+                body = inner.data.get("body") or {}
+                if op:
+                    return str(op), body if isinstance(body, dict) else {}
+        return None, {}
+
+    executor = ADCPAgentExecutor(_ParserHandler(), message_parser=my_parser)
+    msg = Message(
+        message_id="m-custom",
+        role=Role.user,
+        parts=[Part(root=DataPart(data={"operation": "get_products", "body": {"id": "p42"}}))],
+    )
+    ctx = RequestContext(request=MessageSendParams(message=msg))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    assert len(received) == 1
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+
+async def test_custom_parser_returning_none_yields_error_task():
+    """A parser that returns (None, {}) must surface as an error Task
+    the same way an unparseable default message does."""
+
+    def bad_parser(ctx: RequestContext) -> tuple[str | None, dict[str, Any]]:
+        return None, {}
+
+    class _Handler(ADCPHandler):
+        async def get_products(self, params, context=None):
+            return {"products": []}
+
+    executor = ADCPAgentExecutor(_Handler(), message_parser=bad_parser)
+    msg = Message(
+        message_id="m-none",
+        role=Role.user,
+        parts=[Part(root=DataPart(data={"skill": "get_products", "parameters": {}}))],
+    )
+    ctx = RequestContext(request=MessageSendParams(message=msg))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "failed"
+
+
+async def test_default_parser_runs_when_no_message_parser_configured():
+    """No ``message_parser=`` → the built-in ``_default_parse_request``
+    runs. Pins backwards-compat for sellers who don't opt in."""
+
+    class _Handler(ADCPHandler):
+        async def get_products(self, params, context=None):
+            return {"products": [{"id": "default-path"}]}
+
+    executor = ADCPAgentExecutor(_Handler())
+    msg = Message(
+        message_id="m-default",
+        role=Role.user,
+        parts=[Part(root=DataPart(data={"skill": "get_products", "parameters": {}}))],
+    )
+    ctx = RequestContext(request=MessageSendParams(message=msg))
+    queue = EventQueue()
+    await executor.execute(ctx, queue)
+
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
+def test_create_a2a_server_threads_message_parser_into_executor():
+    """The kwarg propagates from ``create_a2a_server`` → executor."""
+
+    def my_parser(ctx: RequestContext) -> tuple[str | None, dict[str, Any]]:
+        return None, {}
+
+    app = create_a2a_server(_TestHandler(), name="parser-test", message_parser=my_parser)
+    handler = _extract_default_request_handler(app)
+    executor = handler.agent_executor
+    assert isinstance(executor, ADCPAgentExecutor)
+    assert executor._message_parser is my_parser
+
+
+async def test_custom_parser_can_compose_with_default():
+    """Typical pattern: seller's parser tries a custom shape first,
+    then falls through to the default parser for legacy clients."""
+
+    class _Handler(ADCPHandler):
+        async def get_products(self, params, context=None):
+            return {"products": [{"from_params": params.get("source", "unknown")}]}
+
+    executor = ADCPAgentExecutor(_Handler())
+
+    def composed(ctx: RequestContext) -> tuple[str | None, dict[str, Any]]:
+        # Seller's custom shape: DataPart({"operation": ..., "body": ...})
+        msg = ctx.message
+        if msg is not None:
+            for part in msg.parts:
+                inner = part.root if hasattr(part, "root") else part
+                if (
+                    isinstance(inner, DataPart)
+                    and isinstance(inner.data, dict)
+                    and "operation" in inner.data
+                ):
+                    return str(inner.data["operation"]), {
+                        "source": "custom",
+                        **(inner.data.get("body") or {}),
+                    }
+        # Fall through to the default for legacy clients.
+        return executor._default_parse_request(ctx)
+
+    executor2 = ADCPAgentExecutor(_Handler(), message_parser=composed)
+
+    # Legacy shape → default parser catches it.
+    legacy_msg = Message(
+        message_id="m-legacy",
+        role=Role.user,
+        parts=[Part(root=DataPart(data={"skill": "get_products", "parameters": {}}))],
+    )
+    legacy_ctx = RequestContext(request=MessageSendParams(message=legacy_msg))
+    queue = EventQueue()
+    await executor2.execute(legacy_ctx, queue)
+    event = await queue.dequeue_event(no_wait=True)
+    assert isinstance(event, Task)
+    assert event.status.state == "completed"

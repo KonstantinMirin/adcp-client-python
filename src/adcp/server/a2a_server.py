@@ -56,7 +56,28 @@ if TYPE_CHECKING:
     from a2a.server.tasks.task_store import TaskStore
 
     from adcp.server.serve import ContextFactory, SkillMiddleware
-from adcp.server.helpers import STANDARD_ERROR_CODES
+
+from collections.abc import Callable  # noqa: E402
+
+MessageParser = Callable[[RequestContext], tuple[str | None, dict[str, Any]]]
+"""Callable that extracts ``(skill_name, params)`` from an incoming
+A2A :class:`RequestContext`.
+
+The default parser handles ``DataPart(data={"skill": ...,
+"parameters": ...})`` plus a TextPart JSON fallback. Override this
+hook to accept alternative wire shapes — JSON-RPC 2.0 message bodies,
+vendor-specific DataPart schemas, or text-only skill encodings. Return
+``(None, {})`` to signal "no parseable skill"; the executor will emit
+an error Task for the client.
+
+Pair with :meth:`ADCPAgentExecutor._default_parse_request` when you
+want to accept a custom shape *in addition to* the built-in shapes —
+call the default as a fallback after your own parser returns
+``(None, {})``.
+"""
+
+
+from adcp.server.helpers import STANDARD_ERROR_CODES  # noqa: E402
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 from adcp.server.test_controller import TestControllerStore, _handle_test_controller
 
@@ -81,6 +102,7 @@ class ADCPAgentExecutor(AgentExecutor):
         *,
         context_factory: ContextFactory | None = None,
         middleware: Sequence[SkillMiddleware] | None = None,
+        message_parser: MessageParser | None = None,
         advertise_all: bool = False,
     ) -> None:
         self._handler = handler
@@ -91,6 +113,10 @@ class ADCPAgentExecutor(AgentExecutor):
         # ordering; first entry wraps outermost (see ``SkillMiddleware``
         # docstring for the composition semantics).
         self._middleware: tuple[SkillMiddleware, ...] = tuple(middleware or ())
+        # Seller-supplied parser for non-default wire shapes (JSON-RPC,
+        # bare TextPart with different skill layout, etc.). Falls back
+        # to the built-in parser when None.
+        self._message_parser: MessageParser | None = message_parser
         self._tool_callers: dict[str, Any] = {}
 
         # Build tool callers for all tools this handler supports.
@@ -165,34 +191,24 @@ class ADCPAgentExecutor(AgentExecutor):
     ) -> Any:
         """Run the handler wrapped in the configured middleware chain.
 
-        Middleware composes outermost-first: the first entry in
-        ``self._middleware`` sees every call *before* the later entries
-        and *before* the handler. This matches Starlette / ASGI
-        conventions so sellers porting from those stacks aren't
-        surprised. Composition is done via a small recursive dispatcher
-        (no mutable indices, no lambdas closing over loop variables) —
-        the chain reads the same whether you have zero or ten
-        middlewares.
+        Delegates to :func:`adcp.server.serve._dispatch_with_middleware`
+        so the composition semantics stay identical between transports —
+        middleware that works with ``create_a2a_server(middleware=...)``
+        works unchanged with ``create_mcp_server(middleware=...)``.
 
         Middleware exceptions propagate to the executor's normal error
         handling path in ``execute()``; this method does no try/except
         so short-circuiting, transform, and exception-observation all
         work the same way they do for the underlying handler.
         """
-        if not self._middleware:
+        from adcp.server.serve import _dispatch_with_middleware
+
+        async def _call_handler() -> Any:
             return await self._tool_callers[skill_name](params, tool_context)
 
-        async def _step(index: int) -> Any:
-            if index >= len(self._middleware):
-                return await self._tool_callers[skill_name](params, tool_context)
-            middleware = self._middleware[index]
-
-            async def call_next() -> Any:
-                return await _step(index + 1)
-
-            return await middleware(skill_name, params, tool_context, call_next)
-
-        return await _step(0)
+        return await _dispatch_with_middleware(
+            self._middleware, skill_name, params, tool_context, _call_handler
+        )
 
     def _build_tool_context(self, skill_name: str, request: RequestContext) -> ToolContext:
         """Build the :class:`ToolContext` handed to the skill dispatcher.
@@ -253,10 +269,26 @@ class ADCPAgentExecutor(AgentExecutor):
     def _parse_request(self, context: RequestContext) -> tuple[str | None, dict[str, Any]]:
         """Extract skill name and parameters from the A2A message.
 
-        Supports two formats:
+        Dispatches to the caller-supplied :data:`MessageParser` when the
+        executor was constructed with ``message_parser=``; otherwise
+        falls through to :meth:`_default_parse_request`, which supports
+        the standard shapes (DataPart with explicit skill + TextPart
+        JSON fallback).
+        """
+        if self._message_parser is not None:
+            return self._message_parser(context)
+        return self._default_parse_request(context)
+
+    def _default_parse_request(self, context: RequestContext) -> tuple[str | None, dict[str, Any]]:
+        """Built-in parser. Supports two formats:
+
         1. Explicit skill invocation via DataPart:
            DataPart(data={"skill": "get_products", "parameters": {...}})
         2. Natural language fallback via TextPart (best-effort parse)
+
+        Exposed as a module-level method so custom parsers can compose
+        it — e.g. "try my JSON-RPC parser first, fall through to the
+        default for legacy clients".
         """
         msg = context.message
         if msg is None or not msg.parts:
@@ -514,6 +546,7 @@ def create_a2a_server(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    message_parser: MessageParser | None = None,
     advertise_all: bool = False,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
@@ -570,6 +603,15 @@ def create_a2a_server(
             :data:`~adcp.server.SkillMiddleware` for the signature,
             composition semantics, and the exception-capture pattern
             audit hooks need.
+        message_parser: Optional :data:`MessageParser` for alternative
+            wire shapes. The default parser handles ``DataPart(data={
+            "skill": ..., "parameters": ...})`` plus a TextPart JSON
+            fallback. Supply this to accept JSON-RPC 2.0 message bodies,
+            vendor-specific DataPart schemas, or other layouts. The
+            callable returns ``(skill_name, params)`` or ``(None, {})``
+            for "no parseable skill"; see :data:`MessageParser` and
+            :meth:`ADCPAgentExecutor._default_parse_request` for the
+            built-in fallback shape to delegate to for legacy clients.
         advertise_all: When True, advertise every tool the handler type
             supports — including ones whose method is still the SDK's
             ``not_supported`` default. Defaults to ``False``, which
@@ -590,6 +632,7 @@ def create_a2a_server(
         test_controller=test_controller,
         context_factory=context_factory,
         middleware=middleware,
+        message_parser=message_parser,
         advertise_all=advertise_all,
     )
 
@@ -619,6 +662,19 @@ def create_a2a_server(
     a2a_app = A2AStarletteApplication(
         agent_card=agent_card,
         http_handler=request_handler,
+    )
+
+    # Startup log lives on the create_a2a_server path (symmetric with
+    # MCP's _register_handler_tools). Moved out of
+    # ADCPAgentExecutor.__init__ so per-test executor constructions
+    # don't pollute caplog with repeated startup messages.
+    from adcp.server.serve import _log_advertised_tools
+
+    _log_advertised_tools(
+        transport="a2a",
+        handler=handler,
+        advertise_all=advertise_all,
+        registered=list(executor.supported_skills),
     )
 
     return a2a_app.build()

@@ -399,3 +399,158 @@ def _parse_event_stream(body: str) -> dict[str, Any]:
         if line.startswith("data: "):
             return json.loads(line.removeprefix("data: "))
     return json.loads(body) if body.strip() else {}
+
+
+# ----------------------------------------------------------------------
+# MCP middleware parity with A2A — ``create_mcp_server(middleware=[...])``
+# ----------------------------------------------------------------------
+
+
+@pytest.fixture
+async def middleware_events() -> list[str]:
+    return []
+
+
+@pytest.fixture
+async def middleware_handler_and_client(middleware_events: list[str]) -> Any:
+    """Fixture that wires a SkillMiddleware chain onto the MCP server.
+    Mirrors ``handler_and_client`` above but without the HTTP auth
+    layer so the middleware chain is the only thing under test."""
+    handler = _RecordingHandler()
+
+    async def outer(skill_name, params, context, call_next):
+        middleware_events.append(f"outer-pre:{skill_name}")
+        result = await call_next()
+        middleware_events.append(f"outer-post:{skill_name}")
+        return result
+
+    async def inner(skill_name, params, context, call_next):
+        middleware_events.append(f"inner-pre:{skill_name}")
+        result = await call_next()
+        middleware_events.append(f"inner-post:{skill_name}")
+        return result
+
+    mcp = create_mcp_server(
+        handler,
+        name="mw-test",
+        context_factory=_build_context,
+        middleware=[outer, inner],
+    )
+    mcp.settings.stateless_http = True
+    mcp.settings.json_response = True
+    mcp.settings.transport_security.allowed_hosts = ["localhost", "127.0.0.1"]
+    app = mcp.streamable_http_app()
+
+    async with LifespanManager(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://localhost",
+            follow_redirects=True,
+        ) as client:
+            yield handler, client
+
+
+@pytest.mark.asyncio
+async def test_mcp_middleware_composes_outermost_first(
+    middleware_handler_and_client: Any,
+    middleware_events: list[str],
+) -> None:
+    """MCP ``middleware=[outer, inner]`` matches A2A semantics: outer
+    pre-event comes first, then inner pre-event, then handler, then
+    inner post, then outer post. Stale ordering or reversed composition
+    would regress cross-transport parity."""
+    _, client = middleware_handler_and_client
+
+    await _initialize_session(client)
+    resp = await _call_tool(client, "get_adcp_capabilities", {})
+
+    assert resp.status_code == 200, resp.text
+    assert middleware_events == [
+        "outer-pre:get_adcp_capabilities",
+        "inner-pre:get_adcp_capabilities",
+        "inner-post:get_adcp_capabilities",
+        "outer-post:get_adcp_capabilities",
+    ], middleware_events
+
+
+@pytest.mark.asyncio
+async def test_mcp_middleware_can_short_circuit() -> None:
+    """Middleware that returns without calling ``call_next()`` MUST
+    stop the chain — handler doesn't run. Rate limiters use this."""
+
+    handler_calls: list[str] = []
+
+    class _ShortCircuitTarget(ADCPHandler):
+        async def get_adcp_capabilities(self, params, context=None):
+            handler_calls.append("called")
+            return {"adcp": {"major_versions": [3]}}
+
+    async def rate_limiter(skill_name, params, context, call_next):
+        return {"error": "rate-limited", "skill": skill_name}
+
+    mcp = create_mcp_server(
+        _ShortCircuitTarget(),
+        name="sc-test",
+        middleware=[rate_limiter],
+    )
+    mcp.settings.stateless_http = True
+    mcp.settings.json_response = True
+    mcp.settings.transport_security.allowed_hosts = ["localhost", "127.0.0.1"]
+    app = mcp.streamable_http_app()
+
+    async with LifespanManager(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://localhost",
+            follow_redirects=True,
+        ) as client:
+            await _initialize_session(client)
+            resp = await _call_tool(client, "get_adcp_capabilities", {})
+
+    assert resp.status_code == 200, resp.text
+    assert handler_calls == [], (
+        "middleware short-circuited but the handler still ran — MCP middleware "
+        "chain did not honour the 'skip call_next to skip handler' contract"
+    )
+
+
+@pytest.mark.asyncio
+async def test_mcp_middleware_sees_tool_context() -> None:
+    """Middleware gets the same ToolContext the handler will receive.
+    When no context_factory is configured, middleware sees a default
+    ToolContext (not None) so the typed signature holds."""
+
+    seen: list[ToolContext] = []
+
+    async def record_context(skill_name, params, context, call_next):
+        seen.append(context)
+        return await call_next()
+
+    class _Handler(ADCPHandler):
+        async def get_adcp_capabilities(self, params, context=None):
+            return {"adcp": {"major_versions": [3]}}
+
+    mcp = create_mcp_server(
+        _Handler(),
+        name="ctx-test",
+        middleware=[record_context],
+    )
+    mcp.settings.stateless_http = True
+    mcp.settings.json_response = True
+    mcp.settings.transport_security.allowed_hosts = ["localhost", "127.0.0.1"]
+    app = mcp.streamable_http_app()
+
+    async with LifespanManager(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://localhost",
+            follow_redirects=True,
+        ) as client:
+            await _initialize_session(client)
+            await _call_tool(client, "get_adcp_capabilities", {})
+
+    assert len(seen) == 1
+    # No context_factory configured → middleware receives a synthesised
+    # default ToolContext so the signature type holds. Verified
+    # explicitly so a future change that passes None instead breaks here.
+    assert isinstance(seen[0], ToolContext)
