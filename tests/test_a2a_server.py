@@ -437,6 +437,10 @@ def _extract_default_request_handler(app: Any) -> Any:
     )
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 def test_create_a2a_server_defaults_to_in_memory_task_store():
     """Default behavior preserved: omitting task_store falls back to
     InMemoryTaskStore, so existing adopters see no change."""
@@ -450,6 +454,10 @@ def test_create_a2a_server_defaults_to_in_memory_task_store():
     )
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 def test_create_a2a_server_accepts_custom_task_store():
     """Custom TaskStore instance must be threaded through to the A2A
     DefaultRequestHandler — the whole point of the hook."""
@@ -463,6 +471,10 @@ def test_create_a2a_server_accepts_custom_task_store():
     )
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 async def test_custom_task_store_receives_saves_from_skill_dispatch():
     """Behavioral test: a skill call through the A2A executor actually
     produces ``save()`` traffic on the pluggable store.
@@ -504,6 +516,10 @@ async def test_custom_task_store_receives_saves_from_skill_dispatch():
     )
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
 async def test_task_store_persists_across_app_recreation():
     """A shared ``TaskStore`` instance is reusable across multiple
     ``create_a2a_server`` calls — the "restart" property durable stores
