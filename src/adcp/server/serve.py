@@ -227,6 +227,7 @@ def serve(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    advertise_all: bool = False,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -261,6 +262,13 @@ def serve(
             tracing. Composes outermost-first. See
             :data:`SkillMiddleware` for the signature and composition
             semantics.
+        advertise_all: When True, advertise every tool the handler type
+            supports even if the subclass didn't override the method.
+            Defaults to ``False`` — ``tools/list`` only shows tools the
+            handler actually implements, which dramatically shrinks the
+            advertised surface. Turn on for spec-compliance storyboards
+            or when you want to signal ``not_supported`` on a specific
+            tool to clients.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -309,6 +317,7 @@ def serve(
             task_store=task_store,
             push_config_store=push_config_store,
             middleware=middleware,
+            advertise_all=advertise_all,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -319,6 +328,7 @@ def serve(
             instructions=instructions,
             test_controller=test_controller,
             context_factory=context_factory,
+            advertise_all=advertise_all,
         )
     else:
         valid = ", ".join(sorted(("a2a", "streamable-http", "sse", "stdio")))
@@ -371,6 +381,7 @@ def _serve_mcp(
     instructions: str | None,
     test_controller: TestControllerStore | None,
     context_factory: ContextFactory | None = None,
+    advertise_all: bool = False,
 ) -> None:
     """Start an MCP server."""
     mcp = create_mcp_server(
@@ -380,6 +391,7 @@ def _serve_mcp(
         instructions=instructions,
         include_test_controller=test_controller is not None,
         context_factory=context_factory,
+        advertise_all=advertise_all,
     )
 
     if test_controller is not None:
@@ -438,6 +450,7 @@ def _serve_a2a(
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
+    advertise_all: bool = False,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -455,6 +468,7 @@ def _serve_a2a(
         task_store=task_store,
         push_config_store=push_config_store,
         middleware=middleware,
+        advertise_all=advertise_all,
     )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:
@@ -478,6 +492,7 @@ def create_mcp_server(
     instructions: str | None = None,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,
+    advertise_all: bool = False,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -507,6 +522,14 @@ def create_mcp_server(
             :data:`ContextFactory` for the recommended contextvars
             pattern. When ``None``, handlers receive a bare
             ``ToolContext()`` (no caller identity, no tenant).
+        advertise_all: When True, advertise every tool the handler type
+            supports — even those whose method is still the SDK's
+            ``not_supported`` default. Defaults to ``False``, which
+            shrinks ``tools/list`` to only the tools the handler
+            actually implements (subclass overrode the method). See
+            :func:`~adcp.server.get_tools_for_handler` for semantics;
+            use ``True`` for spec-compliance storyboards or when you
+            deliberately want to expose a ``not_supported`` tool.
 
     Returns:
         A configured FastMCP server instance. Call ``mcp.run()`` to start,
@@ -565,6 +588,7 @@ def create_mcp_server(
         handler,
         include_test_controller=include_test_controller,
         context_factory=context_factory,
+        advertise_all=advertise_all,
     )
     return mcp
 
@@ -575,9 +599,10 @@ def _register_handler_tools(
     *,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,
+    advertise_all: bool = False,
 ) -> None:
     """Register all ADCP tools from a handler onto a FastMCP server."""
-    tool_defs = get_tools_for_handler(handler)
+    tool_defs = get_tools_for_handler(handler, advertise_all=advertise_all)
     for tool_def in tool_defs:
         tool_name = tool_def["name"]
         # Gate comply_test_controller on explicit opt-in. The handler base

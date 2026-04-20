@@ -1239,29 +1239,109 @@ def _apply_pydantic_schemas() -> None:
 _apply_pydantic_schemas()
 
 
+_SDK_BASE_CLASS_NAMES: frozenset[str] = frozenset(_HANDLER_TOOLS.keys())
+"""Names of the SDK's own base classes. Used to detect whether a method
+is an SDK default (inherited from one of these) or a subclass override.
+Kept alongside ``_HANDLER_TOOLS`` so they can't drift."""
+
+
+def _is_method_overridden(handler_cls: type, method_name: str) -> bool:
+    """True when ``handler_cls.method_name`` is a subclass override of
+    the SDK's default implementation.
+
+    Compares the function object attached to ``handler_cls.__mro__[0]``
+    (the final class) against the function attached to the nearest SDK
+    base that defined the method. If they're the same function object,
+    the subclass inherited the default (``_not_supported``) rather than
+    implementing the tool. Callers use this to decide whether to
+    advertise a tool — no point listing a tool the handler answers with
+    ``not_supported``.
+
+    Returns ``False`` for methods that don't exist on the handler at all
+    (pathological case — every ADCP tool method is defined on the base).
+    """
+    handler_method = getattr(handler_cls, method_name, None)
+    if handler_method is None:
+        return False
+
+    for base in handler_cls.__mro__[1:]:
+        # Only SDK bases provide default implementations we care about.
+        if base.__name__ not in _SDK_BASE_CLASS_NAMES:
+            continue
+        base_method = base.__dict__.get(method_name)
+        if base_method is None:
+            continue
+        # If the handler's method is the same function object as the
+        # SDK base's, the subclass did not override it.
+        # ``handler_cls.<method>`` returns the function via the descriptor
+        # protocol; ``base.__dict__[<method>]`` returns it directly.
+        # When unchanged, both resolve to the same function.
+        return handler_method is not base_method
+
+    # No SDK base owns this method (custom method name). Conservative:
+    # treat as overridden so the caller doesn't silently drop it.
+    return True
+
+
 def get_tools_for_handler(
     handler: ADCPHandler[Any] | type[ADCPHandler[Any]],
+    *,
+    advertise_all: bool = False,
 ) -> list[dict[str, Any]]:
-    """Return tool definitions filtered by handler type.
+    """Return tool definitions the handler will actually answer.
 
     Walks the MRO to find the matching handler base class, so subclasses
-    (e.g. MyGovernanceAgent(GovernanceHandler)) get the correct tool set.
-    ADCPHandler gets all tools. Unknown handlers get only protocol discovery
-    (minimum privilege).
+    (e.g. ``MyGovernanceAgent(GovernanceHandler)``) get the correct tool
+    set. ADCPHandler gets all tools. Unknown handlers get only protocol
+    discovery (minimum privilege).
+
+    By default, tools whose handler method is still the SDK's
+    ``not_supported`` default (the subclass never overrode it) are
+    filtered out — there's no point advertising a tool that answers
+    every call with ``NOT_SUPPORTED``. This keeps ``tools/list`` small
+    and protects agent clients from chasing non-functional tool surface.
+
+    Always-advertised tools:
+    - :data:`_PROTOCOL_TOOLS` (``get_adcp_capabilities``) — per-spec
+      handshake requirement.
+    - :data:`DISCOVERY_TOOLS` — auth-optional discovery tools the spec
+      requires agents to expose.
+
+    Escape hatch: pass ``advertise_all=True`` to restore the pre-#220
+    behavior and advertise every tool in the handler-type's allowed
+    set regardless of override state. Useful for spec-compliance
+    storyboard tests and for agents that deliberately want to expose a
+    ``not_supported`` tool (e.g. to signal "we know about X but don't
+    implement it yet").
 
     Args:
-        handler: The handler instance or class
+        handler: The handler instance or class.
+        advertise_all: When True, skip the override-based filter and
+            advertise every tool allowed for the handler type.
 
     Returns:
-        Filtered list of tool definitions
+        Filtered list of tool definitions.
     """
     cls = handler if isinstance(handler, type) else type(handler)
+
+    candidates: list[dict[str, Any]] = []
     for base in cls.__mro__:
         if base.__name__ in _HANDLER_TOOLS:
             allowed = _HANDLER_TOOLS[base.__name__] | _PROTOCOL_TOOLS
-            return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
+            candidates = [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in allowed]
+            break
+    else:
+        candidates = [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
 
-    return [tool for tool in ADCP_TOOL_DEFINITIONS if tool["name"] in _PROTOCOL_TOOLS]
+    if advertise_all:
+        return candidates
+
+    always_on = _PROTOCOL_TOOLS | DISCOVERY_TOOLS
+    return [
+        tool
+        for tool in candidates
+        if tool["name"] in always_on or _is_method_overridden(cls, tool["name"])
+    ]
 
 
 def create_tool_caller(
@@ -1311,14 +1391,19 @@ class MCPToolSet:
     Provides tool definitions and handlers for registering with an MCP server.
     """
 
-    def __init__(self, handler: ADCPHandler[Any]):
+    def __init__(self, handler: ADCPHandler[Any], *, advertise_all: bool = False):
         """Create tool set from handler.
 
         Args:
-            handler: ADCP handler instance
+            handler: ADCP handler instance.
+            advertise_all: When True, advertise every tool the handler
+                type supports — even those whose method is still the
+                SDK's ``not_supported`` default. See
+                :func:`get_tools_for_handler` for the default behavior
+                (override-filtered advertisement).
         """
         self.handler = handler
-        self._filtered_definitions = get_tools_for_handler(handler)
+        self._filtered_definitions = get_tools_for_handler(handler, advertise_all=advertise_all)
         self._tools: dict[str, Callable[..., Any]] = {}
 
         # Create tool callers only for filtered tools
@@ -1353,7 +1438,9 @@ class MCPToolSet:
         return list(self._tools.keys())
 
 
-def create_mcp_tools(handler: ADCPHandler[Any]) -> MCPToolSet:
+def create_mcp_tools(
+    handler: ADCPHandler[Any], *, advertise_all: bool = False
+) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
     This is the main entry point for MCP server integration.
@@ -1379,9 +1466,12 @@ def create_mcp_tools(handler: ADCPHandler[Any]) -> MCPToolSet:
             return await tools.call_tool(name, arguments)
 
     Args:
-        handler: ADCP handler instance
+        handler: ADCP handler instance.
+        advertise_all: When True, advertise every tool the handler type
+            supports — even those whose method is still the SDK's
+            ``not_supported`` default. See :func:`get_tools_for_handler`.
 
     Returns:
-        MCPToolSet with tool definitions and handlers
+        MCPToolSet with tool definitions and handlers.
     """
-    return MCPToolSet(handler)
+    return MCPToolSet(handler, advertise_all=advertise_all)

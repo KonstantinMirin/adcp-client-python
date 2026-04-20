@@ -91,7 +91,14 @@ def test_feature_and_domain_maps_cover_brand_tasks() -> None:
 
 
 def test_tool_filtering_by_handler_type():
-    """Specialized handlers get only their tools plus protocol discovery."""
+    """Specialized handlers get only their tools plus protocol discovery.
+
+    This test exercises the handler-type filter in isolation — the
+    pre-#220 behavior — by passing ``advertise_all=True`` so the
+    override-based filter doesn't intersect the expected sets. The
+    override-based default is covered separately by
+    ``tests/test_advertised_tools_gate.py``.
+    """
     from adcp.server.mcp_tools import ADCP_TOOL_DEFINITIONS, get_tools_for_handler
 
     all_tool_names = {tool["name"] for tool in ADCP_TOOL_DEFINITIONS}
@@ -102,7 +109,7 @@ def test_tool_filtering_by_handler_type():
     from adcp.server.governance import GovernanceHandler
     from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
 
-    gov_tools = {t["name"] for t in get_tools_for_handler(GovernanceHandler)}
+    gov_tools = {t["name"] for t in get_tools_for_handler(GovernanceHandler, advertise_all=True)}
     assert gov_tools == {
         "get_creative_features",
         "sync_plans",
@@ -123,7 +130,9 @@ def test_tool_filtering_by_handler_type():
     }
 
     # ContentStandardsHandler: content standards tools + protocol discovery
-    cs_tools = {t["name"] for t in get_tools_for_handler(ContentStandardsHandler)}
+    cs_tools = {
+        t["name"] for t in get_tools_for_handler(ContentStandardsHandler, advertise_all=True)
+    }
     assert cs_tools == {
         "create_content_standards",
         "get_content_standards",
@@ -136,7 +145,9 @@ def test_tool_filtering_by_handler_type():
     }
 
     # SponsoredIntelligenceHandler: SI tools + protocol discovery
-    si_tools = {t["name"] for t in get_tools_for_handler(SponsoredIntelligenceHandler)}
+    si_tools = {
+        t["name"] for t in get_tools_for_handler(SponsoredIntelligenceHandler, advertise_all=True)
+    }
     assert si_tools == {
         "si_get_offering",
         "si_initiate_session",
@@ -146,14 +157,16 @@ def test_tool_filtering_by_handler_type():
     }
 
     # ADCPHandler: all tools (no filtering)
-    adcp_tools = {t["name"] for t in get_tools_for_handler(ADCPHandler)}
+    adcp_tools = {t["name"] for t in get_tools_for_handler(ADCPHandler, advertise_all=True)}
     assert adcp_tools == all_tool_names
 
     # Subclass of GovernanceHandler gets governance tools (MRO walk)
     class MyGovernanceAgent(GovernanceHandler):
         pass
 
-    subclass_tools = {t["name"] for t in get_tools_for_handler(MyGovernanceAgent)}
+    subclass_tools = {
+        t["name"] for t in get_tools_for_handler(MyGovernanceAgent, advertise_all=True)
+    }
     assert subclass_tools == gov_tools
 
 
