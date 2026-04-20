@@ -160,6 +160,41 @@ class MySeller(ADCPHandler):
         ...
 ```
 
+## Emitting Webhooks
+
+Sellers emit webhooks to notify buyers asynchronously — no client library call, just an outbound HTTP POST. Use the SDK helpers instead of hand-rolling payload shape or signature bytes.
+
+**When to emit:**
+- Async-approval media buy transitions (e.g., `pending_activation` → `active`, or `→ rejected`)
+- Artifact-ready notifications after long-running operations
+- Delivery reports the buyer subscribed to via `reporting_webhook` on `create_media_buy`
+
+**Build the payload.** Use `create_mcp_webhook_payload(task_id, status, task_type=..., result=..., message=...)` — it matches the `McpWebhookPayload` schema. For A2A transport, use `create_a2a_webhook_payload(...)` instead. There is no dedicated delivery-report helper today; reuse `create_mcp_webhook_payload` with `task_type="get_media_buy_delivery"` and the delivery response as `result`.
+
+**Sign the headers.** Call `get_adcp_signed_headers_for_webhook(headers, secret, timestamp, payload)`. This sets `X-AdCP-Signature` (HMAC-SHA256 over `"{timestamp}.{compact_json_payload}"`) and `X-AdCP-Timestamp`. The signer serializes with compact separators (`","` / `":"`) to match what httpx emits for `json=`, so POST via `client.post(url, json=payload, headers=signed)` — never hand-serialize the body yourself or the signature will mismatch.
+
+**Retry semantics.** Receivers dedupe on `task_id` (or `operation_id` if you set it). A retry is a byte-identical re-POST: same payload, same signed headers, same timestamp. Don't re-sign on retry.
+
+```python
+import httpx
+from adcp.types import GeneratedTaskStatus
+from adcp.webhooks import create_mcp_webhook_payload, get_adcp_signed_headers_for_webhook
+
+async def notify_media_buy_active(webhook_url: str, secret: str, mb_id: str, mb: dict) -> None:
+    payload = create_mcp_webhook_payload(
+        task_id=mb_id,
+        task_type="create_media_buy",
+        status=GeneratedTaskStatus.completed,
+        result={"media_buy_id": mb_id, "status": "active", "packages": mb["packages"]},
+        message="Media buy approved and activated",
+    )
+    headers = get_adcp_signed_headers_for_webhook(
+        {"Content-Type": "application/json"}, secret, timestamp=None, payload=payload
+    )
+    async with httpx.AsyncClient() as client:
+        await client.post(webhook_url, json=payload, headers=headers)
+```
+
 ## Proposal Workflow (Guaranteed Deals)
 
 For premium/guaranteed inventory, buyers negotiate before committing. The flow:
@@ -177,18 +212,31 @@ async def get_products(self, params, context=None):
     if buying_mode == "refine":
         proposal = params.get("proposal", {})
         proposal_id = proposal.get("proposal_id") or f"prop-{uuid.uuid4().hex[:8]}"
+        incoming_packages = proposal.get("packages", [])
         # Store/update the proposal draft
         proposals[proposal_id] = {
             "status": "draft",
-            "packages": proposal.get("packages", []),
+            "packages": incoming_packages,
         }
+        # proposal.json requires: proposal_id, name, allocations (minItems: 1).
+        # Each allocation requires product_id and allocation_percentage (must sum to 100).
+        n = max(len(incoming_packages), 1)
+        even_split = round(100 / n, 2)
         return {**products_response(PRODUCTS), "proposals": [{
             "proposal_id": proposal_id,
             "name": proposal.get("name", "Draft proposal"),
-            "status": "draft",
+            "proposal_status": "draft",
             "allocations": [
-                {"product_id": p["product_id"], "packages": []}
-                for p in proposal.get("packages", [])
+                {
+                    "product_id": p["product_id"],
+                    "allocation_percentage": even_split,
+                }
+                for p in incoming_packages
+            ] or [
+                {
+                    "product_id": PRODUCTS[0]["product_id"],
+                    "allocation_percentage": 100.0,
+                }
             ],
         }]}
 

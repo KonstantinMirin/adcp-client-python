@@ -60,6 +60,8 @@ Implement all tools from the seller skill. Copy the pattern from `examples/selle
 
 See `skills/build-seller-agent/SKILL.md` for the exact response shapes of each.
 
+If your retail platform supports guaranteed deals with negotiation, also implement the proposal workflow from the seller skill. Refined proposals must include `proposal_id`, `name`, and `allocations[]` with `product_id` + `allocation_percentage` (summing to 100) — see "Proposal Workflow (Guaranteed Deals)" in `skills/build-seller-agent/SKILL.md`.
+
 ## Retail-Specific Tools
 
 **`sync_catalogs`** — accept product catalog feeds
