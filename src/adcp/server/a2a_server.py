@@ -39,6 +39,9 @@ from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
 
 if TYPE_CHECKING:
+    from a2a.server.tasks.push_notification_config_store import (
+        PushNotificationConfigStore,
+    )
     from a2a.server.tasks.task_store import TaskStore
 
     from adcp.server.serve import ContextFactory
@@ -441,6 +444,7 @@ def create_a2a_server(
     test_controller: TestControllerStore | None = None,
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
+    push_config_store: PushNotificationConfigStore | None = None,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -470,6 +474,24 @@ def create_a2a_server(
             a reference SQLite-backed implementation and
             ``docs/handler-authoring.md`` for the persistence caveats on
             the default store.
+        push_config_store: Optional a2a-sdk
+            :class:`~a2a.server.tasks.push_notification_config_store.PushNotificationConfigStore`
+            instance for persisting push-notification configs that clients
+            register via ``tasks/pushNotificationConfig/set``. **When
+            unset, a2a-sdk surfaces push-notif endpoints as
+            ``UnsupportedOperationError``** — clients cannot register
+            subscriptions at all. Set this only when your agent is ready
+            to accept push-notif subscriptions. See
+            ``examples/a2a_db_tasks.py`` for a reference SQLite-backed
+            implementation that pairs with the ``SqliteTaskStore`` there.
+
+            Security note: unlike ``TaskStore``, a2a-sdk's
+            ``PushNotificationConfigStore`` ABC does not pass a
+            ``ServerCallContext`` to ``set_info`` / ``get_info`` /
+            ``delete_info``. Scoping by principal has to happen out-of-band
+            (via a ``ContextVar`` your auth middleware populates) or by
+            composition with a tenant-scoped ``TaskStore`` — the reference
+            impl shows the ContextVar pattern.
 
     Returns:
         A Starlette app ready to be run with uvicorn.
@@ -494,9 +516,14 @@ def create_a2a_server(
     if task_store is None:
         task_store = InMemoryTaskStore()
 
+    # DefaultRequestHandler stores push_config_store verbatim and treats
+    # None as "push-notif endpoints unsupported" (UnsupportedOperationError
+    # on tasks/pushNotificationConfig/*). Passing None is the correct
+    # default; sellers opt in by wiring a store.
     request_handler = DefaultRequestHandler(
         agent_executor=executor,
         task_store=task_store,
+        push_config_store=push_config_store,
     )
 
     a2a_app = A2AStarletteApplication(

@@ -249,16 +249,93 @@ reset; your persistent store can't:**
    sweep deleting tasks in `completed` / `canceled` / `failed` states
    older than your retention policy.
 
+### Durable push-notification config storage
+
+Clients subscribe to task progress by calling
+`tasks/pushNotificationConfig/set`. a2a-sdk's default behavior is
+**push-notif disabled** — the endpoint surfaces
+`UnsupportedOperationError` until you wire a store. Sellers that accept
+push-notif subscriptions pass one:
+
+```python
+from adcp.server import serve
+from examples.a2a_db_tasks import (
+    SqliteTaskStore,
+    SqlitePushNotificationConfigStore,
+)
+
+serve(
+    MyAgent(),
+    transport="a2a",
+    task_store=SqliteTaskStore("/var/lib/myagent/tasks.db"),
+    push_config_store=SqlitePushNotificationConfigStore(
+        "/var/lib/myagent/push_configs.db"
+    ),
+)
+```
+
+**Three things a durable push-notification config store MUST do —
+beyond the four from the TaskStore section above:**
+
+1. **Validate the client-supplied `url` against an allowlist before
+   persisting.** a2a-sdk's push-notif sender POSTs full task JSON to
+   whatever URL is stored, with no built-in validation. An attacker
+   registering `url=http://169.254.169.254/…` (cloud metadata) or
+   `http://localhost:5432/` (internal services) gets SSRF +
+   exfiltration in one call — the task JSON that lands on the
+   attacker's server includes `history` and `artifacts`. The
+   reference impl does NOT validate URLs; the seller's store (or
+   a pre-persist hook) must. Reject non-https, reject RFC 1918 /
+   IPv6 link-local, and require the host match an egress allowlist
+   before `set_info` writes anything.
+2. **Treat `PushNotificationConfig.authentication.credentials` and
+   `PushNotificationConfig.token` as secrets at rest.** Clients pass
+   bearer tokens / shared secrets so the agent's callbacks can
+   authenticate. The reference impl serialises them to plaintext JSON
+   under `chmod 0o600` — safe on a single-user host but that
+   guarantee doesn't survive backups, Docker bind mounts with wrong
+   umask, DB-to-Postgres migrations, or shared-volume mounts.
+   Production stores should envelope-encrypt those fields, or persist
+   opaque references and keep the secrets in a dedicated backend
+   (Vault, AWS KMS, GCP Secret Manager).
+3. **Scope by principal, not just by tenant.** a2a-sdk's ABC doesn't
+   pass a `ServerCallContext` to push-config methods, so scoping has
+   to happen out-of-band. The reference `SqlitePushNotificationConfigStore`
+   reads a `ContextVar` your auth middleware populates and writes a
+   `scope` column on every row. Cross-scope isolation works; **within
+   a scope, multiple principals can still overwrite each other's
+   configs** (same `(scope, task_id)`, client omits `config_id`, PK
+   collision). For multi-principal-per-tenant deployments, widen the
+   scope to include the principal (e.g. `f"{tenant}:{principal}"`) or
+   require clients to supply an explicit `config_id`.
+
+**Scoping caveat.** The reference impl's ContextVar approach has a
+known gap: a2a-sdk's push-notif sender runs in a background
+`asyncio.Task` that inherits the ContextVar snapshot from
+task-creation time. If the seller's auth middleware has already reset
+the ContextVar before the sender reads it, `get_info` returns empty
+and notifications silently drop. Sellers running non-blocking
+push-notifs must propagate scope into the sender path explicitly —
+either capture the scope at `set_info` time and stash it alongside
+the config, or override a2a-sdk's `BasePushNotificationSender` to
+re-set the ContextVar before calling `get_info`. Not yet addressed in
+the SDK.
+
+**Operator-facing failure modes.** When `scope_provider` returns
+`None`, the reference store falls through to an `__anonymous__`
+bucket and emits a one-time `UserWarning`. Silent fall-through would
+share one push-notif bucket across every unauthenticated caller. The
+warning is the signal your auth middleware isn't populating the
+ContextVar — treat it as a P0.
+
 ### Known gaps
 
-- Push-notification config is in-memory only — tracked at
-  [#225](https://github.com/adcontextprotocol/adcp-client-python/issues/225).
 - Per-skill middleware hooks for audit logging / activity feeds don't
   exist yet — tracked at
   [#226](https://github.com/adcontextprotocol/adcp-client-python/issues/226).
 
-Once #225 and #226 land, A2A adoption reaches parity with MCP for
-production agents.
+Once #226 lands, A2A adoption reaches parity with MCP for production
+agents.
 
 ## Testing
 

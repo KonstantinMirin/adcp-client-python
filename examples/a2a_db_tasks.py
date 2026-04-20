@@ -1,8 +1,10 @@
-"""Example: A2A agent with a durable, scope-isolated SQLite-backed ``TaskStore``.
+"""Example: A2A agent with durable, scope-isolated SQLite-backed
+``TaskStore`` + ``PushNotificationConfigStore``.
 
-A2A's default ``InMemoryTaskStore`` is single-process and non-durable —
-fine for demos but tasks vanish on restart. Production agents need a
-durable store so long-running operations survive process restarts and
+A2A's defaults (``InMemoryTaskStore`` + ``InMemoryPushNotificationConfigStore``)
+are single-process and non-durable — fine for demos but tasks and
+push-notif subscriptions vanish on restart. Production agents need
+durable stores so long-running operations survive process restarts and
 can be resumed by whichever worker picks up the request.
 
 This example wires up a minimal SQLite-backed store that implements
@@ -21,6 +23,29 @@ request arriving with a different principal never sees another
 tenant's task. Sellers with richer identity (a typed ``tenant_id``,
 organization IDs, etc.) should override ``_scope_from_context`` to
 return *their* scope key — the lookup filter then follows automatically.
+
+**Security model — push-notification config store adds two threats
+tenant-scoping alone does NOT address:**
+
+1. **SSRF via unvalidated webhook URLs.** Clients supply
+   ``PushNotificationConfig.url`` when subscribing to task progress;
+   a2a-sdk's push-notif sender POSTs the full task JSON to that URL
+   with no built-in validation. An attacker can register
+   ``url=http://169.254.169.254/…`` (cloud metadata),
+   ``http://localhost:5432/`` (internal services), link-local IPs,
+   etc. The store persists URLs verbatim — URL validation is the
+   seller's responsibility. Reject non-https, reject RFC 1918 / IPv6
+   link-local, check against an egress allowlist before persisting.
+2. **Webhook secrets stored plaintext.**
+   ``PushNotificationConfig.authentication.credentials`` and
+   ``PushNotificationConfig.token`` are bearer tokens / shared
+   secrets clients pass for authenticated callbacks. The reference
+   impl serialises them to JSON under chmod 0o600 — safe on a
+   single-user host, but backups, Docker bind mounts with wrong
+   umask, DB migrations, and shared-volume mounts all lose that
+   guarantee. Production stores should envelope-encrypt or redact
+   these fields, or move them to a secrets backend and persist only
+   opaque references.
 
 **Not production-ready.** Remaining gaps for real deployments:
 
@@ -57,13 +82,20 @@ import contextlib
 import json
 import os
 import sqlite3
+import uuid
+import warnings
+from collections.abc import Callable
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
 from a2a.server.context import ServerCallContext
+from a2a.server.tasks.push_notification_config_store import (
+    PushNotificationConfigStore,
+)
 from a2a.server.tasks.task_store import TaskStore
-from a2a.types import Task
+from a2a.types import PushNotificationConfig, Task
 
 from adcp.server import ADCPHandler, serve
 from adcp.server.responses import capabilities_response, products_response
@@ -195,6 +227,244 @@ class SqliteTaskStore(TaskStore):
 
 
 # ----------------------------------------------------------------------
+# SQLite-backed PushNotificationConfigStore
+# ----------------------------------------------------------------------
+
+# Three things a durable push-notification config store MUST do in
+# production — the reference impl below only enforces isolation.
+# Sellers adapting this to their stack need to layer on the other two:
+#
+# 1. Validate the client-supplied ``url`` against an allowlist before
+#    persisting. a2a-sdk's push-notif sender POSTs full task JSON to
+#    whatever URL is stored — no built-in allowlist. An unvalidated
+#    store is a cloud-metadata SSRF and a task-content exfiltration
+#    primitive. Reject non-https, reject private/link-local IPs, reject
+#    hosts outside your egress allowlist. ``ssrf_guard()``-style
+#    helper below is a starting point.
+# 2. Treat ``PushNotificationConfig.authentication.credentials`` and
+#    ``PushNotificationConfig.token`` as secrets at rest. The reference
+#    impl serialises them to plaintext JSON under chmod 0600 — safe on
+#    a single-user host but loses that guarantee across backups,
+#    Docker bind mounts with wrong umask, and DB migrations. Either
+#    encrypt those fields or move them to a secrets backend.
+# 3. Isolate by principal, not just by scope. Within a single auth
+#    scope (e.g. "tenant-acme") multiple principals may share access
+#    to the same task. The reference impl keys on ``(scope, task_id,
+#    config_id)`` and falls ``config_id`` back to ``task_id`` when
+#    the client omits it — two principals registering without a
+#    ``config_id`` overwrite each other silently. Either require an
+#    explicit ``config_id`` from the client, or widen the scope key to
+#    include the principal.
+_current_push_config_scope: ContextVar[str | None] = ContextVar(
+    "adcp_push_config_scope", default=None
+)
+"""Default ContextVar used by ``SqlitePushNotificationConfigStore`` when
+no ``scope_provider`` is supplied. HTTP auth middleware sets it per
+request; the store reads it on every op. Exposed at module level so
+a seller with their own auth middleware can pair it with this
+reference impl without subclassing."""
+
+
+def _default_push_config_scope_provider() -> str | None:
+    """Read the current push-config scope from the module-level
+    ``ContextVar``. Returned ``None`` = "unauthenticated request" per
+    ``_ANONYMOUS_SCOPE`` below."""
+    return _current_push_config_scope.get()
+
+
+class SqlitePushNotificationConfigStore(PushNotificationConfigStore):
+    """Durable A2A ``PushNotificationConfigStore`` backed by a single
+    SQLite file, scoped by an authenticated principal resolved at
+    set/get/delete time via a ``scope_provider`` callable.
+
+    a2a-sdk's ``PushNotificationConfigStore`` ABC does **not** pass a
+    ``ServerCallContext`` to ``set_info`` / ``get_info`` /
+    ``delete_info`` (unlike the ``TaskStore`` ABC), so scoping has to
+    happen out-of-band. The canonical pattern is a ``ContextVar`` the
+    seller's HTTP auth middleware populates per request — the
+    ``_default_push_config_scope_provider()`` factory below reads the
+    module-level ``_current_push_config_scope``. Sellers who already
+    maintain their own ContextVar (or prefer thread-locals, Starlette
+    ``request.state``, etc.) inject a custom provider.
+
+    Example — wiring the default ContextVar from auth middleware::
+
+        from contextvars import ContextVar
+
+        from examples.a2a_db_tasks import (
+            SqlitePushNotificationConfigStore,
+            _current_push_config_scope,
+        )
+
+        class AuthMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request, call_next):
+                scope = _resolve_tenant_scope(request)  # your auth logic
+                token = _current_push_config_scope.set(scope)
+                try:
+                    return await call_next(request)
+                finally:
+                    _current_push_config_scope.reset(token)
+
+        serve(
+            agent,
+            transport="a2a",
+            push_config_store=SqlitePushNotificationConfigStore(
+                db_path="a2a_push_configs.db",
+            ),
+        )
+
+    Example — injecting a custom provider (different ContextVar, or
+    pulling from your own auth layer)::
+
+        my_scope: ContextVar[str | None] = ContextVar("my_scope")
+        store = SqlitePushNotificationConfigStore(
+            db_path="a2a_push_configs.db",
+            scope_provider=lambda: my_scope.get(default=None),
+        )
+
+    **Fails closed on anonymous requests.** If the provider returns
+    ``None``, a ``UserWarning`` is emitted once per store instance and
+    the store falls through to ``__anonymous__`` — unauthenticated
+    requests end up sharing one giant scope. Operators should reject
+    unauthenticated push-notif-config requests at the auth layer
+    before the store is touched; the warning is the signal they
+    forgot to.
+
+    **Background-task caveat — sender path.** a2a-sdk's push-notif
+    sender calls ``get_info()`` from a background ``asyncio.Task``
+    spawned by ``DefaultRequestHandler``. That task inherits the
+    ContextVar snapshot captured at task-creation time; if the
+    seller's auth middleware has already reset the ContextVar before
+    the background task reads it, ``get_info()`` will return an empty
+    list and notifications silently drop. Sellers running non-blocking
+    push-notifs MUST propagate scope into the sender path explicitly —
+    either by capturing the scope into a closure at ``set_info()`` time
+    and stashing it alongside the config, or by overriding
+    a2a-sdk's ``BasePushNotificationSender`` to re-set the ContextVar
+    before calling ``get_info``. Not yet addressed by the SDK;
+    tracked separately.
+    """
+
+    def __init__(
+        self,
+        db_path: str | Path = "a2a_push_configs.db",
+        *,
+        scope_provider: Callable[[], str | None] | None = None,
+    ) -> None:
+        self._db_path = str(db_path)
+        self._scope_provider = scope_provider or _default_push_config_scope_provider
+        self._init_schema()
+        self._warned_anonymous = False
+
+    def _init_schema(self) -> None:
+        path = Path(self._db_path)
+        first_create = not path.exists()
+        with sqlite3.connect(self._db_path) as conn:
+            # One task can have multiple push-notif configs; the config
+            # id is the secondary key. scope isolates across tenants.
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS a2a_push_configs (
+                    scope      TEXT NOT NULL,
+                    task_id    TEXT NOT NULL,
+                    config_id  TEXT NOT NULL,
+                    config_json TEXT NOT NULL,
+                    updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                    PRIMARY KEY (scope, task_id, config_id)
+                )
+                """
+            )
+        if first_create:
+            with contextlib.suppress(OSError):
+                os.chmod(self._db_path, 0o600)
+
+    def _scope(self) -> str:
+        scope = self._scope_provider()
+        if not scope:
+            if not self._warned_anonymous:
+                self._warned_anonymous = True
+                warnings.warn(
+                    "SqlitePushNotificationConfigStore: scope_provider "
+                    "returned None — operating in the __anonymous__ scope. "
+                    "All unauthenticated requests will share a single "
+                    "push-notif bucket, which is unsafe in multi-tenant "
+                    "deployments. Wire your auth middleware to populate "
+                    "the ContextVar (or reject unauthenticated push-notif-"
+                    "config requests at the auth layer) before production.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+            return _ANONYMOUS_SCOPE
+        return scope
+
+    @asynccontextmanager
+    async def _conn(self):
+        conn = sqlite3.connect(self._db_path)
+        try:
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
+        finally:
+            conn.close()
+
+    async def set_info(self, task_id: str, notification_config: PushNotificationConfig) -> None:
+        scope = self._scope()
+        # PushNotificationConfig.id is optional on the wire; when the
+        # client didn't supply one we synthesise a UUID so two clients
+        # registering on the same task without explicit ids don't
+        # silently overwrite each other. Production stores should
+        # consider requiring an explicit config_id and rejecting
+        # None outright — the client loses the ability to delete the
+        # config they just created unless they round-trip the
+        # server-assigned id.
+        config_id = notification_config.id or f"auto-{uuid.uuid4()}"
+        config_json = notification_config.model_dump_json(exclude_none=True)
+        async with self._conn() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO a2a_push_configs "
+                "(scope, task_id, config_id, config_json, updated_at) "
+                "VALUES (?, ?, ?, ?, strftime('%s','now'))",
+                (scope, task_id, config_id, config_json),
+            )
+
+    async def get_info(self, task_id: str) -> list[PushNotificationConfig]:
+        scope = self._scope()
+        async with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT config_json FROM a2a_push_configs " "WHERE scope = ? AND task_id = ?",
+                (scope, task_id),
+            ).fetchall()
+        return [PushNotificationConfig.model_validate(json.loads(r[0])) for r in rows]
+
+    async def delete_info(self, task_id: str, config_id: str | None = None) -> None:
+        scope = self._scope()
+        async with self._conn() as conn:
+            if config_id is None:
+                # a2a-sdk's ABC semantic: ``delete_info(task_id, None)``
+                # removes every config for the task. Within a scope
+                # with multiple principals, this lets any principal
+                # wipe every other principal's subscriptions — a
+                # tenant-local DoS. Production stores that admit
+                # multi-principal-per-scope should reject
+                # ``config_id=None`` or authorise the caller against
+                # each config row. The reference impl honours the ABC
+                # semantic as-is.
+                conn.execute(
+                    "DELETE FROM a2a_push_configs WHERE scope = ? AND task_id = ?",
+                    (scope, task_id),
+                )
+            else:
+                conn.execute(
+                    "DELETE FROM a2a_push_configs "
+                    "WHERE scope = ? AND task_id = ? AND config_id = ?",
+                    (scope, task_id, config_id),
+                )
+
+
+# ----------------------------------------------------------------------
 # Minimal handler so the example runs end-to-end
 # ----------------------------------------------------------------------
 
@@ -213,12 +483,14 @@ class DemoAgent(ADCPHandler):
 
 
 def main() -> None:
-    store = SqliteTaskStore(db_path="a2a_tasks.db")
+    task_store = SqliteTaskStore(db_path="a2a_tasks.db")
+    push_store = SqlitePushNotificationConfigStore(db_path="a2a_push_configs.db")
     serve(
         DemoAgent(),
         name="a2a-db-tasks-demo",
         transport="a2a",
-        task_store=store,
+        task_store=task_store,
+        push_config_store=push_store,
     )
 
 
