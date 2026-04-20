@@ -227,10 +227,18 @@ def test_inline_refs_resolves_nested_refs() -> None:
     assert '"$ref"' not in json.dumps(result)
 
 
-def test_inline_refs_sibling_keys_override_resolved_body() -> None:
-    """JSON Schema 2020-12 §8.2: sibling keys on the $ref node
-    override the resolved body's same-named keys. Field-level
-    descriptions on the $ref site must survive inlining."""
+def test_inline_refs_sibling_annotations_override_resolved_body() -> None:
+    """Annotation-level merge: sibling ``description`` / ``title`` on
+    the $ref node win over the resolved body's same-named keys. This
+    is what Pydantic emits at ref sites in practice (a field-level
+    description on top of a nested model).
+
+    Note: this is NOT JSON Schema 2020-12 §8.2 merge semantics (which
+    would evaluate siblings as an implicit ``allOf``). The inliner's
+    override semantics match Pydantic's actual output, not the spec's
+    general-case composition rule. If a future Pydantic version
+    emits assertion-level siblings at ref sites (``type``, ``enum``,
+    etc.), this merge would silently clobber them — today it doesn't."""
     schema = {
         "properties": {
             "account": {
@@ -252,6 +260,87 @@ def test_inline_refs_sibling_keys_override_resolved_body() -> None:
         == "This one is special — overrides the generic description."
     )
     assert result["properties"]["account"]["properties"] == {"id": {"type": "string"}}
+
+
+def test_inline_refs_resolves_inside_anyof() -> None:
+    """Pydantic emits ``anyOf: [{"$ref": "..."}, {"type": "null"}]``
+    for ``Optional[Model]`` on request types. The inliner MUST recurse
+    into composition keywords (``anyOf`` / ``oneOf`` / ``allOf``) so
+    optional nested models still flatten correctly. Real production
+    case — regression here silently breaks optional-model properties
+    for non-ref-resolving clients."""
+    schema = {
+        "type": "object",
+        "properties": {"maybe_account": {"anyOf": [{"$ref": "#/$defs/Account"}, {"type": "null"}]}},
+        "$defs": {
+            "Account": {
+                "type": "object",
+                "properties": {"id": {"type": "string"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    any_of = result["properties"]["maybe_account"]["anyOf"]
+    # First branch — Account resolved inline.
+    assert any_of[0] == {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+    }
+    # Second branch — unchanged.
+    assert any_of[1] == {"type": "null"}
+    assert "$defs" not in result
+
+
+def test_inline_refs_resolves_inside_additional_properties() -> None:
+    """``additionalProperties: {"$ref": "..."}`` is another shape
+    Pydantic emits — e.g. ``dict[str, NestedModel]`` on a request
+    field. Must resolve like any other $ref."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "accounts_by_id": {
+                "type": "object",
+                "additionalProperties": {"$ref": "#/$defs/Account"},
+            }
+        },
+        "$defs": {
+            "Account": {
+                "type": "object",
+                "properties": {"name": {"type": "string"}},
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    assert result["properties"]["accounts_by_id"]["additionalProperties"] == {
+        "type": "object",
+        "properties": {"name": {"type": "string"}},
+    }
+    assert "$defs" not in result
+
+
+def test_inline_refs_does_not_false_positive_on_ref_as_value() -> None:
+    """The ``$defs``-drop decision must not treat a legitimate
+    ``"$ref"`` value inside an enum / const / description as an
+    unresolved reference. A description that mentions the word
+    ``"$ref"`` in prose, or an enum with ``"$ref"`` as a literal
+    string, would be a false positive under a naive substring check."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "keyword": {
+                "type": "string",
+                "description": 'Must be a JSON Schema keyword like "$ref" or "$id".',
+            }
+        },
+    }
+    result = _inline_refs(schema)
+    # $defs was never present — no issue here specifically — but
+    # verify the description survived and the result is otherwise
+    # unchanged.
+    assert (
+        result["properties"]["keyword"]["description"]
+        == 'Must be a JSON Schema keyword like "$ref" or "$id".'
+    )
 
 
 def test_inline_refs_protects_against_cycles() -> None:

@@ -18,7 +18,7 @@ Provides utilities for registering ADCP handlers with MCP servers.
 
 from __future__ import annotations
 
-import json
+import copy
 import logging
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -1046,9 +1046,13 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
 
     The inliner walks the schema tree and replaces each ``$ref`` with a
     deep copy of the referenced definition. Sibling keys on the ``$ref``
-    node (description, title) override the resolved body's same-named
-    keys — JSON Schema 2020-12 §8.2 composition semantics. After the
-    walk, ``$defs`` is dropped if every reference resolved.
+    node (``description``, ``title``) are merged on top of the resolved
+    body. Note: this is an annotation-level override that matches what
+    Pydantic actually emits at reference sites — it is NOT spec §8.2
+    merge semantics (which would evaluate siblings as an implicit
+    ``allOf``). If a future Pydantic version starts emitting
+    assertion-level siblings (``type``, ``enum``, etc.) the merge
+    would silently change validation; today it doesn't.
 
     Only handles local refs (``#/$defs/X``). External refs are left in
     place — Pydantic doesn't emit them for our request models, but if
@@ -1058,31 +1062,45 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
     Cycles are protected by a ``seen`` set threaded through recursion.
     Pydantic request models don't generate cyclic refs today; the guard
     exists so a future schema shape can't turn inlining into a
-    RecursionError.
+    RecursionError. When the walk leaves at least one ``$ref``
+    unresolved (cycle or dangling), ``$defs`` is kept in place so a
+    spec-compliant client can still resolve what we couldn't.
     """
-    import copy
-
     defs = schema.get("$defs", {})
+    # Track whether we emitted any $ref in the output — tells the
+    # caller whether it's safe to drop $defs. Avoids a
+    # stringify-the-whole-tree scan post-walk, and sidesteps false
+    # positives from legitimate ``"$ref"`` values inside enum / const
+    # / description strings.
+    unresolved = [False]
 
     def _resolve(node: Any, seen: frozenset[str]) -> Any:
         if isinstance(node, dict):
             ref = node.get("$ref")
-            if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            if isinstance(ref, str):
+                if not ref.startswith("#/$defs/"):
+                    # External ref (http://…, relative path). Pydantic
+                    # doesn't emit these for our request models; leave
+                    # untouched rather than risk silent corruption.
+                    unresolved[0] = True
+                    return {k: _resolve(v, seen) for k, v in node.items()}
                 def_name = ref[len("#/$defs/") :]
                 if def_name in seen:
-                    # Cycle — leave the $ref intact. Caller gets a
-                    # still-resolvable schema (the remaining $defs
-                    # stays below) rather than an infinite recursion.
+                    # Cycle — leave the $ref intact so a spec-compliant
+                    # client can still resolve via $defs.
+                    unresolved[0] = True
                     return {k: _resolve(v, seen) for k, v in node.items()}
                 body = defs.get(def_name)
                 if body is None:
                     # Dangling ref — nothing in $defs matches. Leave
-                    # untouched; JSON Schema consumers will error on
-                    # their own.
+                    # the $ref for consumers to error on; preserving
+                    # the shape is safer than silently stripping.
+                    unresolved[0] = True
                     return {k: _resolve(v, seen) for k, v in node.items()}
                 resolved = _resolve(copy.deepcopy(body), seen | {def_name})
-                # Sibling keys on the $ref node override the resolved
-                # body's keys (e.g. a field-level description).
+                # Annotation-level merge — sibling description/title
+                # on the $ref node wins over the resolved body's
+                # same-named keys.
                 merged = dict(resolved) if isinstance(resolved, dict) else resolved
                 if isinstance(merged, dict):
                     for k, v in node.items():
@@ -1096,12 +1114,8 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
         return node
 
     result = _resolve(schema, frozenset())
-    if isinstance(result, dict):
-        # Drop $defs only when every reference was resolved. A cycle
-        # or dangling ref leaves $defs in place so the remaining $ref
-        # is still resolvable by a spec-compliant client.
-        if '"$ref"' not in json.dumps(result):
-            result.pop("$defs", None)
+    if isinstance(result, dict) and not unresolved[0]:
+        result.pop("$defs", None)
     assert isinstance(result, dict)
     return result
 
