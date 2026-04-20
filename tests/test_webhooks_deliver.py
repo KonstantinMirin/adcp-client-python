@@ -455,7 +455,9 @@ async def test_signed_bytes_match_posted_bytes() -> None:
     async with client:
         await deliver(config, payload, client=client)
 
-    expected_body = json.dumps(payload).encode("utf-8")
+    # Compact separators — deliver() pins the canonical on-wire form from
+    # adcontextprotocol/adcp#2478 so signer and wire bytes can never drift.
+    expected_body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     assert captured[0].content == expected_body
 
 
