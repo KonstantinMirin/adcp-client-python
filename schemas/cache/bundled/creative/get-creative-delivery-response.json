@@ -6708,6 +6708,7 @@
                                 "items": {
                                   "title": "Right Use",
                                   "description": "Types of rights usage that can be licensed through the brand protocol. Aligned with DDEX UseType direction for interoperability with music and media rights systems.",
+                                  "x-status": "experimental",
                                   "type": "string",
                                   "enum": [
                                     "likeness",
@@ -6720,7 +6721,8 @@
                                     "sync",
                                     "background_music",
                                     "editorial",
-                                    "commercial"
+                                    "commercial",
+                                    "ai_generated_image"
                                   ],
                                   "enumDescriptions": {
                                     "likeness": "Visual representation of a person's appearance, including AI-generated imagery",
@@ -6733,7 +6735,8 @@
                                     "sync": "Synchronization of music with visual media (ads, video)",
                                     "background_music": "Use of music as background audio in advertising",
                                     "editorial": "Use in editorial or informational contexts",
-                                    "commercial": "Use in commercial advertising and promotional contexts"
+                                    "commercial": "Use in commercial advertising and promotional contexts",
+                                    "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality — a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category."
                                   }
                                 },
                                 "minItems": 1
@@ -6762,6 +6765,7 @@
                               "right_type": {
                                 "title": "Right Type",
                                 "description": "Type of rights (talent, music, etc.). Helps identify constraints when a creative combines multiple rights types.",
+                                "x-status": "experimental",
                                 "type": "string",
                                 "enum": [
                                   "talent",
@@ -7374,7 +7378,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T02:29:11.584Z",
+    "generatedAt": "2026-04-19T20:54:55.181Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

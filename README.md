@@ -388,6 +388,108 @@ client = ADCPMultiAgentClient(
 # Signatures verified automatically on handle_webhook()
 ```
 
+### Signed webhooks (AdCP 3.0): receiver quickstart
+
+AdCP 3.0 webhooks are signed under the RFC 9421 profile
+(`adcp/webhook-signing/v1`) and carry a required `idempotency_key` for
+at-least-once dedup. The `WebhookReceiver` packages verify + dedupe + parse
+into one call so you don't have to re-derive the normative checklist:
+
+```python
+from flask import Flask, request, Response
+from adcp.server.idempotency import MemoryBackend, WebhookDedupStore
+from adcp.signing import StaticJwksResolver
+from adcp.webhooks import (
+    WebhookReceiver,
+    WebhookReceiverConfig,
+    WebhookVerifyOptions,
+)
+
+# One resolver per publisher. In production, wire an async JWKS fetcher
+# pointed at the publisher's `adagents.json`.
+jwks = StaticJwksResolver(publisher_jwks_dict)
+
+receiver = WebhookReceiver(
+    config=WebhookReceiverConfig(
+        verify_options=WebhookVerifyOptions(jwks_resolver=jwks),
+        dedup=WebhookDedupStore(MemoryBackend(), ttl_seconds=86400),
+    ),
+)
+
+app = Flask(__name__)
+
+@app.post("/webhooks/adcp")
+async def hook():
+    outcome = await receiver.receive(
+        method=request.method, url=request.url,
+        headers=dict(request.headers), body=request.get_data(),
+    )
+    if outcome.rejected:
+        return Response(status=401, headers=outcome.response_headers)
+    # Spec: MUST return 2xx on duplicates so the at-least-once sender stops
+    # retrying. A duplicate is a no-op, not an error.
+    if outcome.duplicate:
+        return Response(status=200)
+    process(outcome.payload)  # typed McpWebhookPayload
+    return Response(status=200)
+```
+
+**Legacy HMAC-SHA256 fallback** (3.x only, removed in 4.0). The shortcut
+constructor covers the "one publisher, one shared secret" case:
+
+```python
+from adcp.webhooks import LegacyHmacFallback
+
+config = WebhookReceiverConfig(
+    verify_options=WebhookVerifyOptions(jwks_resolver=jwks),
+    dedup=WebhookDedupStore(MemoryBackend(), ttl_seconds=86400),
+    legacy_hmac=LegacyHmacFallback.from_shared_secret(
+        secret=os.environ["WEBHOOK_SHARED_SECRET"].encode(),
+        sender_identity="publisher-buyerco",
+    ),
+)
+```
+
+By default the fallback only fires when no 9421 headers are present — this
+prevents a MITM from stripping a valid 9421 signature and substituting a
+forged HMAC one.
+
+### Signed webhooks: sender quickstart
+
+```python
+from adcp.webhooks import WebhookSender
+
+# One sender per private key; reuses a pooled httpx client under the hood.
+sender = WebhookSender.from_jwk(webhook_signing_jwk_with_private_d)
+
+async with sender:
+    result = await sender.send_mcp(
+        url="https://buyer.example.com/webhooks/adcp/create_media_buy/op_abc",
+        task_id="task_456",
+        task_type="create_media_buy",
+        status="completed",
+        result={"media_buy_id": "mb_1"},
+    )
+
+    if not result.ok:
+        # resend() replays the exact same bytes under a fresh signature —
+        # preserves idempotency_key AND every other payload field, so the
+        # receiver dedupes against the original event.
+        retry = await sender.resend(result)
+```
+
+`WebhookSender` handles payload construction, byte-exact JSON serialization,
+9421 signing, and the httpx POST in one call. `send_raw(...)` is an escape
+hatch for custom payload shapes; dedicated methods exist for every webhook
+kind (`send_revocation_notification`, `send_artifact_webhook`,
+`send_collection_list_changed`, `send_property_list_changed`).
+
+The webhook-signing JWK MUST be published in your `adagents.json` with
+`adcp_use: "webhook-signing"` — distinct from your `request-signing` key so
+neither signature can be replayed as the other. `WebhookSender.from_jwk`
+refuses to construct from a JWK with the wrong `adcp_use` to fail fast at
+setup rather than at receiver verification.
+
 ### Debug Mode
 
 Enable debug mode to see full request/response details:

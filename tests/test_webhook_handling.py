@@ -45,6 +45,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_completed_success(self):
         """Test MCP webhook with completed status and valid response."""
         payload = {
+            "idempotency_key": "whk_task_123xxxx",
             "task_id": "task_123",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -67,6 +68,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_completed_with_errors(self):
         """Test MCP webhook with completed status but has errors in result."""
         payload = {
+            "idempotency_key": "whk_task_456xxxx",
             "task_id": "task_456",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -88,6 +90,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_failed_status(self):
         """Test MCP webhook with failed status."""
         payload = {
+            "idempotency_key": "whk_task_789xxxx",
             "task_id": "task_789",
             "task_type": "create_media_buy",
             "status": "failed",
@@ -116,6 +119,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_working_status(self):
         """Test MCP webhook with working status (async in progress)."""
         payload = {
+            "idempotency_key": "whk_task_111xxxx",
             "task_id": "task_111",
             "task_type": "create_media_buy",
             "status": "working",
@@ -135,6 +139,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_input_required_status(self):
         """Test MCP webhook with input-required status."""
         payload = {
+            "idempotency_key": "whk_task_222xxxx",
             "task_id": "task_222",
             "task_type": "create_media_buy",
             "status": "input-required",
@@ -165,6 +170,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_signature_verification_valid(self):
         """Test signature verification with valid HMAC."""
         payload = {
+            "idempotency_key": "whk_task_333xxxx",
             "task_id": "task_333",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -199,6 +205,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_signature_verification_with_raw_body(self):
         """Test signature verification using raw body bytes (cross-language safe)."""
         payload = {
+            "idempotency_key": "whk_task_333bxxx",
             "task_id": "task_333b",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -233,6 +240,7 @@ class TestMCPWebhooks:
     async def test_mcp_webhook_signature_verification_invalid(self):
         """Test signature verification with invalid HMAC."""
         payload = {
+            "idempotency_key": "whk_task_444xxxx",
             "task_id": "task_444",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -257,6 +265,7 @@ class TestMCPWebhooks:
         import hmac
 
         payload = {
+            "idempotency_key": "whk_task_ts1xxxx",
             "task_id": "task_ts1",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -289,6 +298,7 @@ class TestMCPWebhooks:
         import hmac
 
         payload = {
+            "idempotency_key": "whk_task_ts2xxxx",
             "task_id": "task_ts2",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -321,6 +331,7 @@ class TestMCPWebhooks:
         import hmac
 
         payload = {
+            "idempotency_key": "whk_task_ts3xxxx",
             "task_id": "task_ts3",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -354,6 +365,7 @@ class TestMCPWebhooks:
             webhook_secret="test-secret",
         )
         payload = {
+            "idempotency_key": "whk_test-123xxxx",
             "task_id": "test-123",
             "timestamp": "2024-01-01T00:00:00Z",
             "status": "completed",
@@ -790,6 +802,7 @@ class TestUnifiedInterface:
     async def test_type_detection_mcp_dict(self):
         """Verify dict payload routes to MCP handler."""
         payload = {
+            "idempotency_key": "whk_task_mcpxxxx",
             "task_id": "task_mcp",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -870,6 +883,7 @@ class TestUnifiedInterface:
 
         # MCP webhook
         mcp_payload = {
+            "idempotency_key": "whk_task_1xxxxxx",
             "task_id": "task_1",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -911,6 +925,7 @@ class TestExtractWebhookResultData:
     def test_extract_from_mcp_webhook(self):
         """Test extracting result from MCP webhook payload."""
         mcp_payload = {
+            "idempotency_key": "whk_task_123xxxx",
             "task_id": "task_123",
             "task_type": "create_media_buy",
             "status": "completed",
@@ -1016,6 +1031,7 @@ class TestExtractWebhookResultData:
     def test_extract_from_mcp_with_null_result(self):
         """Test extracting from MCP webhook with None result."""
         mcp_payload = {
+            "idempotency_key": "whk_task_111xxxx",
             "task_id": "task_111",
             "task_type": "create_media_buy",
             "status": "working",
@@ -1109,6 +1125,7 @@ class TestExtractWebhookResultData:
     def test_extract_from_mcp_with_missing_result_field(self):
         """Test extracting from MCP webhook without result field."""
         mcp_payload = {
+            "idempotency_key": "whk_task_666xxxx",
             "task_id": "task_666",
             "task_type": "create_media_buy",
             "status": "working",
@@ -1150,6 +1167,7 @@ class TestExtractWebhookResultData:
     def test_extract_from_mcp_with_error_response(self):
         """Test extracting from MCP webhook with error response."""
         mcp_payload = {
+            "idempotency_key": "whk_task_888xxxx",
             "task_id": "task_888",
             "task_type": "create_media_buy",
             "status": "failed",
@@ -1233,9 +1251,7 @@ class TestHMACTestVectors:
         # then get_adcp_signed_headers_for_webhook should match
         reserialized = json.dumps(payload_dict)
         if reserialized != raw_body:
-            pytest.skip(
-                "raw_body uses different serialization than json.dumps default"
-            )
+            pytest.skip("raw_body uses different serialization than json.dumps default")
             return
 
         headers = get_adcp_signed_headers_for_webhook(

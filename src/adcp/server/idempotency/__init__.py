@@ -64,6 +64,7 @@ from adcp.server.idempotency.canonicalize import (
     strip_excluded_fields,
 )
 from adcp.server.idempotency.store import IdempotencyStore
+from adcp.server.idempotency.webhook_dedup import WebhookDedupStore
 
 __all__ = [
     "CachedResponse",
@@ -72,6 +73,7 @@ __all__ = [
     "IdempotencyStore",
     "MemoryBackend",
     "PgBackend",
+    "WebhookDedupStore",
     "canonical_json_sha256",
     "strip_excluded_fields",
 ]

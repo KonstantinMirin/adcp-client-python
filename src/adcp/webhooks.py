@@ -1,10 +1,18 @@
-"""Webhook creation and signing utilities for AdCP agents."""
+"""Webhook creation, signing, and reception for AdCP agents.
+
+Single front door for both senders (``create_mcp_webhook_payload``,
+``sign_webhook``) and receivers (``WebhookReceiver``). Underlying modules in
+``adcp.signing.webhook_*`` and ``adcp.webhook_receiver`` are implementation
+details kept for internal organization — prefer the re-exports here for
+stability.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
+import uuid
 from datetime import datetime, timezone
 from typing import Any, cast
 
@@ -20,14 +28,49 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 
+from adcp.signing.webhook_hmac import (
+    LegacyWebhookHmacError,
+    LegacyWebhookHmacOptions,
+    VerifiedLegacyWebhookSender,
+    verify_webhook_hmac,
+)
+from adcp.signing.webhook_signer import sign_webhook
+from adcp.signing.webhook_verifier import (
+    VerifiedWebhookSender,
+    WebhookVerifyOptions,
+    verify_webhook_signature,
+)
 from adcp.types import GeneratedTaskStatus
 from adcp.types.base import AdCPBaseModel
 from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
+from adcp.webhook_receiver import (
+    LegacyHmacFallback,
+    VerifiedSignerLike,
+    WebhookKind,
+    WebhookOutcome,
+    WebhookPayload,
+    WebhookReceiver,
+    WebhookReceiverConfig,
+)
+
+
+def generate_webhook_idempotency_key() -> str:
+    """Generate a cryptographically random idempotency_key for a webhook event.
+
+    Returns a UUID v4 prefixed with ``whk_`` — matches the example format in
+    ``webhooks.mdx`` and stays within the spec's length + charset bounds
+    (``^[A-Za-z0-9_.:-]{16,255}$``).
+
+    Publishers MUST generate this once per distinct event and reuse the same
+    value when retrying delivery. Do NOT call this function again on retry —
+    it would mint a fresh UUID and defeat the dedup contract.
+    """
+    return f"whk_{uuid.uuid4()}"
 
 
 def create_mcp_webhook_payload(
     task_id: str,
-    status: GeneratedTaskStatus,
+    status: GeneratedTaskStatus | str,
     result: AdcpAsyncResponseData | dict[str, Any] | None = None,
     timestamp: datetime | None = None,
     task_type: str | None = None,
@@ -35,6 +78,7 @@ def create_mcp_webhook_payload(
     message: str | None = None,
     context_id: str | None = None,
     domain: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """
     Create MCP webhook payload dictionary.
@@ -53,6 +97,10 @@ def create_mcp_webhook_payload(
         message: Human-readable summary of task state
         context_id: Session/conversation identifier
         domain: AdCP domain this task belongs to
+        idempotency_key: Sender-generated key stable across retries of the same
+            event. Defaults to a freshly-generated UUID v4 — callers retrying
+            delivery of the same event MUST pass the key from their first
+            attempt; passing None twice mints two keys and defeats dedup.
 
     Returns:
         Dictionary matching McpWebhookPayload schema, ready to be sent as JSON
@@ -89,12 +137,15 @@ def create_mcp_webhook_payload(
     """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc)
+    if idempotency_key is None:
+        idempotency_key = generate_webhook_idempotency_key()
 
     # Convert status enum to string value
     status_value = status.value if hasattr(status, "value") else str(status)
 
     # Build payload matching McpWebhookPayload schema
     payload: dict[str, Any] = {
+        "idempotency_key": idempotency_key,
         "task_id": task_id,
         "task_type": task_type,
         "status": status_value,
@@ -506,3 +557,46 @@ def create_a2a_webhook_payload(
             context_id=context_id,
             final=False,  # Intermediate statuses are not final
         )
+
+
+# Sender import is at the bottom to resolve a circular dependency:
+# WebhookSender uses create_mcp_webhook_payload / generate_webhook_idempotency_key
+# which are defined above. Importing it at the top would try to resolve those
+# names before they're bound. This is the canonical Python pattern for breaking
+# such cycles without a third helper module.
+from adcp.webhook_sender import (  # noqa: E402
+    WebhookDeliveryResult,
+    WebhookSender,
+)
+
+__all__ = [
+    # Sender — payload builders
+    "create_a2a_webhook_payload",
+    "create_mcp_webhook_payload",
+    "generate_webhook_idempotency_key",
+    "get_adcp_signed_headers_for_webhook",
+    # Sender — 9421 signing (low-level)
+    "sign_webhook",
+    # Sender — one-call outbound helper
+    "WebhookDeliveryResult",
+    "WebhookSender",
+    # Receiver — 9421 verification (low-level)
+    "VerifiedWebhookSender",
+    "WebhookVerifyOptions",
+    "verify_webhook_signature",
+    # Receiver — legacy HMAC verification (low-level, 3.x only)
+    "LegacyWebhookHmacError",
+    "LegacyWebhookHmacOptions",
+    "VerifiedLegacyWebhookSender",
+    "verify_webhook_hmac",
+    # Receiver — one-call helper
+    "LegacyHmacFallback",
+    "VerifiedSignerLike",
+    "WebhookKind",
+    "WebhookOutcome",
+    "WebhookPayload",
+    "WebhookReceiver",
+    "WebhookReceiverConfig",
+    # Receiver — payload extraction (legacy helper)
+    "extract_webhook_result_data",
+]

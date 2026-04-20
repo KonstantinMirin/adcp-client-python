@@ -9094,11 +9094,11 @@
         },
         "authentication": {
           "type": "object",
-          "description": "Authentication configuration for webhook delivery (A2A-compatible)",
+          "description": "Legacy authentication configuration (A2A-compatible). Opts the seller into Bearer or HMAC-SHA256 signing instead of the default RFC 9421 webhook profile. Deprecated; removed in AdCP 4.0. When omitted, the seller MUST sign webhooks with the 9421 profile.",
           "properties": {
             "schemes": {
               "type": "array",
-              "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for signature verification (recommended for production)",
+              "description": "Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit `authentication` and use the RFC 9421 webhook profile.",
               "items": {
                 "title": "Authentication Scheme",
                 "description": "Authentication schemes for push notification endpoints",
@@ -9113,7 +9113,7 @@
             },
             "credentials": {
               "type": "string",
-              "description": "Credentials for authentication. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
+              "description": "Credentials for the legacy scheme. For Bearer: token sent in Authorization header. For HMAC-SHA256: shared secret used to generate signature. Minimum 32 characters. Exchanged out-of-band during onboarding.",
               "minLength": 32
             }
           },
@@ -9125,8 +9125,7 @@
         }
       },
       "required": [
-        "url",
-        "authentication"
+        "url"
       ]
     },
     "reporting_webhook": {
@@ -9329,7 +9328,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T02:29:11.727Z",
+    "generatedAt": "2026-04-19T20:54:55.316Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }
