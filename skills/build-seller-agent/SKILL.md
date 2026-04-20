@@ -162,25 +162,26 @@ class MySeller(ADCPHandler):
 
 ## Emitting Webhooks
 
-Sellers emit webhooks to notify buyers asynchronously — no client library call, just an outbound HTTP POST. Use the SDK helpers instead of hand-rolling payload shape or signature bytes.
+Sellers emit webhooks to notify buyers asynchronously. AdCP 3.0 uses RFC 9421 HTTP Message Signatures as the baseline — use `adcp.webhooks.WebhookSender` (one-liner) or `sign_webhook` for more control.
 
 **When to emit:**
 - Async-approval media buy transitions (e.g., `pending_activation` → `active`, or `→ rejected`)
 - Artifact-ready notifications after long-running operations
 - Delivery reports the buyer subscribed to via `reporting_webhook` on `create_media_buy`
 
-**Build the payload.** Use `create_mcp_webhook_payload(task_id, status, task_type=..., result=..., message=...)` — it matches the `McpWebhookPayload` schema. For A2A transport, use `create_a2a_webhook_payload(...)` instead. There is no dedicated delivery-report helper today; reuse `create_mcp_webhook_payload` with `task_type="get_media_buy_delivery"` and the delivery response as `result`.
-
-**Sign the headers.** Call `get_adcp_signed_headers_for_webhook(headers, secret, timestamp, payload)`. This sets `X-AdCP-Signature` (HMAC-SHA256 over `"{timestamp}.{compact_json_payload}"`) and `X-AdCP-Timestamp`. The signer serializes with compact separators (`","` / `":"`) to match what httpx emits for `json=`, so POST via `client.post(url, json=payload, headers=signed)` — never hand-serialize the body yourself or the signature will mismatch.
-
-**Retry semantics.** Receivers dedupe on `task_id` (or `operation_id` if you set it). A retry is a byte-identical re-POST: same payload, same signed headers, same timestamp. Don't re-sign on retry.
+**Idempotency keys.** Generate one per distinct event with `generate_webhook_idempotency_key()` and reuse the same key on retry — receivers dedupe on it. A retry is a byte-identical re-POST; don't regenerate the key or re-sign.
 
 ```python
-import httpx
 from adcp.types import GeneratedTaskStatus
-from adcp.webhooks import create_mcp_webhook_payload, get_adcp_signed_headers_for_webhook
+from adcp.webhooks import (
+    WebhookSender,
+    create_mcp_webhook_payload,
+    generate_webhook_idempotency_key,
+)
 
-async def notify_media_buy_active(webhook_url: str, secret: str, mb_id: str, mb: dict) -> None:
+sender = WebhookSender(key_id="seller-key-1", private_key_pem=PRIVATE_KEY_PEM)
+
+async def notify_media_buy_active(webhook_url: str, mb_id: str, mb: dict) -> None:
     payload = create_mcp_webhook_payload(
         task_id=mb_id,
         task_type="create_media_buy",
@@ -188,12 +189,13 @@ async def notify_media_buy_active(webhook_url: str, secret: str, mb_id: str, mb:
         result={"media_buy_id": mb_id, "status": "active", "packages": mb["packages"]},
         message="Media buy approved and activated",
     )
-    headers = get_adcp_signed_headers_for_webhook(
-        {"Content-Type": "application/json"}, secret, timestamp=None, payload=payload
-    )
-    async with httpx.AsyncClient() as client:
-        await client.post(webhook_url, json=payload, headers=headers)
+    idem_key = generate_webhook_idempotency_key()  # persist this per-event; reuse on retry
+    await sender.send(webhook_url, payload, idempotency_key=idem_key)
 ```
+
+**Legacy HMAC.** `get_adcp_signed_headers_for_webhook` is 3.x-only and deprecated in 4.0 — use it only when a receiver can't yet verify 9421 signatures. See the `adcp.webhooks` module docstring for the migration path.
+
+**Receiving webhooks.** Sellers that receive webhooks from other agents (audit agents, governance, etc.) should use `adcp.webhooks.WebhookReceiver` — it handles 9421 verification, replay dedup, and legacy HMAC fallback. See the module docstring for a worked example.
 
 ## Proposal Workflow (Guaranteed Deals)
 
@@ -529,20 +531,28 @@ Pass the store to `serve()`:
 serve(MySeller(), name="my-seller", test_controller=MyStore())
 ```
 
-`compliance_testing` is a separate top-level capability block — not a `supported_protocols` value. `serve(test_controller=store)` registers the `comply_test_controller` tool but does NOT inject the capability block. Declare it yourself via the `compliance_testing=` kwarg on `capabilities_response()`:
+`compliance_testing` is a separate top-level capability block — not a `supported_protocols` value. `serve(test_controller=store)` registers the `comply_test_controller` tool but does NOT inject the capability block. Declare it yourself via the `compliance_testing=` kwarg on `capabilities_response()`.
+
+`adcp.idempotency.supported` is REQUIRED in AdCP 3.0 GA — always pass `idempotency=store.capability()` too. Use one shared `IdempotencyStore` per agent and reuse it for `@store.wrap` on mutating tools:
 
 ```python
-async def get_adcp_capabilities(self, params, context=None):
-    return capabilities_response(
-        ["media_buy"],
-        compliance_testing={"scenarios": [
-            "force_account_status",
-            "force_media_buy_status",
-            "force_creative_status",
-            "simulate_delivery",
-            "simulate_budget_spend",
-        ]},
-    )
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+
+idempotency = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+class MySeller(ADCPHandler):
+    async def get_adcp_capabilities(self, params, context=None):
+        return capabilities_response(
+            ["media_buy"],
+            idempotency=idempotency.capability(),
+            compliance_testing={"scenarios": [
+                "force_account_status",
+                "force_media_buy_status",
+                "force_creative_status",
+                "simulate_delivery",
+                "simulate_budget_spend",
+            ]},
+        )
 ```
 
 ## Emitting Webhooks

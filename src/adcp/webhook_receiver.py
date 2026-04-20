@@ -49,6 +49,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -295,6 +296,45 @@ class WebhookReceiver:
             payload=parsed,
             duplicate=not is_first_seen,
             idempotency_key=idempotency_key,
+        )
+
+    def receive_sync(
+        self,
+        *,
+        method: str,
+        url: str,
+        headers: Mapping[str, str],
+        body: bytes,
+    ) -> WebhookOutcome:
+        """Synchronous wrapper around :meth:`receive` for WSGI-style frameworks.
+
+        Use this from Flask, Gunicorn sync workers, ``http.server``, or any
+        other sync-only HTTP entry point where wrapping every call in
+        ``asyncio.run(...)`` is just noise::
+
+            @app.post("/webhooks/adcp")
+            def hook():
+                outcome = receiver.receive_sync(
+                    method=request.method,
+                    url=request.url,
+                    headers=dict(request.headers),
+                    body=request.get_data(),
+                )
+                ...
+
+        Raises :class:`RuntimeError` if invoked from a thread that already has
+        a running event loop — the underlying verify / dedup path is async and
+        cannot be driven from inside an active loop without blocking it. From
+        async code, call :meth:`receive` directly.
+        """
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop in this thread — safe to spin one up.
+            return asyncio.run(self.receive(method=method, url=url, headers=headers, body=body))
+        raise RuntimeError(
+            "WebhookReceiver.receive_sync() cannot be called from a running "
+            "event loop. Use `await receiver.receive(...)` instead."
         )
 
     async def _verify(

@@ -96,6 +96,8 @@ async def get_adcp_capabilities(self, params, context=None):
 
 If `signal_spec` doesn't match anything specific, return all signals (discovery query).
 
+**Ordering matters when mixing signal types.** When an agent returns both marketplace and owned signals, return marketplace signals first. Storyboard runners and many buyers chain `signals[0]` into follow-up calls (activation, verification) — if `signals[0]` is an owned signal, it lacks `data_provider_domain` and the downstream call fails.
+
 ```python
 from adcp.server.responses import signals_response
 
@@ -112,10 +114,16 @@ async def get_signals(self, params, context=None):
         if matched:
             results = matched
 
-    # Exact ID lookup
+    # Exact ID lookup — key on (source, scope, id) where scope is agent_url
+    # for source=agent and data_provider_domain for source=catalog.
+    def _signal_key(sid: dict) -> tuple:
+        source = sid["source"]
+        scope = sid["agent_url"] if source == "agent" else sid.get("data_provider_domain", "")
+        return (source, scope, sid["id"])
+
     if signal_ids := params.get("signal_ids"):
-        id_set = {(sid["source"], sid["id"]) for sid in signal_ids}
-        results = [s for s in results if (s["signal_id"]["source"], s["signal_id"]["id"]) in id_set]
+        id_set = {_signal_key(sid) for sid in signal_ids}
+        results = [s for s in results if _signal_key(s["signal_id"]) in id_set]
 
     # CPM filter
     filters = params.get("filters") or {}
