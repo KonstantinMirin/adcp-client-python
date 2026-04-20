@@ -194,6 +194,13 @@ def get_adcp_signed_headers_for_webhook(
     - X-AdCP-Signature: HMAC-SHA256 signature in format "sha256=<hex_digest>"
     - X-AdCP-Timestamp: Unix timestamp in seconds
 
+    See also:
+        :func:`sign_legacy_webhook` — recommended companion that returns
+        ``(headers, body_bytes)`` so callers POST ``content=body_bytes`` and
+        can't accidentally reserialize the payload between signing and
+        transmission. Prefer ``sign_legacy_webhook`` unless you already own
+        the serialization step and need headers only.
+
     The signing algorithm:
     1. Constructs message as "{timestamp}.{json_payload}"
     2. JSON-serializes payload with compact separators (matches the wire
@@ -246,7 +253,28 @@ def get_adcp_signed_headers_for_webhook(
             "X-AdCP-Timestamp": "1773185740"
         }
     """
-    # Default to current Unix time if not provided
+    signature_headers, _body = _compute_legacy_signature(
+        secret=secret,
+        timestamp=timestamp,
+        payload=payload,
+    )
+    headers.update(signature_headers)
+    return headers
+
+
+def _compute_legacy_signature(
+    *,
+    secret: str,
+    timestamp: str | int | None,
+    payload: dict[str, Any] | AdCPBaseModel,
+) -> tuple[dict[str, str], bytes]:
+    """Shared HMAC-SHA256 signing core for the legacy webhook surface.
+
+    Returns the two signature headers and the compact-separator body bytes
+    that were fed into the HMAC. Callers that POST must transmit exactly
+    these bytes (via ``content=body_bytes``, not ``json=payload``) — that's
+    the whole point of exposing the bytes alongside the headers.
+    """
     if timestamp is None:
         import time
 
@@ -268,21 +296,95 @@ def get_adcp_signed_headers_for_webhook(
     # and posted via `client.post(url, json=payload, headers=signed)`.
     # Pinned canonical form per adcontextprotocol/adcp#2478.
     payload_json = json.dumps(payload_dict, separators=(",", ":"))
+    body_bytes = payload_json.encode("utf-8")
 
     # Construct signed message: timestamp.payload
-    # Including timestamp prevents replay attacks
+    # Including timestamp prevents replay attacks.
     signed_message = f"{timestamp}.{payload_json}"
 
-    # Generate HMAC-SHA256 signature over timestamp + payload
     signature_hex = hmac.new(
         secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
     ).hexdigest()
 
-    # Add AdCP-compliant signature headers
-    headers["X-AdCP-Signature"] = f"sha256={signature_hex}"
-    headers["X-AdCP-Timestamp"] = timestamp
+    return (
+        {
+            "X-AdCP-Signature": f"sha256={signature_hex}",
+            "X-AdCP-Timestamp": timestamp,
+        },
+        body_bytes,
+    )
 
-    return headers
+
+def sign_legacy_webhook(
+    secret: str,
+    payload: dict[str, Any] | AdCPBaseModel,
+    *,
+    timestamp: str | int | None = None,
+    headers: dict[str, Any] | None = None,
+) -> tuple[dict[str, str], bytes]:
+    """Return ``(signed_headers, body_bytes)`` for a legacy HMAC webhook.
+
+    Byte-equality between signature input and HTTP body is guaranteed —
+    callers POST ``content=body_bytes`` instead of ``json=payload``, so
+    the separator-drift trap that caused silent 401s in every
+    spaced-vs-compact interop is structurally impossible here. This is
+    the 4.x-lifetime replacement for
+    :func:`get_adcp_signed_headers_for_webhook`.
+
+    The returned ``body_bytes`` are produced with compact separators
+    (``","``/``":"``) — matching the canonical on-wire form pinned by
+    adcontextprotocol/adcp#2478.
+
+    Args:
+        secret: Shared HMAC secret, as agreed with the receiver.
+        payload: Webhook payload (dict or Pydantic model). Will be
+            JSON-serialized with compact separators.
+        timestamp: Unix timestamp (string or int). Defaults to current time.
+            Pin a value in tests for determinism.
+        headers: Optional existing headers dict. If provided, the signed
+            headers are merged into it and the merged dict is returned.
+            The caller still must POST ``content=body_bytes``.
+
+    Returns:
+        ``(signed_headers, body_bytes)``. Hand the headers to
+        :meth:`httpx.AsyncClient.post` and the bytes to its ``content=``
+        kwarg — NOT ``json=payload``, which would reserialize and break
+        the signature.
+
+    See also:
+        :func:`get_adcp_signed_headers_for_webhook` — the lower-level
+        headers-only helper. Still useful when the caller owns the
+        serialization step (for example, a framework that emits bytes
+        from a middleware layer).
+
+    Example:
+        >>> import httpx
+        >>> from adcp.webhooks import create_mcp_webhook_payload, sign_legacy_webhook
+        >>>
+        >>> payload = create_mcp_webhook_payload(
+        ...     task_id="task_123",
+        ...     task_type="create_media_buy",
+        ...     status="completed",
+        ...     result={"media_buy_id": "mb_1"},
+        ... )
+        >>> signed_headers, body = sign_legacy_webhook("shared-secret", payload)
+        >>> async with httpx.AsyncClient() as client:
+        ...     response = await client.post(
+        ...         "https://buyer.example.com/webhooks/adcp",
+        ...         content=body,
+        ...         headers={"Content-Type": "application/json", **signed_headers},
+        ...     )
+    """
+    signature_headers, body_bytes = _compute_legacy_signature(
+        secret=secret,
+        timestamp=timestamp,
+        payload=payload,
+    )
+    if headers is not None:
+        merged = {str(k): str(v) for k, v in headers.items()}
+        merged.update(signature_headers)
+        return merged, body_bytes
+    return signature_headers, body_bytes
 
 
 def extract_webhook_result_data(webhook_payload: dict[str, Any]) -> AdcpAsyncResponseData | None:
@@ -583,6 +685,7 @@ __all__ = [
     "create_mcp_webhook_payload",
     "generate_webhook_idempotency_key",
     "get_adcp_signed_headers_for_webhook",
+    "sign_legacy_webhook",
     # Sender — 9421 signing (low-level)
     "sign_webhook",
     # Sender — one-call outbound helper

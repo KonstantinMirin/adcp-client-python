@@ -30,7 +30,7 @@ from adcp.webhooks import (
     WebhookReceiverConfig,
     WebhookVerifyOptions,
     create_mcp_webhook_payload,
-    get_adcp_signed_headers_for_webhook,
+    sign_legacy_webhook,
     sign_webhook,
 )
 
@@ -275,11 +275,11 @@ async def test_legacy_hmac_e2e_over_http() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_e2e_hmaclegacyaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    get_adcp_signed_headers_for_webhook(
-        headers=headers, secret=secret.decode(), timestamp=ts, payload=payload
-    )
+    # Use sign_legacy_webhook so body and signed bytes are guaranteed to match
+    # (avoids the spaced-vs-compact json.dumps separator drift that was the
+    # whole reason we added the paired-return helper in R8).
+    signed_headers, body = sign_legacy_webhook(secret.decode(), payload, timestamp=ts)
+    headers = {"Content-Type": "application/json", **signed_headers}
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:

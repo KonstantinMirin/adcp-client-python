@@ -426,6 +426,7 @@ from adcp.webhooks import (
     extract_webhook_result_data,
     generate_webhook_idempotency_key,
     get_adcp_signed_headers_for_webhook,
+    sign_legacy_webhook,
     sign_webhook,
 )
 
@@ -506,6 +507,7 @@ __all__ = [
     "get_adcp_signed_headers_for_webhook",
     "extract_webhook_result_data",
     "generate_webhook_idempotency_key",
+    "sign_legacy_webhook",
     "sign_webhook",
     "WebhookReceiver",
     "WebhookReceiverConfig",

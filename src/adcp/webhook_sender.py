@@ -31,11 +31,19 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import httpx
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 
-from adcp.signing.crypto import PrivateKey, private_key_from_jwk
+from adcp.signing.crypto import (
+    ALG_ED25519,
+    ALG_ES256,
+    PrivateKey,
+    load_private_key_pem,
+    private_key_from_jwk,
+)
 from adcp.signing.webhook_signer import sign_webhook
 from adcp.types import GeneratedTaskStatus
 from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
@@ -152,6 +160,82 @@ class WebhookSender:
         return cls(
             private_key=private_key,
             key_id=str(jwk_snapshot["kid"]),
+            alg=alg,
+            client=client,
+            timeout_seconds=timeout_seconds,
+        )
+
+    @classmethod
+    def from_pem(
+        cls,
+        pem_path: str | Path | bytes,
+        *,
+        key_id: str,
+        alg: str = "ed25519",
+        passphrase: bytes | None = None,
+        client: httpx.AsyncClient | None = None,
+        timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+    ) -> WebhookSender:
+        """Load a private key from a PEM file and bind it as a webhook sender.
+
+        Companion to ``adcp-keygen --purpose webhook-signing``, which writes
+        the PEM and prints the public JWK. The JWK is published at your
+        ``jwks_uri``; the PEM holds the private key material. ``from_pem``
+        reads the PEM, constructs the right ``PrivateKey`` type for ``alg``,
+        and returns a sender ready to send.
+
+        Args:
+            pem_path: Path to the PKCS#8 PEM, or the PEM bytes directly.
+            key_id: JWK ``kid`` claim — must match the published JWK.
+            alg: Signature algorithm. ``ed25519`` (default) or ``es256``.
+                Also accepts the RFC 9421 form ``ecdsa-p256-sha256``.
+            passphrase: Required if the PEM is encrypted
+                (``adcp-keygen --encrypt``).
+            client: Optional pre-built :class:`httpx.AsyncClient` to share
+                across the SDK; the sender owns its own client when omitted.
+            timeout_seconds: Per-request timeout for the owned client.
+
+        Raises:
+            ValueError: ``alg`` is not ed25519 / es256, or the PEM contains
+                a key whose type doesn't match ``alg``.
+        """
+        if alg in ("es256", "ES256"):
+            alg = ALG_ES256
+        elif alg == "EdDSA":
+            alg = ALG_ED25519
+        if alg not in (ALG_ED25519, ALG_ES256):
+            raise ValueError(
+                f"unsupported alg {alg!r} — use 'ed25519' or 'es256' "
+                f"(the two AdCP webhook-signing algorithms)"
+            )
+
+        if isinstance(pem_path, bytes):
+            pem_bytes = pem_path
+        else:
+            pem_bytes = Path(pem_path).read_bytes()
+
+        private_key = load_private_key_pem(pem_bytes, password=passphrase)
+
+        # The PEM's key type must match the requested alg — mixing them
+        # would produce signatures no verifier can validate, and the
+        # resulting error at delivery time would point at the receiver.
+        # Fail here so the misconfiguration surfaces at construction.
+        if alg == ALG_ED25519 and not isinstance(private_key, ed25519.Ed25519PrivateKey):
+            raise ValueError(
+                f"PEM holds a {type(private_key).__name__} but alg='ed25519' "
+                f"was requested. Re-run adcp-keygen with --alg ed25519, or "
+                f"pass alg='es256' to match the existing PEM."
+            )
+        if alg == ALG_ES256 and not isinstance(private_key, ec.EllipticCurvePrivateKey):
+            raise ValueError(
+                f"PEM holds a {type(private_key).__name__} but alg='es256' "
+                f"was requested. Re-run adcp-keygen with --alg es256, or "
+                f"pass alg='ed25519' to match the existing PEM."
+            )
+
+        return cls(
+            private_key=private_key,
+            key_id=key_id,
             alg=alg,
             client=client,
             timeout_seconds=timeout_seconds,
