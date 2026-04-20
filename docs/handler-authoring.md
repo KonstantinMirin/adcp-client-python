@@ -221,6 +221,34 @@ deployments. For maximum correctness, implement the store against the
 same engine/transaction as your handler's business writes so
 "handler success → task save" happens atomically.
 
+**Four things a durable `TaskStore` MUST do — the
+`InMemoryTaskStore` got away with ignoring these because crash =
+reset; your persistent store can't:**
+
+1. **Filter every read, write, and delete by the authenticated
+   principal.** The `TaskStore` ABC hands you a `ServerCallContext` on
+   every call; a2a-sdk's `DefaultRequestHandler` always passes it. If
+   your `get(task_id, context)` ignores `context.user`, any principal
+   that learns another tenant's task id retrieves that tenant's task —
+   history, artifacts, PII, all of it. The reference `SqliteTaskStore`
+   derives a `scope` column from `context.user.user_name`; override
+   `_scope_from_context` if you carry richer identity.
+2. **Protect the database file.** Tasks include buyer-supplied
+   `Message.parts` content and artifact metadata. On a shared host the
+   default umask leaves the database world-readable. Set `0o600` on
+   creation (reference does this), mount on an encrypted volume, and
+   treat backups as the same trust boundary as the live DB.
+3. **Handle concurrent writes explicitly.** Two workers saving the
+   same task interleave. `INSERT OR REPLACE` is last-writer-wins and
+   will silently revert state (`completed` → `working`). Add a version
+   column, a `WHERE updated_at < ?` guard, or wrap updates in a
+   transaction with explicit conflict handling.
+4. **Garbage-collect terminal tasks.** Without a TTL / sweeper, your
+   database grows unbounded and every completed task is retained
+   forever — an ever-expanding exfiltration target. Add a periodic
+   sweep deleting tasks in `completed` / `canceled` / `failed` states
+   older than your retention policy.
+
 ### Known gaps
 
 - Push-notification config is in-memory only — tracked at
