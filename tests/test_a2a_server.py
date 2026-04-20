@@ -610,3 +610,130 @@ async def test_sqlite_task_store_isolates_scopes_by_context():
         await store.delete("shared-task-id", context=_ctx("tenant-b-principal"))
         still_a = await store.get("shared-task-id", context=_ctx("tenant-a-principal"))
         assert still_a is not None, "SqliteTaskStore cross-scope delete removed tenant A's task."
+
+
+# ---------------------------------------------------------------------------
+# Pluggable PushNotificationConfigStore (issue #225)
+# ---------------------------------------------------------------------------
+
+
+class _RecordingPushConfigStore:
+    """Duck-typed PushNotificationConfigStore — records every call for
+    test assertions. Same shape/role as ``_RecordingTaskStore`` above."""
+
+    def __init__(self) -> None:
+        self.sets: list[tuple[str, str]] = []  # (task_id, config_id)
+        self.gets: list[str] = []
+        self.deletes: list[tuple[str, str | None]] = []
+        self._store: dict[tuple[str, str], Any] = {}
+
+    async def set_info(self, task_id: str, notification_config: Any) -> None:
+        config_id = getattr(notification_config, "id", None) or task_id
+        self.sets.append((task_id, config_id))
+        self._store[(task_id, config_id)] = notification_config
+
+    async def get_info(self, task_id: str) -> list[Any]:
+        self.gets.append(task_id)
+        return [v for (tid, _cid), v in self._store.items() if tid == task_id]
+
+    async def delete_info(self, task_id: str, config_id: str | None = None) -> None:
+        self.deletes.append((task_id, config_id))
+        if config_id is None:
+            keys = [k for k in self._store if k[0] == task_id]
+            for k in keys:
+                del self._store[k]
+        else:
+            self._store.pop((task_id, config_id), None)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
+def test_create_a2a_server_omits_push_config_store_by_default():
+    """Omitting ``push_config_store`` preserves a2a-sdk's default:
+    ``DefaultRequestHandler._push_config_store`` stays ``None`` and
+    push-notif endpoints surface as ``UnsupportedOperationError``.
+    Sellers opt-in to the feature by wiring a store."""
+    app = create_a2a_server(_TestHandler(), name="test-agent")
+    handler = _extract_default_request_handler(app)
+    assert handler._push_config_store is None, (
+        "push_config_store should default to None so push-notif endpoints "
+        "remain unsupported until the seller explicitly opts in. Instead "
+        f"got {type(handler._push_config_store).__name__}."
+    )
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
+def test_create_a2a_server_accepts_custom_push_config_store():
+    """Custom store must thread through to
+    ``DefaultRequestHandler.push_config_store`` — the contract of the
+    hook."""
+    store = _RecordingPushConfigStore()
+    app = create_a2a_server(_TestHandler(), name="test-agent", push_config_store=store)
+    handler = _extract_default_request_handler(app)
+    assert handler._push_config_store is store, (
+        "create_a2a_server(push_config_store=...) dropped the custom store; "
+        f"handler._push_config_store is {type(handler._push_config_store).__name__}."
+    )
+
+
+async def test_sqlite_push_config_store_isolates_scopes_by_contextvar():
+    """Reference ``SqlitePushNotificationConfigStore`` scopes reads and
+    writes by the ContextVar the seller's auth middleware populates.
+    Cross-tenant registration must never surface another tenant's
+    push-notif callback URL."""
+    import importlib.util
+    import tempfile
+    from pathlib import Path
+
+    from a2a.types import PushNotificationConfig
+
+    example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
+    spec = importlib.util.spec_from_file_location("_a2a_db_tasks_example", example_path)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "push.db"
+        store = mod.SqlitePushNotificationConfigStore(db_path=db)
+        scope_var = mod._current_push_config_scope
+
+        cfg = PushNotificationConfig(id="cfg-1", url="https://callback.tenant-a.example/webhook")
+
+        # Tenant A sets a config on task-shared.
+        tok_a = scope_var.set("tenant-a")
+        try:
+            await store.set_info("task-shared", cfg)
+            got_a = await store.get_info("task-shared")
+            assert len(got_a) == 1 and str(got_a[0].url) == str(cfg.url)
+        finally:
+            scope_var.reset(tok_a)
+
+        # Tenant B queries the same task — must see nothing.
+        tok_b = scope_var.set("tenant-b")
+        try:
+            got_b = await store.get_info("task-shared")
+            assert got_b == [], (
+                "SqlitePushNotificationConfigStore returned tenant A's "
+                "push-notif config to tenant B — the reference impl is "
+                "leaking callback URLs across principals."
+            )
+
+            # And tenant B's delete must not affect tenant A.
+            await store.delete_info("task-shared")
+        finally:
+            scope_var.reset(tok_b)
+
+        tok_a2 = scope_var.set("tenant-a")
+        try:
+            still_a = await store.get_info("task-shared")
+            assert len(still_a) == 1, (
+                "SqlitePushNotificationConfigStore cross-scope delete " "removed tenant A's config."
+            )
+        finally:
+            scope_var.reset(tok_a2)

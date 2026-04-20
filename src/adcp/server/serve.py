@@ -27,6 +27,9 @@ from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 
 if TYPE_CHECKING:
+    from a2a.server.tasks.push_notification_config_store import (
+        PushNotificationConfigStore,
+    )
     from a2a.server.tasks.task_store import TaskStore
 
     from adcp.server.test_controller import TestControllerStore
@@ -108,6 +111,7 @@ def serve(
     test_controller: TestControllerStore | None = None,
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
+    push_config_store: PushNotificationConfigStore | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -130,6 +134,12 @@ def serve(
             persistence (A2A transport only). Defaults to ``InMemoryTaskStore``
             — tasks don't survive restart. See
             ``examples/a2a_db_tasks.py`` for the production pattern.
+        push_config_store: Optional a2a-sdk ``PushNotificationConfigStore``
+            for push-notif subscription persistence (A2A transport only).
+            When unset, a2a-sdk surfaces the push-notif endpoints as
+            ``UnsupportedOperationError`` — clients cannot register
+            subscriptions at all. See ``examples/a2a_db_tasks.py`` for
+            a durable reference implementation.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -176,6 +186,7 @@ def serve(
             test_controller=test_controller,
             context_factory=context_factory,
             task_store=task_store,
+            push_config_store=push_config_store,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -303,6 +314,7 @@ def _serve_a2a(
     test_controller: TestControllerStore | None,
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
+    push_config_store: PushNotificationConfigStore | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -318,6 +330,7 @@ def _serve_a2a(
         test_controller=test_controller,
         context_factory=context_factory,
         task_store=task_store,
+        push_config_store=push_config_store,
     )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:

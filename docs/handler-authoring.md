@@ -249,16 +249,49 @@ reset; your persistent store can't:**
    sweep deleting tasks in `completed` / `canceled` / `failed` states
    older than your retention policy.
 
+### Durable push-notification config storage
+
+Clients subscribe to task progress by calling
+`tasks/pushNotificationConfig/set`. a2a-sdk's default behavior is
+**push-notif disabled** — the endpoint surfaces
+`UnsupportedOperationError` until you wire a store. Sellers that accept
+push-notif subscriptions pass one:
+
+```python
+from adcp.server import serve
+from examples.a2a_db_tasks import (
+    SqliteTaskStore,
+    SqlitePushNotificationConfigStore,
+)
+
+serve(
+    MyAgent(),
+    transport="a2a",
+    task_store=SqliteTaskStore("/var/lib/myagent/tasks.db"),
+    push_config_store=SqlitePushNotificationConfigStore(
+        "/var/lib/myagent/push_configs.db"
+    ),
+)
+```
+
+**Scoping caveat.** a2a-sdk's `PushNotificationConfigStore` ABC does
+**not** pass a `ServerCallContext` to its methods — the ABC predates
+the context-passing pattern that `TaskStore` uses. Scoping by
+tenant/principal has to happen out-of-band. The reference
+`SqlitePushNotificationConfigStore` reads a `ContextVar` (populated by
+your auth middleware), writes a `scope` column, and filters every
+read/write/delete. Without this, a tenant that guesses another
+tenant's task id can register a push-notif config that steals their
+callbacks — a phishing-by-registration attack.
+
 ### Known gaps
 
-- Push-notification config is in-memory only — tracked at
-  [#225](https://github.com/adcontextprotocol/adcp-client-python/issues/225).
 - Per-skill middleware hooks for audit logging / activity feeds don't
   exist yet — tracked at
   [#226](https://github.com/adcontextprotocol/adcp-client-python/issues/226).
 
-Once #225 and #226 land, A2A adoption reaches parity with MCP for
-production agents.
+Once #226 lands, A2A adoption reaches parity with MCP for production
+agents.
 
 ## Testing
 
