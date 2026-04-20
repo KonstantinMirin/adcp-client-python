@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/content-standards/get-content-standards-request.json",
   "title": "Get Content Standards Request",
   "description": "Request parameters for retrieving content safety policies",
   "type": "object",
@@ -32,7 +31,7 @@
     "standards_id"
   ],
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.129Z",
+    "generatedAt": "2026-04-20T02:09:29.064Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/governance/report-plan-outcome-request.json",
   "title": "Report Plan Outcome Request",
   "description": "Report the outcome of an action to the governance agent. Called by the orchestrator (buyer-side agent) after a seller responds. This is the 'after' half of the governance loop. Sellers do not call this task -- they report delivery data via check_governance with phase 'delivery'.",
   "x-status": "experimental",
@@ -28,12 +27,12 @@
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "purchase_type": {
-      "$ref": "/schemas/latest/enums/purchase-type.json",
+      "$ref": "../enums/purchase-type.json",
       "description": "The type of financial commitment this outcome is for. Determines which budget allocation (if any) to charge against. Defaults to 'media_buy' when omitted.",
       "default": "media_buy"
     },
     "outcome": {
-      "$ref": "/schemas/latest/enums/outcome-type.json",
+      "$ref": "../enums/outcome-type.json",
       "description": "Outcome type."
     },
     "seller_response": {
@@ -65,7 +64,7 @@
           }
         },
         "planned_delivery": {
-          "$ref": "/schemas/latest/core/planned-delivery.json",
+          "$ref": "../core/planned-delivery.json",
           "description": "What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."
         },
         "creative_deadline": {
@@ -146,10 +145,10 @@
       "pattern": "^[\\x20-\\x7E]+$"
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

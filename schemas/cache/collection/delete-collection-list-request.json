@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/collection/delete-collection-list-request.json",
   "title": "Delete Collection List Request",
   "description": "Request parameters for deleting a collection list",
   "type": "object",
@@ -16,14 +15,14 @@
       "description": "ID of the collection list to delete"
     },
     "account": {
-      "$ref": "/schemas/latest/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "idempotency_key": {
       "type": "string",

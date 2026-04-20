@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/content-standards/get-media-buy-artifacts-response.json",
   "title": "Get Media Buy Artifacts Response",
   "description": "Response containing content artifacts from a media buy for validation",
   "type": "object",
@@ -345,7 +344,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -394,7 +393,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -668,7 +667,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -717,7 +716,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1010,7 +1009,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -1059,7 +1058,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1345,7 +1344,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -1394,7 +1393,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1494,7 +1493,7 @@
                   },
                   "provenance": {
                     "title": "Provenance",
-                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.",
+                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact \u2014 individual assets can override with their own provenance.",
                     "type": "object",
                     "properties": {
                       "digital_source_type": {
@@ -1675,7 +1674,7 @@
                                     "min_duration_ms": {
                                       "type": "integer",
                                       "minimum": 1,
-                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                     },
                                     "positions": {
                                       "type": "array",
@@ -1724,7 +1723,7 @@
                       },
                       "verification": {
                         "type": "array",
-                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                         "minItems": 1,
                         "items": {
                           "type": "object",
@@ -1918,7 +1917,7 @@
         },
         "collection_info": {
           "type": "object",
-          "description": "Information about artifact collection for this media buy. Sampling is configured at buy creation time — this reports what was actually collected.",
+          "description": "Information about artifact collection for this media buy. Sampling is configured at buy creation time \u2014 this reports what was actually collected.",
           "properties": {
             "total_deliveries": {
               "type": "integer",
@@ -2056,7 +2055,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.144Z",
+    "generatedAt": "2026-04-20T02:09:29.103Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

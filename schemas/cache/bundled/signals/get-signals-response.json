@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/signals/get-signals-response.json",
   "title": "Get Signals Response",
   "description": "Response payload for get_signals task",
   "type": "object",
@@ -138,7 +137,7 @@
             ],
             "enumDescriptions": {
               "marketplace": "Resold third-party segments (provider authorization verifiable via the provider's adagents.json)",
-              "custom": "Agent-native segment built on demand from models, composites, or buyer inputs — not attributable to a standing upstream provider",
+              "custom": "Agent-native segment built on demand from models, composites, or buyer inputs \u2014 not attributable to a standing upstream provider",
               "owned": "First-party segments derived from data the signal agent directly owns (retailer purchase data, publisher behavioral data, telco data)"
             }
           },
@@ -340,7 +339,7 @@
             "description": "Pricing options available for this signal. The buyer selects one and passes its pricing_option_id in report_usage for billing verification.",
             "items": {
               "title": "Vendor Pricing Option",
-              "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array — vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
+              "description": "A pricing option offered by a vendor agent (signals, creative, governance). Combines pricing_option_id with the pricing model fields. Pass pricing_option_id in report_usage for billing verification. All vendor discovery responses return pricing_options as an array \u2014 vendors may offer multiple options (volume tiers, context-specific rates, different models per product line).",
               "allOf": [
                 {
                   "type": "object",
@@ -356,7 +355,7 @@
                 },
                 {
                   "title": "Vendor Pricing",
-                  "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), 'per_unit' (fixed price per unit of work), or 'custom' (escape hatch for models not covered by the enumerated forms — requires a description and structured metadata).",
+                  "description": "Pricing model for a vendor service. Discriminated by model: 'cpm' (fixed CPM), 'percent_of_media' (percentage of spend with optional CPM cap), 'flat_fee' (fixed charge per reporting period), 'per_unit' (fixed price per unit of work), or 'custom' (escape hatch for models not covered by the enumerated forms \u2014 requires a description and structured metadata).",
                   "type": "object",
                   "oneOf": [
                     {
@@ -394,7 +393,7 @@
                     },
                     {
                       "title": "PercentOfMediaPricing",
-                      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM — useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
+                      "description": "Percentage of media spend charged for this signal. When max_cpm is set, the effective rate is capped at that CPM \u2014 useful for platforms like The Trade Desk that use percent-of-media pricing with a CPM ceiling.",
                       "type": "object",
                       "properties": {
                         "model": {
@@ -409,7 +408,7 @@
                         },
                         "max_cpm": {
                           "type": "number",
-                          "description": "Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).",
+                          "description": "Optional CPM cap. When set, the effective charge is min(percent \u00d7 media_spend_per_mille, max_cpm).",
                           "minimum": 0
                         },
                         "currency": {
@@ -486,7 +485,7 @@
                         },
                         "unit": {
                           "type": "string",
-                          "description": "What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
+                          "description": "What is counted \u2014 e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'."
                         },
                         "unit_price": {
                           "type": "number",
@@ -515,7 +514,7 @@
                     },
                     {
                       "title": "CustomPricing",
-                      "description": "Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment — automatic selection is not recommended.",
+                      "description": "Escape hatch for pricing constructs that do not fit cpm, percent_of_media, flat_fee, or per_unit. Use when a vendor prices via performance kickers, tiered volume, hybrid formulas, outcome-sharing, or any other model the standard forms cannot express. Requires a human-readable description and a structured metadata object that captures the parameters a buyer needs to reason about the charge. Buyers SHOULD route custom pricing through operator review before commitment \u2014 automatic selection is not recommended.",
                       "type": "object",
                       "properties": {
                         "model": {
@@ -535,7 +534,7 @@
                           "properties": {
                             "summary_for_operator": {
                               "type": "string",
-                              "description": "One or two sentences describing the pricing construct in plain language, displayed to the buyer's operator when requesting approval. Should not repeat the top-level `description` verbatim — summarize the charge mechanic instead (e.g., 'Base $12 CPM plus $0.50 per qualifying post-view conversion, capped at $45 CPM').",
+                              "description": "One or two sentences describing the pricing construct in plain language, displayed to the buyer's operator when requesting approval. Should not repeat the top-level `description` verbatim \u2014 summarize the charge mechanic instead (e.g., 'Base $12 CPM plus $0.50 per qualifying post-view conversion, capped at $45 CPM').",
                               "minLength": 1
                             }
                           }
@@ -680,7 +679,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.450Z",
+    "generatedAt": "2026-04-20T02:09:29.744Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/sync-event-sources-response.json",
   "title": "Sync Event Sources Response",
   "description": "Response from event source sync operation. Returns either per-source results OR operation-level errors.",
   "type": "object",
@@ -175,7 +174,7 @@
                 "properties": {
                   "status": {
                     "title": "Assessment Status",
-                    "description": "Overall health status. Use this for cross-seller decisions — do not rely on detail.score for comparability.",
+                    "description": "Overall health status. Use this for cross-seller decisions \u2014 do not rely on detail.score for comparability.",
                     "type": "string",
                     "enum": [
                       "insufficient",
@@ -184,7 +183,7 @@
                       "excellent"
                     ],
                     "enumDescriptions": {
-                      "insufficient": "Setup incomplete or event quality too low — optimization cannot run",
+                      "insufficient": "Setup incomplete or event quality too low \u2014 optimization cannot run",
                       "minimum": "Functional but data quality limits optimization effectiveness",
                       "good": "Meets quality thresholds for most optimization goals",
                       "excellent": "Exceeds quality thresholds across all dimensions"
@@ -197,7 +196,7 @@
                       "score": {
                         "type": "number",
                         "minimum": 0,
-                        "description": "Seller-defined quality score. Scale varies by seller — only compare within the same seller."
+                        "description": "Seller-defined quality score. Scale varies by seller \u2014 only compare within the same seller."
                       },
                       "max_score": {
                         "type": "number",
@@ -454,7 +453,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.387Z",
+    "generatedAt": "2026-04-20T02:09:29.593Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/enums/specialism.json",
   "title": "AdCP Specialism",
   "description": "Specialized capability claims an agent can make. Each specialism maps to a compliance storyboard bundle published at /compliance/{version}/specialisms/{id}/. An agent asserts specialisms it supports in get_adcp_capabilities; the AAO compliance runner executes the matching storyboards to verify the claim.",
   "type": "string",
@@ -32,7 +31,7 @@
   "enumDescriptions": {
     "audience-sync": "Syncs buyer-provided audience segments into a platform for activation",
     "brand-rights": "Brand identity and rights licensing (talent, music, stock media)",
-    "collection-lists": "Collection list governance — curated inclusion and exclusion lists of content programs (shows, series, podcasts) for program-level brand safety",
+    "collection-lists": "Collection list governance \u2014 curated inclusion and exclusion lists of content programs (shows, series, podcasts) for program-level brand safety",
     "content-standards": "Content standards enforcement (brand safety, policy compliance)",
     "creative-ad-server": "Creative ad server with tag-based delivery",
     "creative-generative": "Generative creative agent producing assets on demand",
@@ -40,7 +39,7 @@
     "governance-delivery-monitor": "Campaign delivery monitoring with drift detection",
     "governance-spend-authority": "Conditional spend approval and human-in-the-loop governance",
     "measurement-verification": "Third-party measurement and verification across domains (viewability, brand safety, attribution, SI outcomes)",
-    "property-lists": "Property list governance — curated inclusion and exclusion lists for targeting and delivery compliance",
+    "property-lists": "Property list governance \u2014 curated inclusion and exclusion lists for targeting and delivery compliance",
     "sales-broadcast-tv": "Broadcast linear TV seller with guaranteed inventory and FCC cancellation rules",
     "sales-catalog-driven": "Catalog-driven commerce with conversion tracking",
     "sales-exchange": "Programmatic exchange or SSP exposing auction-based inventory",

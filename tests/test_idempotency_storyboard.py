@@ -70,7 +70,7 @@ class TestStoryboardPhase1CapabilityDiscovery:
     async def test_declared_ttl_passes(self) -> None:
         client = ADCPClient(_cfg(), strict_idempotency=True)
         caps = MagicMock()
-        caps.adcp = MagicMock(idempotency=MagicMock(replay_ttl_seconds=86400))
+        caps.adcp = MagicMock(idempotency=MagicMock(supported=True, replay_ttl_seconds=86400))
         with patch.object(client, "fetch_capabilities", AsyncMock(return_value=caps)):
             await client._ensure_idempotency_capability()  # no raise
 

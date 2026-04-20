@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/collection/delete-collection-list-response.json",
   "title": "Delete Collection List Response",
   "description": "Response payload for delete_collection_list task",
   "type": "object",
@@ -14,10 +13,10 @@
       "description": "ID of the deleted list"
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/sponsored-intelligence/si-initiate-session-request.json",
   "title": "SI Initiate Session Request",
   "description": "Host initiates a session with a brand agent",
+  "x-status": "experimental",
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -18,6 +18,7 @@
     "identity": {
       "title": "SI Identity",
       "description": "User identity shared with brand agent (with explicit consent)",
+      "x-status": "experimental",
       "type": "object",
       "properties": {
         "consent_granted": {
@@ -130,6 +131,7 @@
     "supported_capabilities": {
       "title": "SI Capabilities",
       "description": "What capabilities the host supports",
+      "x-status": "experimental",
       "type": "object",
       "properties": {
         "modalities": {
@@ -303,7 +305,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.454Z",
+    "generatedAt": "2026-04-20T02:09:29.748Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

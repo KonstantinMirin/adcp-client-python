@@ -75,7 +75,7 @@ def _make_capabilities(
     return GetAdcpCapabilitiesResponse(
         adcp=AdcpInfo(
             major_versions=[MajorVersion(root=3)],
-            idempotency=Idempotency(replay_ttl_seconds=86400),
+            idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
         ),
         supported_protocols=supported,
         media_buy=media_buy,
@@ -780,7 +780,8 @@ class TestSupportsV3:
     def test_v3_supported(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
-                major_versions=[MajorVersion(3)], idempotency=Idempotency(replay_ttl_seconds=86400)
+                major_versions=[MajorVersion(3)],
+                idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
         )
@@ -790,7 +791,8 @@ class TestSupportsV3:
     def test_v2_only(self) -> None:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
-                major_versions=[MajorVersion(2)], idempotency=Idempotency(replay_ttl_seconds=86400)
+                major_versions=[MajorVersion(2)],
+                idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
         )
@@ -801,7 +803,7 @@ class TestSupportsV3:
         caps = GetAdcpCapabilitiesResponse(
             adcp=AdcpInfo(
                 major_versions=[MajorVersion(2), MajorVersion(3)],
-                idempotency=Idempotency(replay_ttl_seconds=86400),
+                idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
             ),
             supported_protocols=[SupportedProtocol("media_buy")],
         )

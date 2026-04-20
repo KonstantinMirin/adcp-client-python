@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/get-products-request.json",
   "title": "Get Products Request",
   "description": "Request parameters for discovering or refining advertising products. buying_mode declares the buyer's intent: 'brief' for curated discovery, 'wholesale' for raw catalog access, or 'refine' to iterate on known products and proposals.",
   "type": "object",
@@ -18,7 +17,7 @@
         "wholesale",
         "refine"
       ],
-      "description": "Declares buyer intent for this request. 'brief': publisher curates product recommendations from the provided brief. 'wholesale': buyer requests raw inventory to apply their own audiences — brief must not be provided, and proposals are omitted. 'refine': iterate on products and proposals from a previous get_products response using the refine array of change requests. v3 clients MUST include buying_mode. Sellers receiving requests from pre-v3 clients without buying_mode SHOULD default to 'brief'."
+      "description": "Declares buyer intent for this request. 'brief': publisher curates product recommendations from the provided brief. 'wholesale': buyer requests raw inventory to apply their own audiences \u2014 brief must not be provided, and proposals are omitted. 'refine': iterate on products and proposals from a previous get_products response using the refine array of change requests. v3 clients MUST include buying_mode. Sellers receiving requests from pre-v3 clients without buying_mode SHOULD default to 'brief'."
     },
     "brief": {
       "type": "string",
@@ -36,7 +35,7 @@
               "scope": {
                 "type": "string",
                 "const": "request",
-                "description": "Change scoped to the overall request — direction for the selection as a whole."
+                "description": "Change scoped to the overall request \u2014 direction for the selection as a whole."
               },
               "ask": {
                 "type": "string",
@@ -103,7 +102,7 @@
                   "omit",
                   "finalize"
                 ],
-                "description": "'include': return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold — transitions a draft proposal to committed with an expires_at hold window. May trigger seller-side approval (HITL). The buyer should not set a time_budget for finalize requests — they represent a commitment to wait for the result."
+                "description": "'include': return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold \u2014 transitions a draft proposal to committed with an expires_at hold window. May trigger seller-side approval (HITL). The buyer should not set a time_budget for finalize requests \u2014 they represent a commitment to wait for the result."
               },
               "ask": {
                 "type": "string",
@@ -153,7 +152,7 @@
         },
         "data_subject_contestation": {
           "type": "object",
-          "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+          "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
           "properties": {
             "url": {
               "type": "string",
@@ -219,7 +218,7 @@
         },
         "type": {
           "title": "Catalog Type",
-          "description": "Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' — each with an industry-specific item schema.",
+          "description": "Catalog type. Structural types: 'offering' (AdCP Offering objects), 'product' (ecommerce entries), 'inventory' (stock per location), 'store' (physical locations), 'promotion' (deals and pricing). Vertical types: 'hotel', 'flight', 'job', 'vehicle', 'real_estate', 'education', 'destination', 'app' \u2014 each with an industry-specific item schema.",
           "type": "string",
           "enum": [
             "offering",
@@ -267,7 +266,7 @@
         },
         "items": {
           "type": "array",
-          "description": "Inline catalog data. The item schema depends on the catalog type: Offering objects for 'offering', StoreItem for 'store', HotelItem for 'hotel', FlightItem for 'flight', JobItem for 'job', VehicleItem for 'vehicle', RealEstateItem for 'real_estate', EducationItem for 'education', DestinationItem for 'destination', AppItem for 'app', or freeform objects for 'product', 'inventory', and 'promotion'. Mutually exclusive with url — provide one or the other, not both. Implementations should validate items against the type-specific schema.",
+          "description": "Inline catalog data. The item schema depends on the catalog type: Offering objects for 'offering', StoreItem for 'store', HotelItem for 'hotel', FlightItem for 'flight', JobItem for 'job', VehicleItem for 'vehicle', RealEstateItem for 'real_estate', EducationItem for 'education', DestinationItem for 'destination', AppItem for 'app', or freeform objects for 'product', 'inventory', and 'promotion'. Mutually exclusive with url \u2014 provide one or the other, not both. Implementations should validate items against the type-specific schema.",
           "items": {
             "type": "object"
           },
@@ -292,7 +291,7 @@
         },
         "tags": {
           "type": "array",
-          "description": "Filter catalog to items with these tags. Tags are matched using OR logic — items matching any tag are included.",
+          "description": "Filter catalog to items with these tags. Tags are matched using OR logic \u2014 items matching any tag are included.",
           "items": {
             "type": "string"
           },
@@ -308,7 +307,7 @@
         },
         "conversion_events": {
           "type": "array",
-          "description": "Event types that represent conversions for items in this catalog. Declares what events the platform should attribute to catalog items — e.g., a job catalog converts via submit_application, a product catalog via purchase. The event's content_ids field carries the item IDs that connect back to catalog items. Use content_id_type to declare what identifier type content_ids values represent.",
+          "description": "Event types that represent conversions for items in this catalog. Declares what events the platform should attribute to catalog items \u2014 e.g., a job catalog converts via submit_application, a product catalog via purchase. The event's content_ids field carries the item IDs that connect back to catalog items. Use content_id_type to declare what identifier type content_ids values represent.",
           "items": {
             "title": "Event Type",
             "description": "Standard marketing event types for event logging, aligned with IAB ECAPI",
@@ -485,7 +484,7 @@
                 }
               },
               {
-                "description": "Date format transform — YYYYMMDD to ISO 8601",
+                "description": "Date format transform \u2014 YYYYMMDD to ISO 8601",
                 "data": {
                   "feed_field": "available_from",
                   "catalog_field": "valid_from",
@@ -504,7 +503,7 @@
                 }
               },
               {
-                "description": "Static literal injection — currency not in feed",
+                "description": "Static literal injection \u2014 currency not in feed",
                 "data": {
                   "catalog_field": "price.currency",
                   "value": "USD"
@@ -724,7 +723,7 @@
                 },
                 "data_subject_contestation": {
                   "type": "object",
-                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
                   "properties": {
                     "url": {
                       "type": "string",
@@ -821,7 +820,7 @@
     },
     "preferred_delivery_types": {
       "type": "array",
-      "description": "Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation — the publisher may still include other delivery types when they match the brief well.",
+      "description": "Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation \u2014 the publisher may still include other delivery types when they match the brief well.",
       "items": {
         "title": "Delivery Type",
         "description": "Type of inventory delivery",
@@ -866,9 +865,9 @@
             "exclusive"
           ],
           "enumDescriptions": {
-            "none": "No exclusivity — multiple advertisers can buy this product simultaneously",
-            "category": "Category-exclusive — only one advertiser per industry category (e.g., one auto brand per collection sponsorship)",
-            "exclusive": "Sole sponsorship — only one advertiser can buy this product"
+            "none": "No exclusivity \u2014 multiple advertisers can buy this product simultaneously",
+            "category": "Category-exclusive \u2014 only one advertiser per industry category (e.g., one auto brand per collection sponsorship)",
+            "exclusive": "Sole sponsorship \u2014 only one advertiser can buy this product"
           }
         },
         "is_fixed_price": {
@@ -1079,7 +1078,7 @@
               "influencer": "Creator and influencer marketing partnerships",
               "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
               "product_placement": "Product placement, branded content, and sponsorship integrations",
-              "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+              "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
             }
           },
           "minItems": 1
@@ -1517,7 +1516,7 @@
         },
         "geo_proximity": {
           "type": "array",
-          "description": "Filter by proximity to geographic points. Returns products with inventory coverage near these locations. Follows the same format as the targeting overlay — each entry uses exactly one method: travel_time + transport_mode, radius, or geometry. For locally-bound inventory (DOOH, radio), filters to products with coverage in the area. For digital inventory, filters to products from sellers supporting geo_proximity targeting.",
+          "description": "Filter by proximity to geographic points. Returns products with inventory coverage near these locations. Follows the same format as the targeting overlay \u2014 each entry uses exactly one method: travel_time + transport_mode, radius, or geometry. For locally-bound inventory (DOOH, radio), filters to products with coverage in the area. For digital inventory, filters to products from sellers supporting geo_proximity targeting.",
           "items": {
             "type": "object",
             "properties": {
@@ -1535,7 +1534,7 @@
               },
               "label": {
                 "type": "string",
-                "description": "Human-readable label (e.g., 'Düsseldorf', 'Heathrow Airport')"
+                "description": "Human-readable label (e.g., 'D\u00fcsseldorf', 'Heathrow Airport')"
               },
               "travel_time": {
                 "type": "object",
@@ -1721,11 +1720,11 @@
                   "attention_score"
                 ],
                 "enumDescriptions": {
-                  "viewability": "Viewable impression rate (floor — must exceed threshold). Requires viewability_standard. Denominator: measurable_impressions.",
-                  "ivt": "Invalid Traffic rate (ceiling — must not exceed threshold). Denominator: total_impressions.",
-                  "completion_rate": "Video or audio completion rate (floor — must exceed threshold). Denominator: total_impressions.",
-                  "brand_safety": "Brand-safe impression rate (floor — must exceed threshold). Denominator: total_impressions.",
-                  "attention_score": "Attention score rate (floor — must exceed threshold). Denominator: measurable_impressions."
+                  "viewability": "Viewable impression rate (floor \u2014 must exceed threshold). Requires viewability_standard. Denominator: measurable_impressions.",
+                  "ivt": "Invalid Traffic rate (ceiling \u2014 must not exceed threshold). Denominator: total_impressions.",
+                  "completion_rate": "Video or audio completion rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+                  "brand_safety": "Brand-safe impression rate (floor \u2014 must exceed threshold). Denominator: total_impressions.",
+                  "attention_score": "Attention score rate (floor \u2014 must exceed threshold). Denominator: measurable_impressions."
                 }
               },
               "threshold": {
@@ -1779,7 +1778,7 @@
                   },
                   "data_subject_contestation": {
                     "type": "object",
-                    "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                    "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
                     "properties": {
                       "url": {
                         "type": "string",
@@ -1942,7 +1941,7 @@
       "allOf": [
         {
           "title": "Duration",
-          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.",
+          "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
           "type": "object",
           "properties": {
             "interval": {
@@ -2020,7 +2019,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.347Z",
+    "generatedAt": "2026-04-20T02:09:29.494Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

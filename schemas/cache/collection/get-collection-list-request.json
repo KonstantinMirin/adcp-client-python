@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/collection/get-collection-list-request.json",
   "title": "Get Collection List Request",
   "description": "Request parameters for retrieving a collection list with resolved collections",
   "type": "object",
@@ -16,7 +15,7 @@
       "description": "ID of the collection list to retrieve"
     },
     "account": {
-      "$ref": "/schemas/latest/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts and the list_id is not globally unique within that scope; optional otherwise."
     },
     "resolve": {
@@ -43,10 +42,10 @@
       "additionalProperties": false
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/collection/update-collection-list-request.json",
   "title": "Update Collection List Request",
   "description": "Request parameters for updating an existing collection list",
   "type": "object",
@@ -16,7 +15,7 @@
       "description": "ID of the collection list to update"
     },
     "account": {
-      "$ref": "/schemas/latest/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "name": {
@@ -31,15 +30,15 @@
       "type": "array",
       "description": "Complete replacement for the base collections list (not a patch). Each entry is a discriminated union: distribution_ids (platform-independent identifiers), publisher_collections (publisher_domain + collection_ids), or publisher_genres (publisher_domain + genres).",
       "items": {
-        "$ref": "/schemas/latest/collection/base-collection-source.json"
+        "$ref": "base-collection-source.json"
       }
     },
     "filters": {
-      "$ref": "/schemas/latest/collection/collection-list-filters.json",
+      "$ref": "collection-list-filters.json",
       "description": "Complete replacement for the filters (not a patch)"
     },
     "brand": {
-      "$ref": "/schemas/latest/core/brand-ref.json",
+      "$ref": "../core/brand-ref.json",
       "description": "Update brand reference. Resolved to full brand identity at execution time."
     },
     "webhook_url": {
@@ -48,10 +47,10 @@
       "description": "Update the webhook URL for list change notifications (set to empty string to remove). Governance agents MUST validate this URL against SSRF per docs/building/implementation/security#webhook-url-validation-ssrf."
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     },
     "idempotency_key": {
       "type": "string",

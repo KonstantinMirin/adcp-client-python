@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/property/validate-property-delivery-request.json",
   "title": "Validate Property Delivery Request",
   "description": "Request payload for validate_property_delivery task. Validates delivery records against a property list to determine compliance.",
   "type": "object",
@@ -16,14 +15,14 @@
       "description": "ID of the property list to validate against"
     },
     "account": {
-      "$ref": "/schemas/latest/core/account-ref.json",
+      "$ref": "../core/account-ref.json",
       "description": "Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise."
     },
     "records": {
       "type": "array",
       "description": "Delivery records to validate. Each record represents impressions delivered to a property identifier.",
       "items": {
-        "$ref": "/schemas/latest/property/delivery-record.json"
+        "$ref": "delivery-record.json"
       },
       "minItems": 1,
       "maxItems": 10000
@@ -34,10 +33,10 @@
       "description": "Include compliant records in results (default: only return non_compliant, unmodeled, and unidentified)"
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

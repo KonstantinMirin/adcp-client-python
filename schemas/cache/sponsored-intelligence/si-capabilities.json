@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/sponsored-intelligence/si-capabilities.json",
   "title": "SI Capabilities",
   "description": "Capabilities that a brand agent declares or a host supports",
+  "x-status": "experimental",
   "type": "object",
   "properties": {
     "modalities": {
@@ -16,7 +16,9 @@
         },
         "voice": {
           "oneOf": [
-            { "type": "boolean" },
+            {
+              "type": "boolean"
+            },
             {
               "type": "object",
               "properties": {
@@ -36,13 +38,17 @@
         },
         "video": {
           "oneOf": [
-            { "type": "boolean" },
+            {
+              "type": "boolean"
+            },
             {
               "type": "object",
               "properties": {
                 "formats": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Supported video formats (mp4, webm, etc.)"
                 },
                 "max_duration_seconds": {
@@ -57,7 +63,9 @@
         },
         "avatar": {
           "oneOf": [
-            { "type": "boolean" },
+            {
+              "type": "boolean"
+            },
             {
               "type": "object",
               "properties": {
@@ -86,7 +94,14 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["text", "link", "image", "product_card", "carousel", "action_button"]
+            "enum": [
+              "text",
+              "link",
+              "image",
+              "product_card",
+              "carousel",
+              "action_button"
+            ]
           },
           "description": "Standard components that all SI hosts must render"
         },
@@ -120,7 +135,9 @@
         },
         "catalogs": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Supported A2UI component catalogs (e.g., 'si-standard', 'standard')"
         }
       },

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/sponsored-intelligence/si-initiate-session-request.json",
   "title": "SI Initiate Session Request",
   "description": "Host initiates a session with a brand agent",
+  "x-status": "experimental",
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -16,7 +16,7 @@
       "description": "Conversation handoff from the host describing what the user needs"
     },
     "identity": {
-      "$ref": "/schemas/latest/sponsored-intelligence/si-identity.json"
+      "$ref": "si-identity.json"
     },
     "media_buy_id": {
       "type": "string",
@@ -31,7 +31,7 @@
       "description": "Brand-specific offering identifier to apply"
     },
     "supported_capabilities": {
-      "$ref": "/schemas/latest/sponsored-intelligence/si-capabilities.json",
+      "$ref": "si-capabilities.json",
       "description": "What capabilities the host supports"
     },
     "offering_token": {
@@ -46,7 +46,7 @@
       "pattern": "^[A-Za-z0-9_.:-]{16,255}$"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

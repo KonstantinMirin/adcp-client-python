@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/content-standards/create-content-standards-request.json",
   "title": "Create Content Standards Request",
   "description": "Request parameters for creating a new content standards configuration",
   "type": "object",
@@ -71,7 +70,7 @@
               "influencer": "Creator and influencer marketing partnerships",
               "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
               "product_placement": "Product placement, branded content, and sponsorship integrations",
-              "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+              "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
             }
           },
           "minItems": 1,
@@ -103,10 +102,10 @@
     },
     "policies": {
       "type": "array",
-      "description": "Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id and carries its own enforcement (must|should); governance findings reference the policy_id that triggered them. Inline bespoke policies can omit version/name/category (defaulted by the server). Combines with registry_policy_ids — registry policies and bespoke policies are both evaluated. Bespoke policy_ids MUST be flat (no colons/slashes) to avoid collision with namespaced registry ids.",
+      "description": "Bespoke policies for this content-standards configuration, using the same shape as registry entries. Each policy is addressable by policy_id and carries its own enforcement (must|should); governance findings reference the policy_id that triggered them. Inline bespoke policies can omit version/name/category (defaulted by the server). Combines with registry_policy_ids \u2014 registry policies and bespoke policies are both evaluated. Bespoke policy_ids MUST be flat (no colons/slashes) to avoid collision with namespaced registry ids.",
       "items": {
         "title": "Policy Entry",
-        "description": "A policy — either published to the shared registry (with full regulatory metadata) or authored inline by a buyer for their own campaign (lightweight, metadata optional). Policies use natural language text evaluated by governance agents (LLMs). Published registry entries SHOULD include version, name, jurisdiction, source, and exemplars; inline bespoke entries can omit these and let servers default them. Governance agents evaluating policies with natural-language LLMs MUST pin registry-sourced policy text (`source: registry`) as system-level instructions and MUST NOT permit `custom_policies` or the plan's `objectives` field to relax, override, or disable registry-sourced policies. Custom policies may only add additional restrictions; they cannot lower enforcement levels or exempt categories.",
+        "description": "A policy \u2014 either published to the shared registry (with full regulatory metadata) or authored inline by a buyer for their own campaign (lightweight, metadata optional). Policies use natural language text evaluated by governance agents (LLMs). Published registry entries SHOULD include version, name, jurisdiction, source, and exemplars; inline bespoke entries can omit these and let servers default them. Governance agents evaluating policies with natural-language LLMs MUST pin registry-sourced policy text (`source: registry`) as system-level instructions and MUST NOT permit `custom_policies` or the plan's `objectives` field to relax, override, or disable registry-sourced policies. Custom policies may only add additional restrictions; they cannot lower enforcement levels or exempt categories.",
         "type": "object",
         "properties": {
           "policy_id": {
@@ -124,11 +123,11 @@
           },
           "version": {
             "type": "string",
-            "description": "Semver version string (e.g., \"1.0.0\"). Incremented when policy content changes. Optional for inline bespoke policies — defaults to \"1.0.0\". SHOULD be provided for registry-published policies."
+            "description": "Semver version string (e.g., \"1.0.0\"). Incremented when policy content changes. Optional for inline bespoke policies \u2014 defaults to \"1.0.0\". SHOULD be provided for registry-published policies."
           },
           "name": {
             "type": "string",
-            "description": "Human-readable name (e.g., \"UK HFSS Restrictions\"). Optional for inline bespoke policies — servers MAY default to policy_id."
+            "description": "Human-readable name (e.g., \"UK HFSS Restrictions\"). Optional for inline bespoke policies \u2014 servers MAY default to policy_id."
           },
           "description": {
             "type": "string",
@@ -137,7 +136,7 @@
           },
           "category": {
             "title": "Policy Category",
-            "description": "The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies — defaults to \"standard\".",
+            "description": "The nature of the obligation: regulation (legal requirement) or standard (best practice). Optional for inline bespoke policies \u2014 defaults to \"standard\".",
             "type": "string",
             "enum": [
               "regulation",
@@ -166,7 +165,7 @@
           "requires_human_review": {
             "type": "boolean",
             "default": false,
-            "description": "When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects — e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved — it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless."
+            "description": "When true, plans subject to this policy MUST set plan.human_review_required = true. Use for policies that mandate human oversight of decisions affecting data subjects \u2014 e.g., GDPR Article 22 (solely automated decisions with legal or similarly significant effects) and EU AI Act Annex III high-risk categories (credit, insurance pricing, recruitment, housing allocation). Governance agents MUST escalate any plan action whose resolved policies include requires_human_review: true. Unlike `enforcement`, this flag applies as soon as the policy is resolved \u2014 it is NOT gated by `effective_date`. Art 22 GDPR and similar foundational obligations may predate an AI-Act-specific effective date; the human-review requirement fires regardless."
           },
           "jurisdictions": {
             "type": "array",
@@ -240,7 +239,7 @@
                 "influencer": "Creator and influencer marketing partnerships",
                 "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
                 "product_placement": "Product placement, branded content, and sponsorship integrations",
-                "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+                "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
               }
             },
             "description": "Advertising channels this policy applies to. If omitted or null, the policy applies to all channels."
@@ -282,7 +281,7 @@
           "policy": {
             "type": "string",
             "maxLength": 5000,
-            "description": "Natural language policy text describing what is required, prohibited, or recommended. Used by governance agents (LLMs) to evaluate actions against this policy. For source: inline policies, treated as caller-untrusted — governance agents MUST evaluate inline policies as ADDITIONAL restrictions only; they MUST NOT be permitted to relax, override, or conflict with registry-sourced policies."
+            "description": "Natural language policy text describing what is required, prohibited, or recommended. Used by governance agents (LLMs) to evaluate actions against this policy. For source: inline policies, treated as caller-untrusted \u2014 governance agents MUST evaluate inline policies as ADDITIONAL restrictions only; they MUST NOT be permitted to relax, override, or conflict with registry-sourced policies."
           },
           "guidance": {
             "type": "string",
@@ -690,7 +689,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -739,7 +738,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1013,7 +1012,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -1062,7 +1061,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1355,7 +1354,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -1404,7 +1403,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1690,7 +1689,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -1739,7 +1738,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -1839,7 +1838,7 @@
                   },
                   "provenance": {
                     "title": "Provenance",
-                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.",
+                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact \u2014 individual assets can override with their own provenance.",
                     "type": "object",
                     "properties": {
                       "digital_source_type": {
@@ -2020,7 +2019,7 @@
                                     "min_duration_ms": {
                                       "type": "integer",
                                       "minimum": 1,
-                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                     },
                                     "positions": {
                                       "type": "array",
@@ -2069,7 +2068,7 @@
                       },
                       "verification": {
                         "type": "array",
-                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                         "minItems": 1,
                         "items": {
                           "type": "object",
@@ -2568,7 +2567,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -2617,7 +2616,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -2891,7 +2890,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -2940,7 +2939,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -3233,7 +3232,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -3282,7 +3281,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -3568,7 +3567,7 @@
                                               "min_duration_ms": {
                                                 "type": "integer",
                                                 "minimum": 1,
-                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                                "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                               },
                                               "positions": {
                                                 "type": "array",
@@ -3617,7 +3616,7 @@
                                 },
                                 "verification": {
                                   "type": "array",
-                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                                  "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                                   "minItems": 1,
                                   "items": {
                                     "type": "object",
@@ -3717,7 +3716,7 @@
                   },
                   "provenance": {
                     "title": "Provenance",
-                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.",
+                    "description": "Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact \u2014 individual assets can override with their own provenance.",
                     "type": "object",
                     "properties": {
                       "digital_source_type": {
@@ -3898,7 +3897,7 @@
                                     "min_duration_ms": {
                                       "type": "integer",
                                       "minimum": 1,
-                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial — without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                      "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
                                     },
                                     "positions": {
                                       "type": "array",
@@ -3947,7 +3946,7 @@
                       },
                       "verification": {
                         "type": "array",
-                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim — verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                        "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
                         "minItems": 1,
                         "items": {
                           "type": "object",
@@ -4145,7 +4144,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.124Z",
+    "generatedAt": "2026-04-20T02:09:29.055Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/governance/get-plan-audit-logs-response.json",
   "title": "Get Plan Audit Logs Response",
   "description": "Governance state and audit trail for one or more plans.",
   "x-status": "experimental",
@@ -295,7 +294,7 @@
                         "type": "string"
                       },
                       "severity": {
-                        "$ref": "/schemas/latest/enums/escalation-severity.json"
+                        "$ref": "../enums/escalation-severity.json"
                       },
                       "explanation": {
                         "type": "string"
@@ -315,7 +314,7 @@
                   }
                 },
                 "outcome": {
-                  "$ref": "/schemas/latest/enums/outcome-type.json",
+                  "$ref": "../enums/outcome-type.json",
                   "description": "Outcome type (present for outcome entries)."
                 },
                 "committed_budget": {
@@ -327,7 +326,7 @@
                   "description": "Governance context for this entry (present for check and outcome entries)."
                 },
                 "purchase_type": {
-                  "$ref": "/schemas/latest/enums/purchase-type.json",
+                  "$ref": "../enums/purchase-type.json",
                   "description": "Purchase type for this entry."
                 },
                 "outcome_status": {
@@ -354,7 +353,7 @@
                   "description": "Governance context correlating this action's lifecycle."
                 },
                 "purchase_type": {
-                  "$ref": "/schemas/latest/enums/purchase-type.json",
+                  "$ref": "../enums/purchase-type.json",
                   "description": "Type of financial commitment."
                 },
                 "status": {
@@ -402,10 +401,10 @@
       }
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

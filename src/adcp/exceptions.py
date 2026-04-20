@@ -384,29 +384,30 @@ class IdempotencyExpiredError(ADCPTaskError):
 
 
 class IdempotencyUnsupportedError(ADCPError):
-    """Seller did not declare adcp.idempotency.replay_ttl_seconds in capabilities.
+    """Seller does not support idempotency replay protection on mutating requests.
 
-    Per AdCP #2315 sellers MUST declare their replay window; clients MUST NOT
-    assume a default. Raised before the first mutating call when
-    ``strict_idempotency=True`` and the seller's capabilities response is
-    missing this field.
+    Raised before the first mutating call when ``strict_idempotency=True`` and
+    either the seller's capabilities response is missing ``adcp.idempotency``,
+    declares ``supported=False``, or declares ``supported=True`` without a
+    ``replay_ttl_seconds`` window. Per AdCP spec, clients MUST NOT assume a
+    default — a seller that does not positively declare support cannot be
+    safely retried.
     """
 
     def __init__(
         self,
         agent_id: str | None = None,
         agent_uri: str | None = None,
+        reason: str | None = None,
     ):
-        message = (
-            "Seller did not declare adcp.idempotency.replay_ttl_seconds; "
-            "retry safety for mutating requests cannot be guaranteed."
-        )
+        detail = reason or "seller did not declare adcp.idempotency support"
+        message = f"{detail}; retry safety for mutating requests cannot be guaranteed."
         suggestion = (
-            "Recommended: ask the seller to declare replay_ttl_seconds in "
-            "get_adcp_capabilities (AdCP #2315 requirement). To proceed without "
-            "this guarantee — retries may double-charge or duplicate — construct "
-            "ADCPClient with strict_idempotency=False; the caller then owns "
-            "reconciliation on retry."
+            "Recommended: ask the seller to declare adcp.idempotency.supported=true "
+            "with a replay_ttl_seconds window in get_adcp_capabilities. To proceed "
+            "without this guarantee — retries may double-charge or duplicate — "
+            "construct ADCPClient with strict_idempotency=False; the caller then "
+            "owns reconciliation on retry."
         )
         super().__init__(message, agent_id, agent_uri, suggestion)
 
