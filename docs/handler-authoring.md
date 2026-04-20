@@ -89,6 +89,72 @@ def _resolve_identity(ctx: ToolContext | None) -> ResolvedIdentity:
     )
 ```
 
+## Typed handler params
+
+Handler methods may declare their `params` as a Pydantic model instead
+of `dict[str, Any]`. The dispatcher reads the annotation and
+deserialises the incoming request before calling your method — you
+get IDE autocomplete, Pydantic validation at the handler boundary, and
+typed attribute access in exchange for a one-line signature change.
+
+```python
+from adcp.server import ADCPHandler, ToolContext
+from adcp.types import GetProductsRequest, GetProductsResponse, Product
+
+
+class MySeller(ADCPHandler):
+    async def get_products(
+        self,
+        params: GetProductsRequest,
+        context: ToolContext | None = None,
+    ) -> GetProductsResponse:
+        # params.buying_mode, params.promoted_offering, params.brief —
+        # typed, validated, autocompleted. No params.get(...) anywhere.
+        if params.buying_mode.value == "refine":
+            ...
+        return GetProductsResponse(products=[...])
+```
+
+**Validation errors surface as `INVALID_REQUEST`.** A Pydantic
+`ValidationError` at the boundary is converted to a structured AdCP
+error with the field path and validation detail — callers see the
+spec-typed recovery classification (`correctable`), not a stack trace.
+The raw offending value is stripped from the error (SDK sends
+`include_input=False` to Pydantic) so mistyped secrets don't echo
+back to multi-hop intermediaries.
+
+> **Custom validator caveat.** If you layer `@field_validator` or
+> `@model_validator` on a custom params model, **don't f-string the
+> offending value into the `ValueError` message**
+> (`raise ValueError(f"bad token {v}")`). The message text flows into
+> the client-visible error — `include_input=False` only suppresses
+> Pydantic's default echo, not your own. Stick to describing the
+> constraint (`raise ValueError("token must match pk_… pattern")`).
+
+**Back-compat is automatic.** Handlers that keep `params: dict[str, Any]`
+work unchanged. The dispatcher falls back to the dict path when no
+Pydantic model is in the annotation — migrate incrementally, one
+method at a time. Sibling methods with mixed typed/dict signatures
+coexist on the same handler.
+
+**Unions with dict are supported.** `params: GetProductsRequest | dict[str, Any]`
+(the shape the specialized SDK bases use internally) works — the
+dispatcher picks the first Pydantic branch and deserialises. Existing
+handlers that do defensive `GetProductsRequest.model_validate(params)`
+inside the method still work: Pydantic's `model_validate` on an
+already-typed instance is a no-op (returns the same object; field
+validators are skipped — so a custom `@field_validator` layered on a
+params model won't fire twice, and won't fire again on the defensive
+re-call inside the handler).
+
+**Custom models too.** You aren't restricted to the SDK's generated
+request classes. Any `BaseModel` subclass declared on `params`
+triggers typed dispatch — useful when you want to layer stricter
+field constraints or business invariants on top of the spec shape.
+Define the model at module top-level so forward-reference resolution
+works (`from __future__ import annotations` stringifies all
+annotations).
+
 ## Authentication
 
 The SDK does not enforce authentication. There are two supported

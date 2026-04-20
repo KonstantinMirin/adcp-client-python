@@ -1388,6 +1388,58 @@ def get_tools_for_handler(
     ]
 
 
+def _resolve_params_pydantic_model(method: Any) -> type[Any] | None:
+    """Resolve the Pydantic model the handler expects for ``params``.
+
+    Inspects the method's ``params`` annotation. Returns the Pydantic
+    class when the annotation is:
+
+    - A direct ``BaseModel`` subclass (``params: GetProductsRequest``).
+    - A Union / Optional whose first member is a ``BaseModel`` subclass
+      (``params: GetProductsRequest | dict[str, Any]``). This shape is
+      what the specialized SDK handler bases declare — typed-dispatch
+      treats the first Pydantic branch as the authoritative shape, so
+      existing ``params: Request | dict`` annotations keep working.
+
+    Returns ``None`` for ``dict``, missing annotation, or forward
+    references that fail to resolve — the dispatcher then falls back
+    to the legacy dict path.
+
+    Cached per method object via the returned value being computed once
+    at ``create_tool_caller`` setup time.
+    """
+    import typing
+    from types import UnionType
+
+    from pydantic import BaseModel
+
+    try:
+        hints = typing.get_type_hints(method)
+    except Exception as exc:  # forward-ref failure, missing import, etc.
+        # Log at debug so an author whose typed annotation silently
+        # failed to resolve (typo in the class name, import not at
+        # module top-level, PEP 563 name bound in a local scope) can
+        # find out why their handler is dispatching via the dict path.
+        logger.debug(
+            "typed params annotation failed to resolve for %r: %s; "
+            "falling back to dict dispatch",
+            method,
+            exc,
+        )
+        return None
+    annotation = hints.get("params")
+    if annotation is None:
+        return None
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return annotation
+    origin = typing.get_origin(annotation)
+    if origin is typing.Union or origin is UnionType:
+        for arg in typing.get_args(annotation):
+            if isinstance(arg, type) and issubclass(arg, BaseModel):
+                return arg
+    return None
+
+
 def create_tool_caller(
     handler: ADCPHandler[Any],
     method_name: str,
@@ -1397,6 +1449,17 @@ def create_tool_caller(
     Automatically injects context passthrough: if the request contains a
     ``context`` field, it is echoed back in the response (ADCP requirement).
     Handlers no longer need to call ``inject_context()`` manually.
+
+    **Typed params (closes #214).** When the handler method declares its
+    ``params`` parameter as a Pydantic model (e.g.
+    ``params: GetProductsRequest``), the dispatcher deserialises the raw
+    dict into the model before calling the handler — giving authors
+    IDE autocomplete, Pydantic validation at the boundary, and typed
+    attribute access instead of ``params.get(...)``. Handlers still
+    declaring ``params: dict[str, Any]`` keep working unchanged. A
+    Pydantic ``ValidationError`` surfaces as a structured
+    ``INVALID_REQUEST`` AdCP error so callers see a spec-typed recovery
+    classification rather than a raw stack trace.
 
     Args:
         handler: The ADCP handler instance
@@ -1411,19 +1474,68 @@ def create_tool_caller(
         per-principal scoping, audit logging) gets the real principal. When
         no context is supplied, a bare :class:`ToolContext` is used.
     """
+    from pydantic import ValidationError
+
+    from adcp.exceptions import ADCPTaskError
     from adcp.server.helpers import inject_context
+    from adcp.types import Error
 
     method = getattr(handler, method_name)
+    params_model = _resolve_params_pydantic_model(method)
 
     async def call_tool(params: dict[str, Any], context: ToolContext | None = None) -> Any:
         ctx = context if context is not None else ToolContext()
-        result = await method(params, ctx)
+        raw_params = params  # Preserve the original dict for context echo.
+        call_params: Any = params
+        if params_model is not None and isinstance(params, dict):
+            try:
+                call_params = params_model.model_validate(params)
+            except ValidationError as exc:
+                # Surface as a structured AdCP error so MCP clients see
+                # INVALID_REQUEST with a field-level pointer instead of
+                # a raw Pydantic traceback. translate_error maps this
+                # to ToolError (MCP) / ServerError (A2A) per transport.
+                #
+                # Strip ``input``/``ctx``/``url`` from the Pydantic error
+                # details — they echo the raw offending value verbatim
+                # (``input`` in particular). In multi-hop agent chains the
+                # response flows through intermediaries, so echoing the
+                # user-supplied value is a PII/secret-leak vector: a
+                # mistyped API key or secret-shaped idempotency_key could
+                # land in the broker's logs. The field path in
+                # ``Error.field`` is all clients need to programmatically
+                # locate the bad value in their own request.
+                errors_list = exc.errors(
+                    include_input=False, include_context=False, include_url=False
+                )
+                first: dict[str, Any] = dict(errors_list[0]) if errors_list else {}
+                field_path = ".".join(str(loc) for loc in first.get("loc", ()))
+                message = first.get("msg", "validation failed")
+                suggestion = (
+                    f"Invalid value for field {field_path!r}: {message}"
+                    if field_path
+                    else f"Request validation failed: {message}"
+                )
+                raise ADCPTaskError(
+                    operation=method_name,
+                    errors=[
+                        Error(
+                            code="INVALID_REQUEST",
+                            field=field_path or None,
+                            message=suggestion,
+                            details={"validation_errors": errors_list},
+                        )
+                    ],
+                ) from exc
+        result = await method(call_params, ctx)
         # Convert Pydantic models to JSON-safe dicts for MCP serialization
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json", exclude_none=True)
-        # ADCP requires echoing context from request to response
+        # ADCP requires echoing context from request to response — read
+        # from the raw dict the transport sent, not from the validated
+        # model (which won't carry the wire ``context`` field).
         if isinstance(result, dict):
-            inject_context(params, result)
+            inject_context(raw_params, result)
         return result
 
     return call_tool
@@ -1482,9 +1594,7 @@ class MCPToolSet:
         return list(self._tools.keys())
 
 
-def create_mcp_tools(
-    handler: ADCPHandler[Any], *, advertise_all: bool = False
-) -> MCPToolSet:
+def create_mcp_tools(handler: ADCPHandler[Any], *, advertise_all: bool = False) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
     This is the main entry point for MCP server integration.
