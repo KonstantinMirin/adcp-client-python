@@ -119,6 +119,17 @@ class MySeller(ADCPHandler):
 `ValidationError` at the boundary is converted to a structured AdCP
 error with the field path and validation detail — callers see the
 spec-typed recovery classification (`correctable`), not a stack trace.
+The raw offending value is stripped from the error (SDK sends
+`include_input=False` to Pydantic) so mistyped secrets don't echo
+back to multi-hop intermediaries.
+
+> **Custom validator caveat.** If you layer `@field_validator` or
+> `@model_validator` on a custom params model, **don't f-string the
+> offending value into the `ValueError` message**
+> (`raise ValueError(f"bad token {v}")`). The message text flows into
+> the client-visible error — `include_input=False` only suppresses
+> Pydantic's default echo, not your own. Stick to describing the
+> constraint (`raise ValueError("token must match pk_… pattern")`).
 
 **Back-compat is automatic.** Handlers that keep `params: dict[str, Any]`
 work unchanged. The dispatcher falls back to the dict path when no

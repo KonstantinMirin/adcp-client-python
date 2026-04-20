@@ -142,6 +142,7 @@ def translate_error(
         raise ValueError(f"protocol must be 'mcp' or 'a2a', got {protocol!r}")
 
     # Extract structured fields from the input
+    field: str | None = None
     if isinstance(exc, Error):
         code = exc.code
         message = exc.message
@@ -149,6 +150,7 @@ def translate_error(
         details = exc.details
         recovery = _recovery_for_code(code)
         errors = None
+        field = exc.field
     elif isinstance(exc, ADCPError):
         code = _error_code_for_exception(exc)
         message = exc.message
@@ -156,11 +158,18 @@ def translate_error(
         recovery = _recovery_for_code(code)
         details = None
         errors = getattr(exc, "errors", None)
+        # ADCPTaskError carries a list of Error objects — lift the first
+        # error's ``field`` so MCP clients see the field path too (A2A
+        # already surfaces it inside ``data.errors[i].field`` via the
+        # structured error passthrough).
+        if errors:
+            first = errors[0]
+            field = getattr(first, "field", None)
     else:
         raise TypeError(f"Expected ADCPError or Error, got {type(exc).__name__}")
 
     if proto == "mcp":
-        return _to_mcp(code, message, suggestion=suggestion)
+        return _to_mcp(code, message, suggestion=suggestion, field=field)
     return _to_a2a(
         code,
         message,
@@ -176,9 +185,23 @@ def _to_mcp(
     message: str,
     *,
     suggestion: str | None = None,
+    field: str | None = None,
 ) -> ToolError:
-    """Format error as a ToolError for MCP servers."""
-    text = f"{code}: {message}"
+    """Format error as a ToolError for MCP servers.
+
+    MCP's ``ToolError`` is a flat text payload — there's no structured
+    ``data`` channel equivalent to A2A's. To give MCP clients a
+    programmatic handle on the offending field, the field path is
+    embedded in the code prefix: ``INVALID_REQUEST[packages[0].budget]:
+    …``. Clients can parse the bracketed form with a simple regex
+    (``^([A-Z_]+)(?:\\[([^\\]]+)\\])?:``) to recover both the AdCP code
+    and the field path — same shape the spec suggests for the JS
+    client.
+    """
+    if field:
+        text = f"{code}[{field}]: {message}"
+    else:
+        text = f"{code}: {message}"
     if suggestion:
         text += f"\nSuggestion: {suggestion}"
     return ToolError(text)

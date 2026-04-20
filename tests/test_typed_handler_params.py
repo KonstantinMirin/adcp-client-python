@@ -184,6 +184,76 @@ async def test_validation_error_surfaces_as_invalid_request():
     # can inspect programmatically.
     assert err.errors[0].details is not None
     assert "validation_errors" in err.errors[0].details
+    # The field path is lifted onto Error.field — the spec's dedicated
+    # field for programmatic client handling (vs. parsing the message).
+    assert err.errors[0].field == "buying_mode"
+
+
+async def test_validation_error_strips_input_value():
+    """**PII/secret-leak regression guard**. Pydantic's ``errors()``
+    echoes the raw offending input under ``input`` (and ``ctx``/``url``).
+    In multi-hop agent chains the error flows through broker
+    intermediaries — echoing a mistyped bearer token or secret-shaped
+    value exposes it. The dispatcher strips ``input``/``ctx``/``url``
+    before wrapping in ADCPTaskError. Regression here would silently
+    reintroduce the leak (security review of PR #238)."""
+
+    class _Agent(ADCPHandler):
+        async def get_adcp_capabilities(self, params, context=None):
+            return {"adcp": {"major_versions": [3]}}
+
+        async def get_products(
+            self,
+            params: GetProductsRequest,
+            context: ToolContext | None = None,
+        ) -> Any:
+            return {"products": []}
+
+    caller = create_tool_caller(_Agent(), "get_products")
+    # Submit a value the caller might regret broadcasting — a
+    # secret-shaped string for a field with the wrong type
+    # constraint. The error must NOT echo it back.
+    sensitive = "sk_live_SUPER_SECRET_VALUE_xyz"
+    with pytest.raises(ADCPTaskError) as exc_info:
+        await caller({"buying_mode": sensitive})
+
+    err = exc_info.value
+    # The raw sensitive string must not appear anywhere in the error.
+    details_serialised = str(err.errors[0].details)
+    assert sensitive not in details_serialised
+    assert sensitive not in err.errors[0].message
+    # Structural details still carry loc/msg/type — client debuggability
+    # is preserved via the field path.
+    validation_errors = err.errors[0].details["validation_errors"]
+    assert validation_errors
+    assert "loc" in validation_errors[0]
+    assert "msg" in validation_errors[0]
+    # And explicitly the stripped keys are gone.
+    assert "input" not in validation_errors[0]
+    assert "url" not in validation_errors[0]
+
+
+def test_mcp_error_translation_embeds_field_path():
+    """``translate_error`` for MCP previously dropped ``Error.field``
+    because MCP's ToolError has no structured ``data`` channel. The
+    fix embeds the field path in the code prefix: ``INVALID_REQUEST[field]:
+    message``. A2A already carries ``field`` structurally via the data
+    passthrough. Regression guard — dropping ``field`` on the MCP side
+    leaves clients stuck parsing free-form English to find what went
+    wrong."""
+    from adcp.server.translate import translate_error
+    from adcp.types import Error
+
+    err = Error(
+        code="INVALID_REQUEST",
+        field="packages[0].budget",
+        message="Value should be positive",
+    )
+    mcp_error = translate_error(err, protocol="mcp")
+    # ToolError's text — the only channel MCP has.
+    text = str(mcp_error)
+    assert "INVALID_REQUEST[packages[0].budget]" in text
+    assert "Value should be positive" in text
 
 
 async def test_mixed_typed_and_legacy_handlers_coexist():
