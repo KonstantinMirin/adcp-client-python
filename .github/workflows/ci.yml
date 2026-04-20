@@ -131,6 +131,100 @@ jobs:
           echo ""
           echo "✅ All commits follow Conventional Commits format"
 
+  downstream-imports:
+    name: Downstream import smoke (representative consumer symbols)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and install wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel --outdir dist/
+          pip install dist/*.whl
+
+      # Proxy for real downstream import sites (salesagent, creative agents,
+      # signals agents). Any ImportError here means we broke the public API
+      # surface without a migration pointer — failing CI is the goal.
+      - name: Import representative public-API symbols
+        run: |
+          python - <<'PY'
+          from adcp import (
+              ADCPClient,
+              AgentConfig,
+              BrandReference,
+              CpmPricingOption,
+              CreateMediaBuyRequest,
+              Error,
+              GetProductsRequest,
+              ListCreativesRequest,
+              MediaBuyStatus,
+              Package,
+              PackageRequest,
+              PublisherPropertiesAll,
+              SyncCatalogsRequest,
+          )
+          from adcp.types import (
+              AudioFormatAsset,
+              BriefFormatAsset,
+              CatalogFormatAsset,
+              ContextObject,
+              CreativeAsset,
+              CssFormatAsset,
+              DaastFormatAsset,
+              HtmlFormatAsset,
+              ImageFormatAsset,
+              JavascriptFormatAsset,
+              MarkdownFormatAsset,
+              RepeatableAssetGroup,
+              TargetingOverlay,
+              TextFormatAsset,
+              UrlFormatAsset,
+              VastFormatAsset,
+              VideoFormatAsset,
+              WebhookFormatAsset,
+          )
+
+          # Removed-type shims: old import paths must raise a guided
+          # ImportError pointing at the migration guide.
+          import adcp
+          for name in ("BrandManifest", "FormatCategory", "DeliverTo"):
+              try:
+                  getattr(adcp, name)
+              except ImportError as exc:
+                  assert "MIGRATION_v3_to_v4" in str(exc), (
+                      f"{name} deprecation shim dropped migration pointer: {exc}"
+                  )
+              else:
+                  raise AssertionError(
+                      f"{name} import should raise ImportError with migration pointer"
+                  )
+
+          # The deep submodule path (some older import sites reach this far)
+          # must also surface the migration pointer, not a bare ModuleNotFoundError.
+          try:
+              from adcp.types.generated_poc.enums.format_category import FormatCategory  # noqa: F401
+          except ImportError as exc:
+              assert "MIGRATION_v3_to_v4" in str(exc), exc
+          else:
+              raise AssertionError(
+                  "format_category submodule should raise ImportError with migration pointer"
+              )
+
+          assert adcp.__version__ and adcp.__version__ != "3.12.0", (
+              f"adcp.__version__={adcp.__version__!r} — expected real pkg metadata"
+          )
+          assert adcp.get_adcp_version(), "ADCP_VERSION file is empty"
+
+          print(f"OK — adcp=={adcp.__version__}, spec={adcp.get_adcp_version()}")
+          PY
+
   schema-check:
     name: Validate schemas are up-to-date
     runs-on: ubuntu-latest

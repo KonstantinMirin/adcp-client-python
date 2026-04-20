@@ -52,19 +52,23 @@ class IdempotencyBackend(ABC):
     """
 
     @abstractmethod
-    async def get(
-        self, principal_id: str, key: str
-    ) -> CachedResponse | None:
-        """Return the cached entry, or None if missing or expired."""
+    async def get(self, scope_key: str, key: str) -> CachedResponse | None:
+        """Return the cached entry, or None if missing or expired.
+
+        ``scope_key`` is the caller-composed identity scope — typically
+        ``tenant_id + caller_identity``. Backends treat it as an opaque
+        string; the composition is owned by
+        :class:`~adcp.server.idempotency.IdempotencyStore`.
+        """
 
     @abstractmethod
     async def put(
         self,
-        principal_id: str,
+        scope_key: str,
         key: str,
         entry: CachedResponse,
     ) -> None:
-        """Store ``entry`` under ``(principal_id, key)``. Overwrites any prior
+        """Store ``entry`` under ``(scope_key, key)``. Overwrites any prior
         entry — the store only calls ``put`` after verifying the slot is empty
         or expired, so an overwrite in that window is a legitimate retry of
         the write itself."""
@@ -101,28 +105,26 @@ class MemoryBackend(IdempotencyBackend):
         self._lock = asyncio.Lock()
         self._clock = clock
 
-    async def get(
-        self, principal_id: str, key: str
-    ) -> CachedResponse | None:
+    async def get(self, scope_key: str, key: str) -> CachedResponse | None:
         async with self._lock:
-            entry = self._store.get((principal_id, key))
+            entry = self._store.get((scope_key, key))
             if entry is None:
                 return None
             if entry.expires_at_epoch <= self._clock():
                 # Lazy expiry — drop the stale entry so the next request
                 # treats the slot as fresh and races to repopulate.
-                del self._store[(principal_id, key)]
+                del self._store[(scope_key, key)]
                 return None
             return entry
 
     async def put(
         self,
-        principal_id: str,
+        scope_key: str,
         key: str,
         entry: CachedResponse,
     ) -> None:
         async with self._lock:
-            self._store[(principal_id, key)] = entry
+            self._store[(scope_key, key)] = entry
 
     async def delete_expired(self, now_epoch: float | None = None) -> int:
         cutoff = now_epoch if now_epoch is not None else self._clock()
@@ -167,12 +169,12 @@ class PgBackend(IdempotencyBackend):
     .. code-block:: sql
 
         CREATE TABLE adcp_idempotency (
-            principal_id TEXT       COLLATE "C" NOT NULL,
+            scope_key    TEXT       COLLATE "C" NOT NULL,
             key          TEXT       COLLATE "C" NOT NULL,
             payload_hash TEXT       NOT NULL,
             response     JSONB      NOT NULL,
             expires_at   TIMESTAMPTZ NOT NULL,
-            PRIMARY KEY (principal_id, key)
+            PRIMARY KEY (scope_key, key)
         );
 
     Notes:
@@ -181,13 +183,15 @@ class PgBackend(IdempotencyBackend):
       the default locale collation on the identifier columns. On some
       locales ``Principal-A`` and ``principal-a`` compare equal, which
       would collapse distinct tenants into the same cache slot.
-    * Queries MUST filter on ``principal_id`` in the ``WHERE`` clause even
-      with the composite PK — row-level security (RLS) enforced via a
-      policy like ``USING (principal_id = current_setting('adcp.principal_id')::text)``
-      gives belt-and-suspenders protection against accidental cross-tenant
-      reads in future handlers.
+    * ``scope_key`` is already composed from ``(tenant_id, caller_identity)``
+      by the store — Postgres sees it as an opaque string. Queries MUST
+      still filter on ``scope_key`` in the ``WHERE`` clause even with the
+      composite PK — row-level security (RLS) enforced via a policy like
+      ``USING (scope_key = current_setting('adcp.scope_key')::text)`` gives
+      belt-and-suspenders protection against accidental cross-tenant reads
+      in future handlers.
     * ``get`` uses ``SELECT ... WHERE expires_at > now()``.
-    * ``put`` uses ``INSERT ... ON CONFLICT (principal_id, key) DO UPDATE``.
+    * ``put`` uses ``INSERT ... ON CONFLICT (scope_key, key) DO UPDATE``.
     * Accept a SQLAlchemy/asyncpg session factory so the caller can thread
       the handler's transaction through for atomic commit — the atomicity
       guarantee is the whole reason to use a SQL backend.
@@ -202,20 +206,16 @@ class PgBackend(IdempotencyBackend):
             "https://github.com/adcontextprotocol/adcp-client-python/issues/182."
         )
 
-    async def get(
-        self, principal_id: str, key: str
-    ) -> CachedResponse | None:  # pragma: no cover
+    async def get(self, scope_key: str, key: str) -> CachedResponse | None:  # pragma: no cover
         raise NotImplementedError
 
     async def put(
         self,
-        principal_id: str,
+        scope_key: str,
         key: str,
         entry: CachedResponse,
     ) -> None:  # pragma: no cover
         raise NotImplementedError
 
-    async def delete_expired(
-        self, now_epoch: float | None = None
-    ) -> int:  # pragma: no cover
+    async def delete_expired(self, now_epoch: float | None = None) -> int:  # pragma: no cover
         raise NotImplementedError

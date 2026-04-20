@@ -1171,6 +1171,262 @@ Example:
 """
 
 # ============================================================================
+# CREATIVE FORMAT ASSET ALIASES - Discriminated Union on asset_type
+# ============================================================================
+# AdCP creative format definitions enumerate asset slots as a discriminated
+# union on the ``asset_type`` field (image, video, audio, text, markdown,
+# html, css, javascript, vast, daast, url, webhook, brief, catalog). The
+# code generator emits numbered class names (``Assets``, ``Assets81``,
+# ``Assets82``, ...) that renumber between releases whenever the upstream
+# ``$defs`` ordering shifts. These aliases pin semantic names so consumers
+# never import ``AssetsNN`` directly.
+#
+# Two asset shapes exist in a format definition:
+#
+# 1. Individual asset slots (``item_type='individual'``) — top-level slots in
+#    a creative format. Aliased as ``<Type>FormatAsset``. The ``Format``
+#    prefix disambiguates from the separate asset-content types (``VideoAsset``,
+#    ``HtmlAsset``, etc. in ``adcp.types``) which describe the actual asset
+#    payload (codec, duration, file URL) delivered by creative sync — a
+#    distinct concept.
+# 2. Group asset variants — the same asset types nested inside a
+#    ``RepeatableAssetGroup`` (``Assets94``). Aliased as ``<Type>FormatGroupAsset``.
+#
+# Stability contract: these aliases are covered by
+# ``tests/test_asset_aliases_stable.py`` which asserts each alias resolves
+# to a class whose ``asset_type`` literal default matches the expected
+# value. Generator renumbering is caught there, not in downstream code.
+
+from adcp.types.generated_poc.core.format import (
+    Assets as _ImageFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets81 as _VideoFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets82 as _AudioFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets83 as _TextFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets84 as _MarkdownFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets85 as _HtmlFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets86 as _CssFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets87 as _JavascriptFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets88 as _VastFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets89 as _DaastFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets90 as _UrlFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets91 as _WebhookFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets92 as _BriefFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets93 as _CatalogFormatAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets94 as _RepeatableAssetGroupInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets95 as _ImageFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets96 as _VideoFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets97 as _AudioFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets98 as _TextFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets99 as _MarkdownFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets100 as _HtmlFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets101 as _CssFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets102 as _JavascriptFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets103 as _VastFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets104 as _DaastFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets105 as _UrlFormatGroupAssetInternal,
+)
+from adcp.types.generated_poc.core.format import (
+    Assets106 as _WebhookFormatGroupAssetInternal,
+)
+
+ImageFormatAsset = _ImageFormatAssetInternal
+"""Image asset slot in a creative format (asset_type='image').
+
+Distinct from ``ImageAsset`` in ``adcp.types`` (the asset-content type
+describing an actual image payload — dimensions, file URL, etc.). This
+alias names the slot shape used inside a format definition.
+"""
+
+VideoFormatAsset = _VideoFormatAssetInternal
+"""Video asset slot in a creative format (asset_type='video').
+
+Distinct from ``VideoAsset`` in ``adcp.types`` (the asset-content type
+describing an actual video payload — codec, duration, file URL). This
+alias names the slot shape used inside a format definition.
+"""
+
+AudioFormatAsset = _AudioFormatAssetInternal
+"""Audio asset slot in a creative format (asset_type='audio').
+
+Distinct from ``AudioAsset`` in ``adcp.types`` (the asset-content type
+describing an actual audio payload). This alias names the slot shape
+used inside a format definition.
+"""
+
+TextFormatAsset = _TextFormatAssetInternal
+"""Text asset slot in a creative format (asset_type='text').
+
+Distinct from ``TextAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
+
+MarkdownFormatAsset = _MarkdownFormatAssetInternal
+"""Markdown asset slot in a creative format (asset_type='markdown').
+
+Distinct from the asset-content type in ``adcp.types``. This alias names
+the slot shape used inside a format definition.
+"""
+
+HtmlFormatAsset = _HtmlFormatAssetInternal
+"""HTML asset slot in a creative format (asset_type='html').
+
+Distinct from ``HtmlAsset`` in ``adcp.types`` (the asset-content type
+describing actual HTML payload). This alias names the slot shape used
+inside a format definition.
+"""
+
+CssFormatAsset = _CssFormatAssetInternal
+"""CSS asset slot in a creative format (asset_type='css').
+
+Distinct from ``CssAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
+
+JavascriptFormatAsset = _JavascriptFormatAssetInternal
+"""JavaScript asset slot in a creative format (asset_type='javascript').
+
+Distinct from ``JavascriptAsset`` in ``adcp.types``. This alias names
+the slot shape used inside a format definition.
+"""
+
+VastFormatAsset = _VastFormatAssetInternal
+"""VAST asset slot in a creative format (asset_type='vast').
+
+Distinct from ``UrlVastAsset`` / ``InlineVastAsset``, which describe how
+the VAST content itself is delivered (url vs inline payload). This alias
+names the asset slot inside a format definition.
+"""
+
+DaastFormatAsset = _DaastFormatAssetInternal
+"""DAAST asset slot in a creative format (asset_type='daast').
+
+Distinct from ``UrlDaastAsset`` / ``InlineDaastAsset``, which describe how
+the DAAST content itself is delivered (url vs inline payload).
+"""
+
+UrlFormatAsset = _UrlFormatAssetInternal
+"""URL asset slot in a creative format (asset_type='url').
+
+Distinct from ``UrlAsset`` in ``adcp.types``. This alias names the slot
+shape used inside a format definition.
+"""
+
+WebhookFormatAsset = _WebhookFormatAssetInternal
+"""Webhook asset slot in a creative format (asset_type='webhook').
+
+Distinct from ``WebhookAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
+
+BriefFormatAsset = _BriefFormatAssetInternal
+"""Brief asset slot in a creative format (asset_type='brief').
+
+Distinct from ``BriefAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
+
+CatalogFormatAsset = _CatalogFormatAssetInternal
+"""Catalog asset slot in a creative format (asset_type='catalog').
+
+Distinct from ``CatalogAsset`` in ``adcp.types``. This alias names the
+slot shape used inside a format definition.
+"""
+
+RepeatableAssetGroup = _RepeatableAssetGroupInternal
+"""Repeatable asset group in a creative format (item_type='repeatable_group').
+
+Holds a sequence of group-variant assets (``<Type>FormatGroupAsset``) that
+repeat either sequentially (carousels, playlists) or via platform
+optimization.
+"""
+
+ImageFormatGroupAsset = _ImageFormatGroupAssetInternal
+"""Image asset nested in a RepeatableAssetGroup (asset_type='image')."""
+
+VideoFormatGroupAsset = _VideoFormatGroupAssetInternal
+"""Video asset nested in a RepeatableAssetGroup (asset_type='video')."""
+
+AudioFormatGroupAsset = _AudioFormatGroupAssetInternal
+"""Audio asset nested in a RepeatableAssetGroup (asset_type='audio')."""
+
+TextFormatGroupAsset = _TextFormatGroupAssetInternal
+"""Text asset nested in a RepeatableAssetGroup (asset_type='text')."""
+
+MarkdownFormatGroupAsset = _MarkdownFormatGroupAssetInternal
+"""Markdown asset nested in a RepeatableAssetGroup (asset_type='markdown')."""
+
+HtmlFormatGroupAsset = _HtmlFormatGroupAssetInternal
+"""HTML asset nested in a RepeatableAssetGroup (asset_type='html')."""
+
+CssFormatGroupAsset = _CssFormatGroupAssetInternal
+"""CSS asset nested in a RepeatableAssetGroup (asset_type='css')."""
+
+JavascriptFormatGroupAsset = _JavascriptFormatGroupAssetInternal
+"""JavaScript asset nested in a RepeatableAssetGroup (asset_type='javascript')."""
+
+VastFormatGroupAsset = _VastFormatGroupAssetInternal
+"""VAST asset slot nested in a RepeatableAssetGroup (asset_type='vast')."""
+
+DaastFormatGroupAsset = _DaastFormatGroupAssetInternal
+"""DAAST asset slot nested in a RepeatableAssetGroup (asset_type='daast')."""
+
+UrlFormatGroupAsset = _UrlFormatGroupAssetInternal
+"""URL asset slot nested in a RepeatableAssetGroup (asset_type='url')."""
+
+WebhookFormatGroupAsset = _WebhookFormatGroupAssetInternal
+"""Webhook asset slot nested in a RepeatableAssetGroup (asset_type='webhook')."""
+
+# ============================================================================
 # EXPORTS
 # ============================================================================
 
@@ -1328,4 +1584,33 @@ __all__ = [
     "ComplyStateTransitionResponse",
     "ComplySimulationResponse",
     "ComplyErrorResponse",
+    # Creative format asset slot aliases (item_type='individual')
+    "ImageFormatAsset",
+    "VideoFormatAsset",
+    "AudioFormatAsset",
+    "TextFormatAsset",
+    "MarkdownFormatAsset",
+    "HtmlFormatAsset",
+    "CssFormatAsset",
+    "JavascriptFormatAsset",
+    "VastFormatAsset",
+    "DaastFormatAsset",
+    "UrlFormatAsset",
+    "WebhookFormatAsset",
+    "BriefFormatAsset",
+    "CatalogFormatAsset",
+    # Creative format asset slot aliases (repeatable groups)
+    "RepeatableAssetGroup",
+    "ImageFormatGroupAsset",
+    "VideoFormatGroupAsset",
+    "AudioFormatGroupAsset",
+    "TextFormatGroupAsset",
+    "MarkdownFormatGroupAsset",
+    "HtmlFormatGroupAsset",
+    "CssFormatGroupAsset",
+    "JavascriptFormatGroupAsset",
+    "VastFormatGroupAsset",
+    "DaastFormatGroupAsset",
+    "UrlFormatGroupAsset",
+    "WebhookFormatGroupAsset",
 ]

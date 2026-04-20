@@ -297,6 +297,46 @@ class TestIdempotencyStoreWrap:
         assert handler.call_count == 2
 
     @pytest.mark.asyncio
+    async def test_per_tenant_scope_enforced_for_shared_principal_id(self) -> None:
+        # Multi-tenant deployments whose principal IDs are only unique
+        # *within* a tenant (Okta group-scoped, SCIM per-tenant, seller-
+        # internal employee IDs) must not leak cached responses across
+        # tenants on the same (locally-unique) principal id.
+        store = self._make_store()
+        handler = _FakeHandler()
+        wrapped = store.wrap(_FakeHandler.create_media_buy)
+        key = str(uuid.uuid4())
+        r_a = await wrapped(
+            handler,
+            {"idempotency_key": key, "b": 1},
+            ToolContext(caller_identity="alice-42", tenant_id="tenant-acme"),
+        )
+        r_b = await wrapped(
+            handler,
+            {"idempotency_key": key, "b": 1},
+            ToolContext(caller_identity="alice-42", tenant_id="tenant-beta"),
+        )
+        assert r_a["media_buy_id"] != r_b["media_buy_id"], (
+            "Same principal_id across two tenants shared the cache slot — "
+            "cross-tenant response replay is possible."
+        )
+        assert handler.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_tenant_scope_matches_on_identical_tenant_and_principal(self) -> None:
+        # Sanity-check the positive case: same (tenant_id, caller_identity)
+        # still shares the scope and replays from cache.
+        store = self._make_store()
+        handler = _FakeHandler()
+        wrapped = store.wrap(_FakeHandler.create_media_buy)
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="alice-42", tenant_id="tenant-acme")
+        r1 = await wrapped(handler, {"idempotency_key": key, "b": 1}, ctx)
+        r2 = await wrapped(handler, {"idempotency_key": key, "b": 1}, ctx)
+        assert handler.call_count == 1
+        assert r1 == r2
+
+    @pytest.mark.asyncio
     async def test_no_idempotency_key_falls_through(self) -> None:
         # Middleware doesn't reject; server-side schema validation handles that.
         store = self._make_store()

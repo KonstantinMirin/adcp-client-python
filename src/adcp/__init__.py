@@ -445,27 +445,48 @@ except PackageNotFoundError:
 
 
 # Types removed in 4.0 — raise an informative ImportError instead of the
-# default "cannot import name" traceback, and point at the migration guide.
-# See MIGRATION_v3_to_v4.md.
-_REMOVED_IN_V4 = {
+# default "cannot import name" traceback, and point at the specific
+# section in the migration guide so the reader doesn't have to ctrl-F.
+# Each tuple is ``(replacement hint, migration-guide anchor fragment)``.
+# Keep anchors in sync with MIGRATION_v3_to_v4.md headings.
+_REMOVED_IN_V4: dict[str, tuple[str, str]] = {
     "BrandManifest": (
-        "use `BrandReference(domain=...)` on requests; read "
-        "`ResolvedBrand.brand` from the registry"
+        "use `BrandReference(domain=...)` on requests; "
+        "read `ResolvedBrand.brand` from the registry",
+        "brandmanifest--brandreference",
     ),
-    "FormatCategory": "removed without replacement — format metadata carries category info",
-    "DeliverTo": "use `publisher_properties` on the request instead",
-    "PromotedProducts": "use the spec-current `offerings` shape",
-    "PromotedOfferings": "use the spec-current `offerings` shape",
-    "Pricing": "use the discriminated pricing classes (e.g. `CpmFixedRatePricingOption`)",
-    "PackageStatus": "package status moved onto `MediaBuyStatus`",
+    "FormatCategory": (
+        "removed without replacement — format metadata carries category info",
+        "formatcategory--removed",
+    ),
+    "DeliverTo": (
+        "use `publisher_properties` on the request instead",
+        "deliverto--publisher_properties",
+    ),
+    "PromotedProducts": (
+        "use the spec-current `offerings` shape",
+        "promotedproducts--promotedofferings--offerings",
+    ),
+    "PromotedOfferings": (
+        "use the spec-current `offerings` shape",
+        "promotedproducts--promotedofferings--offerings",
+    ),
+    "Pricing": (
+        "use the discriminated pricing classes (e.g. `CpmFixedRatePricingOption`)",
+        "pricing--discriminated-pricingoption",
+    ),
+    "PackageStatus": (
+        "package status moved onto `MediaBuyStatus`",
+        "packagestatus--mediabuystatus",
+    ),
 }
 
 
 def __getattr__(name: str) -> object:
     if name in _REMOVED_IN_V4:
+        hint, anchor = _REMOVED_IN_V4[name]
         raise ImportError(
-            f"`{name}` was removed in adcp 4.0: {_REMOVED_IN_V4[name]}. "
-            "See MIGRATION_v3_to_v4.md."
+            f"`{name}` was removed in adcp 4.0: {hint}. " f"See MIGRATION_v3_to_v4.md#{anchor}."
         )
     raise AttributeError(f"module 'adcp' has no attribute {name!r}")
 

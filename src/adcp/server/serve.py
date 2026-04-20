@@ -20,13 +20,80 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal
 
-from adcp.server.base import ADCPHandler
+from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 
 if TYPE_CHECKING:
     from adcp.server.test_controller import TestControllerStore
+
+
+@dataclass(frozen=True)
+class RequestMetadata:
+    """Per-request metadata passed to :class:`ContextFactory`.
+
+    Populated by the SDK before invoking the factory. Stable across the
+    MCP and A2A transports — factories written against this shape work
+    on both sides. Additional fields may be added in minor releases;
+    factories should keep accepting ``RequestMetadata`` and pluck the
+    fields they need by name, not by positional unpacking.
+
+    :param tool_name: The AdCP operation being invoked (e.g.
+        ``"get_products"``, ``"create_media_buy"``). Useful for
+        tool-level audit logging and feature flagging.
+    :param transport: ``"mcp"`` or ``"a2a"`` — the wire protocol
+        currently dispatching this call. Agents that expose both can
+        use this to branch on transport-specific behavior.
+    :param request_id: The transport-assigned request id when one
+        exists (A2A populates this from the task id; MCP leaves it
+        ``None`` at the SDK layer today).
+    """
+
+    tool_name: str
+    transport: Literal["mcp", "a2a"]
+    request_id: str | None = None
+
+
+ContextFactory = Callable[[RequestMetadata], ToolContext]
+"""Factory invoked per tool call to build a :class:`ToolContext`.
+
+The SDK's server-side idempotency middleware reads
+``ToolContext.caller_identity`` (and ``tenant_id`` for multi-tenant
+scope) for cache keying, so factories wiring auth MUST populate
+``caller_identity``. See :class:`~adcp.server.base.ToolContext` for
+the full field contract.
+
+The SDK deliberately does not know how your auth middleware surfaces
+the authenticated principal — different downstreams use Starlette
+``request.state``, ``contextvars.ContextVar``, thread-locals, etc.
+The factory closes over whatever mechanism your middleware populates
+and returns a ``ToolContext`` (or subclass).
+
+Example using ``contextvars`` (recommended — middleware-agnostic)::
+
+    from contextvars import ContextVar
+    from adcp.server import RequestMetadata, ToolContext, create_mcp_server
+
+    _principal: ContextVar[str | None] = ContextVar(
+        "adcp_principal", default=None
+    )
+    _tenant: ContextVar[str | None] = ContextVar(
+        "adcp_tenant", default=None
+    )
+
+    # Your HTTP middleware sets the ContextVars; tool calls read them.
+    def build_context(meta: RequestMetadata) -> ToolContext:
+        return ToolContext(
+            request_id=meta.request_id,
+            caller_identity=_principal.get(),
+            tenant_id=_tenant.get(),
+            metadata={"tool_name": meta.tool_name, "transport": meta.transport},
+        )
+
+    mcp = create_mcp_server(MyAgent(), context_factory=build_context)
+"""
 
 
 def serve(
@@ -37,6 +104,7 @@ def serve(
     transport: str = "streamable-http",
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
+    context_factory: ContextFactory | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -92,7 +160,13 @@ def serve(
         handler = handler.build_handler()
 
     if transport == "a2a":
-        _serve_a2a(handler, name=name, port=port, test_controller=test_controller)
+        _serve_a2a(
+            handler,
+            name=name,
+            port=port,
+            test_controller=test_controller,
+            context_factory=context_factory,
+        )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
             handler,
@@ -101,6 +175,7 @@ def serve(
             transport=transport,
             instructions=instructions,
             test_controller=test_controller,
+            context_factory=context_factory,
         )
     else:
         valid = ", ".join(sorted(("a2a", "streamable-http", "sse", "stdio")))
@@ -152,6 +227,7 @@ def _serve_mcp(
     transport: str,
     instructions: str | None,
     test_controller: TestControllerStore | None,
+    context_factory: ContextFactory | None = None,
 ) -> None:
     """Start an MCP server."""
     mcp = create_mcp_server(
@@ -160,6 +236,7 @@ def _serve_mcp(
         port=port,
         instructions=instructions,
         include_test_controller=test_controller is not None,
+        context_factory=context_factory,
     )
 
     if test_controller is not None:
@@ -214,6 +291,7 @@ def _serve_a2a(
     name: str,
     port: int | None,
     test_controller: TestControllerStore | None,
+    context_factory: ContextFactory | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -222,7 +300,13 @@ def _serve_a2a(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
-    app = create_a2a_server(handler, name=name, port=resolved_port, test_controller=test_controller)
+    app = create_a2a_server(
+        handler,
+        name=name,
+        port=resolved_port,
+        test_controller=test_controller,
+        context_factory=context_factory,
+    )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:
         config = uvicorn.Config(app)
@@ -244,6 +328,7 @@ def create_mcp_server(
     port: int | None = None,
     instructions: str | None = None,
     include_test_controller: bool = False,
+    context_factory: ContextFactory | None = None,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -262,24 +347,85 @@ def create_mcp_server(
             via :func:`register_test_controller` and sets this flag
             implicitly. Registering the handler stub unconditionally would
             advertise a tool the seller didn't opt into.
+        context_factory: Optional callable invoked per tool call to build
+            a :class:`ToolContext` from the incoming :class:`RequestMetadata`.
+            **Wiring this is how the server-side idempotency middleware
+            gets the caller identity and tenant it needs for per-principal
+            scoping** — a factory that returns ``caller_identity=None``
+            effectively disables idempotency dedup. Sellers wiring their
+            own HTTP auth middleware pass this to inject the authenticated
+            principal into ``ToolContext.caller_identity``. See
+            :data:`ContextFactory` for the recommended contextvars
+            pattern. When ``None``, handlers receive a bare
+            ``ToolContext()`` (no caller identity, no tenant).
 
     Returns:
-        A configured FastMCP server instance. Call mcp.run() to start.
+        A configured FastMCP server instance. Call ``mcp.run()`` to start,
+        or ``mcp.streamable_http_app()`` to get the Starlette ASGI app for
+        mounting behind a reverse proxy / adding HTTP middleware.
 
-    Example:
-        mcp = create_mcp_server(MyAgent(), name="my-agent")
-        mcp.run(transport="streamable-http")
+    Authentication:
+        The SDK does not enforce authentication itself. Two integration
+        patterns work:
+
+        1. **Reverse-proxy auth** (simplest): the proxy (nginx, Caddy,
+           Envoy) validates credentials and forwards only authenticated
+           requests. The SDK trusts the proxy's decision.
+
+        2. **In-process HTTP middleware**: call
+           ``mcp.streamable_http_app()`` to get the Starlette app, then
+           ``app.add_middleware(YourAuthMiddleware)``. The middleware
+           extracts auth state per request (token, tenant, principal)
+           into ContextVars; ``context_factory`` reads those to build a
+           typed ``ToolContext``. Tools in
+           :data:`adcp.server.DISCOVERY_TOOLS` (``get_adcp_capabilities``)
+           should bypass auth per AdCP spec. See
+           ``examples/mcp_with_auth_middleware.py`` and
+           ``docs/handler-authoring.md``.
+
+    Example (basic):
+        >>> mcp = create_mcp_server(MyAgent(), name="my-agent")
+        >>> mcp.run(transport="streamable-http")
+
+    Example (custom auth + typed context via contextvars):
+        >>> from contextvars import ContextVar
+        >>> from adcp.server import RequestMetadata, ToolContext, create_mcp_server
+        >>>
+        >>> _principal: ContextVar[str | None] = ContextVar("p", default=None)
+        >>> _tenant: ContextVar[str | None] = ContextVar("t", default=None)
+        >>>
+        >>> def build_context(meta: RequestMetadata) -> ToolContext:
+        ...     return ToolContext(
+        ...         caller_identity=_principal.get(),
+        ...         tenant_id=_tenant.get(),
+        ...     )
+        >>>
+        >>> mcp = create_mcp_server(
+        ...     MyAgent(), name="my-agent", context_factory=build_context
+        ... )
+        >>> app = mcp.streamable_http_app()
+        >>> app.add_middleware(MyAuthMiddleware)  # sets the ContextVars
+        >>> # run via uvicorn
     """
     from mcp.server.fastmcp import FastMCP
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
     mcp = FastMCP(name, instructions=instructions, port=resolved_port)
-    _register_handler_tools(mcp, handler, include_test_controller=include_test_controller)
+    _register_handler_tools(
+        mcp,
+        handler,
+        include_test_controller=include_test_controller,
+        context_factory=context_factory,
+    )
     return mcp
 
 
 def _register_handler_tools(
-    mcp: Any, handler: ADCPHandler, *, include_test_controller: bool = False
+    mcp: Any,
+    handler: ADCPHandler,
+    *,
+    include_test_controller: bool = False,
+    context_factory: ContextFactory | None = None,
 ) -> None:
     """Register all ADCP tools from a handler onto a FastMCP server."""
     tool_defs = get_tools_for_handler(handler)
@@ -293,7 +439,14 @@ def _register_handler_tools(
         description = tool_def.get("description", "")
         input_schema = tool_def.get("inputSchema", {"type": "object", "properties": {}})
         caller = create_tool_caller(handler, tool_name)
-        _register_tool(mcp, tool_name, description, input_schema, caller)
+        _register_tool(
+            mcp,
+            tool_name,
+            description,
+            input_schema,
+            caller,
+            context_factory=context_factory,
+        )
 
 
 def _register_tool(
@@ -302,6 +455,8 @@ def _register_tool(
     description: str,
     input_schema: dict[str, Any],
     caller: Callable[..., Any],
+    *,
+    context_factory: ContextFactory | None = None,
 ) -> None:
     """Register a single ADCP tool on a FastMCP server.
 
@@ -318,17 +473,28 @@ def _register_tool(
     from adcp.server.translate import translate_error
 
     async def fn(**kwargs: Any) -> dict[str, Any]:
-        # Note on caller identity: FastMCP does not expose an authenticated
-        # principal to tool handlers at the SDK level — ``Context.client_id``
-        # is a session hint, not an authenticated user identifier. Sellers
-        # who need per-principal server middleware (e.g. the idempotency
-        # store's per-principal scoping) should wire their own FastMCP auth
-        # middleware and either pre-populate ``params`` with a principal
-        # hint their handler reads, or override ``create_tool_caller`` to
-        # build a ToolContext from their auth layer. The A2A transport
-        # derives caller_identity from ServerCallContext.user automatically.
+        # Caller identity: FastMCP does not expose an authenticated principal
+        # at the SDK level (``Context.client_id`` is a session hint, not an
+        # authenticated user). Sellers wire auth via HTTP middleware on
+        # ``mcp.streamable_http_app()`` and pass ``context_factory`` to
+        # ``create_mcp_server()`` — the factory reads a ``contextvars.ContextVar``
+        # the middleware populates and returns a typed ``ToolContext``.
+        # The A2A transport derives ``caller_identity`` from
+        # ``ServerCallContext.user`` automatically.
+        context: ToolContext | None = None
+        if context_factory is not None:
+            meta = RequestMetadata(tool_name=name, transport="mcp")
+            context = context_factory(meta)
+            if not isinstance(context, ToolContext):
+                # Catch downstream factories that return a dict or other
+                # shape early — otherwise the handler explodes deep inside
+                # with an AttributeError on caller_identity.
+                raise TypeError(
+                    f"context_factory for tool {name!r} returned "
+                    f"{type(context).__name__}, not a ToolContext instance"
+                )
         try:
-            result = await caller(kwargs)
+            result = await caller(kwargs, context=context)
         except ADCPError as exc:
             # Translate AdCP-typed exceptions (IdempotencyConflictError,
             # ADCPTaskError with a spec code, etc.) into a ToolError so FastMCP
