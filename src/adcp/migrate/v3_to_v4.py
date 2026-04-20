@@ -396,15 +396,90 @@ def _format_text_report(report: Report, *, apply_changes: bool) -> str:
     return "\n".join(lines)
 
 
+REPORT_SCHEMA_VERSION = 1
+"""Version of the JSON report shape. CI scripts / editors parsing the
+migrate output key on this so a future shape change (adding a summary
+block, renaming fields) doesn't silently break them.
+
+Bump the minor SDK version AND this constant when changing the JSON
+shape in a non-additive way. Additive changes (new optional keys)
+stay at the same version.
+
+**v1 shape:**
+
+.. code-block:: json
+
+    {
+      "schema_version": 1,
+      "scanned_files": int,
+      "rewritten_files": int,
+      "applied": [
+        {"kind": "rename", "path": str, "line": int, "column": int,
+         "before": str, "after": str, "hint": null, "migration_anchor": null}
+      ],
+      "flagged": [
+        {"kind": "flag_removed" | "flag_numbered" | "flag_private" | "flag_attribute",
+         "path": str, "line": int, "column": int, "before": str,
+         "after": null, "hint": str | null, "migration_anchor": str | null}
+      ]
+    }
+"""
+
+
 def _format_json_report(report: Report) -> str:
-    """JSON report for programmatic consumption (CI, editors)."""
+    """JSON report for programmatic consumption (CI, editors).
+
+    Versioned via :data:`REPORT_SCHEMA_VERSION` — parsers should check
+    the top-level ``schema_version`` key before reading the rest.
+    """
     payload = {
+        "schema_version": REPORT_SCHEMA_VERSION,
         "scanned_files": report.scanned_files,
         "rewritten_files": report.rewritten_files,
         "applied": [asdict(f) for f in report.applied],
         "flagged": [asdict(f) for f in report.flagged],
     }
     return json.dumps(payload, indent=2)
+
+
+def _is_dirty_tree(path: Path) -> bool:
+    """True when ``path`` is inside a git repo with uncommitted changes.
+
+    Uses ``git status --porcelain`` for speed and stability. Returns
+    ``False`` when git isn't installed, the path isn't in a repo, or
+    the repo is clean — any non-clean state returns ``True`` so the
+    ``--apply`` guard fails safe.
+
+    The check is best-effort: absence of git isn't a reason to block
+    the rewrite (sellers may run in sandboxed or read-only environments
+    where git isn't available). A ``True`` result means we saw
+    definite uncommitted state.
+    """
+    import shutil
+    import subprocess
+
+    if shutil.which("git") is None:
+        return False
+
+    target = path.resolve()
+    cwd = target if target.is_dir() else target.parent
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    # Exit 128 = not a git repo; anything non-zero → treat as clean
+    # (not blocking — we don't want `--apply` in a sandboxed env to
+    # break because git can't run).
+    if result.returncode != 0:
+        return False
+    return bool(result.stdout.strip())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -430,6 +505,18 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        help=(
+            "Allow --apply even when the git working tree has "
+            "uncommitted changes. Default is to refuse so `git diff` "
+            "after the migration shows only the codemod's rewrites, "
+            "not a mix of the seller's in-progress work and the "
+            "codemod. Pass --allow-dirty when you know what you're "
+            "doing (e.g. applying to a staged change deliberately)."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit structured JSON report instead of the human-readable text.",
@@ -438,6 +525,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.path.exists():
         print(f"error: path does not exist: {args.path}", file=sys.stderr)
+        return 2
+
+    if args.apply and not args.allow_dirty and _is_dirty_tree(args.path):
+        print(
+            "error: --apply refused on a dirty git working tree.\n"
+            "       Commit your changes first so `git diff` after the\n"
+            "       migration shows only the codemod's rewrites. Pass\n"
+            "       --allow-dirty to override (e.g. you're deliberately\n"
+            "       applying on top of staged changes).",
+            file=sys.stderr,
+        )
         return 2
 
     report = run(args.path, apply_changes=args.apply)

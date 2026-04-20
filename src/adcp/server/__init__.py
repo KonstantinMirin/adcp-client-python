@@ -55,11 +55,14 @@ from __future__ import annotations
 from adcp.capabilities import validate_capabilities
 from adcp.server.a2a_server import ADCPAgentExecutor, MessageParser, create_a2a_server
 from adcp.server.auth import (
+    AsyncTokenValidator,
     BearerTokenAuthMiddleware,
     Principal,
+    SyncTokenValidator,
     TokenValidator,
     auth_context_factory,
     constant_time_token_match,
+    validator_from_token_map,
 )
 from adcp.server.base import (
     AccountAwareToolContext,
@@ -172,11 +175,14 @@ __all__ = [
     "SkillMiddleware",
     "create_a2a_server",
     # Bearer-token auth middleware (seller-facing recipe)
+    "AsyncTokenValidator",
     "BearerTokenAuthMiddleware",
     "Principal",
+    "SyncTokenValidator",
     "TokenValidator",
     "auth_context_factory",
     "constant_time_token_match",
+    "validator_from_token_map",
     # Idempotency middleware (AdCP #2315 seller side)
     "IdempotencyStore",
     "MemoryBackend",

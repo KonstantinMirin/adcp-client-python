@@ -28,6 +28,7 @@ from adcp.server import (
     Principal,
     auth_context_factory,
     constant_time_token_match,
+    validator_from_token_map,
 )
 from adcp.server.auth import (
     current_principal,
@@ -61,6 +62,76 @@ def test_constant_time_token_match_returns_none_on_miss() -> None:
 def test_constant_time_token_match_empty_token() -> None:
     stored = {hashlib.sha256(b"good").hexdigest(): "payload"}
     assert constant_time_token_match("", stored) is None
+
+
+# ---------------------------------------------------------------------------
+# validator_from_token_map
+# ---------------------------------------------------------------------------
+
+
+def test_validator_from_token_map_returns_principal_on_match() -> None:
+    """Happy path: the map's raw token resolves to its Principal."""
+    alice = Principal(caller_identity="alice", tenant_id="t1")
+    validate = validator_from_token_map({"s3cret-token": alice})
+    assert validate("s3cret-token") == alice
+
+
+def test_validator_from_token_map_returns_none_on_miss() -> None:
+    """Unknown token → ``None``, not exception."""
+    alice = Principal(caller_identity="alice")
+    validate = validator_from_token_map({"known": alice})
+    assert validate("unknown") is None
+
+
+def test_validator_from_token_map_constant_time_compare() -> None:
+    """The helper MUST use ``constant_time_token_match`` under the
+    hood — not raw dict lookup — so timing doesn't leak prefix match.
+    Test by confirming both a known-prefix miss and a full miss
+    return the same (None) result without blowing up."""
+    validate = validator_from_token_map(
+        {
+            "alpha-beta-gamma": Principal(caller_identity="alice"),
+            "zulu-yankee-xray": Principal(caller_identity="bob"),
+        }
+    )
+    # Same-length miss with partial prefix overlap
+    assert validate("alpha-beta-nope-") is None
+    # Completely different token
+    assert validate("mno-pqr-stu-vwx") is None
+    # Actual match still works
+    assert validate("alpha-beta-gamma").caller_identity == "alice"
+
+
+def test_validator_from_token_map_empty_map_always_returns_none() -> None:
+    """Degenerate case: empty map → every token rejects. No crashes,
+    no AttributeErrors."""
+    validate = validator_from_token_map({})
+    assert validate("anything") is None
+    assert validate("") is None
+
+
+def test_validator_from_token_map_does_not_retain_plaintext() -> None:
+    """Security invariant: the plaintext tokens MUST NOT be
+    retrievable from the returned validator's closure. They're hashed
+    at construction; only hashes live in the closure."""
+    import gc
+
+    raw_token = "plaintext-should-not-persist-here"
+    validate = validator_from_token_map({raw_token: Principal(caller_identity="alice")})
+
+    # Walk the closure's referents, flatten one level. The raw token
+    # SHOULD NOT appear — only its SHA-256 hex digest.
+    referents = gc.get_referents(validate.__closure__[0].cell_contents)
+    flat_strings: list[str] = []
+    for ref in referents:
+        if isinstance(ref, str):
+            flat_strings.append(ref)
+        elif isinstance(ref, dict):
+            flat_strings.extend(k for k in ref.keys() if isinstance(k, str))
+
+    assert (
+        raw_token not in flat_strings
+    ), f"raw token leaked into validator closure: {flat_strings!r}"
 
 
 # ---------------------------------------------------------------------------

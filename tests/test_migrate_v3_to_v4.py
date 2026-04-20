@@ -409,6 +409,7 @@ def test_cli_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     out = capsys.readouterr().out
 
     payload = json.loads(out)
+    assert payload["schema_version"] == v3_to_v4.REPORT_SCHEMA_VERSION
     assert payload["scanned_files"] == 1
     assert payload["rewritten_files"] == 0
     assert len(payload["applied"]) == 1
@@ -416,6 +417,15 @@ def test_cli_json_output(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     assert payload["applied"][0]["after"] == "AudioContent"
     removed = [f for f in payload["flagged"] if f["kind"] == "flag_removed"]
     assert any(f["before"] == "BrandManifest" for f in removed)
+
+
+def test_json_report_schema_version_is_declared() -> None:
+    """The v1 JSON shape is a wire contract with CI scripts and
+    editors. A non-additive change (renaming a field, removing one)
+    MUST bump ``REPORT_SCHEMA_VERSION`` AND the SDK minor version —
+    this test pins the current version so a change is a deliberate
+    choice, not an accident."""
+    assert v3_to_v4.REPORT_SCHEMA_VERSION == 1
 
 
 def test_cli_apply_rewrites_and_reports(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -439,3 +449,80 @@ def test_unreadable_file_does_not_crash(tmp_path: Path) -> None:
     report = v3_to_v4.run(tmp_path, apply_changes=False)
     assert report.scanned_files == 1
     assert report.applied == []
+
+
+# ---------------------------------------------------------------------------
+# --apply safety: refuse on dirty git tree, allow with --allow-dirty
+# ---------------------------------------------------------------------------
+
+
+def _init_git_repo(path: Path) -> None:
+    """Initialize a git repo at ``path`` and commit one file so the
+    default branch exists."""
+    import subprocess
+
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=path, check=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=path, check=True)
+    (path / ".gitkeep").write_text("")
+    subprocess.run(["git", "add", ".gitkeep"], cwd=path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "initial"], cwd=path, check=True)
+
+
+def test_apply_refuses_on_dirty_git_tree(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--apply`` MUST refuse when the working tree is dirty. Otherwise
+    the seller's in-progress work gets mixed into the codemod's rewrite
+    diff and ``git diff`` review stops being useful."""
+    import shutil
+
+    if shutil.which("git") is None:
+        pytest.skip("git not available")
+
+    _init_git_repo(tmp_path)
+    # Create an uncommitted file — this makes the tree dirty.
+    _write(tmp_path, "code.py", "from adcp.types import AudioAsset\n")
+
+    rc = v3_to_v4.main([str(tmp_path), "--apply"])
+    err = capsys.readouterr().err
+
+    assert rc == 2
+    assert "dirty git working tree" in err
+    assert "--allow-dirty" in err
+    # File NOT rewritten (the guard short-circuits before `run`).
+    assert (tmp_path / "code.py").read_text() == "from adcp.types import AudioAsset\n"
+
+
+def test_apply_allow_dirty_overrides_guard(tmp_path: Path) -> None:
+    """``--allow-dirty`` lets sellers deliberately run the codemod on
+    top of staged changes (e.g. batched with a related refactor)."""
+    import shutil
+
+    if shutil.which("git") is None:
+        pytest.skip("git not available")
+
+    _init_git_repo(tmp_path)
+    path = _write(tmp_path, "code.py", "from adcp.types import AudioAsset\n")
+
+    rc = v3_to_v4.main([str(tmp_path), "--apply", "--allow-dirty"])
+
+    # Renames applied; exit code reflects no flagged findings.
+    assert rc == 0
+    assert "AudioContent" in path.read_text()
+
+
+def test_apply_proceeds_when_not_in_git_repo(tmp_path: Path) -> None:
+    """Running in a non-git directory (CI sandbox, scratch env) must
+    not block --apply. The guard fails-safe: if git can't verify
+    dirty state, we proceed. This is already implicitly tested by
+    other --apply tests (they use tmp_path which isn't a repo),
+    but pin it explicitly so a future tightening of the guard breaks
+    here, not silently in seller CI environments."""
+    path = _write(tmp_path, "code.py", "from adcp.types import AudioAsset\n")
+
+    rc = v3_to_v4.main([str(tmp_path), "--apply"])
+
+    assert rc == 0
+    assert "AudioContent" in path.read_text()

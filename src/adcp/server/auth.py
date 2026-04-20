@@ -72,10 +72,12 @@ import hmac
 import inspect
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Mapping
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+
+_V = TypeVar("_V")
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -138,16 +140,32 @@ class Principal:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-TokenValidator = Callable[[str], "Principal | None | Awaitable[Principal | None]"]
+class SyncTokenValidator(Protocol):
+    """Synchronous token validator — ``def validate_token(token) -> Principal | None``."""
+
+    def __call__(self, token: str) -> Principal | None: ...
+
+
+class AsyncTokenValidator(Protocol):
+    """Asynchronous token validator —
+    ``async def validate_token(token) -> Principal | None``."""
+
+    def __call__(self, token: str) -> Awaitable[Principal | None]: ...
+
+
+TokenValidator = SyncTokenValidator | AsyncTokenValidator
 """Seller-supplied callable that validates a bearer token.
 
 Called with the raw token string (``Authorization: Bearer <token>``
 with the prefix already stripped). Return a :class:`Principal` on
-success, ``None`` to reject.
+success, ``None`` to reject. Sync and async callables are both
+accepted — the middleware awaits the result when it's awaitable.
 
-Sync and async callables are both accepted — the middleware awaits the
-result when it's awaitable, so plain ``def validate_token(...)`` and
-``async def validate_token(...)`` both work.
+Declared as a union of two Protocols (rather than a
+``Callable[[str], Principal | None | Awaitable[...]]`` alias)
+because mypy narrows Protocol unions per-call-site: downstream code
+using ``async def validate_token`` gets the async branch without
+``type: ignore`` noise. Either protocol is a valid ``TokenValidator``.
 
 **Do not raise on invalid tokens.** Exceptions become ``500 Internal
 Server Error`` responses, which leak the presence of an auth path
@@ -367,7 +385,7 @@ def auth_context_factory(meta: RequestMetadata) -> ToolContext:
 # ------------------------------------------------------------------
 
 
-def constant_time_token_match(token: str, stored_hashes: dict[str, Any]) -> Any:
+def constant_time_token_match(token: str, stored_hashes: Mapping[str, _V]) -> _V | None:
     """Look up a token in a dict of SHA-256 hashes using
     :func:`hmac.compare_digest` rather than dict-containment.
 
@@ -393,3 +411,42 @@ def constant_time_token_match(token: str, stored_hashes: dict[str, Any]) -> Any:
         if hmac.compare_digest(candidate, stored_hash):
             return value
     return None
+
+
+def validator_from_token_map(
+    token_map: Mapping[str, Principal],
+) -> SyncTokenValidator:
+    """Build a :data:`TokenValidator` from a ``{raw_token: Principal}`` map.
+
+    The shape most demo/test agents actually need — a fixed set of
+    tokens mapped to principals — without having to write the
+    constant-time plumbing. The returned validator hashes each raw
+    token at construction time and does constant-time lookups via
+    :func:`hmac.compare_digest` on every call, matching the security
+    properties of a hand-rolled validator::
+
+        validate_token = validator_from_token_map({
+            "token-acme": Principal(caller_identity="p-acme", tenant_id="acme"),
+            "token-globex": Principal(caller_identity="p-globex", tenant_id="globex"),
+        })
+        app.add_middleware(BearerTokenAuthMiddleware, validate_token=validate_token)
+
+    Production agents looking tokens up in Postgres / Redis / Vault
+    should write their own async validator instead — this helper is
+    for the small-fixed-set case (demo, test, CI fixtures).
+
+    :param token_map: Mapping of raw bearer tokens to their resolved
+        :class:`Principal`. Tokens are hashed at construction; the
+        plaintext is not retained.
+    :returns: A :data:`SyncTokenValidator` (which satisfies
+        :data:`TokenValidator`).
+    """
+    stored_hashes: dict[str, Principal] = {
+        hashlib.sha256(token.encode()).hexdigest(): principal
+        for token, principal in token_map.items()
+    }
+
+    def _validate(token: str) -> Principal | None:
+        return constant_time_token_match(token, stored_hashes)
+
+    return _validate
