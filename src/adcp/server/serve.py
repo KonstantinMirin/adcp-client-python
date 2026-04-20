@@ -19,7 +19,7 @@ Stand up an ADCP-compliant server with a single function call:
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -27,6 +27,8 @@ from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller, get_tools_for_handler
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from a2a.server.tasks.push_notification_config_store import (
         PushNotificationConfigStore,
     )
@@ -59,6 +61,70 @@ class RequestMetadata:
     tool_name: str
     transport: Literal["mcp", "a2a"]
     request_id: str | None = None
+
+
+SkillMiddleware = Callable[
+    [str, dict[str, Any], ToolContext, Callable[[], Awaitable[Any]]],
+    Awaitable[Any],
+]
+"""Middleware that wraps A2A skill dispatch — the audit / activity-feed /
+rate-limiter / tracing hook for the A2A transport.
+
+Signature (conceptually a Protocol; declared as a ``Callable`` alias so
+it's importable and consistent with ``ContextFactory``)::
+
+    async def middleware(
+        skill_name: str,
+        params: dict[str, Any],
+        context: ToolContext,
+        call_next: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        ...
+
+Middleware wraps ``call_next()`` — call it (possibly more than once, or
+never) to invoke the rest of the chain plus the underlying handler.
+Anything the middleware returns becomes the dispatch result the A2A
+transport serialises back to the client, so middleware can short-circuit
+(skip the handler entirely) or transform the result.
+
+Middleware observes both success and failure — catch exceptions around
+``call_next()`` to implement audit-on-failure or retry-classifier hooks.
+Middleware re-raising propagates to the executor's normal error path
+(application ``ADCPError`` → failed task w/ ``adcp_error`` DataPart;
+other exceptions → opaque failed task per the spec's error-sanitisation
+rule).
+
+Multiple middlewares compose outermost-first, matching Starlette/ASGI
+semantics — if you pass ``middleware=[Audit(), RateLimit(), Metrics()]``,
+the runtime order is::
+
+    Audit.__call__ →  RateLimit.__call__ →  Metrics.__call__ →  handler
+
+Example — audit logging with exception capture::
+
+    from adcp.server import SkillMiddleware, ToolContext
+
+    async def audit_middleware(
+        skill_name: str,
+        params: dict[str, Any],
+        context: ToolContext,
+        call_next: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        started_at = time.monotonic()
+        try:
+            result = await call_next()
+        except Exception as exc:
+            audit_log.failure(skill_name, context.caller_identity, exc)
+            raise
+        audit_log.success(
+            skill_name,
+            context.caller_identity,
+            elapsed_ms=(time.monotonic() - started_at) * 1000,
+        )
+        return result
+
+    create_a2a_server(MyAgent(), middleware=[audit_middleware])
+"""
 
 
 ContextFactory = Callable[[RequestMetadata], ToolContext]
@@ -112,6 +178,7 @@ def serve(
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -140,6 +207,12 @@ def serve(
             ``UnsupportedOperationError`` — clients cannot register
             subscriptions at all. See ``examples/a2a_db_tasks.py`` for
             a durable reference implementation.
+        middleware: Optional sequence of :data:`SkillMiddleware` callables
+            wrapping every A2A skill dispatch (A2A transport only). Use
+            for audit logging, activity-feed hooks, rate limiting,
+            tracing. Composes outermost-first. See
+            :data:`SkillMiddleware` for the signature and composition
+            semantics.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -187,6 +260,7 @@ def serve(
             context_factory=context_factory,
             task_store=task_store,
             push_config_store=push_config_store,
+            middleware=middleware,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -315,6 +389,7 @@ def _serve_a2a(
     context_factory: ContextFactory | None = None,
     task_store: TaskStore | None = None,
     push_config_store: PushNotificationConfigStore | None = None,
+    middleware: Sequence[SkillMiddleware] | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -331,6 +406,7 @@ def _serve_a2a(
         context_factory=context_factory,
         task_store=task_store,
         push_config_store=push_config_store,
+        middleware=middleware,
     )
     sock = _bind_reusable_socket("0.0.0.0", resolved_port)
     try:

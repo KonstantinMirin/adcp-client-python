@@ -112,6 +112,7 @@ from adcp.server.responses import (
 from adcp.server.serve import (
     ContextFactory,
     RequestMetadata,
+    SkillMiddleware,
     create_mcp_server,
     serve,
 )
@@ -153,6 +154,7 @@ __all__ = [
     "validate_discovery_set",
     # A2A integration
     "ADCPAgentExecutor",
+    "SkillMiddleware",
     "create_a2a_server",
     # Idempotency middleware (AdCP #2315 seller side)
     "IdempotencyStore",
