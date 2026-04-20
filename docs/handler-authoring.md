@@ -196,17 +196,69 @@ When in doubt, subclass: `metadata: dict[str, Any]` loses type safety.
 A2A protocol with auto-generated agent card (`/.well-known/agent.json`)
 derived from the `ADCPHandler` methods your class overrides.
 
-Caveats:
+### Durable task storage
 
-- The SDK uses `a2a-sdk`'s `DefaultRequestHandler` + `InMemoryTaskStore`.
-  Tasks do not persist across restarts.
-- Push-notification config is in-memory only.
+A2A tracks each long-running operation as a `Task` — the default
+`InMemoryTaskStore` keeps them in a process-local dict. That's fine for
+demos but tasks vanish on restart and don't share across workers.
+Production agents inject a durable `TaskStore`:
+
+```python
+from adcp.server import serve
+from examples.a2a_db_tasks import SqliteTaskStore
+
+serve(
+    MyAgent(),
+    transport="a2a",
+    task_store=SqliteTaskStore("/var/lib/myagent/tasks.db"),
+)
+```
+
+The `task_store=` kwarg accepts any `a2a.server.tasks.task_store.TaskStore`
+subclass. `examples/a2a_db_tasks.py` is a runnable reference SQLite
+implementation; swap in asyncpg / aiomysql / Redis for multi-node
+deployments. For maximum correctness, implement the store against the
+same engine/transaction as your handler's business writes so
+"handler success → task save" happens atomically.
+
+**Four things a durable `TaskStore` MUST do — the
+`InMemoryTaskStore` got away with ignoring these because crash =
+reset; your persistent store can't:**
+
+1. **Filter every read, write, and delete by the authenticated
+   principal.** The `TaskStore` ABC hands you a `ServerCallContext` on
+   every call; a2a-sdk's `DefaultRequestHandler` always passes it. If
+   your `get(task_id, context)` ignores `context.user`, any principal
+   that learns another tenant's task id retrieves that tenant's task —
+   history, artifacts, PII, all of it. The reference `SqliteTaskStore`
+   derives a `scope` column from `context.user.user_name`; override
+   `_scope_from_context` if you carry richer identity.
+2. **Protect the database file.** Tasks include buyer-supplied
+   `Message.parts` content and artifact metadata. On a shared host the
+   default umask leaves the database world-readable. Set `0o600` on
+   creation (reference does this), mount on an encrypted volume, and
+   treat backups as the same trust boundary as the live DB.
+3. **Handle concurrent writes explicitly.** Two workers saving the
+   same task interleave. `INSERT OR REPLACE` is last-writer-wins and
+   will silently revert state (`completed` → `working`). Add a version
+   column, a `WHERE updated_at < ?` guard, or wrap updates in a
+   transaction with explicit conflict handling.
+4. **Garbage-collect terminal tasks.** Without a TTL / sweeper, your
+   database grows unbounded and every completed task is retained
+   forever — an ever-expanding exfiltration target. Add a periodic
+   sweep deleting tasks in `completed` / `canceled` / `failed` states
+   older than your retention policy.
+
+### Known gaps
+
+- Push-notification config is in-memory only — tracked at
+  [#225](https://github.com/adcontextprotocol/adcp-client-python/issues/225).
 - Per-skill middleware hooks for audit logging / activity feeds don't
-  exist yet (tracked in the SDK adoption roadmap).
+  exist yet — tracked at
+  [#226](https://github.com/adcontextprotocol/adcp-client-python/issues/226).
 
-If your agent needs DB-backed tasks, persistent push-notif config, or
-per-skill audit hooks, keep a custom A2A server for now. The MCP side is
-production-ready; the A2A side is reference-quality.
+Once #225 and #226 land, A2A adoption reaches parity with MCP for
+production agents.
 
 ## Testing
 
