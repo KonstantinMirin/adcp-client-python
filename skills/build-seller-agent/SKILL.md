@@ -640,13 +640,37 @@ python agent.py &
 npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_seller --json
 ```
 
-**Keep iterating until all steps pass.**
+### What this skill covers (and what it doesn't)
+
+This skill teaches the **9 core lifecycle scenarios** on the
+`media_buy_seller` storyboard — the happy-path buyer journey from
+discovery to delivery. Following the skill end-to-end produces an
+agent that passes those 9 steps cleanly.
+
+The full `media_buy_seller` storyboard runs ~40 scenarios across
+multiple tracks. Expect `WARN: partial — 0 of 2 tracks passing`
+against your skill-built agent: ~13 advanced scenarios require
+stubs this skill doesn't teach. That's not a skill bug; it's a
+scope choice. Add these independently when you need them:
+
+| Track | Scenarios | What to add |
+|---|---|---|
+| Governance | `governance_denied`, `governance_override` | Wire a `GovernanceHandler` subclass (see `docs/handler-authoring.md`) |
+| Creative lifecycle | `pending_creatives_to_start`, `pending_creatives_to_reject` | Extend your `sync_creatives` to return `status="pending"`, then flip via a `force_creative_status` test-controller scenario |
+| Measurement | `measurement_terms_mismatch` | Validate `delivery_measurement` on `create_media_buy`; reject mismatched terms with `INVALID_REQUEST` |
+| Targeting persistence | `inventory_list_targeting` | Persist targeting lists across `sync_creatives` / `get_media_buy_delivery` calls |
+| State machine | `invalid_transition_*` | Return `INVALID_TRANSITION` from `update_media_buy` for disallowed state moves (e.g. `completed → paused`) |
+| Delivery | `delivery_reporting/simulate_and_verify` | Wire `simulate_delivery` + `simulate_budget_spend` on your `TestControllerStore` |
+
+**Keep iterating until the 9 core steps pass.** Advanced tracks are
+additive — tackle them when your deployment actually needs the
+behavior they validate.
 
 ## Storyboards
 
 | Storyboard | Use case |
 |-----------|----------|
-| `media_buy_seller` | Full lifecycle — every seller should pass this (9 steps) |
+| `media_buy_seller` | Full lifecycle — this skill teaches the 9 core steps; advanced tracks are optional additions above |
 | `deterministic_testing` | Test controller state machine validation |
 | `media_buy_non_guaranteed` | Auction flow with bid adjustment |
 | `media_buy_guaranteed_approval` | IO approval workflow |
