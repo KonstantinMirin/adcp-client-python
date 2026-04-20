@@ -397,7 +397,7 @@ def _serve_mcp(
     if test_controller is not None:
         from adcp.server.test_controller import register_test_controller
 
-        register_test_controller(mcp, test_controller)
+        register_test_controller(mcp, test_controller, context_factory=context_factory)
 
     if transport in ("streamable-http", "sse"):
         _run_mcp_http(mcp, transport=transport)

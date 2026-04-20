@@ -113,12 +113,19 @@ class ADCPAgentExecutor(AgentExecutor):
         return list(self._tool_callers.keys())
 
     def _register_test_controller(self, store: TestControllerStore) -> None:
-        """Register comply_test_controller as a callable skill."""
+        """Register comply_test_controller as a callable skill.
+
+        Threads the ToolContext that the A2A executor built for this
+        dispatch into the store so header-driven test state (populated
+        by ``context_factory`` from ``ServerCallContext.user`` /
+        message-metadata headers) composes with the storyboard-driven
+        ``comply_test_controller`` skill. See #227.
+        """
 
         async def _call_test_controller(
             params: dict[str, Any], context: ToolContext | None = None
         ) -> Any:
-            return await _handle_test_controller(store, params)
+            return await _handle_test_controller(store, params, context=context)
 
         self._tool_callers["comply_test_controller"] = _call_test_controller
 

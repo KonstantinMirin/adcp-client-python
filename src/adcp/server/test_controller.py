@@ -17,12 +17,32 @@ Usage:
 
     store = MyStore()
     serve(MySeller(), name="my-agent", test_controller=store)
+
+Header-driven compatibility:
+    Store methods MAY accept a keyword-only ``context: ToolContext | None``
+    parameter. When the server was configured with a ``context_factory``,
+    the dispatcher calls the factory per request and threads the
+    resulting ``ToolContext`` into the store method. This lets sellers
+    whose test runtime reads request headers (e.g.
+    ``AdCPTestContext.from_headers(request.headers)``) compose the
+    storyboard-driven ``comply_test_controller`` skill with their
+    existing header-driven mock state — populate the test context in
+    the ``context_factory`` (from a ContextVar set by your HTTP
+    middleware) and read it off ``context.metadata`` inside the store.
+    Stores that don't declare ``context`` on a method keep working
+    unchanged — the dispatcher only passes ``context`` to methods whose
+    signature accepts it.
 """
 
 from __future__ import annotations
 
+import inspect
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from adcp.server.base import ToolContext
+    from adcp.server.serve import ContextFactory
 
 # Scenario names — must match the AdCP comply_test_controller schema
 SCENARIOS = [
@@ -71,10 +91,22 @@ class TestControllerStore:
     and excluded from list_scenarios.
 
     Raise TestControllerError for structured error responses.
+
+    Methods MAY declare an optional keyword-only ``context: ToolContext |
+    None = None`` parameter. When present, the dispatcher threads the
+    ``ToolContext`` built by the server's ``context_factory`` into the
+    call — header-driven mock state (e.g. ``AdCPTestContext.from_headers``)
+    populated in the factory is readable off ``context.metadata``.
+    Stores that don't declare ``context`` keep working unchanged.
     """
 
     async def force_creative_status(
-        self, creative_id: str, status: str, rejection_reason: str | None = None
+        self,
+        creative_id: str,
+        status: str,
+        rejection_reason: str | None = None,
+        *,
+        context: ToolContext | None = None,
     ) -> dict[str, Any]:
         """Force a creative to a given status.
 
@@ -83,7 +115,13 @@ class TestControllerStore:
         """
         raise NotImplementedError
 
-    async def force_account_status(self, account_id: str, status: str) -> dict[str, Any]:
+    async def force_account_status(
+        self,
+        account_id: str,
+        status: str,
+        *,
+        context: ToolContext | None = None,
+    ) -> dict[str, Any]:
         """Force an account to a given status.
 
         Returns:
@@ -92,7 +130,12 @@ class TestControllerStore:
         raise NotImplementedError
 
     async def force_media_buy_status(
-        self, media_buy_id: str, status: str, rejection_reason: str | None = None
+        self,
+        media_buy_id: str,
+        status: str,
+        rejection_reason: str | None = None,
+        *,
+        context: ToolContext | None = None,
     ) -> dict[str, Any]:
         """Force a media buy to a given status.
 
@@ -102,7 +145,12 @@ class TestControllerStore:
         raise NotImplementedError
 
     async def force_session_status(
-        self, session_id: str, status: str, termination_reason: str | None = None
+        self,
+        session_id: str,
+        status: str,
+        termination_reason: str | None = None,
+        *,
+        context: ToolContext | None = None,
     ) -> dict[str, Any]:
         """Force a session to a given status.
 
@@ -118,6 +166,8 @@ class TestControllerStore:
         clicks: int | None = None,
         conversions: int | None = None,
         reported_spend: dict[str, Any] | None = None,
+        *,
+        context: ToolContext | None = None,
     ) -> dict[str, Any]:
         """Simulate delivery metrics for a media buy.
 
@@ -131,6 +181,8 @@ class TestControllerStore:
         spend_percentage: float,
         account_id: str | None = None,
         media_buy_id: str | None = None,
+        *,
+        context: ToolContext | None = None,
     ) -> dict[str, Any]:
         """Simulate budget spend to a percentage.
 
@@ -159,9 +211,7 @@ def _list_scenarios(store: TestControllerStore) -> list[str]:
     return implemented
 
 
-def _controller_error(
-    error: str, detail: str, current_state: str | None = None
-) -> dict[str, Any]:
+def _controller_error(error: str, detail: str, current_state: str | None = None) -> dict[str, Any]:
     """Format a test controller error response."""
     resp: dict[str, Any] = {
         "success": False,
@@ -173,10 +223,64 @@ def _controller_error(
     return resp
 
 
+def _accepts_context_kwarg(method: Any) -> bool:
+    """True when ``method``'s signature accepts ``context=`` by keyword.
+
+    TestControllerStore subclasses written against the original API
+    (pre-#227) don't declare ``context``; passing it would raise
+    ``TypeError`` at the call site. Signature inspection keeps the
+    dispatcher backward-compatible while letting stores opt in to
+    header-driven context by simply adding ``context=None`` to their
+    override.
+
+    Counts as an opt-in:
+
+    - ``*, context: ...`` — keyword-only (the documented recipe).
+    - ``context: ...`` as a regular positional-or-keyword parameter.
+    - ``**kwargs`` — accepts any keyword, including ``context``.
+
+    Does **not** count:
+
+    - ``context`` as positional-only (before ``/``) — passing by
+      keyword raises ``TypeError``.
+    - ``context`` as ``*args`` (it's never a variadic positional).
+
+    Caveat: ``inspect.signature`` follows ``__wrapped__`` set by
+    ``@functools.wraps``. A decorator that wraps a legacy store method
+    and exposes the legacy signature will look "not opted in" even if
+    the wrapper itself would accept ``context``. This matches the
+    behavior callers expect — the wrapped callable signature is the
+    authoritative contract.
+    """
+    try:
+        sig = inspect.signature(method)
+    except (TypeError, ValueError):
+        return False
+    allowed = {
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        inspect.Parameter.KEYWORD_ONLY,
+    }
+    for param in sig.parameters.values():
+        if param.kind == inspect.Parameter.VAR_KEYWORD:
+            return True
+        if param.name == "context" and param.kind in allowed:
+            return True
+    return False
+
+
 async def _handle_test_controller(
-    store: TestControllerStore, params: dict[str, Any]
+    store: TestControllerStore,
+    params: dict[str, Any],
+    context: ToolContext | None = None,
 ) -> dict[str, Any]:
-    """Dispatch a comply_test_controller request to the store."""
+    """Dispatch a comply_test_controller request to the store.
+
+    When ``context`` is supplied and the store's scenario method accepts
+    a ``context`` keyword, it's passed through — enabling header-driven
+    mock behavior composed with storyboard-driven compliance testing.
+    Methods without ``context`` in their signature keep working
+    unchanged.
+    """
     scenario = params.get("scenario")
     implemented = _list_scenarios(store)
 
@@ -201,29 +305,37 @@ async def _handle_test_controller(
     method = getattr(store, scenario)
     scenario_params = params.get("params", {})
 
+    extra: dict[str, Any] = {}
+    if context is not None and _accepts_context_kwarg(method):
+        extra["context"] = context
+
     try:
         if scenario == "force_creative_status":
             result = await method(
                 creative_id=scenario_params["creative_id"],
                 status=scenario_params["status"],
                 rejection_reason=scenario_params.get("rejection_reason"),
+                **extra,
             )
         elif scenario == "force_account_status":
             result = await method(
                 account_id=scenario_params["account_id"],
                 status=scenario_params["status"],
+                **extra,
             )
         elif scenario == "force_media_buy_status":
             result = await method(
                 media_buy_id=scenario_params["media_buy_id"],
                 status=scenario_params["status"],
                 rejection_reason=scenario_params.get("rejection_reason"),
+                **extra,
             )
         elif scenario == "force_session_status":
             result = await method(
                 session_id=scenario_params["session_id"],
                 status=scenario_params["status"],
                 termination_reason=scenario_params.get("termination_reason"),
+                **extra,
             )
         elif scenario == "simulate_delivery":
             result = await method(
@@ -232,12 +344,14 @@ async def _handle_test_controller(
                 clicks=scenario_params.get("clicks"),
                 conversions=scenario_params.get("conversions"),
                 reported_spend=scenario_params.get("reported_spend"),
+                **extra,
             )
         elif scenario == "simulate_budget_spend":
             result = await method(
                 spend_percentage=scenario_params["spend_percentage"],
                 account_id=scenario_params.get("account_id"),
                 media_buy_id=scenario_params.get("media_buy_id"),
+                **extra,
             )
         else:
             return _controller_error("UNKNOWN_SCENARIO", f"Unknown scenario: {scenario}")
@@ -260,7 +374,12 @@ async def _handle_test_controller(
     return dict(result)
 
 
-def register_test_controller(mcp: Any, store: TestControllerStore) -> None:
+def register_test_controller(
+    mcp: Any,
+    store: TestControllerStore,
+    *,
+    context_factory: ContextFactory | None = None,
+) -> None:
     """Register the comply_test_controller tool on an MCP server.
 
     This is the Python equivalent of the JS SDK's registerTestController().
@@ -269,6 +388,15 @@ def register_test_controller(mcp: Any, store: TestControllerStore) -> None:
     Args:
         mcp: A FastMCP server instance.
         store: Your TestControllerStore implementation.
+        context_factory: Optional ``ContextFactory`` invoked per call to
+            build a :class:`ToolContext`. When set, the context is
+            threaded into store methods that declare a ``context``
+            keyword — which is how sellers whose test runtime reads
+            request headers (``AdCPTestContext.from_headers``) combine
+            header-driven mock state with the storyboard-driven
+            ``comply_test_controller`` skill. Wire the same factory you
+            pass to :func:`create_mcp_server` so both paths see the
+            same per-request context.
 
     Example:
         from adcp.server.test_controller import TestControllerStore, register_test_controller
@@ -288,8 +416,20 @@ def register_test_controller(mcp: Any, store: TestControllerStore) -> None:
     from mcp.server.fastmcp.utilities.func_metadata import ArgModelBase, FuncMetadata
     from pydantic import ConfigDict
 
+    from adcp.server.base import ToolContext as _ToolContext
+    from adcp.server.serve import RequestMetadata as _RequestMetadata
+
     async def comply_test_controller(**kwargs: Any) -> str:
-        result = await _handle_test_controller(store, kwargs)
+        context: _ToolContext | None = None
+        if context_factory is not None:
+            meta = _RequestMetadata(tool_name="comply_test_controller", transport="mcp")
+            context = context_factory(meta)
+            if not isinstance(context, _ToolContext):
+                raise TypeError(
+                    "context_factory for comply_test_controller returned "
+                    f"{type(context).__name__}, not a ToolContext instance"
+                )
+        result = await _handle_test_controller(store, kwargs, context=context)
         return json.dumps(result)
 
     tool = Tool.from_function(
