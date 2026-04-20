@@ -1,5 +1,37 @@
 # Changelog
 
+## [4.0.0b1] — 2026-04-20
+
+First 4.0 beta. See [MIGRATION_v3_to_v4.md](MIGRATION_v3_to_v4.md) for upgrade
+instructions and before/after examples.
+
+### Breaking changes
+
+* **Removed types (no replacement stubs):** `BrandManifest`, `FormatCategory`,
+  `DeliverTo`, `PromotedProducts`, `PromotedOfferings`, `Pricing`,
+  `PackageStatus`. These were removed upstream from the AdCP spec. Inline any
+  dict payloads, or use the spec-current replacements (`BrandReference` for
+  `BrandManifest`; `MediaBuyStatus` for the former `PackageStatus`).
+* **`ResolvedBrand.brand_manifest` field removed.** Use `ResolvedBrand.brand`.
+  The cross-populate validator that mirrored `brand` ↔ `brand_manifest` is gone.
+* **`CreateMediaBuyRequest.brand_manifest` → `brand`**, matching the spec. The
+  request now takes a `BrandReference`, not an inline brand manifest dict.
+* **Numbered discriminated-union classes renumbered.** `Assets5…Assets14`
+  from 3.x now correspond to higher-numbered variants (`Assets57…Assets149`
+  depending on the response). Import via semantic aliases from `adcp.types`
+  (e.g., `CreateMediaBuySuccessResponse`) instead of numbered classes. Raw
+  `Assets*` imports are unsupported — they are code-generation artifacts and
+  will shift again.
+
+### Non-breaking
+
+* `__version__` is now sourced from installed distribution metadata
+  (`importlib.metadata.version("adcp")`) so it always matches `pyproject.toml`.
+* Added top-level re-exports: `TargetingOverlay`, `AdvertiserIndustry`,
+  `KellerType`, `BrandSource`. Any generated type not on the top-level
+  surface is available from `adcp.types` — `adcp.types.generated_poc.*`
+  is internal and not supported for direct import.
+
 ## [3.12.0](https://github.com/adcontextprotocol/adcp-client-python/compare/v3.11.0...v3.12.0) (2026-04-16)
 
 

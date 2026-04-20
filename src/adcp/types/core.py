@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Protocol(str, Enum):
@@ -199,20 +199,7 @@ class ResolvedBrand(BaseModel):
     house_name: str | None = None
     brand_agent_url: str | None = None
     brand: dict[str, Any] | None = None
-    brand_manifest: dict[str, Any] | None = None
     source: str
-
-    @model_validator(mode="before")
-    @classmethod
-    def _normalize_brand_fields(cls, data: Any) -> Any:
-        """Cross-populate brand and brand_manifest so both names are always accessible."""
-        if isinstance(data, dict):
-            data = dict(data)
-            if "brand" in data and "brand_manifest" not in data:
-                data["brand_manifest"] = data["brand"]
-            elif "brand_manifest" in data and "brand" not in data:
-                data["brand"] = data["brand_manifest"]
-        return data
 
 
 class Member(BaseModel):

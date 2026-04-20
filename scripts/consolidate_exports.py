@@ -254,10 +254,10 @@ def generate_consolidated_exports() -> str:
     # Kept so existing code importing them continues to work.
     # Model stubs accept any payload (extra="allow").
     # PromotedOfferingsRequirement is preserved as an Enum since it was one upstream.
-    # No backward-compat stubs. The 3.0.0-rc3 SDK surface matches the
-    # 3.0.0-rc3 spec. Removed types (BrandManifest, PromotedOfferings,
-    # DeliverTo, Pricing, FormatCategory, PackageStatus, etc.) are
-    # documented in the CHANGELOG migration guide.
+    # No backward-compat stubs. The SDK surface matches the spec directly.
+    # Removed types (BrandManifest, PromotedOfferings, DeliverTo, Pricing,
+    # FormatCategory, PackageStatus, etc.) are documented in
+    # MIGRATION_v3_to_v4.md.
 
     # Format __all__ list with proper line breaks (max 100 chars per line)
     # Exclude private names that are alias targets (internal intermediates only).

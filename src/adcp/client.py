@@ -1175,7 +1175,7 @@ class ADCPClient:
 
         Args:
             request: Media buy creation parameters including:
-                - brand_manifest: Advertiser brand information and creative assets
+                - brand: Brand reference; resolved from brand.json or the registry at execution
                 - packages: List of package requests specifying desired inventory
                 - publisher_properties: Target properties for ad placement
                 - budget: Optional budget constraints
@@ -1189,12 +1189,12 @@ class ADCPClient:
                 - Additional platform-specific metadata
 
         Example:
-            >>> from adcp import ADCPClient, CreateMediaBuyRequest
+            >>> from adcp import ADCPClient, CreateMediaBuyRequest, BrandReference
             >>> client = ADCPClient(agent_config)
             >>> request = CreateMediaBuyRequest(
-            ...     brand_manifest=brand,
+            ...     brand=BrandReference(domain="acme.com"),
             ...     packages=[package_request],
-            ...     publisher_properties=properties
+            ...     publisher_properties=properties,
             ... )
             >>> result = await client.create_media_buy(request)
             >>> if result.success:

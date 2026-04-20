@@ -95,8 +95,7 @@ def _build_error_data(
         data["details"] = details
     if errors:
         data["errors"] = [
-            e.model_dump(exclude_none=True) if hasattr(e, "model_dump") else e
-            for e in errors
+            e.model_dump(exclude_none=True) if hasattr(e, "model_dump") else e for e in errors
         ]
     return data
 
@@ -163,9 +162,12 @@ def translate_error(
     if proto == "mcp":
         return _to_mcp(code, message, suggestion=suggestion)
     return _to_a2a(
-        code, message,
-        recovery=recovery, suggestion=suggestion,
-        details=details, errors=errors,
+        code,
+        message,
+        recovery=recovery,
+        suggestion=suggestion,
+        details=details,
+        errors=errors,
     )
 
 
@@ -193,9 +195,12 @@ def _to_a2a(
 ) -> ServerError:
     """Format error as a ServerError for A2A servers."""
     data = _build_error_data(
-        code, message,
-        recovery=recovery, suggestion=suggestion,
-        details=details, errors=errors,
+        code,
+        message,
+        recovery=recovery,
+        suggestion=suggestion,
+        details=details,
+        errors=errors,
     )
 
     # Use InvalidParamsError for correctable errors (client can fix),
@@ -242,6 +247,10 @@ def _normalize_brand_manifest(params: dict[str, Any]) -> None:
 
     Old format: ``brand_manifest: "https://example.com/brand.json"``
     New format: ``brand: {domain: "example.com"}``
+
+    Kept as a wire-level shim so 3.x clients can keep talking to 4.x servers.
+    The field is removed from the SDK type system; only tool-boundary
+    translation accepts the legacy name.
     """
     if "brand_manifest" not in params:
         return
@@ -321,8 +330,7 @@ def normalize_request(
     # Package-level transforms (deep copy the packages list)
     if "packages" in result and isinstance(result["packages"], list):
         result["packages"] = [
-            dict(pkg) if isinstance(pkg, dict) else pkg
-            for pkg in result["packages"]
+            dict(pkg) if isinstance(pkg, dict) else pkg for pkg in result["packages"]
         ]
         _normalize_packages(result)
 

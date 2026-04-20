@@ -473,7 +473,7 @@ class ResolvedBrand(RegistryBaseModel):
     house_domain: str | None = None
     house_name: str | None = None
     brand_agent_url: str | None = None
-    brand_manifest: dict[str, Any] | None = None
+    brand: dict[str, Any] | None = None
     source: BrandSource
 
 
