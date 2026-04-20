@@ -516,18 +516,15 @@ def create_a2a_server(
     if task_store is None:
         task_store = InMemoryTaskStore()
 
-    request_handler_kwargs: dict[str, Any] = {
-        "agent_executor": executor,
-        "task_store": task_store,
-    }
-    if push_config_store is not None:
-        # Only forward when explicitly provided — DefaultRequestHandler's
-        # default is its own in-memory store, which is what we want as
-        # the no-op path. Passing ``None`` disables push-notifications
-        # entirely in some a2a-sdk versions.
-        request_handler_kwargs["push_config_store"] = push_config_store
-
-    request_handler = DefaultRequestHandler(**request_handler_kwargs)
+    # DefaultRequestHandler stores push_config_store verbatim and treats
+    # None as "push-notif endpoints unsupported" (UnsupportedOperationError
+    # on tasks/pushNotificationConfig/*). Passing None is the correct
+    # default; sellers opt in by wiring a store.
+    request_handler = DefaultRequestHandler(
+        agent_executor=executor,
+        task_store=task_store,
+        push_config_store=push_config_store,
+    )
 
     a2a_app = A2AStarletteApplication(
         agent_card=agent_card,

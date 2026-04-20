@@ -737,3 +737,132 @@ async def test_sqlite_push_config_store_isolates_scopes_by_contextvar():
             )
         finally:
             scope_var.reset(tok_a2)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="a2a-sdk starlette integration requires Python 3.11+",
+)
+async def test_custom_push_config_store_receives_sets_from_handler():
+    """Behavioral test (parallel to ``test_custom_task_store_receives_saves_from_skill_dispatch``).
+    If a2a-sdk ever renames or bypasses ``DefaultRequestHandler._push_config_store``
+    while leaving the attribute intact, the attribute-identity check in
+    the earlier test passes while production calls skip our store
+    entirely. This asserts the handler's
+    ``on_set_task_push_notification_config`` actually routes set-info
+    through our store."""
+    import contextlib as _ctxlib
+
+    from a2a.types import (
+        PushNotificationConfig,
+        TaskPushNotificationConfig,
+    )
+    from a2a.utils.errors import ServerError
+
+    push_store = _RecordingPushConfigStore()
+    # Need a populated TaskStore because on_set validates the task exists
+    # before forwarding to push_config_store.set_info. Pre-seed a task.
+    task_store = _RecordingTaskStore()
+    from a2a.types import TaskStatus
+
+    await task_store.save(Task(id="task-1", context_id="ctx-1", status=TaskStatus(state="working")))
+
+    app = create_a2a_server(
+        _TestHandler(),
+        name="behavioral-push",
+        task_store=task_store,
+        push_config_store=push_store,
+    )
+    handler = _extract_default_request_handler(app)
+
+    params = TaskPushNotificationConfig(
+        task_id="task-1",
+        push_notification_config=PushNotificationConfig(
+            id="cfg-1", url="https://callback.example/hook"
+        ),
+    )
+    with _ctxlib.suppress(ServerError):
+        await handler.on_set_task_push_notification_config(params)
+
+    assert ("task-1", "cfg-1") in push_store.sets, (
+        "DefaultRequestHandler.on_set_task_push_notification_config did not "
+        "route to our custom push_config_store. The kwarg is wired but not "
+        "exercised at runtime."
+    )
+
+
+async def test_sqlite_push_config_store_warns_once_on_anonymous_scope():
+    """Reference impl must fail LOUD when the scope_provider returns
+    None — silent fall-through to the anonymous bucket is the
+    multi-tenant footgun security review flagged. Warning fires once
+    per store instance (not per call) so operators notice without
+    flooding logs."""
+    import importlib.util
+    import tempfile
+    import warnings as _warnings
+    from pathlib import Path
+
+    from a2a.types import PushNotificationConfig
+
+    example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
+    spec = importlib.util.spec_from_file_location("_a2a_db_tasks_ex_warn", example_path)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "anon.db"
+        # Force the anonymous path by supplying a provider that always
+        # returns None.
+        store = mod.SqlitePushNotificationConfigStore(db_path=db, scope_provider=lambda: None)
+
+        cfg = PushNotificationConfig(url="https://x.example/hook")
+        with _warnings.catch_warnings(record=True) as caught:
+            _warnings.simplefilter("always")
+            await store.set_info("task-1", cfg)
+            await store.set_info("task-2", cfg)
+            await store.set_info("task-3", cfg)
+
+        anon_warnings = [w for w in caught if "SqlitePushNotificationConfigStore" in str(w.message)]
+        assert len(anon_warnings) == 1, (
+            "Anonymous-scope warning should fire exactly once per store "
+            f"instance, got {len(anon_warnings)}."
+        )
+
+
+async def test_sqlite_push_config_store_synthesises_config_id_when_omitted():
+    """Client not supplying ``PushNotificationConfig.id`` must not cause
+    two registrations on the same task to overwrite each other via
+    INSERT OR REPLACE collision on the composite PK. Reference impl
+    synthesises a UUID; two sets should produce two rows."""
+    import importlib.util
+    import tempfile
+    from pathlib import Path
+
+    from a2a.types import PushNotificationConfig
+
+    example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
+    spec = importlib.util.spec_from_file_location("_a2a_db_tasks_ex_uuid", example_path)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "uuid.db"
+        store = mod.SqlitePushNotificationConfigStore(db_path=db, scope_provider=lambda: "tenant-a")
+
+        await store.set_info(
+            "shared-task",
+            PushNotificationConfig(url="https://first.example/hook"),
+        )
+        await store.set_info(
+            "shared-task",
+            PushNotificationConfig(url="https://second.example/hook"),
+        )
+
+        configs = await store.get_info("shared-task")
+        assert len(configs) == 2, (
+            "Two set_info calls with id=None collapsed into one row — the "
+            "fallback config_id must synthesise a unique value to prevent "
+            "silent overwrite."
+        )
