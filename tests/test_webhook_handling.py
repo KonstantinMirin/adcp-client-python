@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re as _re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1197,12 +1198,16 @@ class TestExtractWebhookResultData:
         assert result["errors"][0]["code"] == "INTERNAL_ERROR"
 
 
-# Load official AdCP HMAC test vectors from fixtures
-# Source: adcontextprotocol/adcp PR #1383
+# Load official AdCP HMAC test vectors from fixtures.
+# Source: adcontextprotocol/adcp PR #2478 (merged 2026-04-20), which pins the
+# canonical on-wire JSON form (compact separators) and adds rejection vectors
+# including the signer/serialization-mismatch case. Upstream file:
+# https://github.com/adcontextprotocol/adcp/blob/main/static/test-vectors/webhook-hmac-sha256.json
 _VECTORS_PATH = Path(__file__).parent / "fixtures" / "webhook-hmac-sha256.json"
 _VECTORS_DATA = json.loads(_VECTORS_PATH.read_text())
 HMAC_TEST_VECTORS_SECRET = _VECTORS_DATA["secret"]
 HMAC_TEST_VECTORS = _VECTORS_DATA["vectors"]
+HMAC_REJECTION_VECTORS = _VECTORS_DATA.get("rejection_vectors", [])
 
 
 class TestHMACTestVectors:
@@ -1435,5 +1440,91 @@ class TestHMACTestVectors:
         )
 
         assert result is False
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_REJECTION_VECTORS,
+        ids=[v["description"] for v in HMAC_REJECTION_VECTORS],
+    )
+    def test_rejection_vectors_do_not_collapse_to_positive(self, vector):
+        """Mirrors the upstream adcp#2478 CI: for each rejection vector whose
+        claimed signature has a well-formed `sha256=<hex>` shape, verify that
+        a correctly-computed HMAC over the claimed raw_body does NOT match
+        the claimed signature — otherwise the rejection vector silently
+        collapses into a positive case and stops catching what it claims to.
+        """
+        import hashlib
+        import hmac as _hmac
+
+        sig = vector.get("signature")
+        raw_body = vector.get("raw_body")
+        timestamp = vector.get("timestamp")
+
+        # Skip structural-rejection cases where the signature is empty, None,
+        # has prefix mismatches, or isn't a numeric HMAC (e.g. the
+        # "sha256=valid_but_irrelevant" or "Double sha256= prefix" vectors).
+        # Those are documented for verifier implementers but not computable.
+        if not isinstance(sig, str) or not sig:
+            pytest.skip("non-computable rejection shape")
+        if not _re.fullmatch(r"sha(256|512)=[0-9a-f]+", sig):
+            pytest.skip("malformed rejection signature — structural, not computational")
+        if not isinstance(timestamp, int) or raw_body is None:
+            pytest.skip("missing raw_body or timestamp")
+
+        message = f"{timestamp}.{raw_body}"
+        computed = (
+            "sha256="
+            + _hmac.new(
+                HMAC_TEST_VECTORS_SECRET.encode("utf-8"),
+                message.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+        )
+
+        assert computed != sig, (
+            f"Rejection vector {vector['description']!r} collapses into a "
+            "positive case — the claimed signature is a correct HMAC over "
+            "the claimed raw_body. Fix the vector upstream."
+        )
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_REJECTION_VECTORS,
+        ids=[v["description"] for v in HMAC_REJECTION_VECTORS],
+    )
+    @pytest.mark.asyncio
+    async def test_verifier_rejects_upstream_rejection_vectors(self, vector):
+        """The verifier MUST reject every upstream rejection vector that
+        provides enough context to run end-to-end (signature + raw_body +
+        numeric timestamp). This is the behavioral mirror of the
+        computational check above: not just "the claimed sig doesn't match"
+        but "our verifier returns False."
+        """
+        sig = vector.get("signature")
+        raw_body = vector.get("raw_body")
+        timestamp = vector.get("timestamp")
+
+        if not isinstance(sig, str) or not sig:
+            pytest.skip("non-computable rejection shape")
+        if raw_body is None or not isinstance(timestamp, int):
+            pytest.skip("vector missing raw_body or timestamp")
+
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(
+            config,
+            webhook_secret=HMAC_TEST_VECTORS_SECRET,
+            webhook_timestamp_tolerance=10**10,
+        )
+        result = client._verify_webhook_signature(
+            payload={},
+            signature=sig,
+            timestamp=str(timestamp),
+            raw_body=raw_body,
+        )
+        assert result is False, f"Verifier accepted rejection vector {vector['description']!r}"
 
 
