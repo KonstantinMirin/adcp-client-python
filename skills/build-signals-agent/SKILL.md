@@ -251,18 +251,45 @@ async def activate_signal(self, params, context=None):
 
 Marketplace signals agents with compliance review flows MUST also implement `sync_accounts` and `sync_governance`. The `signal_marketplace/governance_denied` sub-track exercises both — without them, the storyboard fails before it reaches activation. Skip for pure owned-data agents.
 
+Minimal stub bodies — paste into your handler class. The `accounts` dict is whatever in-memory store your agent already uses.
+
 ```python
+import uuid
+
 from adcp.server.responses import sync_accounts_response, sync_governance_response
 
 async def sync_accounts(self, params, context=None):
-    # Echo brand + operator back; assign an account_id, store, return "active".
-    # See examples/seller_agent.py for the full shape.
-    return sync_accounts_response([...])
+    results = []
+    for acct in params.get("accounts", []):
+        account_id = f"acct-{uuid.uuid4().hex[:8]}"
+        accounts[account_id] = {
+            "status": "active",
+            "brand": acct.get("brand"),
+            "operator": acct.get("operator"),
+        }
+        results.append({
+            "account_id": account_id,
+            "brand": acct.get("brand"),
+            "operator": acct.get("operator"),
+            "action": "created",
+            "status": "active",
+            "account_scope": "operator_brand",
+        })
+    return sync_accounts_response(results)
 
 async def sync_governance(self, params, context=None):
-    # Echo account + governance_agents (url + categories) back as "synced".
-    # See examples/seller_agent.py for the full shape.
-    return sync_governance_response([...])
+    results = []
+    for entry in params.get("accounts", []):
+        agents = entry.get("governance_agents", [])
+        results.append({
+            "account": entry.get("account", {}),
+            "status": "synced",
+            "governance_agents": [
+                {"url": a.get("url"), "categories": a.get("categories", [])}
+                for a in agents
+            ],
+        })
+    return sync_governance_response(results)
 ```
 
 Required to PASS `signal_marketplace/governance_denied`.
