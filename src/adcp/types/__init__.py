@@ -336,6 +336,8 @@ from adcp.types._generated import (
     SyncCreativesResponse,
     SyncEventSourcesRequest,
     SyncEventSourcesResponse,
+    SyncGovernanceRequest,
+    SyncGovernanceResponse,
     SyncPlansRequest,
     SyncPlansResponse,
     Tags,
@@ -585,8 +587,7 @@ class MediaSubAsset:
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         raise TypeError(
-            "MediaSubAsset was removed from the ADCP schema. "
-            "There is no direct replacement."
+            "MediaSubAsset was removed from the ADCP schema. " "There is no direct replacement."
         )
 
 
@@ -595,8 +596,7 @@ class TextSubAsset:
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         raise TypeError(
-            "TextSubAsset was removed from the ADCP schema. "
-            "There is no direct replacement."
+            "TextSubAsset was removed from the ADCP schema. " "There is no direct replacement."
         )
 
 
@@ -730,6 +730,8 @@ __all__ = [
     "GetPlanAuditLogsResponse",
     "ReportPlanOutcomeRequest",
     "ReportPlanOutcomeResponse",
+    "SyncGovernanceRequest",
+    "SyncGovernanceResponse",
     "SyncPlansRequest",
     "SyncPlansResponse",
     # Forecasting types

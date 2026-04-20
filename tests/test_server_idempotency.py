@@ -42,9 +42,7 @@ class TestCanonicalize:
         assert a != b
 
     def test_strip_idempotency_key(self) -> None:
-        stripped = strip_excluded_fields(
-            {"idempotency_key": "abc123def456ghi7", "brand": "acme"}
-        )
+        stripped = strip_excluded_fields({"idempotency_key": "abc123def456ghi7", "brand": "acme"})
         assert stripped == {"brand": "acme"}
 
     def test_strip_context(self) -> None:
@@ -100,9 +98,7 @@ class TestCanonicalize:
         # Regression guard — if a maintainer adds fields to EXCLUDED_FIELDS
         # without updating the spec, the test surfaces it. This test locks the
         # closed set to what's actually in the spec.
-        assert EXCLUDED_FIELDS == frozenset(
-            {"idempotency_key", "context", "governance_context"}
-        )
+        assert EXCLUDED_FIELDS == frozenset({"idempotency_key", "context", "governance_context"})
 
 
 class TestMemoryBackend:
@@ -129,9 +125,7 @@ class TestMemoryBackend:
     @pytest.mark.asyncio
     async def test_expired_entry_returns_none_and_evicts(self) -> None:
         backend = MemoryBackend()
-        entry = CachedResponse(
-            payload_hash="abc", response={}, expires_at_epoch=time.time() - 1
-        )
+        entry = CachedResponse(payload_hash="abc", response={}, expires_at_epoch=time.time() - 1)
         await backend.put("principal-a", "key-1", entry)
         assert await backend.get("principal-a", "key-1") is None
         # Lazy eviction should have removed it.
@@ -160,12 +154,8 @@ class TestMemoryBackend:
     async def test_delete_expired_sweeps(self) -> None:
         backend = MemoryBackend()
         now = time.time()
-        await backend.put(
-            "principal-a", "fresh", CachedResponse("h", {}, now + 60)
-        )
-        await backend.put(
-            "principal-a", "stale", CachedResponse("h", {}, now - 1)
-        )
+        await backend.put("principal-a", "fresh", CachedResponse("h", {}, now + 60))
+        await backend.put("principal-a", "stale", CachedResponse("h", {}, now - 1))
         removed = await backend.delete_expired(now)
         assert removed == 1
         assert await backend._size() == 1
@@ -183,9 +173,7 @@ class TestMemoryBackend:
             )
 
         await asyncio.gather(*[writer(i) for i in range(50)])
-        hits = await asyncio.gather(
-            *[backend.get("principal", f"key-{i}") for i in range(50)]
-        )
+        hits = await asyncio.gather(*[backend.get("principal", f"key-{i}") for i in range(50)])
         assert all(h is not None for h in hits)
         assert all(h.response["i"] == i for i, h in enumerate(hits))  # type: ignore[union-attr]
 
@@ -272,12 +260,8 @@ class TestIdempotencyStoreWrap:
         wrapped = store.wrap(_FakeHandler.create_media_buy)
         key = str(uuid.uuid4())
         ctx = ToolContext(caller_identity="principal-a")
-        r1 = await wrapped(
-            handler, {"idempotency_key": key, "brand": "A", "context": "ctx1"}, ctx
-        )
-        r2 = await wrapped(
-            handler, {"idempotency_key": key, "brand": "A", "context": "ctx2"}, ctx
-        )
+        r1 = await wrapped(handler, {"idempotency_key": key, "brand": "A", "context": "ctx1"}, ctx)
+        r2 = await wrapped(handler, {"idempotency_key": key, "brand": "A", "context": "ctx2"}, ctx)
         assert r1 == r2
         assert handler.call_count == 1
 
@@ -430,9 +414,7 @@ class TestCachedResponseImmutability:
 
 class TestBackendPutFailure:
     @pytest.mark.asyncio
-    async def test_put_failure_logs_warning_and_returns_handler_result(
-        self, caplog: Any
-    ) -> None:
+    async def test_put_failure_logs_warning_and_returns_handler_result(self, caplog: Any) -> None:
         import logging as _logging
 
         class BrokenBackend(MemoryBackend):
@@ -444,9 +426,7 @@ class TestBackendPutFailure:
         wrapped = store.wrap(_FakeHandler.create_media_buy)
         ctx = ToolContext(caller_identity="principal-a")
         with caplog.at_level(_logging.WARNING, logger="adcp.server.idempotency.store"):
-            result = await wrapped(
-                handler, {"idempotency_key": str(uuid.uuid4()), "b": 1}, ctx
-            )
+            result = await wrapped(handler, {"idempotency_key": str(uuid.uuid4()), "b": 1}, ctx)
         assert result["media_buy_id"] == "mb_1"  # handler ran, result returned
         assert any("cache put failed" in rec.message for rec in caplog.records)
 
@@ -523,9 +503,7 @@ class TestWireTranslation:
         task = captured[0]
         assert task.status.state == TaskState.failed
         assert task.artifacts, "failed task missing artifacts"
-        data_parts = [
-            p.root for p in task.artifacts[0].parts if isinstance(p.root, DataPart)
-        ]
+        data_parts = [p.root for p in task.artifacts[0].parts if isinstance(p.root, DataPart)]
         assert data_parts, "failed task missing DataPart"
         adcp_error = data_parts[0].data.get("adcp_error")
         assert adcp_error is not None
@@ -543,14 +521,18 @@ def _make_context_shim() -> Any:
 class TestCapability:
     def test_capability_fragment(self) -> None:
         store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
-        assert store.capability() == {"replay_ttl_seconds": 86400}
+        # ``supported`` became REQUIRED on adcp.idempotency in 3.0 GA.
+        assert store.capability() == {"supported": True, "replay_ttl_seconds": 86400}
 
     def test_capabilities_response_accepts_idempotency(self) -> None:
         from adcp.server.responses import capabilities_response
 
         store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
         resp = capabilities_response(["media_buy"], idempotency=store.capability())
-        assert resp["adcp"]["idempotency"] == {"replay_ttl_seconds": 86400}
+        assert resp["adcp"]["idempotency"] == {
+            "supported": True,
+            "replay_ttl_seconds": 86400,
+        }
 
     def test_capabilities_response_idempotency_omitted_when_none(self) -> None:
         from adcp.server.responses import capabilities_response
@@ -575,11 +557,11 @@ class TestCapability:
 
     def test_ttl_minimum_accepted(self) -> None:
         store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=3600)
-        assert store.capability() == {"replay_ttl_seconds": 3600}
+        assert store.capability() == {"supported": True, "replay_ttl_seconds": 3600}
 
     def test_ttl_maximum_accepted(self) -> None:
         store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=604800)
-        assert store.capability() == {"replay_ttl_seconds": 604800}
+        assert store.capability() == {"supported": True, "replay_ttl_seconds": 604800}
 
 
 class TestTTLExpiry:

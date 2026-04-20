@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re as _re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -197,6 +198,7 @@ class TestMCPWebhooks:
             operation_id="op_333",
             signature=signature,
             timestamp=header_timestamp,
+            raw_body=payload_json.encode("utf-8"),
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -287,6 +289,7 @@ class TestMCPWebhooks:
             operation_id="op_ts1",
             signature=signature,
             timestamp=header_timestamp,
+            raw_body=payload_json.encode("utf-8"),
         )
 
         assert result.status == TaskStatus.COMPLETED
@@ -1190,12 +1193,16 @@ class TestExtractWebhookResultData:
         assert result["errors"][0]["code"] == "INTERNAL_ERROR"
 
 
-# Load official AdCP HMAC test vectors from fixtures
-# Source: adcontextprotocol/adcp PR #1383
+# Load official AdCP HMAC test vectors from fixtures.
+# Source: adcontextprotocol/adcp PR #2478 (merged 2026-04-20), which pins the
+# canonical on-wire JSON form (compact separators) and adds rejection vectors
+# including the signer/serialization-mismatch case. Upstream file:
+# https://github.com/adcontextprotocol/adcp/blob/main/static/test-vectors/webhook-hmac-sha256.json
 _VECTORS_PATH = Path(__file__).parent / "fixtures" / "webhook-hmac-sha256.json"
 _VECTORS_DATA = json.loads(_VECTORS_PATH.read_text())
 HMAC_TEST_VECTORS_SECRET = _VECTORS_DATA["secret"]
 HMAC_TEST_VECTORS = _VECTORS_DATA["vectors"]
+HMAC_REJECTION_VECTORS = _VECTORS_DATA.get("rejection_vectors", [])
 
 
 class TestHMACTestVectors:
@@ -1247,11 +1254,12 @@ class TestHMACTestVectors:
             pytest.skip("non-JSON raw_body")
             return
 
-        # If json.dumps(payload_dict) reproduces the raw_body exactly,
-        # then get_adcp_signed_headers_for_webhook should match
-        reserialized = json.dumps(payload_dict)
+        # The signer writes compact-separator bytes (matching httpx json=),
+        # so the test vector only round-trips cleanly when its raw_body was
+        # captured in the same form. Skip vectors that used spaced/pretty JSON.
+        reserialized = json.dumps(payload_dict, separators=(",", ":"))
         if reserialized != raw_body:
-            pytest.skip("raw_body uses different serialization than json.dumps default")
+            pytest.skip("raw_body uses different serialization than compact json.dumps")
             return
 
         headers = get_adcp_signed_headers_for_webhook(
@@ -1263,6 +1271,105 @@ class TestHMACTestVectors:
 
         assert headers["X-AdCP-Signature"] == expected
         assert headers["X-AdCP-Timestamp"] == str(timestamp)
+
+    @pytest.mark.asyncio
+    async def test_verify_fails_closed_when_raw_body_missing(self):
+        """Per adcontextprotocol/adcp#2478, verifiers MUST fail closed when
+        they cannot capture raw body bytes. Re-serializing a parsed payload
+        to reconstruct the signed bytes silently fails against signers whose
+        output differs in separator choice, key order, unicode escape policy,
+        or number formatting — masking the signer bugs the verifier should
+        surface.
+        """
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(config, webhook_secret="test_secret")
+
+        import hashlib
+        import hmac
+
+        valid_payload = {
+            "idempotency_key": "whk_fail_closed_test",
+            "task_id": "t1",
+            "task_type": "create_media_buy",
+            "status": "completed",
+            "timestamp": "2025-01-15T10:00:00Z",
+            "result": {"media_buy_id": "mb_1", "buyer_ref": "ref_1", "packages": []},
+        }
+        # Compute what would have been a valid signature under the old
+        # re-serialize-from-payload fallback. Under the fail-closed rule,
+        # this must no longer verify — even with a real HMAC over a real
+        # serialization, if raw_body isn't captured, reject.
+        timestamp = str(int(time.time()))
+        body_bytes = json.dumps(valid_payload, separators=(",", ":")).encode("utf-8")
+        signed_message = f"{timestamp}.{body_bytes.decode('utf-8')}"
+        signature = hmac.new(
+            b"test_secret", signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        with pytest.raises(ADCPWebhookSignatureError):
+            await client.handle_webhook(
+                valid_payload,
+                task_type="create_media_buy",
+                operation_id="op_fail_closed",
+                signature=f"sha256={signature}",
+                timestamp=timestamp,
+                # raw_body intentionally omitted — MUST reject
+            )
+
+        # Same call WITH raw_body must succeed, proving the rejection is
+        # specifically about the missing raw_body, not the signature itself.
+        result = await client.handle_webhook(
+            valid_payload,
+            task_type="create_media_buy",
+            operation_id="op_fail_closed_ok",
+            signature=f"sha256={signature}",
+            timestamp=timestamp,
+            raw_body=body_bytes,
+        )
+        assert result.status == TaskStatus.COMPLETED
+
+    def test_signer_matches_httpx_json_wire_form(self):
+        """Signer must produce the same bytes httpx writes for `json=payload`.
+
+        Regression guard for the round-4 blocker: default json.dumps uses
+        ", "/": " separators while httpx writes compact ","/":" — sellers
+        using the documented ``client.post(url, json=payload, headers=signed)``
+        pattern got silent 401s. Verifying directly against httpx's wire
+        bytes means any future drift fails loudly in CI.
+        """
+        import hashlib
+        import hmac
+
+        import httpx
+
+        payload = {
+            "task_id": "task_123",
+            "status": "completed",
+            "result": {"products": [{"id": "p1", "price": 12.5}]},
+            "nested": {"a": 1, "b": None, "c": [1, 2, 3]},
+        }
+        timestamp = "1700000000"
+        secret = "test_secret"
+
+        headers = get_adcp_signed_headers_for_webhook(
+            headers={},
+            secret=secret,
+            timestamp=timestamp,
+            payload=payload,
+        )
+
+        # The bytes httpx actually sends on the wire for json=
+        httpx_wire = httpx.Request("POST", "http://localhost/", json=payload).content
+        signed_message = f"{timestamp}.{httpx_wire.decode()}"
+        expected_sig = hmac.new(
+            secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+
+        assert headers["X-AdCP-Signature"] == f"sha256={expected_sig}"
 
     @pytest.mark.parametrize(
         "vector",
@@ -1329,3 +1436,89 @@ class TestHMACTestVectors:
         )
 
         assert result is False
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_REJECTION_VECTORS,
+        ids=[v["description"] for v in HMAC_REJECTION_VECTORS],
+    )
+    def test_rejection_vectors_do_not_collapse_to_positive(self, vector):
+        """Mirrors the upstream adcp#2478 CI: for each rejection vector whose
+        claimed signature has a well-formed `sha256=<hex>` shape, verify that
+        a correctly-computed HMAC over the claimed raw_body does NOT match
+        the claimed signature — otherwise the rejection vector silently
+        collapses into a positive case and stops catching what it claims to.
+        """
+        import hashlib
+        import hmac as _hmac
+
+        sig = vector.get("signature")
+        raw_body = vector.get("raw_body")
+        timestamp = vector.get("timestamp")
+
+        # Skip structural-rejection cases where the signature is empty, None,
+        # has prefix mismatches, or isn't a numeric HMAC (e.g. the
+        # "sha256=valid_but_irrelevant" or "Double sha256= prefix" vectors).
+        # Those are documented for verifier implementers but not computable.
+        if not isinstance(sig, str) or not sig:
+            pytest.skip("non-computable rejection shape")
+        if not _re.fullmatch(r"sha(256|512)=[0-9a-f]+", sig):
+            pytest.skip("malformed rejection signature — structural, not computational")
+        if not isinstance(timestamp, int) or raw_body is None:
+            pytest.skip("missing raw_body or timestamp")
+
+        message = f"{timestamp}.{raw_body}"
+        computed = (
+            "sha256="
+            + _hmac.new(
+                HMAC_TEST_VECTORS_SECRET.encode("utf-8"),
+                message.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+        )
+
+        assert computed != sig, (
+            f"Rejection vector {vector['description']!r} collapses into a "
+            "positive case — the claimed signature is a correct HMAC over "
+            "the claimed raw_body. Fix the vector upstream."
+        )
+
+    @pytest.mark.parametrize(
+        "vector",
+        HMAC_REJECTION_VECTORS,
+        ids=[v["description"] for v in HMAC_REJECTION_VECTORS],
+    )
+    @pytest.mark.asyncio
+    async def test_verifier_rejects_upstream_rejection_vectors(self, vector):
+        """The verifier MUST reject every upstream rejection vector that
+        provides enough context to run end-to-end (signature + raw_body +
+        numeric timestamp). This is the behavioral mirror of the
+        computational check above: not just "the claimed sig doesn't match"
+        but "our verifier returns False."
+        """
+        sig = vector.get("signature")
+        raw_body = vector.get("raw_body")
+        timestamp = vector.get("timestamp")
+
+        if not isinstance(sig, str) or not sig:
+            pytest.skip("non-computable rejection shape")
+        if raw_body is None or not isinstance(timestamp, int):
+            pytest.skip("vector missing raw_body or timestamp")
+
+        config = AgentConfig(
+            id="test_agent",
+            agent_uri="https://test.example.com",
+            protocol=Protocol.MCP,
+        )
+        client = ADCPClient(
+            config,
+            webhook_secret=HMAC_TEST_VECTORS_SECRET,
+            webhook_timestamp_tolerance=10**10,
+        )
+        result = client._verify_webhook_signature(
+            payload={},
+            signature=sig,
+            timestamp=str(timestamp),
+            raw_body=raw_body,
+        )
+        assert result is False, f"Verifier accepted rejection vector {vector['description']!r}"

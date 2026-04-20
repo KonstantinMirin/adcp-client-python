@@ -34,7 +34,6 @@ def serve(
     *,
     name: str = "adcp-agent",
     port: int | None = None,
-    mount: str = "/mcp",
     transport: str = "streamable-http",
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
@@ -51,7 +50,6 @@ def serve(
         handler: An ADCPHandler subclass instance with your tool implementations.
         name: Server name shown to clients / in the A2A agent card.
         port: Port to listen on. Defaults to PORT env var, then 3001.
-        mount: URL path to mount MCP endpoint on (MCP only).
         transport: ``"streamable-http"`` (default, MCP) or ``"a2a"``.
         instructions: Optional system instructions for the agent (MCP only).
         test_controller: Optional TestControllerStore instance for storyboard testing.
@@ -109,6 +107,43 @@ def serve(
         raise ValueError(f"Unknown transport {transport!r}. Valid: {valid}")
 
 
+def _bind_reusable_socket(host: str, port: int) -> Any:
+    """Create a listening socket with SO_REUSEADDR set.
+
+    Without ``SO_REUSEADDR``, rapid restarts (common during tests and
+    storyboard runs) hit ``TIME_WAIT`` on the prior socket and the new
+    process hangs on bind for up to 2×MSL (roughly a minute on macOS).
+    Setting ``SO_REUSEADDR`` on the listening socket is the standard,
+    portable fix on Linux and macOS; it is safe because listeners are
+    unique by (addr, port) and the kernel still rejects a second live
+    listener on the same tuple.
+
+    On Windows ``SO_REUSEADDR`` has different semantics (it allows
+    hijacking a live listener). FastMCP's streamable-http and uvicorn
+    support Windows, so we guard with ``SO_EXCLUSIVEADDRUSE`` there —
+    but since the ADCP server primarily targets Linux/macOS and the
+    Windows path is rarely exercised, the guard is best-effort.
+    """
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if os.name == "nt":
+            # Windows: prevent hijacking; don't set SO_REUSEADDR.
+            exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+            if exclusive is not None:
+                sock.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        else:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind((host, port))
+        sock.listen(128)
+        sock.set_inheritable(True)
+    except Exception:
+        sock.close()
+        raise
+    return sock
+
+
 def _serve_mcp(
     handler: ADCPHandler,
     *,
@@ -119,14 +154,58 @@ def _serve_mcp(
     test_controller: TestControllerStore | None,
 ) -> None:
     """Start an MCP server."""
-    mcp = create_mcp_server(handler, name=name, port=port, instructions=instructions)
+    mcp = create_mcp_server(
+        handler,
+        name=name,
+        port=port,
+        instructions=instructions,
+        include_test_controller=test_controller is not None,
+    )
 
     if test_controller is not None:
         from adcp.server.test_controller import register_test_controller
 
         register_test_controller(mcp, test_controller)
 
-    mcp.run(transport=transport)
+    if transport in ("streamable-http", "sse"):
+        _run_mcp_http(mcp, transport=transport)
+    else:
+        # stdio — no listening socket, nothing to configure.
+        mcp.run(transport=transport)
+
+
+def _run_mcp_http(mcp: Any, *, transport: str) -> None:
+    """Run FastMCP's HTTP transports with a pre-bound SO_REUSEADDR socket.
+
+    FastMCP builds its own ``uvicorn.Server(config).serve()`` inside
+    ``run_*_async`` and does not expose hooks to pass a pre-bound socket,
+    so we reproduce the minimal setup here and hand uvicorn the socket
+    directly via ``Server.serve([sock])``. This keeps the public surface
+    (``serve()``) unchanged while fixing the readiness-flake on reruns.
+    """
+    import anyio
+    import uvicorn
+
+    host = getattr(mcp.settings, "host", "0.0.0.0")
+    port = int(mcp.settings.port)
+    log_level = getattr(mcp.settings, "log_level", "INFO").lower()
+
+    if transport == "streamable-http":
+        app = mcp.streamable_http_app()
+    else:
+        app = mcp.sse_app()
+
+    sock = _bind_reusable_socket(host, port)
+    try:
+        config = uvicorn.Config(app, log_level=log_level)
+        server = uvicorn.Server(config)
+
+        async def _serve() -> None:
+            await server.serve(sockets=[sock])
+
+        anyio.run(_serve)
+    finally:
+        sock.close()
 
 
 def _serve_a2a(
@@ -143,10 +222,19 @@ def _serve_a2a(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
-    app = create_a2a_server(
-        handler, name=name, port=resolved_port, test_controller=test_controller
-    )
-    uvicorn.run(app, host="0.0.0.0", port=resolved_port)
+    app = create_a2a_server(handler, name=name, port=resolved_port, test_controller=test_controller)
+    sock = _bind_reusable_socket("0.0.0.0", resolved_port)
+    try:
+        config = uvicorn.Config(app)
+        server = uvicorn.Server(config)
+        import anyio
+
+        async def _serve() -> None:
+            await server.serve(sockets=[sock])
+
+        anyio.run(_serve)
+    finally:
+        sock.close()
 
 
 def create_mcp_server(
@@ -155,6 +243,7 @@ def create_mcp_server(
     name: str = "adcp-agent",
     port: int | None = None,
     instructions: str | None = None,
+    include_test_controller: bool = False,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -166,6 +255,13 @@ def create_mcp_server(
         name: Server name.
         port: Port to listen on.
         instructions: Optional system instructions.
+        include_test_controller: When False (default), skip registering
+            ``comply_test_controller`` as a handler tool. Sellers who want
+            compliance-testing support should pass ``test_controller=`` to
+            :func:`serve`, which registers a store-backed implementation
+            via :func:`register_test_controller` and sets this flag
+            implicitly. Registering the handler stub unconditionally would
+            advertise a tool the seller didn't opt into.
 
     Returns:
         A configured FastMCP server instance. Call mcp.run() to start.
@@ -178,15 +274,22 @@ def create_mcp_server(
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
     mcp = FastMCP(name, instructions=instructions, port=resolved_port)
-    _register_handler_tools(mcp, handler)
+    _register_handler_tools(mcp, handler, include_test_controller=include_test_controller)
     return mcp
 
 
-def _register_handler_tools(mcp: Any, handler: ADCPHandler) -> None:
+def _register_handler_tools(
+    mcp: Any, handler: ADCPHandler, *, include_test_controller: bool = False
+) -> None:
     """Register all ADCP tools from a handler onto a FastMCP server."""
     tool_defs = get_tools_for_handler(handler)
     for tool_def in tool_defs:
         tool_name = tool_def["name"]
+        # Gate comply_test_controller on explicit opt-in. The handler base
+        # class has a not-supported stub; registering it as an MCP tool
+        # would advertise compliance-testing the seller didn't declare.
+        if tool_name == "comply_test_controller" and not include_test_controller:
+            continue
         description = tool_def.get("description", "")
         input_schema = tool_def.get("inputSchema", {"type": "object", "properties": {}})
         caller = create_tool_caller(handler, tool_name)

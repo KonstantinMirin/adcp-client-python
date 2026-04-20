@@ -30,6 +30,8 @@ Determine these four things. Ask the user — don't guess.
 
 **Owned** — first-party data (retailer CDP, publisher contextual, CRM). `signal_id.source: "agent"`.
 
+**Custom** — agent-native segments built on demand from models, composites, or buyer inputs. `signal_id.source: "agent"`, `signal_type: "custom"`.
+
 ### 2. What Segments?
 
 Get specifics: names, definitions, what each represents. Push for 3-5 segments with variety. Each needs:
@@ -53,8 +55,12 @@ At least one pricing option per signal:
 One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`.
 
 ```python
+import os
 from adcp.server import ADCPHandler, serve, adcp_error
 from adcp.server.responses import capabilities_response, signals_response, activate_signal_response
+
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 class MySignalsAgent(ADCPHandler):
     async def get_adcp_capabilities(self, params, context=None):
@@ -70,7 +76,7 @@ class MySignalsAgent(ADCPHandler):
             return adcp_error("SIGNAL_NOT_FOUND", f"Signal {segment_id} not found")
         return activate_signal_response(deployments)
 
-serve(MySignalsAgent(), name="my-signals-agent")
+serve(MySignalsAgent(), name="my-signals-agent", port=3001)
 ```
 
 ## Tools and Required Response Shapes
@@ -90,7 +96,11 @@ async def get_adcp_capabilities(self, params, context=None):
 1. `signal_spec` — natural language. Match against segment names and descriptions.
 2. `signal_ids` — exact lookup by ID.
 
+`get_signals` requires anyOf(`signal_spec`, `signal_ids`) per schema — an empty request is invalid.
+
 If `signal_spec` doesn't match anything specific, return all signals (discovery query).
+
+**Ordering matters when mixing signal types.** When an agent returns both marketplace and owned signals, return marketplace signals first. Storyboard runners and many buyers chain `signals[0]` into follow-up calls (activation, verification) — if `signals[0]` is an owned signal, it lacks `data_provider_domain` and the downstream call fails.
 
 ```python
 from adcp.server.responses import signals_response
@@ -108,10 +118,16 @@ async def get_signals(self, params, context=None):
         if matched:
             results = matched
 
-    # Exact ID lookup
+    # Exact ID lookup — key on (source, scope, id) where scope is agent_url
+    # for source=agent and data_provider_domain for source=catalog.
+    def _signal_key(sid: dict) -> tuple:
+        source = sid["source"]
+        scope = sid["agent_url"] if source == "agent" else sid.get("data_provider_domain", "")
+        return (source, scope, sid["id"])
+
     if signal_ids := params.get("signal_ids"):
-        id_set = {sid.get("id") or sid for sid in signal_ids}
-        results = [s for s in results if s["signal_id"]["id"] in id_set]
+        id_set = {_signal_key(sid) for sid in signal_ids}
+        results = [s for s in results if _signal_key(s["signal_id"]) in id_set]
 
     # CPM filter
     filters = params.get("filters") or {}
@@ -142,7 +158,7 @@ Each signal must include:
     }],
     "signal_id": {                               # required — shape depends on type
         "source": "agent",                       # "agent" for owned, "catalog" for marketplace
-        "agent_url": "http://localhost:3001/mcp", # for owned
+        "agent_url": AGENT_URL,                  # for owned
         "id": "seg-001",
     },
     "value_type": "binary",                      # recommended: "binary" | "categorical" | "numeric"
@@ -151,6 +167,9 @@ Each signal must include:
 
 **`activate_signal`**
 ```python
+import uuid
+from datetime import datetime, timezone
+
 from adcp.server import adcp_error
 from adcp.server.responses import activate_signal_response
 
@@ -172,7 +191,7 @@ async def activate_signal(self, params, context=None):
                     "type": "segment_id",
                     "segment_id": f"plat-{uuid.uuid4().hex[:8]}",
                 },
-                "deployed_at": "2026-01-01T00:00:00Z",
+                "deployed_at": datetime.now(timezone.utc).isoformat(),
             })
         elif dest.get("type") == "agent":
             deployments.append({
@@ -184,7 +203,7 @@ async def activate_signal(self, params, context=None):
                     "key": "segment",
                     "value": segment_id,
                 },
-                "deployed_at": "2026-01-01T00:00:00Z",
+                "deployed_at": datetime.now(timezone.utc).isoformat(),
             })
 
     return activate_signal_response(deployments)
@@ -209,12 +228,51 @@ async def activate_signal(self, params, context=None):
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`.
 
+## Idempotency for activate_signal
+
+`idempotency_key` is REQUIRED on `activate_signal` per schema (`schemas/cache/signals/activate-signal-request.json`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe replays: same key + same payload returns the cached deployments; different payload returns an `IDEMPOTENCY_CONFLICT` error. Declare the capability so buyers know replays are safe.
+
+```python
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+
+store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)  # 24h per spec minimum
+
+async def get_adcp_capabilities(self, params, context=None):
+    return capabilities_response(["signals"], idempotency=store.capability())
+
+@store.wrap
+async def activate_signal(self, params, context=None):
+    # idempotency_key is required; @store.wrap dedups replays per (caller, key).
+    # Same key + same payload → cached deployments; different payload → IDEMPOTENCY_CONFLICT.
+    return activate_signal_response(deployments=[...])
+```
+
+## Governance Tracks (Optional)
+
+Marketplace signals agents with compliance review flows MUST also implement `sync_accounts` and `sync_governance`. The `signal_marketplace/governance_denied` sub-track exercises both — without them, the storyboard fails before it reaches activation. Skip for pure owned-data agents.
+
+```python
+from adcp.server.responses import sync_accounts_response, sync_governance_response
+
+async def sync_accounts(self, params, context=None):
+    # Echo brand + operator back; assign an account_id, store, return "active".
+    # See examples/seller_agent.py for the full shape.
+    return sync_accounts_response([...])
+
+async def sync_governance(self, params, context=None):
+    # Echo account + governance_agents (url + categories) back as "synced".
+    # See examples/seller_agent.py for the full shape.
+    return sync_governance_response([...])
+```
+
+Required to PASS `signal_marketplace/governance_denied`.
+
 ## Validation
 
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp signal_owned --json       # for owned data
-npx @adcp/client storyboard run http://localhost:3001/mcp signal_marketplace --json  # for marketplace
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp signal_owned --json       # for owned data
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp signal_marketplace --json  # for marketplace
 ```
 
 **Keep iterating until all steps pass.**

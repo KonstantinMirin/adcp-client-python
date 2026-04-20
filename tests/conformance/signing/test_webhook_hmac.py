@@ -33,7 +33,7 @@ def _sign_body(
     # The existing sender uses json.dumps(payload_dict) without sort_keys —
     # receiver MUST verify against the raw bytes the sender emitted, which
     # means we serialize once here and use the same bytes on both sides.
-    raw = json.dumps(payload).encode("utf-8")
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     return raw, headers, timestamp
 
 

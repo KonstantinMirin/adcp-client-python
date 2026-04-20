@@ -36,10 +36,14 @@ STANDARD_ERROR_CODES: dict[str, dict[str, str]] = {
     "BUDGET_EXHAUSTED": {"recovery": "correctable", "message": "Budget fully spent"},
     "BUDGET_EXCEEDED": {"recovery": "correctable", "message": "Would exceed budget allocation"},
     "CREATIVE_REJECTED": {"recovery": "correctable", "message": "Creative rejected"},
-    "CREATIVE_DEADLINE_EXCEEDED": {"recovery": "correctable", "message": "Creative deadline passed"},  # noqa: E501
+    "CREATIVE_DEADLINE_EXCEEDED": {
+        "recovery": "correctable",
+        "message": "Creative deadline passed",
+    },
     "AUDIENCE_TOO_SMALL": {"recovery": "correctable", "message": "Audience too small"},
     "MEDIA_BUY_NOT_FOUND": {"recovery": "correctable", "message": "Media buy not found"},
     "PACKAGE_NOT_FOUND": {"recovery": "correctable", "message": "Package not found"},
+    "SIGNAL_NOT_FOUND": {"recovery": "correctable", "message": "Signal not found"},
     "CONFLICT": {"recovery": "correctable", "message": "Revision conflict - refetch and retry"},
     "INVALID_STATE": {"recovery": "correctable", "message": "Invalid state for this operation"},
     "NOT_CANCELLABLE": {"recovery": "correctable", "message": "Cannot cancel this media buy"},
@@ -135,12 +139,19 @@ def adcp_error(
 # Public constant — servers can inspect, test against, or extend this.
 MEDIA_BUY_STATE_MACHINE: dict[str, list[str]] = {
     "pending_activation": [
-        "cancel", "update_budget", "update_dates",
-        "update_packages", "add_packages",
+        "cancel",
+        "update_budget",
+        "update_dates",
+        "update_packages",
+        "add_packages",
     ],
     "active": [
-        "pause", "cancel", "update_budget", "update_dates",
-        "update_packages", "add_packages",
+        "pause",
+        "cancel",
+        "update_budget",
+        "update_dates",
+        "update_packages",
+        "add_packages",
     ],
     "paused": ["resume", "cancel", "update_budget", "update_dates"],
     "completed": [],
@@ -286,9 +297,7 @@ def cancel_media_buy_response(
     most commonly forget.
     """
     if canceled_by not in ("buyer", "seller"):
-        raise ValueError(
-            f"canceled_by must be 'buyer' or 'seller', got {canceled_by!r}"
-        )
+        raise ValueError(f"canceled_by must be 'buyer' or 'seller', got {canceled_by!r}")
     resp: dict[str, Any] = {
         "media_buy_id": media_buy_id,
         "status": "canceled",

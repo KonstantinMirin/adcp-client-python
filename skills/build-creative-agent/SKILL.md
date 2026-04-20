@@ -50,6 +50,7 @@ One file. Subclass `ADCPHandler`, override the tools you support, call `serve()`
 
 ```python
 from adcp.server import ADCPHandler, serve
+from adcp.server.helpers import adcp_error
 from adcp.server.responses import (
     capabilities_response, creative_formats_response, sync_creatives_response,
     list_creatives_response, preview_creative_response, build_creative_response,
@@ -79,9 +80,11 @@ async def get_adcp_capabilities(self, params, context=None):
 
 **`list_creative_formats`**
 ```python
+import os
 from adcp.server.responses import creative_formats_response
 
-AGENT_URL = "http://localhost:3001/mcp"
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
 
 async def list_creative_formats(self, params, context=None):
     return creative_formats_response([
@@ -132,6 +135,7 @@ async def sync_creatives(self, params, context=None):
 
 **`list_creatives`** — query the library. Must include `pagination` and `query_summary` fields. Status must be a valid `CreativeStatus`.
 ```python
+from datetime import datetime, timezone
 from adcp.server.responses import list_creatives_response
 
 async def list_creatives(self, params, context=None):
@@ -143,14 +147,15 @@ async def list_creatives(self, params, context=None):
         format_id_set = {f.get("id", "") if isinstance(f, dict) else str(f) for f in format_ids}
         results = [c for c in results if c.get("format_id", {}).get("id") in format_id_set]
 
+    now = datetime.now(timezone.utc).isoformat()
     serialized = [
         {
             "creative_id": c["creative_id"],
             "name": c.get("name", ""),
             "format_id": c.get("format_id"),
             "status": c.get("status", "approved"),
-            "created_date": "2026-01-01T00:00:00Z",
-            "updated_date": "2026-01-01T00:00:00Z",
+            "created_date": now,
+            "updated_date": now,
         }
         for c in results
     ]
@@ -192,6 +197,7 @@ async def build_creative(self, params, context=None):
     creative = creatives.get(creative_id) if creative_id else None
 
     # Resolve target format
+    # target_format_id is canonical per spec; other names are legacy aliases accepted for compatibility.
     target_format = params.get("target_format_id") or params.get("output_format") or params.get("format_id")
 
     # Find creative by format if not found by ID
@@ -202,9 +208,9 @@ async def build_creative(self, params, context=None):
                 creative = c
                 break
 
-    # Fall back to first available
-    if not creative and creatives:
-        creative = next(iter(creatives.values()))
+    if not creative:
+        format_label = target_format.get("id", "<none>") if isinstance(target_format, dict) else (target_format or "<none>")
+        return adcp_error("CREATIVE_NOT_FOUND", f"No creative found for format {format_label}", field="target_format_id")
 
     format_id = target_format or (creative or {}).get("format_id", {})
 
@@ -242,7 +248,7 @@ Import handlers from `adcp.server`. Import response builders from `adcp.server.r
 
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp creative_lifecycle --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp creative_lifecycle --json
 ```
 
 **Keep iterating until all steps pass.**

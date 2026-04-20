@@ -3285,26 +3285,54 @@ class ADCPClient:
         Verify HMAC-SHA256 signature of webhook payload.
 
         The verification algorithm matches get_adcp_signed_headers_for_webhook:
-        1. Constructs message as "{timestamp}.{json_payload}"
-        2. Uses raw HTTP body bytes when available (preserves sender's serialization)
-        3. Falls back to json.dumps() if raw_body not provided
-        4. HMAC-SHA256 signs with the shared secret
-        5. Compares against the provided signature (with "sha256=" prefix stripped)
+        1. Constructs message as "{timestamp}.{raw_http_body_bytes}"
+        2. HMAC-SHA256 signs with the shared secret
+        3. Compares against the provided signature (with "sha256=" prefix stripped)
+           using constant-time comparison.
+
+        Per AdCP spec (adcontextprotocol/adcp#2478): verifiers MUST use the raw
+        HTTP body bytes captured before any JSON parse; they SHOULD NOT
+        re-serialize a parsed payload to reconstruct the signed bytes, because
+        re-serialization silently fails against signers whose output differs in
+        separator choice, key order, unicode escapes, or number formatting —
+        masking signer bugs the verifier should surface. Callers that genuinely
+        cannot capture raw bytes MUST fail closed.
+
+        This implementation therefore rejects verification attempts that don't
+        supply ``raw_body``. Capture it from your framework's pre-parse hook
+        (FastAPI ``Request.body()``, Flask ``request.get_data(cache=True)``,
+        aiohttp ``Request.read()``, Express ``express.raw()``).
 
         Args:
-            payload: Webhook payload dict (used as fallback if raw_body not provided)
+            payload: Parsed webhook payload dict (not used for signing; kept
+                for signature parity with callers, but verification derives
+                solely from ``raw_body``).
             signature: Signature to verify (with or without "sha256=" prefix)
             timestamp: Unix timestamp in seconds from X-AdCP-Timestamp header
-            raw_body: Raw HTTP request body bytes. When provided, used directly
-                for signature verification to avoid cross-language serialization
-                mismatches. Strongly recommended for production use.
+            raw_body: Raw HTTP request body bytes as received on the wire,
+                captured before any JSON parse. Required.
 
         Returns:
-            True if signature is valid, False otherwise
+            True if signature is valid, False otherwise (including when
+            ``raw_body`` is missing — fails closed per spec).
         """
         if not self.webhook_secret:
             logger.warning("Webhook signature verification skipped: no webhook_secret configured")
             return True
+
+        # Fail closed per adcontextprotocol/adcp#2478: verifiers that cannot
+        # capture raw bytes MUST reject, surfacing the infrastructure gap
+        # rather than silently reconstructing a signed body that may diverge
+        # from the bytes the signer actually hashed.
+        if raw_body is None:
+            logger.error(
+                "Webhook signature verification failed: raw_body is required. "
+                "Capture the raw HTTP body pre-parse and pass it to "
+                "handle_webhook(raw_body=...). See "
+                "https://adcontextprotocol.org/docs/building/implementation/security"
+                "#legacy-hmac-sha256-fallback-deprecated-removed-in-40"
+            )
+            return False
 
         # Reject stale or future timestamps to prevent replay attacks
         try:
@@ -3319,12 +3347,7 @@ class ADCPClient:
         if signature.startswith("sha256="):
             signature = signature[7:]
 
-        # Use raw body if available (avoids cross-language serialization mismatches),
-        # otherwise fall back to json.dumps() for backward compatibility
-        if raw_body is not None:
-            payload_str = raw_body.decode("utf-8") if isinstance(raw_body, bytes) else raw_body
-        else:
-            payload_str = json.dumps(payload)
+        payload_str = raw_body.decode("utf-8") if isinstance(raw_body, bytes) else raw_body
 
         # Construct signed message: timestamp.payload
         signed_message = f"{timestamp}.{payload_str}"

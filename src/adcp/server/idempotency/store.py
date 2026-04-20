@@ -83,9 +83,13 @@ class IdempotencyStore:
         retry-safe windows (AdCP #2315)::
 
             caps.adcp.idempotency = idempotency.capability()
-            # → {"replay_ttl_seconds": 86400}
+            # → {"supported": True, "replay_ttl_seconds": 86400}
+
+        ``supported`` became REQUIRED in AdCP 3.0 GA — agents emitting only
+        ``replay_ttl_seconds`` fail strict schema validation on the new
+        capabilities response.
         """
-        return {"replay_ttl_seconds": self.ttl_seconds}
+        return {"supported": True, "replay_ttl_seconds": self.ttl_seconds}
 
     def wrap(self, handler: HandlerFn) -> HandlerFn:
         """Decorator that adds idempotency semantics to an AdCP handler method.
@@ -179,9 +183,7 @@ class IdempotencyStore:
 
         return _wrapped
 
-    def _prepare(
-        self, params: Any, context: Any
-    ) -> tuple[str | None, str | None, dict[str, Any]]:
+    def _prepare(self, params: Any, context: Any) -> tuple[str | None, str | None, dict[str, Any]]:
         """Normalize inputs and extract the (principal, key, params_dict) tuple.
 
         Returns ``(None, None, params_dict)`` when idempotency doesn't apply
@@ -239,9 +241,7 @@ def _to_dict(value: Any) -> dict[str, Any]:
         return value.model_dump(mode="json", exclude_none=True)  # type: ignore[no-any-return]
     if hasattr(value, "__dict__"):
         return dict(value.__dict__)
-    raise TypeError(
-        f"Cannot coerce {type(value).__name__} to dict for idempotency caching"
-    )
+    raise TypeError(f"Cannot coerce {type(value).__name__} to dict for idempotency caching")
 
 
 def _extract_principal_id(context: Any) -> str | None:

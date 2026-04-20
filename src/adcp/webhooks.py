@@ -45,6 +45,8 @@ from a2a.types import (
     TaskStatusUpdateEvent,
 )
 
+from adcp.server.idempotency.backends import MemoryBackend as MemoryBackend
+from adcp.server.idempotency.webhook_dedup import WebhookDedupStore as WebhookDedupStore
 from adcp.signing.webhook_hmac import (
     LegacyWebhookHmacError,
     LegacyWebhookHmacOptions,
@@ -259,7 +261,26 @@ def get_adcp_signed_headers_for_webhook(
             "X-AdCP-Timestamp": "1773185740"
         }
     """
-    # Default to current Unix time if not provided
+    signature_headers, _body_bytes = _compute_legacy_signature(
+        secret=secret, timestamp=timestamp, payload=payload
+    )
+    headers.update(signature_headers)
+    return headers
+
+
+def _compute_legacy_signature(
+    *,
+    secret: str,
+    timestamp: str | int | None,
+    payload: dict[str, Any] | AdCPBaseModel,
+) -> tuple[dict[str, str], bytes]:
+    """Shared HMAC-SHA256 signing core for the legacy webhook surface.
+
+    Returns ``(signature_headers, body_bytes)`` where ``body_bytes`` is the
+    compact-separator JSON the HMAC was computed over. Callers that POST
+    must transmit exactly these bytes via ``content=body_bytes`` — that's
+    the whole point of exposing the bytes alongside the headers.
+    """
     if timestamp is None:
         import time
 
@@ -267,31 +288,64 @@ def get_adcp_signed_headers_for_webhook(
     else:
         timestamp = str(timestamp)
 
-    # Convert Pydantic model to dict if needed
-    # All AdCP types inherit from AdCPBaseModel (Pydantic BaseModel)
     if hasattr(payload, "model_dump"):
         payload_dict = payload.model_dump(mode="json")
     else:
         payload_dict = payload
 
-    # Serialize payload to JSON with default formatting (matches what json= kwarg sends on the wire)
-    # This aligns with the JS reference implementation's JSON.stringify() behavior
-    payload_json = json.dumps(payload_dict)
+    # Compact separators per adcontextprotocol/adcp#2478 canonical form.
+    payload_json = json.dumps(payload_dict, separators=(",", ":"))
+    body_bytes = payload_json.encode("utf-8")
 
-    # Construct signed message: timestamp.payload
-    # Including timestamp prevents replay attacks
     signed_message = f"{timestamp}.{payload_json}"
-
-    # Generate HMAC-SHA256 signature over timestamp + payload
     signature_hex = hmac.new(
         secret.encode("utf-8"), signed_message.encode("utf-8"), hashlib.sha256
     ).hexdigest()
 
-    # Add AdCP-compliant signature headers
-    headers["X-AdCP-Signature"] = f"sha256={signature_hex}"
-    headers["X-AdCP-Timestamp"] = timestamp
+    return (
+        {
+            "X-AdCP-Signature": f"sha256={signature_hex}",
+            "X-AdCP-Timestamp": timestamp,
+        },
+        body_bytes,
+    )
 
-    return headers
+
+def sign_legacy_webhook(
+    secret: str,
+    payload: dict[str, Any] | AdCPBaseModel,
+    *,
+    timestamp: str | int | None = None,
+    headers: dict[str, Any] | None = None,
+) -> tuple[dict[str, str], bytes]:
+    """Return ``(signed_headers, body_bytes)`` for a legacy HMAC webhook.
+
+    Byte-equality between signature input and HTTP body is guaranteed —
+    callers POST ``content=body_bytes`` instead of ``json=payload``, so the
+    separator-drift trap that caused silent 401s in every spaced-vs-compact
+    interop is structurally impossible here.
+
+    This is a lower-level companion to :func:`deliver` for callers who need
+    to own the HTTP transport themselves (custom auth, pre-configured
+    ``httpx.AsyncClient``, non-httpx clients). For the one-shot "send a
+    webhook" path, prefer :func:`deliver`.
+
+    The returned ``body_bytes`` use compact separators (``","``/``":"``)
+    matching the canonical on-wire form pinned by adcontextprotocol/adcp#2478.
+
+    Example:
+        >>> signed, body = sign_legacy_webhook("shared-secret", payload)
+        >>> headers = {**signed, "Content-Type": "application/json"}
+        >>> await client.post(url, content=body, headers=headers)
+    """
+    signature_headers, body_bytes = _compute_legacy_signature(
+        secret=secret, timestamp=timestamp, payload=payload
+    )
+    if headers is not None:
+        merged = {str(k): str(v) for k, v in headers.items()}
+        merged.update(signature_headers)
+        return merged, body_bytes
+    return signature_headers, body_bytes
 
 
 def extract_webhook_result_data(webhook_payload: dict[str, Any]) -> AdcpAsyncResponseData | None:
@@ -728,7 +782,12 @@ async def deliver(
         _validate_header_value("config.token", token)
         _inject_push_token(body_dict, token, payload, token_field)
 
-    body_bytes = json.dumps(body_dict).encode("utf-8")
+    # Compact separators so the signer and the wire see byte-identical
+    # payloads, matching the canonical on-wire form pinned by
+    # adcontextprotocol/adcp#2478. ``_compute_legacy_signature`` returns the
+    # same compact body bytes below — we serialize here for the size check
+    # and Bearer path, which both operate on the final transmitted bytes.
+    body_bytes = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
     if len(body_bytes) > _MAX_BODY_BYTES:
         raise ValueError(
             f"serialized webhook body is {len(body_bytes):,} bytes, over the "
@@ -974,6 +1033,7 @@ __all__ = [
     "create_mcp_webhook_payload",
     "generate_webhook_idempotency_key",
     "get_adcp_signed_headers_for_webhook",
+    "sign_legacy_webhook",
     # Sender — 9421 signing (low-level)
     "sign_webhook",
     # Sender — one-call outbound helpers
@@ -999,4 +1059,7 @@ __all__ = [
     "WebhookReceiverConfig",
     # Receiver — payload extraction (legacy helper)
     "extract_webhook_result_data",
+    # Dedup / idempotency backends (re-exported so one import root suffices)
+    "MemoryBackend",
+    "WebhookDedupStore",
 ]

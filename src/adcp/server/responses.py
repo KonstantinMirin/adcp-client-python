@@ -48,12 +48,15 @@ def capabilities_response(
     sandbox: bool = True,
     features: dict[str, Any] | None = None,
     idempotency: dict[str, Any] | None = None,
+    compliance_testing: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a get_adcp_capabilities response.
 
     Args:
-        supported_protocols: e.g. ["media_buy"], ["media_buy", "signals"],
-            ["media_buy", "compliance_testing"].
+        supported_protocols: e.g. ["media_buy"], ["media_buy", "signals"].
+            Valid values: media_buy, signals, governance, creative, brand,
+            sponsored_intelligence. ``compliance_testing`` is NOT a protocol —
+            pass it via the ``compliance_testing`` kwarg.
         major_versions: AdCP major versions. Defaults to [3].
         sandbox: Whether this is a sandbox agent. Defaults to True.
         features: Additional feature flags.
@@ -61,6 +64,9 @@ def capabilities_response(
             ``adcp.idempotency`` per AdCP #2315. Pass the output of
             :meth:`adcp.server.idempotency.IdempotencyStore.capability` here
             to declare the seller's ``replay_ttl_seconds``.
+        compliance_testing: Optional top-level ``compliance_testing`` block
+            to advertise compliance-testing capabilities. When provided,
+            emitted as a sibling of ``adcp`` in the response.
 
     Example::
 
@@ -83,6 +89,8 @@ def capabilities_response(
     }
     if features:
         resp["features"] = features
+    if compliance_testing is not None:
+        resp["compliance_testing"] = compliance_testing
     return resp
 
 
@@ -304,7 +312,7 @@ def sync_creatives_response(
     """Build a sync_creatives success response.
 
     Each creative dict should include: creative_id, action ("created"|"updated").
-    Optionally: status ("accepted"|"pending_review"|"rejected").
+    Optionally: status ("processing"|"pending_review"|"approved"|"rejected"|"archived").
     Matches SyncCreativesResponse1 schema (field: "creatives").
     """
     return {"creatives": creatives, "sandbox": sandbox}
@@ -320,10 +328,38 @@ def list_creatives_response(
 
     Each creative should include: creative_id, name, format_id, status.
     Matches ListCreativesResponse schema.
+
+    Timestamp defaults: every Creative item in the spec requires
+    ``created_date`` and ``updated_date`` (ISO 8601 UTC). For any dict
+    item that omits either field, this helper fills it with the current
+    UTC timestamp (``datetime.now(timezone.utc).isoformat()``). Both
+    fields default to the same value when neither is provided, which
+    matches the intuitive meaning for a freshly-listed item. Explicit
+    caller-provided values are always preserved. Pydantic model items
+    are passed through ``_serialize`` unchanged — callers using typed
+    Creative models should set timestamps on the model.
     """
-    count = len(creatives)
+    now = datetime.now(timezone.utc).isoformat()
+    filled: list[Any] = []
+    for item in creatives:
+        if isinstance(item, dict):
+            has_created = "created_date" in item and item["created_date"] is not None
+            has_updated = "updated_date" in item and item["updated_date"] is not None
+            if has_created and has_updated:
+                filled.append(item)
+                continue
+            patched = dict(item)
+            if not has_created:
+                patched["created_date"] = now
+            if not has_updated:
+                patched["updated_date"] = now
+            filled.append(patched)
+        else:
+            filled.append(item)
+
+    count = len(filled)
     return {
-        "creatives": _serialize(creatives),
+        "creatives": _serialize(filled),
         "pagination": pagination or {"total": count, "has_more": False},
         "query_summary": {"total_results": count, "total_matching": count, "returned": count},
         "sandbox": sandbox,

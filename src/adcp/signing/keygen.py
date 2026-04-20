@@ -36,7 +36,12 @@ def _encryption_algorithm(
     return serialization.BestAvailableEncryption(passphrase)
 
 
-def generate_ed25519(kid: str, passphrase: bytes | None = None) -> tuple[bytes, dict[str, Any]]:
+_ADCP_USE_VALUES = ("request-signing", "webhook-signing")
+
+
+def generate_ed25519(
+    kid: str, passphrase: bytes | None = None, adcp_use: str = "request-signing"
+) -> tuple[bytes, dict[str, Any]]:
     private = ed25519.Ed25519PrivateKey.generate()
     pem = private.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -54,14 +59,16 @@ def generate_ed25519(kid: str, passphrase: bytes | None = None) -> tuple[bytes, 
         "alg": "EdDSA",
         "use": "sig",
         "key_ops": ["verify"],
-        "adcp_use": "request-signing",
+        "adcp_use": adcp_use,
         "kid": kid,
         "x": b64url_encode(x),
     }
     return pem, jwk
 
 
-def generate_es256(kid: str, passphrase: bytes | None = None) -> tuple[bytes, dict[str, Any]]:
+def generate_es256(
+    kid: str, passphrase: bytes | None = None, adcp_use: str = "request-signing"
+) -> tuple[bytes, dict[str, Any]]:
     private = ec.generate_private_key(ec.SECP256R1())
     pem = private.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -75,7 +82,7 @@ def generate_es256(kid: str, passphrase: bytes | None = None) -> tuple[bytes, di
         "alg": "ES256",
         "use": "sig",
         "key_ops": ["verify"],
-        "adcp_use": "request-signing",
+        "adcp_use": adcp_use,
         "kid": kid,
         "x": b64url_encode(numbers.x.to_bytes(32, "big")),
         "y": b64url_encode(numbers.y.to_bytes(32, "big")),
@@ -134,6 +141,17 @@ def main(argv: list[str] | None = None) -> int:
             "default unencrypted PKCS8 (protected by mode 0600) is usually what you want."
         ),
     )
+    parser.add_argument(
+        "--purpose",
+        choices=list(_ADCP_USE_VALUES),
+        default="request-signing",
+        help=(
+            "Which AdCP signing profile this key is for (sets the JWK `adcp_use` "
+            "claim). `request-signing` for outbound tool calls; `webhook-signing` "
+            "for keys a sender uses to sign outbound webhooks to buyers. Verifiers "
+            "enforce the claim, so mixing the two silently fails at first delivery."
+        ),
+    )
     args = parser.parse_args(argv)
 
     out_path = Path(args.out)
@@ -148,10 +166,10 @@ def main(argv: list[str] | None = None) -> int:
 
     kid = args.kid or f"adcp-{args.alg}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
     if args.alg == "ed25519":
-        pem, jwk = generate_ed25519(kid, passphrase=passphrase)
+        pem, jwk = generate_ed25519(kid, passphrase=passphrase, adcp_use=args.purpose)
         alg_rfc = ALG_ED25519
     else:
-        pem, jwk = generate_es256(kid, passphrase=passphrase)
+        pem, jwk = generate_es256(kid, passphrase=passphrase, adcp_use=args.purpose)
         alg_rfc = ALG_ES256
 
     # `--force` clobbers in two steps (non-atomic on overwrite), but the

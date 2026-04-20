@@ -11,10 +11,12 @@ Wire format, matching :func:`adcp.webhooks.get_adcp_signed_headers_for_webhook`:
   f"{timestamp}.{raw_body_bytes.decode()}")``
 * ``X-AdCP-Timestamp`` — Unix epoch seconds, string
 
-The sender serializes the payload via ``json.dumps(payload_dict)`` with default
-separators, so receivers MUST verify against the raw request body bytes, not
-a re-serialized copy — JSON round-trips through a dict reorder keys and break
-the signature. Always call with ``request.body()`` / ``request.get_data()``.
+The sender serializes the payload with compact separators (``","``/``":"``)
+to match what httpx / most HTTP clients put on the wire for ``json=payload``
+(pinned in adcontextprotocol/adcp#2478). Receivers MUST verify against the
+raw request body bytes, not a re-serialized copy — JSON round-trips through
+a dict reorder keys and break the signature. Always call with
+``request.body()`` / ``request.get_data()``.
 
 **Security note — no nonce-based replay cache.** The legacy HMAC scheme binds
 only the timestamp into the signed message; unlike the 9421 profile, it has

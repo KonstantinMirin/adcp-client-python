@@ -45,6 +45,11 @@ def sign_webhook(
     The ``method`` is normally ``"POST"`` for webhook delivery; passed through
     unchanged so callers signing a retried ``PUT`` or variant delivery verb
     are not forced into an extra translation.
+
+    See also:
+        :class:`adcp.webhooks.WebhookSender` — higher-level one-call helper
+        that builds the payload, signs, and POSTs in a single call. Prefer it
+        unless you need to own the HTTP transport yourself.
     """
     return sign_request(
         method=method,

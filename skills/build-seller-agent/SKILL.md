@@ -64,7 +64,7 @@ from adcp.server.test_controller import TestControllerStore
 
 class MySeller(ADCPHandler):
     async def get_adcp_capabilities(self, params, context=None):
-        return capabilities_response(["media_buy", "compliance_testing"])
+        return capabilities_response(["media_buy"])
 
     async def get_products(self, params, context=None):
         return products_response(MY_PRODUCTS)
@@ -79,6 +79,11 @@ serve(MySeller(), name="my-seller", test_controller=MyStore())
 Every product needs `description`, `reporting_capabilities`, and `delivery_measurement` — these are required by the schema and the storyboard validator.
 
 ```python
+import os
+
+ADCP_PORT = int(os.environ.get("ADCP_PORT", 3001))
+AGENT_URL = f"http://localhost:{ADCP_PORT}/mcp"
+
 PRODUCTS = [
     {
         "product_id": "premium-homepage",
@@ -108,8 +113,6 @@ PRODUCTS = [
             "timezone": "UTC",
         },
         "delivery_measurement": {
-            "measurement_type": "server_side",
-            "verification": "internal",
             "provider": "internal",
         },
     },
@@ -160,6 +163,44 @@ class MySeller(ADCPHandler):
         ...
 ```
 
+## Emitting Webhooks
+
+Sellers emit webhooks to notify buyers asynchronously. AdCP 3.0 uses RFC 9421 HTTP Message Signatures — use `adcp.webhooks.WebhookSender` (one-call helper) or `sign_webhook` for lower-level control.
+
+**When to emit:**
+- Async-approval media buy transitions (`pending_activation` → `active`, or `→ rejected`)
+- Artifact-ready notifications after long-running operations
+- Delivery reports the buyer subscribed to via `reporting_webhook` on `create_media_buy`
+
+**Idempotency keys.** Build with `generate_webhook_idempotency_key()` (or let `send_mcp` mint one via `create_mcp_webhook_payload`). Persist per event and reuse on retry — receivers dedupe on it. Prefer `sender.resend(result)` for retries: it replays the exact signed bytes under a fresh signature.
+
+```python
+from adcp.types import GeneratedTaskStatus
+from adcp.webhooks import WebhookSender, generate_webhook_idempotency_key
+
+# JWK must include the private `d` field and `adcp_use: "webhook-signing"`.
+sender = WebhookSender.from_jwk(WEBHOOK_SIGNING_JWK)
+
+async def notify_media_buy_active(webhook_url: str, mb_id: str, mb: dict) -> None:
+    idem_key = generate_webhook_idempotency_key()  # persist per-event; reuse on retry
+    async with sender:
+        result = await sender.send_mcp(
+            url=webhook_url,
+            task_id=mb_id,
+            task_type="create_media_buy",
+            status=GeneratedTaskStatus.completed,
+            result={"media_buy_id": mb_id, "status": "active", "packages": mb["packages"]},
+            message="Media buy approved and activated",
+            idempotency_key=idem_key,
+        )
+        if not result.ok:
+            await sender.resend(result)  # replays exact bytes, fresh signature
+```
+
+**Legacy HMAC.** `get_adcp_signed_headers_for_webhook` is 3.x-only and deprecated in 4.0 — use only when a receiver can't yet verify 9421 signatures. See `adcp.webhooks` module docstring for the migration path.
+
+**Receiving webhooks.** Sellers that receive webhooks from other agents (audit, governance) should use `adcp.webhooks.WebhookReceiver` — it handles 9421 verification, replay dedup, and legacy HMAC fallback.
+
 ## Proposal Workflow (Guaranteed Deals)
 
 For premium/guaranteed inventory, buyers negotiate before committing. The flow:
@@ -177,15 +218,33 @@ async def get_products(self, params, context=None):
     if buying_mode == "refine":
         proposal = params.get("proposal", {})
         proposal_id = proposal.get("proposal_id") or f"prop-{uuid.uuid4().hex[:8]}"
+        incoming_packages = proposal.get("packages", [])
         # Store/update the proposal draft
         proposals[proposal_id] = {
             "status": "draft",
-            "packages": proposal.get("packages", []),
+            "packages": incoming_packages,
         }
-        return products_response(PRODUCTS, proposal={
+        # proposal.json requires: proposal_id, name, allocations (minItems: 1).
+        # Each allocation requires product_id and allocation_percentage (must sum to 100).
+        n = max(len(incoming_packages), 1)
+        even_split = round(100 / n, 2)
+        return {**products_response(PRODUCTS), "proposals": [{
             "proposal_id": proposal_id,
-            "status": "draft",
-        })
+            "name": proposal.get("name", "Draft proposal"),
+            "proposal_status": "draft",
+            "allocations": [
+                {
+                    "product_id": p["product_id"],
+                    "allocation_percentage": even_split,
+                }
+                for p in incoming_packages
+            ] or [
+                {
+                    "product_id": PRODUCTS[0]["product_id"],
+                    "allocation_percentage": 100.0,
+                }
+            ],
+        }]}
 
     # Default brief mode - return all matching products
     return products_response(PRODUCTS)
@@ -219,7 +278,7 @@ Every tool below uses a response builder from `adcp.server.responses`. Use the b
 from adcp.server.responses import capabilities_response
 
 async def get_adcp_capabilities(self, params, context=None):
-    return capabilities_response(["media_buy", "compliance_testing"])
+    return capabilities_response(["media_buy"])
 ```
 
 **`sync_accounts`**
@@ -476,9 +535,28 @@ Pass the store to `serve()`:
 serve(MySeller(), name="my-seller", test_controller=MyStore())
 ```
 
-Declare `compliance_testing` in supported_protocols:
+`compliance_testing` is a separate top-level capability block — not a `supported_protocols` value. `serve(test_controller=store)` registers the `comply_test_controller` tool but does NOT inject the capability block. Declare it yourself via the `compliance_testing=` kwarg on `capabilities_response()`.
+
+`adcp.idempotency.supported` is REQUIRED in AdCP 3.0 GA — always pass `idempotency=store.capability()` too. Use one shared `IdempotencyStore` per agent and reuse it for `@store.wrap` on mutating tools:
+
 ```python
-return capabilities_response(["media_buy", "compliance_testing"])
+from adcp.server.idempotency import IdempotencyStore, MemoryBackend
+
+idempotency = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+class MySeller(ADCPHandler):
+    async def get_adcp_capabilities(self, params, context=None):
+        return capabilities_response(
+            ["media_buy"],
+            idempotency=idempotency.capability(),
+            compliance_testing={"scenarios": [
+                "force_account_status",
+                "force_media_buy_status",
+                "force_creative_status",
+                "simulate_delivery",
+                "simulate_budget_spend",
+            ]},
+        )
 ```
 
 ## Emitting Webhooks
@@ -548,7 +626,7 @@ Notes:
 | `cancel_media_buy_response(id, "buyer"/"seller")` | Cancellation with auto-defaults |
 | `resolve_account(params, resolver)` | Account resolution with auto-error |
 | `valid_actions_for_status(status)` | Status-to-actions mapping |
-| `serve(handler, transport="a2a"\|"streamable-http", port=3001, test_controller=store)` | Start MCP or A2A server. Context passthrough is automatic. |
+| `serve(handler, *, name=..., port=3001, transport="streamable-http"\|"a2a", test_controller=None)` | Start MCP or A2A server (default transport is `streamable-http`). Context passthrough is automatic. |
 
 Import helpers from `adcp.server`. Import response builders from `adcp.server.responses`. Import types from `adcp.types`.
 
@@ -557,8 +635,9 @@ Import helpers from `adcp.server`. Import response builders from `adcp.server.re
 **After writing the agent, validate it. Fix failures. Repeat.**
 
 ```bash
+# agent.py ends with: serve(handler, port=3001)
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --json
+npx -y -p @adcp/client adcp storyboard run http://localhost:3001/mcp media_buy_seller --json
 ```
 
 **Keep iterating until all steps pass.**
@@ -571,6 +650,14 @@ npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --jso
 | `deterministic_testing` | Test controller state machine validation |
 | `media_buy_non_guaranteed` | Auction flow with bid adjustment |
 | `media_buy_guaranteed_approval` | IO approval workflow |
+
+## Production Deployment
+
+- Publish `.well-known/adagents.json` using the `adcp.adagents` module so buyer agents can discover capabilities.
+- Wrap mutating tools (`create_media_buy`, `update_media_buy`, `sync_creatives`) with `adcp.server.idempotency.IdempotencyStore` to deduplicate retries.
+- Sign outgoing webhooks with `adcp.webhooks` + `adcp.signing` so receivers can verify authenticity.
+- Persist accounts, media buys, and creatives — in-memory dicts are fine for storyboards but lose state on restart.
+- Front `serve()` with a process manager (systemd, Kubernetes) and terminate TLS upstream.
 
 ## Common Mistakes
 

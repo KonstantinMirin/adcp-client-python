@@ -65,6 +65,7 @@ if TYPE_CHECKING:
         SyncCatalogsRequest,
         SyncCreativesRequest,
         SyncEventSourcesRequest,
+        SyncGovernanceRequest,
         SyncPlansRequest,
         UpdateCollectionListRequest,
         UpdateContentStandardsRequest,
@@ -152,7 +153,9 @@ class ADCPHandler(ABC):
     # Core Catalog Operations
     # ========================================================================
 
-    async def get_products(self, params: GetProductsRequest | dict[str, Any], context: ToolContext | None = None) -> Any:
+    async def get_products(
+        self, params: GetProductsRequest | dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
         """Get advertising products.
 
         Override this to provide product catalog functionality.
@@ -160,7 +163,9 @@ class ADCPHandler(ABC):
         return self._not_supported("get_products")
 
     async def list_creative_formats(
-        self, params: ListCreativeFormatsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ListCreativeFormatsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """List supported creative formats.
 
@@ -209,7 +214,9 @@ class ADCPHandler(ABC):
         return self._not_supported("preview_creative")
 
     async def get_creative_delivery(
-        self, params: GetCreativeDeliveryRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetCreativeDeliveryRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get creative delivery metrics.
 
@@ -240,7 +247,9 @@ class ADCPHandler(ABC):
         return self._not_supported("update_media_buy")
 
     async def get_media_buy_delivery(
-        self, params: GetMediaBuyDeliveryRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetMediaBuyDeliveryRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get media buy delivery metrics.
 
@@ -261,7 +270,9 @@ class ADCPHandler(ABC):
     # Signal Operations
     # ========================================================================
 
-    async def get_signals(self, params: GetSignalsRequest | dict[str, Any], context: ToolContext | None = None) -> Any:
+    async def get_signals(
+        self, params: GetSignalsRequest | dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
         """Get available signals.
 
         Override this to provide signal catalog.
@@ -282,7 +293,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def provide_performance_feedback(
-        self, params: ProvidePerformanceFeedbackRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ProvidePerformanceFeedbackRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Provide performance feedback.
 
@@ -313,7 +326,9 @@ class ADCPHandler(ABC):
         return self._not_supported("sync_accounts")
 
     async def get_account_financials(
-        self, params: GetAccountFinancialsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetAccountFinancialsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get account financials.
 
@@ -334,7 +349,9 @@ class ADCPHandler(ABC):
     # Event Operations
     # ========================================================================
 
-    async def log_event(self, params: LogEventRequest | dict[str, Any], context: ToolContext | None = None) -> Any:
+    async def log_event(
+        self, params: LogEventRequest | dict[str, Any], context: ToolContext | None = None
+    ) -> Any:
         """Log event.
 
         Override this to provide functionality.
@@ -360,7 +377,7 @@ class ADCPHandler(ABC):
         return self._not_supported("sync_audiences")
 
     async def sync_governance(
-        self, params: dict[str, Any], context: ToolContext | None = None
+        self, params: SyncGovernanceRequest | dict[str, Any], context: ToolContext | None = None
     ) -> Any:
         """Sync governance agents for accounts.
 
@@ -382,7 +399,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def get_adcp_capabilities(
-        self, params: GetAdcpCapabilitiesRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetAdcpCapabilitiesRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get ADCP capabilities.
 
@@ -395,7 +414,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def create_content_standards(
-        self, params: CreateContentStandardsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: CreateContentStandardsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Create content standards configuration.
 
@@ -404,7 +425,9 @@ class ADCPHandler(ABC):
         return self._not_supported("create_content_standards")
 
     async def get_content_standards(
-        self, params: GetContentStandardsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetContentStandardsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get content standards configuration.
 
@@ -413,7 +436,9 @@ class ADCPHandler(ABC):
         return self._not_supported("get_content_standards")
 
     async def list_content_standards(
-        self, params: ListContentStandardsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ListContentStandardsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """List content standards configurations.
 
@@ -422,7 +447,9 @@ class ADCPHandler(ABC):
         return self._not_supported("list_content_standards")
 
     async def update_content_standards(
-        self, params: UpdateContentStandardsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: UpdateContentStandardsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Update content standards configuration.
 
@@ -440,7 +467,9 @@ class ADCPHandler(ABC):
         return self._not_supported("calibrate_content")
 
     async def validate_content_delivery(
-        self, params: ValidateContentDeliveryRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ValidateContentDeliveryRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Validate content delivery against standards.
 
@@ -449,7 +478,9 @@ class ADCPHandler(ABC):
         return self._not_supported("validate_content_delivery")
 
     async def get_media_buy_artifacts(
-        self, params: GetMediaBuyArtifactsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetMediaBuyArtifactsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Get artifacts associated with a media buy.
 
@@ -502,7 +533,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def get_creative_features(
-        self, params: GetCreativeFeaturesRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: GetCreativeFeaturesRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Evaluate governance features for a creative.
 
@@ -596,7 +629,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def create_collection_list(
-        self, params: CreateCollectionListRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: CreateCollectionListRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Create a collection list for governance filtering.
 
@@ -614,7 +649,9 @@ class ADCPHandler(ABC):
         return self._not_supported("get_collection_list")
 
     async def list_collection_lists(
-        self, params: ListCollectionListsRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ListCollectionListsRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """List collection lists.
 
@@ -623,7 +660,9 @@ class ADCPHandler(ABC):
         return self._not_supported("list_collection_lists")
 
     async def update_collection_list(
-        self, params: UpdateCollectionListRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: UpdateCollectionListRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Update a collection list.
 
@@ -632,7 +671,9 @@ class ADCPHandler(ABC):
         return self._not_supported("update_collection_list")
 
     async def delete_collection_list(
-        self, params: DeleteCollectionListRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: DeleteCollectionListRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Delete a collection list.
 
@@ -718,7 +759,9 @@ class ADCPHandler(ABC):
     # ========================================================================
 
     async def comply_test_controller(
-        self, params: ComplyTestControllerRequest | dict[str, Any], context: ToolContext | None = None
+        self,
+        params: ComplyTestControllerRequest | dict[str, Any],
+        context: ToolContext | None = None,
     ) -> Any:
         """Compliance test controller (sandbox only).
 

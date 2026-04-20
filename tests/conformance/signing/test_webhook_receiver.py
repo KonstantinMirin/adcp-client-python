@@ -79,7 +79,7 @@ async def test_happy_path_9421() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_aaaaaaaaaaaaaaaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
 
     receiver = _build_receiver()
@@ -101,7 +101,7 @@ async def test_duplicate_detected() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_dupeaaaaaaaaaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
     receiver = _build_receiver()
 
@@ -145,7 +145,7 @@ async def test_tampered_body_rejected() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_tamperaaaaaaaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
     receiver = _build_receiver()
 
@@ -163,7 +163,7 @@ async def test_missing_idempotency_key_rejected() -> None:
         "status": "completed",
         "timestamp": "2026-04-19T00:00:00Z",
     }
-    body = json.dumps(body_dict).encode("utf-8")
+    body = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
     receiver = _build_receiver()
 
@@ -183,7 +183,7 @@ async def test_legacy_hmac_fallback_when_9421_absent() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_hmaclegacyaaaaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     get_adcp_signed_headers_for_webhook(
         headers=headers, secret=secret, timestamp=ts, payload=payload
@@ -215,7 +215,7 @@ async def test_from_shared_secret_shortcut() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_sharedshortcutaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     get_adcp_signed_headers_for_webhook(
         headers=headers, secret=secret, timestamp=ts, payload=payload
@@ -306,7 +306,7 @@ async def test_accepts_content_type_with_charset() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_charsetaaaaaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     # Sign with plain content-type (what sign_webhook emits) then mutate the
     # header on the wire to include a charset parameter. The 9421 signature
     # covers content-type; this test asserts the receiver's content-type
@@ -339,7 +339,7 @@ async def test_rejects_malformed_idempotency_key() -> None:
         "status": "completed",
         "timestamp": "2026-04-19T00:00:00Z",
     }
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
     receiver = _build_receiver()
 
@@ -362,7 +362,7 @@ async def test_only_signature_input_header_falls_through_to_hmac_when_configured
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_onlyfallbackaaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     get_adcp_signed_headers_for_webhook(
         headers=headers, secret=secret, timestamp=ts, payload=payload
@@ -418,7 +418,7 @@ async def test_hmac_fallback_accepts_invalid_9421_when_opted_in() -> None:
         status="completed",  # type: ignore[arg-type]
         idempotency_key="whk_optinfallbackaaaaaaa",
     )
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     get_adcp_signed_headers_for_webhook(
         headers=headers, secret=secret, timestamp=ts, payload=payload
@@ -457,7 +457,7 @@ async def test_receives_revocation_notification() -> None:
         "reason": "Rights revoked",
         "effective_at": "2026-04-19T00:00:00Z",
     }
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
 
     receiver = _build_receiver(kind="revocation_notification")
@@ -476,7 +476,7 @@ async def test_receives_artifact_webhook() -> None:
         "timestamp": "2026-04-19T00:00:00Z",
         "artifacts": [],
     }
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
 
     receiver = _build_receiver(kind="artifact")
@@ -494,7 +494,7 @@ async def test_receives_collection_list_changed() -> None:
         "resolved_at": "2026-04-19T00:00:00Z",
         "signature": "sig",
     }
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
 
     receiver = _build_receiver(kind="collection_list_changed")
@@ -512,7 +512,7 @@ async def test_receives_property_list_changed() -> None:
         "resolved_at": "2026-04-19T00:00:00Z",
         "signature": "sig",
     }
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     headers = _sign_webhook(body)
 
     receiver = _build_receiver(kind="property_list_changed")
