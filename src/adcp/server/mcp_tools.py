@@ -2,6 +2,18 @@
 """MCP server integration helpers.
 
 Provides utilities for registering ADCP handlers with MCP servers.
+
+.. note::
+    Function signatures in this module use ``ADCPHandler[Any]`` rather
+    than a propagated ``TContext`` TypeVar. The rationale: these
+    functions (``get_tools_for_handler``, ``create_mcp_tools``, etc.)
+    treat the handler opaquely — they walk the MRO and dispatch by tool
+    name without ever touching the ``context`` argument's typed fields.
+    Binding a TypeVar here would force callers to narrow at the call
+    site for no runtime benefit, and cascade the TypeVar through every
+    plumbing function in :mod:`adcp.server.serve`. ``Any`` keeps the
+    plumbing honest: the static type says "this code works with any
+    ``ToolContext`` subclass," which is exactly true.
 """
 
 from __future__ import annotations

@@ -31,6 +31,9 @@ from adcp.server import (
     ADCPHandler,
     BrandHandler,
     ComplianceHandler,
+    ContentStandardsHandler,
+    GovernanceHandler,
+    SponsoredIntelligenceHandler,
     TmpHandler,
     ToolContext,
 )
@@ -74,13 +77,18 @@ def test_unparameterised_subclass_still_works():
 
 
 def test_unparameterised_protocol_handler_still_works():
-    """Same backward-compat check for the non-abstract protocol handler
-    bases — ``BrandHandler``, ``ComplianceHandler``, ``TmpHandler``
-    don't declare additional abstract methods, so they can be
-    subclassed directly. ``ContentStandardsHandler``, ``GovernanceHandler``,
-    and ``SponsoredIntelligenceHandler`` have ``handle_*`` abstracts
-    (predating this PR) that subclasses must implement — covered
-    separately by the typed-subclass tests below."""
+    """Backward-compat check for every protocol handler base —
+    unparameterised subclasses must keep instantiating.
+
+    ``BrandHandler``, ``ComplianceHandler``, ``TmpHandler`` are
+    non-abstract and subclass directly.
+
+    ``ContentStandardsHandler``, ``GovernanceHandler``, and
+    ``SponsoredIntelligenceHandler`` declare ``handle_<tool>`` abstract
+    methods (predating this PR). We build minimal concrete subclasses
+    that stub every abstract so we can prove the TypeVar refactor
+    didn't accidentally add a new unimplementable abstract on the base.
+    """
     for cls in (BrandHandler, ComplianceHandler, TmpHandler):
 
         class _Concrete(cls):  # type: ignore[valid-type,misc]
@@ -91,6 +99,40 @@ def test_unparameterised_protocol_handler_still_works():
 
         instance = _Concrete()
         assert instance._agent_type == "test"
+
+    # Abstract bases — build concrete via a type() call so every
+    # abstract handle_<tool> gets a stub in the class namespace at
+    # creation time (ABC machinery freezes __abstractmethods__ there).
+    for abstract_base in (
+        ContentStandardsHandler,
+        GovernanceHandler,
+        SponsoredIntelligenceHandler,
+    ):
+        abstracts = {
+            name
+            for name in dir(abstract_base)
+            if name.startswith("handle_")
+            and getattr(getattr(abstract_base, name, None), "__isabstractmethod__", False)
+        }
+
+        async def _capabilities(self, params, context=None):  # noqa: ARG001
+            return {"adcp": {"major_versions": [3]}}
+
+        async def _stub(self, request, context=None):  # noqa: ARG001
+            return {}
+
+        namespace: dict[str, Any] = {
+            "_agent_type": "test",
+            "get_adcp_capabilities": _capabilities,
+        }
+        for _name in abstracts:
+            namespace[_name] = _stub
+
+        concrete = type(f"_{abstract_base.__name__}Concrete", (abstract_base,), namespace)
+        instance = concrete()
+        assert (
+            instance._agent_type == "test"
+        ), f"{abstract_base.__name__} unparameterised subclass failed to instantiate"
 
 
 # ---------------------------------------------------------------------------
@@ -193,16 +235,39 @@ def test_protocol_handler_subclass_receives_typed_context():
 def test_typevar_is_bound_to_toolcontext():
     """The TypeVar bound prevents parameterising with an unrelated
     class.  At runtime Python doesn't enforce the bound (only mypy
-    does), so this test just asserts the bound attribute — the static
-    check is mypy's job and is covered by the CI mypy step."""
+    does), so this test asserts the bound resolves to ``ToolContext`` —
+    not just that *some* bound exists. Previously this accepted the
+    unresolved forward-reference string as proof enough, which meant a
+    typo in the bound (e.g. ``ToolContect``) would have silently
+    passed."""
+    import typing
+
+    from adcp.server import base as _base
     from adcp.server.base import TContext as _TContext
 
-    # TypeVar has __bound__ (forward ref or evaluated class).
     bound = _TContext.__bound__
-    # Forward ref evaluates to the string; evaluated binding to the class.
-    assert bound is ToolContext or (
-        hasattr(bound, "__forward_arg__") and bound.__forward_arg__ == "ToolContext"
-    )
+    if bound is None:
+        pytest.fail("TContext has no bound")
+
+    # Force forward-ref resolution against the module namespace TContext
+    # lives in. typing.get_type_hints is the blessed API for this; it
+    # walks the annotation through typing._eval_type and returns the
+    # actual class the string resolves to.
+    if hasattr(bound, "__forward_arg__"):
+        resolved = typing.get_type_hints(
+            type(
+                "_Probe",
+                (),
+                {"__annotations__": {"x": bound}, "__module__": _base.__name__},
+            ),
+            globalns=vars(_base),
+        )["x"]
+    else:
+        resolved = bound
+
+    assert (
+        resolved is ToolContext
+    ), f"TContext bound did not resolve to ToolContext; got {resolved!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -248,19 +313,13 @@ async def test_typed_handler_works_under_a2a_executor():
 # ---------------------------------------------------------------------------
 
 
-def test_handler_method_signatures_accept_subclass_positionally():
-    """A sanity check that handler methods accept a ``ToolContext``
-    subclass positionally — the rewrite of 57 method sigs from
-    ``context: ToolContext | None`` to ``context: TContext | None``
-    must not have shifted any parameter positions."""
-
-    class _Agent(ADCPHandler):
-        async def get_adcp_capabilities(self, params, context=None):
-            return {"adcp": {}}
-
-        async def get_products(self, params, context=None):
-            return {"products": []}
-
+def test_handler_method_signatures_preserve_parameter_order():
+    """Sanity check on the mechanical rewrite of 57 method sigs — the
+    ``context: ToolContext | None`` → ``context: TContext | None``
+    change is a single-word swap in the annotation and must not have
+    shifted parameter positions or renamed ``params``. Failure here
+    typically means a stray sed corrupted a signature.
+    """
     import inspect
 
     for method_name in ("get_adcp_capabilities", "get_products", "create_media_buy"):
