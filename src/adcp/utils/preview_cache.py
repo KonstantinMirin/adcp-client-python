@@ -171,11 +171,13 @@ class PreviewURLGenerator:
                 chunk_requests = uncached_requests[chunk_start:chunk_end]
                 chunk_indices = uncached_indices[chunk_start:chunk_end]
 
-                batch_request = _pcr_adapter.validate_python({
-                    "requests": chunk_requests,
-                    "output_format": output_format,
-                    "context": None,
-                })
+                batch_request = _pcr_adapter.validate_python(
+                    {
+                        "requests": chunk_requests,
+                        "output_format": output_format,
+                        "context": None,
+                    }
+                )
                 result = await self.creative_agent_client.preview_creative(batch_request)
 
                 if result.success and result.data and result.data.results:
@@ -464,15 +466,15 @@ def _create_sample_manifest_for_format_id(
     Returns:
         Sample CreativeManifest with placeholder assets
     """
-    from adcp.types import CreativeManifest, ImageAsset, UrlAsset
+    from adcp.types import CreativeManifest, ImageContent, UrlContent
 
     assets = {
-        "primary_asset": ImageAsset(
+        "primary_asset": ImageContent(
             url="https://example.com/sample-image.jpg",
             width=300,
             height=250,
         ),
-        "clickthrough_url": UrlAsset(url="https://example.com"),
+        "clickthrough_url": UrlContent(url="https://example.com"),
     }
 
     return CreativeManifest(format_id=format_id, promoted_offering=product.name, assets=assets)
@@ -489,31 +491,30 @@ def _create_sample_asset(asset_type: str | None) -> Any:
         Sample asset object (Pydantic model)
     """
     from adcp.types import (
-        HtmlAsset,
-        ImageAsset,
-        TextAsset,
-        UrlAsset,
-        VideoAsset,
+        HtmlContent,
+        ImageContent,
+        TextContent,
+        UrlContent,
+        VideoContent,
     )
 
     if asset_type == "image":
-        return ImageAsset(
+        return ImageContent(
             url="https://via.placeholder.com/300x250.png",
             width=300,
             height=250,
         )
     elif asset_type == "video":
-        return VideoAsset(
+        return VideoContent(
             url="https://example.com/sample-video.mp4",
             width=1920,
             height=1080,
         )
     elif asset_type == "text":
-        return TextAsset(content="Sample advertising text")
+        return TextContent(content="Sample advertising text")
     elif asset_type == "url":
-        return UrlAsset(url="https://example.com")
+        return UrlContent(url="https://example.com")
     elif asset_type == "html":
-        return HtmlAsset(content="<div>Sample HTML</div>")
+        return HtmlContent(content="<div>Sample HTML</div>")
     else:
-        # Default to URL asset for unknown types
-        return UrlAsset(url="https://example.com/sample-asset")
+        return UrlContent(url="https://example.com/sample-asset")

@@ -22,6 +22,16 @@ instructions and before/after examples.
   (e.g., `CreateMediaBuySuccessResponse`) instead of numbered classes. Raw
   `Assets*` imports are unsupported — they are code-generation artifacts and
   will shift again.
+* **Asset-content types renamed `<Type>Asset` → `<Type>Content`** (issue
+  #221). The payload-describing types (`AudioAsset`, `CssAsset`, `HtmlAsset`,
+  `ImageAsset`, `JavascriptAsset`, `TextAsset`, `UrlAsset`, `VideoAsset`,
+  `WebhookAsset`) are renamed to `AudioContent`, `CssContent`, `HtmlContent`,
+  `ImageContent`, `JavascriptContent`, `TextContent`, `UrlContent`,
+  `VideoContent`, `WebhookContent`. This disambiguates payload types from
+  the slot-describing `<Type>FormatAsset` family (`VideoContent` describes
+  what a creative delivers; `VideoFormatAsset` is a slot inside a format
+  definition). The old names are no longer exported from `adcp.types`. See
+  `MIGRATION_v3_to_v4.md` for a search-and-replace.
 
 ### Non-breaking
 

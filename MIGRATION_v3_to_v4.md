@@ -7,7 +7,7 @@ before/after code.
 ## Audit your exposure first
 
 ```bash
-grep -rnE "BrandManifest|FormatCategory|DeliverTo|PromotedProducts|PromotedOfferings|PackageStatus|from adcp import Pricing|\.brand_manifest|adcp\.types\.generated_poc" src/
+grep -rnE "BrandManifest|FormatCategory|DeliverTo|PromotedProducts|PromotedOfferings|PackageStatus|from adcp import Pricing|\.brand_manifest|adcp\.types\.generated_poc|(Audio|Css|Html|Image|Javascript|Text|Url|Video|Webhook)Asset\b" src/
 ```
 
 Each match is either an import that will now raise `ImportError`, an attribute
@@ -203,14 +203,81 @@ renumbered to `Assets57`/`Assets149`. The stable names are:
 | `Assets95…Assets106` | `ImageFormatGroupAsset` etc.| (same type inside a group) |
 
 The `Format` prefix disambiguates these *format-slot* types from the
-separate *asset-content* types (`VideoAsset`, `HtmlAsset`, `ImageAsset`,
-etc. in `adcp.types`), which describe the actual asset payload (codec,
-duration, file URL) delivered by creative sync — a distinct concept.
+separate *asset-content* types (`VideoContent`, `HtmlContent`, `ImageContent`,
+etc. in `adcp.types` — renamed from `<Type>Asset` in 4.0, see below),
+which describe the actual asset payload (codec, duration, file URL)
+delivered by creative sync — a distinct concept.
 
 `tests/test_asset_aliases_stable.py` pins each alias to its expected
 `asset_type` discriminator default. When upstream renumbers, that test
 fails and points at the specific alias that drifted — fix the numbered
 import in `src/adcp/types/aliases.py`, not your call sites.
+
+### Asset-content types: `<Type>Asset` → `<Type>Content`
+
+The payload-describing types — the classes you construct to attach an
+actual image, video, or HTML payload to a `CreativeManifest` — are
+renamed. The 3.x names collided with the `<Type>FormatAsset` slot types
+described above; autocomplete showed two entries whose only difference
+was a `Format` infix, and agent authors picked the wrong one.
+
+| 3.x name            | 4.0 name              |
+|---------------------|-----------------------|
+| `AudioAsset`        | `AudioContent`        |
+| `CssAsset`          | `CssContent`          |
+| `HtmlAsset`         | `HtmlContent`         |
+| `ImageAsset`        | `ImageContent`        |
+| `JavascriptAsset`   | `JavascriptContent`   |
+| `TextAsset`         | `TextContent`         |
+| `UrlAsset`          | `UrlContent`          |
+| `VideoAsset`        | `VideoContent`        |
+| `WebhookAsset`      | `WebhookContent`      |
+
+**Before (v3.x):**
+```python
+from adcp.types import ImageAsset, UrlAsset
+
+assets = {
+    "primary_asset": ImageAsset(url="https://example.com/img.jpg",
+                                width=300, height=250),
+    "clickthrough_url": UrlAsset(url="https://example.com"),
+}
+```
+
+**After (v4.0):**
+```python
+from adcp.types import ImageContent, UrlContent
+
+assets = {
+    "primary_asset": ImageContent(url="https://example.com/img.jpg",
+                                  width=300, height=250),
+    "clickthrough_url": UrlContent(url="https://example.com"),
+}
+```
+
+Mechanical search-and-replace, nine names:
+
+```bash
+perl -pi -e '
+  s/\b(Audio|Css|Html|Image|Javascript|Text|Url|Video|Webhook)Asset\b/$1Content/g
+' $(git ls-files "*.py")
+```
+
+The regex intentionally *omits* `VastAsset`, `DaastAsset`, `BriefAsset`,
+`CatalogAsset`, and `MarkdownAsset` — none were on the public surface in
+3.x, so no rename applies. If you have user-defined classes whose names
+happen to end in one of the nine suffixes (e.g. `MyImageAsset`), the
+word-boundary regex will match them too; review the diff before
+committing.
+
+Field shapes are unchanged — the class identity is the same Pydantic
+model underneath. For VAST/DAAST, continue using the delivery-type
+variants (`UrlVastAsset` / `InlineVastAsset` / `UrlDaastAsset` /
+`InlineDaastAsset`), which are unchanged.
+
+The `<Type>FormatAsset` slot types (unchanged) remain the way to inspect
+a format *definition* — `VideoFormatAsset` is a slot declaration inside
+a `Format`; `VideoContent` is the payload you deliver into that slot.
 
 ### Deep-submodule `format_category` shim
 

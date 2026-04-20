@@ -5,14 +5,13 @@ from unittest.mock import patch
 import pytest
 
 from adcp import ADCPClient
-from adcp.types import AgentConfig, Protocol
+from adcp.types import AgentConfig, ImageContent, Protocol
 from adcp.types._generated import (
     CreativeManifest,
     Format,
     FormatId,
     GetProductsRequest,
     GetProductsResponse,
-    ImageAsset,
     ListCreativeFormatsRequest,
     ListCreativeFormatsResponse,
     PreviewCreativeResponse1,
@@ -49,7 +48,7 @@ async def test_preview_creative():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
-            "image": ImageAsset(
+            "image": ImageContent(
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
@@ -123,7 +122,7 @@ async def test_get_preview_data_for_manifest():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
-            "image": ImageAsset(
+            "image": ImageContent(
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
@@ -183,7 +182,7 @@ async def test_preview_data_caching():
     manifest = CreativeManifest(
         format_id=format_id,
         assets={
-            "image": ImageAsset(
+            "image": ImageContent(
                 url="https://example.com/img.jpg",
                 width=300,
                 height=250,
@@ -310,8 +309,8 @@ async def test_get_products_with_preview_urls():
                     "_parse_response",
                     return_value=mock_preview_parsed_result,
                 ):
-                    request = validate_union(GetProductsRequest,
-                        {"buying_mode": "brief", "brief": "test campaign"}
+                    request = validate_union(
+                        GetProductsRequest, {"buying_mode": "brief", "brief": "test campaign"}
                     )
                     result = await client.get_products(
                         request, fetch_previews=True, creative_agent_client=creative_client
@@ -339,8 +338,8 @@ async def test_get_products_without_creative_client_raises_error():
     client = ADCPClient(config)
 
     with pytest.raises(ValueError, match="creative_agent_client is required"):
-        request = validate_union(GetProductsRequest,
-            {"buying_mode": "brief", "brief": "test campaign"}
+        request = validate_union(
+            GetProductsRequest, {"buying_mode": "brief", "brief": "test campaign"}
         )
         await client.get_products(request, fetch_previews=True)
 
@@ -437,26 +436,26 @@ async def test_list_creative_formats_with_preview_urls():
 
 def test_create_sample_asset():
     """Test sample asset creation."""
-    from adcp.types._generated import HtmlAsset, ImageAsset, TextAsset, UrlAsset, VideoAsset
+    from adcp.types import HtmlContent, TextContent, UrlContent, VideoContent
 
     image_asset = _create_sample_asset("image")
-    assert isinstance(image_asset, ImageAsset)
+    assert isinstance(image_asset, ImageContent)
     assert "placeholder" in str(image_asset.url)
 
     video_asset = _create_sample_asset("video")
-    assert isinstance(video_asset, VideoAsset)
+    assert isinstance(video_asset, VideoContent)
     assert ".mp4" in str(video_asset.url)
 
     text_asset = _create_sample_asset("text")
-    assert isinstance(text_asset, TextAsset)
+    assert isinstance(text_asset, TextContent)
     assert "text" in text_asset.content.lower()
 
     url_asset = _create_sample_asset("url")
-    assert isinstance(url_asset, UrlAsset)
+    assert isinstance(url_asset, UrlContent)
     assert "example.com" in str(url_asset.url)
 
     html_asset = _create_sample_asset("html")
-    assert isinstance(html_asset, HtmlAsset)
+    assert isinstance(html_asset, HtmlContent)
     assert "<div>" in html_asset.content
 
 
