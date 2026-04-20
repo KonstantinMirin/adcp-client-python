@@ -27,6 +27,8 @@ The core names you'll reach for (everything else is for advanced use):
 
   .. code-block:: python
 
+      import os
+
       from adcp.signing import generate_signing_keypair
 
       # CLI equivalence:
@@ -34,7 +36,15 @@ The core names you'll reach for (everything else is for advanced use):
       pem, public_jwk = generate_signing_keypair(
           alg="ed25519", purpose="webhook-signing"
       )
-      Path("webhook-key.pem").write_bytes(pem)
+
+      # Mode 0600, O_EXCL so an existing file is never overwritten.
+      # Path.write_bytes inherits the process umask (often 0644 =
+      # world-readable) — don't use it for private-key material.
+      fd = os.open("webhook-key.pem", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+      try:
+          os.write(fd, pem)
+      finally:
+          os.close(fd)
       publish_to_jwks_uri(public_jwk)
 
 **Sellers** (verifying incoming requests):

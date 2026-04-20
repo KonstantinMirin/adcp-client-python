@@ -135,16 +135,27 @@ def test_pem_loads_as_webhook_sender_private_key() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_default_kid_includes_alg_and_date() -> None:
-    """Default kid follows ``adcp-{alg}-{YYYYMMDD}``. Callers not
-    managing rotation get a sane identifier out of the box; rotation-
-    aware callers pass an explicit kid. The format is a contract —
-    downstream tooling may parse it."""
+def test_default_kid_is_non_empty_string() -> None:
+    """Default kid is opaque — the format is implementation detail,
+    NOT a contract downstream tooling may parse. Assert only that
+    callers get a non-empty string. If the default format changes
+    (it does — the random suffix was added for collision resistance),
+    this test doesn't break."""
     _, jwk = generate_signing_keypair(alg="ed25519")
-    assert jwk["kid"].startswith("adcp-ed25519-")
+    assert isinstance(jwk["kid"], str)
+    assert jwk["kid"]
 
-    _, jwk = generate_signing_keypair(alg="es256")
-    assert jwk["kid"].startswith("adcp-es256-")
+
+def test_default_kid_is_collision_resistant_within_process() -> None:
+    """**Same-day regeneration guard.** Two calls on the same UTC day
+    must produce distinct default kids. Without the random suffix,
+    callers who rotate twice in 24h end up publishing two JWKs under
+    the same kid, verifiers cache the first, signatures from the
+    second fail with REQUEST_SIGNATURE_INVALID — silent verification
+    failure. Regression here reintroduces that footgun."""
+    _, jwk_a = generate_signing_keypair(alg="ed25519")
+    _, jwk_b = generate_signing_keypair(alg="ed25519")
+    assert jwk_a["kid"] != jwk_b["kid"]
 
 
 def test_explicit_kid_is_preserved() -> None:
@@ -159,11 +170,13 @@ def test_explicit_kid_is_preserved() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_encrypted_pem_requires_passphrase_to_load() -> None:
+@pytest.mark.parametrize("alg", ["ed25519", "es256"])
+def test_encrypted_pem_requires_passphrase_to_load(alg: str) -> None:
     """``passphrase`` parameter wraps the PEM in BestAvailableEncryption.
-    Without it (None), the PEM is plain PKCS#8."""
+    Without it (None), the PEM is plain PKCS#8. Exercise both algs so
+    a regression breaking the es256 encryption path can't escape."""
     passphrase = b"test-passphrase-not-a-real-secret"
-    pem, _ = generate_signing_keypair(alg="ed25519", kid="test-kid", passphrase=passphrase)
+    pem, _ = generate_signing_keypair(alg=alg, kid="test-kid", passphrase=passphrase)
 
     # Unencrypted load fails — the PEM requires the passphrase.
     with pytest.raises((TypeError, ValueError)):
@@ -171,7 +184,8 @@ def test_encrypted_pem_requires_passphrase_to_load() -> None:
 
     # Correct passphrase loads cleanly.
     key = serialization.load_pem_private_key(pem, password=passphrase)
-    assert isinstance(key, ed25519.Ed25519PrivateKey)
+    expected_type = ed25519.Ed25519PrivateKey if alg == "ed25519" else ec.EllipticCurvePrivateKey
+    assert isinstance(key, expected_type)
 
 
 # ---------------------------------------------------------------------------
@@ -218,18 +232,33 @@ def test_exported_from_adcp_signing() -> None:
     assert "generate_signing_keypair" in signing.__all__
 
 
-def test_cli_main_still_calls_helper() -> None:
-    """The CLI's ``main()`` now delegates to ``generate_signing_keypair``.
-    Regression check: the CLI path still works end-to-end (PEM written,
-    JWK printed). Full CLI coverage lives in ``test_keygen.py``; this
-    is just the "they share a spine" invariant."""
-    from adcp.signing.keygen import generate_signing_keypair as _public
-    from adcp.signing.keygen import main
+def test_cli_main_delegates_to_generate_signing_keypair(tmp_path, monkeypatch) -> None:
+    """**Shared-spine invariant.** The CLI's ``main()`` must go through
+    ``generate_signing_keypair`` so a regression in either surface
+    shows up in both. Spy on the helper and assert the CLI called it
+    with the expected kwargs — a weaker assertion (``callable(main)``)
+    would pass even if someone silently re-inlined the CLI's key
+    generation."""
+    from adcp.signing import keygen
 
-    # ``main`` doesn't rewrite the helper — this sanity-checks that
-    # they're the same callable the CLI wires up.
-    assert callable(_public)
-    assert callable(main)
+    captured: dict[str, object] = {}
+    real = keygen.generate_signing_keypair
+
+    def spy(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return real(**kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(keygen, "generate_signing_keypair", spy)
+
+    out = tmp_path / "cli.pem"
+    rc = keygen.main(["--alg", "ed25519", "--out", str(out), "--kid", "cli-test-kid"])
+    assert rc == 0
+    assert captured == {
+        "alg": "ed25519",
+        "kid": "cli-test-kid",
+        "purpose": "request-signing",
+        "passphrase": None,
+    }
 
 
 # ---------------------------------------------------------------------------

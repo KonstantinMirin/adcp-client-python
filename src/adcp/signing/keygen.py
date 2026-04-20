@@ -25,7 +25,15 @@ Usage (programmatic):
     pem_bytes, public_jwk = generate_signing_keypair(
         alg="ed25519", purpose="webhook-signing"
     )
-    Path("key.pem").write_bytes(pem_bytes)
+
+    # Write mode-0600 atomically. DON'T use Path.write_bytes — it
+    # inherits the process umask (typically 0644 = world-readable).
+    import os
+    fd = os.open("key.pem", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(fd, pem_bytes)
+    finally:
+        os.close(fd)
     publish_to_jwks_uri(public_jwk)
 """
 
@@ -35,6 +43,7 @@ import argparse
 import getpass
 import json
 import os
+import secrets
 import sys
 import unicodedata
 from datetime import datetime, timezone
@@ -110,9 +119,21 @@ def generate_es256(
 
 
 def _default_kid(alg: str) -> str:
-    """Default ``kid`` derived from alg + UTC date. Callers who care
-    about key rotation should pass an explicit ``kid``."""
-    return f"adcp-{alg}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
+    """Default ``kid`` — opaque, collision-resistant.
+
+    Combines alg + UTC date + 4 random hex chars so two calls in the
+    same UTC day produce distinct kids. Format is an implementation
+    detail; downstream tooling MUST NOT parse it. Callers managing
+    rotation SHOULD pass an explicit ``kid`` they control.
+
+    Same-day collisions without the random suffix silently break
+    verification: two JWKs advertised under the same kid, verifiers
+    cache the first one and reject signatures made with the second as
+    ``REQUEST_SIGNATURE_INVALID``. The suffix prevents that at no
+    readability cost.
+    """
+    date = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return f"adcp-{alg}-{date}-{secrets.token_hex(2)}"
 
 
 def generate_signing_keypair(
@@ -131,10 +152,13 @@ def generate_signing_keypair(
     :param alg: Signature algorithm. ``"ed25519"`` (default; tiny keys,
         recommended) or ``"es256"`` (ECDSA over P-256, broader ecosystem
         support).
-    :param kid: Key ID to embed in the JWK. Defaults to
-        ``"adcp-{alg}-{YYYYMMDD}"`` — fine for one-off keys, but callers
-        managing rotation should supply an explicit kid so rotated keys
-        don't collide.
+    :param kid: Key ID to embed in the JWK. When omitted, the SDK mints
+        an opaque default combining alg + UTC date + 4 random hex chars
+        — suitable for first-time provisioning only. **Callers managing
+        rotation MUST supply their own ``kid``.** The default is
+        collision-resistant within a single process but does not
+        guarantee uniqueness across processes; rotation tooling needs
+        its own identifier scheme to track retirement / revocation.
     :param purpose: Which AdCP signing profile this key is for. Sets the
         JWK ``adcp_use`` claim. **Request-signing and webhook-signing
         keys MUST be distinct** — a signature from one surface cannot
@@ -144,6 +168,13 @@ def generate_signing_keypair(
         ``BestAvailableEncryption``. Typical only for dev-laptop keys;
         automated deployments usually leave the PEM unencrypted and
         rely on filesystem perms (the CLI writes mode 0600).
+
+        **Passphrase lifecycle.** CPython cannot zero ``bytes``. Once
+        passed here, the buffer is consumed by ``cryptography`` and
+        then released to GC; there's no ``zeroize`` step. Callers
+        handling long-lived credentials should source the passphrase
+        from a secret manager per call rather than hold a Python
+        literal in process memory.
 
     :returns: ``(pem_bytes, public_jwk)``. The PEM is PKCS#8
         (optionally encrypted); the JWK is the public half, ready to
