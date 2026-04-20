@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/get-media-buys-request.json",
   "title": "Get Media Buys Request",
   "description": "Request parameters for retrieving media buy status, creative approval state, and optional delivery snapshots",
   "type": "object",
@@ -62,7 +61,7 @@
                 },
                 "data_subject_contestation": {
                   "type": "object",
-                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                  "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
                   "properties": {
                     "url": {
                       "type": "string",
@@ -266,7 +265,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.342Z",
+    "generatedAt": "2026-04-20T02:09:29.483Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

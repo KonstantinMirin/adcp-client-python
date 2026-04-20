@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/creative/get-creative-delivery-response.json",
   "title": "Get Creative Delivery Response",
   "description": "Response payload for get_creative_delivery task. Returns creative delivery data with variant-level breakdowns including manifests and metrics.",
   "type": "object",
@@ -58,11 +57,11 @@
             "description": "Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy."
           },
           "format_id": {
-            "$ref": "/schemas/latest/core/format-id.json",
+            "$ref": "../core/format-id.json",
             "description": "Format of this creative"
           },
           "totals": {
-            "$ref": "/schemas/latest/core/delivery-metrics.json",
+            "$ref": "../core/delivery-metrics.json",
             "description": "Aggregate delivery metrics across all variants of this creative"
           },
           "variant_count": {
@@ -74,7 +73,7 @@
             "type": "array",
             "description": "Variant-level delivery breakdown. Each variant includes the rendered manifest and delivery metrics. For standard creatives, contains a single variant. For asset group optimization, one per combination. For generative creative, one per generated execution. Empty when a creative has no variants yet.",
             "items": {
-              "$ref": "/schemas/latest/core/creative-variant.json"
+              "$ref": "../core/creative-variant.json"
             }
           }
         },
@@ -120,14 +119,14 @@
       "type": "array",
       "description": "Task-specific errors and warnings",
       "items": {
-        "$ref": "/schemas/latest/core/error.json"
+        "$ref": "../core/error.json"
       }
     },
     "context": {
-      "$ref": "/schemas/latest/core/context.json"
+      "$ref": "../core/context.json"
     },
     "ext": {
-      "$ref": "/schemas/latest/core/ext.json"
+      "$ref": "../core/ext.json"
     }
   },
   "required": [

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/content-standards/calibrate-content-response.json",
   "title": "Calibrate Content Response",
   "description": "Response payload with verdict and detailed explanations for collaborative calibration",
   "type": "object",
@@ -11,7 +10,10 @@
       "properties": {
         "verdict": {
           "type": "string",
-          "enum": ["pass", "fail"],
+          "enum": [
+            "pass",
+            "fail"
+          ],
           "description": "Overall pass/fail verdict for the content evaluation"
         },
         "confidence": {
@@ -36,7 +38,12 @@
               },
               "status": {
                 "type": "string",
-                "enum": ["passed", "failed", "warning", "unevaluated"],
+                "enum": [
+                  "passed",
+                  "failed",
+                  "warning",
+                  "unevaluated"
+                ],
                 "description": "Evaluation status for this feature"
               },
               "policy_id": {
@@ -54,17 +61,22 @@
                 "description": "Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones."
               }
             },
-            "required": ["feature_id", "status"]
+            "required": [
+              "feature_id",
+              "status"
+            ]
           }
         },
         "context": {
-          "$ref": "/schemas/latest/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/latest/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
-      "required": ["verdict"]
+      "required": [
+        "verdict"
+      ]
     },
     {
       "type": "object",
@@ -72,16 +84,20 @@
       "properties": {
         "errors": {
           "type": "array",
-          "items": { "$ref": "/schemas/latest/core/error.json" }
+          "items": {
+            "$ref": "../core/error.json"
+          }
         },
         "context": {
-          "$ref": "/schemas/latest/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/latest/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
-      "required": ["errors"]
+      "required": [
+        "errors"
+      ]
     }
   ]
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/protocol/get-adcp-capabilities-response.json",
   "title": "Get AdCP Capabilities Response",
   "description": "Response payload for get_adcp_capabilities task. Protocol-level capability discovery across all AdCP protocols. Each protocol has its own capability section.",
   "type": "object",
@@ -20,18 +19,37 @@
         },
         "idempotency": {
           "type": "object",
-          "description": "Idempotency semantics for mutating requests. Sellers MUST declare their replay window so buyers can reason about safe retry behavior. Clients MUST NOT assume a default — a seller without this declaration is non-compliant and should be treated as unsafe for retry-sensitive operations.",
+          "description": "Idempotency semantics for mutating requests. Sellers MUST declare whether they support replay protection via the supported boolean so buyers can reason about safe retry behavior. Clients MUST NOT assume a default \u2014 a seller without this declaration is non-compliant and should be treated as unsafe for retry-sensitive operations.",
           "properties": {
+            "supported": {
+              "type": "boolean",
+              "description": "Whether this seller honors idempotency_key replay protection on mutating requests. When true, replays within replay_ttl_seconds return the cached response (or IDEMPOTENCY_CONFLICT on payload divergence) and replays past the window return IDEMPOTENCY_EXPIRED. When false, the seller does not deduplicate retries \u2014 sending an idempotency_key is a no-op; the seller will NOT return IDEMPOTENCY_CONFLICT or IDEMPOTENCY_EXPIRED and a naive retry WILL double-process. Buyers MUST use natural-key checks (e.g., get_media_buys by buyer_ref) before retrying spend-committing operations. Mirrors the request_signing.supported pattern: a single positive declaration, decoupled from the window detail."
+            },
             "replay_ttl_seconds": {
               "type": "integer",
-              "description": "How long the seller retains a canonical response for an idempotency_key. Within this window, a replay with the same key + equivalent canonical payload returns the cached response; a replay with a different canonical payload returns IDEMPOTENCY_CONFLICT; a replay past the window returns IDEMPOTENCY_EXPIRED when the seller can still distinguish 'seen and evicted' from 'never seen'. Minimum 3600 (1h); recommended 86400 (24h). Maximum 604800 (7 days) — longer windows force buyers to retain secret keys at rest for extended periods and grow the seller's cache table without bounded benefit.",
+              "description": "How long the seller retains a canonical response for an idempotency_key. Only meaningful when supported is true. Within this window, a replay with the same key + equivalent canonical payload returns the cached response; a replay with a different canonical payload returns IDEMPOTENCY_CONFLICT; a replay past the window returns IDEMPOTENCY_EXPIRED when the seller can still distinguish 'seen and evicted' from 'never seen'. Minimum 3600 (1h); recommended 86400 (24h). Maximum 604800 (7 days) \u2014 longer windows force buyers to retain secret keys at rest for extended periods and grow the seller's cache table without bounded benefit.",
               "minimum": 3600,
               "maximum": 604800
             }
           },
           "required": [
-            "replay_ttl_seconds"
-          ]
+            "supported"
+          ],
+          "if": {
+            "properties": {
+              "supported": {
+                "const": true
+              }
+            },
+            "required": [
+              "supported"
+            ]
+          },
+          "then": {
+            "required": [
+              "replay_ttl_seconds"
+            ]
+          }
         }
       },
       "required": [
@@ -41,7 +59,7 @@
     },
     "supported_protocols": {
       "type": "array",
-      "description": "AdCP protocols this agent supports. Each value both (a) declares which tools the agent implements and (b) commits the agent to pass the baseline compliance storyboard at /compliance/{version}/protocols/{protocol}/ (with snake_case → kebab-case path mapping, e.g. media_buy → /compliance/.../protocols/media-buy/). Compliance testing support is declared separately via the `compliance_testing` capability block (below), not as a protocol claim.",
+      "description": "AdCP protocols this agent supports. Each value both (a) declares which tools the agent implements and (b) commits the agent to pass the baseline compliance storyboard at /compliance/{version}/protocols/{protocol}/ (with snake_case \u2192 kebab-case path mapping, e.g. media_buy \u2192 /compliance/.../protocols/media-buy/). Compliance testing support is declared separately via the `compliance_testing` capability block (below), not as a protocol claim.",
       "items": {
         "type": "string",
         "enum": [
@@ -61,7 +79,7 @@
       "properties": {
         "require_operator_auth": {
           "type": "boolean",
-          "description": "Whether the seller requires operator-level credentials. When true (explicit accounts), operators authenticate independently with the seller and the buyer discovers accounts via list_accounts. When false (default, implicit accounts), the seller trusts the agent's identity claims — the agent authenticates once and declares brands/operators via sync_accounts.",
+          "description": "Whether the seller requires operator-level credentials. When true (explicit accounts), operators authenticate independently with the seller and the buyer discovers accounts via list_accounts. When false (default, implicit accounts), the seller trusts the agent's identity claims \u2014 the agent authenticates once and declares brands/operators via sync_accounts.",
           "default": false
         },
         "authorization_endpoint": {
@@ -84,7 +102,7 @@
         },
         "required_for_products": {
           "type": "boolean",
-          "description": "Whether an account reference is required for get_products. When true, the buyer must establish an account before browsing products. When false (default), the buyer can browse products without an account — useful for price comparison and discovery before committing to a seller.",
+          "description": "Whether an account reference is required for get_products. When true, the buyer must establish an account before browsing products. When false (default), the buyer can browse products without an account \u2014 useful for price comparison and discovery before committing to a seller.",
           "default": false
         },
         "account_financials": {
@@ -94,7 +112,7 @@
         },
         "sandbox": {
           "type": "boolean",
-          "description": "Whether this seller supports sandbox accounts for testing. Buyers can provision a sandbox account via sync_accounts with sandbox: true, and all requests using that account_id will be treated as sandbox — no real platform calls or spend.",
+          "description": "Whether this seller supports sandbox accounts for testing. Buyers can provision a sandbox account via sync_accounts with sandbox: true, and all requests using that account_id will be treated as sandbox \u2014 no real platform calls or spend.",
           "default": false
         }
       },
@@ -468,7 +486,7 @@
             },
             "supported_uid_types": {
               "type": "array",
-              "description": "Universal ID types accepted for audience matching (MAIDs, RampID, UID2, etc.). MAID support varies significantly by platform — check this field before sending uids with type: maid.",
+              "description": "Universal ID types accepted for audience matching (MAIDs, RampID, UID2, etc.). MAID support varies significantly by platform \u2014 check this field before sending uids with type: maid.",
               "items": {
                 "title": "UID Type",
                 "description": "Type of user identifier. Used in audience sync, event logging, and TMP identity match requests to tell the receiver which identity graph to resolve against.",
@@ -502,7 +520,7 @@
             },
             "minimum_audience_size": {
               "type": "integer",
-              "description": "Minimum matched audience size required for targeting. Audiences below this threshold will have status: too_small. Varies by platform (100–1000 is typical).",
+              "description": "Minimum matched audience size required for targeting. Audiences below this threshold will have status: too_small. Varies by platform (100\u20131000 is typical).",
               "minimum": 1
             },
             "matching_latency_hours": {
@@ -533,7 +551,7 @@
           "properties": {
             "multi_source_event_dedup": {
               "type": "boolean",
-              "description": "Whether this seller can deduplicate conversion events across multiple event sources within a single goal. When true, the seller honors the deduplication semantics in optimization_goals event_sources arrays — the same event_id from multiple sources counts once. When false or absent, buyers should use a single event source per goal; multi-source arrays will be treated as first-source-wins. Most social platforms cannot deduplicate across independently-managed pixel and CAPI sources."
+              "description": "Whether this seller can deduplicate conversion events across multiple event sources within a single goal. When true, the seller honors the deduplication semantics in optimization_goals event_sources arrays \u2014 the same event_id from multiple sources counts once. When false or absent, buyers should use a single event source per goal; multi-source arrays will be treated as first-source-wins. Most social platforms cannot deduplicate across independently-managed pixel and CAPI sources."
             },
             "supported_event_types": {
               "type": "array",
@@ -759,7 +777,7 @@
                     "description": "Available post-click attribution windows (e.g. [{\"interval\": 7, \"unit\": \"days\"}])",
                     "items": {
                       "title": "Duration",
-                      "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.",
+                      "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
                       "type": "object",
                       "properties": {
                         "interval": {
@@ -792,7 +810,7 @@
                     "description": "Available post-view attribution windows (e.g. [{\"interval\": 1, \"unit\": \"days\"}])",
                     "items": {
                       "title": "Duration",
-                      "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 — the window spans the full campaign flight.",
+                      "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
                       "type": "object",
                       "properties": {
                         "interval": {
@@ -887,7 +905,7 @@
                   "influencer": "Creator and influencer marketing partnerships",
                   "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
                   "product_placement": "Product placement, branded content, and sponsorship integrations",
-                  "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+                  "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
                 }
               },
               "minItems": 1
@@ -900,7 +918,7 @@
         },
         "portfolio": {
           "type": "object",
-          "description": "Information about the seller's media inventory portfolio. Expected for media_buy sellers — buyers use this to understand inventory coverage and verify authorization via adagents.json.",
+          "description": "Information about the seller's media inventory portfolio. Expected for media_buy sellers \u2014 buyers use this to understand inventory coverage and verify authorization via adagents.json.",
           "properties": {
             "publisher_domains": {
               "type": "array",
@@ -960,7 +978,7 @@
                   "influencer": "Creator and influencer marketing partnerships",
                   "affiliate": "Affiliate networks, comparison sites, and performance-based partnerships",
                   "product_placement": "Product placement, branded content, and sponsorship integrations",
-                  "sponsored_intelligence": "Sponsored Intelligence — advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
+                  "sponsored_intelligence": "Sponsored Intelligence \u2014 advertising within AI assistants, AI search, and generative AI experiences via the reversed data flow"
                 }
               }
             },
@@ -1146,6 +1164,7 @@
     "sponsored_intelligence": {
       "type": "object",
       "description": "Sponsored Intelligence protocol capabilities. Only present if sponsored_intelligence is in supported_protocols. SI agents handle conversational brand experiences.",
+      "x-status": "experimental",
       "properties": {
         "endpoint": {
           "type": "object",
@@ -1195,6 +1214,7 @@
         "capabilities": {
           "title": "SI Capabilities",
           "description": "Modalities, components, and commerce capabilities",
+          "x-status": "experimental",
           "type": "object",
           "properties": {
             "modalities": {
@@ -1424,7 +1444,7 @@
               "background_music": "Use of music as background audio in advertising",
               "editorial": "Use in editorial or informational contexts",
               "commercial": "Use in commercial advertising and promotional contexts",
-              "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality — a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category."
+              "ai_generated_image": "License to produce AI-generated still imagery derived from the rights holder's IP (brand assets, character designs, talent likeness). Distinct from likeness/voice by output modality \u2014 a get_rights query filtered on ai_generated_image returns rights whose pricing options cover image generation, regardless of the underlying IP category."
             }
           }
         },
@@ -1472,7 +1492,7 @@
     },
     "request_signing": {
       "type": "object",
-      "description": "RFC 9421 HTTP Signatures support for incoming requests. Optional in 3.0 — capability-advertised so counterparties can opt into signing selectively. Required for spend-committing operations in 4.0 (the next breaking-changes accumulation window). The full profile is defined in docs/building/implementation/security.mdx (Signed Requests (Transport Layer)).",
+      "description": "RFC 9421 HTTP Signatures support for incoming requests. Optional in 3.0 \u2014 capability-advertised so counterparties can opt into signing selectively. Required for spend-committing operations in 4.0 (the next breaking-changes accumulation window). The full profile is defined in docs/building/implementation/security.mdx (Signed Requests (Transport Layer)).",
       "properties": {
         "supported": {
           "type": "boolean",
@@ -1490,7 +1510,7 @@
         },
         "required_for": {
           "type": "array",
-          "description": "AdCP protocol operation names (e.g., 'create_media_buy') for which this agent rejects unsigned requests with request_signature_required. Not MCP tool names, A2A skill names, or any transport-specific rename — verifiers MUST NOT accept operation names that are not defined by the AdCP protocol spec. Empty in 3.0 by default; sellers populate selectively during per-counterparty pilots. In 4.0 this list MUST include all spend-committing operations the agent supports (create_media_buy, acquire_*, etc.). Counterparties MUST sign any listed operation.",
+          "description": "AdCP protocol operation names (e.g., 'create_media_buy') for which this agent rejects unsigned requests with request_signature_required. Not MCP tool names, A2A skill names, or any transport-specific rename \u2014 verifiers MUST NOT accept operation names that are not defined by the AdCP protocol spec. Empty in 3.0 by default; sellers populate selectively during per-counterparty pilots. In 4.0 this list MUST include all spend-committing operations the agent supports (create_media_buy, acquire_*, etc.). Counterparties MUST sign any listed operation.",
           "items": {
             "type": "string"
           },
@@ -1522,7 +1542,7 @@
       "properties": {
         "scenarios": {
           "type": "array",
-          "description": "Compliance testing scenarios this agent supports. Must be non-empty — at least one scenario. Callers can also use comply_test_controller with scenario: 'list_scenarios' to discover supported scenarios at runtime.",
+          "description": "Compliance testing scenarios this agent supports. Must be non-empty \u2014 at least one scenario. Callers can also use comply_test_controller with scenario: 'list_scenarios' to discover supported scenarios at runtime.",
           "items": {
             "type": "string",
             "enum": [
@@ -1544,7 +1564,7 @@
     },
     "specialisms": {
       "type": "array",
-      "description": "Optional — specialized compliance claims this agent supports. Omitting the field means the agent declares no specialism claims (it still passes the universal + domain-baseline storyboards implied by supported_protocols). Each specialism maps to a storyboard bundle at /compliance/{version}/specialisms/{id}/ that the AAO compliance runner executes to verify the claim. Each specialism rolls up to one of the protocols in supported_protocols — the runner rejects a specialism claim whose parent protocol is missing. Only list specialisms your agent actually implements — the AAO Verified badge enumerates which specialisms were demonstrably passed.",
+      "description": "Optional \u2014 specialized compliance claims this agent supports. Omitting the field means the agent declares no specialism claims (it still passes the universal + domain-baseline storyboards implied by supported_protocols). Each specialism maps to a storyboard bundle at /compliance/{version}/specialisms/{id}/ that the AAO compliance runner executes to verify the claim. Each specialism rolls up to one of the protocols in supported_protocols \u2014 the runner rejects a specialism claim whose parent protocol is missing. Only list specialisms your agent actually implements \u2014 the AAO Verified badge enumerates which specialisms were demonstrably passed.",
       "items": {
         "title": "AdCP Specialism",
         "description": "Specialized capability claims an agent can make. Each specialism maps to a compliance storyboard bundle published at /compliance/{version}/specialisms/{id}/. An agent asserts specialisms it supports in get_adcp_capabilities; the AAO compliance runner executes the matching storyboards to verify the claim.",
@@ -1577,7 +1597,7 @@
         "enumDescriptions": {
           "audience-sync": "Syncs buyer-provided audience segments into a platform for activation",
           "brand-rights": "Brand identity and rights licensing (talent, music, stock media)",
-          "collection-lists": "Collection list governance — curated inclusion and exclusion lists of content programs (shows, series, podcasts) for program-level brand safety",
+          "collection-lists": "Collection list governance \u2014 curated inclusion and exclusion lists of content programs (shows, series, podcasts) for program-level brand safety",
           "content-standards": "Content standards enforcement (brand safety, policy compliance)",
           "creative-ad-server": "Creative ad server with tag-based delivery",
           "creative-generative": "Generative creative agent producing assets on demand",
@@ -1585,7 +1605,7 @@
           "governance-delivery-monitor": "Campaign delivery monitoring with drift detection",
           "governance-spend-authority": "Conditional spend approval and human-in-the-loop governance",
           "measurement-verification": "Third-party measurement and verification across domains (viewability, brand safety, attribution, SI outcomes)",
-          "property-lists": "Property list governance — curated inclusion and exclusion lists for targeting and delivery compliance",
+          "property-lists": "Property list governance \u2014 curated inclusion and exclusion lists for targeting and delivery compliance",
           "sales-broadcast-tv": "Broadcast linear TV seller with guaranteed inventory and FCC cancellation rules",
           "sales-catalog-driven": "Catalog-driven commerce with conversion tracking",
           "sales-exchange": "Programmatic exchange or SSP exposing auction-based inventory",
@@ -1614,7 +1634,7 @@
     },
     "experimental_features": {
       "type": "array",
-      "description": "Experimental AdCP surfaces this agent implements. A surface is experimental when its schema carries x-status: experimental and the working group has not yet frozen it. Sellers that implement any experimental surface MUST list its feature id here. Buyers inspect this array before relying on experimental surfaces — a seller that does not list a surface is asserting it does not implement it. Experimental surfaces MAY break between any two 3.x releases with at least 6 weeks notice; the full contract is in docs/reference/experimental-status.",
+      "description": "Experimental AdCP surfaces this agent implements. A surface is experimental when its schema carries x-status: experimental and the working group has not yet frozen it. Sellers that implement any experimental surface MUST list its feature id here. Buyers inspect this array before relying on experimental surfaces \u2014 a seller that does not list a surface is asserting it does not implement it. Experimental surfaces MAY break between any two 3.x releases with at least 6 weeks notice; the full contract is in docs/reference/experimental-status.",
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$",
@@ -1700,7 +1720,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.444Z",
+    "generatedAt": "2026-04-20T02:09:29.732Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

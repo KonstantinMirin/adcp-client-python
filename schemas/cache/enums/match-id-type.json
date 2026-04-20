@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/enums/match-id-type.json",
   "title": "Match ID Type",
   "description": "Identifier types for audience match reporting. Combines hashed PII types (from audience-member.json field names) with universal ID types (from uid-type.json).",
   "type": "string",

@@ -68,7 +68,7 @@ def _make_caps(
     return GetAdcpCapabilitiesResponse(
         adcp=Adcp(
             major_versions=[MajorVersion(root=3)],
-            idempotency=Idempotency(replay_ttl_seconds=86400),
+            idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
         ),
         supported_protocols=[SupportedProtocol.media_buy],
         request_signing=RequestSigning(
@@ -375,9 +375,7 @@ async def test_hook_warns_on_contradictory_seller_policy(
 
     client = _make_client(signing=signing_config)
     client.fetch_capabilities = AsyncMock(  # type: ignore[method-assign]
-        return_value=_make_caps(
-            signing_supported=False, required=["create_media_buy"]
-        )
+        return_value=_make_caps(signing_supported=False, required=["create_media_buy"])
     )
     request = _build_request()
     token = current_operation.set("create_media_buy")
@@ -389,9 +387,9 @@ async def test_hook_warns_on_contradictory_seller_policy(
 
     assert "Signature" not in request.headers
     warnings = [r for r in caplog.records if r.levelno == _logging.WARNING]
-    assert any(
-        "supported=false" in r.getMessage().lower() for r in warnings
-    ), [r.getMessage() for r in warnings]
+    assert any("supported=false" in r.getMessage().lower() for r in warnings), [
+        r.getMessage() for r in warnings
+    ]
 
 
 # -- concurrency --------------------------------------------------------
@@ -419,9 +417,7 @@ async def test_context_var_isolates_concurrent_calls(
     )
 
     async def _dispatch(op: str, body: bytes) -> httpx.Request:
-        request = _build_request(
-            url=f"https://seller.example.com/adcp/{op}", body=body
-        )
+        request = _build_request(url=f"https://seller.example.com/adcp/{op}", body=body)
         token = current_operation.set(op)
         try:
             # Yield to let the other task interleave between the set and

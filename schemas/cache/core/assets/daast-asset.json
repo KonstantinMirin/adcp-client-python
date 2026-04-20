@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/core/assets/daast-asset.json",
   "title": "DAAST Asset",
   "description": "DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
   "oneOf": [
@@ -18,7 +17,7 @@
           "description": "URL endpoint that returns DAAST XML"
         },
         "daast_version": {
-          "$ref": "/schemas/latest/enums/daast-version.json",
+          "$ref": "../../enums/daast-version.json",
           "description": "DAAST specification version"
         },
         "duration_ms": {
@@ -29,7 +28,7 @@
         "tracking_events": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/latest/enums/daast-tracking-event.json"
+            "$ref": "../../enums/daast-tracking-event.json"
           },
           "description": "Tracking events supported by this DAAST tag"
         },
@@ -44,7 +43,7 @@
           "x-accessibility": true
         },
         "provenance": {
-          "$ref": "/schemas/latest/core/provenance.json",
+          "$ref": "../../core/provenance.json",
           "description": "Provenance metadata for this asset, overrides manifest-level provenance"
         }
       },
@@ -67,7 +66,7 @@
           "description": "Inline DAAST XML content"
         },
         "daast_version": {
-          "$ref": "/schemas/latest/enums/daast-version.json",
+          "$ref": "../../enums/daast-version.json",
           "description": "DAAST specification version"
         },
         "duration_ms": {
@@ -78,7 +77,7 @@
         "tracking_events": {
           "type": "array",
           "items": {
-            "$ref": "/schemas/latest/enums/daast-tracking-event.json"
+            "$ref": "../../enums/daast-tracking-event.json"
           },
           "description": "Tracking events supported by this DAAST tag"
         },
@@ -93,7 +92,7 @@
           "x-accessibility": true
         },
         "provenance": {
-          "$ref": "/schemas/latest/core/provenance.json",
+          "$ref": "../../core/provenance.json",
           "description": "Provenance metadata for this asset, overrides manifest-level provenance"
         }
       },

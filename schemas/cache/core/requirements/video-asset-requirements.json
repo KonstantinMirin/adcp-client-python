@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/core/requirements/video-asset-requirements.json",
   "title": "Video Asset Requirements",
   "description": "Requirements for video creative assets. These define the technical constraints for video files.",
   "type": "object",
@@ -44,7 +43,13 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["mp4", "webm", "mov", "avi", "mkv"]
+        "enum": [
+          "mp4",
+          "webm",
+          "mov",
+          "avi",
+          "mkv"
+        ]
       },
       "description": "Accepted video container formats"
     },
@@ -52,7 +57,14 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["h264", "h265", "vp8", "vp9", "av1", "prores"]
+        "enum": [
+          "h264",
+          "h265",
+          "vp8",
+          "vp9",
+          "av1",
+          "prores"
+        ]
       },
       "description": "Accepted video codecs"
     },
@@ -85,17 +97,26 @@
     },
     "frame_rate_type": {
       "type": "string",
-      "enum": ["constant", "variable"],
+      "enum": [
+        "constant",
+        "variable"
+      ],
       "description": "Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing."
     },
     "scan_type": {
       "type": "string",
-      "enum": ["progressive", "interlaced"],
+      "enum": [
+        "progressive",
+        "interlaced"
+      ],
       "description": "Required scan type. Modern delivery requires progressive scan."
     },
     "gop_type": {
       "type": "string",
-      "enum": ["closed", "open"],
+      "enum": [
+        "closed",
+        "open"
+      ],
       "description": "Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points."
     },
     "min_gop_interval_seconds": {
@@ -110,14 +131,26 @@
     },
     "moov_atom_position": {
       "type": "string",
-      "enum": ["start", "end"],
+      "enum": [
+        "start",
+        "end"
+      ],
       "description": "Required moov atom position in MP4 container. 'start' enables progressive download without buffering the entire file."
     },
     "audio_codecs": {
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["aac", "pcm", "ac3", "eac3", "mp3", "opus", "vorbis", "flac"]
+        "enum": [
+          "aac",
+          "pcm",
+          "ac3",
+          "eac3",
+          "mp3",
+          "opus",
+          "vorbis",
+          "flac"
+        ]
       },
       "description": "Accepted audio codecs (e.g., ['aac', 'pcm', 'ac3'])"
     },
@@ -133,7 +166,12 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["mono", "stereo", "5.1", "7.1"]
+        "enum": [
+          "mono",
+          "stereo",
+          "5.1",
+          "7.1"
+        ]
       },
       "description": "Accepted audio channel configurations"
     },

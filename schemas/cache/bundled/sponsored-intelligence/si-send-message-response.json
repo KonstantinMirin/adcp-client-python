@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/sponsored-intelligence/si-send-message-response.json",
   "title": "SI Send Message Response",
   "description": "Brand agent's response to a user message",
+  "x-status": "experimental",
   "type": "object",
   "properties": {
     "session_id": {
@@ -86,6 +86,7 @@
           "items": {
             "title": "SI UI Element",
             "description": "Standard visual component that brand returns and host renders",
+            "x-status": "experimental",
             "type": "object",
             "properties": {
               "type": {
@@ -580,7 +581,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.456Z",
+    "generatedAt": "2026-04-20T02:09:29.751Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

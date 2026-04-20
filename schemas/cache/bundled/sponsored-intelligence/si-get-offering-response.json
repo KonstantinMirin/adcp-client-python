@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/sponsored-intelligence/si-get-offering-response.json",
   "title": "SI Get Offering Response",
   "description": "Offering details, availability status, and optionally matching products. Use the offering_token in si_initiate_session for correlation.",
+  "x-status": "experimental",
   "type": "object",
   "properties": {
     "available": {
@@ -197,7 +197,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.452Z",
+    "generatedAt": "2026-04-20T02:09:29.747Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

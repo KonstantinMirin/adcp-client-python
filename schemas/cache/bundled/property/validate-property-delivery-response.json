@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/property/validate-property-delivery-response.json",
   "title": "Validate Property Delivery Response",
   "description": "Response payload for validate_property_delivery task. Returns aggregate compliance statistics and per-record validation results.",
   "type": "object",
@@ -201,7 +200,7 @@
                   "apple_podcast_id": "Apple Podcasts numeric ID",
                   "spotify_collection_id": "Spotify show or collection URI",
                   "podcast_guid": "Podcast GUID (podcasting 2.0 namespace)",
-                  "station_id": "Broadcast station identifier — call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
+                  "station_id": "Broadcast station identifier \u2014 call sign, station name, or other locally recognized identifier (e.g., WCBS-FM, BBC Radio 4, France Inter, 2GB)",
                   "facility_id": "Broadcast facility or license ID from a national regulator, prefixed with authority slug (e.g., fcc:73953, ofcom:AL000001). Known prefixes: fcc (US), crtc (Canada), ift (Mexico), ofcom (UK), arcom (France), bnetza/medienanstalt (Germany), acma (Australia), mic (Japan), kcc (South Korea), anatel (Brazil), enacom (Argentina), trai (India)"
                 },
                 "examples": [
@@ -245,7 +244,7 @@
           },
           "features": {
             "type": "array",
-            "description": "Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures — this is contract data, not evaluator IP.",
+            "description": "Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures \u2014 this is contract data, not evaluator IP.",
             "items": {
               "type": "object",
               "properties": {
@@ -272,7 +271,7 @@
                 },
                 "requirement": {
                   "type": "object",
-                  "description": "The feature requirement that was not met. MAY be present on failed features when the caller authored the requirement (e.g., feature_requirements on a property list). The buyer set these thresholds — echoing them back enables fix-and-retry loops without looking up the list definition.",
+                  "description": "The feature requirement that was not met. MAY be present on failed features when the caller authored the requirement (e.g., feature_requirements on a property list). The buyer set these thresholds \u2014 echoing them back enables fix-and-retry loops without looking up the list definition.",
                   "properties": {
                     "min_value": {
                       "type": "number",
@@ -398,7 +397,7 @@
   ],
   "additionalProperties": false,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.440Z",
+    "generatedAt": "2026-04-20T02:09:29.725Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

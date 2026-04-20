@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/sync-catalogs-response.json",
   "title": "Sync Catalogs Response",
   "description": "Response from catalog sync operation. Returns either per-catalog results (best-effort processing) OR operation-level errors (complete failure). Platforms may approve, reject, or flag individual items within each catalog (similar to Google Merchant Center product review).",
   "type": "object",
@@ -83,7 +82,7 @@
                       "enumDescriptions": {
                         "approved": "Item passed platform review and is eligible for use in campaigns",
                         "pending": "Item is awaiting platform review. Items enter this state on initial sync and when re-synced after rejection.",
-                        "rejected": "Item failed platform review (missing fields, policy violation, invalid data). Not terminal — fix the issue in the catalog and re-sync to reset the item to pending.",
+                        "rejected": "Item failed platform review (missing fields, policy violation, invalid data). Not terminal \u2014 fix the issue in the catalog and re-sync to reset the item to pending.",
                         "warning": "Item is approved and serving but has issues worth fixing (e.g., low-quality image, missing optional fields). The item remains eligible for delivery."
                       }
                     },
@@ -314,7 +313,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.385Z",
+    "generatedAt": "2026-04-20T02:09:29.586Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

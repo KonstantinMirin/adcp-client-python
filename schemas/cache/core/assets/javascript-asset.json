@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/core/assets/javascript-asset.json",
   "title": "JavaScript Asset",
   "description": "JavaScript code asset",
   "type": "object",
@@ -10,7 +9,7 @@
       "description": "JavaScript content"
     },
     "module_type": {
-      "$ref": "/schemas/latest/enums/javascript-module-type.json",
+      "$ref": "../../enums/javascript-module-type.json",
       "description": "JavaScript module type"
     },
     "accessibility": {
@@ -37,7 +36,7 @@
       }
     },
     "provenance": {
-      "$ref": "/schemas/latest/core/provenance.json",
+      "$ref": "../../core/provenance.json",
       "description": "Provenance metadata for this asset, overrides manifest-level provenance"
     }
   },

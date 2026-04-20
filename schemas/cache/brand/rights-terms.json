@@ -1,24 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/brand/rights-terms.json",
   "title": "Rights Terms",
   "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
   "x-status": "experimental",
   "type": "object",
   "properties": {
-    "pricing_option_id": { "type": "string" },
-    "amount": { "type": "number", "minimum": 0 },
+    "pricing_option_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0
+    },
     "currency": {
       "type": "string",
       "pattern": "^[A-Z]{3}$"
     },
     "period": {
       "type": "string",
-      "enum": ["daily", "weekly", "monthly", "quarterly", "annual", "one_time"]
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "annual",
+        "one_time"
+      ]
     },
     "uses": {
       "type": "array",
-      "items": { "$ref": "/schemas/latest/enums/right-use.json" }
+      "items": {
+        "$ref": "../enums/right-use.json"
+      }
     },
     "impression_cap": {
       "type": "integer",
@@ -40,7 +53,9 @@
       "type": "object",
       "description": "Exclusivity terms if applicable",
       "properties": {
-        "scope": { "type": "string" },
+        "scope": {
+          "type": "string"
+        },
         "countries": {
           "type": "array",
           "items": {
@@ -52,6 +67,11 @@
       "additionalProperties": true
     }
   },
-  "required": ["pricing_option_id", "amount", "currency", "uses"],
+  "required": [
+    "pricing_option_id",
+    "amount",
+    "currency",
+    "uses"
+  ],
   "additionalProperties": true
 }

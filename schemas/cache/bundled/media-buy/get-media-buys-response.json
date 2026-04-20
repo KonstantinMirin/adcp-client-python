@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/get-media-buys-response.json",
   "title": "Get Media Buys Response",
   "description": "Response payload for get_media_buys task. Returns media buy configuration, creative approval state, and optional delivery snapshots.",
   "type": "object",
@@ -51,10 +50,10 @@
                 "enumDescriptions": {
                   "active": "Account is operational and can create media buys",
                   "pending_approval": "Seller is reviewing the account (credit, contracts)",
-                  "rejected": "Seller declined the account request — terminal state",
+                  "rejected": "Seller declined the account request \u2014 terminal state",
                   "payment_required": "Credit limit reached or funds depleted",
-                  "suspended": "Was active, now paused — operations gated",
-                  "closed": "Was active, now terminated — terminal state"
+                  "suspended": "Was active, now paused \u2014 operations gated",
+                  "closed": "Was active, now terminated \u2014 terminal state"
                 }
               },
               "brand": {
@@ -89,7 +88,7 @@
                   },
                   "data_subject_contestation": {
                     "type": "object",
-                    "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand → house → missing.",
+                    "description": "Inline override for the brand's contestation contact point. Useful when the operator does not control brand.json but needs to discharge Art 22(3) for this plan. brand.json is canonical; when omitted, governance agents resolve brand \u2192 house \u2192 missing.",
                     "properties": {
                       "url": {
                         "type": "string",
@@ -432,7 +431,7 @@
               },
               "governance_agents": {
                 "type": "array",
-                "description": "Governance agent endpoints registered on this account. Authentication credentials are write-only and not included in responses — use sync_governance to set or update credentials.",
+                "description": "Governance agent endpoints registered on this account. Authentication credentials are write-only and not included in responses \u2014 use sync_governance to set or update credentials.",
                 "items": {
                   "type": "object",
                   "properties": {
@@ -462,7 +461,7 @@
               },
               "reporting_bucket": {
                 "type": "object",
-                "description": "Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix — bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).",
+                "description": "Cloud storage bucket where the seller delivers offline reporting files for this account. Seller provisions a dedicated bucket or a per-account prefix within a shared bucket, and grants the buyer read access out-of-band. Access MUST be scoped at the IAM layer so each account can only read its own prefix \u2014 bucket-wide grants are non-compliant even with per-account prefixes. Seller MUST revoke access when the account's status transitions to inactive, suspended, or closed. See security considerations for offline delivery in docs/media-buy/media-buys/optimization-reporting. Only present when the seller supports offline delivery (reporting_delivery_methods includes 'offline' in capabilities).",
                 "properties": {
                   "protocol": {
                     "title": "Cloud Storage Protocol",
@@ -536,7 +535,7 @@
                     "type": "string",
                     "format": "uri",
                     "pattern": "^https://",
-                    "description": "URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation — buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery."
+                    "description": "URL to documentation for configuring buyer read access to this bucket (IAM role, service account, etc.). Operator-facing documentation \u2014 buyer agents MUST NOT auto-fetch this URL; surface it to a human operator. If an implementation fetches it (for preview), apply webhook URL SSRF validation and do not pass the fetched content into an LLM context without indirect-prompt-injection guarding. See docs/media-buy/media-buys/optimization-reporting#security-considerations-for-offline-delivery."
                   }
                 },
                 "required": [
@@ -548,7 +547,7 @@
               },
               "sandbox": {
                 "type": "boolean",
-                "description": "When true, this is a sandbox account — no real platform calls, no real spend. For explicit accounts (require_operator_auth: true), sandbox accounts are pre-existing test accounts on the platform discovered via list_accounts. For implicit accounts, sandbox is part of the natural key: the same brand/operator pair can have both a production and sandbox account."
+                "description": "When true, this is a sandbox account \u2014 no real platform calls, no real spend. For explicit accounts (require_operator_auth: true), sandbox accounts are pre-existing test accounts on the platform discovered via list_accounts. For implicit accounts, sandbox is part of the natural key: the same brand/operator pair can have both a production and sandbox account."
               },
               "ext": {
                 "title": "Extension Object",
@@ -996,7 +995,7 @@
           },
           "valid_actions": {
             "type": "array",
-            "description": "Actions the buyer can perform on this media buy in its current state. Eliminates the need for agents to internalize the state machine — the seller declares what is permitted right now.",
+            "description": "Actions the buyer can perform on this media buy in its current state. Eliminates the need for agents to internalize the state machine \u2014 the seller declares what is permitted right now.",
             "items": {
               "type": "string",
               "enum": [
@@ -1029,11 +1028,11 @@
                 },
                 "actor": {
                   "type": "string",
-                  "description": "Identity of who made the change — derived from authentication context, not caller-provided. Format is seller-defined (e.g., agent URL, user email, API key label)."
+                  "description": "Identity of who made the change \u2014 derived from authentication context, not caller-provided. Format is seller-defined (e.g., agent URL, user email, API key label)."
                 },
                 "action": {
                   "type": "string",
-                  "description": "What happened. Standard actions: created, activated, paused, resumed, canceled, rejected, completed, updated_budget, updated_dates, updated_packages, package_canceled, package_paused, package_resumed. Sellers MAY use additional platform-specific actions (e.g., creative_approved, targeting_updated) — use ext on the history entry for structured metadata about custom actions."
+                  "description": "What happened. Standard actions: created, activated, paused, resumed, canceled, rejected, completed, updated_budget, updated_dates, updated_packages, package_canceled, package_paused, package_resumed. Sellers MAY use additional platform-specific actions (e.g., creative_approved, targeting_updated) \u2014 use ext on the history entry for structured metadata about custom actions."
                 },
                 "summary": {
                   "type": "string",
@@ -1064,7 +1063,7 @@
             "description": "Packages within this media buy, augmented with creative approval status and optional delivery snapshots",
             "items": {
               "title": "PackageStatus",
-              "description": "Current status of a package within a media buy — includes creative approval state and optional delivery snapshot. For the creation input shape, see PackageRequest. For the creation output shape, see Package.",
+              "description": "Current status of a package within a media buy \u2014 includes creative approval state and optional delivery snapshot. For the creation input shape, see PackageRequest. For the creation output shape, see Package.",
               "type": "object",
               "properties": {
                 "package_id": {
@@ -1249,7 +1248,7 @@
                 },
                 "snapshot": {
                   "type": "object",
-                  "description": "Near-real-time delivery snapshot for this package. Only present when include_snapshot was true in the request. Represents the latest available entity-level stats from the platform — not billing-grade data.",
+                  "description": "Near-real-time delivery snapshot for this package. Only present when include_snapshot was true in the request. Represents the latest available entity-level stats from the platform \u2014 not billing-grade data.",
                   "properties": {
                     "as_of": {
                       "type": "string",
@@ -1288,7 +1287,7 @@
                     },
                     "delivery_status": {
                       "type": "string",
-                      "description": "Operational delivery state of this package. 'not_delivering' means the package is within its scheduled flight but has delivered zero impressions for at least one full staleness cycle — the signal for automated price adjustments or buyer alerts. Implementers must not return 'not_delivering' until at least staleness_seconds have elapsed since package activation.",
+                      "description": "Operational delivery state of this package. 'not_delivering' means the package is within its scheduled flight but has delivered zero impressions for at least one full staleness cycle \u2014 the signal for automated price adjustments or buyer alerts. Implementers must not return 'not_delivering' until at least staleness_seconds have elapsed since package activation.",
                       "enum": [
                         "delivering",
                         "not_delivering",
@@ -1443,7 +1442,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.344Z",
+    "generatedAt": "2026-04-20T02:09:29.486Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

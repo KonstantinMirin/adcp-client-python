@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/signals/activate-signal-response.json",
   "title": "Activate Signal Response",
   "description": "Response payload for activate_signal task. Returns either complete success data OR error information, never both. This enforces atomic operation semantics - the signal is either fully activated or not activated at all.",
   "type": "object",
@@ -314,7 +313,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.447Z",
+    "generatedAt": "2026-04-20T02:09:29.738Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/content-standards/validate-content-delivery-response.json",
   "title": "Validate Content Delivery Response",
   "description": "Response payload with per-record verdicts and optional feature breakdown",
   "type": "object",
@@ -13,11 +12,21 @@
           "type": "object",
           "description": "Summary counts across all records",
           "properties": {
-            "total_records": { "type": "integer" },
-            "passed_records": { "type": "integer" },
-            "failed_records": { "type": "integer" }
+            "total_records": {
+              "type": "integer"
+            },
+            "passed_records": {
+              "type": "integer"
+            },
+            "failed_records": {
+              "type": "integer"
+            }
           },
-          "required": ["total_records", "passed_records", "failed_records"]
+          "required": [
+            "total_records",
+            "passed_records",
+            "failed_records"
+          ]
         },
         "results": {
           "type": "array",
@@ -31,7 +40,10 @@
               },
               "verdict": {
                 "type": "string",
-                "enum": ["pass", "fail"],
+                "enum": [
+                  "pass",
+                  "fail"
+                ],
                 "description": "Overall pass/fail verdict for this record"
               },
               "features": {
@@ -46,7 +58,12 @@
                     },
                     "status": {
                       "type": "string",
-                      "enum": ["passed", "failed", "warning", "unevaluated"]
+                      "enum": [
+                        "passed",
+                        "failed",
+                        "warning",
+                        "unevaluated"
+                      ]
                     },
                     "policy_id": {
                       "type": "string",
@@ -54,7 +71,7 @@
                     },
                     "explanation": {
                       "type": "string",
-                      "description": "Directional human-readable explanation (e.g., 'Below minimum resolution for display placement'). Avoid quantitative thresholds — the evaluator is the oracle."
+                      "description": "Directional human-readable explanation (e.g., 'Below minimum resolution for display placement'). Avoid quantitative thresholds \u2014 the evaluator is the oracle."
                     },
                     "confidence": {
                       "type": "number",
@@ -63,21 +80,30 @@
                       "description": "Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones."
                     }
                   },
-                  "required": ["feature_id", "status"]
+                  "required": [
+                    "feature_id",
+                    "status"
+                  ]
                 }
               }
             },
-            "required": ["record_id", "verdict"]
+            "required": [
+              "record_id",
+              "verdict"
+            ]
           }
         },
         "context": {
-          "$ref": "/schemas/latest/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/latest/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
-      "required": ["summary", "results"]
+      "required": [
+        "summary",
+        "results"
+      ]
     },
     {
       "type": "object",
@@ -85,16 +111,20 @@
       "properties": {
         "errors": {
           "type": "array",
-          "items": { "$ref": "/schemas/latest/core/error.json" }
+          "items": {
+            "$ref": "../core/error.json"
+          }
         },
         "context": {
-          "$ref": "/schemas/latest/core/context.json"
+          "$ref": "../core/context.json"
         },
         "ext": {
-          "$ref": "/schemas/latest/core/ext.json"
+          "$ref": "../core/ext.json"
         }
       },
-      "required": ["errors"]
+      "required": [
+        "errors"
+      ]
     }
   ]
 }

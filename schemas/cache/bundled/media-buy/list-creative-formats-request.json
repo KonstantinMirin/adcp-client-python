@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "/schemas/latest/bundled/media-buy/list-creative-formats-request.json",
   "title": "List Creative Formats Request",
   "description": "Request parameters for discovering supported creative formats",
   "type": "object",
@@ -170,7 +169,7 @@
     },
     "output_format_ids": {
       "type": "array",
-      "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs — inspect each result's input_format_ids to see what inputs they accept.",
+      "description": "Filter to formats whose output_format_ids includes any of these format IDs. Returns formats that can produce these outputs \u2014 inspect each result's input_format_ids to see what inputs they accept.",
       "items": {
         "title": "Format ID",
         "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
@@ -220,7 +219,7 @@
     },
     "input_format_ids": {
       "type": "array",
-      "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input — inspect each result's output_format_ids to see what they can produce.",
+      "description": "Filter to formats whose input_format_ids includes any of these format IDs. Returns formats that accept these creatives as input \u2014 inspect each result's output_format_ids to see what they can produce.",
       "items": {
         "title": "Format ID",
         "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
@@ -302,7 +301,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-19T20:54:55.361Z",
+    "generatedAt": "2026-04-20T02:09:29.528Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

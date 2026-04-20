@@ -96,7 +96,7 @@ def _make_caps(
     return GetAdcpCapabilitiesResponse(
         adcp=Adcp(
             major_versions=[MajorVersion(root=3)],
-            idempotency=Idempotency(replay_ttl_seconds=86400),
+            idempotency=Idempotency(supported=True, replay_ttl_seconds=86400),
         ),
         supported_protocols=[SupportedProtocol.media_buy],
         request_signing=RequestSigning(
@@ -183,9 +183,7 @@ async def test_hook_skips_when_context_var_unset_server_rejects(
     signing_client.fetch_capabilities = AsyncMock(  # type: ignore[method-assign]
         return_value=_make_caps(required=["create_media_buy"])
     )
-    app = _build_verifier_app(
-        covers="either", required_for=frozenset({"create_media_buy"})
-    )
+    app = _build_verifier_app(covers="either", required_for=frozenset({"create_media_buy"}))
     transport = httpx.ASGITransport(app=app)
 
     async with httpx.AsyncClient(
