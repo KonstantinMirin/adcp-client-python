@@ -102,7 +102,13 @@ adcp = ["py.typed", "ADCP_VERSION", "signing/pg/*.sql"]
 [tool.black]
 line-length = 100
 target-version = ["py310", "py311", "py312"]
-extend-exclude = "/(tasks)\\.py$"
+# Skip auto-generated files. Running black on generated_poc/ during
+# pre-commit after `make regenerate-schemas` causes a stash conflict
+# (hook reformats, tries to re-apply over seller's already-modified
+# files, rolls back). The regen script already runs black on the
+# consolidated _generated.py; individual generated_poc/ files don't
+# need formatting at commit time. Mirrors the ruff extend-exclude.
+extend-exclude = "/(tasks|_generated|registry)\\.py$|/types/generated_poc/"
 
 [tool.ruff]
 line-length = 100
