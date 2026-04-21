@@ -14,10 +14,10 @@ from .. import provenance as provenance_1
 
 
 class Channels(Enum):
-    mono = 'mono'
-    stereo = 'stereo'
-    field_5_1 = '5.1'
-    field_7_1 = '7.1'
+    mono = "mono"
+    stereo = "stereo"
+    field_5_1 = "5.1"
+    field_7_1 = "7.1"
 
 
 class BitDepth(IntEnum):
@@ -28,39 +28,39 @@ class BitDepth(IntEnum):
 
 class AudioAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    url: Annotated[AnyUrl, Field(description='URL to the audio asset')]
+    url: Annotated[AnyUrl, Field(description="URL to the audio asset")]
     duration_ms: Annotated[
-        int | None, Field(description='Audio duration in milliseconds', ge=0)
+        int | None, Field(description="Audio duration in milliseconds", ge=0)
     ] = None
-    file_size_bytes: Annotated[int | None, Field(description='File size in bytes', ge=1)] = None
+    file_size_bytes: Annotated[int | None, Field(description="File size in bytes", ge=1)] = None
     container_format: Annotated[
         str | None,
-        Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)'),
+        Field(description="Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)"),
     ] = None
     codec: Annotated[
         str | None,
         Field(
-            description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)'
+            description="Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)"
         ),
     ] = None
     sampling_rate_hz: Annotated[
-        int | None, Field(description='Sampling rate in Hz (e.g., 44100, 48000, 96000)')
+        int | None, Field(description="Sampling rate in Hz (e.g., 44100, 48000, 96000)")
     ] = None
-    channels: Annotated[Channels | None, Field(description='Channel configuration')] = None
-    bit_depth: Annotated[BitDepth | None, Field(description='Bit depth')] = None
+    channels: Annotated[Channels | None, Field(description="Channel configuration")] = None
+    bit_depth: Annotated[BitDepth | None, Field(description="Bit depth")] = None
     bitrate_kbps: Annotated[
-        int | None, Field(description='Bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Bitrate in kilobits per second", ge=1)
     ] = None
-    loudness_lufs: Annotated[float | None, Field(description='Integrated loudness in LUFS')] = None
-    true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = None
+    loudness_lufs: Annotated[float | None, Field(description="Integrated loudness in LUFS")] = None
+    true_peak_dbfs: Annotated[float | None, Field(description="True peak level in dBFS")] = None
     transcript_url: Annotated[
-        AnyUrl | None, Field(description='URL to text transcript of the audio content')
+        AnyUrl | None, Field(description="URL to text transcript of the audio content")
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

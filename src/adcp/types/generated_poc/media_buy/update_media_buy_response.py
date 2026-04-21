@@ -19,23 +19,23 @@ from ..enums import media_buy_status
 
 
 class ValidAction(Enum):
-    pause = 'pause'
-    resume = 'resume'
-    cancel = 'cancel'
-    update_budget = 'update_budget'
-    update_dates = 'update_dates'
-    update_packages = 'update_packages'
-    add_packages = 'add_packages'
-    sync_creatives = 'sync_creatives'
+    pause = "pause"
+    resume = "resume"
+    cancel = "cancel"
+    update_budget = "update_budget"
+    update_dates = "update_dates"
+    update_packages = "update_packages"
+    add_packages = "add_packages"
+    sync_creatives = "sync_creatives"
 
 
 class UpdateMediaBuyResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     errors: Annotated[
         list[error.Error],
-        Field(description='Array of errors explaining why the operation failed', min_length=1),
+        Field(description="Array of errors explaining why the operation failed", min_length=1),
     ]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
@@ -43,7 +43,7 @@ class UpdateMediaBuyResponse2(AdCPBaseModel):
 
 class UpdateMediaBuyResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     media_buy_id: Annotated[str, Field(description="Seller's identifier for the media buy")]
     status: Annotated[
@@ -55,33 +55,33 @@ class UpdateMediaBuyResponse1(AdCPBaseModel):
     revision: Annotated[
         int | None,
         Field(
-            description='Revision number after this update. Use this value in subsequent update_media_buy requests for optimistic concurrency.',
+            description="Revision number after this update. Use this value in subsequent update_media_buy requests for optimistic concurrency.",
             ge=1,
         ),
     ] = None
     implementation_date: Annotated[
         AwareDatetime | None,
-        Field(description='ISO 8601 timestamp when changes take effect (null if pending approval)'),
+        Field(description="ISO 8601 timestamp when changes take effect (null if pending approval)"),
     ] = None
     invoice_recipient: Annotated[
         business_entity.BusinessEntity | None,
         Field(
-            description='Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).'
+            description="Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only)."
         ),
     ] = None
     affected_packages: Annotated[
         list[package.Package] | None,
-        Field(description='Array of packages that were modified with complete state information'),
+        Field(description="Array of packages that were modified with complete state information"),
     ] = None
     valid_actions: Annotated[
         list[ValidAction] | None,
         Field(
-            description='Actions the buyer can perform after this update. Saves a round-trip to get_media_buys.'
+            description="Actions the buyer can perform after this update. Saves a round-trip to get_media_buys."
         ),
     ] = None
     sandbox: Annotated[
         bool | None,
-        Field(description='When true, this response contains simulated data from sandbox mode.'),
+        Field(description="When true, this response contains simulated data from sandbox mode."),
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

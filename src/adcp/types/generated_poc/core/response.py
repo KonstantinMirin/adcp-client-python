@@ -12,13 +12,13 @@ from pydantic import ConfigDict, Field
 
 class ProtocolResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    message: Annotated[str, Field(description='Human-readable summary')]
-    context_id: Annotated[str | None, Field(description='Session continuity identifier')] = None
+    message: Annotated[str, Field(description="Human-readable summary")]
+    context_id: Annotated[str | None, Field(description="Session continuity identifier")] = None
     data: Annotated[
         Any | None,
         Field(
-            description='AdCP task-specific response data (see individual task response schemas)'
+            description="AdCP task-specific response data (see individual task response schemas)"
         ),
     ] = None

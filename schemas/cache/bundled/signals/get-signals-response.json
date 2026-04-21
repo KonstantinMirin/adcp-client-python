@@ -13,6 +13,7 @@
           "signal_id": {
             "title": "Signal ID",
             "description": "Universal signal identifier referencing the data provider's catalog. Use this to verify authorization and look up signal definitions.",
+            "x-entity": "signal",
             "discriminator": {
               "propertyName": "source"
             },
@@ -75,7 +76,8 @@
           },
           "signal_agent_segment_id": {
             "type": "string",
-            "description": "Opaque identifier used for activation. This is the signals agent's internal segment ID."
+            "description": "Opaque identifier used for activation. This is the signals agent's internal segment ID.",
+            "x-entity": "signal_activation_id"
           },
           "name": {
             "type": "string",
@@ -346,7 +348,8 @@
                   "properties": {
                     "pricing_option_id": {
                       "type": "string",
-                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied."
+                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.",
+                      "x-entity": "vendor_pricing_option"
                     }
                   },
                   "required": [
@@ -679,7 +682,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.744Z",
+    "generatedAt": "2026-04-21T21:56:38.639Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

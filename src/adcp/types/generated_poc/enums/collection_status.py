@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class CollectionStatus(Enum):
-    active = 'active'
-    hiatus = 'hiatus'
-    ended = 'ended'
-    upcoming = 'upcoming'
+    active = "active"
+    hiatus = "hiatus"
+    ended = "ended"
+    upcoming = "upcoming"

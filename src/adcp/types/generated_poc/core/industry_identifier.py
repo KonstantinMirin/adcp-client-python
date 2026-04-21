@@ -14,7 +14,7 @@ from ..enums import creative_identifier_type
 
 class IndustryIdentifier(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: creative_identifier_type.CreativeIdentifierType
     value: Annotated[

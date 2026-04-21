@@ -14,15 +14,15 @@ from .. import provenance as provenance_1
 
 class CssAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    content: Annotated[str, Field(description='CSS content')]
+    content: Annotated[str, Field(description="CSS content")]
     media: Annotated[
         str | None, Field(description="CSS media query context (e.g., 'screen', 'print')")
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

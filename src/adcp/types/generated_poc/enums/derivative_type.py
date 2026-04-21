@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class DerivativeType(Enum):
-    clip = 'clip'
-    highlight = 'highlight'
-    recap = 'recap'
-    trailer = 'trailer'
-    bonus = 'bonus'
+    clip = "clip"
+    highlight = "highlight"
+    recap = "recap"
+    trailer = "trailer"
+    bonus = "bonus"

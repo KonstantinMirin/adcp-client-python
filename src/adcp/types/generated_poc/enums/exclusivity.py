@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class Exclusivity(Enum):
-    none = 'none'
-    category = 'category'
-    exclusive = 'exclusive'
+    none = "none"
+    category = "category"
+    exclusive = "exclusive"

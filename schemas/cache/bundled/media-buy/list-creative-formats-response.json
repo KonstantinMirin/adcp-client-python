@@ -11,245 +11,11 @@
         "title": "Format",
         "description": "Represents a creative format with its requirements",
         "type": "object",
-        "$defs": {
-          "baseIndividualAsset": {
-            "type": "object",
-            "properties": {
-              "item_type": {
-                "type": "string",
-                "const": "individual",
-                "description": "Discriminator indicating this is an individual asset"
-              },
-              "asset_id": {
-                "type": "string",
-                "description": "Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object."
-              },
-              "asset_role": {
-                "type": "string",
-                "description": "Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
-              },
-              "required": {
-                "type": "boolean",
-                "description": "Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory."
-              },
-              "overlays": {
-                "type": "array",
-                "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
-                "items": {
-                  "title": "Overlay",
-                  "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')"
-                    },
-                    "description": {
-                      "type": "string",
-                      "description": "Human-readable explanation of what this overlay is and how buyers should account for it"
-                    },
-                    "visual": {
-                      "type": "object",
-                      "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
-                      "properties": {
-                        "url": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor."
-                        },
-                        "light": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)"
-                        },
-                        "dark": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)"
-                        }
-                      },
-                      "minProperties": 1,
-                      "additionalProperties": false
-                    },
-                    "bounds": {
-                      "type": "object",
-                      "description": "Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.",
-                      "properties": {
-                        "x": {
-                          "type": "number",
-                          "description": "Horizontal offset from the asset's left edge"
-                        },
-                        "y": {
-                          "type": "number",
-                          "description": "Vertical offset from the asset's top edge"
-                        },
-                        "width": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Width of the overlay"
-                        },
-                        "height": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Height of the overlay"
-                        },
-                        "unit": {
-                          "type": "string",
-                          "enum": [
-                            "px",
-                            "fraction",
-                            "inches",
-                            "cm",
-                            "mm",
-                            "pt"
-                          ],
-                          "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left."
-                        }
-                      },
-                      "required": [
-                        "x",
-                        "y",
-                        "width",
-                        "height",
-                        "unit"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "bounds"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": [
-              "item_type",
-              "asset_id",
-              "asset_type",
-              "required"
-            ]
-          },
-          "baseGroupAsset": {
-            "type": "object",
-            "properties": {
-              "asset_id": {
-                "type": "string",
-                "description": "Identifier for this asset within the group"
-              },
-              "asset_role": {
-                "type": "string",
-                "description": "Descriptive label for this asset's purpose. For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
-              },
-              "required": {
-                "type": "boolean",
-                "description": "Whether this asset is required within each repetition of the group",
-                "default": false
-              },
-              "overlays": {
-                "type": "array",
-                "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds.",
-                "items": {
-                  "title": "Overlay",
-                  "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')"
-                    },
-                    "description": {
-                      "type": "string",
-                      "description": "Human-readable explanation of what this overlay is and how buyers should account for it"
-                    },
-                    "visual": {
-                      "type": "object",
-                      "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
-                      "properties": {
-                        "url": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor."
-                        },
-                        "light": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)"
-                        },
-                        "dark": {
-                          "type": "string",
-                          "format": "uri",
-                          "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)"
-                        }
-                      },
-                      "minProperties": 1,
-                      "additionalProperties": false
-                    },
-                    "bounds": {
-                      "type": "object",
-                      "description": "Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.",
-                      "properties": {
-                        "x": {
-                          "type": "number",
-                          "description": "Horizontal offset from the asset's left edge"
-                        },
-                        "y": {
-                          "type": "number",
-                          "description": "Vertical offset from the asset's top edge"
-                        },
-                        "width": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Width of the overlay"
-                        },
-                        "height": {
-                          "type": "number",
-                          "minimum": 0,
-                          "description": "Height of the overlay"
-                        },
-                        "unit": {
-                          "type": "string",
-                          "enum": [
-                            "px",
-                            "fraction",
-                            "inches",
-                            "cm",
-                            "mm",
-                            "pt"
-                          ],
-                          "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left."
-                        }
-                      },
-                      "required": [
-                        "x",
-                        "y",
-                        "width",
-                        "height",
-                        "unit"
-                      ],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "bounds"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": [
-              "asset_id",
-              "asset_type",
-              "required"
-            ]
-          }
-        },
         "properties": {
           "format_id": {
             "title": "Format ID",
             "description": "Structured format identifier with agent URL and format name",
+            "x-entity": "creative_format",
             "type": "object",
             "properties": {
               "agent_url": {
@@ -2141,68 +1907,6 @@
                           "items": {
                             "title": "Catalog Field Binding",
                             "description": "Maps a format template slot to a catalog item field or typed asset pool. The 'kind' field identifies the binding variant. All bindings are optional \u2014 agents can still infer mappings without them.",
-                            "definitions": {
-                              "ScalarBinding": {
-                                "type": "object",
-                                "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
-                                "properties": {
-                                  "kind": {
-                                    "type": "string",
-                                    "const": "scalar"
-                                  },
-                                  "asset_id": {
-                                    "type": "string",
-                                    "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to."
-                                  },
-                                  "catalog_field": {
-                                    "type": "string",
-                                    "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city')."
-                                  },
-                                  "ext": {
-                                    "title": "Extension Object",
-                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                    "type": "object",
-                                    "additionalProperties": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "asset_id",
-                                  "catalog_field"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "AssetPoolBinding": {
-                                "type": "object",
-                                "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
-                                "properties": {
-                                  "kind": {
-                                    "type": "string",
-                                    "const": "asset_pool"
-                                  },
-                                  "asset_id": {
-                                    "type": "string",
-                                    "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to."
-                                  },
-                                  "asset_group_id": {
-                                    "type": "string",
-                                    "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo')."
-                                  },
-                                  "ext": {
-                                    "title": "Extension Object",
-                                    "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                    "type": "object",
-                                    "additionalProperties": true
-                                  }
-                                },
-                                "required": [
-                                  "kind",
-                                  "asset_id",
-                                  "asset_group_id"
-                                ],
-                                "additionalProperties": true
-                              }
-                            },
                             "oneOf": [
                               {
                                 "$ref": "#/definitions/ScalarBinding"
@@ -3367,6 +3071,7 @@
             "items": {
               "title": "Format ID",
               "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+              "x-entity": "creative_format",
               "type": "object",
               "properties": {
                 "agent_url": {
@@ -3416,6 +3121,7 @@
             "items": {
               "title": "Format ID",
               "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+              "x-entity": "creative_format",
               "type": "object",
               "properties": {
                 "agent_url": {
@@ -3466,6 +3172,7 @@
               "format_id": {
                 "title": "Format ID",
                 "description": "Creative format defining the card layout (typically format_card_standard)",
+                "x-entity": "creative_format",
                 "type": "object",
                 "properties": {
                   "agent_url": {
@@ -3627,6 +3334,7 @@
               "format_id": {
                 "title": "Format ID",
                 "description": "Creative format defining the detailed card layout (typically format_card_detailed)",
+                "x-entity": "creative_format",
                 "type": "object",
                 "properties": {
                   "agent_url": {
@@ -3728,7 +3436,8 @@
                   "properties": {
                     "pricing_option_id": {
                       "type": "string",
-                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied."
+                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.",
+                      "x-entity": "vendor_pricing_option"
                     }
                   },
                   "required": [
@@ -4090,8 +3799,305 @@
     "formats"
   ],
   "additionalProperties": true,
+  "$defs": {
+    "baseIndividualAsset": {
+      "type": "object",
+      "properties": {
+        "item_type": {
+          "type": "string",
+          "const": "individual",
+          "description": "Discriminator indicating this is an individual asset"
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object."
+        },
+        "asset_role": {
+          "type": "string",
+          "description": "Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory."
+        },
+        "overlays": {
+          "type": "array",
+          "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
+          "items": {
+            "title": "Overlay",
+            "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable explanation of what this overlay is and how buyers should account for it"
+              },
+              "visual": {
+                "type": "object",
+                "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor."
+                  },
+                  "light": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)"
+                  },
+                  "dark": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)"
+                  }
+                },
+                "minProperties": 1,
+                "additionalProperties": false
+              },
+              "bounds": {
+                "type": "object",
+                "description": "Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "Horizontal offset from the asset's left edge"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Vertical offset from the asset's top edge"
+                  },
+                  "width": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Width of the overlay"
+                  },
+                  "height": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Height of the overlay"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "px",
+                      "fraction",
+                      "inches",
+                      "cm",
+                      "mm",
+                      "pt"
+                    ],
+                    "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left."
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height",
+                  "unit"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "bounds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "item_type",
+        "asset_id",
+        "asset_type",
+        "required"
+      ]
+    },
+    "baseGroupAsset": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "description": "Identifier for this asset within the group"
+        },
+        "asset_role": {
+          "type": "string",
+          "description": "Descriptive label for this asset's purpose. For documentation and UI display only \u2014 manifests key assets by asset_id, not asset_role."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this asset is required within each repetition of the group",
+          "default": false
+        },
+        "overlays": {
+          "type": "array",
+          "description": "Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds.",
+          "items": {
+            "title": "Overlay",
+            "description": "A publisher-controlled element that renders on top of buyer creative content within the ad placement. Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds.",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Identifier for this overlay (e.g., 'play_pause', 'volume', 'publisher_logo', 'carousel_prev', 'carousel_next')"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable explanation of what this overlay is and how buyers should account for it"
+              },
+              "visual": {
+                "type": "object",
+                "description": "Optional visual reference for this overlay element. Useful for creative agents compositing previews and for buyers understanding what will appear over their content. Must include at least one of: url, light, or dark.",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor."
+                  },
+                  "light": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)"
+                  },
+                  "dark": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "URL to the overlay graphic for use on dark backgrounds (SVG or PNG)"
+                  }
+                },
+                "minProperties": 1,
+                "additionalProperties": false
+              },
+              "bounds": {
+                "type": "object",
+                "description": "Position and size of the overlay relative to the asset's own top-left corner. See 'unit' for coordinate interpretation.",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "Horizontal offset from the asset's left edge"
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Vertical offset from the asset's top edge"
+                  },
+                  "width": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Width of the overlay"
+                  },
+                  "height": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Height of the overlay"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "px",
+                      "fraction",
+                      "inches",
+                      "cm",
+                      "mm",
+                      "pt"
+                    ],
+                    "description": "'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left."
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height",
+                  "unit"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "bounds"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "asset_id",
+        "asset_type",
+        "required"
+      ]
+    }
+  },
+  "definitions": {
+    "ScalarBinding": {
+      "type": "object",
+      "description": "Maps an individual format asset to a catalog item field via dot-notation path.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "scalar"
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to."
+        },
+        "catalog_field": {
+          "type": "string",
+          "description": "Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city')."
+        },
+        "ext": {
+          "title": "Extension Object",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "kind",
+        "asset_id",
+        "catalog_field"
+      ],
+      "additionalProperties": true
+    },
+    "AssetPoolBinding": {
+      "type": "object",
+      "description": "Maps an individual format asset to a typed asset pool on the catalog item (e.g., images_landscape, images_vertical, logo). The format slot receives the first item in the pool.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "asset_pool"
+        },
+        "asset_id": {
+          "type": "string",
+          "description": "The asset_id from the format's assets array. Identifies which individual template slot this binding applies to."
+        },
+        "asset_group_id": {
+          "type": "string",
+          "description": "The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo')."
+        },
+        "ext": {
+          "title": "Extension Object",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "kind",
+        "asset_id",
+        "asset_group_id"
+      ],
+      "additionalProperties": true
+    }
+  },
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.536Z",
+    "generatedAt": "2026-04-21T21:56:38.570Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class AudienceSource(Enum):
-    synced = 'synced'
-    platform = 'platform'
-    third_party = 'third_party'
-    lookalike = 'lookalike'
-    retargeting = 'retargeting'
-    unknown = 'unknown'
+    synced = "synced"
+    platform = "platform"
+    third_party = "third_party"
+    lookalike = "lookalike"
+    retargeting = "retargeting"
+    unknown = "unknown"

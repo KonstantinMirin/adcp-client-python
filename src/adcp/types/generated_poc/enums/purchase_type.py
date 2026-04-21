@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class PurchaseType(Enum):
-    media_buy = 'media_buy'
-    rights_license = 'rights_license'
-    signal_activation = 'signal_activation'
-    creative_services = 'creative_services'
+    media_buy = "media_buy"
+    rights_license = "rights_license"
+    signal_activation = "signal_activation"
+    creative_services = "creative_services"

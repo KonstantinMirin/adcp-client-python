@@ -92,13 +92,13 @@ class AdcpAsyncResponseData(
         | sync_catalogs_async_response_input_required.SyncCatalogsInputRequired
         | sync_catalogs_async_response_submitted.SyncCatalogsSubmitted,
         Field(
-            description='Union of all possible data payloads for async task webhook responses. For completed/failed statuses, use the main task response schema. For working/input-required/submitted, use the status-specific schemas.',
-            title='AdCP Async Response Data',
+            description="Union of all possible data payloads for async task webhook responses. For completed/failed statuses, use the main task response schema. For working/input-required/submitted, use the status-specific schemas.",
+            title="AdCP Async Response Data",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

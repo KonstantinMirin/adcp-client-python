@@ -126,5 +126,24 @@
       "$ref": "../core/ext.json"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "include_pricing": {
+            "const": true
+          }
+        },
+        "required": [
+          "include_pricing"
+        ]
+      },
+      "then": {
+        "required": [
+          "account"
+        ]
+      }
+    }
+  ]
 }

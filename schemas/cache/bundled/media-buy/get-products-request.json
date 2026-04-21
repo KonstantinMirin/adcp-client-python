@@ -135,6 +135,7 @@
           "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
           "type": "string",
           "pattern": "^[a-z0-9_]+$",
+          "x-entity": "advertiser_brand",
           "examples": [
             "tide",
             "cheerios",
@@ -210,7 +211,8 @@
       "properties": {
         "catalog_id": {
           "type": "string",
-          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+          "x-entity": "catalog"
         },
         "name": {
           "type": "string",
@@ -681,7 +683,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -706,6 +709,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -777,7 +781,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -880,6 +885,7 @@
           "items": {
             "title": "Format ID",
             "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+            "x-entity": "creative_format",
             "type": "object",
             "properties": {
               "agent_url": {
@@ -1217,6 +1223,7 @@
                   "signal_id": {
                     "title": "Signal ID",
                     "description": "The signal to target",
+                    "x-entity": "signal",
                     "discriminator": {
                       "propertyName": "source"
                     },
@@ -1301,6 +1308,7 @@
                   "signal_id": {
                     "title": "Signal ID",
                     "description": "The signal to target",
+                    "x-entity": "signal",
                     "discriminator": {
                       "propertyName": "source"
                     },
@@ -1389,6 +1397,7 @@
                   "signal_id": {
                     "title": "Signal ID",
                     "description": "The signal to target",
+                    "x-entity": "signal",
                     "discriminator": {
                       "propertyName": "source"
                     },
@@ -1761,6 +1770,7 @@
                     "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                     "type": "string",
                     "pattern": "^[a-z0-9_]+$",
+                    "x-entity": "advertiser_brand",
                     "examples": [
                       "tide",
                       "cheerios",
@@ -1884,7 +1894,8 @@
         "list_id": {
           "type": "string",
           "description": "Identifier for the property list within the agent",
-          "minLength": 1
+          "minLength": 1,
+          "x-entity": "property_list"
         },
         "auth_token": {
           "type": "string",
@@ -2019,7 +2030,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.494Z",
+    "generatedAt": "2026-04-21T21:56:38.555Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -14,14 +14,14 @@ from ..core import catalog, format_id
 
 class AvailablePackage(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    package_id: Annotated[str, Field(description='Unique identifier for the package')]
-    media_buy_id: Annotated[str, Field(description='Media buy that this package belongs to')]
+    package_id: Annotated[str, Field(description="Unique identifier for the package")]
+    media_buy_id: Annotated[str, Field(description="Media buy that this package belongs to")]
     format_ids: Annotated[
         list[format_id.FormatId] | None,
         Field(
-            description='Creative format identifiers eligible for this package. Uses the standard AdCP format-id object with agent_url and id for unambiguous format resolution across namespaces.'
+            description="Creative format identifiers eligible for this package. Uses the standard AdCP format-id object with agent_url and id for unambiguous format resolution across namespaces."
         ),
     ] = None
     catalogs: Annotated[

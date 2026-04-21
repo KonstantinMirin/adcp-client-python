@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class EscalationSeverity(Enum):
-    info = 'info'
-    warning = 'warning'
-    critical = 'critical'
+    info = "info"
+    warning = "warning"
+    critical = "critical"

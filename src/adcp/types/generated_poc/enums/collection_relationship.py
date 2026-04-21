@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class CollectionRelationship(Enum):
-    spinoff = 'spinoff'
-    companion = 'companion'
-    sequel = 'sequel'
-    prequel = 'prequel'
-    crossover = 'crossover'
+    spinoff = "spinoff"
+    companion = "companion"
+    sequel = "sequel"
+    prequel = "prequel"
+    crossover = "crossover"

@@ -16,23 +16,23 @@ from ..core import product
 
 
 class Reason(Enum):
-    CLARIFICATION_NEEDED = 'CLARIFICATION_NEEDED'
-    BUDGET_REQUIRED = 'BUDGET_REQUIRED'
+    CLARIFICATION_NEEDED = "CLARIFICATION_NEEDED"
+    BUDGET_REQUIRED = "BUDGET_REQUIRED"
 
 
 class GetProductsInputRequired(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     reason: Annotated[
-        Reason | None, Field(description='Reason code indicating why input is needed')
+        Reason | None, Field(description="Reason code indicating why input is needed")
     ] = None
     partial_results: Annotated[
         list[product.Product] | None,
-        Field(description='Partial product results that may help inform the clarification'),
+        Field(description="Partial product results that may help inform the clarification"),
     ] = None
     suggestions: Annotated[
-        list[str] | None, Field(description='Suggested values or options for the required input')
+        list[str] | None, Field(description="Suggested values or options for the required input")
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

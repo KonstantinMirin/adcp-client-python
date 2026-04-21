@@ -14,23 +14,23 @@ from ..enums import metro_system, postal_system
 
 class GeographicBreakdownSupport(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     country: Annotated[
-        bool | None, Field(description='Supports country-level geo breakdown (ISO 3166-1 alpha-2)')
+        bool | None, Field(description="Supports country-level geo breakdown (ISO 3166-1 alpha-2)")
     ] = None
     region: Annotated[
-        bool | None, Field(description='Supports region/state-level geo breakdown (ISO 3166-2)')
+        bool | None, Field(description="Supports region/state-level geo breakdown (ISO 3166-2)")
     ] = None
     metro: Annotated[
         dict[metro_system.MetroAreaSystem, bool] | None,
         Field(
-            description='Metro area breakdown support. Keys are metro-system enum values; true means supported.'
+            description="Metro area breakdown support. Keys are metro-system enum values; true means supported."
         ),
     ] = None
     postal_area: Annotated[
         dict[postal_system.PostalCodeSystem, bool] | None,
         Field(
-            description='Postal area breakdown support. Keys are postal-system enum values; true means supported.'
+            description="Postal area breakdown support. Keys are postal-system enum values; true means supported."
         ),
     ] = None

@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Calibrate Content Request",
   "description": "Request parameters for evaluating content during calibration. Multi-turn dialogue is handled at the protocol layer via contextId.",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -34,6 +35,7 @@
         "format_id": {
           "title": "Format ID",
           "description": "Optional reference to a format definition. Uses the same format registry as creative formats.",
+          "x-entity": "creative_format",
           "type": "object",
           "properties": {
             "agent_url": {
@@ -1792,73 +1794,7 @@
         "artifact_id",
         "assets"
       ],
-      "additionalProperties": true,
-      "$defs": {
-        "asset_access": {
-          "type": "object",
-          "description": "Authentication for accessing secured asset URLs",
-          "oneOf": [
-            {
-              "type": "object",
-              "description": "Bearer token authentication",
-              "properties": {
-                "method": {
-                  "type": "string",
-                  "const": "bearer_token"
-                },
-                "token": {
-                  "type": "string",
-                  "description": "OAuth2 bearer token for Authorization header"
-                }
-              },
-              "required": [
-                "method",
-                "token"
-              ]
-            },
-            {
-              "type": "object",
-              "description": "Service account authentication (GCP, AWS)",
-              "properties": {
-                "method": {
-                  "type": "string",
-                  "const": "service_account"
-                },
-                "provider": {
-                  "type": "string",
-                  "enum": [
-                    "gcp",
-                    "aws"
-                  ],
-                  "description": "Cloud provider"
-                },
-                "credentials": {
-                  "type": "object",
-                  "description": "Service account credentials",
-                  "additionalProperties": true
-                }
-              },
-              "required": [
-                "method",
-                "provider"
-              ]
-            },
-            {
-              "type": "object",
-              "description": "Pre-signed URL (credentials embedded in URL)",
-              "properties": {
-                "method": {
-                  "type": "string",
-                  "const": "signed_url"
-                }
-              },
-              "required": [
-                "method"
-              ]
-            }
-          ]
-        }
-      }
+      "additionalProperties": true
     },
     "idempotency_key": {
       "type": "string",
@@ -1885,8 +1821,74 @@
     "standards_id",
     "artifact"
   ],
+  "$defs": {
+    "asset_access": {
+      "type": "object",
+      "description": "Authentication for accessing secured asset URLs",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Bearer token authentication",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "bearer_token"
+            },
+            "token": {
+              "type": "string",
+              "description": "OAuth2 bearer token for Authorization header"
+            }
+          },
+          "required": [
+            "method",
+            "token"
+          ]
+        },
+        {
+          "type": "object",
+          "description": "Service account authentication (GCP, AWS)",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "service_account"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "gcp",
+                "aws"
+              ],
+              "description": "Cloud provider"
+            },
+            "credentials": {
+              "type": "object",
+              "description": "Service account credentials",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "method",
+            "provider"
+          ]
+        },
+        {
+          "type": "object",
+          "description": "Pre-signed URL (credentials embedded in URL)",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "signed_url"
+            }
+          },
+          "required": [
+            "method"
+          ]
+        }
+      ]
+    }
+  },
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.037Z",
+    "generatedAt": "2026-04-21T21:56:38.329Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

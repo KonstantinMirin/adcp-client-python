@@ -4,9 +4,14 @@
   "description": "Response payload for validate_property_delivery task. Returns aggregate compliance statistics and per-record validation results.",
   "type": "object",
   "properties": {
+    "compliant": {
+      "type": "boolean",
+      "description": "Overall compliance flag for the submitted delivery \u2014 true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent."
+    },
     "list_id": {
       "type": "string",
-      "description": "ID of the property list validated against"
+      "description": "ID of the property list validated against",
+      "x-entity": "property_list"
     },
     "summary": {
       "type": "object",
@@ -263,7 +268,8 @@
                 },
                 "policy_id": {
                   "type": "string",
-                  "description": "Registry policy ID that triggered this result. Enables programmatic routing by looking up the policy in the registry."
+                  "description": "Registry policy ID that triggered this result. Enables programmatic routing by looking up the policy in the registry.",
+                  "x-entity": "governance_registry_policy"
                 },
                 "explanation": {
                   "type": "string",
@@ -397,7 +403,7 @@
   ],
   "additionalProperties": false,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.725Z",
+    "generatedAt": "2026-04-21T21:56:38.633Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

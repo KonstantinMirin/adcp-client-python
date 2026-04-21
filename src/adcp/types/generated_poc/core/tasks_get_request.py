@@ -15,7 +15,7 @@ from . import ext as ext_1
 
 class TasksGetRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -25,11 +25,11 @@ class TasksGetRequest(AdCPBaseModel):
             le=99,
         ),
     ] = None
-    task_id: Annotated[str, Field(description='Unique identifier of the task to retrieve')]
+    task_id: Annotated[str, Field(description="Unique identifier of the task to retrieve")]
     include_history: Annotated[
         bool | None,
         Field(
-            description='Include full conversation history for this task (may increase response size)'
+            description="Include full conversation history for this task (may increase response size)"
         ),
     ] = False
     context: context_1.ContextObject | None = None

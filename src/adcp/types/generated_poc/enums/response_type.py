@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class TmpResponseType(Enum):
-    activation = 'activation'
-    catalog_items = 'catalog_items'
-    creative = 'creative'
-    deal = 'deal'
+    activation = "activation"
+    catalog_items = "catalog_items"
+    creative = "creative"
+    deal = "deal"

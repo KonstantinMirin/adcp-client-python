@@ -12,14 +12,14 @@ from pydantic import ConfigDict, Field
 
 
 class Severity(Enum):
-    error = 'error'
-    warning = 'warning'
-    info = 'info'
+    error = "error"
+    warning = "warning"
+    info = "info"
 
 
 class DiagnosticIssue(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     severity: Annotated[
         Severity,
@@ -29,5 +29,5 @@ class DiagnosticIssue(AdCPBaseModel):
     ]
     message: Annotated[
         str,
-        Field(description='Human/agent-readable description of the issue and how to resolve it.'),
+        Field(description="Human/agent-readable description of the issue and how to resolve it."),
     ]

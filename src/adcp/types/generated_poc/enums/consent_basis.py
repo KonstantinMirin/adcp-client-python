@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class ConsentBasis(Enum):
-    consent = 'consent'
-    legitimate_interest = 'legitimate_interest'
-    contract = 'contract'
-    legal_obligation = 'legal_obligation'
+    consent = "consent"
+    legitimate_interest = "legitimate_interest"
+    contract = "contract"
+    legal_obligation = "legal_obligation"

@@ -17,7 +17,7 @@ from ..enums import channels as channels_1
 
 class ListContentStandardsRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -28,14 +28,14 @@ class ListContentStandardsRequest(AdCPBaseModel):
         ),
     ] = None
     channels: Annotated[
-        list[channels_1.MediaChannel] | None, Field(description='Filter by channel', min_length=1)
+        list[channels_1.MediaChannel] | None, Field(description="Filter by channel", min_length=1)
     ] = None
     languages: Annotated[
-        list[str] | None, Field(description='Filter by BCP 47 language tags', min_length=1)
+        list[str] | None, Field(description="Filter by BCP 47 language tags", min_length=1)
     ] = None
     countries: Annotated[
         list[str] | None,
-        Field(description='Filter by ISO 3166-1 alpha-2 country codes', min_length=1),
+        Field(description="Filter by ISO 3166-1 alpha-2 country codes", min_length=1),
     ] = None
     pagination: pagination_request.PaginationRequest | None = None
     context: context_1.ContextObject | None = None

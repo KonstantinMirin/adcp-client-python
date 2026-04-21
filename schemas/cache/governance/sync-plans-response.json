@@ -13,7 +13,8 @@
         "properties": {
           "plan_id": {
             "type": "string",
-            "description": "Plan identifier."
+            "description": "Plan identifier.",
+            "x-entity": "governance_plan"
           },
           "status": {
             "type": "string",
@@ -61,7 +62,8 @@
               "properties": {
                 "policy_id": {
                   "type": "string",
-                  "description": "Registry policy ID."
+                  "description": "Registry policy ID.",
+                  "x-entity": "governance_registry_policy"
                 },
                 "source": {
                   "type": "string",

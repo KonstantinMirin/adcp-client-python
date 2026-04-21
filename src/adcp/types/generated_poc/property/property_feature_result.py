@@ -16,30 +16,30 @@ from . import property_feature_value
 
 
 class CoverageStatus(Enum):
-    covered = 'covered'
-    not_covered = 'not_covered'
-    pending = 'pending'
+    covered = "covered"
+    not_covered = "not_covered"
+    pending = "pending"
 
 
 class PropertyFeatureResult(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     property: Annotated[
-        str | property_id.PropertyId, Field(description='The property these features apply to')
+        str | property_id.PropertyId, Field(description="The property these features apply to")
     ]
     features: Annotated[
         dict[str, property_feature_value.PropertyFeatureValue] | None,
-        Field(description='Map of feature_id to feature value'),
+        Field(description="Map of feature_id to feature value"),
     ] = None
     coverage_status: Annotated[
         CoverageStatus,
         Field(
-            description='Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)'
+            description="Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)"
         ),
     ]
     last_evaluated: Annotated[
         AwareDatetime | None,
-        Field(description='When features were last evaluated for this property'),
+        Field(description="When features were last evaluated for this property"),
     ] = None
     ext: ext_1.ExtensionObject | None = None

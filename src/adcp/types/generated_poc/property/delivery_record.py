@@ -15,19 +15,19 @@ from ..core import identifier as identifier_1
 
 class DeliveryRecord(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     identifier: Annotated[
         identifier_1.Identifier,
-        Field(description='The property identifier where impressions were delivered'),
+        Field(description="The property identifier where impressions were delivered"),
     ]
     impressions: Annotated[
-        int, Field(description='Number of impressions delivered to this identifier', ge=0)
+        int, Field(description="Number of impressions delivered to this identifier", ge=0)
     ]
     record_id: Annotated[
         str | None,
         Field(
-            description='Optional client-provided ID for correlating results back to source data'
+            description="Optional client-provided ID for correlating results back to source data"
         ),
     ] = None
     sales_agent_url: Annotated[

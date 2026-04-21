@@ -15,9 +15,9 @@ from ..core import ext as ext_1
 
 class DeleteCollectionListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    deleted: Annotated[bool, Field(description='Whether the list was successfully deleted')]
-    list_id: Annotated[str, Field(description='ID of the deleted list')]
+    deleted: Annotated[bool, Field(description="Whether the list was successfully deleted")]
+    list_id: Annotated[str, Field(description="ID of the deleted list")]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

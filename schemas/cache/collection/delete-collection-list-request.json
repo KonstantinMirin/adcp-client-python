@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Delete Collection List Request",
   "description": "Request parameters for deleting a collection list",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -12,7 +13,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the collection list to delete"
+      "description": "ID of the collection list to delete",
+      "x-entity": "collection_list"
     },
     "account": {
       "$ref": "../core/account-ref.json",

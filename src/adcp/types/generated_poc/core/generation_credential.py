@@ -15,7 +15,7 @@ from . import ext as ext_1
 
 class GenerationCredential(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     provider: Annotated[
         str,
@@ -26,17 +26,17 @@ class GenerationCredential(AdCPBaseModel):
     rights_key: Annotated[
         str,
         Field(
-            description='Scoped API key or token for generating rights-cleared content. The provider validates this key at generation time to verify the caller is authorized.'
+            description="Scoped API key or token for generating rights-cleared content. The provider validates this key at generation time to verify the caller is authorized."
         ),
     ]
     uses: Annotated[
         list[right_use.RightUse],
-        Field(description='Which rights uses this credential covers', min_length=1),
+        Field(description="Which rights uses this credential covers", min_length=1),
     ]
     expires_at: Annotated[
         AwareDatetime | None,
         Field(
-            description='When this credential expires. Key lifetime is determined by the provider.'
+            description="When this credential expires. Key lifetime is determined by the provider."
         ),
     ] = None
     endpoint: Annotated[

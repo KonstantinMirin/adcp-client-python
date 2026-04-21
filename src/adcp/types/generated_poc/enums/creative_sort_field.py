@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class CreativeSortField(Enum):
-    created_date = 'created_date'
-    updated_date = 'updated_date'
-    name = 'name'
-    status = 'status'
-    assignment_count = 'assignment_count'
+    created_date = "created_date"
+    updated_date = "updated_date"
+    name = "name"
+    status = "status"
+    assignment_count = "assignment_count"

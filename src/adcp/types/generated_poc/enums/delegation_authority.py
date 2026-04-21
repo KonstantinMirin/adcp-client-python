@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class DelegationAuthority(Enum):
-    full = 'full'
-    execute_only = 'execute_only'
-    propose_only = 'propose_only'
+    full = "full"
+    execute_only = "execute_only"
+    propose_only = "propose_only"

@@ -21,20 +21,20 @@ from . import collection_list
 
 class DistributionId(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     type: Annotated[
         distribution_identifier_type.DistributionIdentifierType,
-        Field(description='Type of distribution identifier'),
+        Field(description="Type of distribution identifier"),
     ]
-    value: Annotated[str, Field(description='The identifier value')]
+    value: Annotated[str, Field(description="The identifier value")]
 
 
 class Kind(Enum):
-    series = 'series'
-    publication = 'publication'
-    event_series = 'event_series'
-    rotation = 'rotation'
+    series = "series"
+    publication = "publication"
+    event_series = "event_series"
+    rotation = "rotation"
 
 
 class CoverageGap(DistributionId):
@@ -43,52 +43,52 @@ class CoverageGap(DistributionId):
 
 class Collection(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     collection_rid: Annotated[
         str | None,
         Field(
-            description='Registry-assigned stable identifier for this collection. Present when the collection has been registered in the collection registry.'
+            description="Registry-assigned stable identifier for this collection. Present when the collection has been registered in the collection registry."
         ),
     ] = None
-    name: Annotated[str, Field(description='Human-readable collection name')]
+    name: Annotated[str, Field(description="Human-readable collection name")]
     distribution_ids: Annotated[
         list[DistributionId] | None,
-        Field(description='Platform-independent identifiers for cross-publisher matching'),
+        Field(description="Platform-independent identifiers for cross-publisher matching"),
     ] = None
     content_rating: Annotated[
         content_rating_1.ContentRating | None,
-        Field(description='Baseline content rating for this collection'),
+        Field(description="Baseline content rating for this collection"),
     ] = None
-    genre: Annotated[list[str] | None, Field(description='Genre tags for this collection')] = None
+    genre: Annotated[list[str] | None, Field(description="Genre tags for this collection")] = None
     genre_taxonomy: Annotated[
-        genre_taxonomy_1.GenreTaxonomy | None, Field(description='Taxonomy system for genre values')
+        genre_taxonomy_1.GenreTaxonomy | None, Field(description="Taxonomy system for genre values")
     ] = None
-    kind: Annotated[Kind | None, Field(description='What kind of content program this is')] = None
+    kind: Annotated[Kind | None, Field(description="What kind of content program this is")] = None
 
 
 class GetCollectionListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     list: Annotated[
         collection_list.CollectionList,
-        Field(description='The collection list metadata (always returned)'),
+        Field(description="The collection list metadata (always returned)"),
     ]
     collections: Annotated[
         list[Collection] | None,
         Field(
-            description='Resolved collections that passed filters (if resolve=true). Each entry contains identification and key metadata for seller matching.'
+            description="Resolved collections that passed filters (if resolve=true). Each entry contains identification and key metadata for seller matching."
         ),
     ] = None
     pagination: pagination_response.PaginationResponse | None = None
     resolved_at: Annotated[
-        AwareDatetime | None, Field(description='When the list was resolved')
+        AwareDatetime | None, Field(description="When the list was resolved")
     ] = None
     cache_valid_until: Annotated[
         AwareDatetime | None,
         Field(
-            description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.'
+            description="Cache expiration timestamp. Re-fetch the list after this time to get updated collections."
         ),
     ] = None
     coverage_gaps: Annotated[

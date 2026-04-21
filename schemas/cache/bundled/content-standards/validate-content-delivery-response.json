@@ -67,7 +67,8 @@
                     },
                     "policy_id": {
                       "type": "string",
-                      "description": "Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry."
+                      "description": "Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry.",
+                      "x-entity": "governance_registry_policy"
                     },
                     "explanation": {
                       "type": "string",
@@ -187,7 +188,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.144Z",
+    "generatedAt": "2026-04-21T21:56:38.377Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

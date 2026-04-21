@@ -22,15 +22,15 @@ from . import talent as talent_1
 
 
 class Kind(Enum):
-    series = 'series'
-    publication = 'publication'
-    event_series = 'event_series'
-    rotation = 'rotation'
+    series = "series"
+    publication = "publication"
+    event_series = "event_series"
+    rotation = "rotation"
 
 
 class RelatedCollection(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     collection_id: Annotated[
         str,
@@ -38,13 +38,13 @@ class RelatedCollection(AdCPBaseModel):
     ]
     relationship: Annotated[
         collection_relationship.CollectionRelationship,
-        Field(description='How the collections are related'),
+        Field(description="How the collections are related"),
     ]
 
 
 class Collection(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     collection_id: Annotated[
         str,
@@ -52,18 +52,18 @@ class Collection(AdCPBaseModel):
             description="Publisher-assigned identifier for this collection. Declared in the publisher's adagents.json collections array. Products reference collections via collection selectors with publisher_domain and collection_ids. Use distribution identifiers for cross-seller matching across publishers."
         ),
     ]
-    name: Annotated[str, Field(description='Human-readable collection name')]
+    name: Annotated[str, Field(description="Human-readable collection name")]
     kind: Annotated[
         Kind | None,
         Field(
             description="What kind of content program this is. Helps agents interpret installments correctly: 'series' installments are TV/podcast episodes, 'publication' installments are print issues, 'event_series' installments are live event airings, 'rotation' installments are DOOH scheduling periods. Defaults to 'series' when absent."
         ),
     ] = None
-    description: Annotated[str | None, Field(description='What the collection is about')] = None
+    description: Annotated[str | None, Field(description="What the collection is about")] = None
     genre: Annotated[
         list[str] | None,
         Field(
-            description='Genre tags. When genre_taxonomy is present, values are taxonomy IDs (e.g., IAB Content Taxonomy 3.0 codes). Otherwise free-form.'
+            description="Genre tags. When genre_taxonomy is present, values are taxonomy IDs (e.g., IAB Content Taxonomy 3.0 codes). Otherwise free-form."
         ),
     ] = None
     genre_taxonomy: Annotated[
@@ -78,12 +78,12 @@ class Collection(AdCPBaseModel):
     content_rating: Annotated[
         content_rating_1.ContentRating | None,
         Field(
-            description='Baseline content rating for the collection. Individual installments may override this.'
+            description="Baseline content rating for the collection. Individual installments may override this."
         ),
     ] = None
     cadence: Annotated[
         collection_cadence.CollectionCadence | None,
-        Field(description='How frequently the collection releases new installments'),
+        Field(description="How frequently the collection releases new installments"),
     ] = None
     season: Annotated[
         str | None,
@@ -93,36 +93,36 @@ class Collection(AdCPBaseModel):
     ] = None
     status: Annotated[
         collection_status.CollectionStatus | None,
-        Field(description='Lifecycle status of the collection'),
+        Field(description="Lifecycle status of the collection"),
     ] = None
     production_quality: Annotated[
         production_quality_1.ProductionQuality | None,
         Field(
-            description='Production quality tier. Seller-declared. Maps to OpenRTB content.prodq (professional=1, prosumer=2, ugc=3).'
+            description="Production quality tier. Seller-declared. Maps to OpenRTB content.prodq (professional=1, prosumer=2, ugc=3)."
         ),
     ] = None
     talent: Annotated[
         list[talent_1.Talent] | None,
         Field(
-            description='Hosts, recurring cast, creators associated with the collection. Each talent entry may include a brand_url linking to their brand.json identity.'
+            description="Hosts, recurring cast, creators associated with the collection. Each talent entry may include a brand_url linking to their brand.json identity."
         ),
     ] = None
     special: Annotated[
         special_1.Special | None,
         Field(
-            description='When present, this collection is a special — content anchored to a real-world event or occasion. Individual installments may override with their own event context.'
+            description="When present, this collection is a special — content anchored to a real-world event or occasion. Individual installments may override with their own event context."
         ),
     ] = None
     limited_series: Annotated[
         limited_series_1.LimitedSeries | None,
         Field(
-            description='When present, this collection is a limited series — a bounded run with a defined arc, installment count, and end date.'
+            description="When present, this collection is a limited series — a bounded run with a defined arc, installment count, and end date."
         ),
     ] = None
     distribution: Annotated[
         list[collection_distribution.CollectionDistribution] | None,
         Field(
-            description='Where this collection is distributed. Each entry maps the collection to a publisher platform with platform-specific identifiers. Collections SHOULD include at least one platform-independent identifier (imdb_id, gracenote_id, eidr_id) when available.'
+            description="Where this collection is distributed. Each entry maps the collection to a publisher platform with platform-specific identifiers. Collections SHOULD include at least one platform-independent identifier (imdb_id, gracenote_id, eidr_id) when available."
         ),
     ] = None
     deadline_policy: Annotated[

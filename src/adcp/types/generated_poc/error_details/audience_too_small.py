@@ -12,9 +12,9 @@ from pydantic import ConfigDict, Field
 
 class AudienceTooSmallDetails(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    minimum_size: Annotated[float | None, Field(description='Minimum audience size required')] = (
+    minimum_size: Annotated[float | None, Field(description="Minimum audience size required")] = (
         None
     )
-    current_size: Annotated[float | None, Field(description='Current audience size')] = None
+    current_size: Annotated[float | None, Field(description="Current audience size")] = None

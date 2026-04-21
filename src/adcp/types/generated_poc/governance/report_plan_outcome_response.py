@@ -16,41 +16,41 @@ from ..enums import escalation_severity
 
 
 class Status(Enum):
-    accepted = 'accepted'
-    findings = 'findings'
+    accepted = "accepted"
+    findings = "findings"
 
 
 class Finding(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    category_id: Annotated[str, Field(description='Which validation category flagged the issue.')]
+    category_id: Annotated[str, Field(description="Which validation category flagged the issue.")]
     severity: Annotated[
-        escalation_severity.EscalationSeverity, Field(description='Finding severity.')
+        escalation_severity.EscalationSeverity, Field(description="Finding severity.")
     ]
-    explanation: Annotated[str, Field(description='Human-readable description of the issue.')]
+    explanation: Annotated[str, Field(description="Human-readable description of the issue.")]
     details: Annotated[
-        dict[str, Any] | None, Field(description='Structured details for programmatic consumption.')
+        dict[str, Any] | None, Field(description="Structured details for programmatic consumption.")
     ] = None
 
 
 class PlanSummary(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     total_committed: Annotated[
-        float | None, Field(description='Total budget committed across all campaigns in the plan.')
+        float | None, Field(description="Total budget committed across all campaigns in the plan.")
     ] = None
     budget_remaining: Annotated[
-        float | None, Field(description='Authorized budget minus total committed.')
+        float | None, Field(description="Authorized budget minus total committed.")
     ] = None
 
 
 class ReportPlanOutcomeResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    outcome_id: Annotated[str, Field(description='Unique identifier for this outcome record.')]
+    outcome_id: Annotated[str, Field(description="Unique identifier for this outcome record.")]
     status: Annotated[
         Status,
         Field(

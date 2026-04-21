@@ -14,7 +14,7 @@ from ..core import audience_selector
 
 class AudienceConstraints(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     include: Annotated[
         list[audience_selector.AudienceSelector] | None,

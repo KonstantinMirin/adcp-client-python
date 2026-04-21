@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class PolicyEnforcementLevel(Enum):
-    must = 'must'
-    should = 'should'
-    may = 'may'
+    must = "must"
+    should = "should"
+    may = "may"

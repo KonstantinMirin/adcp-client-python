@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class SiSessionStatus(Enum):
-    active = 'active'
-    pending_handoff = 'pending_handoff'
-    complete = 'complete'
-    terminated = 'terminated'
+    active = "active"
+    pending_handoff = "pending_handoff"
+    complete = "complete"
+    terminated = "terminated"

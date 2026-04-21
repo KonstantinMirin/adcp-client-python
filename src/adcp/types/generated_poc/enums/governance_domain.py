@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class GovernanceDomain(Enum):
-    campaign = 'campaign'
-    property = 'property'
-    creative = 'creative'
-    content_standards = 'content_standards'
+    campaign = "campaign"
+    property = "property"
+    creative = "creative"
+    content_standards = "content_standards"

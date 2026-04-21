@@ -12,7 +12,7 @@ from pydantic import ConfigDict, Field
 
 class SiGetOfferingRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -23,7 +23,7 @@ class SiGetOfferingRequest(AdCPBaseModel):
         ),
     ] = None
     offering_id: Annotated[
-        str, Field(description='Offering identifier from the catalog to get details for')
+        str, Field(description="Offering identifier from the catalog to get details for")
     ]
     context: Annotated[
         str | None,
@@ -32,15 +32,15 @@ class SiGetOfferingRequest(AdCPBaseModel):
         ),
     ] = None
     include_products: Annotated[
-        bool | None, Field(description='Whether to include matching products in the response')
+        bool | None, Field(description="Whether to include matching products in the response")
     ] = False
     product_limit: Annotated[
-        int | None, Field(description='Maximum number of matching products to return', ge=1, le=50)
+        int | None, Field(description="Maximum number of matching products to return", ge=1, le=50)
     ] = 5
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None

@@ -54,13 +54,13 @@ class AssetRequirements(
         | url_asset_requirements.UrlAssetRequirements
         | webhook_asset_requirements.WebhookAssetRequirements,
         Field(
-            description='Technical requirements for creative assets. The applicable schema is determined by the sibling asset_type field.',
-            title='Asset Requirements',
+            description="Technical requirements for creative assets. The applicable schema is determined by the sibling asset_type field.",
+            title="Asset Requirements",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

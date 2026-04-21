@@ -12,45 +12,45 @@ from pydantic import AnyUrl, ConfigDict, Field, RootModel
 
 class CreativeItem1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     asset_kind: Annotated[
-        Literal['media'],
-        Field(description='Discriminator indicating this is a media asset with content_uri'),
+        Literal["media"],
+        Field(description="Discriminator indicating this is a media asset with content_uri"),
     ]
     asset_type: Annotated[
         str,
         Field(
-            description='Type of asset. Common types: thumbnail_image, product_image, featured_image, logo'
+            description="Type of asset. Common types: thumbnail_image, product_image, featured_image, logo"
         ),
     ]
     asset_id: Annotated[
-        str, Field(description='Unique identifier for the asset within the creative')
+        str, Field(description="Unique identifier for the asset within the creative")
     ]
-    content_uri: Annotated[AnyUrl, Field(description='URL for media assets (images, videos, etc.)')]
+    content_uri: Annotated[AnyUrl, Field(description="URL for media assets (images, videos, etc.)")]
 
 
 class CreativeItem2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     asset_kind: Annotated[
-        Literal['text'],
-        Field(description='Discriminator indicating this is a text asset with content'),
+        Literal["text"],
+        Field(description="Discriminator indicating this is a text asset with content"),
     ]
     asset_type: Annotated[
         str,
         Field(
-            description='Type of asset. Common types: headline, body_text, cta_text, price_text, sponsor_name, author_name, click_url'
+            description="Type of asset. Common types: headline, body_text, cta_text, price_text, sponsor_name, author_name, click_url"
         ),
     ]
     asset_id: Annotated[
-        str, Field(description='Unique identifier for the asset within the creative')
+        str, Field(description="Unique identifier for the asset within the creative")
     ]
     content: Annotated[
         str | list[str],
         Field(
-            description='Text content for text-based assets like headlines, body text, CTA text, etc.'
+            description="Text content for text-based assets like headlines, body text, CTA text, etc."
         ),
     ]
 
@@ -59,13 +59,13 @@ class CreativeItem(RootModel[CreativeItem1 | CreativeItem2]):
     root: Annotated[
         CreativeItem1 | CreativeItem2,
         Field(
-            description='Item within a multi-asset creative format. Used for carousel products, native ad components, and other formats composed of multiple distinct elements.',
-            title='Creative Item',
+            description="Item within a multi-asset creative format. Used for carousel products, native ad components, and other formats composed of multiple distinct elements.",
+            title="Creative Item",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

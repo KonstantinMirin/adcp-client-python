@@ -10,7 +10,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the deleted list"
+      "description": "ID of the deleted list",
+      "x-entity": "property_list"
     },
     "context": {
       "title": "Context Object",
@@ -31,7 +32,7 @@
   ],
   "additionalProperties": false,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.699Z",
+    "generatedAt": "2026-04-21T21:56:38.625Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

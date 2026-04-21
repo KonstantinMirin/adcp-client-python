@@ -17,11 +17,11 @@ from . import collection_list
 
 class ListCollectionListsResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     lists: Annotated[
         list[collection_list.CollectionList],
-        Field(description='Array of collection lists (metadata only, not resolved collections)'),
+        Field(description="Array of collection lists (metadata only, not resolved collections)"),
     ]
     pagination: pagination_response.PaginationResponse | None = None
     context: context_1.ContextObject | None = None

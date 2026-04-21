@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class AdcpProtocol(Enum):
-    media_buy = 'media-buy'
-    signals = 'signals'
-    governance = 'governance'
-    creative = 'creative'
-    brand = 'brand'
-    sponsored_intelligence = 'sponsored-intelligence'
+    media_buy = "media-buy"
+    signals = "signals"
+    governance = "governance"
+    creative = "creative"
+    brand = "brand"
+    sponsored_intelligence = "sponsored-intelligence"

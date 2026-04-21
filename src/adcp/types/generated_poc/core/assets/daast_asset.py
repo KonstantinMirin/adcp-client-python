@@ -16,66 +16,66 @@ from .. import provenance as provenance_1
 
 class DaastAsset1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     delivery_type: Annotated[
-        Literal['url'],
-        Field(description='Discriminator indicating DAAST is delivered via URL endpoint'),
+        Literal["url"],
+        Field(description="Discriminator indicating DAAST is delivered via URL endpoint"),
     ]
-    url: Annotated[AnyUrl, Field(description='URL endpoint that returns DAAST XML')]
+    url: Annotated[AnyUrl, Field(description="URL endpoint that returns DAAST XML")]
     daast_version: Annotated[
-        daast_version_1.DaastVersion | None, Field(description='DAAST specification version')
+        daast_version_1.DaastVersion | None, Field(description="DAAST specification version")
     ] = None
     duration_ms: Annotated[
-        int | None, Field(description='Expected audio duration in milliseconds (if known)', ge=0)
+        int | None, Field(description="Expected audio duration in milliseconds (if known)", ge=0)
     ] = None
     tracking_events: Annotated[
         list[daast_tracking_event.DaastTrackingEvent] | None,
-        Field(description='Tracking events supported by this DAAST tag'),
+        Field(description="Tracking events supported by this DAAST tag"),
     ] = None
     companion_ads: Annotated[
-        bool | None, Field(description='Whether companion display ads are included')
+        bool | None, Field(description="Whether companion display ads are included")
     ] = None
     transcript_url: Annotated[
-        AnyUrl | None, Field(description='URL to text transcript of the audio content')
+        AnyUrl | None, Field(description="URL to text transcript of the audio content")
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None
 
 
 class DaastAsset2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     delivery_type: Annotated[
-        Literal['inline'],
-        Field(description='Discriminator indicating DAAST is delivered as inline XML content'),
+        Literal["inline"],
+        Field(description="Discriminator indicating DAAST is delivered as inline XML content"),
     ]
-    content: Annotated[str, Field(description='Inline DAAST XML content')]
+    content: Annotated[str, Field(description="Inline DAAST XML content")]
     daast_version: Annotated[
-        daast_version_1.DaastVersion | None, Field(description='DAAST specification version')
+        daast_version_1.DaastVersion | None, Field(description="DAAST specification version")
     ] = None
     duration_ms: Annotated[
-        int | None, Field(description='Expected audio duration in milliseconds (if known)', ge=0)
+        int | None, Field(description="Expected audio duration in milliseconds (if known)", ge=0)
     ] = None
     tracking_events: Annotated[
         list[daast_tracking_event.DaastTrackingEvent] | None,
-        Field(description='Tracking events supported by this DAAST tag'),
+        Field(description="Tracking events supported by this DAAST tag"),
     ] = None
     companion_ads: Annotated[
-        bool | None, Field(description='Whether companion display ads are included')
+        bool | None, Field(description="Whether companion display ads are included")
     ] = None
     transcript_url: Annotated[
-        AnyUrl | None, Field(description='URL to text transcript of the audio content')
+        AnyUrl | None, Field(description="URL to text transcript of the audio content")
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None
 
@@ -84,13 +84,13 @@ class DaastAsset(RootModel[DaastAsset1 | DaastAsset2]):
     root: Annotated[
         DaastAsset1 | DaastAsset2,
         Field(
-            description='DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving',
-            title='DAAST Asset',
+            description="DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
+            title="DAAST Asset",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

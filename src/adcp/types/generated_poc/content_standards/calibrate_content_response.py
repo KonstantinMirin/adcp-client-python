@@ -16,15 +16,15 @@ from ..core import ext as ext_1
 
 
 class Verdict(Enum):
-    pass_ = 'pass'
-    fail = 'fail'
+    pass_ = "pass"
+    fail = "fail"
 
 
 class Status(Enum):
-    passed = 'passed'
-    failed = 'failed'
-    warning = 'warning'
-    unevaluated = 'unevaluated'
+    passed = "passed"
+    failed = "failed"
+    warning = "warning"
+    unevaluated = "unevaluated"
 
 
 class Feature(AdCPBaseModel):
@@ -34,21 +34,21 @@ class Feature(AdCPBaseModel):
             description="Which feature was evaluated. Data features come from the content-standards feature catalog (e.g., 'brand_safety', 'brand_suitability', 'competitor_adjacency'). Record-level structural checks use reserved namespaces: 'record:malformed_artifact'. Reserved prefixes: 'record:', 'delivery:'."
         ),
     ]
-    status: Annotated[Status, Field(description='Evaluation status for this feature')]
+    status: Annotated[Status, Field(description="Evaluation status for this feature")]
     policy_id: Annotated[
         str | None,
         Field(
-            description='Policy ID that triggered this result. Enables the calibration loop to iterate on specific policies by correlating sample outcomes to policy ids.'
+            description="Policy ID that triggered this result. Enables the calibration loop to iterate on specific policies by correlating sample outcomes to policy ids."
         ),
     ] = None
     explanation: Annotated[
         str | None,
-        Field(description='Human-readable explanation of why this feature passed or failed'),
+        Field(description="Human-readable explanation of why this feature passed or failed"),
     ] = None
     confidence: Annotated[
         float | None,
         Field(
-            description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.',
+            description="Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.",
             ge=0.0,
             le=1.0,
         ),
@@ -57,18 +57,18 @@ class Feature(AdCPBaseModel):
 
 class CalibrateContentResponse1(AdCPBaseModel):
     verdict: Annotated[
-        Verdict, Field(description='Overall pass/fail verdict for the content evaluation')
+        Verdict, Field(description="Overall pass/fail verdict for the content evaluation")
     ]
     confidence: Annotated[
-        float | None, Field(description='Model confidence in the verdict (0-1)', ge=0.0, le=1.0)
+        float | None, Field(description="Model confidence in the verdict (0-1)", ge=0.0, le=1.0)
     ] = None
     explanation: Annotated[
-        str | None, Field(description='Detailed natural language explanation of the decision')
+        str | None, Field(description="Detailed natural language explanation of the decision")
     ] = None
     features: Annotated[
         list[Feature] | None,
         Field(
-            description='Per-feature breakdown with explanations. Mirrors validate_content_delivery feature shape so calibration loops can correlate against production verdicts by policy_id.'
+            description="Per-feature breakdown with explanations. Mirrors validate_content_delivery feature shape so calibration loops can correlate against production verdicts by policy_id."
         ),
     ] = None
     context: context_1.ContextObject | None = None

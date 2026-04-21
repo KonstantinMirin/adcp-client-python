@@ -12,7 +12,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the property list to retrieve"
+      "description": "ID of the property list to retrieve",
+      "x-entity": "property_list"
     },
     "account": {
       "$ref": "../core/account-ref.json",

@@ -14,7 +14,8 @@
         "properties": {
           "product_id": {
             "type": "string",
-            "description": "Unique identifier for the product"
+            "description": "Unique identifier for the product",
+            "x-entity": "product"
           },
           "name": {
             "type": "string",
@@ -77,6 +78,7 @@
                         "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
                         "type": "string",
                         "pattern": "^[a-z0-9_]+$",
+                        "x-entity": "property",
                         "examples": [
                           "cnn_ctv_app",
                           "homepage",
@@ -199,6 +201,7 @@
             "items": {
               "title": "Format ID",
               "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+              "x-entity": "creative_format",
               "type": "object",
               "properties": {
                 "agent_url": {
@@ -276,6 +279,7 @@
                   "items": {
                     "title": "Format ID",
                     "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+                    "x-entity": "creative_format",
                     "type": "object",
                     "properties": {
                       "agent_url": {
@@ -3286,6 +3290,7 @@
                         "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                         "type": "string",
                         "pattern": "^[a-z0-9_]+$",
+                        "x-entity": "advertiser_brand",
                         "examples": [
                           "tide",
                           "cheerios",
@@ -3475,6 +3480,7 @@
                       "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                       "type": "string",
                       "pattern": "^[a-z0-9_]+$",
+                      "x-entity": "advertiser_brand",
                       "examples": [
                         "tide",
                         "cheerios",
@@ -4442,6 +4448,7 @@
               "format_id": {
                 "title": "Format ID",
                 "description": "Creative format defining the card layout (typically product_card_standard)",
+                "x-entity": "creative_format",
                 "type": "object",
                 "properties": {
                   "agent_url": {
@@ -4503,6 +4510,7 @@
               "format_id": {
                 "title": "Format ID",
                 "description": "Creative format defining the detailed card layout (typically product_card_detailed)",
+                "x-entity": "creative_format",
                 "type": "object",
                 "properties": {
                   "agent_url": {
@@ -5071,7 +5079,7 @@
                           "euid": "European Unified ID",
                           "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR protocol",
                           "maid": "Mobile Advertising ID (IDFA/GAID)",
-                          "hashed_email": "SHA-256 hashed email address",
+                          "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                           "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
                           "other": "Other universal ID type (specify in ext)"
                         }
@@ -7248,7 +7256,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.517Z",
+    "generatedAt": "2026-04-21T21:56:38.563Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

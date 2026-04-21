@@ -18,6 +18,7 @@
         "format_id": {
           "title": "Format ID",
           "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'}).",
+          "x-entity": "creative_format",
           "type": "object",
           "properties": {
             "agent_url": {
@@ -5209,7 +5210,8 @@
                       "properties": {
                         "catalog_id": {
                           "type": "string",
-                          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                          "x-entity": "catalog"
                         },
                         "name": {
                           "type": "string",
@@ -6184,7 +6186,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -6209,6 +6212,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -6280,7 +6284,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -6339,7 +6344,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.204Z",
+    "generatedAt": "2026-04-21T21:56:38.412Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

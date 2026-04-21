@@ -17,12 +17,12 @@ from ..core import pagination_request, signal_filters, signal_id
 
 
 class Country(RootModel[str]):
-    root: Annotated[str, Field(pattern='^[A-Z]{2}$')]
+    root: Annotated[str, Field(pattern="^[A-Z]{2}$")]
 
 
 class GetSignalsRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -35,13 +35,13 @@ class GetSignalsRequest(AdCPBaseModel):
     account: Annotated[
         account_ref.AccountReference | None,
         Field(
-            description='Account for this request. When provided, the signals agent returns per-account pricing options if configured.'
+            description="Account for this request. When provided, the signals agent returns per-account pricing options if configured."
         ),
     ] = None
     signal_spec: Annotated[
         str | None,
         Field(
-            description='Natural language description of the desired signals. When used alone, enables semantic discovery. When combined with signal_ids, provides context for the agent but signal_ids matches are returned first.'
+            description="Natural language description of the desired signals. When used alone, enables semantic discovery. When combined with signal_ids, provides context for the agent but signal_ids matches are returned first."
         ),
     ] = None
     signal_ids: Annotated[
@@ -54,20 +54,20 @@ class GetSignalsRequest(AdCPBaseModel):
     destinations: Annotated[
         list[destination.Destination] | None,
         Field(
-            description='Filter signals to those activatable on specific agents/platforms. When omitted, returns all signals available on the current agent. If the authenticated caller matches one of these destinations, activation keys will be included in the response.',
+            description="Filter signals to those activatable on specific agents/platforms. When omitted, returns all signals available on the current agent. If the authenticated caller matches one of these destinations, activation keys will be included in the response.",
             min_length=1,
         ),
     ] = None
     countries: Annotated[
         list[Country] | None,
         Field(
-            description='Countries where signals will be used (ISO 3166-1 alpha-2 codes). When omitted, no geographic filter is applied.',
+            description="Countries where signals will be used (ISO 3166-1 alpha-2 codes). When omitted, no geographic filter is applied.",
             min_length=1,
         ),
     ] = None
     filters: signal_filters.SignalFilters | None = None
     max_results: Annotated[
-        int | None, Field(description='Maximum number of results to return', ge=1)
+        int | None, Field(description="Maximum number of results to return", ge=1)
     ] = None
     pagination: pagination_request.PaginationRequest | None = None
     context: context_1.ContextObject | None = None

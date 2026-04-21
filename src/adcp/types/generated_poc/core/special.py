@@ -14,18 +14,18 @@ from ..enums import special_category
 
 class Special(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     name: Annotated[
         str, Field(description="Name of the event (e.g., 'Olympics 2028', 'Super Bowl LXI')")
     ]
     category: Annotated[
-        special_category.SpecialCategory | None, Field(description='Category of the event')
+        special_category.SpecialCategory | None, Field(description="Category of the event")
     ] = None
     starts: Annotated[
-        AwareDatetime | None, Field(description='When the event starts (ISO 8601)')
+        AwareDatetime | None, Field(description="When the event starts (ISO 8601)")
     ] = None
     ends: Annotated[
         AwareDatetime | None,
-        Field(description='When the event ends (ISO 8601). Omit for single-day events.'),
+        Field(description="When the event ends (ISO 8601). Omit for single-day events."),
     ] = None

@@ -15,7 +15,7 @@ from . import si_capabilities, si_identity
 
 class SiInitiateSessionRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -26,11 +26,11 @@ class SiInitiateSessionRequest(AdCPBaseModel):
         ),
     ] = None
     context: Annotated[
-        str, Field(description='Conversation handoff from the host describing what the user needs')
+        str, Field(description="Conversation handoff from the host describing what the user needs")
     ]
     identity: si_identity.SiIdentity
     media_buy_id: Annotated[
-        str | None, Field(description='AdCP media buy ID if session was triggered by advertising')
+        str | None, Field(description="AdCP media buy ID if session was triggered by advertising")
     ] = None
     placement: Annotated[
         str | None,
@@ -39,11 +39,11 @@ class SiInitiateSessionRequest(AdCPBaseModel):
         ),
     ] = None
     offering_id: Annotated[
-        str | None, Field(description='Brand-specific offering identifier to apply')
+        str | None, Field(description="Brand-specific offering identifier to apply")
     ] = None
     supported_capabilities: Annotated[
         si_capabilities.SiCapabilities | None,
-        Field(description='What capabilities the host supports'),
+        Field(description="What capabilities the host supports"),
     ] = None
     offering_token: Annotated[
         str | None,
@@ -54,10 +54,10 @@ class SiInitiateSessionRequest(AdCPBaseModel):
     idempotency_key: Annotated[
         str,
         Field(
-            description='Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.',
+            description="Client-generated unique key for this request. Prevents duplicate session creation on retries. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.",
             max_length=255,
             min_length=16,
-            pattern='^[A-Za-z0-9_.:-]{16,255}$',
+            pattern="^[A-Za-z0-9_.:-]{16,255}$",
         ),
     ]
     ext: ext_1.ExtensionObject | None = None

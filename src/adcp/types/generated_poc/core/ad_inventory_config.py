@@ -12,25 +12,25 @@ from pydantic import ConfigDict, Field
 
 class AdInventoryConfiguration(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     expected_breaks: Annotated[
-        int, Field(description='Number of planned ad breaks in the installment', ge=0)
+        int, Field(description="Number of planned ad breaks in the installment", ge=0)
     ]
     total_ad_seconds: Annotated[
-        int | None, Field(description='Total seconds of ad time across all breaks', ge=0)
+        int | None, Field(description="Total seconds of ad time across all breaks", ge=0)
     ] = None
     max_ad_duration_seconds: Annotated[
         int | None,
         Field(
-            description='Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.',
+            description="Maximum duration in seconds for a single ad within a break. Buyers need this to know whether their creative fits.",
             ge=1,
         ),
     ] = None
     unplanned_breaks: Annotated[
         bool | None,
         Field(
-            description='Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined.'
+            description="Whether ad breaks are dynamic and driven by live conditions (sports timeouts, election coverage). When false, all breaks are pre-defined."
         ),
     ] = None
     supported_formats: Annotated[

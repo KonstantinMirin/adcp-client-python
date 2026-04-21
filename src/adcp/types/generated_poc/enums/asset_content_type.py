@@ -8,17 +8,17 @@ from enum import Enum
 
 
 class AssetContentType(Enum):
-    image = 'image'
-    video = 'video'
-    audio = 'audio'
-    text = 'text'
-    markdown = 'markdown'
-    html = 'html'
-    css = 'css'
-    javascript = 'javascript'
-    vast = 'vast'
-    daast = 'daast'
-    url = 'url'
-    webhook = 'webhook'
-    brief = 'brief'
-    catalog = 'catalog'
+    image = "image"
+    video = "video"
+    audio = "audio"
+    text = "text"
+    markdown = "markdown"
+    html = "html"
+    css = "css"
+    javascript = "javascript"
+    vast = "vast"
+    daast = "daast"
+    url = "url"
+    webhook = "webhook"
+    brief = "brief"
+    catalog = "catalog"

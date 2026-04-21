@@ -3,6 +3,7 @@
   "title": "SI Terminate Session Request",
   "description": "Request to terminate an SI session. Naturally idempotent \u2014 `session_id` is the dedup boundary, and terminating an already-terminated session is a no-op that returns the same terminal state. No `idempotency_key` is needed on this request.",
   "x-status": "experimental",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -13,7 +14,8 @@
     },
     "session_id": {
       "type": "string",
-      "description": "Session identifier to terminate"
+      "description": "Session identifier to terminate",
+      "x-entity": "si_session"
     },
     "reason": {
       "type": "string",
@@ -78,7 +80,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.752Z",
+    "generatedAt": "2026-04-21T21:56:38.642Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

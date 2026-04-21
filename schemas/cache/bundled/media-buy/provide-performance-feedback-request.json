@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Provide Performance Feedback Request",
   "description": "Request payload for provide_performance_feedback task",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -13,7 +14,8 @@
     "media_buy_id": {
       "type": "string",
       "description": "Seller's media buy identifier",
-      "minLength": 1
+      "minLength": 1,
+      "x-entity": "media_buy"
     },
     "idempotency_key": {
       "type": "string",
@@ -52,12 +54,14 @@
     "package_id": {
       "type": "string",
       "description": "Specific package within the media buy (if feedback is package-specific)",
-      "minLength": 1
+      "minLength": 1,
+      "x-entity": "package"
     },
     "creative_id": {
       "type": "string",
       "description": "Specific creative asset (if feedback is creative-specific)",
-      "minLength": 1
+      "minLength": 1,
+      "x-entity": "creative"
     },
     "metric_type": {
       "title": "Metric Type",
@@ -108,7 +112,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.575Z",
+    "generatedAt": "2026-04-21T21:56:38.586Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

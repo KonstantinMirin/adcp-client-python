@@ -12,25 +12,25 @@ from pydantic import ConfigDict, Field
 
 class IdentityMatchResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['identity_match_response'],
-        Field(description='Message type discriminator for deserialization.'),
+        Literal["identity_match_response"],
+        Field(description="Message type discriminator for deserialization."),
     ]
     request_id: Annotated[
-        str, Field(description='Echoed request identifier from the identity match request')
+        str, Field(description="Echoed request identifier from the identity match request")
     ]
     eligible_package_ids: Annotated[
         list[str],
         Field(
-            description='Package IDs the user is eligible for. Packages not listed are ineligible.'
+            description="Package IDs the user is eligible for. Packages not listed are ineligible."
         ),
     ]
     ttl_sec: Annotated[
         int,
         Field(
-            description='How long the router should cache this response, in seconds. The router returns cached eligibility without re-querying the buyer during this window. A value of 0 means do not cache.',
+            description="How long the router should cache this response, in seconds. The router returns cached eligibility without re-querying the buyer during this window. A value of 0 means do not cache.",
             ge=0,
             le=86400,
         ),

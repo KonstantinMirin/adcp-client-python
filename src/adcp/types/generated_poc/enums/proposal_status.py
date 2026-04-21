@@ -8,5 +8,5 @@ from enum import Enum
 
 
 class ProposalStatus(Enum):
-    draft = 'draft'
-    committed = 'committed'
+    draft = "draft"
+    committed = "committed"

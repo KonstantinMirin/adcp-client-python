@@ -13,7 +13,8 @@
     },
     "offering_id": {
       "type": "string",
-      "description": "Offering identifier from the catalog to get details for"
+      "description": "Offering identifier from the catalog to get details for",
+      "x-entity": "offering"
     },
     "context": {
       "type": "string",
@@ -43,7 +44,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.746Z",
+    "generatedAt": "2026-04-21T21:56:38.639Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

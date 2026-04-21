@@ -16,76 +16,76 @@ from .. import provenance as provenance_1
 
 class VastAsset1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     delivery_type: Annotated[
-        Literal['url'],
-        Field(description='Discriminator indicating VAST is delivered via URL endpoint'),
+        Literal["url"],
+        Field(description="Discriminator indicating VAST is delivered via URL endpoint"),
     ]
-    url: Annotated[AnyUrl, Field(description='URL endpoint that returns VAST XML')]
+    url: Annotated[AnyUrl, Field(description="URL endpoint that returns VAST XML")]
     vast_version: Annotated[
-        vast_version_1.VastVersion | None, Field(description='VAST specification version')
+        vast_version_1.VastVersion | None, Field(description="VAST specification version")
     ] = None
     vpaid_enabled: Annotated[
         bool | None,
-        Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'),
+        Field(description="Whether VPAID (Video Player-Ad Interface Definition) is supported"),
     ] = None
     duration_ms: Annotated[
-        int | None, Field(description='Expected video duration in milliseconds (if known)', ge=0)
+        int | None, Field(description="Expected video duration in milliseconds (if known)", ge=0)
     ] = None
     tracking_events: Annotated[
         list[vast_tracking_event.VastTrackingEvent] | None,
-        Field(description='Tracking events supported by this VAST tag'),
+        Field(description="Tracking events supported by this VAST tag"),
     ] = None
     captions_url: Annotated[
-        AnyUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)')
+        AnyUrl | None, Field(description="URL to captions file (WebVTT, SRT, etc.)")
     ] = None
     audio_description_url: Annotated[
         AnyUrl | None,
-        Field(description='URL to audio description track for visually impaired users'),
+        Field(description="URL to audio description track for visually impaired users"),
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None
 
 
 class VastAsset2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     delivery_type: Annotated[
-        Literal['inline'],
-        Field(description='Discriminator indicating VAST is delivered as inline XML content'),
+        Literal["inline"],
+        Field(description="Discriminator indicating VAST is delivered as inline XML content"),
     ]
-    content: Annotated[str, Field(description='Inline VAST XML content')]
+    content: Annotated[str, Field(description="Inline VAST XML content")]
     vast_version: Annotated[
-        vast_version_1.VastVersion | None, Field(description='VAST specification version')
+        vast_version_1.VastVersion | None, Field(description="VAST specification version")
     ] = None
     vpaid_enabled: Annotated[
         bool | None,
-        Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'),
+        Field(description="Whether VPAID (Video Player-Ad Interface Definition) is supported"),
     ] = None
     duration_ms: Annotated[
-        int | None, Field(description='Expected video duration in milliseconds (if known)', ge=0)
+        int | None, Field(description="Expected video duration in milliseconds (if known)", ge=0)
     ] = None
     tracking_events: Annotated[
         list[vast_tracking_event.VastTrackingEvent] | None,
-        Field(description='Tracking events supported by this VAST tag'),
+        Field(description="Tracking events supported by this VAST tag"),
     ] = None
     captions_url: Annotated[
-        AnyUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)')
+        AnyUrl | None, Field(description="URL to captions file (WebVTT, SRT, etc.)")
     ] = None
     audio_description_url: Annotated[
         AnyUrl | None,
-        Field(description='URL to audio description track for visually impaired users'),
+        Field(description="URL to audio description track for visually impaired users"),
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None
 
@@ -94,13 +94,13 @@ class VastAsset(RootModel[VastAsset1 | VastAsset2]):
     root: Annotated[
         VastAsset1 | VastAsset2,
         Field(
-            description='VAST (Video Ad Serving Template) tag for third-party video ad serving',
-            title='VAST Asset',
+            description="VAST (Video Ad Serving Template) tag for third-party video ad serving",
+            title="VAST Asset",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

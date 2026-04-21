@@ -16,8 +16,8 @@ from . import property_list
 
 class UpdatePropertyListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    list: Annotated[property_list.PropertyList, Field(description='The updated property list')]
+    list: Annotated[property_list.PropertyList, Field(description="The updated property list")]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

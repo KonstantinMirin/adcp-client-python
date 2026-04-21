@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Update Collection List Request",
   "description": "Request parameters for updating an existing collection list",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -12,7 +13,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the collection list to update"
+      "description": "ID of the collection list to update",
+      "x-entity": "collection_list"
     },
     "account": {
       "$ref": "../core/account-ref.json",

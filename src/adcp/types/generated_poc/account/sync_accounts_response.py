@@ -17,72 +17,72 @@ from ..core import ext as ext_1
 
 
 class Action(Enum):
-    created = 'created'
-    updated = 'updated'
-    unchanged = 'unchanged'
-    failed = 'failed'
+    created = "created"
+    updated = "updated"
+    unchanged = "unchanged"
+    failed = "failed"
 
 
 class Status(Enum):
-    active = 'active'
-    pending_approval = 'pending_approval'
-    rejected = 'rejected'
-    payment_required = 'payment_required'
-    suspended = 'suspended'
-    closed = 'closed'
+    active = "active"
+    pending_approval = "pending_approval"
+    rejected = "rejected"
+    payment_required = "payment_required"
+    suspended = "suspended"
+    closed = "closed"
 
 
 class Billing(Enum):
-    operator = 'operator'
-    agent = 'agent'
-    advertiser = 'advertiser'
+    operator = "operator"
+    agent = "agent"
+    advertiser = "advertiser"
 
 
 class AccountScope(Enum):
-    operator = 'operator'
-    brand = 'brand'
-    operator_brand = 'operator_brand'
-    agent = 'agent'
+    operator = "operator"
+    brand = "brand"
+    operator_brand = "operator_brand"
+    agent = "agent"
 
 
 class Setup(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     url: Annotated[
         AnyUrl | None,
         Field(
-            description='URL where the human can complete the required action (credit application, legal agreement, add funds)'
+            description="URL where the human can complete the required action (credit application, legal agreement, add funds)"
         ),
     ] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed")]
     expires_at: Annotated[
-        AwareDatetime | None, Field(description='When this setup link expires')
+        AwareDatetime | None, Field(description="When this setup link expires")
     ] = None
 
 
 class PaymentTerms(Enum):
-    net_15 = 'net_15'
-    net_30 = 'net_30'
-    net_45 = 'net_45'
-    net_60 = 'net_60'
-    net_90 = 'net_90'
-    prepay = 'prepay'
+    net_15 = "net_15"
+    net_30 = "net_30"
+    net_45 = "net_45"
+    net_60 = "net_60"
+    net_90 = "net_90"
+    prepay = "prepay"
 
 
 class CreditLimit(AdCPBaseModel):
     amount: Annotated[float, Field(ge=0.0)]
-    currency: Annotated[str, Field(pattern='^[A-Z]{3}$')]
+    currency: Annotated[str, Field(pattern="^[A-Z]{3}$")]
 
 
 class SyncAccountsResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     errors: Annotated[
         list[error.Error],
         Field(
-            description='Operation-level errors (e.g., authentication failure, service unavailable)',
+            description="Operation-level errors (e.g., authentication failure, service unavailable)",
             min_length=1,
         ),
     ]
@@ -92,41 +92,41 @@ class SyncAccountsResponse2(AdCPBaseModel):
 
 class Account(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     account_id: Annotated[
         str | None,
         Field(
-            description='Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations.'
+            description="Seller-assigned account identifier. Use this in subsequent create_media_buy and other account-scoped operations."
         ),
     ] = None
     brand: Annotated[
-        brand_ref.BrandReference, Field(description='Brand reference, echoed from the request')
+        brand_ref.BrandReference, Field(description="Brand reference, echoed from the request")
     ]
-    operator: Annotated[str, Field(description='Operator domain, echoed from request')]
+    operator: Annotated[str, Field(description="Operator domain, echoed from request")]
     name: Annotated[
-        str | None, Field(description='Human-readable account name assigned by the seller')
+        str | None, Field(description="Human-readable account name assigned by the seller")
     ] = None
     action: Annotated[
         Action,
         Field(
-            description='Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors).'
+            description="Action taken for this account. created: new account provisioned. updated: existing account modified. unchanged: no changes needed. failed: could not process (see errors)."
         ),
     ]
     status: Annotated[
         Status,
         Field(
-            description='Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated.'
+            description="Account status. active: ready for use. pending_approval: seller reviewing (credit, legal). rejected: seller declined the account request. payment_required: credit limit reached or funds depleted. suspended: was active, now paused. closed: was active, now terminated."
         ),
     ]
     billing: Annotated[
         Billing | None,
-        Field(description='Who is invoiced on this account. Matches the requested billing model.'),
+        Field(description="Who is invoiced on this account. Matches the requested billing model."),
     ] = None
     billing_entity: Annotated[
         business_entity.BusinessEntity | None,
         Field(
-            description='Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only).'
+            description="Business entity details for the party responsible for payment, echoed from the request. Sellers MAY add fields the agent omitted (e.g., filling in registration_number from a credit check), but MUST NOT return data from a different entity. Bank details are omitted (write-only)."
         ),
     ] = None
     account_scope: Annotated[
@@ -138,14 +138,14 @@ class Account(AdCPBaseModel):
     setup: Annotated[
         Setup | None,
         Field(
-            description='Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation.'
+            description="Setup information for pending accounts. Provides the agent (or human) with next steps to complete account activation."
         ),
     ] = None
-    rate_card: Annotated[str | None, Field(description='Rate card applied to this account')] = None
+    rate_card: Annotated[str | None, Field(description="Rate card applied to this account")] = None
     payment_terms: Annotated[
         PaymentTerms | None,
         Field(
-            description='Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account.'
+            description="Payment terms agreed for this account. When the account is active, these are the binding terms for all invoices on this account."
         ),
     ] = None
     credit_limit: CreditLimit | None = None
@@ -154,24 +154,24 @@ class Account(AdCPBaseModel):
         Field(description="Per-account errors (only present when action is 'failed')"),
     ] = None
     warnings: Annotated[
-        list[str] | None, Field(description='Non-fatal warnings about this account')
+        list[str] | None, Field(description="Non-fatal warnings about this account")
     ] = None
     sandbox: Annotated[
         bool | None,
         Field(
-            description='Whether this is a sandbox account, echoed from the request. Only present for implicit accounts.'
+            description="Whether this is a sandbox account, echoed from the request. Only present for implicit accounts."
         ),
     ] = None
 
 
 class SyncAccountsResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     dry_run: Annotated[
-        bool | None, Field(description='Whether this was a dry run (no actual changes made)')
+        bool | None, Field(description="Whether this was a dry run (no actual changes made)")
     ] = None
-    accounts: Annotated[list[Account], Field(description='Results for each account processed')]
+    accounts: Annotated[list[Account], Field(description="Results for each account processed")]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 

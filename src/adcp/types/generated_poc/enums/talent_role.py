@@ -8,12 +8,12 @@ from enum import Enum
 
 
 class TalentRole(Enum):
-    host = 'host'
-    guest = 'guest'
-    creator = 'creator'
-    cast = 'cast'
-    narrator = 'narrator'
-    producer = 'producer'
-    correspondent = 'correspondent'
-    commentator = 'commentator'
-    analyst = 'analyst'
+    host = "host"
+    guest = "guest"
+    creator = "creator"
+    cast = "cast"
+    narrator = "narrator"
+    producer = "producer"
+    correspondent = "correspondent"
+    commentator = "commentator"
+    analyst = "analyst"

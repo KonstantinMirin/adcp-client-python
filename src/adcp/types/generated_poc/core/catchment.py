@@ -16,47 +16,47 @@ from . import ext as ext_1
 
 
 class Unit(Enum):
-    min = 'min'
-    hr = 'hr'
+    min = "min"
+    hr = "hr"
 
 
 class TravelTime(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    value: Annotated[float, Field(description='Travel time limit.', ge=1.0)]
-    unit: Annotated[Unit, Field(description='Time unit.')]
+    value: Annotated[float, Field(description="Travel time limit.", ge=1.0)]
+    unit: Annotated[Unit, Field(description="Time unit.")]
 
 
 class Type(Enum):
-    Polygon = 'Polygon'
-    MultiPolygon = 'MultiPolygon'
+    Polygon = "Polygon"
+    MultiPolygon = "MultiPolygon"
 
 
 class Geometry(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    type: Annotated[Type, Field(description='GeoJSON geometry type.')]
+    type: Annotated[Type, Field(description="GeoJSON geometry type.")]
     coordinates: Annotated[
         list[Any],
         Field(
-            description='GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons.'
+            description="GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons."
         ),
     ]
 
 
 class Radius(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    value: Annotated[float, Field(description='Radius distance.', gt=0.0)]
-    unit: Annotated[distance_unit.DistanceUnit, Field(description='Distance unit.')]
+    value: Annotated[float, Field(description="Radius distance.", gt=0.0)]
+    unit: Annotated[distance_unit.DistanceUnit, Field(description="Distance unit.")]
 
 
 class Catchment(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     catchment_id: Annotated[
         str,
@@ -73,13 +73,13 @@ class Catchment(AdCPBaseModel):
     travel_time: Annotated[
         TravelTime | None,
         Field(
-            description='Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain.'
+            description="Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks, accounting for road connectivity, transit schedules, and terrain."
         ),
     ] = None
     transport_mode: Annotated[
         transport_mode_1.TransportMode | None,
         Field(
-            description='Transportation mode for isochrone calculation. Required when travel_time is provided.'
+            description="Transportation mode for isochrone calculation. Required when travel_time is provided."
         ),
     ] = None
     radius: Annotated[
@@ -91,7 +91,7 @@ class Catchment(AdCPBaseModel):
     geometry: Annotated[
         Geometry | None,
         Field(
-            description='Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types.'
+            description="Pre-computed GeoJSON geometry defining the catchment boundary. Use this when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom trade area boundaries. Supports Polygon and MultiPolygon types."
         ),
     ] = None
     ext: ext_1.ExtensionObject | None = None

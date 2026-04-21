@@ -14,18 +14,18 @@ from ..enums import distribution_identifier_type
 
 class Identifier(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     type: Annotated[
         distribution_identifier_type.DistributionIdentifierType,
-        Field(description='Type of distribution identifier'),
+        Field(description="Type of distribution identifier"),
     ]
-    value: Annotated[str, Field(description='The identifier value')]
+    value: Annotated[str, Field(description="The identifier value")]
 
 
 class CollectionDistribution(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     publisher_domain: Annotated[
         str,
@@ -36,7 +36,7 @@ class CollectionDistribution(AdCPBaseModel):
     identifiers: Annotated[
         list[Identifier],
         Field(
-            description='Platform-specific identifiers for the collection on this publisher',
+            description="Platform-specific identifiers for the collection on this publisher",
             min_length=1,
         ),
     ]

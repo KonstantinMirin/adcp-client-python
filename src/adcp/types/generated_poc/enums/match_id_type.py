@@ -8,12 +8,12 @@ from enum import Enum
 
 
 class MatchIdType(Enum):
-    hashed_email = 'hashed_email'
-    hashed_phone = 'hashed_phone'
-    rampid = 'rampid'
-    id5 = 'id5'
-    uid2 = 'uid2'
-    euid = 'euid'
-    pairid = 'pairid'
-    maid = 'maid'
-    other = 'other'
+    hashed_email = "hashed_email"
+    hashed_phone = "hashed_phone"
+    rampid = "rampid"
+    id5 = "id5"
+    uid2 = "uid2"
+    euid = "euid"
+    pairid = "pairid"
+    maid = "maid"
+    other = "other"

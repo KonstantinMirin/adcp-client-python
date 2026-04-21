@@ -8,14 +8,14 @@ from enum import Enum
 
 
 class ContentRatingSystem(Enum):
-    tv_parental = 'tv_parental'
-    mpaa = 'mpaa'
-    podcast = 'podcast'
-    esrb = 'esrb'
-    bbfc = 'bbfc'
-    fsk = 'fsk'
-    acb = 'acb'
-    chvrs = 'chvrs'
-    csa = 'csa'
-    pegi = 'pegi'
-    custom = 'custom'
+    tv_parental = "tv_parental"
+    mpaa = "mpaa"
+    podcast = "podcast"
+    esrb = "esrb"
+    bbfc = "bbfc"
+    fsk = "fsk"
+    acb = "acb"
+    chvrs = "chvrs"
+    csa = "csa"
+    pegi = "pegi"
+    custom = "custom"

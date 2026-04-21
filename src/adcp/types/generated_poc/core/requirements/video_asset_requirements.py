@@ -12,20 +12,20 @@ from pydantic import ConfigDict, Field, RootModel
 
 
 class Container(Enum):
-    mp4 = 'mp4'
-    webm = 'webm'
-    mov = 'mov'
-    avi = 'avi'
-    mkv = 'mkv'
+    mp4 = "mp4"
+    webm = "webm"
+    mov = "mov"
+    avi = "avi"
+    mkv = "mkv"
 
 
 class Codec(Enum):
-    h264 = 'h264'
-    h265 = 'h265'
-    vp8 = 'vp8'
-    vp9 = 'vp9'
-    av1 = 'av1'
-    prores = 'prores'
+    h264 = "h264"
+    h265 = "h265"
+    vp8 = "vp8"
+    vp9 = "vp9"
+    av1 = "av1"
+    prores = "prores"
 
 
 class FrameRate(RootModel[float]):
@@ -33,34 +33,34 @@ class FrameRate(RootModel[float]):
 
 
 class FrameRateType(Enum):
-    constant = 'constant'
-    variable = 'variable'
+    constant = "constant"
+    variable = "variable"
 
 
 class ScanType(Enum):
-    progressive = 'progressive'
-    interlaced = 'interlaced'
+    progressive = "progressive"
+    interlaced = "interlaced"
 
 
 class GopType(Enum):
-    closed = 'closed'
-    open = 'open'
+    closed = "closed"
+    open = "open"
 
 
 class MoovAtomPosition(Enum):
-    start = 'start'
-    end = 'end'
+    start = "start"
+    end = "end"
 
 
 class AudioCodec(Enum):
-    aac = 'aac'
-    pcm = 'pcm'
-    ac3 = 'ac3'
-    eac3 = 'eac3'
-    mp3 = 'mp3'
-    opus = 'opus'
-    vorbis = 'vorbis'
-    flac = 'flac'
+    aac = "aac"
+    pcm = "pcm"
+    ac3 = "ac3"
+    eac3 = "eac3"
+    mp3 = "mp3"
+    opus = "opus"
+    vorbis = "vorbis"
+    flac = "flac"
 
 
 class AudioSampleRate(RootModel[int]):
@@ -68,73 +68,73 @@ class AudioSampleRate(RootModel[int]):
 
 
 class AudioChannel(Enum):
-    mono = 'mono'
-    stereo = 'stereo'
-    field_5_1 = '5.1'
-    field_7_1 = '7.1'
+    mono = "mono"
+    stereo = "stereo"
+    field_5_1 = "5.1"
+    field_7_1 = "7.1"
 
 
 class VideoAssetRequirements(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    min_width: Annotated[int | None, Field(description='Minimum width in pixels', ge=1)] = None
-    max_width: Annotated[int | None, Field(description='Maximum width in pixels', ge=1)] = None
-    min_height: Annotated[int | None, Field(description='Minimum height in pixels', ge=1)] = None
-    max_height: Annotated[int | None, Field(description='Maximum height in pixels', ge=1)] = None
+    min_width: Annotated[int | None, Field(description="Minimum width in pixels", ge=1)] = None
+    max_width: Annotated[int | None, Field(description="Maximum width in pixels", ge=1)] = None
+    min_height: Annotated[int | None, Field(description="Minimum height in pixels", ge=1)] = None
+    max_height: Annotated[int | None, Field(description="Maximum height in pixels", ge=1)] = None
     aspect_ratio: Annotated[
         str | None,
-        Field(description="Required aspect ratio (e.g., '16:9', '9:16')", pattern='^\\d+:\\d+$'),
+        Field(description="Required aspect ratio (e.g., '16:9', '9:16')", pattern="^\\d+:\\d+$"),
     ] = None
     min_duration_ms: Annotated[
-        int | None, Field(description='Minimum duration in milliseconds', ge=1)
+        int | None, Field(description="Minimum duration in milliseconds", ge=1)
     ] = None
     max_duration_ms: Annotated[
-        int | None, Field(description='Maximum duration in milliseconds', ge=1)
+        int | None, Field(description="Maximum duration in milliseconds", ge=1)
     ] = None
     containers: Annotated[
-        list[Container] | None, Field(description='Accepted video container formats')
+        list[Container] | None, Field(description="Accepted video container formats")
     ] = None
-    codecs: Annotated[list[Codec] | None, Field(description='Accepted video codecs')] = None
+    codecs: Annotated[list[Codec] | None, Field(description="Accepted video codecs")] = None
     max_file_size_kb: Annotated[
-        int | None, Field(description='Maximum file size in kilobytes', ge=1)
+        int | None, Field(description="Maximum file size in kilobytes", ge=1)
     ] = None
     min_bitrate_kbps: Annotated[
-        int | None, Field(description='Minimum video bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Minimum video bitrate in kilobits per second", ge=1)
     ] = None
     max_bitrate_kbps: Annotated[
-        int | None, Field(description='Maximum video bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Maximum video bitrate in kilobits per second", ge=1)
     ] = None
     frame_rates: Annotated[
         list[FrameRate] | None,
-        Field(description='Accepted frame rates in frames per second (e.g., [24, 30, 60])'),
+        Field(description="Accepted frame rates in frames per second (e.g., [24, 30, 60])"),
     ] = None
     audio_required: Annotated[
-        bool | None, Field(description='Whether the video must include an audio track')
+        bool | None, Field(description="Whether the video must include an audio track")
     ] = None
     frame_rate_type: Annotated[
         FrameRateType | None,
         Field(
-            description='Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing.'
+            description="Required frame rate type. Broadcast and SSAI require constant frame rate for seamless splicing."
         ),
     ] = None
     scan_type: Annotated[
         ScanType | None,
-        Field(description='Required scan type. Modern delivery requires progressive scan.'),
+        Field(description="Required scan type. Modern delivery requires progressive scan."),
     ] = None
     gop_type: Annotated[
         GopType | None,
         Field(
-            description='Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points.'
+            description="Required GOP structure. SSAI and broadcast require closed GOPs for clean splice points."
         ),
     ] = None
     min_gop_interval_seconds: Annotated[
-        float | None, Field(description='Minimum keyframe interval in seconds', ge=0.0)
+        float | None, Field(description="Minimum keyframe interval in seconds", ge=0.0)
     ] = None
     max_gop_interval_seconds: Annotated[
         float | None,
         Field(
-            description='Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals.',
+            description="Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals.",
             ge=0.0,
         ),
     ] = None
@@ -150,24 +150,24 @@ class VideoAssetRequirements(AdCPBaseModel):
     ] = None
     audio_sample_rates: Annotated[
         list[AudioSampleRate] | None,
-        Field(description='Accepted audio sample rates in Hz (e.g., [44100, 48000])'),
+        Field(description="Accepted audio sample rates in Hz (e.g., [44100, 48000])"),
     ] = None
     audio_channels: Annotated[
-        list[AudioChannel] | None, Field(description='Accepted audio channel configurations')
+        list[AudioChannel] | None, Field(description="Accepted audio channel configurations")
     ] = None
     loudness_lufs: Annotated[
         float | None,
         Field(
-            description='Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)'
+            description="Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)"
         ),
     ] = None
     loudness_tolerance_db: Annotated[
         float | None,
         Field(
-            description='Acceptable deviation from loudness_lufs target in dB (e.g., 2 means -22 to -26 LUFS for a -24 target)',
+            description="Acceptable deviation from loudness_lufs target in dB (e.g., 2 means -22 to -26 LUFS for a -24 target)",
             ge=0.0,
         ),
     ] = None
     true_peak_dbfs: Annotated[
-        float | None, Field(description='Maximum true peak level in dBFS (e.g., -2 for broadcast)')
+        float | None, Field(description="Maximum true peak level in dBFS (e.g., -2 for broadcast)")
     ] = None

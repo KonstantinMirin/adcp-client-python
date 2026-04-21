@@ -8,5 +8,5 @@ from enum import Enum
 
 
 class CreativeQuality(Enum):
-    draft = 'draft'
-    production = 'production'
+    draft = "draft"
+    production = "production"

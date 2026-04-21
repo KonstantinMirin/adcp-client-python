@@ -16,10 +16,10 @@ from ..core import ext as ext_1
 
 class CreativeApprovalResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     status: Annotated[
-        Literal['approved'], Field(description='Creative has been approved for distribution')
+        Literal["approved"], Field(description="Creative has been approved for distribution")
     ]
     rights_id: str
     creative_id: Annotated[
@@ -37,19 +37,19 @@ class CreativeApprovalResponse1(AdCPBaseModel):
 
 class CreativeApprovalResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    status: Annotated[Literal['rejected'], Field(description='Creative was rejected')]
+    status: Annotated[Literal["rejected"], Field(description="Creative was rejected")]
     rights_id: str
     creative_id: Annotated[
         str | None, Field(description="Echo of the buyer's creative identifier")
     ] = None
     creative_url: AnyUrl | None = None
-    reason: Annotated[str, Field(description='Why the creative was rejected')]
+    reason: Annotated[str, Field(description="Why the creative was rejected")]
     suggestions: Annotated[
         list[str] | None,
         Field(
-            description='Actionable feedback for revision. If present, the buyer can revise and resubmit the creative. If absent, the rejection is final for this creative concept.'
+            description="Actionable feedback for revision. If present, the buyer can revise and resubmit the creative. If absent, the rejection is final for this creative concept."
         ),
     ] = None
     context: context_1.ContextObject | None = None
@@ -58,9 +58,9 @@ class CreativeApprovalResponse2(AdCPBaseModel):
 
 class CreativeApprovalResponse3(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    status: Annotated[Literal['pending_review'], Field(description='Creative is queued for review')]
+    status: Annotated[Literal["pending_review"], Field(description="Creative is queued for review")]
     rights_id: str
     creative_id: Annotated[
         str | None, Field(description="Echo of the buyer's creative identifier")
@@ -72,7 +72,7 @@ class CreativeApprovalResponse3(AdCPBaseModel):
     status_url: Annotated[
         AnyUrl | None,
         Field(
-            description='URL to poll for updated approval status. GET this URL to receive a creative-approval-response. Poll at reasonable intervals (suggested: every 5 minutes, back off after 1 hour to every 30 minutes). Stop polling after estimated_response_time has elapsed and the status is still pending_review.'
+            description="URL to poll for updated approval status. GET this URL to receive a creative-approval-response. Poll at reasonable intervals (suggested: every 5 minutes, back off after 1 hour to every 30 minutes). Stop polling after estimated_response_time has elapsed and the status is still pending_review."
         ),
     ] = None
     context: context_1.ContextObject | None = None
@@ -81,7 +81,7 @@ class CreativeApprovalResponse3(AdCPBaseModel):
 
 class CreativeApprovalResponse4(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     errors: Annotated[list[error.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

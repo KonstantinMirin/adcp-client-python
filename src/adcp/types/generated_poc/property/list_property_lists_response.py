@@ -17,11 +17,11 @@ from . import property_list
 
 class ListPropertyListsResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     lists: Annotated[
         list[property_list.PropertyList],
-        Field(description='Array of property lists (metadata only, not resolved properties)'),
+        Field(description="Array of property lists (metadata only, not resolved properties)"),
     ]
     pagination: pagination_response.PaginationResponse | None = None
     context: context_1.ContextObject | None = None

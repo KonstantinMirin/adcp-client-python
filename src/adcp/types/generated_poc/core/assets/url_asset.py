@@ -15,9 +15,9 @@ from .. import provenance as provenance_1
 
 class UrlAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    url: Annotated[AnyUrl, Field(description='URL reference')]
+    url: Annotated[AnyUrl, Field(description="URL reference")]
     url_type: Annotated[
         url_asset_type.UrlAssetType | None,
         Field(
@@ -25,11 +25,11 @@ class UrlAsset(AdCPBaseModel):
         ),
     ] = None
     description: Annotated[
-        str | None, Field(description='Description of what this URL points to')
+        str | None, Field(description="Description of what this URL points to")
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

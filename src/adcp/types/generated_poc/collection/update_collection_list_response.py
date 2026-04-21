@@ -16,10 +16,10 @@ from . import collection_list
 
 class UpdateCollectionListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     list: Annotated[
-        collection_list.CollectionList, Field(description='The updated collection list')
+        collection_list.CollectionList, Field(description="The updated collection list")
     ]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

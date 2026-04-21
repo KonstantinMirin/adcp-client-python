@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class CollectionCadence(Enum):
-    daily = 'daily'
-    weekly = 'weekly'
-    monthly = 'monthly'
-    seasonal = 'seasonal'
-    event = 'event'
-    irregular = 'irregular'
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    seasonal = "seasonal"
+    event = "event"
+    irregular = "irregular"

@@ -11,7 +11,8 @@
       "properties": {
         "media_buy_id": {
           "type": "string",
-          "description": "Seller's unique identifier for the created media buy"
+          "description": "Seller's unique identifier for the created media buy",
+          "x-entity": "media_buy"
         },
         "account": {
           "title": "Account",
@@ -20,7 +21,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Unique identifier for this account"
+              "description": "Unique identifier for this account",
+              "x-entity": "account"
             },
             "name": {
               "type": "string",
@@ -70,6 +72,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -141,7 +144,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "billing": {
               "type": "string",
@@ -955,11 +959,13 @@
             "properties": {
               "package_id": {
                 "type": "string",
-                "description": "Seller's unique identifier for the package"
+                "description": "Seller's unique identifier for the package",
+                "x-entity": "package"
               },
               "product_id": {
                 "type": "string",
-                "description": "ID of the product this package is based on"
+                "description": "ID of the product this package is based on",
+                "x-entity": "product"
               },
               "budget": {
                 "type": "number",
@@ -983,7 +989,8 @@
               },
               "pricing_option_id": {
                 "type": "string",
-                "description": "ID of the selected pricing option from the product's pricing_options array"
+                "description": "ID of the selected pricing option from the product's pricing_options array",
+                "x-entity": "product_pricing_option"
               },
               "bid_price": {
                 "type": "number",
@@ -1105,7 +1112,8 @@
                   "properties": {
                     "catalog_id": {
                       "type": "string",
-                      "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                      "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                      "x-entity": "catalog"
                     },
                     "name": {
                       "type": "string",
@@ -1574,6 +1582,7 @@
                 "items": {
                   "title": "Format ID",
                   "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+                  "x-entity": "creative_format",
                   "type": "object",
                   "properties": {
                     "agent_url": {
@@ -2041,7 +2050,8 @@
                       "list_id": {
                         "type": "string",
                         "description": "Identifier for the property list within the agent",
-                        "minLength": 1
+                        "minLength": 1,
+                        "x-entity": "property_list"
                       },
                       "auth_token": {
                         "type": "string",
@@ -2067,7 +2077,8 @@
                       "list_id": {
                         "type": "string",
                         "description": "Identifier for the collection list within the agent",
-                        "minLength": 1
+                        "minLength": 1,
+                        "x-entity": "collection_list"
                       },
                       "auth_token": {
                         "type": "string",
@@ -2093,7 +2104,8 @@
                       "list_id": {
                         "type": "string",
                         "description": "Identifier for the collection list within the agent",
-                        "minLength": 1
+                        "minLength": 1,
+                        "x-entity": "collection_list"
                       },
                       "auth_token": {
                         "type": "string",
@@ -2529,6 +2541,7 @@
                             "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                             "type": "string",
                             "pattern": "^[a-z0-9_]+$",
+                            "x-entity": "advertiser_brand",
                             "examples": [
                               "tide",
                               "cheerios",
@@ -2718,6 +2731,7 @@
                           "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                           "type": "string",
                           "pattern": "^[a-z0-9_]+$",
+                          "x-entity": "advertiser_brand",
                           "examples": [
                             "tide",
                             "cheerios",
@@ -2806,7 +2820,8 @@
                   "properties": {
                     "creative_id": {
                       "type": "string",
-                      "description": "Unique identifier for the creative"
+                      "description": "Unique identifier for the creative",
+                      "x-entity": "creative"
                     },
                     "weight": {
                       "type": "number",
@@ -2835,6 +2850,7 @@
                 "items": {
                   "title": "Format ID",
                   "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+                  "x-entity": "creative_format",
                   "type": "object",
                   "properties": {
                     "agent_url": {
@@ -3662,6 +3678,7 @@
                       "signal_id": {
                         "title": "Signal ID",
                         "description": "The signal to target",
+                        "x-entity": "signal",
                         "discriminator": {
                           "propertyName": "source"
                         },
@@ -3752,6 +3769,7 @@
                       "signal_id": {
                         "title": "Signal ID",
                         "description": "The signal to target",
+                        "x-entity": "signal",
                         "discriminator": {
                           "propertyName": "source"
                         },
@@ -3846,6 +3864,7 @@
                       "signal_id": {
                         "title": "Signal ID",
                         "description": "The signal to target",
+                        "x-entity": "signal",
                         "discriminator": {
                           "propertyName": "source"
                         },
@@ -4130,7 +4149,8 @@
         },
         "task_id": {
           "type": "string",
-          "description": "Task handle the buyer uses with tasks/get, and that the seller references on push-notification callbacks. The media_buy_id is issued on the completion artifact, not here. Per AdCP wire conventions this is snake_case; A2A adapters MAY surface it as taskId, but the payload field emitted by the agent is task_id."
+          "description": "Task handle the buyer uses with tasks/get, and that the seller references on push-notification callbacks. The media_buy_id is issued on the completion artifact, not here. Per AdCP wire conventions this is snake_case; A2A adapters MAY surface it as taskId, but the payload field emitted by the agent is task_id.",
+          "x-entity": "task"
         },
         "message": {
           "type": "string",
@@ -4226,7 +4246,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.456Z",
+    "generatedAt": "2026-04-21T21:56:38.536Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

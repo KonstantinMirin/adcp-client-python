@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class CreativeApprovalStatus(Enum):
-    pending_review = 'pending_review'
-    approved = 'approved'
-    rejected = 'rejected'
+    pending_review = "pending_review"
+    approved = "approved"
+    rejected = "rejected"

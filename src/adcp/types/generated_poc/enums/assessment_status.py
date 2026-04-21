@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class AssessmentStatus(Enum):
-    insufficient = 'insufficient'
-    minimum = 'minimum'
-    good = 'good'
-    excellent = 'excellent'
+    insufficient = "insufficient"
+    minimum = "minimum"
+    good = "good"
+    excellent = "excellent"

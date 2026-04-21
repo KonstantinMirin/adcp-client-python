@@ -6,11 +6,13 @@
   "properties": {
     "account_id": {
       "type": "string",
-      "description": "Account identifier. Present when the response spans or is scoped to a specific account."
+      "description": "Account identifier. Present when the response spans or is scoped to a specific account.",
+      "x-entity": "account"
     },
     "media_buy_id": {
       "type": "string",
-      "description": "Publisher's media buy identifier. Present when the request was scoped to a single media buy."
+      "description": "Publisher's media buy identifier. Present when the request was scoped to a single media buy.",
+      "x-entity": "media_buy"
     },
     "currency": {
       "type": "string",
@@ -50,15 +52,18 @@
         "properties": {
           "creative_id": {
             "type": "string",
-            "description": "Creative identifier"
+            "description": "Creative identifier",
+            "x-entity": "creative"
           },
           "media_buy_id": {
             "type": "string",
-            "description": "Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy."
+            "description": "Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy.",
+            "x-entity": "media_buy"
           },
           "format_id": {
             "title": "Format ID",
             "description": "Format of this creative",
+            "x-entity": "creative_format",
             "type": "object",
             "properties": {
               "agent_url": {
@@ -1000,6 +1005,7 @@
                         "format_id": {
                           "title": "Format ID",
                           "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'}).",
+                          "x-entity": "creative_format",
                           "type": "object",
                           "properties": {
                             "agent_url": {
@@ -6191,7 +6197,8 @@
                                       "properties": {
                                         "catalog_id": {
                                           "type": "string",
-                                          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                                          "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                                          "x-entity": "catalog"
                                         },
                                         "name": {
                                           "type": "string",
@@ -7377,7 +7384,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.176Z",
+    "generatedAt": "2026-04-21T21:56:38.394Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

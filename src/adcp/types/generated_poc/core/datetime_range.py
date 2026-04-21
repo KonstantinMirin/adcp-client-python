@@ -12,7 +12,7 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 class DatetimeRange(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    start: Annotated[AwareDatetime, Field(description='Start timestamp (inclusive), ISO 8601')]
-    end: Annotated[AwareDatetime, Field(description='End timestamp (inclusive), ISO 8601')]
+    start: Annotated[AwareDatetime, Field(description="Start timestamp (inclusive), ISO 8601")]
+    end: Annotated[AwareDatetime, Field(description="End timestamp (inclusive), ISO 8601")]

@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Sync Accounts Request",
   "description": "Sync advertiser accounts with a seller using upsert semantics. The agent declares which brands it represents, who operates on each brand's behalf, and the billing model. The seller provisions or links accounts accordingly, returning per-account status.",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {

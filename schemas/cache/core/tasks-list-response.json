@@ -83,7 +83,8 @@
         "properties": {
           "task_id": {
             "type": "string",
-            "description": "Unique identifier for this task"
+            "description": "Unique identifier for this task",
+            "x-entity": "task"
           },
           "task_type": {
             "$ref": "../enums/task-type.json",

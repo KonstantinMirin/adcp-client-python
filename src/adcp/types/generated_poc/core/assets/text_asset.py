@@ -14,15 +14,15 @@ from .. import provenance as provenance_1
 
 class TextAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    content: Annotated[str, Field(description='Text content')]
+    content: Annotated[str, Field(description="Text content")]
     language: Annotated[str | None, Field(description="Language code (e.g., 'en', 'es', 'fr')")] = (
         None
     )
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

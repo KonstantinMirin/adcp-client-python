@@ -16,19 +16,19 @@ from . import offer_price
 
 class Offer(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    package_id: Annotated[str, Field(description='Package identifier from the media buy.')]
+    package_id: Annotated[str, Field(description="Package identifier from the media buy.")]
     brand: Annotated[
         brand_ref.BrandReference | None,
         Field(
-            description='Brand for this offer. Required when the product allows dynamic brands (brand selected at match time rather than fixed on the package). For single-brand packages, the brand is already known from the media buy.'
+            description="Brand for this offer. Required when the product allows dynamic brands (brand selected at match time rather than fixed on the package). For single-brand packages, the brand is already known from the media buy."
         ),
     ] = None
     price: Annotated[
         offer_price.OfferPrice | None,
         Field(
-            description='Price for this offer. Only present when the product supports variable pricing. For fixed-price packages, price is already set on the media buy.'
+            description="Price for this offer. Only present when the product supports variable pricing. For fixed-price packages, price is already set on the media buy."
         ),
     ] = None
     summary: Annotated[
@@ -40,12 +40,12 @@ class Offer(AdCPBaseModel):
     creative_manifest: Annotated[
         creative_manifest_1.CreativeManifest | None,
         Field(
-            description='Full creative details, inline. When present, the publisher has everything needed to render. Inline for small creatives (markdown, product card). For large creatives (VAST, video), the manifest references external assets via URLs.'
+            description="Full creative details, inline. When present, the publisher has everything needed to render. Inline for small creatives (markdown, product card). For large creatives (VAST, video), the manifest references external assets via URLs."
         ),
     ] = None
     macros: Annotated[
         dict[str, str] | None,
         Field(
-            description='Key-value pairs the buyer passes for dynamic creative rendering or attribution tracking. In the GAM case, these flow as macro values. Not tied to user identity — attribution reconciliation happens via delivery reporting or clean room.'
+            description="Key-value pairs the buyer passes for dynamic creative rendering or attribution tracking. In the GAM case, these flow as macro values. Not tied to user identity — attribution reconciliation happens via delivery reporting or clean room."
         ),
     ] = None

@@ -48,7 +48,8 @@
               },
               "policy_id": {
                 "type": "string",
-                "description": "Policy ID that triggered this result. Enables the calibration loop to iterate on specific policies by correlating sample outcomes to policy ids."
+                "description": "Policy ID that triggered this result. Enables the calibration loop to iterate on specific policies by correlating sample outcomes to policy ids.",
+                "x-entity": "governance_registry_policy"
               },
               "explanation": {
                 "type": "string",
@@ -160,7 +161,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.041Z",
+    "generatedAt": "2026-04-21T21:56:38.331Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

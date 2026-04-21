@@ -24,7 +24,7 @@ class GetCreativeFeaturesResponse2(AdCPBaseModel):
 class GetCreativeFeaturesResponse1(AdCPBaseModel):
     results: Annotated[
         list[creative_feature_result.CreativeFeatureResult],
-        Field(description='Feature values for the evaluated creative'),
+        Field(description="Feature values for the evaluated creative"),
     ]
     detail_url: Annotated[
         AnyUrl | None,
@@ -35,21 +35,21 @@ class GetCreativeFeaturesResponse1(AdCPBaseModel):
     pricing_option_id: Annotated[
         str | None,
         Field(
-            description='Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.'
+            description="Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request."
         ),
     ] = None
     vendor_cost: Annotated[
         float | None,
-        Field(description='Cost incurred for this evaluation, denominated in currency.', ge=0.0),
+        Field(description="Cost incurred for this evaluation, denominated in currency.", ge=0.0),
     ] = None
     currency: Annotated[
         str | None,
-        Field(description='ISO 4217 currency code for vendor_cost.', pattern='^[A-Z]{3}$'),
+        Field(description="ISO 4217 currency code for vendor_cost.", pattern="^[A-Z]{3}$"),
     ] = None
     consumption: Annotated[
         creative_consumption.CreativeConsumption | None,
         Field(
-            description='Structured consumption details for this evaluation. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.'
+            description="Structured consumption details for this evaluation. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth."
         ),
     ] = None
     context: context_1.ContextObject | None = None

@@ -21,7 +21,8 @@
             "properties": {
               "creative_id": {
                 "type": "string",
-                "description": "Creative ID from the request"
+                "description": "Creative ID from the request",
+                "x-entity": "creative"
               },
               "account": {
                 "title": "Account",
@@ -30,7 +31,8 @@
                 "properties": {
                   "account_id": {
                     "type": "string",
-                    "description": "Unique identifier for this account"
+                    "description": "Unique identifier for this account",
+                    "x-entity": "account"
                   },
                   "name": {
                     "type": "string",
@@ -80,6 +82,7 @@
                         "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                         "type": "string",
                         "pattern": "^[a-z0-9_]+$",
+                        "x-entity": "advertiser_brand",
                         "examples": [
                           "tide",
                           "cheerios",
@@ -151,7 +154,8 @@
                   "operator": {
                     "type": "string",
                     "description": "Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.",
-                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                    "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                    "x-entity": "operator"
                   },
                   "billing": {
                     "type": "string",
@@ -1025,7 +1029,8 @@
         },
         "task_id": {
           "type": "string",
-          "description": "Task handle the buyer uses with tasks/get, and that the seller references on push-notification callbacks. The creatives array is issued on the completion artifact, not here. Per AdCP wire conventions this is snake_case; A2A adapters MAY surface it as taskId, but the payload field emitted by the agent is task_id."
+          "description": "Task handle the buyer uses with tasks/get, and that the seller references on push-notification callbacks. The creatives array is issued on the completion artifact, not here. Per AdCP wire conventions this is snake_case; A2A adapters MAY surface it as taskId, but the payload field emitted by the agent is task_id.",
+          "x-entity": "task"
         },
         "message": {
           "type": "string",
@@ -1112,7 +1117,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.350Z",
+    "generatedAt": "2026-04-21T21:56:38.483Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -12,9 +12,9 @@ from pydantic import ConfigDict, Field
 
 class BudgetTooLowDetails(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     minimum_budget: Annotated[
         float | None, Field(description="Seller's minimum budget for this product")
     ] = None
-    currency: Annotated[str | None, Field(description='ISO 4217 currency code')] = None
+    currency: Annotated[str | None, Field(description="ISO 4217 currency code")] = None

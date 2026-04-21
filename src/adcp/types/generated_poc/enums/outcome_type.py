@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class OutcomeType(Enum):
-    completed = 'completed'
-    failed = 'failed'
-    delivery = 'delivery'
+    completed = "completed"
+    failed = "failed"
+    delivery = "delivery"

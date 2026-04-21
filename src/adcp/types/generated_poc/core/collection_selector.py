@@ -12,19 +12,19 @@ from pydantic import ConfigDict, Field
 
 class CollectionSelector(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     publisher_domain: Annotated[
         str,
         Field(
             description="Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.",
-            pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$',
+            pattern="^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
         ),
     ]
     collection_ids: Annotated[
         list[str],
         Field(
-            description='Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file.',
+            description="Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file.",
             min_length=1,
         ),
     ]
