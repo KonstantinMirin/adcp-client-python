@@ -2,6 +2,80 @@
 
 This project uses [Release Please](https://github.com/googleapis/release-please) for automated versioning and releases. It's the Python equivalent of Changesets but works per-PR instead of per-commit.
 
+## Spec-version pinning for major releases
+
+**Read this before cutting any major SDK version (e.g. 3.x → 4.x, 4.x → 5.x).**
+
+The SDK's generated Pydantic types in `src/adcp/types/generated_poc/` are built from the AdCP spec bundle fetched at build time. Which bundle gets fetched is pinned by `src/adcp/ADCP_VERSION`:
+
+- **`latest`** (default on `main`): tracks spec HEAD. Types drift between regens. Safe for rolling development; **never** safe for a stable release — buyers on that version would see types mutate under them at the next regen.
+- **`3.0.0`** (or any semver tag): pinned to a specific spec release. Stable. What you want to ship.
+
+### Release-day checklist
+
+Execute in this order. All commands run from repo root.
+
+1. **Confirm upstream spec is tagged.** The spec repo publishes a bundle at `https://adcontextprotocol.org/protocol/{version}.tgz`. Check it returns 200:
+
+   ```bash
+   curl -sI "https://adcontextprotocol.org/protocol/3.0.0.tgz" | head -1
+   # Expected: HTTP/2 200
+   ```
+
+   If 404, the spec isn't tagged yet — abort the release.
+
+2. **Pin `ADCP_VERSION`:**
+
+   ```bash
+   echo "3.0.0" > src/adcp/ADCP_VERSION
+   ```
+
+3. **Regenerate schemas + types:**
+
+   ```bash
+   make regenerate-schemas
+   ```
+
+   This fetches the pinned bundle, rewrites `schemas/cache/`, regenerates `src/adcp/types/generated_poc/` + `_generated.py` + `_ergonomic.py`, and updates `schemas/cache/index.json.adcp_version` to match `ADCP_VERSION`.
+
+4. **Run the full pre-push check:**
+
+   ```bash
+   make pre-push
+   ```
+
+   Includes `tests/test_schemas_version_pin.py` — a paranoia check that `ADCP_VERSION` matches `schemas/cache/index.json.adcp_version`. If you skipped step 3, this fires.
+
+5. **Review the diff.** Expect `schemas/cache/*`, `src/adcp/types/generated_poc/*`, `_generated.py`, `_ergonomic.py`, and `src/adcp/ADCP_VERSION` to change. Anything else means a regen script mutated source — investigate.
+
+6. **Commit + open PR:**
+
+   ```bash
+   git checkout -b bokelley/pin-spec-X.Y.Z
+   git add -A
+   git commit -m "chore(types): pin AdCP spec to X.Y.Z and regenerate"
+   gh pr create --title "chore(types): pin AdCP spec to X.Y.Z"
+   ```
+
+7. **Merge the spec-pin PR.** Release Please's open release PR (`chore(main): release X.Y.Z`) will pick up the new commit; review the updated changelog.
+
+8. **Merge the release PR** (`chore(main): release X.Y.Z`). PyPI publish + GitHub release + tag happen automatically.
+
+### Reverting to `latest`
+
+After a stable release ships, `main` typically stays pinned until the next spec drop. To resume tracking HEAD:
+
+```bash
+echo "latest" > src/adcp/ADCP_VERSION
+make regenerate-schemas
+```
+
+Commit as `chore(types): resume tracking spec HEAD after X.Y.Z release`.
+
+### Drift protection
+
+`tests/test_schemas_version_pin.py` cross-checks `ADCP_VERSION` against `schemas/cache/index.json.adcp_version` on every CI run. You cannot merge a PR where the two drift — which means you cannot accidentally ship stable types generated from `latest` or vice versa.
+
 ## How It Works
 
 1. **Write Conventional Commits**: Use conventional commit messages in your PRs
