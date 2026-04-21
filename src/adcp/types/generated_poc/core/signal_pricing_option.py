@@ -15,7 +15,7 @@ class SignalPricingOption(RootModel[vendor_pricing_option.VendorPricingOption]):
     root: Annotated[
         vendor_pricing_option.VendorPricingOption,
         Field(
-            description='Deprecated — use vendor-pricing-option.json for new implementations. This alias is retained for backward compatibility.',
-            title='Signal Pricing Option',
+            description="Deprecated — use vendor-pricing-option.json for new implementations. This alias is retained for backward compatibility.",
+            title="Signal Pricing Option",
         ),
     ]

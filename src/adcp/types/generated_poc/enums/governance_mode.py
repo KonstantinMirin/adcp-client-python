@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class GovernanceMode(Enum):
-    audit = 'audit'
-    advisory = 'advisory'
-    enforce = 'enforce'
+    audit = "audit"
+    advisory = "advisory"
+    enforce = "enforce"

@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class CreativeStatus(Enum):
-    processing = 'processing'
-    pending_review = 'pending_review'
-    approved = 'approved'
-    rejected = 'rejected'
-    archived = 'archived'
+    processing = "processing"
+    pending_review = "pending_review"
+    approved = "approved"
+    rejected = "rejected"
+    archived = "archived"

@@ -12,11 +12,11 @@ from pydantic import AnyUrl, ConfigDict, Field
 
 class AccountSetupRequiredDetails(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     setup_url: Annotated[
-        AnyUrl | None, Field(description='URL where account setup can be completed')
+        AnyUrl | None, Field(description="URL where account setup can be completed")
     ] = None
     setup_steps: Annotated[
-        list[str] | None, Field(description='Steps remaining before the account is ready')
+        list[str] | None, Field(description="Steps remaining before the account is ready")
     ] = None

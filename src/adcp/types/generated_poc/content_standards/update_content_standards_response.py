@@ -16,28 +16,28 @@ from ..core import ext as ext_1
 
 class UpdateContentStandardsResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     success: Annotated[
-        Literal[True], Field(description='Indicates the update was applied successfully')
+        Literal[True], Field(description="Indicates the update was applied successfully")
     ]
-    standards_id: Annotated[str, Field(description='ID of the updated standards configuration')]
+    standards_id: Annotated[str, Field(description="ID of the updated standards configuration")]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
 class UpdateContentStandardsResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    success: Annotated[Literal[False], Field(description='Indicates the update failed')]
+    success: Annotated[Literal[False], Field(description="Indicates the update failed")]
     errors: Annotated[
-        list[error.Error], Field(description='Errors that occurred during the update', min_length=1)
+        list[error.Error], Field(description="Errors that occurred during the update", min_length=1)
     ]
     conflicting_standards_id: Annotated[
         str | None,
         Field(
-            description='If scope change conflicts with another configuration, the ID of the conflicting standards'
+            description="If scope change conflicts with another configuration, the ID of the conflicting standards"
         ),
     ] = None
     context: context_1.ContextObject | None = None

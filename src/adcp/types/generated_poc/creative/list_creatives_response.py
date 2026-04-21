@@ -37,73 +37,73 @@ from ..enums import creative_status, sort_direction
 
 class AssignedPackage(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    package_id: Annotated[str, Field(description='Package identifier')]
-    assigned_date: Annotated[AwareDatetime, Field(description='When this assignment was created')]
+    package_id: Annotated[str, Field(description="Package identifier")]
+    assigned_date: Annotated[AwareDatetime, Field(description="When this assignment was created")]
 
 
 class Assignments(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     assignment_count: Annotated[
-        int, Field(description='Total number of active package assignments', ge=0)
+        int, Field(description="Total number of active package assignments", ge=0)
     ]
     assigned_packages: Annotated[
         list[AssignedPackage] | None,
-        Field(description='List of packages this creative is assigned to'),
+        Field(description="List of packages this creative is assigned to"),
     ] = None
 
 
 class Snapshot(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     as_of: Annotated[
-        AwareDatetime, Field(description='When this snapshot was captured by the platform')
+        AwareDatetime, Field(description="When this snapshot was captured by the platform")
     ]
     staleness_seconds: Annotated[
         int,
         Field(
-            description='Maximum age of this data in seconds. For example, 3600 means the data may be up to 1 hour old.',
+            description="Maximum age of this data in seconds. For example, 3600 means the data may be up to 1 hour old.",
             ge=0,
         ),
     ]
     impressions: Annotated[
         int,
         Field(
-            description='Lifetime impressions across all assignments. Not scoped to any date range.',
+            description="Lifetime impressions across all assignments. Not scoped to any date range.",
             ge=0,
         ),
     ]
     last_served: Annotated[
         AwareDatetime | None,
         Field(
-            description='Last time this creative served an impression. Absent when the creative has never served.'
+            description="Last time this creative served an impression. Absent when the creative has never served."
         ),
     ] = None
 
 
 class SnapshotUnavailableReason(Enum):
-    SNAPSHOT_UNSUPPORTED = 'SNAPSHOT_UNSUPPORTED'
-    SNAPSHOT_TEMPORARILY_UNAVAILABLE = 'SNAPSHOT_TEMPORARILY_UNAVAILABLE'
-    SNAPSHOT_PERMISSION_DENIED = 'SNAPSHOT_PERMISSION_DENIED'
+    SNAPSHOT_UNSUPPORTED = "SNAPSHOT_UNSUPPORTED"
+    SNAPSHOT_TEMPORARILY_UNAVAILABLE = "SNAPSHOT_TEMPORARILY_UNAVAILABLE"
+    SNAPSHOT_PERMISSION_DENIED = "SNAPSHOT_PERMISSION_DENIED"
 
 
 class StatusSummary(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     processing: Annotated[
-        int | None, Field(description='Number of creatives being processed', ge=0)
+        int | None, Field(description="Number of creatives being processed", ge=0)
     ] = None
-    approved: Annotated[int | None, Field(description='Number of approved creatives', ge=0)] = None
+    approved: Annotated[int | None, Field(description="Number of approved creatives", ge=0)] = None
     pending_review: Annotated[
-        int | None, Field(description='Number of creatives pending review', ge=0)
+        int | None, Field(description="Number of creatives pending review", ge=0)
     ] = None
-    rejected: Annotated[int | None, Field(description='Number of rejected creatives', ge=0)] = None
-    archived: Annotated[int | None, Field(description='Number of archived creatives', ge=0)] = None
+    rejected: Annotated[int | None, Field(description="Number of rejected creatives", ge=0)] = None
+    archived: Annotated[int | None, Field(description="Number of archived creatives", ge=0)] = None
 
 
 class SortApplied(AdCPBaseModel):
@@ -113,44 +113,44 @@ class SortApplied(AdCPBaseModel):
 
 class QuerySummary(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     total_matching: Annotated[
         int,
-        Field(description='Total number of creatives matching filters (across all pages)', ge=0),
+        Field(description="Total number of creatives matching filters (across all pages)", ge=0),
     ]
     returned: Annotated[
-        int, Field(description='Number of creatives returned in this response', ge=0)
+        int, Field(description="Number of creatives returned in this response", ge=0)
     ]
     filters_applied: Annotated[
-        list[str] | None, Field(description='List of filters that were applied to the query')
+        list[str] | None, Field(description="List of filters that were applied to the query")
     ] = None
     sort_applied: Annotated[
-        SortApplied | None, Field(description='Sort order that was applied')
+        SortApplied | None, Field(description="Sort order that was applied")
     ] = None
 
 
 class Creative(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    creative_id: Annotated[str, Field(description='Unique identifier for the creative')]
+    creative_id: Annotated[str, Field(description="Unique identifier for the creative")]
     account: Annotated[
-        account_1.Account | None, Field(description='Account that owns this creative')
+        account_1.Account | None, Field(description="Account that owns this creative")
     ] = None
-    name: Annotated[str, Field(description='Human-readable creative name')]
+    name: Annotated[str, Field(description="Human-readable creative name")]
     format_id: Annotated[
         format_id_1.FormatId,
-        Field(description='Format identifier specifying which format this creative conforms to'),
+        Field(description="Format identifier specifying which format this creative conforms to"),
     ]
     status: Annotated[
-        creative_status.CreativeStatus, Field(description='Current approval status of the creative')
+        creative_status.CreativeStatus, Field(description="Current approval status of the creative")
     ]
-    created_date: Annotated[AwareDatetime, Field(description='When the creative was created')]
-    updated_date: Annotated[AwareDatetime, Field(description='When the creative was last modified')]
+    created_date: Annotated[AwareDatetime, Field(description="When the creative was created")]
+    updated_date: Annotated[AwareDatetime, Field(description="When the creative was last modified")]
     assets: Annotated[
         dict[
-            Annotated[str, StringConstraints(pattern=r'^[a-z0-9_]+$')],
+            Annotated[str, StringConstraints(pattern=r"^[a-z0-9_]+$")],
             image_asset.ImageAsset
             | video_asset.VideoAsset
             | audio_asset.AudioAsset
@@ -167,50 +167,50 @@ class Creative(AdCPBaseModel):
             | catalog_asset.CatalogAsset,
         ]
         | None,
-        Field(description='Assets for this creative, keyed by asset_id'),
+        Field(description="Assets for this creative, keyed by asset_id"),
     ] = None
     tags: Annotated[
-        list[str] | None, Field(description='User-defined tags for organization and searchability')
+        list[str] | None, Field(description="User-defined tags for organization and searchability")
     ] = None
     concept_id: Annotated[
         str | None,
         Field(
-            description='Creative concept this creative belongs to. Concepts group related creatives across sizes and formats.'
+            description="Creative concept this creative belongs to. Concepts group related creatives across sizes and formats."
         ),
     ] = None
-    concept_name: Annotated[str | None, Field(description='Human-readable concept name')] = None
+    concept_name: Annotated[str | None, Field(description="Human-readable concept name")] = None
     variables: Annotated[
         list[creative_variable.CreativeVariable] | None,
         Field(
-            description='Dynamic content variables (DCO slots) for this creative. Included when include_variables=true.'
+            description="Dynamic content variables (DCO slots) for this creative. Included when include_variables=true."
         ),
     ] = None
     assignments: Annotated[
         Assignments | None,
-        Field(description='Current package assignments (included when include_assignments=true)'),
+        Field(description="Current package assignments (included when include_assignments=true)"),
     ] = None
     snapshot: Annotated[
         Snapshot | None,
         Field(
-            description='Lightweight delivery snapshot (included when include_snapshot=true). For detailed performance analytics, use get_creative_delivery.'
+            description="Lightweight delivery snapshot (included when include_snapshot=true). For detailed performance analytics, use get_creative_delivery."
         ),
     ] = None
     snapshot_unavailable_reason: Annotated[
         SnapshotUnavailableReason | None,
         Field(
-            description='Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot data is unavailable for this creative.'
+            description="Machine-readable reason the snapshot is omitted. Present only when include_snapshot was true and snapshot data is unavailable for this creative."
         ),
     ] = None
     items: Annotated[
         list[creative_item.CreativeItem] | None,
         Field(
-            description='Items for multi-asset formats like carousels and native ads (included when include_items=true)'
+            description="Items for multi-asset formats like carousels and native ads (included when include_items=true)"
         ),
     ] = None
     pricing_options: Annotated[
         list[vendor_pricing_option.VendorPricingOption] | None,
         Field(
-            description='Pricing options for using this creative (serving, delivery). Used by ad servers and library agents. Transformation agents expose format-level pricing on list_creative_formats instead. Present when include_pricing=true and account provided. The buyer passes the applied pricing_option_id in report_usage.',
+            description="Pricing options for using this creative (serving, delivery). Used by ad servers and library agents. Transformation agents expose format-level pricing on list_creative_formats instead. Present when include_pricing=true and account provided. The buyer passes the applied pricing_option_id in report_usage.",
             min_length=1,
         ),
     ] = None
@@ -218,31 +218,31 @@ class Creative(AdCPBaseModel):
 
 class ListCreativesResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     query_summary: Annotated[
-        QuerySummary, Field(description='Summary of the query that was executed')
+        QuerySummary, Field(description="Summary of the query that was executed")
     ]
     pagination: pagination_response.PaginationResponse
     creatives: Annotated[
-        list[Creative], Field(description='Array of creative assets matching the query')
+        list[Creative], Field(description="Array of creative assets matching the query")
     ]
     format_summary: Annotated[
-        dict[Annotated[str, StringConstraints(pattern=r'^[a-zA-Z0-9_-]+$')], int] | None,
+        dict[Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9_-]+$")], int] | None,
         Field(
             description="Breakdown of creatives by format. Keys are agent-defined format identifiers, optionally including dimensions (e.g., 'display_static_300x250', 'video_30s_vast'). Key construction is platform-specific — there is no required format."
         ),
     ] = None
     status_summary: Annotated[
-        StatusSummary | None, Field(description='Breakdown of creatives by status')
+        StatusSummary | None, Field(description="Breakdown of creatives by status")
     ] = None
     errors: Annotated[
         list[error.Error] | None,
-        Field(description='Task-specific errors (e.g., invalid filters, account not found)'),
+        Field(description="Task-specific errors (e.g., invalid filters, account not found)"),
     ] = None
     sandbox: Annotated[
         bool | None,
-        Field(description='When true, this response contains simulated data from sandbox mode.'),
+        Field(description="When true, this response contains simulated data from sandbox mode."),
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

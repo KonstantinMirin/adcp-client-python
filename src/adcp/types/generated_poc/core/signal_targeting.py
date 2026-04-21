@@ -14,30 +14,30 @@ from . import signal_id as signal_id_1
 
 class SignalTargeting4(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
-    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
+    value_type: Annotated[Literal["binary"], Field(description="Discriminator for binary signals")]
     value: Annotated[
         bool,
         Field(
-            description='Whether to include (true) or exclude (false) users matching this signal'
+            description="Whether to include (true) or exclude (false) users matching this signal"
         ),
     ]
 
 
 class SignalTargeting5(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
     value_type: Annotated[
-        Literal['categorical'], Field(description='Discriminator for categorical signals')
+        Literal["categorical"], Field(description="Discriminator for categorical signals")
     ]
     values: Annotated[
         list[str],
         Field(
-            description='Values to target. Users with any of these values will be included.',
+            description="Values to target. Users with any of these values will be included.",
             min_length=1,
         ),
     ]
@@ -45,11 +45,11 @@ class SignalTargeting5(AdCPBaseModel):
 
 class SignalTargeting6(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
     value_type: Annotated[
-        Literal['numeric'], Field(description='Discriminator for numeric signals')
+        Literal["numeric"], Field(description="Discriminator for numeric signals")
     ]
     min_value: Annotated[
         float | None,
@@ -69,14 +69,14 @@ class SignalTargeting(RootModel[SignalTargeting4 | SignalTargeting5 | SignalTarg
     root: Annotated[
         SignalTargeting4 | SignalTargeting5 | SignalTargeting6,
         Field(
-            description='Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.',
-            discriminator='value_type',
-            title='Signal Targeting',
+            description="Targeting constraint for a specific signal. Uses value_type as discriminator to determine the targeting expression format.",
+            discriminator="value_type",
+            title="Signal Targeting",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

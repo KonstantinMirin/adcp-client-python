@@ -13,7 +13,7 @@ from pydantic import ConfigDict, Field
 
 class DateRange(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    start: Annotated[date_aliased, Field(description='Start date (inclusive), ISO 8601')]
-    end: Annotated[date_aliased, Field(description='End date (inclusive), ISO 8601')]
+    start: Annotated[date_aliased, Field(description="Start date (inclusive), ISO 8601")]
+    end: Annotated[date_aliased, Field(description="End date (inclusive), ISO 8601")]

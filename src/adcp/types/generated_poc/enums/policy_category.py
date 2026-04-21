@@ -8,5 +8,5 @@ from enum import Enum
 
 
 class PolicyCategory(Enum):
-    regulation = 'regulation'
-    standard = 'standard'
+    regulation = "regulation"
+    standard = "standard"

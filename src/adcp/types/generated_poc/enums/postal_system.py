@@ -8,14 +8,14 @@ from enum import Enum
 
 
 class PostalCodeSystem(Enum):
-    us_zip = 'us_zip'
-    us_zip_plus_four = 'us_zip_plus_four'
-    gb_outward = 'gb_outward'
-    gb_full = 'gb_full'
-    ca_fsa = 'ca_fsa'
-    ca_full = 'ca_full'
-    de_plz = 'de_plz'
-    fr_code_postal = 'fr_code_postal'
-    au_postcode = 'au_postcode'
-    ch_plz = 'ch_plz'
-    at_plz = 'at_plz'
+    us_zip = "us_zip"
+    us_zip_plus_four = "us_zip_plus_four"
+    gb_outward = "gb_outward"
+    gb_full = "gb_full"
+    ca_fsa = "ca_fsa"
+    ca_full = "ca_full"
+    de_plz = "de_plz"
+    fr_code_postal = "fr_code_postal"
+    au_postcode = "au_postcode"
+    ch_plz = "ch_plz"
+    at_plz = "at_plz"

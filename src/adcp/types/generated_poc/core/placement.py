@@ -14,10 +14,10 @@ from . import format_id
 
 class Placement(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     placement_id: Annotated[
-        str, Field(description='Unique identifier for the placement within the product')
+        str, Field(description="Unique identifier for the placement within the product")
     ]
     name: Annotated[
         str,
@@ -26,7 +26,7 @@ class Placement(AdCPBaseModel):
         ),
     ]
     description: Annotated[
-        str | None, Field(description='Detailed description of where and how the placement appears')
+        str | None, Field(description="Detailed description of where and how the placement appears")
     ] = None
     tags: Annotated[
         list[str] | None,
@@ -37,7 +37,7 @@ class Placement(AdCPBaseModel):
     format_ids: Annotated[
         list[format_id.FormatId] | None,
         Field(
-            description='Format IDs supported by this specific placement. Can include: (1) concrete format_ids (fixed dimensions), (2) template format_ids without parameters (accepts any dimensions/duration), or (3) parameterized format_ids (specific dimension/duration constraints).',
+            description="Format IDs supported by this specific placement. Can include: (1) concrete format_ids (fixed dimensions), (2) template format_ids without parameters (accepts any dimensions/duration), or (3) parameterized format_ids (specific dimension/duration constraints).",
             min_length=1,
         ),
     ] = None

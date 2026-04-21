@@ -101,7 +101,8 @@
                 "properties": {
                   "policy_id": {
                     "type": "string",
-                    "description": "Unique identifier for this policy. Registry-published ids are canonical (e.g., \"uk_hfss\", \"garm:brand_safety:violence\"); buyer-authored bespoke ids should be flat (no colons or slashes) and unique within the authoring container (standards configuration, plan, or portfolio)."
+                    "description": "Unique identifier for this policy. Registry-published ids are canonical (e.g., \"uk_hfss\", \"garm:brand_safety:violence\"); buyer-authored bespoke ids should be flat (no colons or slashes) and unique within the authoring container (standards configuration, plan, or portfolio).",
+                    "x-entity": "governance_inline_policy"
                   },
                   "source": {
                     "type": "string",
@@ -110,7 +111,7 @@
                       "inline"
                     ],
                     "default": "inline",
-                    "description": "Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry."
+                    "description": "Origin of this policy. 'registry' = published to the shared AdCP policy registry with full regulatory metadata. 'inline' = authored bespoke for a specific standards configuration, plan, or portfolio. Defaults to 'inline'. Governance agents MUST set 'registry' when publishing to the registry. Within AdCP *task* payloads (every `$ref` to this schema in a request or response), the field is always 'inline' \u2014 registry entries are served by the policy registry API, not embedded in task traffic. The x-entity annotation on `policy_id` assumes the task-payload invariant; if a future task schema adopts registry-publishing, split the annotation accordingly (see issue #2685)."
                   },
                   "version": {
                     "type": "string",
@@ -311,27 +312,7 @@
                   "enforcement",
                   "policy"
                 ],
-                "additionalProperties": false,
-                "$defs": {
-                  "exemplar": {
-                    "type": "object",
-                    "properties": {
-                      "scenario": {
-                        "type": "string",
-                        "description": "A concrete scenario describing an advertising action or configuration."
-                      },
-                      "explanation": {
-                        "type": "string",
-                        "description": "Why this scenario passes or fails the policy."
-                      }
-                    },
-                    "required": [
-                      "scenario",
-                      "explanation"
-                    ],
-                    "additionalProperties": false
-                  }
-                }
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -361,6 +342,7 @@
                       "format_id": {
                         "title": "Format ID",
                         "description": "Optional reference to a format definition. Uses the same format registry as creative formats.",
+                        "x-entity": "creative_format",
                         "type": "object",
                         "properties": {
                           "agent_url": {
@@ -2119,73 +2101,7 @@
                       "artifact_id",
                       "assets"
                     ],
-                    "additionalProperties": true,
-                    "$defs": {
-                      "asset_access": {
-                        "type": "object",
-                        "description": "Authentication for accessing secured asset URLs",
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "description": "Bearer token authentication",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "bearer_token"
-                              },
-                              "token": {
-                                "type": "string",
-                                "description": "OAuth2 bearer token for Authorization header"
-                              }
-                            },
-                            "required": [
-                              "method",
-                              "token"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "description": "Service account authentication (GCP, AWS)",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "service_account"
-                              },
-                              "provider": {
-                                "type": "string",
-                                "enum": [
-                                  "gcp",
-                                  "aws"
-                                ],
-                                "description": "Cloud provider"
-                              },
-                              "credentials": {
-                                "type": "object",
-                                "description": "Service account credentials",
-                                "additionalProperties": true
-                              }
-                            },
-                            "required": [
-                              "method",
-                              "provider"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "description": "Pre-signed URL (credentials embedded in URL)",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "signed_url"
-                              }
-                            },
-                            "required": [
-                              "method"
-                            ]
-                          }
-                        ]
-                      }
-                    }
+                    "additionalProperties": true
                   },
                   "description": "Artifacts that pass the content standards"
                 },
@@ -2211,6 +2127,7 @@
                       "format_id": {
                         "title": "Format ID",
                         "description": "Optional reference to a format definition. Uses the same format registry as creative formats.",
+                        "x-entity": "creative_format",
                         "type": "object",
                         "properties": {
                           "agent_url": {
@@ -3969,73 +3886,7 @@
                       "artifact_id",
                       "assets"
                     ],
-                    "additionalProperties": true,
-                    "$defs": {
-                      "asset_access": {
-                        "type": "object",
-                        "description": "Authentication for accessing secured asset URLs",
-                        "oneOf": [
-                          {
-                            "type": "object",
-                            "description": "Bearer token authentication",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "bearer_token"
-                              },
-                              "token": {
-                                "type": "string",
-                                "description": "OAuth2 bearer token for Authorization header"
-                              }
-                            },
-                            "required": [
-                              "method",
-                              "token"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "description": "Service account authentication (GCP, AWS)",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "service_account"
-                              },
-                              "provider": {
-                                "type": "string",
-                                "enum": [
-                                  "gcp",
-                                  "aws"
-                                ],
-                                "description": "Cloud provider"
-                              },
-                              "credentials": {
-                                "type": "object",
-                                "description": "Service account credentials",
-                                "additionalProperties": true
-                              }
-                            },
-                            "required": [
-                              "method",
-                              "provider"
-                            ]
-                          },
-                          {
-                            "type": "object",
-                            "description": "Pre-signed URL (credentials embedded in URL)",
-                            "properties": {
-                              "method": {
-                                "type": "string",
-                                "const": "signed_url"
-                              }
-                            },
-                            "required": [
-                              "method"
-                            ]
-                          }
-                        ]
-                      }
-                    }
+                    "additionalProperties": true
                   },
                   "description": "Artifacts that fail the content standards"
                 }
@@ -4053,7 +3904,8 @@
                     "properties": {
                       "pricing_option_id": {
                         "type": "string",
-                        "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied."
+                        "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.",
+                        "x-entity": "vendor_pricing_option"
                       }
                     },
                     "required": [
@@ -4373,8 +4225,92 @@
       ]
     }
   ],
+  "$defs": {
+    "exemplar": {
+      "type": "object",
+      "properties": {
+        "scenario": {
+          "type": "string",
+          "description": "A concrete scenario describing an advertising action or configuration."
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Why this scenario passes or fails the policy."
+        }
+      },
+      "required": [
+        "scenario",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "asset_access": {
+      "type": "object",
+      "description": "Authentication for accessing secured asset URLs",
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Bearer token authentication",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "bearer_token"
+            },
+            "token": {
+              "type": "string",
+              "description": "OAuth2 bearer token for Authorization header"
+            }
+          },
+          "required": [
+            "method",
+            "token"
+          ]
+        },
+        {
+          "type": "object",
+          "description": "Service account authentication (GCP, AWS)",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "service_account"
+            },
+            "provider": {
+              "type": "string",
+              "enum": [
+                "gcp",
+                "aws"
+              ],
+              "description": "Cloud provider"
+            },
+            "credentials": {
+              "type": "object",
+              "description": "Service account credentials",
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "method",
+            "provider"
+          ]
+        },
+        {
+          "type": "object",
+          "description": "Pre-signed URL (credentials embedded in URL)",
+          "properties": {
+            "method": {
+              "type": "string",
+              "const": "signed_url"
+            }
+          },
+          "required": [
+            "method"
+          ]
+        }
+      ]
+    }
+  },
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.085Z",
+    "generatedAt": "2026-04-21T21:56:38.348Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

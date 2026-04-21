@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Sync Catalogs Request",
   "description": "Request parameters for syncing catalog feeds with upsert semantics. Supports bulk operations across multiple catalog types (products, inventory, stores, promotions, offerings). Existing catalogs matched by catalog_id are updated, new ones are created. When catalogs is omitted, the call is discovery-only: returns all catalogs on the account without modification.",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -26,7 +27,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -51,6 +53,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -122,7 +125,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -173,7 +177,8 @@
         "properties": {
           "catalog_id": {
             "type": "string",
-            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+            "x-entity": "catalog"
           },
           "name": {
             "type": "string",
@@ -642,7 +647,8 @@
       "type": "array",
       "description": "Optional filter to limit sync scope to specific catalog IDs. When provided, only these catalogs will be created/updated. Other catalogs on the account are unaffected.",
       "items": {
-        "type": "string"
+        "type": "string",
+        "x-entity": "catalog"
       },
       "minItems": 1,
       "maxItems": 50
@@ -684,7 +690,7 @@
         },
         "authentication": {
           "type": "object",
-          "description": "Legacy authentication configuration (A2A-compatible). Opts the seller into Bearer or HMAC-SHA256 signing instead of the default RFC 9421 webhook profile. Deprecated; removed in AdCP 4.0. When omitted, the seller MUST sign webhooks with the 9421 profile.",
+          "description": "Legacy authentication configuration (A2A-compatible). Opts the seller into Bearer or HMAC-SHA256 signing instead of the default RFC 9421 webhook profile. Deprecated; removed in AdCP 4.0. **Precedence is a switch, not a fallback:** presence of this block selects the legacy scheme; absence selects 9421. A seller MUST NOT sign the same webhook both ways, and a buyer MUST NOT attempt 'try 9421 first, fall back to HMAC' verification \u2014 signature mode is determined solely by whether this block was present at registration time. The seller's baseline 9421 webhook-signing key published at its brand.json `agents[]` `jwks_uri` does not override this selector; it is always discoverable but only used when `authentication` is omitted. See docs/building/implementation/security.mdx#webhook-callbacks for the full precedence and downgrade-resistance rules (including the `webhook_mode_mismatch` rejection a buyer MUST apply when a received webhook's signing mode does not match the registered mode).",
           "properties": {
             "schemes": {
               "type": "array",
@@ -823,7 +829,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.583Z",
+    "generatedAt": "2026-04-21T21:56:38.589Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

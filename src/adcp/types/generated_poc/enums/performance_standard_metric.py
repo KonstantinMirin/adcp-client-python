@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class PerformanceStandardMetric(Enum):
-    viewability = 'viewability'
-    ivt = 'ivt'
-    completion_rate = 'completion_rate'
-    brand_safety = 'brand_safety'
-    attention_score = 'attention_score'
+    viewability = "viewability"
+    ivt = "ivt"
+    completion_rate = "completion_rate"
+    brand_safety = "brand_safety"
+    attention_score = "attention_score"

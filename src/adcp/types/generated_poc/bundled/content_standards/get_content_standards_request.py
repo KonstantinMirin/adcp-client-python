@@ -20,19 +20,19 @@ class GetContentStandardsRequest(AdCPBaseModel):
         ),
     ] = None
     standards_id: Annotated[
-        str, Field(description='Identifier for the standards configuration to retrieve')
+        str, Field(description="Identifier for the standards configuration to retrieve")
     ]
     context: Annotated[
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None

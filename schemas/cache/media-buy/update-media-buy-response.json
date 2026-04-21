@@ -11,7 +11,8 @@
       "properties": {
         "media_buy_id": {
           "type": "string",
-          "description": "Seller's identifier for the media buy"
+          "description": "Seller's identifier for the media buy",
+          "x-entity": "media_buy"
         },
         "status": {
           "$ref": "../enums/media-buy-status.json",

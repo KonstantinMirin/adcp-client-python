@@ -82,7 +82,8 @@
         "properties": {
           "creative_id": {
             "type": "string",
-            "description": "Unique identifier for the creative"
+            "description": "Unique identifier for the creative",
+            "x-entity": "creative"
           },
           "account": {
             "title": "Account",
@@ -91,7 +92,8 @@
             "properties": {
               "account_id": {
                 "type": "string",
-                "description": "Unique identifier for this account"
+                "description": "Unique identifier for this account",
+                "x-entity": "account"
               },
               "name": {
                 "type": "string",
@@ -141,6 +143,7 @@
                     "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                     "type": "string",
                     "pattern": "^[a-z0-9_]+$",
+                    "x-entity": "advertiser_brand",
                     "examples": [
                       "tide",
                       "cheerios",
@@ -212,7 +215,8 @@
               "operator": {
                 "type": "string",
                 "description": "Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "x-entity": "operator"
               },
               "billing": {
                 "type": "string",
@@ -760,6 +764,7 @@
           "format_id": {
             "title": "Format ID",
             "description": "Format identifier specifying which format this creative conforms to",
+            "x-entity": "creative_format",
             "type": "object",
             "properties": {
               "agent_url": {
@@ -5980,7 +5985,8 @@
                         "properties": {
                           "catalog_id": {
                             "type": "string",
-                            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                            "x-entity": "catalog"
                           },
                           "name": {
                             "type": "string",
@@ -6530,7 +6536,8 @@
                   "properties": {
                     "package_id": {
                       "type": "string",
-                      "description": "Package identifier"
+                      "description": "Package identifier",
+                      "x-entity": "package"
                     },
                     "assigned_date": {
                       "type": "string",
@@ -6685,7 +6692,8 @@
                   "properties": {
                     "pricing_option_id": {
                       "type": "string",
-                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied."
+                      "description": "Opaque identifier for this pricing option, unique within the vendor agent. Pass this in report_usage to identify which pricing option was applied.",
+                      "x-entity": "vendor_pricing_option"
                     }
                   },
                   "required": [
@@ -7142,7 +7150,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.247Z",
+    "generatedAt": "2026-04-21T21:56:38.435Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -19,7 +19,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -44,6 +45,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -115,7 +117,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -224,7 +227,7 @@
     "media_buy_id"
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.096Z",
+    "generatedAt": "2026-04-21T21:56:38.351Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -12,7 +12,8 @@
     },
     "product_id": {
       "type": "string",
-      "description": "Product ID for this package"
+      "description": "Product ID for this package",
+      "x-entity": "product"
     },
     "format_ids": {
       "type": "array",
@@ -20,6 +21,7 @@
       "items": {
         "title": "Format ID",
         "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+        "x-entity": "creative_format",
         "type": "object",
         "properties": {
           "agent_url": {
@@ -86,7 +88,8 @@
     },
     "pricing_option_id": {
       "type": "string",
-      "description": "ID of the selected pricing option from the product's pricing_options array"
+      "description": "ID of the selected pricing option from the product's pricing_options array",
+      "x-entity": "product_pricing_option"
     },
     "bid_price": {
       "type": "number",
@@ -126,7 +129,8 @@
         "properties": {
           "catalog_id": {
             "type": "string",
-            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+            "x-entity": "catalog"
           },
           "name": {
             "type": "string",
@@ -1455,7 +1459,8 @@
             "list_id": {
               "type": "string",
               "description": "Identifier for the property list within the agent",
-              "minLength": 1
+              "minLength": 1,
+              "x-entity": "property_list"
             },
             "auth_token": {
               "type": "string",
@@ -1481,7 +1486,8 @@
             "list_id": {
               "type": "string",
               "description": "Identifier for the collection list within the agent",
-              "minLength": 1
+              "minLength": 1,
+              "x-entity": "collection_list"
             },
             "auth_token": {
               "type": "string",
@@ -1507,7 +1513,8 @@
             "list_id": {
               "type": "string",
               "description": "Identifier for the collection list within the agent",
-              "minLength": 1
+              "minLength": 1,
+              "x-entity": "collection_list"
             },
             "auth_token": {
               "type": "string",
@@ -1943,6 +1950,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -2132,6 +2140,7 @@
                 "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                 "type": "string",
                 "pattern": "^[a-z0-9_]+$",
+                "x-entity": "advertiser_brand",
                 "examples": [
                   "tide",
                   "cheerios",
@@ -2220,7 +2229,8 @@
         "properties": {
           "creative_id": {
             "type": "string",
-            "description": "Unique identifier for the creative"
+            "description": "Unique identifier for the creative",
+            "x-entity": "creative"
           },
           "weight": {
             "type": "number",
@@ -2254,7 +2264,8 @@
         "properties": {
           "creative_id": {
             "type": "string",
-            "description": "Unique identifier for the creative"
+            "description": "Unique identifier for the creative",
+            "x-entity": "creative"
           },
           "name": {
             "type": "string",
@@ -2263,6 +2274,7 @@
           "format_id": {
             "title": "Format ID",
             "description": "Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats.",
+            "x-entity": "creative_format",
             "type": "object",
             "properties": {
               "agent_url": {
@@ -7454,7 +7466,8 @@
                         "properties": {
                           "catalog_id": {
                             "type": "string",
-                            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                            "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                            "x-entity": "catalog"
                           },
                           "name": {
                             "type": "string",
@@ -8354,7 +8367,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.563Z",
+    "generatedAt": "2026-04-21T21:56:38.583Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

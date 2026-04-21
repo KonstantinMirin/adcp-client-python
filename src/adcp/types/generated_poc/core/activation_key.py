@@ -12,22 +12,22 @@ from pydantic import ConfigDict, Field, RootModel
 
 class ActivationKey4(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    type: Annotated[Literal['segment_id'], Field(description='Segment ID based targeting')]
+    type: Annotated[Literal["segment_id"], Field(description="Segment ID based targeting")]
     segment_id: Annotated[
         str,
-        Field(description='The platform-specific segment identifier to use in campaign targeting'),
+        Field(description="The platform-specific segment identifier to use in campaign targeting"),
     ]
 
 
 class ActivationKey5(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    type: Annotated[Literal['key_value'], Field(description='Key-value pair based targeting')]
-    key: Annotated[str, Field(description='The targeting parameter key')]
-    value: Annotated[str, Field(description='The targeting parameter value')]
+    type: Annotated[Literal["key_value"], Field(description="Key-value pair based targeting")]
+    key: Annotated[str, Field(description="The targeting parameter key")]
+    value: Annotated[str, Field(description="The targeting parameter value")]
 
 
 class ActivationKey(RootModel[ActivationKey4 | ActivationKey5]):
@@ -35,12 +35,12 @@ class ActivationKey(RootModel[ActivationKey4 | ActivationKey5]):
         ActivationKey4 | ActivationKey5,
         Field(
             description="Universal identifier for using a signal on a destination platform. Can be either a segment ID or a key-value pair depending on the platform's targeting mechanism.",
-            title='Activation Key',
+            title="Activation Key",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

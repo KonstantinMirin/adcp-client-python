@@ -110,7 +110,8 @@
               },
               "creative_id": {
                 "type": "string",
-                "description": "ID of the creative this result corresponds to. Enables correlation when processing batch results."
+                "description": "ID of the creative this result corresponds to. Enables correlation when processing batch results.",
+                "x-entity": "creative"
               },
               "response": {
                 "type": "object",
@@ -249,7 +250,8 @@
         },
         "creative_id": {
           "type": "string",
-          "description": "Creative identifier this variant belongs to"
+          "description": "Creative identifier this variant belongs to",
+          "x-entity": "creative"
         },
         "previews": {
           "type": "array",

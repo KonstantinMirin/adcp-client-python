@@ -14,18 +14,18 @@ from .. import provenance as provenance_1
 
 class ImageAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    url: Annotated[AnyUrl, Field(description='URL to the image asset')]
-    width: Annotated[int, Field(description='Width in pixels', ge=1)]
-    height: Annotated[int, Field(description='Height in pixels', ge=1)]
+    url: Annotated[AnyUrl, Field(description="URL to the image asset")]
+    width: Annotated[int, Field(description="Width in pixels", ge=1)]
+    height: Annotated[int, Field(description="Height in pixels", ge=1)]
     format: Annotated[
-        str | None, Field(description='Image file format (jpg, png, gif, webp, etc.)')
+        str | None, Field(description="Image file format (jpg, png, gif, webp, etc.)")
     ] = None
-    alt_text: Annotated[str | None, Field(description='Alternative text for accessibility')] = None
+    alt_text: Annotated[str | None, Field(description="Alternative text for accessibility")] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

@@ -15,10 +15,10 @@ from ..core import ext as ext_1
 
 class BuildCreativeWorking(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     percentage: Annotated[
-        float | None, Field(description='Completion percentage (0-100)', ge=0.0, le=100.0)
+        float | None, Field(description="Completion percentage (0-100)", ge=0.0, le=100.0)
     ] = None
     current_step: Annotated[
         str | None,
@@ -27,8 +27,8 @@ class BuildCreativeWorking(AdCPBaseModel):
         ),
     ] = None
     total_steps: Annotated[
-        int | None, Field(description='Total number of steps in the operation', ge=1)
+        int | None, Field(description="Total number of steps in the operation", ge=1)
     ] = None
-    step_number: Annotated[int | None, Field(description='Current step number', ge=1)] = None
+    step_number: Annotated[int | None, Field(description="Current step number", ge=1)] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

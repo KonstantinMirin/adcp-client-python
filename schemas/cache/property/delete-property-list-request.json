@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Delete Property List Request",
   "description": "Request parameters for deleting a property list",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -12,7 +13,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the property list to delete"
+      "description": "ID of the property list to delete",
+      "x-entity": "property_list"
     },
     "account": {
       "$ref": "../core/account-ref.json",

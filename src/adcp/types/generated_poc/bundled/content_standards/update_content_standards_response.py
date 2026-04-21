@@ -13,97 +13,97 @@ from pydantic import ConfigDict, Field
 
 class UpdateContentStandardsResponse3(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     success: Annotated[
-        Literal[True], Field(description='Indicates the update was applied successfully')
+        Literal[True], Field(description="Indicates the update was applied successfully")
     ]
-    standards_id: Annotated[str, Field(description='ID of the updated standards configuration')]
+    standards_id: Annotated[str, Field(description="ID of the updated standards configuration")]
     context: Annotated[
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None
 
 
 class Recovery(Enum):
-    transient = 'transient'
-    correctable = 'correctable'
-    terminal = 'terminal'
+    transient = "transient"
+    correctable = "correctable"
+    terminal = "terminal"
 
 
 class Error(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     code: Annotated[
         str,
         Field(
-            description='Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.',
+            description="Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.",
             max_length=64,
             min_length=1,
         ),
     ]
-    message: Annotated[str, Field(description='Human-readable error message')]
+    message: Annotated[str, Field(description="Human-readable error message")]
     field: Annotated[
         str | None,
         Field(description="Field path associated with the error (e.g., 'packages[0].targeting')"),
     ] = None
-    suggestion: Annotated[str | None, Field(description='Suggested fix for the error')] = None
+    suggestion: Annotated[str | None, Field(description="Suggested fix for the error")] = None
     retry_after: Annotated[
         float | None,
         Field(
-            description='Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.',
+            description="Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.",
             ge=1.0,
             le=3600.0,
         ),
     ] = None
     details: Annotated[
-        dict[str, Any] | None, Field(description='Additional task-specific error details')
+        dict[str, Any] | None, Field(description="Additional task-specific error details")
     ] = None
     recovery: Annotated[
         Recovery | None,
         Field(
-            description='Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found).'
+            description="Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found)."
         ),
     ] = None
 
 
 class UpdateContentStandardsResponse4(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    success: Annotated[Literal[False], Field(description='Indicates the update failed')]
+    success: Annotated[Literal[False], Field(description="Indicates the update failed")]
     errors: Annotated[
-        list[Error], Field(description='Errors that occurred during the update', min_length=1)
+        list[Error], Field(description="Errors that occurred during the update", min_length=1)
     ]
     conflicting_standards_id: Annotated[
         str | None,
         Field(
-            description='If scope change conflicts with another configuration, the ID of the conflicting standards'
+            description="If scope change conflicts with another configuration, the ID of the conflicting standards"
         ),
     ] = None
     context: Annotated[
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None
 

@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Log Event Request",
   "description": "Request parameters for logging marketing events",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -12,7 +13,8 @@
     },
     "event_source_id": {
       "type": "string",
-      "description": "Event source configured on the account via sync_event_sources"
+      "description": "Event source configured on the account via sync_event_sources",
+      "x-entity": "event_source"
     },
     "test_event_code": {
       "type": "string",
@@ -137,7 +139,7 @@
                         "euid": "European Unified ID",
                         "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR protocol",
                         "maid": "Mobile Advertising ID (IDFA/GAID)",
-                        "hashed_email": "SHA-256 hashed email address",
+                        "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                         "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
                         "other": "Other universal ID type (specify in ext)"
                       }
@@ -157,12 +159,12 @@
               },
               "hashed_email": {
                 "type": "string",
-                "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace.",
+                "description": "SHA-256 hash of lowercase, trimmed email address. Buyer must normalize before hashing: lowercase, trim whitespace. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                 "pattern": "^[a-f0-9]{64}$"
               },
               "hashed_phone": {
                 "type": "string",
-                "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing.",
+                "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Buyer must normalize to E.164 before hashing. Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                 "pattern": "^[a-f0-9]{64}$"
               },
               "click_id": {
@@ -385,7 +387,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.544Z",
+    "generatedAt": "2026-04-21T21:56:38.573Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

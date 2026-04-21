@@ -12,14 +12,14 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 class LimitedSeries(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     total_installments: Annotated[
-        int, Field(description='Planned number of installments in the series', ge=1)
+        int, Field(description="Planned number of installments in the series", ge=1)
     ]
     starts: Annotated[
-        AwareDatetime | None, Field(description='When the series begins (ISO 8601)')
+        AwareDatetime | None, Field(description="When the series begins (ISO 8601)")
     ] = None
-    ends: Annotated[AwareDatetime | None, Field(description='When the series ends (ISO 8601)')] = (
+    ends: Annotated[AwareDatetime | None, Field(description="When the series ends (ISO 8601)")] = (
         None
     )

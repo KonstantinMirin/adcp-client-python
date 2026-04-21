@@ -8,5 +8,5 @@ from enum import Enum
 
 
 class ViewabilityStandard(Enum):
-    mrc = 'mrc'
-    groupm = 'groupm'
+    mrc = "mrc"
+    groupm = "groupm"

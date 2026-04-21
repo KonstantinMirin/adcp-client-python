@@ -12,25 +12,25 @@ from pydantic import ConfigDict, Field
 
 
 class Code(Enum):
-    invalid_request = 'invalid_request'
-    unknown_package = 'unknown_package'
-    rate_limited = 'rate_limited'
-    timeout = 'timeout'
-    internal_error = 'internal_error'
-    provider_unavailable = 'provider_unavailable'
+    invalid_request = "invalid_request"
+    unknown_package = "unknown_package"
+    rate_limited = "rate_limited"
+    timeout = "timeout"
+    internal_error = "internal_error"
+    provider_unavailable = "provider_unavailable"
 
 
 class TmpError(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['error'], Field(description='Message type discriminator for deserialization.')
+        Literal["error"], Field(description="Message type discriminator for deserialization.")
     ]
     request_id: Annotated[
-        str, Field(description='Echoed request identifier from the original request')
+        str, Field(description="Echoed request identifier from the original request")
     ]
-    code: Annotated[Code, Field(description='Machine-readable error code')]
+    code: Annotated[Code, Field(description="Machine-readable error code")]
     message: Annotated[
-        str | None, Field(description='Human-readable error description for debugging')
+        str | None, Field(description="Human-readable error description for debugging")
     ] = None

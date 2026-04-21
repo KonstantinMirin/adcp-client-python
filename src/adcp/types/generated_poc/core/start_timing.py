@@ -9,16 +9,16 @@ from typing import Any, Annotated, Literal
 from pydantic import AwareDatetime, Field, RootModel
 
 
-class StartTiming(RootModel[Literal['asap'] | AwareDatetime]):
+class StartTiming(RootModel[Literal["asap"] | AwareDatetime]):
     root: Annotated[
-        Literal['asap'] | AwareDatetime,
+        Literal["asap"] | AwareDatetime,
         Field(
-            description="Campaign start timing: 'asap' or ISO 8601 date-time", title='Start Timing'
+            description="Campaign start timing: 'asap' or ISO 8601 date-time", title="Start Timing"
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

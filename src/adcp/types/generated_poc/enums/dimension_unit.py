@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class DimensionUnit(Enum):
-    px = 'px'
-    dp = 'dp'
-    inches = 'inches'
-    cm = 'cm'
-    mm = 'mm'
-    pt = 'pt'
+    px = "px"
+    dp = "dp"
+    inches = "inches"
+    cm = "cm"
+    mm = "mm"
+    pt = "pt"

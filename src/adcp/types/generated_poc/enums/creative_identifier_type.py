@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class CreativeIdentifierType(Enum):
-    ad_id = 'ad_id'
-    isci = 'isci'
-    clearcast_clock = 'clearcast_clock'
+    ad_id = "ad_id"
+    isci = "isci"
+    clearcast_clock = "clearcast_clock"

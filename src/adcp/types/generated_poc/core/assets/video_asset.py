@@ -14,35 +14,35 @@ from .. import provenance as provenance_1
 
 
 class FrameRateType(Enum):
-    constant = 'constant'
-    variable = 'variable'
+    constant = "constant"
+    variable = "variable"
 
 
 class ScanType(Enum):
-    progressive = 'progressive'
-    interlaced = 'interlaced'
+    progressive = "progressive"
+    interlaced = "interlaced"
 
 
 class ColorSpace(Enum):
-    rec709 = 'rec709'
-    rec2020 = 'rec2020'
-    rec2100 = 'rec2100'
-    srgb = 'srgb'
-    dci_p3 = 'dci_p3'
+    rec709 = "rec709"
+    rec2020 = "rec2020"
+    rec2100 = "rec2100"
+    srgb = "srgb"
+    dci_p3 = "dci_p3"
 
 
 class HdrFormat(Enum):
-    sdr = 'sdr'
-    hdr10 = 'hdr10'
-    hdr10_plus = 'hdr10_plus'
-    hlg = 'hlg'
-    dolby_vision = 'dolby_vision'
+    sdr = "sdr"
+    hdr10 = "hdr10"
+    hdr10_plus = "hdr10_plus"
+    hlg = "hlg"
+    dolby_vision = "dolby_vision"
 
 
 class ChromaSubsampling(Enum):
-    field_4_2_0 = '4:2:0'
-    field_4_2_2 = '4:2:2'
-    field_4_4_4 = '4:4:4'
+    field_4_2_0 = "4:2:0"
+    field_4_2_2 = "4:2:2"
+    field_4_4_4 = "4:4:4"
 
 
 class VideoBitDepth(IntEnum):
@@ -52,20 +52,20 @@ class VideoBitDepth(IntEnum):
 
 
 class GopType(Enum):
-    closed = 'closed'
-    open = 'open'
+    closed = "closed"
+    open = "open"
 
 
 class MoovAtomPosition(Enum):
-    start = 'start'
-    end = 'end'
+    start = "start"
+    end = "end"
 
 
 class AudioChannels(Enum):
-    mono = 'mono'
-    stereo = 'stereo'
-    field_5_1 = '5.1'
-    field_7_1 = '7.1'
+    mono = "mono"
+    stereo = "stereo"
+    field_5_1 = "5.1"
+    field_7_1 = "7.1"
 
 
 class AudioBitDepth(IntEnum):
@@ -76,23 +76,23 @@ class AudioBitDepth(IntEnum):
 
 class VideoAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    url: Annotated[AnyUrl, Field(description='URL to the video asset')]
-    width: Annotated[int, Field(description='Width in pixels', ge=1)]
-    height: Annotated[int, Field(description='Height in pixels', ge=1)]
+    url: Annotated[AnyUrl, Field(description="URL to the video asset")]
+    width: Annotated[int, Field(description="Width in pixels", ge=1)]
+    height: Annotated[int, Field(description="Height in pixels", ge=1)]
     duration_ms: Annotated[
-        int | None, Field(description='Video duration in milliseconds', ge=1)
+        int | None, Field(description="Video duration in milliseconds", ge=1)
     ] = None
-    file_size_bytes: Annotated[int | None, Field(description='File size in bytes', ge=1)] = None
+    file_size_bytes: Annotated[int | None, Field(description="File size in bytes", ge=1)] = None
     container_format: Annotated[
-        str | None, Field(description='Video container format (mp4, webm, mov, etc.)')
+        str | None, Field(description="Video container format (mp4, webm, mov, etc.)")
     ] = None
     video_codec: Annotated[
-        str | None, Field(description='Video codec used (h264, h265, vp9, av1, prores, etc.)')
+        str | None, Field(description="Video codec used (h264, h265, vp9, av1, prores, etc.)")
     ] = None
     video_bitrate_kbps: Annotated[
-        int | None, Field(description='Video stream bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Video stream bitrate in kilobits per second", ge=1)
     ] = None
     frame_rate: Annotated[
         str | None,
@@ -102,61 +102,61 @@ class VideoAsset(AdCPBaseModel):
     ] = None
     frame_rate_type: Annotated[
         FrameRateType | None,
-        Field(description='Whether the video uses constant (CFR) or variable (VFR) frame rate'),
+        Field(description="Whether the video uses constant (CFR) or variable (VFR) frame rate"),
     ] = None
-    scan_type: Annotated[ScanType | None, Field(description='Scan type of the video')] = None
-    color_space: Annotated[ColorSpace | None, Field(description='Color space of the video')] = None
+    scan_type: Annotated[ScanType | None, Field(description="Scan type of the video")] = None
+    color_space: Annotated[ColorSpace | None, Field(description="Color space of the video")] = None
     hdr_format: Annotated[
         HdrFormat | None,
         Field(description="HDR format if applicable, or 'sdr' for standard dynamic range"),
     ] = None
     chroma_subsampling: Annotated[
-        ChromaSubsampling | None, Field(description='Chroma subsampling format')
+        ChromaSubsampling | None, Field(description="Chroma subsampling format")
     ] = None
-    video_bit_depth: Annotated[VideoBitDepth | None, Field(description='Video bit depth')] = None
+    video_bit_depth: Annotated[VideoBitDepth | None, Field(description="Video bit depth")] = None
     gop_interval_seconds: Annotated[
-        float | None, Field(description='GOP/keyframe interval in seconds')
+        float | None, Field(description="GOP/keyframe interval in seconds")
     ] = None
-    gop_type: Annotated[GopType | None, Field(description='GOP structure type')] = None
+    gop_type: Annotated[GopType | None, Field(description="GOP structure type")] = None
     moov_atom_position: Annotated[
-        MoovAtomPosition | None, Field(description='Position of moov atom in MP4 container')
+        MoovAtomPosition | None, Field(description="Position of moov atom in MP4 container")
     ] = None
     has_audio: Annotated[
-        bool | None, Field(description='Whether the video contains an audio track')
+        bool | None, Field(description="Whether the video contains an audio track")
     ] = None
     audio_codec: Annotated[
         str | None,
-        Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)'),
+        Field(description="Audio codec used (aac, aac_lc, he_aac, pcm, mp3, ac3, eac3, etc.)"),
     ] = None
     audio_sampling_rate_hz: Annotated[
-        int | None, Field(description='Audio sampling rate in Hz (e.g., 44100, 48000)')
+        int | None, Field(description="Audio sampling rate in Hz (e.g., 44100, 48000)")
     ] = None
     audio_channels: Annotated[
-        AudioChannels | None, Field(description='Audio channel configuration')
+        AudioChannels | None, Field(description="Audio channel configuration")
     ] = None
-    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description='Audio bit depth')] = None
+    audio_bit_depth: Annotated[AudioBitDepth | None, Field(description="Audio bit depth")] = None
     audio_bitrate_kbps: Annotated[
-        int | None, Field(description='Audio bitrate in kilobits per second', ge=1)
+        int | None, Field(description="Audio bitrate in kilobits per second", ge=1)
     ] = None
     audio_loudness_lufs: Annotated[
-        float | None, Field(description='Integrated loudness in LUFS')
+        float | None, Field(description="Integrated loudness in LUFS")
     ] = None
-    audio_true_peak_dbfs: Annotated[float | None, Field(description='True peak level in dBFS')] = (
+    audio_true_peak_dbfs: Annotated[float | None, Field(description="True peak level in dBFS")] = (
         None
     )
     captions_url: Annotated[
-        AnyUrl | None, Field(description='URL to captions file (WebVTT, SRT, etc.)')
+        AnyUrl | None, Field(description="URL to captions file (WebVTT, SRT, etc.)")
     ] = None
     transcript_url: Annotated[
-        AnyUrl | None, Field(description='URL to text transcript of the video content')
+        AnyUrl | None, Field(description="URL to text transcript of the video content")
     ] = None
     audio_description_url: Annotated[
         AnyUrl | None,
-        Field(description='URL to audio description track for visually impaired users'),
+        Field(description="URL to audio description track for visually impaired users"),
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this asset, overrides manifest-level provenance'
+            description="Provenance metadata for this asset, overrides manifest-level provenance"
         ),
     ] = None

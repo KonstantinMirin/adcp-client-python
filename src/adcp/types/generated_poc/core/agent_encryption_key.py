@@ -12,20 +12,20 @@ from pydantic import ConfigDict, Field
 
 class AgentEncryptionKey(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     kid: Annotated[
         str,
         Field(
-            description='Key identifier. Opaque — MUST NOT encode geographic or deployment information.',
+            description="Key identifier. Opaque — MUST NOT encode geographic or deployment information.",
             max_length=8,
         ),
     ]
-    kty: Annotated[Literal['OKP'], Field(description='JWK key type. Must be OKP for X25519.')]
+    kty: Annotated[Literal["OKP"], Field(description="JWK key type. Must be OKP for X25519.")]
     crv: Annotated[
-        Literal['X25519'], Field(description='Curve name. Must be X25519 for TMPX encryption.')
+        Literal["X25519"], Field(description="Curve name. Must be X25519 for TMPX encryption.")
     ]
     use: Annotated[
-        Literal['enc'], Field(description='JWK use value. Must be enc for encryption keys.')
+        Literal["enc"], Field(description="JWK use value. Must be enc for encryption keys.")
     ]
-    x: Annotated[str, Field(description='Base64url-encoded X25519 public key (32 bytes).')]
+    x: Annotated[str, Field(description="Base64url-encoded X25519 public key (32 bytes).")]

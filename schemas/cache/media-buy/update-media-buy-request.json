@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Update Media Buy Request",
   "description": "Request parameters for updating campaign and package settings",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -16,7 +17,8 @@
     },
     "media_buy_id": {
       "type": "string",
-      "description": "Seller's ID of the media buy to update"
+      "description": "Seller's ID of the media buy to update",
+      "x-entity": "media_buy"
     },
     "revision": {
       "type": "integer",

@@ -8,19 +8,19 @@ from enum import Enum
 
 
 class ForecastableMetric(Enum):
-    audience_size = 'audience_size'
-    reach = 'reach'
-    frequency = 'frequency'
-    impressions = 'impressions'
-    clicks = 'clicks'
-    spend = 'spend'
-    views = 'views'
-    completed_views = 'completed_views'
-    grps = 'grps'
-    engagements = 'engagements'
-    follows = 'follows'
-    saves = 'saves'
-    profile_visits = 'profile_visits'
-    measured_impressions = 'measured_impressions'
-    downloads = 'downloads'
-    plays = 'plays'
+    audience_size = "audience_size"
+    reach = "reach"
+    frequency = "frequency"
+    impressions = "impressions"
+    clicks = "clicks"
+    spend = "spend"
+    views = "views"
+    completed_views = "completed_views"
+    grps = "grps"
+    engagements = "engagements"
+    follows = "follows"
+    saves = "saves"
+    profile_visits = "profile_visits"
+    measured_impressions = "measured_impressions"
+    downloads = "downloads"
+    plays = "plays"

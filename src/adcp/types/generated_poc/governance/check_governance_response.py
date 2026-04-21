@@ -16,33 +16,33 @@ from ..enums import escalation_severity
 
 
 class Status(Enum):
-    approved = 'approved'
-    denied = 'denied'
-    conditions = 'conditions'
+    approved = "approved"
+    denied = "denied"
+    conditions = "conditions"
 
 
 class Condition(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     field: Annotated[
         str,
         Field(
-            description='Dot-path to the field that needs adjustment (in payload for proposed, in planned_delivery for committed).'
+            description="Dot-path to the field that needs adjustment (in payload for proposed, in planned_delivery for committed)."
         ),
     ]
     required_value: Annotated[
         Any | None,
         Field(
-            description='The value the field must have for approval. When present, the condition is machine-actionable. When absent, the condition is advisory.'
+            description="The value the field must have for approval. When present, the condition is machine-actionable. When absent, the condition is advisory."
         ),
     ] = None
-    reason: Annotated[str, Field(description='Why this condition is required.')]
+    reason: Annotated[str, Field(description="Why this condition is required.")]
 
 
 class Finding(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     category_id: Annotated[
         str,
@@ -53,7 +53,7 @@ class Finding(AdCPBaseModel):
     policy_id: Annotated[
         str | None,
         Field(
-            description='ID of the policy that triggered this finding. May reference a registry policy (with source: registry) or a bespoke inline policy (with source: inline). Bespoke policy_ids are unique within their authoring container; use source_plan_id when findings aggregate across multiple plans (e.g., portfolio evaluations).'
+            description="ID of the policy that triggered this finding. May reference a registry policy (with source: registry) or a bespoke inline policy (with source: inline). Bespoke policy_ids are unique within their authoring container; use source_plan_id when findings aggregate across multiple plans (e.g., portfolio evaluations)."
         ),
     ] = None
     source_plan_id: Annotated[
@@ -63,9 +63,9 @@ class Finding(AdCPBaseModel):
         ),
     ] = None
     severity: escalation_severity.EscalationSeverity
-    explanation: Annotated[str, Field(description='Human-readable description of the issue.')]
+    explanation: Annotated[str, Field(description="Human-readable description of the issue.")]
     details: Annotated[
-        dict[str, Any] | None, Field(description='Structured details for programmatic consumption.')
+        dict[str, Any] | None, Field(description="Structured details for programmatic consumption.")
     ] = None
     confidence: Annotated[
         float | None,
@@ -85,12 +85,12 @@ class Finding(AdCPBaseModel):
 
 class CheckGovernanceResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     check_id: Annotated[
         str,
         Field(
-            description='Unique identifier for this governance check record. Use in report_plan_outcome to link outcomes to the check that authorized them.'
+            description="Unique identifier for this governance check record. Use in report_plan_outcome to link outcomes to the check that authorized them."
         ),
     ]
     status: Annotated[
@@ -99,9 +99,9 @@ class CheckGovernanceResponse(AdCPBaseModel):
             description="Governance decision. 'approved': proceed as planned. 'denied': do not proceed. 'conditions': approved if the caller accepts the listed conditions, then re-calls check_governance with the adjusted parameters."
         ),
     ]
-    plan_id: Annotated[str, Field(description='Echoed from request.')]
+    plan_id: Annotated[str, Field(description="Echoed from request.")]
     explanation: Annotated[
-        str, Field(description='Human-readable explanation of the governance decision.')
+        str, Field(description="Human-readable explanation of the governance decision.")
     ]
     findings: Annotated[
         list[Finding] | None,
@@ -124,14 +124,14 @@ class CheckGovernanceResponse(AdCPBaseModel):
     next_check: Annotated[
         AwareDatetime | None,
         Field(
-            description='When the seller should next call check_governance with delivery metrics. Present when the governance agent expects ongoing delivery reporting.'
+            description="When the seller should next call check_governance with delivery metrics. Present when the governance agent expects ongoing delivery reporting."
         ),
     ] = None
     categories_evaluated: Annotated[
-        list[str] | None, Field(description='Governance categories evaluated during this check.')
+        list[str] | None, Field(description="Governance categories evaluated during this check.")
     ] = None
     policies_evaluated: Annotated[
-        list[str] | None, Field(description='Registry policy IDs evaluated during this check.')
+        list[str] | None, Field(description="Registry policy IDs evaluated during this check.")
     ] = None
     governance_context: Annotated[
         str | None,
@@ -139,7 +139,7 @@ class CheckGovernanceResponse(AdCPBaseModel):
             description="Governance context token for this governed action. The buyer MUST attach this to the protocol envelope when sending the purchase request (media buy, rights acquisition, signal activation) to the seller. The seller MUST persist it and include it on all subsequent check_governance calls for this action's lifecycle.\n\nValue format: in 3.0 governance agents MUST emit a compact JWS per the AdCP JWS profile (see Security — Signed Governance Context). Sellers MAY verify; sellers that do not verify MUST persist and forward the token unchanged so auditors can verify downstream. In 3.1 all sellers MUST verify per the checklist. Non-JWS values from pre-3.0 governance agents are deprecated and will be rejected in 3.1.\n\nSellers that implement verification MUST verify signature, `aud`, `exp`, `jti` replay, and revocation per the profile before treating the request as governance-approved. This is the primary correlation key for audit and reporting across the governance lifecycle — the governance agent decodes its own signed token to look up internal plan state (buyer correlation IDs, policy decision log, etc.).",
             max_length=4096,
             min_length=1,
-            pattern='^[\\x20-\\x7E]+$',
+            pattern="^[\\x20-\\x7E]+$",
         ),
     ] = None
     context: context_1.ContextObject | None = None

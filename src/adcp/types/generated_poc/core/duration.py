@@ -12,16 +12,16 @@ from pydantic import ConfigDict, Field
 
 
 class Unit(Enum):
-    seconds = 'seconds'
-    minutes = 'minutes'
-    hours = 'hours'
-    days = 'days'
-    campaign = 'campaign'
+    seconds = "seconds"
+    minutes = "minutes"
+    hours = "hours"
+    days = "days"
+    campaign = "campaign"
 
 
 class Duration(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     interval: Annotated[
         int, Field(description="Number of time units. Must be 1 when unit is 'campaign'.", ge=1)

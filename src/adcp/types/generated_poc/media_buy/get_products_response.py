@@ -19,31 +19,31 @@ from ..core import proposal as proposal_1
 
 
 class Scope(Enum):
-    request = 'request'
-    product = 'product'
-    proposal = 'proposal'
+    request = "request"
+    product = "product"
+    proposal = "proposal"
 
 
 class Status(Enum):
-    applied = 'applied'
-    partial = 'partial'
-    unable = 'unable'
+    applied = "applied"
+    partial = "partial"
+    unable = "unable"
 
 
 class RefinementAppliedItem(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     scope: Annotated[
         Scope | None,
         Field(
-            description='Echoes the scope from the corresponding refine entry. Allows orchestrators to cross-validate alignment.'
+            description="Echoes the scope from the corresponding refine entry. Allows orchestrators to cross-validate alignment."
         ),
     ] = None
     id: Annotated[
         str | None,
         Field(
-            description='Echoes the id from the corresponding refine entry (for product and proposal scopes).'
+            description="Echoes the id from the corresponding refine entry (for product and proposal scopes)."
         ),
     ] = None
     status: Annotated[
@@ -61,15 +61,15 @@ class RefinementAppliedItem(AdCPBaseModel):
 
 
 class Scope3(Enum):
-    products = 'products'
-    pricing = 'pricing'
-    forecast = 'forecast'
-    proposals = 'proposals'
+    products = "products"
+    pricing = "pricing"
+    forecast = "forecast"
+    proposals = "proposals"
 
 
 class IncompleteItem(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     scope: Annotated[
         Scope3,
@@ -78,41 +78,41 @@ class IncompleteItem(AdCPBaseModel):
         ),
     ]
     description: Annotated[
-        str, Field(description='Human-readable explanation of what is missing and why.')
+        str, Field(description="Human-readable explanation of what is missing and why.")
     ]
     estimated_wait: Annotated[
         duration.Duration | None,
         Field(
-            description='How much additional time would resolve this scope. Allows the buyer to decide whether to retry with a larger time_budget.'
+            description="How much additional time would resolve this scope. Allows the buyer to decide whether to retry with a larger time_budget."
         ),
     ] = None
 
 
 class GetProductsResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    products: Annotated[list[product_1.Product], Field(description='Array of matching products')]
+    products: Annotated[list[product_1.Product], Field(description="Array of matching products")]
     proposals: Annotated[
         list[proposal_1.Proposal] | None,
         Field(
-            description='Optional array of proposed media plans with budget allocations across products. Publishers include proposals when they can provide strategic guidance based on the brief. Proposals are actionable - buyers can refine them via follow-up get_products calls within the same session, or execute them directly via create_media_buy.'
+            description="Optional array of proposed media plans with budget allocations across products. Publishers include proposals when they can provide strategic guidance based on the brief. Proposals are actionable - buyers can refine them via follow-up get_products calls within the same session, or execute them directly via create_media_buy."
         ),
     ] = None
     errors: Annotated[
         list[error.Error] | None,
-        Field(description='Task-specific errors and warnings (e.g., product filtering issues)'),
+        Field(description="Task-specific errors and warnings (e.g., product filtering issues)"),
     ] = None
     property_list_applied: Annotated[
         bool | None,
         Field(
-            description='[AdCP 3.0] Indicates whether property_list filtering was applied. True if the agent filtered products based on the provided property_list. Absent or false if property_list was not provided or not supported by this agent.'
+            description="[AdCP 3.0] Indicates whether property_list filtering was applied. True if the agent filtered products based on the provided property_list. Absent or false if property_list was not provided or not supported by this agent."
         ),
     ] = None
     catalog_applied: Annotated[
         bool | None,
         Field(
-            description='Whether the seller filtered results based on the provided catalog. True if the seller matched catalog items against its inventory. Absent or false if no catalog was provided or the seller does not support catalog matching.'
+            description="Whether the seller filtered results based on the provided catalog. True if the seller matched catalog items against its inventory. Absent or false if no catalog was provided or the seller does not support catalog matching."
         ),
     ] = None
     refinement_applied: Annotated[
@@ -131,7 +131,7 @@ class GetProductsResponse(AdCPBaseModel):
     pagination: pagination_response.PaginationResponse | None = None
     sandbox: Annotated[
         bool | None,
-        Field(description='When true, this response contains simulated data from sandbox mode.'),
+        Field(description="When true, this response contains simulated data from sandbox mode."),
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

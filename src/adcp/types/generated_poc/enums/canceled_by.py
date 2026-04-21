@@ -8,5 +8,5 @@ from enum import Enum
 
 
 class CanceledBy(Enum):
-    buyer = 'buyer'
-    seller = 'seller'
+    buyer = "buyer"
+    seller = "seller"

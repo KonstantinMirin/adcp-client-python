@@ -12,22 +12,22 @@ from pydantic import ConfigDict, Field
 
 
 class Scope(Enum):
-    account = 'account'
-    tool = 'tool'
-    global_ = 'global'
+    account = "account"
+    tool = "tool"
+    global_ = "global"
 
 
 class RateLimitedDetails(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    limit: Annotated[float | None, Field(description='Maximum requests allowed in the window')] = (
+    limit: Annotated[float | None, Field(description="Maximum requests allowed in the window")] = (
         None
     )
     remaining: Annotated[
-        float | None, Field(description='Requests remaining in the current window')
+        float | None, Field(description="Requests remaining in the current window")
     ] = None
     window_seconds: Annotated[
-        float | None, Field(description='Duration of the rate-limit window in seconds')
+        float | None, Field(description="Duration of the rate-limit window in seconds")
     ] = None
-    scope: Annotated[Scope | None, Field(description='What the limit applies to')] = None
+    scope: Annotated[Scope | None, Field(description="What the limit applies to")] = None

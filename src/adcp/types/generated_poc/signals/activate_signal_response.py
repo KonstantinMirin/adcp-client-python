@@ -16,15 +16,15 @@ from ..core import ext as ext_1
 
 class ActivateSignalResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     deployments: Annotated[
         list[deployment.Deployment],
-        Field(description='Array of deployment results for each deployment target'),
+        Field(description="Array of deployment results for each deployment target"),
     ]
     sandbox: Annotated[
         bool | None,
-        Field(description='When true, this response contains simulated data from sandbox mode.'),
+        Field(description="When true, this response contains simulated data from sandbox mode."),
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
@@ -32,12 +32,12 @@ class ActivateSignalResponse1(AdCPBaseModel):
 
 class ActivateSignalResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     errors: Annotated[
         list[error.Error],
         Field(
-            description='Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)',
+            description="Array of errors explaining why activation failed (e.g., platform connectivity issues, signal definition problems, authentication failures)",
             min_length=1,
         ),
     ]

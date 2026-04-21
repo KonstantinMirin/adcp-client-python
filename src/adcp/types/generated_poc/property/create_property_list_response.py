@@ -16,13 +16,13 @@ from . import property_list
 
 class CreatePropertyListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    list: Annotated[property_list.PropertyList, Field(description='The created property list')]
+    list: Annotated[property_list.PropertyList, Field(description="The created property list")]
     auth_token: Annotated[
         str,
         Field(
-            description='Token that can be shared with sellers to authorize fetching this list. Store this - it is only returned at creation time.'
+            description="Token that can be shared with sellers to authorize fetching this list. Store this - it is only returned at creation time."
         ),
     ]
     context: context_1.ContextObject | None = None

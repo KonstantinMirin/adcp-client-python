@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class AccountStatus(Enum):
-    active = 'active'
-    pending_approval = 'pending_approval'
-    rejected = 'rejected'
-    payment_required = 'payment_required'
-    suspended = 'suspended'
-    closed = 'closed'
+    active = "active"
+    pending_approval = "pending_approval"
+    rejected = "rejected"
+    payment_required = "payment_required"
+    suspended = "suspended"
+    closed = "closed"

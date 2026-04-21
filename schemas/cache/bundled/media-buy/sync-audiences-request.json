@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Sync Audiences Request",
   "description": "Request parameters for managing CRM-based audiences on an account with upsert semantics. Existing audiences matched by audience_id are updated, new ones are created. Members are specified as delta operations: add appends new members, remove drops existing ones. Recommend no more than 100,000 members per call; for larger lists, chunk and call incrementally using add/remove deltas. When delete_missing is true, buyer-managed audiences on the account not in this request are removed \u2014 do not combine with omitted audiences or all buyer-managed audiences will be deleted. When audiences is omitted, the call is discovery-only: it returns all audiences on the account without modification.",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -26,7 +27,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -51,6 +53,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -122,7 +125,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -172,7 +176,8 @@
         "properties": {
           "audience_id": {
             "type": "string",
-            "description": "Buyer's identifier for this audience. Used to reference the audience in targeting overlays."
+            "description": "Buyer's identifier for this audience. Used to reference the audience in targeting overlays.",
+            "x-entity": "audience"
           },
           "name": {
             "type": "string",
@@ -214,12 +219,12 @@
                 },
                 "hashed_email": {
                   "type": "string",
-                  "description": "SHA-256 hash of lowercase, trimmed email address.",
+                  "description": "SHA-256 hash of lowercase, trimmed email address. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                   "pattern": "^[a-f0-9]{64}$"
                 },
                 "hashed_phone": {
                   "type": "string",
-                  "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234).",
+                  "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                   "pattern": "^[a-f0-9]{64}$"
                 },
                 "uids": {
@@ -252,7 +257,7 @@
                           "euid": "European Unified ID",
                           "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR protocol",
                           "maid": "Mobile Advertising ID (IDFA/GAID)",
-                          "hashed_email": "SHA-256 hashed email address",
+                          "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                           "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
                           "other": "Other universal ID type (specify in ext)"
                         }
@@ -315,12 +320,12 @@
                 },
                 "hashed_email": {
                   "type": "string",
-                  "description": "SHA-256 hash of lowercase, trimmed email address.",
+                  "description": "SHA-256 hash of lowercase, trimmed email address. Pseudonymous PII, not anonymous \u2014 the email namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                   "pattern": "^[a-f0-9]{64}$"
                 },
                 "hashed_phone": {
                   "type": "string",
-                  "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234).",
+                  "description": "SHA-256 hash of E.164-formatted phone number (e.g. +12065551234). Pseudonymous PII, not anonymous \u2014 the E.164 namespace is small enough that an unsalted SHA-256 is recoverable via precomputed dictionaries. Treat as PII for retention, consent, and access-control purposes. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                   "pattern": "^[a-f0-9]{64}$"
                 },
                 "uids": {
@@ -353,7 +358,7 @@
                           "euid": "European Unified ID",
                           "pairid": "Publisher Addressable Identity via IAB Tech Lab PAIR protocol",
                           "maid": "Mobile Advertising ID (IDFA/GAID)",
-                          "hashed_email": "SHA-256 hashed email address",
+                          "hashed_email": "SHA-256 hashed email address. Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                           "publisher_first_party": "Publisher's own first-party identifier, opaque to buyers",
                           "other": "Other universal ID type (specify in ext)"
                         }
@@ -463,7 +468,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.578Z",
+    "generatedAt": "2026-04-21T21:56:38.587Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

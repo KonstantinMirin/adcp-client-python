@@ -12,12 +12,12 @@ from pydantic import AnyUrl, ConfigDict, Field
 
 class CreativeRejectedDetails(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    policy_id: Annotated[str | None, Field(description='Identifier for the violated policy')] = None
+    policy_id: Annotated[str | None, Field(description="Identifier for the violated policy")] = None
     policy_url: Annotated[
-        AnyUrl | None, Field(description='URL where the full policy can be reviewed')
+        AnyUrl | None, Field(description="URL where the full policy can be reviewed")
     ] = None
     reasons: Annotated[
-        list[str] | None, Field(description='Specific reasons the creative was rejected')
+        list[str] | None, Field(description="Specific reasons the creative was rejected")
     ] = None

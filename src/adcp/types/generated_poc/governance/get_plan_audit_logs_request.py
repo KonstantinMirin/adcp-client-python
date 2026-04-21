@@ -16,7 +16,7 @@ from ..enums import purchase_type
 
 class GetPlanAuditLogsRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -29,21 +29,21 @@ class GetPlanAuditLogsRequest(AdCPBaseModel):
     plan_ids: Annotated[
         list[str] | None,
         Field(
-            description='Plan IDs to retrieve. For a single plan, pass a one-element array.',
+            description="Plan IDs to retrieve. For a single plan, pass a one-element array.",
             min_length=1,
         ),
     ] = None
     portfolio_plan_ids: Annotated[
         list[str] | None,
         Field(
-            description='Portfolio plan IDs. The governance agent expands each to its member_plan_ids and returns combined audit data.',
+            description="Portfolio plan IDs. The governance agent expands each to its member_plan_ids and returns combined audit data.",
             min_length=1,
         ),
     ] = None
     governance_contexts: Annotated[
         list[str] | None,
         Field(
-            description='Filter audit entries by governance context. Returns only checks and outcomes that share these governance contexts, enabling lifecycle tracing across purchase types.',
+            description="Filter audit entries by governance context. Returns only checks and outcomes that share these governance contexts, enabling lifecycle tracing across purchase types.",
             min_length=1,
         ),
     ] = None
@@ -55,7 +55,7 @@ class GetPlanAuditLogsRequest(AdCPBaseModel):
         ),
     ] = None
     include_entries: Annotated[
-        bool | None, Field(description='Include the full audit trail. Default: false.')
+        bool | None, Field(description="Include the full audit trail. Default: false.")
     ] = False
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

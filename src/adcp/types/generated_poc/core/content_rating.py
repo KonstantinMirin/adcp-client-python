@@ -14,10 +14,10 @@ from ..enums import content_rating_system
 
 class ContentRating(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     system: Annotated[
-        content_rating_system.ContentRatingSystem, Field(description='Rating system used')
+        content_rating_system.ContentRatingSystem, Field(description="Rating system used")
     ]
     rating: Annotated[
         str, Field(description="Rating value within the system (e.g., 'TV-PG', 'R', 'explicit')")

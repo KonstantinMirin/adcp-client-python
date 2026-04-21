@@ -14,20 +14,20 @@ from . import duration
 
 class OutcomeMeasurement(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
         str,
         Field(
-            description='Type of measurement',
-            examples=['incremental_sales_lift', 'brand_lift', 'foot_traffic'],
+            description="Type of measurement",
+            examples=["incremental_sales_lift", "brand_lift", "foot_traffic"],
         ),
     ]
     attribution: Annotated[
         str,
         Field(
-            description='Attribution methodology',
-            examples=['deterministic_purchase', 'probabilistic'],
+            description="Attribution methodology",
+            examples=["deterministic_purchase", "probabilistic"],
         ),
     ]
     window: Annotated[
@@ -39,7 +39,7 @@ class OutcomeMeasurement(AdCPBaseModel):
     reporting: Annotated[
         str,
         Field(
-            description='Reporting frequency and format',
-            examples=['weekly_dashboard', 'real_time_api'],
+            description="Reporting frequency and format",
+            examples=["weekly_dashboard", "real_time_api"],
         ),
     ]

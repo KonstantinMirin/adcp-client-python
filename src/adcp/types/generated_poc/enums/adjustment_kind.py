@@ -8,7 +8,7 @@ from enum import Enum
 
 
 class PriceAdjustmentKind(Enum):
-    fee = 'fee'
-    discount = 'discount'
-    commission = 'commission'
-    settlement = 'settlement'
+    fee = "fee"
+    discount = "discount"
+    commission = "commission"
+    settlement = "settlement"

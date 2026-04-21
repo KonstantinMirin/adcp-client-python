@@ -14,12 +14,12 @@ from . import material_deadline
 
 class InstallmentDeadlines(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     booking_deadline: Annotated[
         AwareDatetime | None,
         Field(
-            description='Last date/time to book a placement in this installment (ISO 8601). After this point, the seller will not accept new bookings.'
+            description="Last date/time to book a placement in this installment (ISO 8601). After this point, the seller will not accept new bookings."
         ),
     ] = None
     cancellation_deadline: Annotated[

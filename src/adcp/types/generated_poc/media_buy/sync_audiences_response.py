@@ -17,47 +17,47 @@ from ..enums import match_id_type
 
 
 class Action(Enum):
-    created = 'created'
-    updated = 'updated'
-    unchanged = 'unchanged'
-    deleted = 'deleted'
-    failed = 'failed'
+    created = "created"
+    updated = "updated"
+    unchanged = "unchanged"
+    deleted = "deleted"
+    failed = "failed"
 
 
 class Status(Enum):
-    processing = 'processing'
-    ready = 'ready'
-    too_small = 'too_small'
+    processing = "processing"
+    ready = "ready"
+    too_small = "too_small"
 
 
 class MatchBreakdownItem(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     id_type: Annotated[
         match_id_type.MatchIdType,
         Field(
-            description='Identifier type. Combines hashed PII types (hashed_email, hashed_phone) with universal ID types (rampid, uid2, maid, etc.).'
+            description="Identifier type. Combines hashed PII types (hashed_email, hashed_phone) with universal ID types (rampid, uid2, maid, etc.)."
         ),
     ]
     submitted: Annotated[
         int,
         Field(
-            description='Cumulative number of members submitted with this identifier type across all syncs (matches total_uploaded_count semantics, not uploaded_count). Compare with matched to calculate per-type match rate.',
+            description="Cumulative number of members submitted with this identifier type across all syncs (matches total_uploaded_count semantics, not uploaded_count). Compare with matched to calculate per-type match rate.",
             ge=0,
         ),
     ]
     matched: Annotated[
         int,
         Field(
-            description='Cumulative number of members matched via this identifier type across all syncs.',
+            description="Cumulative number of members matched via this identifier type across all syncs.",
             ge=0,
         ),
     ]
     match_rate: Annotated[
         float,
         Field(
-            description='Match rate for this identifier type (matched / submitted). Server-authoritative — consumers should prefer this value over computing their own.',
+            description="Match rate for this identifier type (matched / submitted). Server-authoritative — consumers should prefer this value over computing their own.",
             ge=0.0,
             le=1.0,
         ),
@@ -66,15 +66,15 @@ class MatchBreakdownItem(AdCPBaseModel):
 
 class Audience(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     audience_id: Annotated[
         str, Field(description="Audience ID from the request (buyer's identifier)")
     ]
-    name: Annotated[str | None, Field(description='Name of the audience')] = None
+    name: Annotated[str | None, Field(description="Name of the audience")] = None
     seller_id: Annotated[
         str | None,
-        Field(description='Seller-assigned identifier for this audience in their ad platform'),
+        Field(description="Seller-assigned identifier for this audience in their ad platform"),
     ] = None
     action: Annotated[
         Action,
@@ -91,14 +91,14 @@ class Audience(AdCPBaseModel):
     uploaded_count: Annotated[
         int | None,
         Field(
-            description='Number of members submitted in this sync operation (delta, not cumulative). In discovery-only calls (no audiences array), this is 0.',
+            description="Number of members submitted in this sync operation (delta, not cumulative). In discovery-only calls (no audiences array), this is 0.",
             ge=0,
         ),
     ] = None
     total_uploaded_count: Annotated[
         int | None,
         Field(
-            description='Cumulative number of members uploaded across all syncs for this audience. Compare with matched_count to calculate match rate (matched_count / total_uploaded_count). Populated when the seller tracks cumulative upload counts.',
+            description="Cumulative number of members uploaded across all syncs for this audience. Compare with matched_count to calculate match rate (matched_count / total_uploaded_count). Populated when the seller tracks cumulative upload counts.",
             ge=0,
         ),
     ] = None
@@ -120,14 +120,14 @@ class Audience(AdCPBaseModel):
     match_breakdown: Annotated[
         list[MatchBreakdownItem] | None,
         Field(
-            description='Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.',
+            description="Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.",
             min_length=1,
         ),
     ] = None
     last_synced_at: Annotated[
         AwareDatetime | None,
         Field(
-            description='ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this.'
+            description="ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this."
         ),
     ] = None
     minimum_size: Annotated[
@@ -145,14 +145,14 @@ class Audience(AdCPBaseModel):
 
 class SyncAudiencesResponse1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     audiences: Annotated[
-        list[Audience], Field(description='Results for each audience on the account')
+        list[Audience], Field(description="Results for each audience on the account")
     ]
     sandbox: Annotated[
         bool | None,
-        Field(description='When true, this response contains simulated data from sandbox mode.'),
+        Field(description="When true, this response contains simulated data from sandbox mode."),
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
@@ -160,11 +160,11 @@ class SyncAudiencesResponse1(AdCPBaseModel):
 
 class SyncAudiencesResponse2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     errors: Annotated[
         list[error.Error],
-        Field(description='Operation-level errors that prevented processing', min_length=1),
+        Field(description="Operation-level errors that prevented processing", min_length=1),
     ]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

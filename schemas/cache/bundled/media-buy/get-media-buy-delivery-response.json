@@ -267,7 +267,8 @@
         "properties": {
           "media_buy_id": {
             "type": "string",
-            "description": "Seller's media buy identifier"
+            "description": "Seller's media buy identifier",
+            "x-entity": "media_buy"
           },
           "status": {
             "type": "string",
@@ -1221,7 +1222,8 @@
                   "properties": {
                     "package_id": {
                       "type": "string",
-                      "description": "Seller's package identifier"
+                      "description": "Seller's package identifier",
+                      "x-entity": "package"
                     },
                     "pacing_index": {
                       "type": "number",
@@ -2226,7 +2228,8 @@
                             "properties": {
                               "creative_id": {
                                 "type": "string",
-                                "description": "Creative identifier matching the creative assignment"
+                                "description": "Creative identifier matching the creative assignment",
+                                "x-entity": "creative"
                               },
                               "weight": {
                                 "type": "number",
@@ -4588,7 +4591,8 @@
                             "properties": {
                               "audience_id": {
                                 "type": "string",
-                                "description": "Audience segment identifier. For 'synced' source, matches audience_id from sync_audiences. For other sources, seller-defined."
+                                "description": "Audience segment identifier. For 'synced' source, matches audience_id from sync_audiences. For other sources, seller-defined.",
+                                "x-entity": "audience"
                               },
                               "audience_source": {
                                 "title": "Audience Source",
@@ -5290,7 +5294,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.475Z",
+    "generatedAt": "2026-04-21T21:56:38.544Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

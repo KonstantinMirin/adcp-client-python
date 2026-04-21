@@ -29,7 +29,8 @@
       "properties": {
         "offering_id": {
           "type": "string",
-          "description": "Offering identifier"
+          "description": "Offering identifier",
+          "x-entity": "offering"
         },
         "title": {
           "type": "string",
@@ -73,7 +74,8 @@
         "properties": {
           "product_id": {
             "type": "string",
-            "description": "Product identifier"
+            "description": "Product identifier",
+            "x-entity": "product"
           },
           "name": {
             "type": "string",
@@ -121,7 +123,8 @@
     "alternative_offering_ids": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "string",
+        "x-entity": "offering"
       },
       "description": "Alternative offerings to consider if this one is unavailable"
     },
@@ -197,7 +200,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.747Z",
+    "generatedAt": "2026-04-21T21:56:38.639Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

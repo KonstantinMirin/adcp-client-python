@@ -83,7 +83,8 @@
         "properties": {
           "task_id": {
             "type": "string",
-            "description": "Unique identifier for this task"
+            "description": "Unique identifier for this task",
+            "x-entity": "task"
           },
           "task_type": {
             "title": "Task Type",
@@ -250,7 +251,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.152Z",
+    "generatedAt": "2026-04-21T21:56:38.380Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

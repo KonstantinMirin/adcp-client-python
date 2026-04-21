@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class CloudStorageProtocol(Enum):
-    s3 = 's3'
-    gcs = 'gcs'
-    azure_blob = 'azure_blob'
+    s3 = "s3"
+    gcs = "gcs"
+    azure_blob = "azure_blob"

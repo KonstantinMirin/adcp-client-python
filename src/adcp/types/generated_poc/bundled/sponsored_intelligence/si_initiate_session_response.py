@@ -12,119 +12,119 @@ from pydantic import ConfigDict, Field
 
 
 class Type(Enum):
-    text = 'text'
-    link = 'link'
-    image = 'image'
-    product_card = 'product_card'
-    carousel = 'carousel'
-    action_button = 'action_button'
-    app_handoff = 'app_handoff'
-    integration_actions = 'integration_actions'
+    text = "text"
+    link = "link"
+    image = "image"
+    product_card = "product_card"
+    carousel = "carousel"
+    action_button = "action_button"
+    app_handoff = "app_handoff"
+    integration_actions = "integration_actions"
 
 
 class UiElement(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    type: Annotated[Type, Field(description='Component type')]
-    data: Annotated[dict[str, Any] | None, Field(description='Component-specific data')] = None
+    type: Annotated[Type, Field(description="Component type")]
+    data: Annotated[dict[str, Any] | None, Field(description="Component-specific data")] = None
 
 
 class Response(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    message: Annotated[str | None, Field(description='Conversational message from brand agent')] = (
+    message: Annotated[str | None, Field(description="Conversational message from brand agent")] = (
         None
     )
     ui_elements: Annotated[
-        list[UiElement] | None, Field(description='Visual components to render')
+        list[UiElement] | None, Field(description="Visual components to render")
     ] = None
 
 
 class Voice(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     provider: Annotated[
-        str | None, Field(description='TTS provider (elevenlabs, openai, etc.)')
+        str | None, Field(description="TTS provider (elevenlabs, openai, etc.)")
     ] = None
-    voice_id: Annotated[str | None, Field(description='Brand voice identifier')] = None
+    voice_id: Annotated[str | None, Field(description="Brand voice identifier")] = None
 
 
 class Video(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     formats: Annotated[
-        list[str] | None, Field(description='Supported video formats (mp4, webm, etc.)')
+        list[str] | None, Field(description="Supported video formats (mp4, webm, etc.)")
     ] = None
-    max_duration_seconds: Annotated[int | None, Field(description='Maximum video duration')] = None
+    max_duration_seconds: Annotated[int | None, Field(description="Maximum video duration")] = None
 
 
 class Avatar(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     provider: Annotated[
-        str | None, Field(description='Avatar provider (d-id, heygen, synthesia, etc.)')
+        str | None, Field(description="Avatar provider (d-id, heygen, synthesia, etc.)")
     ] = None
-    avatar_id: Annotated[str | None, Field(description='Brand avatar identifier')] = None
+    avatar_id: Annotated[str | None, Field(description="Brand avatar identifier")] = None
 
 
 class Modalities(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     conversational: Annotated[
-        bool | None, Field(description='Pure text exchange - the baseline modality')
+        bool | None, Field(description="Pure text exchange - the baseline modality")
     ] = True
     voice: Annotated[
-        bool | Voice | None, Field(description='Audio-based interaction using brand voice')
+        bool | Voice | None, Field(description="Audio-based interaction using brand voice")
     ] = None
-    video: Annotated[bool | Video | None, Field(description='Brand video content playback')] = None
+    video: Annotated[bool | Video | None, Field(description="Brand video content playback")] = None
     avatar: Annotated[
-        bool | Avatar | None, Field(description='Animated video presence with brand avatar')
+        bool | Avatar | None, Field(description="Animated video presence with brand avatar")
     ] = None
 
 
 class StandardEnum(Enum):
-    text = 'text'
-    link = 'link'
-    image = 'image'
-    product_card = 'product_card'
-    carousel = 'carousel'
-    action_button = 'action_button'
+    text = "text"
+    link = "link"
+    image = "image"
+    product_card = "product_card"
+    carousel = "carousel"
+    action_button = "action_button"
 
 
 class Components(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     standard: Annotated[
         list[StandardEnum] | None,
-        Field(description='Standard components that all SI hosts must render'),
+        Field(description="Standard components that all SI hosts must render"),
     ] = None
     extensions: Annotated[
         dict[str, Any] | None,
-        Field(description='Platform-specific extensions (chatgpt_apps_sdk, maps, forms, etc.)'),
+        Field(description="Platform-specific extensions (chatgpt_apps_sdk, maps, forms, etc.)"),
     ] = None
 
 
 class Commerce(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     acp_checkout: Annotated[
-        bool | None, Field(description='Supports ACP (Agentic Commerce Protocol) checkout handoff')
+        bool | None, Field(description="Supports ACP (Agentic Commerce Protocol) checkout handoff")
     ] = None
 
 
 class A2ui(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    supported: Annotated[bool | None, Field(description='Supports A2UI surface rendering')] = False
+    supported: Annotated[bool | None, Field(description="Supports A2UI surface rendering")] = False
     catalogs: Annotated[
         list[str] | None,
         Field(description="Supported A2UI component catalogs (e.g., 'si-standard', 'standard')"),
@@ -133,114 +133,114 @@ class A2ui(AdCPBaseModel):
 
 class NegotiatedCapabilities(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     modalities: Annotated[
-        Modalities | None, Field(description='Interaction modalities supported')
+        Modalities | None, Field(description="Interaction modalities supported")
     ] = None
-    components: Annotated[Components | None, Field(description='Visual components supported')] = (
+    components: Annotated[Components | None, Field(description="Visual components supported")] = (
         None
     )
-    commerce: Annotated[Commerce | None, Field(description='Commerce capabilities')] = None
-    a2ui: Annotated[A2ui | None, Field(description='A2UI (Agent-to-UI) capabilities')] = None
+    commerce: Annotated[Commerce | None, Field(description="Commerce capabilities")] = None
+    a2ui: Annotated[A2ui | None, Field(description="A2UI (Agent-to-UI) capabilities")] = None
     mcp_apps: Annotated[
-        bool | None, Field(description='Supports MCP Apps for rendering A2UI surfaces in iframes')
+        bool | None, Field(description="Supports MCP Apps for rendering A2UI surfaces in iframes")
     ] = False
 
 
 class SessionStatus(Enum):
-    active = 'active'
-    pending_handoff = 'pending_handoff'
-    complete = 'complete'
-    terminated = 'terminated'
+    active = "active"
+    pending_handoff = "pending_handoff"
+    complete = "complete"
+    terminated = "terminated"
 
 
 class Recovery(Enum):
-    transient = 'transient'
-    correctable = 'correctable'
-    terminal = 'terminal'
+    transient = "transient"
+    correctable = "correctable"
+    terminal = "terminal"
 
 
 class Error(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     code: Annotated[
         str,
         Field(
-            description='Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.',
+            description="Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.",
             max_length=64,
             min_length=1,
         ),
     ]
-    message: Annotated[str, Field(description='Human-readable error message')]
+    message: Annotated[str, Field(description="Human-readable error message")]
     field: Annotated[
         str | None,
         Field(description="Field path associated with the error (e.g., 'packages[0].targeting')"),
     ] = None
-    suggestion: Annotated[str | None, Field(description='Suggested fix for the error')] = None
+    suggestion: Annotated[str | None, Field(description="Suggested fix for the error")] = None
     retry_after: Annotated[
         float | None,
         Field(
-            description='Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.',
+            description="Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.",
             ge=1.0,
             le=3600.0,
         ),
     ] = None
     details: Annotated[
-        dict[str, Any] | None, Field(description='Additional task-specific error details')
+        dict[str, Any] | None, Field(description="Additional task-specific error details")
     ] = None
     recovery: Annotated[
         Recovery | None,
         Field(
-            description='Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found).'
+            description="Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found)."
         ),
     ] = None
 
 
 class SiInitiateSessionResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     session_id: Annotated[
-        str, Field(description='Unique session identifier for subsequent messages')
+        str, Field(description="Unique session identifier for subsequent messages")
     ]
     response: Annotated[Response | None, Field(description="Brand agent's initial response")] = None
     negotiated_capabilities: Annotated[
         NegotiatedCapabilities | None,
         Field(
-            description='Intersection of brand and host capabilities for this session',
-            title='SI Capabilities',
+            description="Intersection of brand and host capabilities for this session",
+            title="SI Capabilities",
         ),
     ] = None
     session_status: Annotated[
         SessionStatus,
         Field(
-            description='Current session lifecycle state. Returned in initiation, message, and termination responses.',
-            title='SI Session Status',
+            description="Current session lifecycle state. Returned in initiation, message, and termination responses.",
+            title="SI Session Status",
         ),
     ]
     session_ttl_seconds: Annotated[
         int | None,
         Field(
-            description='Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible.',
+            description="Session inactivity timeout in seconds. After this duration without a message, the brand agent may terminate the session. Hosts SHOULD warn users before timeout when possible.",
             ge=1,
         ),
     ] = None
-    errors: Annotated[list[Error] | None, Field(description='Errors during session initiation')] = (
+    errors: Annotated[list[Error] | None, Field(description="Errors during session initiation")] = (
         None
     )
     context: Annotated[
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None

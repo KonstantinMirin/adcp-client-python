@@ -8,12 +8,12 @@ from enum import Enum
 
 
 class DigitalSourceType(Enum):
-    digital_capture = 'digital_capture'
-    digital_creation = 'digital_creation'
-    trained_algorithmic_media = 'trained_algorithmic_media'
-    composite_with_trained_algorithmic_media = 'composite_with_trained_algorithmic_media'
-    algorithmic_media = 'algorithmic_media'
-    composite_capture = 'composite_capture'
-    composite_synthetic = 'composite_synthetic'
-    human_edits = 'human_edits'
-    data_driven_media = 'data_driven_media'
+    digital_capture = "digital_capture"
+    digital_creation = "digital_creation"
+    trained_algorithmic_media = "trained_algorithmic_media"
+    composite_with_trained_algorithmic_media = "composite_with_trained_algorithmic_media"
+    algorithmic_media = "algorithmic_media"
+    composite_capture = "composite_capture"
+    composite_synthetic = "composite_synthetic"
+    human_edits = "human_edits"
+    data_driven_media = "data_driven_media"

@@ -8,13 +8,13 @@ from enum import Enum
 
 
 class UidType(Enum):
-    rampid = 'rampid'
-    rampid_derived = 'rampid_derived'
-    id5 = 'id5'
-    uid2 = 'uid2'
-    euid = 'euid'
-    pairid = 'pairid'
-    maid = 'maid'
-    hashed_email = 'hashed_email'
-    publisher_first_party = 'publisher_first_party'
-    other = 'other'
+    rampid = "rampid"
+    rampid_derived = "rampid_derived"
+    id5 = "id5"
+    uid2 = "uid2"
+    euid = "euid"
+    pairid = "pairid"
+    maid = "maid"
+    hashed_email = "hashed_email"
+    publisher_first_party = "publisher_first_party"
+    other = "other"

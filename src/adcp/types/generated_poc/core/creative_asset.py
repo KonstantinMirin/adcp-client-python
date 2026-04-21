@@ -33,33 +33,33 @@ from .assets import (
 
 class Input(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    name: Annotated[str, Field(description='Human-readable name for this preview variant')]
+    name: Annotated[str, Field(description="Human-readable name for this preview variant")]
     macros: Annotated[
-        dict[str, str] | None, Field(description='Macro values to apply for this preview')
+        dict[str, str] | None, Field(description="Macro values to apply for this preview")
     ] = None
     context_description: Annotated[
         str | None,
-        Field(description='Natural language description of the context for AI-generated content'),
+        Field(description="Natural language description of the context for AI-generated content"),
     ] = None
 
 
 class CreativeAsset(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    creative_id: Annotated[str, Field(description='Unique identifier for the creative')]
-    name: Annotated[str, Field(description='Human-readable creative name')]
+    creative_id: Annotated[str, Field(description="Unique identifier for the creative")]
+    name: Annotated[str, Field(description="Human-readable creative name")]
     format_id: Annotated[
         format_id_1.FormatId,
         Field(
-            description='Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats.'
+            description="Format identifier specifying which format this creative conforms to. Can be: (1) concrete format_id referencing a format with fixed dimensions, (2) template format_id referencing a template format, or (3) parameterized format_id with dimensions/duration parameters for template formats."
         ),
     ]
     assets: Annotated[
         dict[
-            Annotated[str, StringConstraints(pattern=r'^[a-z0-9_]+$')],
+            Annotated[str, StringConstraints(pattern=r"^[a-z0-9_]+$")],
             image_asset.ImageAsset
             | video_asset.VideoAsset
             | audio_asset.AudioAsset
@@ -75,16 +75,16 @@ class CreativeAsset(AdCPBaseModel):
             | brief_asset.BriefAsset
             | catalog_asset.CatalogAsset,
         ],
-        Field(description='Assets required by the format, keyed by asset_id'),
+        Field(description="Assets required by the format, keyed by asset_id"),
     ]
     inputs: Annotated[
         list[Input] | None,
         Field(
-            description='Preview contexts for generative formats - defines what scenarios to generate previews for'
+            description="Preview contexts for generative formats - defines what scenarios to generate previews for"
         ),
     ] = None
     tags: Annotated[
-        list[str] | None, Field(description='User-defined tags for organization and searchability')
+        list[str] | None, Field(description="User-defined tags for organization and searchability")
     ] = None
     status: Annotated[
         creative_status.CreativeStatus | None,
@@ -95,7 +95,7 @@ class CreativeAsset(AdCPBaseModel):
     weight: Annotated[
         float | None,
         Field(
-            description='Optional delivery weight for creative rotation when uploading via create_media_buy or update_media_buy (0-100). If omitted, platform determines rotation. Only used during upload to media buy - not stored in creative library.',
+            description="Optional delivery weight for creative rotation when uploading via create_media_buy or update_media_buy (0-100). If omitted, platform determines rotation. Only used during upload to media buy - not stored in creative library.",
             ge=0.0,
             le=100.0,
         ),
@@ -110,12 +110,12 @@ class CreativeAsset(AdCPBaseModel):
     industry_identifiers: Annotated[
         list[industry_identifier.IndustryIdentifier] | None,
         Field(
-            description='Industry-standard identifiers for this creative (e.g., Ad-ID, ISCI, Clearcast clock number). In broadcast buying, these identifiers tie the creative to rotation instructions and traffic systems. A creative may have multiple identifiers when different systems reference the same asset.'
+            description="Industry-standard identifiers for this creative (e.g., Ad-ID, ISCI, Clearcast clock number). In broadcast buying, these identifiers tie the creative to rotation instructions and traffic systems. A creative may have multiple identifiers when different systems reference the same asset."
         ),
     ] = None
     provenance: Annotated[
         provenance_1.Provenance | None,
         Field(
-            description='Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging).'
+            description="Provenance metadata for this creative. Serves as the default provenance for all manifests and assets within this creative. A manifest or asset with its own provenance replaces this object entirely (no field-level merging)."
         ),
     ] = None

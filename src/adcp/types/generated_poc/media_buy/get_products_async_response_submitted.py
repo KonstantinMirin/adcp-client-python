@@ -15,10 +15,10 @@ from ..core import ext as ext_1
 
 class GetProductsSubmitted(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     estimated_completion: Annotated[
-        AwareDatetime | None, Field(description='Estimated completion time for the search')
+        AwareDatetime | None, Field(description="Estimated completion time for the search")
     ] = None
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None

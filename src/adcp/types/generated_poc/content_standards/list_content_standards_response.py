@@ -25,7 +25,7 @@ class ListContentStandardsResponse2(AdCPBaseModel):
 class ListContentStandardsResponse1(AdCPBaseModel):
     standards: Annotated[
         list[content_standards.ContentStandards],
-        Field(description='Array of content standards configurations matching the filter criteria'),
+        Field(description="Array of content standards configurations matching the filter criteria"),
     ]
     pagination: pagination_response.PaginationResponse | None = None
     context: context_1.ContextObject | None = None

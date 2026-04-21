@@ -22,15 +22,15 @@ class Summary(AdCPBaseModel):
 
 
 class Verdict(Enum):
-    pass_ = 'pass'
-    fail = 'fail'
+    pass_ = "pass"
+    fail = "fail"
 
 
 class Status(Enum):
-    passed = 'passed'
-    failed = 'failed'
-    warning = 'warning'
-    unevaluated = 'unevaluated'
+    passed = "passed"
+    failed = "failed"
+    warning = "warning"
+    unevaluated = "unevaluated"
 
 
 class Feature(AdCPBaseModel):
@@ -44,7 +44,7 @@ class Feature(AdCPBaseModel):
     policy_id: Annotated[
         str | None,
         Field(
-            description='Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry.'
+            description="Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry."
         ),
     ] = None
     explanation: Annotated[
@@ -56,7 +56,7 @@ class Feature(AdCPBaseModel):
     confidence: Annotated[
         float | None,
         Field(
-            description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.',
+            description="Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.",
             ge=0.0,
             le=1.0,
         ),
@@ -64,8 +64,8 @@ class Feature(AdCPBaseModel):
 
 
 class Result(AdCPBaseModel):
-    record_id: Annotated[str, Field(description='Which delivery record was evaluated')]
-    verdict: Annotated[Verdict, Field(description='Overall pass/fail verdict for this record')]
+    record_id: Annotated[str, Field(description="Which delivery record was evaluated")]
+    verdict: Annotated[Verdict, Field(description="Overall pass/fail verdict for this record")]
     features: Annotated[
         list[Feature] | None,
         Field(
@@ -75,8 +75,8 @@ class Result(AdCPBaseModel):
 
 
 class ValidateContentDeliveryResponse1(AdCPBaseModel):
-    summary: Annotated[Summary, Field(description='Summary counts across all records')]
-    results: Annotated[list[Result], Field(description='Per-record evaluation results')]
+    summary: Annotated[Summary, Field(description="Summary counts across all records")]
+    results: Annotated[list[Result], Field(description="Per-record evaluation results")]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
@@ -87,4 +87,6 @@ class ValidateContentDeliveryResponse2(AdCPBaseModel):
     ext: ext_1.ExtensionObject | None = None
 
 
-ValidateContentDeliveryResponse = ValidateContentDeliveryResponse1 | ValidateContentDeliveryResponse2
+ValidateContentDeliveryResponse = (
+    ValidateContentDeliveryResponse1 | ValidateContentDeliveryResponse2
+)

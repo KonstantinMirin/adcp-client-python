@@ -12,17 +12,17 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 class MaterialDeadline(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     stage: Annotated[
         str,
         Field(
             description="Submission stage identifier. Use 'draft' for materials that need seller processing and 'final' for production-ready assets. Sellers may define additional stages.",
-            examples=['draft', 'final'],
+            examples=["draft", "final"],
         ),
     ]
     due_at: Annotated[
-        AwareDatetime, Field(description='When materials for this stage are due (ISO 8601)')
+        AwareDatetime, Field(description="When materials for this stage are due (ISO 8601)")
     ]
     label: Annotated[
         str | None,

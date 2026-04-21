@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class MakegoodRemedy(Enum):
-    additional_delivery = 'additional_delivery'
-    credit = 'credit'
-    invoice_adjustment = 'invoice_adjustment'
+    additional_delivery = "additional_delivery"
+    credit = "credit"
+    invoice_adjustment = "invoice_adjustment"

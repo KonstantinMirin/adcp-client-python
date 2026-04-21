@@ -8,24 +8,24 @@ from enum import Enum
 
 
 class DistributionIdentifierType(Enum):
-    apple_podcast_id = 'apple_podcast_id'
-    spotify_collection_id = 'spotify_collection_id'
-    rss_url = 'rss_url'
-    podcast_guid = 'podcast_guid'
-    amazon_music_id = 'amazon_music_id'
-    iheart_id = 'iheart_id'
-    podcast_index_id = 'podcast_index_id'
-    youtube_channel_id = 'youtube_channel_id'
-    youtube_playlist_id = 'youtube_playlist_id'
-    amazon_title_id = 'amazon_title_id'
-    roku_channel_id = 'roku_channel_id'
-    pluto_channel_id = 'pluto_channel_id'
-    tubi_id = 'tubi_id'
-    peacock_id = 'peacock_id'
-    tiktok_id = 'tiktok_id'
-    twitch_channel = 'twitch_channel'
-    imdb_id = 'imdb_id'
-    gracenote_id = 'gracenote_id'
-    eidr_id = 'eidr_id'
-    domain = 'domain'
-    substack_id = 'substack_id'
+    apple_podcast_id = "apple_podcast_id"
+    spotify_collection_id = "spotify_collection_id"
+    rss_url = "rss_url"
+    podcast_guid = "podcast_guid"
+    amazon_music_id = "amazon_music_id"
+    iheart_id = "iheart_id"
+    podcast_index_id = "podcast_index_id"
+    youtube_channel_id = "youtube_channel_id"
+    youtube_playlist_id = "youtube_playlist_id"
+    amazon_title_id = "amazon_title_id"
+    roku_channel_id = "roku_channel_id"
+    pluto_channel_id = "pluto_channel_id"
+    tubi_id = "tubi_id"
+    peacock_id = "peacock_id"
+    tiktok_id = "tiktok_id"
+    twitch_channel = "twitch_channel"
+    imdb_id = "imdb_id"
+    gracenote_id = "gracenote_id"
+    eidr_id = "eidr_id"
+    domain = "domain"
+    substack_id = "substack_id"

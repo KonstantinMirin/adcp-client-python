@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class DisclosurePersistence(Enum):
-    continuous = 'continuous'
-    initial = 'initial'
-    flexible = 'flexible'
+    continuous = "continuous"
+    initial = "initial"
+    flexible = "flexible"

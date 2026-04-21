@@ -12,14 +12,14 @@ from pydantic import ConfigDict, Field
 
 class ForecastRange(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     low: Annotated[
-        float | None, Field(description='Conservative (low-end) forecast value', ge=0.0)
+        float | None, Field(description="Conservative (low-end) forecast value", ge=0.0)
     ] = None
     mid: Annotated[
-        float | None, Field(description='Expected (most likely) forecast value', ge=0.0)
+        float | None, Field(description="Expected (most likely) forecast value", ge=0.0)
     ] = None
     high: Annotated[
-        float | None, Field(description='Optimistic (high-end) forecast value', ge=0.0)
+        float | None, Field(description="Optimistic (high-end) forecast value", ge=0.0)
     ] = None

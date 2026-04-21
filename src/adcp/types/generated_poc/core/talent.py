@@ -14,11 +14,11 @@ from ..enums import talent_role
 
 class Talent(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     role: Annotated[
         talent_role.TalentRole,
-        Field(description='Role of this person on the collection or installment'),
+        Field(description="Role of this person on the collection or installment"),
     ]
     name: Annotated[str, Field(description="Person's name as credited on the collection")]
     brand_url: Annotated[

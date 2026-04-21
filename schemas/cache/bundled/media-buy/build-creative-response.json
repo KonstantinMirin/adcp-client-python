@@ -17,6 +17,7 @@
             "format_id": {
               "title": "Format ID",
               "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'}).",
+              "x-entity": "creative_format",
               "type": "object",
               "properties": {
                 "agent_url": {
@@ -5208,7 +5209,8 @@
                           "properties": {
                             "catalog_id": {
                               "type": "string",
-                              "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                              "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                              "x-entity": "catalog"
                             },
                             "name": {
                               "type": "string",
@@ -6519,7 +6521,8 @@
         },
         "pricing_option_id": {
           "type": "string",
-          "description": "Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied."
+          "description": "Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied.",
+          "x-entity": "vendor_pricing_option"
         },
         "vendor_cost": {
           "type": "number",
@@ -6592,6 +6595,7 @@
               "format_id": {
                 "title": "Format ID",
                 "description": "Format identifier this manifest is for. Can be a template format (id only) or a deterministic format (id + dimensions/duration). For dimension-specific creatives, include width/height/unit in the format_id to create a unique identifier (e.g., {id: 'display_static', width: 300, height: 250, unit: 'px'}).",
+                "x-entity": "creative_format",
                 "type": "object",
                 "properties": {
                   "agent_url": {
@@ -11783,7 +11787,8 @@
                             "properties": {
                               "catalog_id": {
                                 "type": "string",
-                                "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account."
+                                "description": "Buyer's identifier for this catalog. Required when syncing via sync_catalogs. When used in creatives, references a previously synced catalog on the account.",
+                                "x-entity": "catalog"
                               },
                               "name": {
                                 "type": "string",
@@ -12770,6 +12775,7 @@
                   "format_id": {
                     "title": "Format ID",
                     "description": "The format this preview was generated for. Matches one of the requested target_format_ids.",
+                    "x-entity": "creative_format",
                     "type": "object",
                     "properties": {
                       "agent_url": {
@@ -13143,7 +13149,8 @@
         },
         "pricing_option_id": {
           "type": "string",
-          "description": "Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services."
+          "description": "Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services.",
+          "x-entity": "vendor_pricing_option"
         },
         "vendor_cost": {
           "type": "number",
@@ -13281,7 +13288,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.407Z",
+    "generatedAt": "2026-04-21T21:56:38.508Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

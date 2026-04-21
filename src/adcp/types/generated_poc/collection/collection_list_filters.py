@@ -17,26 +17,26 @@ from ..enums import production_quality as production_quality_1
 
 
 class Kind(Enum):
-    series = 'series'
-    publication = 'publication'
-    event_series = 'event_series'
-    rotation = 'rotation'
+    series = "series"
+    publication = "publication"
+    event_series = "event_series"
+    rotation = "rotation"
 
 
 class ExcludeDistributionId(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     type: Annotated[
         distribution_identifier_type.DistributionIdentifierType,
-        Field(description='Type of distribution identifier'),
+        Field(description="Type of distribution identifier"),
     ]
-    value: Annotated[str, Field(description='The identifier value')]
+    value: Annotated[str, Field(description="The identifier value")]
 
 
 class CollectionListFilters(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     content_ratings_exclude: Annotated[
         list[content_rating.ContentRating] | None,
@@ -48,41 +48,41 @@ class CollectionListFilters(AdCPBaseModel):
     content_ratings_include: Annotated[
         list[content_rating.ContentRating] | None,
         Field(
-            description='Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.',
+            description="Include only collections with any of these content ratings (OR logic). Collections without a declared content_rating are excluded.",
             min_length=1,
         ),
     ] = None
     genres_exclude: Annotated[
         list[str] | None,
         Field(
-            description='Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.',
+            description="Exclude collections tagged with any of these genres (OR logic). Values are interpreted against genre_taxonomy when present.",
             min_length=1,
         ),
     ] = None
     genres_include: Annotated[
         list[str] | None,
         Field(
-            description='Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.',
+            description="Include only collections with any of these genres (OR logic). Collections without genre metadata are excluded. Values are interpreted against genre_taxonomy when present.",
             min_length=1,
         ),
     ] = None
     genre_taxonomy: Annotated[
         genre_taxonomy_1.GenreTaxonomy | None,
         Field(
-            description='Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs.'
+            description="Taxonomy for genre filter values. When present, genres_include and genres_exclude values are interpreted as taxonomy IDs."
         ),
     ] = None
     kinds: Annotated[
-        list[Kind] | None, Field(description='Filter to these collection kinds', min_length=1)
+        list[Kind] | None, Field(description="Filter to these collection kinds", min_length=1)
     ] = None
     exclude_distribution_ids: Annotated[
         list[ExcludeDistributionId] | None,
         Field(
-            description='Always exclude collections with these distribution identifiers',
+            description="Always exclude collections with these distribution identifiers",
             min_length=1,
         ),
     ] = None
     production_quality: Annotated[
         list[production_quality_1.ProductionQuality] | None,
-        Field(description='Filter by production quality tier', min_length=1),
+        Field(description="Filter by production quality tier", min_length=1),
     ] = None

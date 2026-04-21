@@ -3,6 +3,7 @@
   "title": "SI Initiate Session Request",
   "description": "Host initiates a session with a brand agent",
   "x-status": "experimental",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -108,7 +109,8 @@
         },
         "anonymous_session_id": {
           "type": "string",
-          "description": "Session ID for anonymous users (when consent_granted is false)"
+          "description": "Session ID for anonymous users (when consent_granted is false)",
+          "x-entity": "si_session"
         }
       },
       "required": [
@@ -118,7 +120,8 @@
     },
     "media_buy_id": {
       "type": "string",
-      "description": "AdCP media buy ID if session was triggered by advertising"
+      "description": "AdCP media buy ID if session was triggered by advertising",
+      "x-entity": "media_buy"
     },
     "placement": {
       "type": "string",
@@ -126,7 +129,8 @@
     },
     "offering_id": {
       "type": "string",
-      "description": "Brand-specific offering identifier to apply"
+      "description": "Brand-specific offering identifier to apply",
+      "x-entity": "offering"
     },
     "supported_capabilities": {
       "title": "SI Capabilities",
@@ -305,7 +309,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.748Z",
+    "generatedAt": "2026-04-21T21:56:38.640Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

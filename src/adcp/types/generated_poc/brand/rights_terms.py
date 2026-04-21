@@ -15,21 +15,21 @@ from ..enums import right_use
 
 
 class Period(Enum):
-    daily = 'daily'
-    weekly = 'weekly'
-    monthly = 'monthly'
-    quarterly = 'quarterly'
-    annual = 'annual'
-    one_time = 'one_time'
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    quarterly = "quarterly"
+    annual = "annual"
+    one_time = "one_time"
 
 
 class Country(RootModel[str]):
-    root: Annotated[str, Field(pattern='^[A-Z]{2}$')]
+    root: Annotated[str, Field(pattern="^[A-Z]{2}$")]
 
 
 class Exclusivity(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     scope: str | None = None
     countries: list[Country] | None = None
@@ -37,11 +37,11 @@ class Exclusivity(AdCPBaseModel):
 
 class RightsTerms(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     pricing_option_id: str
     amount: Annotated[float, Field(ge=0.0)]
-    currency: Annotated[str, Field(pattern='^[A-Z]{3}$')]
+    currency: Annotated[str, Field(pattern="^[A-Z]{3}$")]
     period: Period | None = None
     uses: list[right_use.RightUse]
     impression_cap: Annotated[int | None, Field(ge=1)] = None
@@ -49,5 +49,5 @@ class RightsTerms(AdCPBaseModel):
     start_date: date_aliased | None = None
     end_date: date_aliased | None = None
     exclusivity: Annotated[
-        Exclusivity | None, Field(description='Exclusivity terms if applicable')
+        Exclusivity | None, Field(description="Exclusivity terms if applicable")
     ] = None

@@ -12,7 +12,8 @@
     },
     "list_id": {
       "type": "string",
-      "description": "ID of the collection list to retrieve"
+      "description": "ID of the collection list to retrieve",
+      "x-entity": "collection_list"
     },
     "account": {
       "$ref": "../core/account-ref.json",

@@ -19,7 +19,8 @@
           "properties": {
             "account_id": {
               "type": "string",
-              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)"
+              "description": "Seller-assigned account identifier (from sync_accounts or list_accounts)",
+              "x-entity": "account"
             }
           },
           "required": [
@@ -44,6 +45,7 @@
                   "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                   "type": "string",
                   "pattern": "^[a-z0-9_]+$",
+                  "x-entity": "advertiser_brand",
                   "examples": [
                     "tide",
                     "cheerios",
@@ -115,7 +117,8 @@
             "operator": {
               "type": "string",
               "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
-              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "x-entity": "operator"
             },
             "sandbox": {
               "type": "boolean",
@@ -160,7 +163,8 @@
       "type": "array",
       "description": "Filter to specific media buys by publisher ID. If omitted, returns creative delivery across all matching media buys.",
       "items": {
-        "type": "string"
+        "type": "string",
+        "x-entity": "media_buy"
       },
       "minItems": 1
     },
@@ -168,7 +172,8 @@
       "type": "array",
       "description": "Filter to specific creatives by ID. If omitted, returns delivery for all creatives matching the other filters.",
       "items": {
-        "type": "string"
+        "type": "string",
+        "x-entity": "creative"
       },
       "minItems": 1
     },
@@ -233,7 +238,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.153Z",
+    "generatedAt": "2026-04-21T21:56:38.380Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

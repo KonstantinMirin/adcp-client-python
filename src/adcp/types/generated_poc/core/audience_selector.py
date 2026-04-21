@@ -14,10 +14,10 @@ from . import signal_id as signal_id_1
 
 class AudienceSelector4(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['description'], Field(description='Discriminator for description-based selectors')
+        Literal["description"], Field(description="Discriminator for description-based selectors")
     ]
     description: Annotated[
         str,
@@ -37,36 +37,36 @@ class AudienceSelector4(AdCPBaseModel):
 
 class AudienceSelector1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['signal'], Field(description='Discriminator for signal-based selectors')
+        Literal["signal"], Field(description="Discriminator for signal-based selectors")
     ]
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
-    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
+    value_type: Annotated[Literal["binary"], Field(description="Discriminator for binary signals")]
     value: Annotated[
         bool,
         Field(
-            description='Whether to include (true) or exclude (false) users matching this signal'
+            description="Whether to include (true) or exclude (false) users matching this signal"
         ),
     ]
 
 
 class AudienceSelector2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['signal'], Field(description='Discriminator for signal-based selectors')
+        Literal["signal"], Field(description="Discriminator for signal-based selectors")
     ]
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
     value_type: Annotated[
-        Literal['categorical'], Field(description='Discriminator for categorical signals')
+        Literal["categorical"], Field(description="Discriminator for categorical signals")
     ]
     values: Annotated[
         list[str],
         Field(
-            description='Values to target. Users with any of these values will be included.',
+            description="Values to target. Users with any of these values will be included.",
             min_length=1,
         ),
     ]
@@ -74,25 +74,25 @@ class AudienceSelector2(AdCPBaseModel):
 
 class AudienceSelector3(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     type: Annotated[
-        Literal['signal'], Field(description='Discriminator for signal-based selectors')
+        Literal["signal"], Field(description="Discriminator for signal-based selectors")
     ]
-    signal_id: Annotated[signal_id_1.SignalId, Field(description='The signal to target')]
+    signal_id: Annotated[signal_id_1.SignalId, Field(description="The signal to target")]
     value_type: Annotated[
-        Literal['numeric'], Field(description='Discriminator for numeric signals')
+        Literal["numeric"], Field(description="Discriminator for numeric signals")
     ]
     min_value: Annotated[
         float | None,
         Field(
-            description='Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided.'
+            description="Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided."
         ),
     ] = None
     max_value: Annotated[
         float | None,
         Field(
-            description='Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided.'
+            description="Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided."
         ),
     ] = None
 
@@ -104,12 +104,12 @@ class AudienceSelector(
         AudienceSelector1 | AudienceSelector2 | AudienceSelector3 | AudienceSelector4,
         Field(
             description="Selects an audience by signal reference or natural language description. Uses 'type' as the primary discriminator (signal vs description). Signal selectors additionally use 'value_type' to determine the targeting expression format (matching signal-targeting.json variants).",
-            title='Audience Selector',
+            title="Audience Selector",
         ),
     ]
 
     def __getattr__(self, name: str) -> Any:
         """Proxy attribute access to the wrapped type."""
-        if name.startswith('_'):
+        if name.startswith("_"):
             raise AttributeError(name)
         return getattr(self.root, name)

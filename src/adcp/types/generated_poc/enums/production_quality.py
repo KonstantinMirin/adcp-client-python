@@ -8,6 +8,6 @@ from enum import Enum
 
 
 class ProductionQuality(Enum):
-    professional = 'professional'
-    prosumer = 'prosumer'
-    ugc = 'ugc'
+    professional = "professional"
+    prosumer = "prosumer"
+    ugc = "ugc"

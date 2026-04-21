@@ -16,7 +16,7 @@ from ..core import ext as ext_1
 
 class CreateContentStandardsResponse1(AdCPBaseModel):
     standards_id: Annotated[
-        str, Field(description='Unique identifier for the created standards configuration')
+        str, Field(description="Unique identifier for the created standards configuration")
     ]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
@@ -27,7 +27,7 @@ class CreateContentStandardsResponse2(AdCPBaseModel):
     conflicting_standards_id: Annotated[
         str | None,
         Field(
-            description='If the error is a scope conflict, the ID of the existing standards that conflict'
+            description="If the error is a scope conflict, the ID of the existing standards that conflict"
         ),
     ] = None
     context: context_1.ContextObject | None = None

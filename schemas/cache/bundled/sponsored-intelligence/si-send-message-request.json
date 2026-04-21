@@ -3,6 +3,7 @@
   "title": "SI Send Message Request",
   "description": "Send a message to the brand agent within an active session",
   "x-status": "experimental",
+  "x-mutates-state": true,
   "type": "object",
   "properties": {
     "adcp_major_version": {
@@ -20,7 +21,8 @@
     },
     "session_id": {
       "type": "string",
-      "description": "Active session identifier"
+      "description": "Active session identifier",
+      "x-entity": "si_session"
     },
     "message": {
       "type": "string",
@@ -72,7 +74,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.750Z",
+    "generatedAt": "2026-04-21T21:56:38.641Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

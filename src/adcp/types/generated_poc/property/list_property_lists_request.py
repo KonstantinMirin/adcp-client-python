@@ -17,7 +17,7 @@ from ..core import pagination_request
 
 class ListPropertyListsRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -30,11 +30,11 @@ class ListPropertyListsRequest(AdCPBaseModel):
     account: Annotated[
         account_ref.AccountReference | None,
         Field(
-            description='Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent.'
+            description="Filter to lists owned by this account. When omitted, returns lists across all accounts accessible to the authenticated agent."
         ),
     ] = None
     name_contains: Annotated[
-        str | None, Field(description='Filter to lists whose name contains this string')
+        str | None, Field(description="Filter to lists whose name contains this string")
     ] = None
     pagination: pagination_request.PaginationRequest | None = None
     context: context_1.ContextObject | None = None

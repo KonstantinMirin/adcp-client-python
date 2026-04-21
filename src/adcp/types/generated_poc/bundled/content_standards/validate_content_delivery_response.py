@@ -18,15 +18,15 @@ class Summary(AdCPBaseModel):
 
 
 class Verdict(Enum):
-    pass_ = 'pass'
-    fail = 'fail'
+    pass_ = "pass"
+    fail = "fail"
 
 
 class Status(Enum):
-    passed = 'passed'
-    failed = 'failed'
-    warning = 'warning'
-    unevaluated = 'unevaluated'
+    passed = "passed"
+    failed = "failed"
+    warning = "warning"
+    unevaluated = "unevaluated"
 
 
 class Feature(AdCPBaseModel):
@@ -40,7 +40,7 @@ class Feature(AdCPBaseModel):
     policy_id: Annotated[
         str | None,
         Field(
-            description='Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry.'
+            description="Registry policy ID that triggered this result. Present when the result originates from a specific registry policy (e.g., GARM category, CSBS standard). Enables programmatic routing by looking up the policy in the registry."
         ),
     ] = None
     explanation: Annotated[
@@ -52,7 +52,7 @@ class Feature(AdCPBaseModel):
     confidence: Annotated[
         float | None,
         Field(
-            description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.',
+            description="Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.",
             ge=0.0,
             le=1.0,
         ),
@@ -60,8 +60,8 @@ class Feature(AdCPBaseModel):
 
 
 class Result(AdCPBaseModel):
-    record_id: Annotated[str, Field(description='Which delivery record was evaluated')]
-    verdict: Annotated[Verdict, Field(description='Overall pass/fail verdict for this record')]
+    record_id: Annotated[str, Field(description="Which delivery record was evaluated")]
+    verdict: Annotated[Verdict, Field(description="Overall pass/fail verdict for this record")]
     features: Annotated[
         list[Feature] | None,
         Field(
@@ -71,63 +71,63 @@ class Result(AdCPBaseModel):
 
 
 class ValidateContentDeliveryResponse3(AdCPBaseModel):
-    summary: Annotated[Summary, Field(description='Summary counts across all records')]
-    results: Annotated[list[Result], Field(description='Per-record evaluation results')]
+    summary: Annotated[Summary, Field(description="Summary counts across all records")]
+    results: Annotated[list[Result], Field(description="Per-record evaluation results")]
     context: Annotated[
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None
 
 
 class Recovery(Enum):
-    transient = 'transient'
-    correctable = 'correctable'
-    terminal = 'terminal'
+    transient = "transient"
+    correctable = "correctable"
+    terminal = "terminal"
 
 
 class Error(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     code: Annotated[
         str,
         Field(
-            description='Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.',
+            description="Error code for programmatic handling. Standard codes are defined in error-code.json and enable autonomous agent recovery. Sellers MAY use codes not in the standard vocabulary for platform-specific errors; agents MUST handle unknown codes gracefully by falling back to the recovery classification.",
             max_length=64,
             min_length=1,
         ),
     ]
-    message: Annotated[str, Field(description='Human-readable error message')]
+    message: Annotated[str, Field(description="Human-readable error message")]
     field: Annotated[
         str | None,
         Field(description="Field path associated with the error (e.g., 'packages[0].targeting')"),
     ] = None
-    suggestion: Annotated[str | None, Field(description='Suggested fix for the error')] = None
+    suggestion: Annotated[str | None, Field(description="Suggested fix for the error")] = None
     retry_after: Annotated[
         float | None,
         Field(
-            description='Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.',
+            description="Seconds to wait before retrying the operation. Sellers MUST return values between 1 and 3600. Clients MUST clamp values outside this range.",
             ge=1.0,
             le=3600.0,
         ),
     ] = None
     details: Annotated[
-        dict[str, Any] | None, Field(description='Additional task-specific error details')
+        dict[str, Any] | None, Field(description="Additional task-specific error details")
     ] = None
     recovery: Annotated[
         Recovery | None,
         Field(
-            description='Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found).'
+            description="Agent recovery classification. transient: retry after delay (rate limit, service unavailable, timeout). correctable: fix the request and resend (invalid field, budget too low, creative rejected). terminal: requires human action (account suspended, payment required, account not found)."
         ),
     ] = None
 
@@ -138,16 +138,18 @@ class ValidateContentDeliveryResponse4(AdCPBaseModel):
         dict[str, Any] | None,
         Field(
             description="Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
-            title='Context Object',
+            title="Context Object",
         ),
     ] = None
     ext: Annotated[
         dict[str, Any] | None,
         Field(
-            description='Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.',
-            title='Extension Object',
+            description="Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+            title="Extension Object",
         ),
     ] = None
 
 
-ValidateContentDeliveryResponse = ValidateContentDeliveryResponse3 | ValidateContentDeliveryResponse4
+ValidateContentDeliveryResponse = (
+    ValidateContentDeliveryResponse3 | ValidateContentDeliveryResponse4
+)

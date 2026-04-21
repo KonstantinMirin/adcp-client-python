@@ -8,11 +8,11 @@ from enum import Enum
 
 
 class BrandAgentType(Enum):
-    brand = 'brand'
-    rights = 'rights'
-    measurement = 'measurement'
-    governance = 'governance'
-    creative = 'creative'
-    sales = 'sales'
-    buying = 'buying'
-    signals = 'signals'
+    brand = "brand"
+    rights = "rights"
+    measurement = "measurement"
+    governance = "governance"
+    creative = "creative"
+    sales = "sales"
+    buying = "buying"
+    signals = "signals"

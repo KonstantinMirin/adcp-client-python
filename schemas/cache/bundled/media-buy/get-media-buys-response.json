@@ -12,7 +12,8 @@
         "properties": {
           "media_buy_id": {
             "type": "string",
-            "description": "Seller's unique identifier for the media buy"
+            "description": "Seller's unique identifier for the media buy",
+            "x-entity": "media_buy"
           },
           "account": {
             "title": "Account",
@@ -21,7 +22,8 @@
             "properties": {
               "account_id": {
                 "type": "string",
-                "description": "Unique identifier for this account"
+                "description": "Unique identifier for this account",
+                "x-entity": "account"
               },
               "name": {
                 "type": "string",
@@ -71,6 +73,7 @@
                     "description": "Brand identifier within the house portfolio. Optional for single-brand domains.",
                     "type": "string",
                     "pattern": "^[a-z0-9_]+$",
+                    "x-entity": "advertiser_brand",
                     "examples": [
                       "tide",
                       "cheerios",
@@ -142,7 +145,8 @@
               "operator": {
                 "type": "string",
                 "description": "Domain of the entity operating this account. When the brand operates directly, this is the brand's domain.",
-                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$"
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "x-entity": "operator"
               },
               "billing": {
                 "type": "string",
@@ -1041,7 +1045,8 @@
                 },
                 "package_id": {
                   "type": "string",
-                  "description": "Package affected, when the change targeted a specific package."
+                  "description": "Package affected, when the change targeted a specific package.",
+                  "x-entity": "package"
                 },
                 "ext": {
                   "title": "Extension Object",
@@ -1068,11 +1073,13 @@
               "properties": {
                 "package_id": {
                   "type": "string",
-                  "description": "Seller's package identifier"
+                  "description": "Seller's package identifier",
+                  "x-entity": "package"
                 },
                 "product_id": {
                   "type": "string",
-                  "description": "Product identifier this package is purchased from"
+                  "description": "Product identifier this package is purchased from",
+                  "x-entity": "product"
                 },
                 "budget": {
                   "type": "number",
@@ -1093,6 +1100,897 @@
                   "type": "number",
                   "description": "Goal impression count for impression-based packages",
                   "minimum": 0
+                },
+                "targeting_overlay": {
+                  "title": "Targeting Overlay",
+                  "description": "Targeting overlay applied to this package, echoed from the most recent create_media_buy or update_media_buy. Sellers SHOULD echo any persisted targeting so buyers can verify what was stored without replaying their own request. Sellers claiming the property-lists or collection-lists specialisms MUST include, within this targeting_overlay, the PropertyListReference / CollectionListReference they persisted.",
+                  "type": "object",
+                  "properties": {
+                    "geo_countries": {
+                      "type": "array",
+                      "description": "Restrict delivery to specific countries. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}$"
+                      },
+                      "minItems": 1
+                    },
+                    "geo_countries_exclude": {
+                      "type": "array",
+                      "description": "Exclude specific countries from delivery. ISO 3166-1 alpha-2 codes (e.g., 'US', 'GB', 'DE').",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}$"
+                      },
+                      "minItems": 1
+                    },
+                    "geo_regions": {
+                      "type": "array",
+                      "description": "Restrict delivery to specific regions/states. ISO 3166-2 subdivision codes (e.g., 'US-CA', 'GB-SCT').",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$"
+                      },
+                      "minItems": 1
+                    },
+                    "geo_regions_exclude": {
+                      "type": "array",
+                      "description": "Exclude specific regions/states from delivery. ISO 3166-2 subdivision codes (e.g., 'US-CA', 'GB-SCT').",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Z]{2}-[A-Z0-9]{1,3}$"
+                      },
+                      "minItems": 1
+                    },
+                    "geo_metros": {
+                      "type": "array",
+                      "description": "Restrict delivery to specific metro areas. Each entry specifies the classification system and target values. Seller must declare supported systems in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "system": {
+                            "title": "Metro Area System",
+                            "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
+                            "type": "string",
+                            "enum": [
+                              "nielsen_dma",
+                              "uk_itl1",
+                              "uk_itl2",
+                              "eurostat_nuts2",
+                              "custom"
+                            ]
+                          },
+                          "values": {
+                            "type": "array",
+                            "description": "Metro codes within the system (e.g., ['501', '602'] for Nielsen DMAs)",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          }
+                        },
+                        "required": [
+                          "system",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "geo_metros_exclude": {
+                      "type": "array",
+                      "description": "Exclude specific metro areas from delivery. Each entry specifies the classification system and excluded values. Seller must declare supported systems in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "system": {
+                            "title": "Metro Area System",
+                            "description": "Metro area classification system (e.g., 'nielsen_dma', 'uk_itl2')",
+                            "type": "string",
+                            "enum": [
+                              "nielsen_dma",
+                              "uk_itl1",
+                              "uk_itl2",
+                              "eurostat_nuts2",
+                              "custom"
+                            ]
+                          },
+                          "values": {
+                            "type": "array",
+                            "description": "Metro codes to exclude within the system (e.g., ['501', '602'] for Nielsen DMAs)",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          }
+                        },
+                        "required": [
+                          "system",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "geo_postal_areas": {
+                      "type": "array",
+                      "description": "Restrict delivery to specific postal areas. Each entry specifies the postal system and target values. Seller must declare supported systems in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "system": {
+                            "title": "Postal Code System",
+                            "description": "Postal code system (e.g., 'us_zip', 'gb_outward'). System name encodes country and precision.",
+                            "type": "string",
+                            "enum": [
+                              "us_zip",
+                              "us_zip_plus_four",
+                              "gb_outward",
+                              "gb_full",
+                              "ca_fsa",
+                              "ca_full",
+                              "de_plz",
+                              "fr_code_postal",
+                              "au_postcode",
+                              "ch_plz",
+                              "at_plz"
+                            ]
+                          },
+                          "values": {
+                            "type": "array",
+                            "description": "Postal codes within the system (e.g., ['10001', '10002'] for us_zip)",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          }
+                        },
+                        "required": [
+                          "system",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "geo_postal_areas_exclude": {
+                      "type": "array",
+                      "description": "Exclude specific postal areas from delivery. Each entry specifies the postal system and excluded values. Seller must declare supported systems in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "system": {
+                            "title": "Postal Code System",
+                            "description": "Postal code system (e.g., 'us_zip', 'gb_outward'). System name encodes country and precision.",
+                            "type": "string",
+                            "enum": [
+                              "us_zip",
+                              "us_zip_plus_four",
+                              "gb_outward",
+                              "gb_full",
+                              "ca_fsa",
+                              "ca_full",
+                              "de_plz",
+                              "fr_code_postal",
+                              "au_postcode",
+                              "ch_plz",
+                              "at_plz"
+                            ]
+                          },
+                          "values": {
+                            "type": "array",
+                            "description": "Postal codes to exclude within the system (e.g., ['10001', '10002'] for us_zip)",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          }
+                        },
+                        "required": [
+                          "system",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "daypart_targets": {
+                      "type": "array",
+                      "description": "Restrict delivery to specific time windows. Each entry specifies days of week and an hour range.",
+                      "items": {
+                        "title": "Daypart Target",
+                        "description": "A time window for daypart targeting. Specifies days of week and an hour range. start_hour is inclusive, end_hour is exclusive (e.g., 6-10 = 6:00am to 10:00am). Follows the Google Ads AdScheduleInfo / DV360 DayPartTargeting pattern.",
+                        "type": "object",
+                        "properties": {
+                          "days": {
+                            "type": "array",
+                            "description": "Days of week this window applies to. Use multiple days for compact targeting (e.g., monday-friday in one object).",
+                            "items": {
+                              "title": "Day of Week",
+                              "description": "Days of the week for daypart targeting",
+                              "type": "string",
+                              "enum": [
+                                "monday",
+                                "tuesday",
+                                "wednesday",
+                                "thursday",
+                                "friday",
+                                "saturday",
+                                "sunday"
+                              ]
+                            },
+                            "minItems": 1
+                          },
+                          "start_hour": {
+                            "type": "integer",
+                            "description": "Start hour (inclusive), 0-23 in 24-hour format. 0 = midnight, 6 = 6:00am, 18 = 6:00pm.",
+                            "minimum": 0,
+                            "maximum": 23
+                          },
+                          "end_hour": {
+                            "type": "integer",
+                            "description": "End hour (exclusive), 1-24 in 24-hour format. 10 = 10:00am, 24 = midnight. Must be greater than start_hour.",
+                            "minimum": 1,
+                            "maximum": 24
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Optional human-readable name for this time window (e.g., 'Morning Drive', 'Prime Time')"
+                          }
+                        },
+                        "required": [
+                          "days",
+                          "start_hour",
+                          "end_hour"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "axe_include_segment": {
+                      "type": "string",
+                      "description": "Deprecated: Use TMP provider fields instead. AXE segment ID to include for targeting.",
+                      "deprecated": true
+                    },
+                    "axe_exclude_segment": {
+                      "type": "string",
+                      "description": "Deprecated: Use TMP provider fields instead. AXE segment ID to exclude from targeting.",
+                      "deprecated": true
+                    },
+                    "audience_include": {
+                      "type": "array",
+                      "description": "Restrict delivery to members of these first-party CRM audiences. Only users present in the uploaded lists are eligible. References audience_id values from sync_audiences on the same seller account \u2014 audience IDs are not portable across sellers. Not for lookalike expansion \u2014 express that intent in the campaign brief. Seller must declare support in get_adcp_capabilities.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "audience_exclude": {
+                      "type": "array",
+                      "description": "Suppress delivery to members of these first-party CRM audiences. Matched users are excluded regardless of other targeting. References audience_id values from sync_audiences on the same seller account \u2014 audience IDs are not portable across sellers. Seller must declare support in get_adcp_capabilities.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "minItems": 1
+                    },
+                    "frequency_cap": {
+                      "title": "Frequency Cap",
+                      "description": "Frequency capping settings for package-level application. Two types of frequency control can be used independently or together: suppress enforces a cooldown between consecutive exposures; max_impressions + per + window caps total exposures per entity in a time window. When both suppress and max_impressions are set, an impression is delivered only if both constraints permit it (AND semantics). At least one of suppress, suppress_minutes, or max_impressions must be set.",
+                      "type": "object",
+                      "properties": {
+                        "suppress": {
+                          "allOf": [
+                            {
+                              "title": "Duration",
+                              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+                              "type": "object",
+                              "properties": {
+                                "interval": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "description": "Number of time units. Must be 1 when unit is 'campaign'."
+                                },
+                                "unit": {
+                                  "type": "string",
+                                  "enum": [
+                                    "seconds",
+                                    "minutes",
+                                    "hours",
+                                    "days",
+                                    "campaign"
+                                  ],
+                                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight."
+                                }
+                              },
+                              "required": [
+                                "interval",
+                                "unit"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Cooldown period between consecutive exposures to the same entity. Prevents back-to-back ad delivery (e.g. {\"interval\": 60, \"unit\": \"minutes\"} for a 1-hour cooldown). Preferred over suppress_minutes."
+                        },
+                        "suppress_minutes": {
+                          "type": "number",
+                          "description": "Deprecated \u2014 use suppress instead. Cooldown period in minutes between consecutive exposures to the same entity (e.g. 60 for a 1-hour cooldown).",
+                          "minimum": 0
+                        },
+                        "max_impressions": {
+                          "type": "integer",
+                          "description": "Maximum number of impressions per entity per window. For duration windows, implementations typically use a rolling window; 'campaign' applies a fixed cap across the full flight.",
+                          "minimum": 1
+                        },
+                        "per": {
+                          "allOf": [
+                            {
+                              "title": "Reach Unit",
+                              "description": "Unit of measurement for reach and audience size metrics. Different channels and measurement providers count reach in fundamentally different units, making cross-channel comparison impossible without declaring the unit.",
+                              "type": "string",
+                              "enum": [
+                                "individuals",
+                                "households",
+                                "devices",
+                                "accounts",
+                                "cookies",
+                                "custom"
+                              ],
+                              "enumDescriptions": {
+                                "individuals": "Unique people. Panel-based or identity-resolved measurement.",
+                                "households": "Unique households or TV homes.",
+                                "devices": "Unique device identifiers (IDFA, GAID, CTV device ID).",
+                                "accounts": "Unique logged-in accounts (platform-specific identity).",
+                                "cookies": "Unique browser cookies.",
+                                "custom": "Publisher-defined reach unit. Describe in ext."
+                              }
+                            }
+                          ],
+                          "description": "Entity granularity for impression counting. Required when max_impressions is set."
+                        },
+                        "window": {
+                          "allOf": [
+                            {
+                              "title": "Duration",
+                              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+                              "type": "object",
+                              "properties": {
+                                "interval": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "description": "Number of time units. Must be 1 when unit is 'campaign'."
+                                },
+                                "unit": {
+                                  "type": "string",
+                                  "enum": [
+                                    "seconds",
+                                    "minutes",
+                                    "hours",
+                                    "days",
+                                    "campaign"
+                                  ],
+                                  "description": "Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight."
+                                }
+                              },
+                              "required": [
+                                "interval",
+                                "unit"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ],
+                          "description": "Time window for the max_impressions cap (e.g. {\"interval\": 7, \"unit\": \"days\"} or {\"interval\": 1, \"unit\": \"campaign\"} for the full flight). Required when max_impressions is set."
+                        }
+                      },
+                      "anyOf": [
+                        {
+                          "required": [
+                            "suppress"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "suppress_minutes"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "max_impressions"
+                          ]
+                        }
+                      ],
+                      "dependencies": {
+                        "max_impressions": [
+                          "per",
+                          "window"
+                        ],
+                        "per": [
+                          "max_impressions"
+                        ],
+                        "window": [
+                          "max_impressions"
+                        ]
+                      },
+                      "additionalProperties": true
+                    },
+                    "property_list": {
+                      "title": "Property List Reference",
+                      "description": "Reference to a property list for targeting specific properties within this product. The package runs on the intersection of the product's publisher_properties and this list. Sellers SHOULD return a validation error if the product has property_targeting_allowed: false.",
+                      "type": "object",
+                      "properties": {
+                        "agent_url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL of the agent managing the property list"
+                        },
+                        "list_id": {
+                          "type": "string",
+                          "description": "Identifier for the property list within the agent",
+                          "minLength": 1,
+                          "x-entity": "property_list"
+                        },
+                        "auth_token": {
+                          "type": "string",
+                          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access."
+                        }
+                      },
+                      "required": [
+                        "agent_url",
+                        "list_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "collection_list": {
+                      "title": "Collection List Reference",
+                      "description": "Reference to a collection list for including specific collections (programs, shows) within this product. The package runs on the intersection of matched collections and this list. Use for inclusion-based collection targeting. Seller must declare support in get_adcp_capabilities.",
+                      "type": "object",
+                      "properties": {
+                        "agent_url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL of the agent managing the collection list"
+                        },
+                        "list_id": {
+                          "type": "string",
+                          "description": "Identifier for the collection list within the agent",
+                          "minLength": 1,
+                          "x-entity": "collection_list"
+                        },
+                        "auth_token": {
+                          "type": "string",
+                          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access."
+                        }
+                      },
+                      "required": [
+                        "agent_url",
+                        "list_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "collection_list_exclude": {
+                      "title": "Collection List Reference",
+                      "description": "Reference to a collection list for excluding specific collections (programs, shows) from this product. Matched collections must not carry the buyer's ads. Use for brand safety do-not-air lists. Seller must declare support in get_adcp_capabilities.",
+                      "type": "object",
+                      "properties": {
+                        "agent_url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "URL of the agent managing the collection list"
+                        },
+                        "list_id": {
+                          "type": "string",
+                          "description": "Identifier for the collection list within the agent",
+                          "minLength": 1,
+                          "x-entity": "collection_list"
+                        },
+                        "auth_token": {
+                          "type": "string",
+                          "description": "JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access."
+                        }
+                      },
+                      "required": [
+                        "agent_url",
+                        "list_id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "age_restriction": {
+                      "type": "object",
+                      "description": "Age restriction for compliance. Use for legal requirements (alcohol, gambling), not audience targeting.",
+                      "properties": {
+                        "min": {
+                          "type": "integer",
+                          "minimum": 13,
+                          "maximum": 99,
+                          "description": "Minimum age required"
+                        },
+                        "verification_required": {
+                          "type": "boolean",
+                          "default": false,
+                          "description": "Whether verified age (not inferred) is required for compliance"
+                        },
+                        "accepted_methods": {
+                          "type": "array",
+                          "description": "Accepted verification methods. If omitted, any method the platform supports is acceptable.",
+                          "items": {
+                            "title": "Age Verification Method",
+                            "description": "Methods for verifying user age for compliance. Does not include 'inferred' as it is not accepted for regulatory compliance.",
+                            "type": "string",
+                            "enum": [
+                              "facial_age_estimation",
+                              "id_document",
+                              "digital_id",
+                              "credit_card",
+                              "world_id"
+                            ]
+                          },
+                          "minItems": 1
+                        }
+                      },
+                      "required": [
+                        "min"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "device_platform": {
+                      "type": "array",
+                      "description": "Restrict to specific platforms. Use for technical compatibility (app only works on iOS). Values from Sec-CH-UA-Platform standard, extended for CTV.",
+                      "items": {
+                        "title": "Device Platform",
+                        "description": "Operating system platforms for device targeting. Browser values from Sec-CH-UA-Platform standard, extended for CTV.",
+                        "type": "string",
+                        "enum": [
+                          "ios",
+                          "android",
+                          "windows",
+                          "macos",
+                          "linux",
+                          "chromeos",
+                          "tvos",
+                          "tizen",
+                          "webos",
+                          "fire_os",
+                          "roku_os",
+                          "unknown"
+                        ]
+                      },
+                      "minItems": 1
+                    },
+                    "device_type": {
+                      "type": "array",
+                      "description": "Restrict to specific device form factors. Use for campaigns targeting hardware categories rather than operating systems (e.g., mobile-only promotions, CTV campaigns).",
+                      "items": {
+                        "title": "Device Type",
+                        "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) \u2192 mobile, 2 (PC) \u2192 desktop, 4 (Phone) \u2192 mobile, 5 (Tablet) \u2192 tablet, 6 (Connected Device) \u2192 ctv, 7 (Set Top Box) \u2192 ctv. DOOH inventory uses dooh.",
+                        "type": "string",
+                        "enum": [
+                          "desktop",
+                          "mobile",
+                          "tablet",
+                          "ctv",
+                          "dooh",
+                          "unknown"
+                        ]
+                      },
+                      "minItems": 1
+                    },
+                    "device_type_exclude": {
+                      "type": "array",
+                      "description": "Exclude specific device form factors from delivery (e.g., exclude CTV for app-install campaigns).",
+                      "items": {
+                        "title": "Device Type",
+                        "description": "Device form factor categories for targeting and reporting. Complements device-platform (operating system) with hardware classification. OpenRTB mapping: 1 (Mobile/Tablet General) \u2192 mobile, 2 (PC) \u2192 desktop, 4 (Phone) \u2192 mobile, 5 (Tablet) \u2192 tablet, 6 (Connected Device) \u2192 ctv, 7 (Set Top Box) \u2192 ctv. DOOH inventory uses dooh.",
+                        "type": "string",
+                        "enum": [
+                          "desktop",
+                          "mobile",
+                          "tablet",
+                          "ctv",
+                          "dooh",
+                          "unknown"
+                        ]
+                      },
+                      "minItems": 1
+                    },
+                    "store_catchments": {
+                      "type": "array",
+                      "description": "Target users within store catchment areas from a synced store catalog. Each entry references a store-type catalog and optionally narrows to specific stores or catchment zones.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "catalog_id": {
+                            "type": "string",
+                            "description": "Synced store-type catalog ID from sync_catalogs."
+                          },
+                          "store_ids": {
+                            "type": "array",
+                            "description": "Filter to specific stores within the catalog. Omit to target all stores.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          },
+                          "catchment_ids": {
+                            "type": "array",
+                            "description": "Catchment zone IDs to target (e.g., 'walk', 'drive'). Omit to target all catchment zones.",
+                            "items": {
+                              "type": "string"
+                            },
+                            "minItems": 1
+                          }
+                        },
+                        "required": [
+                          "catalog_id"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "minItems": 1
+                    },
+                    "geo_proximity": {
+                      "type": "array",
+                      "description": "Target users within travel time, distance, or a custom boundary around arbitrary geographic points. Multiple entries use OR semantics \u2014 a user within range of any listed point is eligible. For campaigns targeting 10+ locations, consider using store_catchments with a location catalog instead. Seller must declare support in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "lat": {
+                            "type": "number",
+                            "minimum": -90,
+                            "maximum": 90,
+                            "description": "Latitude in decimal degrees (WGS 84). Required for travel_time and radius methods."
+                          },
+                          "lng": {
+                            "type": "number",
+                            "minimum": -180,
+                            "maximum": 180,
+                            "description": "Longitude in decimal degrees (WGS 84). Required for travel_time and radius methods."
+                          },
+                          "label": {
+                            "type": "string",
+                            "description": "Human-readable label for this entry (e.g., 'D\u00fcsseldorf', 'Heathrow Airport', 'Primary trade area')."
+                          },
+                          "travel_time": {
+                            "type": "object",
+                            "description": "Travel time limit for isochrone calculation. The platform resolves this to a geographic boundary based on actual transportation networks.",
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "minimum": 1,
+                                "description": "Travel time limit."
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "min",
+                                  "hr"
+                                ],
+                                "description": "Time unit."
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "transport_mode": {
+                            "title": "Transport Mode",
+                            "description": "Transportation mode for isochrone calculation. Required when travel_time is provided.",
+                            "type": "string",
+                            "enum": [
+                              "walking",
+                              "cycling",
+                              "driving",
+                              "public_transport"
+                            ],
+                            "enumDescriptions": {
+                              "walking": "Pedestrian travel on walkable paths and sidewalks",
+                              "cycling": "Bicycle travel on roads and cycle paths",
+                              "driving": "Motor vehicle travel on road networks",
+                              "public_transport": "Public transit including bus, rail, metro, and ferry"
+                            }
+                          },
+                          "radius": {
+                            "type": "object",
+                            "description": "Simple radius from the point. The platform draws a circle of this distance around the coordinates.",
+                            "properties": {
+                              "value": {
+                                "type": "number",
+                                "exclusiveMinimum": 0,
+                                "description": "Radius distance."
+                              },
+                              "unit": {
+                                "title": "Distance Unit",
+                                "description": "Distance unit.",
+                                "type": "string",
+                                "enum": [
+                                  "km",
+                                  "mi",
+                                  "m"
+                                ],
+                                "enumDescriptions": {
+                                  "km": "Kilometers",
+                                  "mi": "Miles",
+                                  "m": "Meters"
+                                }
+                              }
+                            },
+                            "required": [
+                              "value",
+                              "unit"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "geometry": {
+                            "type": "object",
+                            "description": "Pre-computed GeoJSON geometry defining the proximity boundary. Use when the buyer has already calculated isochrones (via TravelTime, Mapbox, etc.) or has custom boundaries. When geometry is provided, lat/lng are not required.",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "Polygon",
+                                  "MultiPolygon"
+                                ],
+                                "description": "GeoJSON geometry type."
+                              },
+                              "coordinates": {
+                                "type": "array",
+                                "description": "GeoJSON coordinates array. For Polygon: array of linear rings. For MultiPolygon: array of polygons."
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "coordinates"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "ext": {
+                            "title": "Extension Object",
+                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "oneOf": [
+                          {
+                            "required": [
+                              "lat",
+                              "lng",
+                              "travel_time",
+                              "transport_mode"
+                            ],
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "radius"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "geometry"
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "required": [
+                              "lat",
+                              "lng",
+                              "radius"
+                            ],
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "travel_time"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "geometry"
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "required": [
+                              "geometry"
+                            ],
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "travel_time"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "radius"
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        ],
+                        "additionalProperties": true
+                      },
+                      "minItems": 1
+                    },
+                    "language": {
+                      "type": "array",
+                      "description": "Restrict to users with specific language preferences. ISO 639-1 codes (e.g., 'en', 'es', 'fr').",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[a-z]{2}$"
+                      },
+                      "minItems": 1
+                    },
+                    "keyword_targets": {
+                      "type": "array",
+                      "description": "Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) \u2014 the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "keyword": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "The keyword to target"
+                          },
+                          "match_type": {
+                            "type": "string",
+                            "enum": [
+                              "broad",
+                              "phrase",
+                              "exact"
+                            ],
+                            "description": "Match type: broad matches related queries, phrase matches queries containing the keyword phrase, exact matches the query exactly"
+                          },
+                          "bid_price": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Per-keyword bid price, denominated in the same currency as the package's pricing option. Overrides the package-level bid_price for this keyword. Inherits the max_bid interpretation from the pricing option: when max_bid is true, this is the keyword's bid ceiling; when false, this is the exact bid. If omitted, the package bid_price applies."
+                          }
+                        },
+                        "required": [
+                          "keyword",
+                          "match_type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    },
+                    "negative_keywords": {
+                      "type": "array",
+                      "description": "Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "keyword": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "The keyword to exclude"
+                          },
+                          "match_type": {
+                            "type": "string",
+                            "enum": [
+                              "broad",
+                              "phrase",
+                              "exact"
+                            ],
+                            "description": "Match type for exclusion"
+                          }
+                        },
+                        "required": [
+                          "keyword",
+                          "match_type"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1
+                    }
+                  },
+                  "additionalProperties": true
                 },
                 "start_time": {
                   "type": "string",
@@ -1159,7 +2057,8 @@
                     "properties": {
                       "creative_id": {
                         "type": "string",
-                        "description": "Creative identifier"
+                        "description": "Creative identifier",
+                        "x-entity": "creative"
                       },
                       "approval_status": {
                         "title": "Creative Approval Status",
@@ -1194,6 +2093,7 @@
                   "items": {
                     "title": "Format ID",
                     "description": "Structured format identifier with agent URL and format name. Can reference: (1) a concrete format with fixed dimensions (id only), (2) a template format without parameters (id only), or (3) a template format with parameters (id + dimensions/duration). Template formats accept parameters in format_id while concrete formats have fixed dimensions in their definition. Parameterized format IDs create unique, specific format variants.",
+                    "x-entity": "creative_format",
                     "type": "object",
                     "properties": {
                       "agent_url": {
@@ -1442,7 +2342,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.486Z",
+    "generatedAt": "2026-04-21T21:56:38.550Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

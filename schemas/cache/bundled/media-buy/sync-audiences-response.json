@@ -17,7 +17,8 @@
             "properties": {
               "audience_id": {
                 "type": "string",
-                "description": "Audience ID from the request (buyer's identifier)"
+                "description": "Audience ID from the request (buyer's identifier)",
+                "x-entity": "audience"
               },
               "name": {
                 "type": "string",
@@ -90,8 +91,8 @@
                         "other"
                       ],
                       "enumDescriptions": {
-                        "hashed_email": "SHA-256 hashed email address (matches audience-member.hashed_email)",
-                        "hashed_phone": "SHA-256 hashed phone number in E.164 format (matches audience-member.hashed_phone)",
+                        "hashed_email": "SHA-256 hashed email address (matches audience-member.hashed_email). Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the email namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
+                        "hashed_phone": "SHA-256 hashed phone number in E.164 format (matches audience-member.hashed_phone). Pseudonymous PII, not anonymous \u2014 unsalted SHA-256 of the E.164 namespace is recoverable via precomputed dictionaries; treat as PII. See docs/reference/privacy-considerations#unsalted-hashed-identifiers-are-pseudonymous-not-anonymous.",
                         "rampid": "LiveRamp RampID",
                         "id5": "ID5 universal ID",
                         "uid2": "Unified ID 2.0",
@@ -321,7 +322,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-20T02:09:29.580Z",
+    "generatedAt": "2026-04-21T21:56:38.588Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

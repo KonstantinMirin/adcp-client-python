@@ -8,11 +8,11 @@ from enum import Enum
 
 
 class DisclosurePosition(Enum):
-    prominent = 'prominent'
-    footer = 'footer'
-    audio = 'audio'
-    subtitle = 'subtitle'
-    overlay = 'overlay'
-    end_card = 'end_card'
-    pre_roll = 'pre_roll'
-    companion = 'companion'
+    prominent = "prominent"
+    footer = "footer"
+    audio = "audio"
+    subtitle = "subtitle"
+    overlay = "overlay"
+    end_card = "end_card"
+    pre_roll = "pre_roll"
+    companion = "companion"

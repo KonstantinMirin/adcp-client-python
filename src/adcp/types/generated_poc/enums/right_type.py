@@ -8,8 +8,8 @@ from enum import Enum
 
 
 class RightType(Enum):
-    talent = 'talent'
-    character = 'character'
-    brand_ip = 'brand_ip'
-    music = 'music'
-    stock_media = 'stock_media'
+    talent = "talent"
+    character = "character"
+    brand_ip = "brand_ip"
+    music = "music"
+    stock_media = "stock_media"

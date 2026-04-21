@@ -14,32 +14,31 @@ from ..core import ext as ext_1
 from ..core import identifier, pagination_response
 from . import property_list
 
-
 _list = list  # alias to avoid shadowing by field name
 
 
 class GetPropertyListResponse(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     list: Annotated[
         property_list.PropertyList,
-        Field(description='The property list metadata (always returned)'),
+        Field(description="The property list metadata (always returned)"),
     ]
     identifiers: Annotated[
         _list[identifier.Identifier] | None,
         Field(
-            description='Resolved identifiers that passed filters (if resolve=true). Cache these locally for real-time use.'
+            description="Resolved identifiers that passed filters (if resolve=true). Cache these locally for real-time use."
         ),
     ] = None
     pagination: pagination_response.PaginationResponse | None = None
     resolved_at: Annotated[
-        AwareDatetime | None, Field(description='When the list was resolved')
+        AwareDatetime | None, Field(description="When the list was resolved")
     ] = None
     cache_valid_until: Annotated[
         AwareDatetime | None,
         Field(
-            description='Cache expiration timestamp. Re-fetch the list after this time to get updated identifiers.'
+            description="Cache expiration timestamp. Re-fetch the list after this time to get updated identifiers."
         ),
     ] = None
     coverage_gaps: Annotated[

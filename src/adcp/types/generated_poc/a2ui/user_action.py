@@ -12,21 +12,21 @@ from pydantic import AwareDatetime, ConfigDict, Field
 
 class Action(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     name: Annotated[
         str, Field(description="Action identifier (e.g., 'view_product', 'add_to_cart')")
     ]
     context: Annotated[
-        dict[str, Any] | None, Field(description='Context data resolved from data model bindings')
+        dict[str, Any] | None, Field(description="Context data resolved from data model bindings")
     ] = None
 
 
 class A2UiUserAction(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
-    surfaceId: Annotated[str, Field(description='ID of the surface where the action occurred')]
-    componentId: Annotated[str, Field(description='ID of the component that triggered the action')]
-    action: Annotated[Action, Field(description='The action that was triggered')]
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred')] = None
+    surfaceId: Annotated[str, Field(description="ID of the surface where the action occurred")]
+    componentId: Annotated[str, Field(description="ID of the component that triggered the action")]
+    action: Annotated[Action, Field(description="The action that was triggered")]
+    timestamp: Annotated[AwareDatetime | None, Field(description="When the action occurred")] = None

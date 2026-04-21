@@ -12,22 +12,22 @@ from pydantic import ConfigDict, Field
 
 class CreativeConsumption(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     tokens: Annotated[
         int | None,
-        Field(description='LLM or generation tokens consumed during creative generation.', ge=0),
+        Field(description="LLM or generation tokens consumed during creative generation.", ge=0),
     ] = None
     images_generated: Annotated[
-        int | None, Field(description='Number of images produced during generation.', ge=0)
+        int | None, Field(description="Number of images produced during generation.", ge=0)
     ] = None
     renders: Annotated[
-        int | None, Field(description='Number of render passes performed (video, animation).', ge=0)
+        int | None, Field(description="Number of render passes performed (video, animation).", ge=0)
     ] = None
     duration_seconds: Annotated[
         float | None,
         Field(
-            description='Processing time billed, in seconds. For compute-time pricing models.',
+            description="Processing time billed, in seconds. For compute-time pricing models.",
             ge=0.0,
         ),
     ] = None

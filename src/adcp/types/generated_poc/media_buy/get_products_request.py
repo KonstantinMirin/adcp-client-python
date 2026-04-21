@@ -20,19 +20,19 @@ from ..enums import delivery_type as delivery_type_1
 
 
 class BuyingMode(Enum):
-    brief = 'brief'
-    wholesale = 'wholesale'
-    refine = 'refine'
+    brief = "brief"
+    wholesale = "wholesale"
+    refine = "refine"
 
 
 class Refine(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     scope: Annotated[
-        Literal['request'],
+        Literal["request"],
         Field(
-            description='Change scoped to the overall request — direction for the selection as a whole.'
+            description="Change scoped to the overall request — direction for the selection as a whole."
         ),
     ]
     ask: Annotated[
@@ -45,18 +45,18 @@ class Refine(AdCPBaseModel):
 
 
 class Action(Enum):
-    include = 'include'
-    omit = 'omit'
-    more_like_this = 'more_like_this'
+    include = "include"
+    omit = "omit"
+    more_like_this = "more_like_this"
 
 
 class Refine1(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
-    scope: Annotated[Literal['product'], Field(description='Change scoped to a specific product.')]
+    scope: Annotated[Literal["product"], Field(description="Change scoped to a specific product.")]
     id: Annotated[
-        str, Field(description='Product ID from a previous get_products response.', min_length=1)
+        str, Field(description="Product ID from a previous get_products response.", min_length=1)
     ]
     action: Annotated[
         Action,
@@ -74,20 +74,20 @@ class Refine1(AdCPBaseModel):
 
 
 class Action3(Enum):
-    include = 'include'
-    omit = 'omit'
-    finalize = 'finalize'
+    include = "include"
+    omit = "omit"
+    finalize = "finalize"
 
 
 class Refine2(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='forbid',
+        extra="forbid",
     )
     scope: Annotated[
-        Literal['proposal'], Field(description='Change scoped to a specific proposal.')
+        Literal["proposal"], Field(description="Change scoped to a specific proposal.")
     ]
     id: Annotated[
-        str, Field(description='Proposal ID from a previous get_products response.', min_length=1)
+        str, Field(description="Proposal ID from a previous get_products response.", min_length=1)
     ]
     action: Annotated[
         Action3,
@@ -105,41 +105,41 @@ class Refine2(AdCPBaseModel):
 
 
 class Field1(Enum):
-    product_id = 'product_id'
-    name = 'name'
-    description = 'description'
-    publisher_properties = 'publisher_properties'
-    channels = 'channels'
-    format_ids = 'format_ids'
-    placements = 'placements'
-    delivery_type = 'delivery_type'
-    exclusivity = 'exclusivity'
-    pricing_options = 'pricing_options'
-    forecast = 'forecast'
-    outcome_measurement = 'outcome_measurement'
-    delivery_measurement = 'delivery_measurement'
-    reporting_capabilities = 'reporting_capabilities'
-    creative_policy = 'creative_policy'
-    catalog_types = 'catalog_types'
-    metric_optimization = 'metric_optimization'
-    conversion_tracking = 'conversion_tracking'
-    data_provider_signals = 'data_provider_signals'
-    max_optimization_goals = 'max_optimization_goals'
-    catalog_match = 'catalog_match'
-    collections = 'collections'
-    collection_targeting_allowed = 'collection_targeting_allowed'
-    installments = 'installments'
-    brief_relevance = 'brief_relevance'
-    expires_at = 'expires_at'
-    product_card = 'product_card'
-    product_card_detailed = 'product_card_detailed'
-    enforced_policies = 'enforced_policies'
-    trusted_match = 'trusted_match'
+    product_id = "product_id"
+    name = "name"
+    description = "description"
+    publisher_properties = "publisher_properties"
+    channels = "channels"
+    format_ids = "format_ids"
+    placements = "placements"
+    delivery_type = "delivery_type"
+    exclusivity = "exclusivity"
+    pricing_options = "pricing_options"
+    forecast = "forecast"
+    outcome_measurement = "outcome_measurement"
+    delivery_measurement = "delivery_measurement"
+    reporting_capabilities = "reporting_capabilities"
+    creative_policy = "creative_policy"
+    catalog_types = "catalog_types"
+    metric_optimization = "metric_optimization"
+    conversion_tracking = "conversion_tracking"
+    data_provider_signals = "data_provider_signals"
+    max_optimization_goals = "max_optimization_goals"
+    catalog_match = "catalog_match"
+    collections = "collections"
+    collection_targeting_allowed = "collection_targeting_allowed"
+    installments = "installments"
+    brief_relevance = "brief_relevance"
+    expires_at = "expires_at"
+    product_card = "product_card"
+    product_card_detailed = "product_card_detailed"
+    enforced_policies = "enforced_policies"
+    trusted_match = "trusted_match"
 
 
 class GetProductsRequest(AdCPBaseModel):
     model_config = ConfigDict(
-        extra='allow',
+        extra="allow",
     )
     adcp_major_version: Annotated[
         int | None,
@@ -171,13 +171,13 @@ class GetProductsRequest(AdCPBaseModel):
     brand: Annotated[
         brand_ref.BrandReference | None,
         Field(
-            description='Brand reference for product discovery context. Resolved to full brand identity at execution time.'
+            description="Brand reference for product discovery context. Resolved to full brand identity at execution time."
         ),
     ] = None
     catalog: Annotated[
         catalog_1.Catalog | None,
         Field(
-            description='Catalog of items the buyer wants to promote. The seller matches catalog items against its inventory and returns products where matches exist. Supports all catalog types: a job catalog finds job ad products, a product catalog finds sponsored product slots. Reference a synced catalog by catalog_id, or provide inline items.'
+            description="Catalog of items the buyer wants to promote. The seller matches catalog items against its inventory and returns products where matches exist. Supports all catalog types: a job catalog finds job ad products, a product catalog finds sponsored product slots. Reference a synced catalog by catalog_id, or provide inline items."
         ),
     ] = None
     account: Annotated[
@@ -189,7 +189,7 @@ class GetProductsRequest(AdCPBaseModel):
     preferred_delivery_types: Annotated[
         list[delivery_type_1.DeliveryType] | None,
         Field(
-            description='Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation — the publisher may still include other delivery types when they match the brief well.',
+            description="Delivery types the buyer prefers, in priority order. Unlike filters.delivery_type which excludes non-matching products, this signals preference for curation — the publisher may still include other delivery types when they match the brief well.",
             min_length=1,
         ),
     ] = None
@@ -197,20 +197,20 @@ class GetProductsRequest(AdCPBaseModel):
     property_list: Annotated[
         property_list_ref.PropertyListReference | None,
         Field(
-            description='[AdCP 3.0] Reference to an externally managed property list. When provided, the sales agent should filter products to only those available on properties in the list.'
+            description="[AdCP 3.0] Reference to an externally managed property list. When provided, the sales agent should filter products to only those available on properties in the list."
         ),
     ] = None
     fields: Annotated[
         list[Field1] | None,
         Field(
-            description='Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed (e.g., just IDs and pricing for comparison). Required fields (product_id, name) are always included regardless of selection.',
+            description="Specific product fields to include in the response. When omitted, all fields are returned. Use for lightweight discovery calls where only a subset of product data is needed (e.g., just IDs and pricing for comparison). Required fields (product_id, name) are always included regardless of selection.",
             min_length=1,
         ),
     ] = None
     time_budget: Annotated[
         duration.Duration | None,
         Field(
-            description='Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing.'
+            description="Maximum time the buyer will commit to this request. The seller returns the best results achievable within this budget and does not start processes (human approvals, expensive external queries) that cannot complete in time. When omitted, the seller decides timing."
         ),
     ] = None
     pagination: pagination_request.PaginationRequest | None = None
@@ -218,7 +218,7 @@ class GetProductsRequest(AdCPBaseModel):
     required_policies: Annotated[
         list[str] | None,
         Field(
-            description='Registry policy IDs that the buyer requires to be enforced for products in this response. Sellers filter products to only those that comply with or already enforce the requested policies.'
+            description="Registry policy IDs that the buyer requires to be enforced for products in this response. Sellers filter products to only those that comply with or already enforce the requested policies."
         ),
     ] = None
     ext: ext_1.ExtensionObject | None = None

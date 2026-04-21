@@ -8,15 +8,15 @@ from enum import Enum
 
 
 class ContentIdType(Enum):
-    sku = 'sku'
-    gtin = 'gtin'
-    offering_id = 'offering_id'
-    job_id = 'job_id'
-    hotel_id = 'hotel_id'
-    flight_id = 'flight_id'
-    vehicle_id = 'vehicle_id'
-    listing_id = 'listing_id'
-    store_id = 'store_id'
-    program_id = 'program_id'
-    destination_id = 'destination_id'
-    app_id = 'app_id'
+    sku = "sku"
+    gtin = "gtin"
+    offering_id = "offering_id"
+    job_id = "job_id"
+    hotel_id = "hotel_id"
+    flight_id = "flight_id"
+    vehicle_id = "vehicle_id"
+    listing_id = "listing_id"
+    store_id = "store_id"
+    program_id = "program_id"
+    destination_id = "destination_id"
+    app_id = "app_id"

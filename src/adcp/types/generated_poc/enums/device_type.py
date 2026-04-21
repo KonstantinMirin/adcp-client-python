@@ -8,9 +8,9 @@ from enum import Enum
 
 
 class DeviceType(Enum):
-    desktop = 'desktop'
-    mobile = 'mobile'
-    tablet = 'tablet'
-    ctv = 'ctv'
-    dooh = 'dooh'
-    unknown = 'unknown'
+    desktop = "desktop"
+    mobile = "mobile"
+    tablet = "tablet"
+    ctv = "ctv"
+    dooh = "dooh"
+    unknown = "unknown"

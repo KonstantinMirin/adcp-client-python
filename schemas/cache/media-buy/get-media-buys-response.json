@@ -12,7 +12,8 @@
         "properties": {
           "media_buy_id": {
             "type": "string",
-            "description": "Seller's unique identifier for the media buy"
+            "description": "Seller's unique identifier for the media buy",
+            "x-entity": "media_buy"
           },
           "account": {
             "$ref": "../core/account.json",
@@ -143,7 +144,8 @@
                 },
                 "package_id": {
                   "type": "string",
-                  "description": "Package affected, when the change targeted a specific package."
+                  "description": "Package affected, when the change targeted a specific package.",
+                  "x-entity": "package"
                 },
                 "ext": {
                   "$ref": "../core/ext.json"
@@ -167,11 +169,13 @@
               "properties": {
                 "package_id": {
                   "type": "string",
-                  "description": "Seller's package identifier"
+                  "description": "Seller's package identifier",
+                  "x-entity": "package"
                 },
                 "product_id": {
                   "type": "string",
-                  "description": "Product identifier this package is purchased from"
+                  "description": "Product identifier this package is purchased from",
+                  "x-entity": "product"
                 },
                 "budget": {
                   "type": "number",
@@ -192,6 +196,10 @@
                   "type": "number",
                   "description": "Goal impression count for impression-based packages",
                   "minimum": 0
+                },
+                "targeting_overlay": {
+                  "$ref": "../core/targeting.json",
+                  "description": "Targeting overlay applied to this package, echoed from the most recent create_media_buy or update_media_buy. Sellers SHOULD echo any persisted targeting so buyers can verify what was stored without replaying their own request. Sellers claiming the property-lists or collection-lists specialisms MUST include, within this targeting_overlay, the PropertyListReference / CollectionListReference they persisted."
                 },
                 "start_time": {
                   "type": "string",
@@ -249,7 +257,8 @@
                     "properties": {
                       "creative_id": {
                         "type": "string",
-                        "description": "Creative identifier"
+                        "description": "Creative identifier",
+                        "x-entity": "creative"
                       },
                       "approval_status": {
                         "$ref": "../enums/creative-approval-status.json"

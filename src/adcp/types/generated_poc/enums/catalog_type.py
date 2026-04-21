@@ -8,16 +8,16 @@ from enum import Enum
 
 
 class CatalogType(Enum):
-    offering = 'offering'
-    product = 'product'
-    inventory = 'inventory'
-    store = 'store'
-    promotion = 'promotion'
-    hotel = 'hotel'
-    flight = 'flight'
-    job = 'job'
-    vehicle = 'vehicle'
-    real_estate = 'real_estate'
-    education = 'education'
-    destination = 'destination'
-    app = 'app'
+    offering = "offering"
+    product = "product"
+    inventory = "inventory"
+    store = "store"
+    promotion = "promotion"
+    hotel = "hotel"
+    flight = "flight"
+    job = "job"
+    vehicle = "vehicle"
+    real_estate = "real_estate"
+    education = "education"
+    destination = "destination"
+    app = "app"
