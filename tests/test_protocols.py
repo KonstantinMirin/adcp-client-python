@@ -442,6 +442,323 @@ class TestA2AAdapter:
             assert "protocols_supported" not in info
 
 
+class TestA2AContextId:
+    """Tests for A2A contextId auto-retain, inject, and reset.
+
+    Covers the multi-turn conversation story: first send carries
+    context_id=None, server assigns one, adapter echoes it on every
+    subsequent turn. Callers can seed the id at construction (resume /
+    self-named sessions) or clear it to start a fresh conversation.
+    """
+
+    @staticmethod
+    def _captured_context_id(mock_send_message: AsyncMock) -> str | None:
+        """Pull the ``Message.context_id`` off the captured send call.
+
+        The adapter wraps the outbound ``Message`` in ``MessageSendParams``
+        inside a ``SendMessageRequest`` — drill through to the message.
+        """
+        request = mock_send_message.call_args[0][0]
+        return request.params.message.context_id
+
+    @pytest.mark.asyncio
+    async def test_first_call_sends_no_context_id_and_captures_server_assigned(self, a2a_config):
+        """First turn: no context yet → server assigns → adapter stores it."""
+        adapter = A2AAdapter(a2a_config)
+        assert adapter.context_id is None
+
+        mock_task = create_mock_a2a_task(context_id="server-assigned-abc")
+        mock_response = SendMessageSuccessResponse(result=mock_task)
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(return_value=mock_response)
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+
+        assert self._captured_context_id(mock_a2a_client.send_message) is None
+        assert adapter.context_id == "server-assigned-abc"
+
+    @pytest.mark.asyncio
+    async def test_subsequent_call_echoes_retained_context_id(self, a2a_config):
+        """Second turn: adapter sends the context_id captured on turn one."""
+        adapter = A2AAdapter(a2a_config)
+
+        first_task = create_mock_a2a_task(context_id="ctx-session-1")
+        second_task = create_mock_a2a_task(context_id="ctx-session-1")
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            side_effect=[
+                SendMessageSuccessResponse(result=first_task),
+                SendMessageSuccessResponse(result=second_task),
+            ]
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        second_call = mock_a2a_client.send_message.call_args_list[1]
+        assert second_call[0][0].params.message.context_id == "ctx-session-1"
+        assert adapter.context_id == "ctx-session-1"
+
+    @pytest.mark.asyncio
+    async def test_set_context_id_is_used_on_next_send(self, a2a_config):
+        """Seeded context_id is sent on the very next call (resume use case)."""
+        adapter = A2AAdapter(a2a_config)
+        adapter.set_context_id("resumed-from-redis")
+
+        mock_task = create_mock_a2a_task(context_id="resumed-from-redis")
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=mock_task)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+
+        assert self._captured_context_id(mock_a2a_client.send_message) == "resumed-from-redis"
+
+    @pytest.mark.asyncio
+    async def test_clearing_context_id_starts_fresh_conversation(self, a2a_config):
+        """set_context_id(None) clears; next send carries no context_id."""
+        adapter = A2AAdapter(a2a_config)
+        adapter._context_id = "old-ctx"
+
+        mock_task = create_mock_a2a_task(context_id="new-server-ctx")
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=mock_task)
+        )
+
+        adapter.set_context_id(None)
+        assert adapter.context_id is None
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+
+        assert self._captured_context_id(mock_a2a_client.send_message) is None
+        # After response we retain whatever the server assigned.
+        assert adapter.context_id == "new-server-ctx"
+
+    @staticmethod
+    def _captured_task_id(mock_send_message: AsyncMock, call_index: int = 0) -> str | None:
+        """Pull the ``Message.task_id`` off a specific captured send call."""
+        request = mock_send_message.call_args_list[call_index][0][0]
+        return request.params.message.task_id
+
+    @pytest.mark.asyncio
+    async def test_task_id_retained_when_state_is_input_required(self, a2a_config):
+        """Non-terminal state (input-required) → task_id echoed on next send
+        so the server resumes the same task rather than orphaning it."""
+        adapter = A2AAdapter(a2a_config)
+
+        hitl_task = create_mock_a2a_task(
+            task_id="task-hitl-1",
+            context_id="ctx-abc",
+            state="input-required",
+            parts=[TextPart(text="Need approval")],
+        )
+        resume_task = create_mock_a2a_task(
+            task_id="task-hitl-1",
+            context_id="ctx-abc",
+            state="completed",
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            side_effect=[
+                SendMessageSuccessResponse(result=hitl_task),
+                SendMessageSuccessResponse(result=resume_task),
+            ]
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+            assert adapter.pending_task_id == "task-hitl-1"
+
+            await adapter._call_a2a_tool("create_media_buy", {"approval": "yes"})
+
+        assert self._captured_task_id(mock_a2a_client.send_message, 0) is None
+        assert self._captured_task_id(mock_a2a_client.send_message, 1) == "task-hitl-1"
+        # Terminal state clears the pending task.
+        assert adapter.pending_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_task_id_cleared_on_completed_state(self, a2a_config):
+        """Terminal state → subsequent call starts a new task under the
+        same context (task_id=None on send, context_id retained)."""
+        adapter = A2AAdapter(a2a_config)
+
+        first_task = create_mock_a2a_task(
+            task_id="task-get-products",
+            context_id="ctx-session",
+            state="completed",
+        )
+        second_task = create_mock_a2a_task(
+            task_id="task-create-media-buy",
+            context_id="ctx-session",
+            state="completed",
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            side_effect=[
+                SendMessageSuccessResponse(result=first_task),
+                SendMessageSuccessResponse(result=second_task),
+            ]
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+            assert adapter.pending_task_id is None
+
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert self._captured_task_id(mock_a2a_client.send_message, 1) is None
+        second_call = mock_a2a_client.send_message.call_args_list[1]
+        assert second_call[0][0].params.message.context_id == "ctx-session"
+
+    @pytest.mark.asyncio
+    async def test_task_id_cleared_on_failed_state(self, a2a_config):
+        """Failure is terminal too — pending task_id must clear."""
+        adapter = A2AAdapter(a2a_config)
+
+        failed = create_mock_a2a_task(
+            task_id="task-failed",
+            context_id="ctx",
+            state="failed",
+            parts=[TextPart(text="server error")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=failed)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+
+        assert adapter.pending_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_task_id_retained_on_working_state(self, a2a_config):
+        """'working' is also non-terminal — adapter must retain task_id
+        so clients polling / resuming land on the right task."""
+        adapter = A2AAdapter(a2a_config)
+
+        working = create_mock_a2a_task(
+            task_id="task-in-progress",
+            context_id="ctx",
+            state="working",
+            parts=[TextPart(text="processing...")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=working)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.pending_task_id == "task-in-progress"
+
+    @pytest.mark.asyncio
+    async def test_set_context_id_clears_pending_task(self, a2a_config):
+        """Switching context discards any in-flight task — a new
+        conversation shouldn't try to resume a task from the old one."""
+        adapter = A2AAdapter(a2a_config)
+        adapter._context_id = "old-ctx"
+        adapter._pending_task_id = "old-task"
+
+        adapter.set_context_id("new-ctx")
+
+        assert adapter.context_id == "new-ctx"
+        assert adapter.pending_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_server_rebinding_context_id_is_honored(self, a2a_config):
+        """If the server returns a different context_id than we proposed,
+        we adopt the server's value — servers are authoritative on context
+        assignment even when the buyer self-named the session."""
+        adapter = A2AAdapter(a2a_config)
+        adapter.set_context_id("buyer-proposed")
+
+        mock_task = create_mock_a2a_task(context_id="server-overrode")
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=mock_task)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("get_products", {})
+
+        assert self._captured_context_id(mock_a2a_client.send_message) == "buyer-proposed"
+        assert adapter.context_id == "server-overrode"
+
+
+class TestADCPClientContextId:
+    """Tests for the ADCPClient-level contextId surface."""
+
+    def test_constructor_seeds_context_id_on_a2a_client(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, context_id="seeded-ctx")
+        assert client.context_id == "seeded-ctx"
+        assert isinstance(client.adapter, A2AAdapter)
+        assert client.adapter.context_id == "seeded-ctx"
+
+    def test_context_id_property_defaults_to_none(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert client.context_id is None
+
+    def test_reset_context_clears(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, context_id="will-clear")
+        client.reset_context()
+        assert client.context_id is None
+
+    def test_reset_context_with_new_id(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        client.reset_context("fresh-named-session")
+        assert client.context_id == "fresh-named-session"
+
+    def test_constructor_rejects_context_id_on_non_a2a(self, mcp_config):
+        from adcp.client import ADCPClient
+
+        with pytest.raises(ValueError, match="only supported for A2A"):
+            ADCPClient(mcp_config, context_id="nope")
+
+    def test_reset_context_rejects_on_non_a2a(self, mcp_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        with pytest.raises(ValueError, match="only supported for A2A"):
+            client.reset_context("anything")
+
+    def test_context_id_property_returns_none_on_non_a2a(self, mcp_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        assert client.context_id is None
+
+    def test_pending_task_id_property_exposes_adapter_state(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert client.pending_task_id is None
+        assert isinstance(client.adapter, A2AAdapter)
+        client.adapter._pending_task_id = "task-mid-flight"
+        assert client.pending_task_id == "task-mid-flight"
+
+    def test_pending_task_id_returns_none_on_non_a2a(self, mcp_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        assert client.pending_task_id is None
+
+
 class TestMCPAdapter:
     """Tests for MCP protocol adapter."""
 
@@ -532,9 +849,7 @@ class TestMCPAdapter:
         mock_session = AsyncMock()
         mock_result = MagicMock()
         # Reference-agent shape: JSON inside TextContent, no structuredContent.
-        mock_result.content = [
-            {"type": "text", "text": '{"status":"completed","products":[]}'}
-        ]
+        mock_result.content = [{"type": "text", "text": '{"status":"completed","products":[]}'}]
         mock_result.structuredContent = None
         mock_result.isError = False
         mock_session.call_tool.return_value = mock_result

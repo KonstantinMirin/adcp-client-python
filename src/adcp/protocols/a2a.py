@@ -38,11 +38,81 @@ logger = logging.getLogger(__name__)
 class A2AAdapter(ProtocolAdapter):
     """Adapter for A2A protocol using official a2a-sdk client."""
 
+    # A2A task states in which the server is still expecting more from
+    # the buyer on the same task (input-required, auth-required, and
+    # in-flight states). While the adapter holds a task_id in one of
+    # these states, the next outbound Message must echo it back so the
+    # server resumes the same task rather than orphaning it and starting
+    # a new one. Terminal states (completed/failed/canceled/rejected)
+    # clear the retained task_id — subsequent calls in the conversation
+    # are new tasks.
+    _NONTERMINAL_TASK_STATES = frozenset(
+        {"submitted", "working", "input-required", "auth-required"}
+    )
+
     def __init__(self, agent_config: AgentConfig):
         """Initialize A2A adapter with official A2A client."""
         super().__init__(agent_config)
         self._httpx_client: httpx.AsyncClient | None = None
         self._a2a_client: A2AClient | None = None
+        # A2A contextId for multi-turn conversations. First request sends
+        # context_id=None → server mints one and returns it on Task.context_id;
+        # we stash it here and echo it back on every subsequent send so the
+        # server can scope state to the same session. Callers can seed this
+        # via ADCPClient(context_id=...) to resume a session across process
+        # restarts, or clear it via ADCPClient.reset_context() to start a
+        # new conversation.
+        self._context_id: str | None = None
+        # A2A task_id retained across turns only while the prior task is
+        # non-terminal (input-required, working, etc). On terminal states
+        # this clears to None so the next call starts a new task under
+        # the same context_id. Without this, resume of an input-required
+        # task orphans the server-side pending task.
+        self._pending_task_id: str | None = None
+
+    @property
+    def context_id(self) -> str | None:
+        """Current A2A conversation context_id, or None if not yet established.
+
+        ``None`` means either (a) a fresh conversation where the server
+        has not yet replied, or (b) the context was cleared via
+        ``set_context_id(None)``. Callers that need to distinguish these
+        must track their own state.
+
+        Not thread-safe: the adapter mutates this on every response. For
+        concurrent use, serialize calls on one adapter or construct one
+        per conversation.
+        """
+        return self._context_id
+
+    @property
+    def pending_task_id(self) -> str | None:
+        """A2A task_id retained for resume, or None if no task is pending.
+
+        Populated when the last response was non-terminal (e.g.
+        ``input-required``). Echoed on the next outbound message so the
+        server continues the same task. Clears to None on terminal
+        states (``completed``/``failed``/``canceled``).
+        """
+        return self._pending_task_id
+
+    def set_context_id(self, context_id: str | None) -> None:
+        """Set the A2A context_id for subsequent message sends.
+
+        Pass ``None`` to clear — the server mints a fresh id on the next
+        call — or a string to seed. Seeding is safe for *resume* (pass
+        back an id the server previously returned). Seeding with a
+        *self-generated* id is server-dependent: per the A2A spec,
+        agents MAY accept or reject client-supplied ids, and some
+        frameworks (notably ADK) rewrite the id into their own session
+        format and return the rewritten value on the next response — at
+        which point this adapter auto-adopts it.
+
+        Also clears any retained ``pending_task_id``: switching context
+        always starts a fresh task under the new context.
+        """
+        self._context_id = context_id
+        self._pending_task_id = None
 
     async def _get_httpx_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
@@ -189,6 +259,8 @@ class A2AAdapter(ProtocolAdapter):
                 message_id=message_id,
                 role=Role.user,
                 parts=[Part(root=data_part)],
+                context_id=self._context_id,
+                task_id=self._pending_task_id,
             )
         else:
             # Natural language invocation (flexible)
@@ -198,6 +270,8 @@ class A2AAdapter(ProtocolAdapter):
                 message_id=message_id,
                 role=Role.user,
                 parts=[Part(root=text_part)],
+                context_id=self._context_id,
+                task_id=self._pending_task_id,
             )
 
         # Build request params
@@ -265,6 +339,18 @@ class A2AAdapter(ProtocolAdapter):
 
                 # Result can be either Task or Message
                 if isinstance(result, Task):
+                    # Retain the server-assigned context_id so subsequent
+                    # turns continue the same A2A conversation. Task.context_id
+                    # is required by a2a-sdk, so no None-guard needed.
+                    self._context_id = result.context_id
+                    # Retain task_id only while the task is non-terminal.
+                    # On terminal states (completed/failed/canceled/rejected)
+                    # the next send must NOT echo this task_id — it starts a
+                    # fresh task under the same context.
+                    if result.status.state in self._NONTERMINAL_TASK_STATES:
+                        self._pending_task_id = result.id
+                    else:
+                        self._pending_task_id = None
                     task_result = self._process_task_response(result, debug_info)
                     _idempotency.raise_for_idempotency_error(
                         tool_name, task_result.data, self.agent_config.id
