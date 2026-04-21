@@ -309,6 +309,7 @@ class ADCPClient:
         validate_features: bool = False,
         strict_idempotency: bool = False,
         signing: SigningConfig | None = None,
+        context_id: str | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -343,6 +344,20 @@ class ADCPClient:
                 ``jwks_uri``. Supported on both A2A and MCP
                 (``mcp_transport="streamable_http"``); SSE-transport MCP
                 logs a warning and falls through unsigned.
+            context_id: A2A-only. Seed the A2A conversation context. Pass a
+                previously-returned ``context_id`` to resume a session
+                across process restarts, or a self-assigned UUID to name
+                the session with your own correlation key (the ADK server
+                honors buyer-proposed ids). If omitted, the server mints
+                one on the first message and this client auto-retains it
+                for subsequent calls. Read the current value via
+                ``client.context_id``; call ``client.reset_context()`` to
+                start a fresh conversation. Rule of thumb: one
+                ``ADCPClient`` per A2A conversation — if a buyer has
+                multiple concurrent briefs with the same agent, construct
+                one client per brief rather than sharing.
+
+                Raises ``ValueError`` if passed with a non-A2A protocol.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
@@ -380,10 +395,80 @@ class ADCPClient:
         if signing is not None:
             self.adapter.signing_request_hook = self._sign_outgoing_request
 
+        if context_id is not None:
+            if not isinstance(self.adapter, A2AAdapter):
+                raise ValueError(
+                    "context_id is only supported for A2A protocol; " f"got {agent_config.protocol}"
+                )
+            self.adapter.set_context_id(context_id)
+
         # Initialize simple API accessor (lazy import to avoid circular dependency)
         from adcp.simple import SimpleAPI
 
         self.simple = SimpleAPI(self)
+
+    @property
+    def context_id(self) -> str | None:
+        """Current A2A conversation context_id.
+
+        Reads the context_id currently associated with this client: the
+        value assigned by the A2A server (auto-captured from the most
+        recent response) or the one seeded via the constructor or
+        ``reset_context()``. Returns ``None`` before the first A2A call
+        in a fresh conversation, or for clients on non-A2A protocols —
+        reads are lenient across protocols so generic code can probe
+        ``if client.context_id: ...`` safely. Writes (constructor kwarg,
+        ``reset_context``) raise on non-A2A because the operation has no
+        meaning there.
+
+        Not safe for concurrent calls on the same client — the adapter
+        mutates this on every response. Rule of thumb: one ADCPClient
+        per A2A conversation. Persist this value (e.g., Redis keyed by
+        your brief id) to resume across process restarts by passing it
+        to ``ADCPClient(context_id=...)``.
+        """
+        if isinstance(self.adapter, A2AAdapter):
+            return self.adapter.context_id
+        return None
+
+    @property
+    def pending_task_id(self) -> str | None:
+        """A2A task_id pending resume, or None if no task is in-flight.
+
+        Set when the last A2A response was non-terminal
+        (``input-required``, ``working``, ``submitted``,
+        ``auth-required``). The adapter echoes this id on the next
+        outbound message so the server resumes the same task. Clears
+        automatically when the task reaches a terminal state.
+
+        Returns ``None`` for non-A2A clients.
+        """
+        if isinstance(self.adapter, A2AAdapter):
+            return self.adapter.pending_task_id
+        return None
+
+    def reset_context(self, context_id: str | None = None) -> None:
+        """Start a new A2A conversation on this client.
+
+        Passing ``None`` (default) clears the current context so the
+        server mints a fresh one on the next call. Passing a string uses
+        it as the new conversation id — useful for resuming a specific
+        prior session or for naming the conversation with your own
+        correlation key. Note: some servers (notably ADK) rewrite
+        client-supplied ids into their own session format; the client
+        auto-adopts the rewritten id on the next response.
+
+        Also clears any pending_task_id — starting a new conversation
+        discards any in-flight task on the old one.
+
+        Raises ``ValueError`` when called on a non-A2A client.
+        """
+        if not isinstance(self.adapter, A2AAdapter):
+            raise ValueError(
+                "reset_context is only supported for A2A protocol; "
+                f"got {self.agent_config.protocol}"
+            )
+        self.adapter.set_context_id(context_id)
 
     async def _ensure_idempotency_capability(self) -> None:
         """Verify the seller positively declares idempotency support in capabilities.
