@@ -259,6 +259,13 @@ jobs:
             echo "Stable version - will sync schemas from upstream"
           fi
 
+      # Stable upstream tags ship Sigstore sidecars; sync_schemas.py
+      # verifies the bundle via `cosign verify-blob` before extraction.
+      # Installs cosign from the official sigstore/cosign-installer action.
+      - name: Install cosign (for signature verification)
+        if: steps.version-check.outputs.is_prerelease != 'true'
+        uses: sigstore/cosign-installer@v3
+
       - name: Download latest schemas
         if: steps.version-check.outputs.is_prerelease != 'true'
         run: python scripts/sync_schemas.py
