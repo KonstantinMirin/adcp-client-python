@@ -7,7 +7,7 @@
   "versioning": {
     "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP latest. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/vlatest/ \u2192 /schemas/latest/."
   },
-  "lastUpdated": "2026-04-21",
+  "lastUpdated": "2026-04-22",
   "baseUrl": "/schemas/latest",
   "schemas": {
     "core": {

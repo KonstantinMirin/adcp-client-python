@@ -29,6 +29,9 @@
       "minItems": 1,
       "items": {
         "type": "object",
+        "discriminator": {
+          "propertyName": "scope"
+        },
         "oneOf": [
           {
             "properties": {
@@ -56,7 +59,7 @@
                 "const": "product",
                 "description": "Change scoped to a specific product."
               },
-              "id": {
+              "product_id": {
                 "type": "string",
                 "minLength": 1,
                 "description": "Product ID from a previous get_products response."
@@ -68,7 +71,8 @@
                   "omit",
                   "more_like_this"
                 ],
-                "description": "'include': return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned)."
+                "default": "include",
+                "description": "'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional \u2014 when omitted, the seller treats the entry as action: 'include'."
               },
               "ask": {
                 "type": "string",
@@ -78,8 +82,7 @@
             },
             "required": [
               "scope",
-              "id",
-              "action"
+              "product_id"
             ],
             "additionalProperties": false
           },
@@ -90,7 +93,7 @@
                 "const": "proposal",
                 "description": "Change scoped to a specific proposal."
               },
-              "id": {
+              "proposal_id": {
                 "type": "string",
                 "minLength": 1,
                 "description": "Proposal ID from a previous get_products response."
@@ -102,7 +105,8 @@
                   "omit",
                   "finalize"
                 ],
-                "description": "'include': return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold \u2014 transitions a draft proposal to committed with an expires_at hold window. May trigger seller-side approval (HITL). The buyer should not set a time_budget for finalize requests \u2014 they represent a commitment to wait for the result."
+                "default": "include",
+                "description": "'include' (default): return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold \u2014 transitions a draft proposal to committed with an expires_at hold window. May trigger seller-side approval (HITL). The buyer should not set a time_budget for finalize requests \u2014 they represent a commitment to wait for the result. Optional \u2014 when omitted, the seller treats the entry as action: 'include'."
               },
               "ask": {
                 "type": "string",
@@ -112,8 +116,7 @@
             },
             "required": [
               "scope",
-              "id",
-              "action"
+              "proposal_id"
             ],
             "additionalProperties": false
           }
@@ -2030,7 +2033,7 @@
   },
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-21T21:56:38.555Z",
+    "generatedAt": "2026-04-22T04:00:56.829Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

@@ -12,9 +12,12 @@
       "minimum": 1,
       "maximum": 99
     },
-    "context": {
+    "intent": {
       "type": "string",
-      "description": "Conversation handoff from the host describing what the user needs"
+      "description": "Natural language description of user intent \u2014 the conversation handoff from the host describing what the user needs from the brand agent"
+    },
+    "context": {
+      "$ref": "../core/context.json"
     },
     "identity": {
       "$ref": "si-identity.json"
@@ -54,7 +57,7 @@
   },
   "required": [
     "idempotency_key",
-    "context",
+    "intent",
     "identity"
   ],
   "additionalProperties": true

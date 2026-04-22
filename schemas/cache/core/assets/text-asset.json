@@ -4,6 +4,11 @@
   "description": "Text content asset",
   "type": "object",
   "properties": {
+    "asset_type": {
+      "type": "string",
+      "const": "text",
+      "description": "Discriminator identifying this as a text asset. See /schemas/creative/asset-types for the registry."
+    },
     "content": {
       "type": "string",
       "description": "Text content"
@@ -18,6 +23,7 @@
     }
   },
   "required": [
+    "asset_type",
     "content"
   ],
   "additionalProperties": true

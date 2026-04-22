@@ -222,12 +222,15 @@
             "asset_type": "text",
             "items": [
               {
+                "asset_type": "text",
                 "content": "Shop the Summer Sale"
               },
               {
+                "asset_type": "text",
                 "content": "50% Off Everything"
               },
               {
+                "asset_type": "text",
                 "content": "Summer Savings Event"
               }
             ]
@@ -237,6 +240,7 @@
             "asset_type": "image",
             "items": [
               {
+                "asset_type": "image",
                 "url": "https://cdn.acme.com/hero.jpg",
                 "width": 1200,
                 "height": 628
@@ -248,6 +252,7 @@
             "asset_type": "image",
             "items": [
               {
+                "asset_type": "image",
                 "url": "https://cdn.acme.com/sq.jpg",
                 "width": 600,
                 "height": 600
