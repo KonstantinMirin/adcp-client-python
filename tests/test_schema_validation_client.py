@@ -30,12 +30,12 @@ class TestConfigPropagation:
         with patch.dict(os.environ, {}, clear=True):
             client = ADCPClient(_agent_config())
         assert client.adapter.request_validation_mode == "warn"
-        assert client.adapter.response_validation_mode == "warn"
-
-    def test_dev_env_flips_responses_to_strict(self) -> None:
-        with patch.dict(os.environ, {"ADCP_ENV": "development"}, clear=True):
-            client = ADCPClient(_agent_config())
         assert client.adapter.response_validation_mode == "strict"
+
+    def test_production_env_flips_responses_to_warn(self) -> None:
+        with patch.dict(os.environ, {"ADCP_ENV": "production"}, clear=True):
+            client = ADCPClient(_agent_config())
+        assert client.adapter.response_validation_mode == "warn"
 
     def test_explicit_config_wins(self) -> None:
         with patch.dict(os.environ, {}, clear=True):

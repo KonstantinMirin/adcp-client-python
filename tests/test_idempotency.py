@@ -518,7 +518,17 @@ class TestA2AAdapterIntegration:
             artifacts=[
                 Artifact(
                     artifact_id="a1",
-                    parts=[Part(root=DataPart(data={"replayed": True, "media_buy_id": "mb_1"}))],
+                    parts=[
+                        Part(
+                            root=DataPart(
+                                data={
+                                    "replayed": True,
+                                    "media_buy_id": "mb_1",
+                                    "packages": [],
+                                }
+                            )
+                        )
+                    ],
                 )
             ],
         )
@@ -634,7 +644,11 @@ class TestMCPAdapterIntegration:
         mock_result = MagicMock()
         mock_result.isError = False
         mock_result.content = []
-        mock_result.structuredContent = {"replayed": True, "media_buy_id": "mb_1"}
+        mock_result.structuredContent = {
+            "replayed": True,
+            "media_buy_id": "mb_1",
+            "packages": [],
+        }
         session.call_tool = AsyncMock(return_value=mock_result)
         with patch.object(adapter, "_get_session", AsyncMock(return_value=session)):
             result = await adapter._call_mcp_tool("create_media_buy", {"brand": "acme"})

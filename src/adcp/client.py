@@ -348,13 +348,14 @@ class ADCPClient:
                 logs a warning and falls through unsigned.
             validation: Schema-driven validation modes for outgoing
                 requests and incoming responses against the bundled AdCP
-                JSON schemas. When omitted, both sides default to
-                ``warn`` — drift is logged but does not fail tasks.
-                Responses flip to ``strict`` (task-failing) when any of
-                ``ADCP_ENV`` / ``PYTHON_ENV`` / ``ENV`` / ``ENVIRONMENT``
-                is set to ``dev``, ``development``, or ``test``.
-                Storyboards and compliance runners that want hard-stop
-                enforcement everywhere pass
+                JSON schemas. Defaults (matching the TS port): requests
+                in ``warn`` mode (drift logged but not blocked — partial
+                payloads in error-path tests still work) and responses
+                in ``strict`` mode (agent drift fails the task). The
+                response mode flips to ``warn`` when any of ``ADCP_ENV``
+                / ``PYTHON_ENV`` / ``ENV`` / ``ENVIRONMENT`` is set to
+                ``production`` / ``prod``. Storyboards and compliance
+                runners that want hard-stop enforcement everywhere pass
                 ``validation=ValidationHookConfig(requests="strict",
                 responses="strict")``; high-throughput callers can set
                 either side to ``"off"`` to skip the validator entirely

@@ -193,20 +193,20 @@ class TestResolveValidationModes:
             req, _ = resolve_validation_modes()
         assert req == "warn"
 
-    def test_responses_default_to_warn(self) -> None:
+    def test_responses_default_to_strict(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
+            _, resp = resolve_validation_modes()
+        assert resp == "strict"
+
+    def test_responses_flip_warn_when_env_is_production(self) -> None:
+        with patch.dict(os.environ, {"ADCP_ENV": "production"}, clear=True):
             _, resp = resolve_validation_modes()
         assert resp == "warn"
 
-    def test_responses_flip_strict_when_env_is_development(self) -> None:
-        with patch.dict(os.environ, {"ADCP_ENV": "development"}, clear=True):
+    def test_responses_flip_warn_when_env_is_prod_shorthand(self) -> None:
+        with patch.dict(os.environ, {"ENV": "prod"}, clear=True):
             _, resp = resolve_validation_modes()
-        assert resp == "strict"
-
-    def test_responses_flip_strict_when_env_is_test(self) -> None:
-        with patch.dict(os.environ, {"ENV": "test"}, clear=True):
-            _, resp = resolve_validation_modes()
-        assert resp == "strict"
+        assert resp == "warn"
 
     def test_explicit_config_overrides_defaults(self) -> None:
         req, resp = resolve_validation_modes(

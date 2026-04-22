@@ -46,13 +46,14 @@ class ProtocolAdapter(ABC):
         # httpx_client_factory passed to streamablehttp_client.
         self.signing_request_hook: Callable[[httpx.Request], Awaitable[None]] | None = None
         # Schema validation modes — resolved by the owning ADCPClient via
-        # ``configure_validation``. Both sides default to ``"warn"`` for
-        # adapters constructed directly (no client), which keeps existing
-        # test fixtures that stub non-spec-compliant payloads working.
-        # ADCPClient callers get the dev-env flip to ``responses="strict"``
-        # via ``configure_validation``.
+        # ``configure_validation``. Class defaults match the TS port: warn
+        # on requests (don't block partial payloads in error-path tests),
+        # strict on responses (agent drift fails the task on first call).
+        # Adapters instantiated directly without an ADCPClient inherit
+        # these defaults; production callers flip responses to warn via
+        # ``ADCPClient(validation=...)`` or an env override.
         self.request_validation_mode: ValidationMode = "warn"
-        self.response_validation_mode: ValidationMode = "warn"
+        self.response_validation_mode: ValidationMode = "strict"
 
     def configure_validation(self, config: ValidationHookConfig | None) -> None:
         """Apply a client's :class:`ValidationHookConfig` to this adapter."""

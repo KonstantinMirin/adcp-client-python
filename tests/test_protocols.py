@@ -173,11 +173,14 @@ class TestA2AAdapter:
         """Test that last DataPart is authoritative when multiple exist."""
         adapter = A2AAdapter(a2a_config)
 
-        # Simulates streaming scenario with intermediate + final DataParts
+        # Simulates streaming scenario with intermediate + final DataParts.
+        # The final DataPart must be a spec-compliant get_products response
+        # so the adapter's strict post-receive validation passes — this
+        # test is exercising DataPart-merge ordering, not tolerant parsing.
         mock_task = create_mock_a2a_task(
             parts=[
                 DataPart(data={"status": "processing", "progress": 50}),
-                DataPart(data={"status": "completed", "result": "final"}),
+                DataPart(data={"products": []}),
             ]
         )
         mock_response = SendMessageSuccessResponse(result=mock_task)
@@ -190,15 +193,19 @@ class TestA2AAdapter:
 
             assert result.success is True
             # Should use last DataPart, not first
-            assert result.data == {"status": "completed", "result": "final"}
+            assert result.data == {"products": []}
 
     @pytest.mark.asyncio
     async def test_call_tool_multiple_artifacts_uses_last(self, a2a_config):
         """Test that last artifact is used when multiple artifacts exist (streaming scenario)."""
         adapter = A2AAdapter(a2a_config)
 
-        # Simulates streaming with multiple artifacts
-        # A2A spec doesn't define artifact.status, so we use the last (most recent) one
+        # Simulates streaming with multiple artifacts. A2A spec doesn't
+        # define artifact.status, so the adapter picks the last (most
+        # recent) one. The last artifact's DataPart must be a spec-
+        # compliant get_products response so strict post-receive
+        # validation passes — empty products[] keeps the test focused
+        # on artifact-ordering semantics, not schema drift.
         mock_task = Task(
             id="task_123",
             context_id="ctx_456",
@@ -215,14 +222,14 @@ class TestA2AAdapter:
                     artifact_id="artifact_2",
                     parts=[
                         TextPart(text="Processing complete"),
-                        DataPart(data={"status": "completed", "products": ["prod1"]}),
+                        DataPart(data={"products": []}),
                     ],
                 ),
                 Artifact(
                     artifact_id="artifact_3",
                     parts=[
                         TextPart(text="Final result"),
-                        DataPart(data={"status": "completed", "products": ["prod2"]}),
+                        DataPart(data={"products": []}),
                     ],
                 ),
             ],
@@ -237,7 +244,7 @@ class TestA2AAdapter:
 
             assert result.success is True
             # Should use last artifact (most recent)
-            assert result.data == {"status": "completed", "products": ["prod2"]}
+            assert result.data == {"products": []}
             assert result.message == "Final result"
 
     @pytest.mark.asyncio
@@ -245,11 +252,12 @@ class TestA2AAdapter:
         """Test handling ADK-style response wrapper {"response": {...}}."""
         adapter = A2AAdapter(a2a_config)
 
-        # ADK wraps the actual response in {"response": {...}}
+        # ADK wraps the actual response in {"response": {...}}. Empty
+        # products[] keeps the unwrapped payload spec-compliant.
         mock_task = create_mock_a2a_task(
             parts=[
                 TextPart(text="Products retrieved"),
-                DataPart(data={"response": {"products": [{"id": "prod1", "name": "TV Ad"}]}}),
+                DataPart(data={"response": {"products": []}}),
             ]
         )
         mock_response = SendMessageSuccessResponse(result=mock_task)
@@ -262,7 +270,7 @@ class TestA2AAdapter:
 
             assert result.success is True
             # Should unwrap the "response" wrapper
-            assert result.data == {"products": [{"id": "prod1", "name": "TV Ad"}]}
+            assert result.data == {"products": []}
             assert result.message == "Products retrieved"
 
     @pytest.mark.asyncio
@@ -270,13 +278,15 @@ class TestA2AAdapter:
         """Test handling response wrapper with additional metadata keys."""
         adapter = A2AAdapter(a2a_config)
 
-        # Some ADK responses have both "response" and other metadata
+        # Some ADK responses have both "response" and other metadata. Keep
+        # the wrapped payload spec-compliant (empty products[]) so the
+        # unwrap path is the only thing under test.
         mock_task = create_mock_a2a_task(
             parts=[
                 TextPart(text="Products retrieved"),
                 DataPart(
                     data={
-                        "response": {"products": [{"id": "prod1"}]},
+                        "response": {"products": []},
                         "metadata": {"cache_hit": True},
                     }
                 ),
@@ -292,7 +302,7 @@ class TestA2AAdapter:
 
             assert result.success is True
             # Should still unwrap and return the "response" content
-            assert result.data == {"products": [{"id": "prod1"}]}
+            assert result.data == {"products": []}
 
     @pytest.mark.asyncio
     async def test_interim_response_working(self, a2a_config):
@@ -770,9 +780,11 @@ class TestMCPAdapter:
         # Mock MCP session
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        # Mock MCP result with structuredContent (required for AdCP)
+        # Mock MCP result with structuredContent (required for AdCP). Empty
+        # products[] keeps the payload spec-compliant without having to
+        # enumerate every required product field.
         mock_result.content = [{"type": "text", "text": "Success"}]
-        mock_result.structuredContent = {"products": [{"id": "prod1"}]}
+        mock_result.structuredContent = {"products": []}
         mock_result.isError = False
         mock_session.call_tool.return_value = mock_result
 
@@ -790,7 +802,7 @@ class TestMCPAdapter:
             # Verify result uses structuredContent
             assert result.success is True
             assert result.status == TaskStatus.COMPLETED
-            assert result.data == {"products": [{"id": "prod1"}]}
+            assert result.data == {"products": []}
 
     @pytest.mark.asyncio
     async def test_call_tool_with_structured_content(self, mcp_config):
@@ -800,9 +812,11 @@ class TestMCPAdapter:
         # Mock MCP session
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        # Mock MCP result with structuredContent (preferred over content)
-        mock_result.content = [{"type": "text", "text": "Found 42 creative formats"}]
-        mock_result.structuredContent = {"formats": [{"id": "format1"}, {"id": "format2"}]}
+        # Mock MCP result with structuredContent (preferred over content).
+        # Empty formats[] is spec-compliant without enumerating every
+        # required Format field.
+        mock_result.content = [{"type": "text", "text": "Found 0 creative formats"}]
+        mock_result.structuredContent = {"formats": []}
         mock_result.isError = False
         mock_session.call_tool.return_value = mock_result
 
@@ -812,9 +826,9 @@ class TestMCPAdapter:
             # Verify result uses structuredContent, not content array
             assert result.success is True
             assert result.status == TaskStatus.COMPLETED
-            assert result.data == {"formats": [{"id": "format1"}, {"id": "format2"}]}
+            assert result.data == {"formats": []}
             # Verify message extraction from content array
-            assert result.message == "Found 42 creative formats"
+            assert result.message == "Found 0 creative formats"
 
     @pytest.mark.asyncio
     async def test_call_tool_no_structured_adcp_data(self, mcp_config):

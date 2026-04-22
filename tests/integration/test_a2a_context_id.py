@@ -69,16 +69,17 @@ pytestmark = pytest.mark.skipif(
 
 class _EchoHandler(ADCPHandler):
     """Minimal handler for the happy-path tests — the assertions are at
-    the protocol layer, not the handler. Returns empty payloads."""
+    the protocol layer, not the handler. Returns spec-compliant empty
+    payloads so the client's strict response validator passes."""
 
     async def get_adcp_capabilities(self, params: Any, context: Any = None) -> dict[str, Any]:
         return {"adcp": {"major_versions": [3]}, "supported_protocols": ["media_buy"]}
 
     async def get_products(self, params: Any, context: Any = None) -> dict[str, Any]:
-        return {"products": [{"id": "p1", "name": "Display"}]}
+        return {"products": []}
 
     async def create_media_buy(self, params: Any, context: Any = None) -> dict[str, Any]:
-        return {"media_buy_id": "mb-1"}
+        return {"media_buy_id": "mb-1", "packages": []}
 
 
 class _Observer:
@@ -256,6 +257,21 @@ class _HitlExecutor(AgentExecutor):
             state = TaskState.completed
             text = "approved"
 
+        # The completion turn must carry a spec-compliant ``create_media_buy``
+        # response so the client's strict schema validator passes — this
+        # test is exercising task_id echo semantics, not the response
+        # payload shape. Turn 1's ``input-required`` state has no data
+        # requirement (it's an interim state). The ``approved`` flag is
+        # a test-only marker and rides as an additional property, which
+        # the schema permits (``additionalProperties: true``).
+        if state == TaskState.completed:
+            data: dict[str, Any] = {
+                "media_buy_id": "mb-1",
+                "packages": [],
+                "approved": True,
+            }
+        else:
+            data = {"approved": False}
         task = Task(
             id=context.task_id or str(uuid4()),
             context_id=context.context_id or str(uuid4()),
@@ -265,7 +281,7 @@ class _HitlExecutor(AgentExecutor):
                     artifact_id=str(uuid4()),
                     parts=[
                         Part(root=TextPart(text=text)),
-                        Part(root=DataPart(data={"approved": state == TaskState.completed})),
+                        Part(root=DataPart(data=data)),
                     ],
                 )
             ],

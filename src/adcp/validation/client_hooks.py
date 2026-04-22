@@ -27,19 +27,17 @@ ValidationMode = Literal["strict", "warn", "off"]
 class ValidationHookConfig:
     """Per-side client validation modes.
 
-    Defaults:
+    Defaults match the TS port (adcontextprotocol/adcp-client#694):
 
-    * ``requests``: ``"warn"`` — matches the TS port. Strict would break
-      callers that intentionally send partial payloads (error-path tests,
-      exploratory probes). Storyboards and compliance runners that want
-      hard-stop enforcement pass ``requests="strict"`` explicitly.
-    * ``responses``: ``"warn"`` — diverges from the TS default (``strict``
-      in dev/test) because the Python SDK had no pre-existing strict
-      response validator to preserve. Dropping drift straight into
-      ``TaskResult(failed)`` would break every test that stubbed a
-      non-spec-compliant payload. Callers can opt in to ``strict`` via
-      this config or by setting ``ADCP_ENV`` / ``PYTHON_ENV`` / ``ENV``
-      / ``ENVIRONMENT`` to ``dev`` / ``development`` / ``test``.
+    * ``requests``: ``"warn"`` — strict would break callers that
+      intentionally send partial payloads (error-path tests, exploratory
+      probes). Storyboards and compliance runners that want hard-stop
+      enforcement pass ``requests="strict"`` explicitly.
+    * ``responses``: ``"strict"`` in dev/test, ``"warn"`` when any of
+      ``ADCP_ENV`` / ``PYTHON_ENV`` / ``ENV`` / ``ENVIRONMENT`` is set
+      to ``production`` (or ``prod``). Strict-by-default makes the SDK
+      a compliance harness: drift from an agent fails the task on the
+      first call, not the Nth storyboard run.
     """
 
     requests: ValidationMode | None = None
@@ -51,16 +49,16 @@ class DebugLogEntry(dict):  # type: ignore[type-arg]
 
 
 def _default_response_mode() -> ValidationMode:
-    """Response default: ``warn`` everywhere unless one of the common
-    env vars explicitly declares a dev/test environment. Reading these
-    at call time (not import time) keeps tests that ``patch.dict`` the
-    environment working without a module-level reset hook.
+    """Response default: ``strict`` everywhere except when a common env
+    var explicitly declares a production environment. Read at call time
+    (not import time) so tests that ``patch.dict`` the environment work
+    without a module-level reset hook.
     """
     for name in ("ADCP_ENV", "PYTHON_ENV", "ENV", "ENVIRONMENT"):
         val = os.environ.get(name)
-        if val and val.lower() in {"dev", "development", "test"}:
-            return "strict"
-    return "warn"
+        if val and val.lower() in {"prod", "production"}:
+            return "warn"
+    return "strict"
 
 
 def resolve_validation_modes(
