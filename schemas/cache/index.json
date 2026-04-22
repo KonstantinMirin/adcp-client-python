@@ -3,12 +3,12 @@
   "title": "AdCP Schema Registry",
   "version": "1.0.0",
   "description": "Registry of all AdCP JSON schemas for validation and discovery",
-  "adcp_version": "latest",
+  "adcp_version": "3.0.0",
   "versioning": {
-    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP latest. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/vlatest/ \u2192 /schemas/latest/."
+    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.0. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ \u2192 /schemas/3.0.0/."
   },
   "lastUpdated": "2026-04-22",
-  "baseUrl": "/schemas/latest",
+  "baseUrl": "/schemas/3.0.0",
   "schemas": {
     "core": {
       "description": "Core data models used throughout AdCP",
@@ -478,6 +478,10 @@
         "creative-approval-status": {
           "$ref": "enums/creative-approval-status.json",
           "description": "Approval state of a creative on a specific package"
+        },
+        "audience-status": {
+          "$ref": "enums/audience-status.json",
+          "description": "Matching status of a synced audience on a seller platform"
         },
         "creative-quality": {
           "$ref": "enums/creative-quality.json",
