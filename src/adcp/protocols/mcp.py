@@ -57,6 +57,11 @@ from adcp.exceptions import (
 from adcp.protocols.base import ProtocolAdapter
 from adcp.signing.autosign import current_operation as _signing_operation
 from adcp.types.core import DebugInfo, TaskResult, TaskStatus
+from adcp.validation.client_hooks import (
+    validate_incoming_response,
+    validate_outgoing_request,
+)
+from adcp.validation.schema_validator import SchemaValidationError, format_issues
 
 # Spec-defined limits from docs/building/implementation/mcp-response-extraction.mdx
 # and docs/building/implementation/transport-errors.mdx.
@@ -145,10 +150,7 @@ def extract_adcp_success(result: Any) -> dict[str, Any] | None:
             parsed = json.loads(text)
         except (json.JSONDecodeError, ValueError):
             continue
-        if (
-            isinstance(parsed, dict)
-            and not (len(parsed) == 1 and "adcp_error" in parsed)
-        ):
+        if isinstance(parsed, dict) and not (len(parsed) == 1 and "adcp_error" in parsed):
             return parsed
     return None
 
@@ -351,8 +353,8 @@ class MCPAdapter(ProtocolAdapter):
             streamable_http_extra: dict[str, Any] = {}
             if self.signing_request_hook is not None:
                 if self.agent_config.mcp_transport == "streamable_http":
-                    streamable_http_extra["httpx_client_factory"] = (
-                        _make_signing_http_factory(self.signing_request_hook)
+                    streamable_http_extra["httpx_client_factory"] = _make_signing_http_factory(
+                        self.signing_request_hook
                     )
                 else:
                     logger.warning(
@@ -496,6 +498,19 @@ class MCPAdapter(ProtocolAdapter):
         )
 
         try:
+            # Pre-send schema validation — throws in strict, logs in warn,
+            # skips in off. Runs before session setup so a drifted payload
+            # doesn't even open a connection.
+            try:
+                validate_outgoing_request(tool_name, params, self.request_validation_mode)
+            except SchemaValidationError as exc:
+                return TaskResult[Any](
+                    status=TaskStatus.FAILED,
+                    error=str(exc),
+                    success=False,
+                    idempotency_key=idempotency_key,
+                )
+
             session = await self._get_session()
 
             if self.agent_config.debug:
@@ -608,6 +623,27 @@ class MCPAdapter(ProtocolAdapter):
             _idempotency.raise_for_idempotency_error(
                 tool_name, data_to_return, self.agent_config.id
             )
+
+            # Post-receive schema validation — catches field-name drift from
+            # agents. Strict mode fails the task; warn mode logs and returns
+            # the data unchanged; off short-circuits without invoking the
+            # validator. Never raises — mirrors the existing contract where
+            # response-side failures surface as TaskStatus.FAILED.
+            response_outcome = validate_incoming_response(
+                tool_name, data_to_return, self.response_validation_mode
+            )
+            if not response_outcome.valid and self.response_validation_mode == "strict":
+                return TaskResult[Any](
+                    status=TaskStatus.FAILED,
+                    error=(
+                        f"Schema validation failed for {tool_name}: "
+                        f"{format_issues(response_outcome.issues)}"
+                    ),
+                    message=message_text,
+                    success=False,
+                    debug_info=debug_info,
+                    idempotency_key=idempotency_key,
+                )
 
             # Return both the structured data and the human-readable message
             task_result = TaskResult[Any](

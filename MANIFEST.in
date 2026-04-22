@@ -2,3 +2,7 @@ include ADCP_VERSION
 include README.md
 include LICENSE
 recursive-include src/adcp py.typed
+# Bundled AdCP JSON schemas. ``scripts/bundle_schemas.py`` mirrors
+# ``schemas/cache/`` into ``src/adcp/_schemas/`` before ``python -m
+# build`` so the validator ships with the wheel.
+recursive-include src/adcp/_schemas *.json

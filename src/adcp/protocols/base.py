@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from adcp.types.core import AgentConfig, TaskResult, TaskStatus
 from adcp.utils.response_parser import parse_json_or_text, parse_mcp_content
+from adcp.validation.client_hooks import ValidationHookConfig, ValidationMode
 
 if TYPE_CHECKING:
     import httpx
@@ -44,6 +45,22 @@ class ProtocolAdapter(ABC):
         # via its httpx client's event_hooks; MCP consumes it via a custom
         # httpx_client_factory passed to streamablehttp_client.
         self.signing_request_hook: Callable[[httpx.Request], Awaitable[None]] | None = None
+        # Schema validation modes — resolved by the owning ADCPClient via
+        # ``configure_validation``. Both sides default to ``"warn"`` for
+        # adapters constructed directly (no client), which keeps existing
+        # test fixtures that stub non-spec-compliant payloads working.
+        # ADCPClient callers get the dev-env flip to ``responses="strict"``
+        # via ``configure_validation``.
+        self.request_validation_mode: ValidationMode = "warn"
+        self.response_validation_mode: ValidationMode = "warn"
+
+    def configure_validation(self, config: ValidationHookConfig | None) -> None:
+        """Apply a client's :class:`ValidationHookConfig` to this adapter."""
+        from adcp.validation.client_hooks import resolve_validation_modes
+
+        req, resp = resolve_validation_modes(config)
+        self.request_validation_mode = req
+        self.response_validation_mode = resp
 
     # ========================================================================
     # Helper methods for response parsing
