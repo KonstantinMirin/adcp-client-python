@@ -40,13 +40,19 @@
                 "description": "Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed."
               },
               "status": {
+                "title": "Audience Status",
+                "description": "Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed.",
                 "type": "string",
                 "enum": [
                   "processing",
                   "ready",
                   "too_small"
                 ],
-                "description": "Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed. 'processing': platform is still matching members against its user base. 'ready': audience is available for targeting, matched_count is populated. 'too_small': matched audience is below the platform's minimum size \u2014 add more members and re-sync."
+                "enumDescriptions": {
+                  "processing": "Platform is matching submitted members against its user base, or is holding the audience in a consent/policy-review queue before matching begins (e.g., clean-room flows). Transitions to 'ready' when matching completes with a matched set at or above the platform's minimum, or to 'too_small' when matching completes with too few matches.",
+                  "ready": "Audience is available for targeting. `matched_count` and `effective_match_rate` are populated. Sellers MAY re-enter 'processing' on a subsequent re-sync while re-matching runs, and MAY transition to 'too_small' if matched counts later fall below `minimum_size`.",
+                  "too_small": "Matched audience is below the platform's minimum size for targeting. `minimum_size` is populated. Not terminal \u2014 buyers add more members and re-sync, which MAY return the audience to 'processing' while re-matching runs or directly to 'ready' when the re-matched count clears the minimum. Sellers MUST emit 'too_small' (not 'ready' with a low `matched_count`) whenever `matched_count < minimum_size`, so buyers have a programmatic signal that targeting will fail."
+                }
               },
               "uploaded_count": {
                 "type": "integer",
@@ -322,7 +328,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-22T04:00:56.864Z",
+    "generatedAt": "2026-04-22T09:42:38.657Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

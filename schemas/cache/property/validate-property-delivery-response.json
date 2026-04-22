@@ -175,5 +175,5 @@
     "results",
     "validated_at"
   ],
-  "additionalProperties": false
+  "additionalProperties": true
 }
