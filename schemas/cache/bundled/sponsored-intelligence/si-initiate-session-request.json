@@ -12,9 +12,15 @@
       "minimum": 1,
       "maximum": 99
     },
-    "context": {
+    "intent": {
       "type": "string",
-      "description": "Conversation handoff from the host describing what the user needs"
+      "description": "Natural language description of user intent \u2014 the conversation handoff from the host describing what the user needs from the brand agent"
+    },
+    "context": {
+      "title": "Context Object",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "type": "object",
+      "additionalProperties": true
     },
     "identity": {
       "title": "SI Identity",
@@ -304,12 +310,12 @@
   },
   "required": [
     "idempotency_key",
-    "context",
+    "intent",
     "identity"
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-21T21:56:38.640Z",
+    "generatedAt": "2026-04-22T04:00:56.910Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

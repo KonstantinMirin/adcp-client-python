@@ -7111,41 +7111,105 @@
     },
     "refinement_applied": {
       "type": "array",
-      "description": "Seller's response to each change request in the refine array, matched by position. Each entry acknowledges whether the corresponding ask was applied, partially applied, or unable to be fulfilled. MUST contain the same number of entries in the same order as the request's refine array. Only present when the request used buying_mode: 'refine'.",
+      "description": "Seller's response to each change request in the refine array, matched by position. Each entry acknowledges whether the corresponding ask was applied, partially applied, or unable to be fulfilled. MUST contain the same number of entries in the same order as the request's refine array. Only present when the request used buying_mode: 'refine'. Each entry MUST echo the request entry's scope and \u2014 for product and proposal scopes \u2014 the matching id field (product_id or proposal_id), so orchestrators can cross-validate alignment.",
       "items": {
         "type": "object",
-        "properties": {
-          "scope": {
-            "type": "string",
-            "enum": [
-              "request",
-              "product",
-              "proposal"
-            ],
-            "description": "Echoes the scope from the corresponding refine entry. Allows orchestrators to cross-validate alignment."
-          },
-          "id": {
-            "type": "string",
-            "description": "Echoes the id from the corresponding refine entry (for product and proposal scopes)."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "applied",
-              "partial",
-              "unable"
-            ],
-            "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled \u2014 see notes for details. 'unable': the seller could not fulfill the ask \u2014 see notes for why."
-          },
-          "notes": {
-            "type": "string",
-            "description": "Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."
-          }
+        "discriminator": {
+          "propertyName": "scope"
         },
-        "required": [
-          "status"
-        ],
-        "additionalProperties": false
+        "oneOf": [
+          {
+            "properties": {
+              "scope": {
+                "type": "string",
+                "const": "request",
+                "description": "Echoes scope 'request' from the corresponding refine entry."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "applied",
+                  "partial",
+                  "unable"
+                ],
+                "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled \u2014 see notes for details. 'unable': the seller could not fulfill the ask \u2014 see notes for why."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."
+              }
+            },
+            "required": [
+              "scope",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "scope": {
+                "type": "string",
+                "const": "product",
+                "description": "Echoes scope 'product' from the corresponding refine entry."
+              },
+              "product_id": {
+                "type": "string",
+                "description": "Echoes product_id from the corresponding refine entry."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "applied",
+                  "partial",
+                  "unable"
+                ],
+                "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled \u2014 see notes for details. 'unable': the seller could not fulfill the ask \u2014 see notes for why."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."
+              }
+            },
+            "required": [
+              "scope",
+              "product_id",
+              "status"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "properties": {
+              "scope": {
+                "type": "string",
+                "const": "proposal",
+                "description": "Echoes scope 'proposal' from the corresponding refine entry."
+              },
+              "proposal_id": {
+                "type": "string",
+                "description": "Echoes proposal_id from the corresponding refine entry."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "applied",
+                  "partial",
+                  "unable"
+                ],
+                "description": "'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled \u2014 see notes for details. 'unable': the seller could not fulfill the ask \u2014 see notes for why."
+              },
+              "notes": {
+                "type": "string",
+                "description": "Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."
+              }
+            },
+            "required": [
+              "scope",
+              "proposal_id",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        ]
       }
     },
     "incomplete": {
@@ -7256,7 +7320,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-21T21:56:38.563Z",
+    "generatedAt": "2026-04-22T04:00:56.840Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

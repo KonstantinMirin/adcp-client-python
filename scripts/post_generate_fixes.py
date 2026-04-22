@@ -643,6 +643,162 @@ def restore_format_category_deprecation_shim():
     print(f"  ✓ Restored format_category deprecation shim at {rel}")
 
 
+def inject_literal_discriminator_defaults() -> None:
+    """Inject defaults for ``Literal[<single-value>]`` required fields.
+
+    AdCP's schema marks discriminator fields like ``asset_type``,
+    ``delivery_type``, ``pricing_model`` as required even though the
+    field's type is ``Literal[<one-value>]`` — the spec's intent is
+    "this field MUST be this one tag", not "the user MUST type the
+    tag out by hand". Pydantic takes the spec literally and generates
+    the field as required, breaking ergonomic construction::
+
+        # Spec-literal generated shape:
+        text = TextAsset(asset_type="text", content="hello")
+
+        # With this fix:
+        text = TextAsset(content="hello")  # asset_type defaults to "text"
+
+    Wire consumption is unchanged — the ``Literal`` type still rejects
+    any value other than the tag, and validating a dict from the wire
+    still populates the field the same way. This only affects
+    in-process construction ergonomics.
+
+    The fix is pattern-based: any ``AnnAssign`` whose annotation is
+    ``Literal['x']`` (or ``Annotated[Literal['x'], ...]``) and has no
+    default gets ``= 'x'`` appended. No spec-value-specific logic.
+    Robust to spec churn as long as the single-value-Literal pattern
+    holds.
+    """
+    import ast
+
+    total_classes = 0
+    total_fields = 0
+    total_files = 0
+
+    for py_file in sorted(OUTPUT_DIR.rglob("*.py")):
+        if py_file.name == "__init__.py":
+            continue
+
+        source = py_file.read_text()
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            continue
+
+        edits: list[tuple[int, str]] = []  # (end_lineno, literal_value)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            class_has_edit = False
+            for stmt in node.body:
+                if not isinstance(stmt, ast.AnnAssign):
+                    continue
+                if stmt.value is not None:
+                    continue  # already has a default
+                literal_value = _extract_single_literal_value(stmt.annotation)
+                if literal_value is None:
+                    continue
+                # ast end_lineno is 1-indexed, inclusive. The annotation
+                # ends on that line; we want to append " = '<value>'" at
+                # end of that line.
+                edits.append((stmt.end_lineno, literal_value))
+                total_fields += 1
+                class_has_edit = True
+            if class_has_edit:
+                total_classes += 1
+
+        if not edits:
+            continue
+
+        # Apply line-based edits. Sort descending so earlier edits don't
+        # shift the line indices of later ones (we're editing in place
+        # without inserting new lines, but defensive).
+        lines = source.split("\n")
+        for end_lineno, value in sorted(edits, key=lambda e: -e[0]):
+            idx = end_lineno - 1  # 0-indexed
+            # Escape the literal value as a Python string literal.
+            # datamodel-codegen only emits str-valued Literals for
+            # discriminators in AdCP schemas; if the value isn't a str,
+            # skip conservatively.
+            if not isinstance(value, str):
+                continue
+            escaped = repr(value)
+            lines[idx] = f"{lines[idx]} = {escaped}"
+
+        py_file.write_text("\n".join(lines))
+        total_files += 1
+
+    print(
+        f"  ✓ Injected Literal[<single-value>] defaults: "
+        f"{total_fields} fields across {total_classes} classes in {total_files} files"
+    )
+
+
+def _extract_single_literal_value(annotation: ast.AST) -> object | None:
+    """Return the single Literal value if the annotation is effectively
+    ``Literal[X]`` (optionally wrapped in ``Annotated[...]``); else None.
+
+    Handles both shapes datamodel-codegen emits:
+
+    * ``Literal['text']`` — bare Literal
+    * ``Annotated[Literal['text'], Field(...)]`` — wrapped in Annotated
+      with a Field descriptor (the typical discriminator shape)
+
+    Returns None if the annotation is a Literal with multiple values,
+    a Literal over non-strings, or anything else. We only want to
+    auto-default the unambiguous single-tag case.
+    """
+    import ast
+
+    # Unwrap Annotated[X, ...] → X
+    if isinstance(annotation, ast.Subscript) and _subscript_base_name(annotation) == "Annotated":
+        inner = _first_subscript_arg(annotation)
+        if inner is None:
+            return None
+        annotation = inner
+
+    # Expect Literal[X]
+    if not isinstance(annotation, ast.Subscript):
+        return None
+    if _subscript_base_name(annotation) != "Literal":
+        return None
+
+    # Extract the subscript arg(s). Single-value case only.
+    # ast.Subscript.slice in 3.9+ is the value directly (not a Tuple for single).
+    slice_node = annotation.slice
+    if isinstance(slice_node, ast.Tuple):
+        # Literal['a', 'b'] — multiple values, skip
+        return None
+    if not isinstance(slice_node, ast.Constant):
+        return None
+    return slice_node.value
+
+
+def _subscript_base_name(node: ast.Subscript) -> str | None:
+    """Return the subscripted name (e.g. 'Literal' for Literal['x'])."""
+    import ast
+
+    value = node.value
+    if isinstance(value, ast.Name):
+        return value.id
+    if isinstance(value, ast.Attribute):
+        return value.attr
+    return None
+
+
+def _first_subscript_arg(node: ast.Subscript) -> ast.AST | None:
+    """Return the first argument of a subscript. For Annotated[X, ...]
+    this is X; for single-arg Literal[X] this is the constant node."""
+    import ast
+
+    slice_node = node.slice
+    if isinstance(slice_node, ast.Tuple):
+        return slice_node.elts[0] if slice_node.elts else None
+    return slice_node
+
+
 def main():
     """Apply all post-generation fixes."""
     print("Applying post-generation fixes...")
@@ -659,6 +815,7 @@ def main():
     fix_list_field_shadowing()
     fix_reuse_model_discriminator_bug()
     restore_format_category_deprecation_shim()
+    inject_literal_discriminator_defaults()
 
     print("\n✓ Post-generation fixes complete\n")
 

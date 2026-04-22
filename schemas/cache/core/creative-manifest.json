@@ -10,10 +10,10 @@
     },
     "assets": {
       "type": "object",
-      "description": "Map of asset IDs to actual asset content. Each key MUST match an asset_id from the format's assets array (e.g., 'banner_image', 'clickthrough_url', 'video_file', 'vast_tag'). The asset_id is the technical identifier used to match assets to format requirements.\n\nIMPORTANT: Full validation requires format context. The format defines what type each asset_id should be. Standalone schema validation only checks structural conformance \u2014 each asset must match at least one valid asset type schema.",
+      "description": "Map of asset IDs to actual asset content. Each key MUST match an asset_id from the format's assets array (e.g., 'banner_image', 'clickthrough_url', 'video_file', 'vast_tag'). The asset_id is the technical identifier used to match assets to format requirements.\n\nEach asset value carries an `asset_type` discriminator (image, video, audio, vast, daast, text, markdown, url, html, css, webhook, javascript, brief, catalog) that selects the matching asset schema. Validators with OpenAPI-style discriminator support use `asset_type` to report errors against only the selected branch instead of all branches.",
       "patternProperties": {
         "^[a-z0-9_]+$": {
-          "anyOf": [
+          "oneOf": [
             {
               "$ref": "assets/image-asset.json"
             },
@@ -56,7 +56,10 @@
             {
               "$ref": "assets/catalog-asset.json"
             }
-          ]
+          ],
+          "discriminator": {
+            "propertyName": "asset_type"
+          }
         }
       },
       "additionalProperties": true

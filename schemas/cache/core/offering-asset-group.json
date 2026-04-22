@@ -14,9 +14,9 @@
     },
     "items": {
       "type": "array",
-      "description": "The assets in this group. Each item should match the structure for the declared asset_type. Note: JSON Schema validation accepts any valid asset structure here; enforcement that items match asset_type is the responsibility of the consuming agent.",
+      "description": "The assets in this group. Each item carries an `asset_type` discriminator that selects the matching asset schema. Note: the group-level `asset_type` declares the expected type; individual items must also self-tag so validators can narrow errors.",
       "items": {
-        "anyOf": [
+        "oneOf": [
           {
             "$ref": "assets/text-asset.json"
           },
@@ -53,7 +53,10 @@
           {
             "$ref": "assets/webhook-asset.json"
           }
-        ]
+        ],
+        "discriminator": {
+          "propertyName": "asset_type"
+        }
       },
       "minItems": 1
     },
@@ -75,12 +78,15 @@
         "asset_type": "text",
         "items": [
           {
+            "asset_type": "text",
             "content": "Shop the Summer Sale"
           },
           {
+            "asset_type": "text",
             "content": "50% Off Everything"
           },
           {
+            "asset_type": "text",
             "content": "Summer Savings Event"
           }
         ]
@@ -93,11 +99,13 @@
         "asset_type": "image",
         "items": [
           {
+            "asset_type": "image",
             "url": "https://cdn.acme.com/hero.jpg",
             "width": 1200,
             "height": 628
           },
           {
+            "asset_type": "image",
             "url": "https://cdn.acme.com/hero2.jpg",
             "width": 1200,
             "height": 628

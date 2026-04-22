@@ -19,10 +19,10 @@
     },
     "assets": {
       "type": "object",
-      "description": "Assets required by the format, keyed by asset_id",
+      "description": "Assets required by the format, keyed by asset_id. Each asset value carries an `asset_type` discriminator that selects the matching asset schema.",
       "patternProperties": {
         "^[a-z0-9_]+$": {
-          "anyOf": [
+          "oneOf": [
             {
               "$ref": "assets/image-asset.json"
             },
@@ -65,7 +65,10 @@
             {
               "$ref": "assets/catalog-asset.json"
             }
-          ]
+          ],
+          "discriminator": {
+            "propertyName": "asset_type"
+          }
         }
       },
       "additionalProperties": true

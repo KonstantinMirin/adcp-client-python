@@ -838,15 +838,20 @@
           },
           "assets": {
             "type": "object",
-            "description": "Assets for this creative, keyed by asset_id",
+            "description": "Assets for this creative, keyed by asset_id. Each asset value carries an `asset_type` discriminator that selects the matching asset schema.",
             "patternProperties": {
               "^[a-z0-9_]+$": {
-                "anyOf": [
+                "oneOf": [
                   {
                     "title": "Image Asset",
                     "description": "Image asset with URL and dimensions",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "image",
+                        "description": "Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "url": {
                         "type": "string",
                         "format": "uri",
@@ -1157,6 +1162,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "url",
                       "width",
                       "height"
@@ -1168,6 +1174,11 @@
                     "description": "Video asset with URL and technical specifications including audio track properties",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "video",
+                        "description": "Discriminator identifying this as a video asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "url": {
                         "type": "string",
                         "format": "uri",
@@ -1634,6 +1645,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "url",
                       "width",
                       "height"
@@ -1645,6 +1657,11 @@
                     "description": "Audio asset with URL and technical specifications",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "audio",
+                        "description": "Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "url": {
                         "type": "string",
                         "format": "uri",
@@ -1996,6 +2013,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "url"
                     ],
                     "additionalProperties": true
@@ -2003,9 +2021,379 @@
                   {
                     "title": "VAST Asset",
                     "description": "VAST (Video Ad Serving Template) tag for third-party video ad serving",
+                    "type": "object",
+                    "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "vast",
+                        "description": "Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry."
+                      },
+                      "vast_version": {
+                        "title": "VAST Version",
+                        "description": "VAST specification version",
+                        "type": "string",
+                        "enum": [
+                          "2.0",
+                          "3.0",
+                          "4.0",
+                          "4.1",
+                          "4.2"
+                        ]
+                      },
+                      "vpaid_enabled": {
+                        "type": "boolean",
+                        "description": "Whether VPAID (Video Player-Ad Interface Definition) is supported"
+                      },
+                      "duration_ms": {
+                        "type": "integer",
+                        "description": "Expected video duration in milliseconds (if known)",
+                        "minimum": 0
+                      },
+                      "tracking_events": {
+                        "type": "array",
+                        "items": {
+                          "title": "VAST Tracking Event",
+                          "description": "Tracking events for video ads. Includes IAB VAST 4.2 TrackingEvents, plus flattened representations of Impression, Error, VideoClicks, and ViewableImpression elements. fullscreen/exitFullscreen retained for VAST 2.x/3.x compatibility. measurableImpression is an AdCP extension for MRC measurability signals.",
+                          "type": "string",
+                          "enum": [
+                            "impression",
+                            "creativeView",
+                            "loaded",
+                            "start",
+                            "firstQuartile",
+                            "midpoint",
+                            "thirdQuartile",
+                            "complete",
+                            "mute",
+                            "unmute",
+                            "pause",
+                            "resume",
+                            "rewind",
+                            "skip",
+                            "playerExpand",
+                            "playerCollapse",
+                            "fullscreen",
+                            "exitFullscreen",
+                            "progress",
+                            "notUsed",
+                            "otherAdInteraction",
+                            "interactiveStart",
+                            "clickTracking",
+                            "customClick",
+                            "close",
+                            "closeLinear",
+                            "error",
+                            "viewable",
+                            "notViewable",
+                            "viewUndetermined",
+                            "measurableImpression",
+                            "viewableImpression"
+                          ]
+                        },
+                        "description": "Tracking events supported by this VAST tag"
+                      },
+                      "captions_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URL to captions file (WebVTT, SRT, etc.)",
+                        "x-accessibility": true
+                      },
+                      "audio_description_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URL to audio description track for visually impaired users",
+                        "x-accessibility": true
+                      },
+                      "provenance": {
+                        "title": "Provenance",
+                        "description": "Provenance metadata for this asset, overrides manifest-level provenance",
+                        "type": "object",
+                        "properties": {
+                          "digital_source_type": {
+                            "title": "Digital Source Type",
+                            "description": "IPTC-aligned classification of AI involvement in producing this content",
+                            "type": "string",
+                            "enum": [
+                              "digital_capture",
+                              "digital_creation",
+                              "trained_algorithmic_media",
+                              "composite_with_trained_algorithmic_media",
+                              "algorithmic_media",
+                              "composite_capture",
+                              "composite_synthetic",
+                              "human_edits",
+                              "data_driven_media"
+                            ],
+                            "enumDescriptions": {
+                              "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+                              "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+                              "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
+                              "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+                              "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+                              "composite_capture": "Multiple digital captures composited together without AI",
+                              "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+                              "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+                              "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
+                            }
+                          },
+                          "ai_tool": {
+                            "type": "object",
+                            "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
+                              },
+                              "version": {
+                                "type": "string",
+                                "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
+                              },
+                              "provider": {
+                                "type": "string",
+                                "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "human_oversight": {
+                            "type": "string",
+                            "description": "Level of human involvement in the AI-assisted creation process",
+                            "enum": [
+                              "none",
+                              "prompt_only",
+                              "selected",
+                              "edited",
+                              "directed"
+                            ],
+                            "enumDescriptions": {
+                              "none": "Fully automated with no human involvement in generation",
+                              "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+                              "selected": "Human selected from multiple AI-generated candidates",
+                              "edited": "Human edited or refined AI-generated output",
+                              "directed": "Human directed the creative process with AI as an assistive tool"
+                            }
+                          },
+                          "declared_by": {
+                            "type": "object",
+                            "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+                            "properties": {
+                              "agent_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "URL of the agent or service that declared this provenance"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "creator",
+                                  "advertiser",
+                                  "agency",
+                                  "platform",
+                                  "tool"
+                                ],
+                                "description": "Role of the declaring party in the supply chain",
+                                "enumDescriptions": {
+                                  "creator": "The party that created or generated the content",
+                                  "advertiser": "The brand or advertiser that owns the content",
+                                  "agency": "Agency acting on behalf of the advertiser",
+                                  "platform": "Ad platform or publisher that processed the content",
+                                  "tool": "Automated tool or service that attached provenance metadata"
+                                }
+                              }
+                            },
+                            "required": [
+                              "role"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "declared_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
+                          },
+                          "created_time": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "When this content was created or generated (ISO 8601)"
+                          },
+                          "c2pa": {
+                            "type": "object",
+                            "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
+                            "properties": {
+                              "manifest_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "URL to the C2PA manifest store for this content"
+                              }
+                            },
+                            "required": [
+                              "manifest_url"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "disclosure": {
+                            "type": "object",
+                            "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+                            "properties": {
+                              "required": {
+                                "type": "boolean",
+                                "description": "Whether AI disclosure is required for this content based on applicable regulations"
+                              },
+                              "jurisdictions": {
+                                "type": "array",
+                                "description": "Jurisdictions where disclosure obligations apply",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "country": {
+                                      "type": "string",
+                                      "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
+                                    },
+                                    "region": {
+                                      "type": "string",
+                                      "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
+                                    },
+                                    "regulation": {
+                                      "type": "string",
+                                      "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
+                                    },
+                                    "label_text": {
+                                      "type": "string",
+                                      "description": "Required disclosure label text for this jurisdiction, in the local language"
+                                    },
+                                    "render_guidance": {
+                                      "type": "object",
+                                      "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                                      "minProperties": 1,
+                                      "properties": {
+                                        "persistence": {
+                                          "title": "Disclosure Persistence",
+                                          "description": "How long the disclosure must persist during content playback or display",
+                                          "type": "string",
+                                          "enum": [
+                                            "continuous",
+                                            "initial",
+                                            "flexible"
+                                          ],
+                                          "enumDescriptions": {
+                                            "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                                            "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
+                                            "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
+                                          }
+                                        },
+                                        "min_duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                        },
+                                        "positions": {
+                                          "type": "array",
+                                          "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                                          "items": {
+                                            "title": "Disclosure Position",
+                                            "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
+                                            "type": "string",
+                                            "enum": [
+                                              "prominent",
+                                              "footer",
+                                              "audio",
+                                              "subtitle",
+                                              "overlay",
+                                              "end_card",
+                                              "pre_roll",
+                                              "companion"
+                                            ]
+                                          },
+                                          "minItems": 1,
+                                          "uniqueItems": true
+                                        },
+                                        "ext": {
+                                          "title": "Extension Object",
+                                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                                          "type": "object",
+                                          "additionalProperties": true
+                                        }
+                                      },
+                                      "additionalProperties": true
+                                    }
+                                  },
+                                  "required": [
+                                    "country",
+                                    "regulation"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                "minItems": 1
+                              }
+                            },
+                            "required": [
+                              "required"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "verification": {
+                            "type": "array",
+                            "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                            "minItems": 1,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "verified_by": {
+                                  "type": "string",
+                                  "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
+                                },
+                                "verified_time": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "description": "When the verification was performed (ISO 8601)"
+                                },
+                                "result": {
+                                  "type": "string",
+                                  "enum": [
+                                    "authentic",
+                                    "ai_generated",
+                                    "ai_modified",
+                                    "inconclusive"
+                                  ],
+                                  "description": "Verification outcome"
+                                },
+                                "confidence": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1,
+                                  "description": "Confidence score of the verification result (0.0 to 1.0)"
+                                },
+                                "details_url": {
+                                  "type": "string",
+                                  "format": "uri",
+                                  "description": "URL to the full verification report"
+                                }
+                              },
+                              "required": [
+                                "verified_by",
+                                "result"
+                              ],
+                              "additionalProperties": true
+                            }
+                          },
+                          "ext": {
+                            "title": "Extension Object",
+                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "required": [
+                      "asset_type"
+                    ],
                     "oneOf": [
                       {
-                        "type": "object",
                         "properties": {
                           "delivery_type": {
                             "type": "string",
@@ -2016,376 +2404,14 @@
                             "type": "string",
                             "format": "uri",
                             "description": "URL endpoint that returns VAST XML"
-                          },
-                          "vast_version": {
-                            "title": "VAST Version",
-                            "description": "VAST specification version",
-                            "type": "string",
-                            "enum": [
-                              "2.0",
-                              "3.0",
-                              "4.0",
-                              "4.1",
-                              "4.2"
-                            ]
-                          },
-                          "vpaid_enabled": {
-                            "type": "boolean",
-                            "description": "Whether VPAID (Video Player-Ad Interface Definition) is supported"
-                          },
-                          "duration_ms": {
-                            "type": "integer",
-                            "description": "Expected video duration in milliseconds (if known)",
-                            "minimum": 0
-                          },
-                          "tracking_events": {
-                            "type": "array",
-                            "items": {
-                              "title": "VAST Tracking Event",
-                              "description": "Tracking events for video ads. Includes IAB VAST 4.2 TrackingEvents, plus flattened representations of Impression, Error, VideoClicks, and ViewableImpression elements. fullscreen/exitFullscreen retained for VAST 2.x/3.x compatibility. measurableImpression is an AdCP extension for MRC measurability signals.",
-                              "type": "string",
-                              "enum": [
-                                "impression",
-                                "creativeView",
-                                "loaded",
-                                "start",
-                                "firstQuartile",
-                                "midpoint",
-                                "thirdQuartile",
-                                "complete",
-                                "mute",
-                                "unmute",
-                                "pause",
-                                "resume",
-                                "rewind",
-                                "skip",
-                                "playerExpand",
-                                "playerCollapse",
-                                "fullscreen",
-                                "exitFullscreen",
-                                "progress",
-                                "notUsed",
-                                "otherAdInteraction",
-                                "interactiveStart",
-                                "clickTracking",
-                                "customClick",
-                                "close",
-                                "closeLinear",
-                                "error",
-                                "viewable",
-                                "notViewable",
-                                "viewUndetermined",
-                                "measurableImpression",
-                                "viewableImpression"
-                              ]
-                            },
-                            "description": "Tracking events supported by this VAST tag"
-                          },
-                          "captions_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to captions file (WebVTT, SRT, etc.)",
-                            "x-accessibility": true
-                          },
-                          "audio_description_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to audio description track for visually impaired users",
-                            "x-accessibility": true
-                          },
-                          "provenance": {
-                            "title": "Provenance",
-                            "description": "Provenance metadata for this asset, overrides manifest-level provenance",
-                            "type": "object",
-                            "properties": {
-                              "digital_source_type": {
-                                "title": "Digital Source Type",
-                                "description": "IPTC-aligned classification of AI involvement in producing this content",
-                                "type": "string",
-                                "enum": [
-                                  "digital_capture",
-                                  "digital_creation",
-                                  "trained_algorithmic_media",
-                                  "composite_with_trained_algorithmic_media",
-                                  "algorithmic_media",
-                                  "composite_capture",
-                                  "composite_synthetic",
-                                  "human_edits",
-                                  "data_driven_media"
-                                ],
-                                "enumDescriptions": {
-                                  "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
-                                  "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
-                                  "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
-                                  "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
-                                  "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
-                                  "composite_capture": "Multiple digital captures composited together without AI",
-                                  "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
-                                  "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
-                                  "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
-                                }
-                              },
-                              "ai_tool": {
-                                "type": "object",
-                                "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
-                                "properties": {
-                                  "name": {
-                                    "type": "string",
-                                    "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
-                                  },
-                                  "provider": {
-                                    "type": "string",
-                                    "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
-                                  }
-                                },
-                                "required": [
-                                  "name"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "human_oversight": {
-                                "type": "string",
-                                "description": "Level of human involvement in the AI-assisted creation process",
-                                "enum": [
-                                  "none",
-                                  "prompt_only",
-                                  "selected",
-                                  "edited",
-                                  "directed"
-                                ],
-                                "enumDescriptions": {
-                                  "none": "Fully automated with no human involvement in generation",
-                                  "prompt_only": "Human provided the prompt or instructions but did not review outputs",
-                                  "selected": "Human selected from multiple AI-generated candidates",
-                                  "edited": "Human edited or refined AI-generated output",
-                                  "directed": "Human directed the creative process with AI as an assistive tool"
-                                }
-                              },
-                              "declared_by": {
-                                "type": "object",
-                                "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
-                                "properties": {
-                                  "agent_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL of the agent or service that declared this provenance"
-                                  },
-                                  "role": {
-                                    "type": "string",
-                                    "enum": [
-                                      "creator",
-                                      "advertiser",
-                                      "agency",
-                                      "platform",
-                                      "tool"
-                                    ],
-                                    "description": "Role of the declaring party in the supply chain",
-                                    "enumDescriptions": {
-                                      "creator": "The party that created or generated the content",
-                                      "advertiser": "The brand or advertiser that owns the content",
-                                      "agency": "Agency acting on behalf of the advertiser",
-                                      "platform": "Ad platform or publisher that processed the content",
-                                      "tool": "Automated tool or service that attached provenance metadata"
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "role"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "declared_at": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
-                              },
-                              "created_time": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this content was created or generated (ISO 8601)"
-                              },
-                              "c2pa": {
-                                "type": "object",
-                                "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
-                                "properties": {
-                                  "manifest_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL to the C2PA manifest store for this content"
-                                  }
-                                },
-                                "required": [
-                                  "manifest_url"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "disclosure": {
-                                "type": "object",
-                                "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
-                                "properties": {
-                                  "required": {
-                                    "type": "boolean",
-                                    "description": "Whether AI disclosure is required for this content based on applicable regulations"
-                                  },
-                                  "jurisdictions": {
-                                    "type": "array",
-                                    "description": "Jurisdictions where disclosure obligations apply",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "country": {
-                                          "type": "string",
-                                          "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
-                                        },
-                                        "region": {
-                                          "type": "string",
-                                          "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
-                                        },
-                                        "regulation": {
-                                          "type": "string",
-                                          "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
-                                        },
-                                        "label_text": {
-                                          "type": "string",
-                                          "description": "Required disclosure label text for this jurisdiction, in the local language"
-                                        },
-                                        "render_guidance": {
-                                          "type": "object",
-                                          "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
-                                          "minProperties": 1,
-                                          "properties": {
-                                            "persistence": {
-                                              "title": "Disclosure Persistence",
-                                              "description": "How long the disclosure must persist during content playback or display",
-                                              "type": "string",
-                                              "enum": [
-                                                "continuous",
-                                                "initial",
-                                                "flexible"
-                                              ],
-                                              "enumDescriptions": {
-                                                "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
-                                                "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
-                                                "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
-                                              }
-                                            },
-                                            "min_duration_ms": {
-                                              "type": "integer",
-                                              "minimum": 1,
-                                              "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
-                                            },
-                                            "positions": {
-                                              "type": "array",
-                                              "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
-                                              "items": {
-                                                "title": "Disclosure Position",
-                                                "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-                                                "type": "string",
-                                                "enum": [
-                                                  "prominent",
-                                                  "footer",
-                                                  "audio",
-                                                  "subtitle",
-                                                  "overlay",
-                                                  "end_card",
-                                                  "pre_roll",
-                                                  "companion"
-                                                ]
-                                              },
-                                              "minItems": 1,
-                                              "uniqueItems": true
-                                            },
-                                            "ext": {
-                                              "title": "Extension Object",
-                                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                              "type": "object",
-                                              "additionalProperties": true
-                                            }
-                                          },
-                                          "additionalProperties": true
-                                        }
-                                      },
-                                      "required": [
-                                        "country",
-                                        "regulation"
-                                      ],
-                                      "additionalProperties": true
-                                    },
-                                    "minItems": 1
-                                  }
-                                },
-                                "required": [
-                                  "required"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "verification": {
-                                "type": "array",
-                                "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
-                                "minItems": 1,
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "verified_by": {
-                                      "type": "string",
-                                      "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
-                                    },
-                                    "verified_time": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "description": "When the verification was performed (ISO 8601)"
-                                    },
-                                    "result": {
-                                      "type": "string",
-                                      "enum": [
-                                        "authentic",
-                                        "ai_generated",
-                                        "ai_modified",
-                                        "inconclusive"
-                                      ],
-                                      "description": "Verification outcome"
-                                    },
-                                    "confidence": {
-                                      "type": "number",
-                                      "minimum": 0,
-                                      "maximum": 1,
-                                      "description": "Confidence score of the verification result (0.0 to 1.0)"
-                                    },
-                                    "details_url": {
-                                      "type": "string",
-                                      "format": "uri",
-                                      "description": "URL to the full verification report"
-                                    }
-                                  },
-                                  "required": [
-                                    "verified_by",
-                                    "result"
-                                  ],
-                                  "additionalProperties": true
-                                }
-                              },
-                              "ext": {
-                                "title": "Extension Object",
-                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                "type": "object",
-                                "additionalProperties": true
-                              }
-                            },
-                            "additionalProperties": true
                           }
                         },
                         "required": [
                           "delivery_type",
                           "url"
-                        ],
-                        "additionalProperties": true
+                        ]
                       },
                       {
-                        "type": "object",
                         "properties": {
                           "delivery_type": {
                             "type": "string",
@@ -2395,381 +2421,29 @@
                           "content": {
                             "type": "string",
                             "description": "Inline VAST XML content"
-                          },
-                          "vast_version": {
-                            "title": "VAST Version",
-                            "description": "VAST specification version",
-                            "type": "string",
-                            "enum": [
-                              "2.0",
-                              "3.0",
-                              "4.0",
-                              "4.1",
-                              "4.2"
-                            ]
-                          },
-                          "vpaid_enabled": {
-                            "type": "boolean",
-                            "description": "Whether VPAID (Video Player-Ad Interface Definition) is supported"
-                          },
-                          "duration_ms": {
-                            "type": "integer",
-                            "description": "Expected video duration in milliseconds (if known)",
-                            "minimum": 0
-                          },
-                          "tracking_events": {
-                            "type": "array",
-                            "items": {
-                              "title": "VAST Tracking Event",
-                              "description": "Tracking events for video ads. Includes IAB VAST 4.2 TrackingEvents, plus flattened representations of Impression, Error, VideoClicks, and ViewableImpression elements. fullscreen/exitFullscreen retained for VAST 2.x/3.x compatibility. measurableImpression is an AdCP extension for MRC measurability signals.",
-                              "type": "string",
-                              "enum": [
-                                "impression",
-                                "creativeView",
-                                "loaded",
-                                "start",
-                                "firstQuartile",
-                                "midpoint",
-                                "thirdQuartile",
-                                "complete",
-                                "mute",
-                                "unmute",
-                                "pause",
-                                "resume",
-                                "rewind",
-                                "skip",
-                                "playerExpand",
-                                "playerCollapse",
-                                "fullscreen",
-                                "exitFullscreen",
-                                "progress",
-                                "notUsed",
-                                "otherAdInteraction",
-                                "interactiveStart",
-                                "clickTracking",
-                                "customClick",
-                                "close",
-                                "closeLinear",
-                                "error",
-                                "viewable",
-                                "notViewable",
-                                "viewUndetermined",
-                                "measurableImpression",
-                                "viewableImpression"
-                              ]
-                            },
-                            "description": "Tracking events supported by this VAST tag"
-                          },
-                          "captions_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to captions file (WebVTT, SRT, etc.)",
-                            "x-accessibility": true
-                          },
-                          "audio_description_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to audio description track for visually impaired users",
-                            "x-accessibility": true
-                          },
-                          "provenance": {
-                            "title": "Provenance",
-                            "description": "Provenance metadata for this asset, overrides manifest-level provenance",
-                            "type": "object",
-                            "properties": {
-                              "digital_source_type": {
-                                "title": "Digital Source Type",
-                                "description": "IPTC-aligned classification of AI involvement in producing this content",
-                                "type": "string",
-                                "enum": [
-                                  "digital_capture",
-                                  "digital_creation",
-                                  "trained_algorithmic_media",
-                                  "composite_with_trained_algorithmic_media",
-                                  "algorithmic_media",
-                                  "composite_capture",
-                                  "composite_synthetic",
-                                  "human_edits",
-                                  "data_driven_media"
-                                ],
-                                "enumDescriptions": {
-                                  "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
-                                  "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
-                                  "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
-                                  "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
-                                  "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
-                                  "composite_capture": "Multiple digital captures composited together without AI",
-                                  "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
-                                  "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
-                                  "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
-                                }
-                              },
-                              "ai_tool": {
-                                "type": "object",
-                                "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
-                                "properties": {
-                                  "name": {
-                                    "type": "string",
-                                    "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
-                                  },
-                                  "provider": {
-                                    "type": "string",
-                                    "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
-                                  }
-                                },
-                                "required": [
-                                  "name"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "human_oversight": {
-                                "type": "string",
-                                "description": "Level of human involvement in the AI-assisted creation process",
-                                "enum": [
-                                  "none",
-                                  "prompt_only",
-                                  "selected",
-                                  "edited",
-                                  "directed"
-                                ],
-                                "enumDescriptions": {
-                                  "none": "Fully automated with no human involvement in generation",
-                                  "prompt_only": "Human provided the prompt or instructions but did not review outputs",
-                                  "selected": "Human selected from multiple AI-generated candidates",
-                                  "edited": "Human edited or refined AI-generated output",
-                                  "directed": "Human directed the creative process with AI as an assistive tool"
-                                }
-                              },
-                              "declared_by": {
-                                "type": "object",
-                                "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
-                                "properties": {
-                                  "agent_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL of the agent or service that declared this provenance"
-                                  },
-                                  "role": {
-                                    "type": "string",
-                                    "enum": [
-                                      "creator",
-                                      "advertiser",
-                                      "agency",
-                                      "platform",
-                                      "tool"
-                                    ],
-                                    "description": "Role of the declaring party in the supply chain",
-                                    "enumDescriptions": {
-                                      "creator": "The party that created or generated the content",
-                                      "advertiser": "The brand or advertiser that owns the content",
-                                      "agency": "Agency acting on behalf of the advertiser",
-                                      "platform": "Ad platform or publisher that processed the content",
-                                      "tool": "Automated tool or service that attached provenance metadata"
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "role"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "declared_at": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
-                              },
-                              "created_time": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this content was created or generated (ISO 8601)"
-                              },
-                              "c2pa": {
-                                "type": "object",
-                                "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
-                                "properties": {
-                                  "manifest_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL to the C2PA manifest store for this content"
-                                  }
-                                },
-                                "required": [
-                                  "manifest_url"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "disclosure": {
-                                "type": "object",
-                                "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
-                                "properties": {
-                                  "required": {
-                                    "type": "boolean",
-                                    "description": "Whether AI disclosure is required for this content based on applicable regulations"
-                                  },
-                                  "jurisdictions": {
-                                    "type": "array",
-                                    "description": "Jurisdictions where disclosure obligations apply",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "country": {
-                                          "type": "string",
-                                          "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
-                                        },
-                                        "region": {
-                                          "type": "string",
-                                          "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
-                                        },
-                                        "regulation": {
-                                          "type": "string",
-                                          "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
-                                        },
-                                        "label_text": {
-                                          "type": "string",
-                                          "description": "Required disclosure label text for this jurisdiction, in the local language"
-                                        },
-                                        "render_guidance": {
-                                          "type": "object",
-                                          "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
-                                          "minProperties": 1,
-                                          "properties": {
-                                            "persistence": {
-                                              "title": "Disclosure Persistence",
-                                              "description": "How long the disclosure must persist during content playback or display",
-                                              "type": "string",
-                                              "enum": [
-                                                "continuous",
-                                                "initial",
-                                                "flexible"
-                                              ],
-                                              "enumDescriptions": {
-                                                "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
-                                                "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
-                                                "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
-                                              }
-                                            },
-                                            "min_duration_ms": {
-                                              "type": "integer",
-                                              "minimum": 1,
-                                              "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
-                                            },
-                                            "positions": {
-                                              "type": "array",
-                                              "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
-                                              "items": {
-                                                "title": "Disclosure Position",
-                                                "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-                                                "type": "string",
-                                                "enum": [
-                                                  "prominent",
-                                                  "footer",
-                                                  "audio",
-                                                  "subtitle",
-                                                  "overlay",
-                                                  "end_card",
-                                                  "pre_roll",
-                                                  "companion"
-                                                ]
-                                              },
-                                              "minItems": 1,
-                                              "uniqueItems": true
-                                            },
-                                            "ext": {
-                                              "title": "Extension Object",
-                                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                              "type": "object",
-                                              "additionalProperties": true
-                                            }
-                                          },
-                                          "additionalProperties": true
-                                        }
-                                      },
-                                      "required": [
-                                        "country",
-                                        "regulation"
-                                      ],
-                                      "additionalProperties": true
-                                    },
-                                    "minItems": 1
-                                  }
-                                },
-                                "required": [
-                                  "required"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "verification": {
-                                "type": "array",
-                                "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
-                                "minItems": 1,
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "verified_by": {
-                                      "type": "string",
-                                      "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
-                                    },
-                                    "verified_time": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "description": "When the verification was performed (ISO 8601)"
-                                    },
-                                    "result": {
-                                      "type": "string",
-                                      "enum": [
-                                        "authentic",
-                                        "ai_generated",
-                                        "ai_modified",
-                                        "inconclusive"
-                                      ],
-                                      "description": "Verification outcome"
-                                    },
-                                    "confidence": {
-                                      "type": "number",
-                                      "minimum": 0,
-                                      "maximum": 1,
-                                      "description": "Confidence score of the verification result (0.0 to 1.0)"
-                                    },
-                                    "details_url": {
-                                      "type": "string",
-                                      "format": "uri",
-                                      "description": "URL to the full verification report"
-                                    }
-                                  },
-                                  "required": [
-                                    "verified_by",
-                                    "result"
-                                  ],
-                                  "additionalProperties": true
-                                }
-                              },
-                              "ext": {
-                                "title": "Extension Object",
-                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                "type": "object",
-                                "additionalProperties": true
-                              }
-                            },
-                            "additionalProperties": true
                           }
                         },
                         "required": [
                           "delivery_type",
                           "content"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
-                    ]
+                    ],
+                    "discriminator": {
+                      "propertyName": "delivery_type"
+                    },
+                    "additionalProperties": true
                   },
                   {
                     "title": "Text Asset",
                     "description": "Text content asset",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "text",
+                        "description": "Discriminator identifying this as a text asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "content": {
                         "type": "string",
                         "description": "Text content"
@@ -3064,6 +2738,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "content"
                     ],
                     "additionalProperties": true
@@ -3073,10 +2748,15 @@
                     "description": "URL reference asset",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "url",
+                        "description": "Discriminator identifying this as a URL asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "url": {
                         "type": "string",
-                        "format": "uri",
-                        "description": "URL reference"
+                        "format": "uri-template",
+                        "description": "URL reference. May be a plain URI or an RFC 6570 URI template carrying AdCP universal macros (e.g., `{SKU}`, `{MEDIA_BUY_ID}`). Buyers MUST NOT pre-encode macro braces at sync time; the ad server URL-encodes substituted values at impression time. See docs/creative/universal-macros.mdx."
                       },
                       "url_type": {
                         "title": "URL Asset Type",
@@ -3378,6 +3058,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "url"
                     ],
                     "additionalProperties": true
@@ -3387,6 +3068,11 @@
                     "description": "HTML content asset",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "html",
+                        "description": "Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "content": {
                         "type": "string",
                         "description": "HTML content"
@@ -3704,6 +3390,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "content"
                     ],
                     "additionalProperties": true
@@ -3713,6 +3400,11 @@
                     "description": "JavaScript code asset",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "javascript",
+                        "description": "Discriminator identifying this as a JavaScript asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "content": {
                         "type": "string",
                         "description": "JavaScript content"
@@ -4036,6 +3728,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "content"
                     ],
                     "additionalProperties": true
@@ -4045,6 +3738,11 @@
                     "description": "Webhook for server-side dynamic content rendering (DCO)",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "webhook",
+                        "description": "Discriminator identifying this as a webhook asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "url": {
                         "type": "string",
                         "format": "uri",
@@ -4070,7 +3768,7 @@
                       "supported_macros": {
                         "type": "array",
                         "items": {
-                          "oneOf": [
+                          "anyOf": [
                             {
                               "title": "Universal Macro",
                               "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
@@ -4229,7 +3927,7 @@
                       "required_macros": {
                         "type": "array",
                         "items": {
-                          "oneOf": [
+                          "anyOf": [
                             {
                               "title": "Universal Macro",
                               "description": "Standardized macro placeholders for dynamic value substitution in creative tracking URLs. Macros are replaced with actual values at impression time. See docs/creative/universal-macros.mdx for detailed documentation.",
@@ -4709,6 +4407,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "url",
                       "response_type",
                       "security"
@@ -4720,6 +4419,11 @@
                     "description": "CSS stylesheet asset",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "css",
+                        "description": "Discriminator identifying this as a CSS asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "content": {
                         "type": "string",
                         "description": "CSS content"
@@ -5014,6 +4718,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "content"
                     ],
                     "additionalProperties": true
@@ -5021,9 +4726,361 @@
                   {
                     "title": "DAAST Asset",
                     "description": "DAAST (Digital Audio Ad Serving Template) tag for third-party audio ad serving",
+                    "type": "object",
+                    "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "daast",
+                        "description": "Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry."
+                      },
+                      "daast_version": {
+                        "title": "DAAST Version",
+                        "description": "DAAST specification version",
+                        "type": "string",
+                        "enum": [
+                          "1.0",
+                          "1.1"
+                        ]
+                      },
+                      "duration_ms": {
+                        "type": "integer",
+                        "description": "Expected audio duration in milliseconds (if known)",
+                        "minimum": 0
+                      },
+                      "tracking_events": {
+                        "type": "array",
+                        "items": {
+                          "title": "DAAST Tracking Event",
+                          "description": "Tracking events for audio ads. Includes DAAST-applicable events from IAB VAST/DAAST conventions, plus flattened Impression, Error, and ViewableImpression elements. creativeView included for companion ad tracking. measurableImpression is an AdCP extension.",
+                          "type": "string",
+                          "enum": [
+                            "impression",
+                            "creativeView",
+                            "loaded",
+                            "start",
+                            "firstQuartile",
+                            "midpoint",
+                            "thirdQuartile",
+                            "complete",
+                            "mute",
+                            "unmute",
+                            "pause",
+                            "resume",
+                            "skip",
+                            "progress",
+                            "clickTracking",
+                            "customClick",
+                            "close",
+                            "error",
+                            "viewable",
+                            "notViewable",
+                            "viewUndetermined",
+                            "measurableImpression",
+                            "viewableImpression"
+                          ]
+                        },
+                        "description": "Tracking events supported by this DAAST tag"
+                      },
+                      "companion_ads": {
+                        "type": "boolean",
+                        "description": "Whether companion display ads are included"
+                      },
+                      "transcript_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "URL to text transcript of the audio content",
+                        "x-accessibility": true
+                      },
+                      "provenance": {
+                        "title": "Provenance",
+                        "description": "Provenance metadata for this asset, overrides manifest-level provenance",
+                        "type": "object",
+                        "properties": {
+                          "digital_source_type": {
+                            "title": "Digital Source Type",
+                            "description": "IPTC-aligned classification of AI involvement in producing this content",
+                            "type": "string",
+                            "enum": [
+                              "digital_capture",
+                              "digital_creation",
+                              "trained_algorithmic_media",
+                              "composite_with_trained_algorithmic_media",
+                              "algorithmic_media",
+                              "composite_capture",
+                              "composite_synthetic",
+                              "human_edits",
+                              "data_driven_media"
+                            ],
+                            "enumDescriptions": {
+                              "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
+                              "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
+                              "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
+                              "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
+                              "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
+                              "composite_capture": "Multiple digital captures composited together without AI",
+                              "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
+                              "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
+                              "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
+                            }
+                          },
+                          "ai_tool": {
+                            "type": "object",
+                            "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
+                              },
+                              "version": {
+                                "type": "string",
+                                "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
+                              },
+                              "provider": {
+                                "type": "string",
+                                "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "human_oversight": {
+                            "type": "string",
+                            "description": "Level of human involvement in the AI-assisted creation process",
+                            "enum": [
+                              "none",
+                              "prompt_only",
+                              "selected",
+                              "edited",
+                              "directed"
+                            ],
+                            "enumDescriptions": {
+                              "none": "Fully automated with no human involvement in generation",
+                              "prompt_only": "Human provided the prompt or instructions but did not review outputs",
+                              "selected": "Human selected from multiple AI-generated candidates",
+                              "edited": "Human edited or refined AI-generated output",
+                              "directed": "Human directed the creative process with AI as an assistive tool"
+                            }
+                          },
+                          "declared_by": {
+                            "type": "object",
+                            "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
+                            "properties": {
+                              "agent_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "URL of the agent or service that declared this provenance"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "creator",
+                                  "advertiser",
+                                  "agency",
+                                  "platform",
+                                  "tool"
+                                ],
+                                "description": "Role of the declaring party in the supply chain",
+                                "enumDescriptions": {
+                                  "creator": "The party that created or generated the content",
+                                  "advertiser": "The brand or advertiser that owns the content",
+                                  "agency": "Agency acting on behalf of the advertiser",
+                                  "platform": "Ad platform or publisher that processed the content",
+                                  "tool": "Automated tool or service that attached provenance metadata"
+                                }
+                              }
+                            },
+                            "required": [
+                              "role"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "declared_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
+                          },
+                          "created_time": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "When this content was created or generated (ISO 8601)"
+                          },
+                          "c2pa": {
+                            "type": "object",
+                            "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
+                            "properties": {
+                              "manifest_url": {
+                                "type": "string",
+                                "format": "uri",
+                                "description": "URL to the C2PA manifest store for this content"
+                              }
+                            },
+                            "required": [
+                              "manifest_url"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "disclosure": {
+                            "type": "object",
+                            "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
+                            "properties": {
+                              "required": {
+                                "type": "boolean",
+                                "description": "Whether AI disclosure is required for this content based on applicable regulations"
+                              },
+                              "jurisdictions": {
+                                "type": "array",
+                                "description": "Jurisdictions where disclosure obligations apply",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "country": {
+                                      "type": "string",
+                                      "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
+                                    },
+                                    "region": {
+                                      "type": "string",
+                                      "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
+                                    },
+                                    "regulation": {
+                                      "type": "string",
+                                      "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
+                                    },
+                                    "label_text": {
+                                      "type": "string",
+                                      "description": "Required disclosure label text for this jurisdiction, in the local language"
+                                    },
+                                    "render_guidance": {
+                                      "type": "object",
+                                      "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
+                                      "minProperties": 1,
+                                      "properties": {
+                                        "persistence": {
+                                          "title": "Disclosure Persistence",
+                                          "description": "How long the disclosure must persist during content playback or display",
+                                          "type": "string",
+                                          "enum": [
+                                            "continuous",
+                                            "initial",
+                                            "flexible"
+                                          ],
+                                          "enumDescriptions": {
+                                            "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
+                                            "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
+                                            "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
+                                          }
+                                        },
+                                        "min_duration_ms": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
+                                        },
+                                        "positions": {
+                                          "type": "array",
+                                          "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
+                                          "items": {
+                                            "title": "Disclosure Position",
+                                            "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
+                                            "type": "string",
+                                            "enum": [
+                                              "prominent",
+                                              "footer",
+                                              "audio",
+                                              "subtitle",
+                                              "overlay",
+                                              "end_card",
+                                              "pre_roll",
+                                              "companion"
+                                            ]
+                                          },
+                                          "minItems": 1,
+                                          "uniqueItems": true
+                                        },
+                                        "ext": {
+                                          "title": "Extension Object",
+                                          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                                          "type": "object",
+                                          "additionalProperties": true
+                                        }
+                                      },
+                                      "additionalProperties": true
+                                    }
+                                  },
+                                  "required": [
+                                    "country",
+                                    "regulation"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                "minItems": 1
+                              }
+                            },
+                            "required": [
+                              "required"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "verification": {
+                            "type": "array",
+                            "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
+                            "minItems": 1,
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "verified_by": {
+                                  "type": "string",
+                                  "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
+                                },
+                                "verified_time": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "description": "When the verification was performed (ISO 8601)"
+                                },
+                                "result": {
+                                  "type": "string",
+                                  "enum": [
+                                    "authentic",
+                                    "ai_generated",
+                                    "ai_modified",
+                                    "inconclusive"
+                                  ],
+                                  "description": "Verification outcome"
+                                },
+                                "confidence": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1,
+                                  "description": "Confidence score of the verification result (0.0 to 1.0)"
+                                },
+                                "details_url": {
+                                  "type": "string",
+                                  "format": "uri",
+                                  "description": "URL to the full verification report"
+                                }
+                              },
+                              "required": [
+                                "verified_by",
+                                "result"
+                              ],
+                              "additionalProperties": true
+                            }
+                          },
+                          "ext": {
+                            "title": "Extension Object",
+                            "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+                            "type": "object",
+                            "additionalProperties": true
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    },
+                    "required": [
+                      "asset_type"
+                    ],
                     "oneOf": [
                       {
-                        "type": "object",
                         "properties": {
                           "delivery_type": {
                             "type": "string",
@@ -5034,358 +5091,14 @@
                             "type": "string",
                             "format": "uri",
                             "description": "URL endpoint that returns DAAST XML"
-                          },
-                          "daast_version": {
-                            "title": "DAAST Version",
-                            "description": "DAAST specification version",
-                            "type": "string",
-                            "enum": [
-                              "1.0",
-                              "1.1"
-                            ]
-                          },
-                          "duration_ms": {
-                            "type": "integer",
-                            "description": "Expected audio duration in milliseconds (if known)",
-                            "minimum": 0
-                          },
-                          "tracking_events": {
-                            "type": "array",
-                            "items": {
-                              "title": "DAAST Tracking Event",
-                              "description": "Tracking events for audio ads. Includes DAAST-applicable events from IAB VAST/DAAST conventions, plus flattened Impression, Error, and ViewableImpression elements. creativeView included for companion ad tracking. measurableImpression is an AdCP extension.",
-                              "type": "string",
-                              "enum": [
-                                "impression",
-                                "creativeView",
-                                "loaded",
-                                "start",
-                                "firstQuartile",
-                                "midpoint",
-                                "thirdQuartile",
-                                "complete",
-                                "mute",
-                                "unmute",
-                                "pause",
-                                "resume",
-                                "skip",
-                                "progress",
-                                "clickTracking",
-                                "customClick",
-                                "close",
-                                "error",
-                                "viewable",
-                                "notViewable",
-                                "viewUndetermined",
-                                "measurableImpression",
-                                "viewableImpression"
-                              ]
-                            },
-                            "description": "Tracking events supported by this DAAST tag"
-                          },
-                          "companion_ads": {
-                            "type": "boolean",
-                            "description": "Whether companion display ads are included"
-                          },
-                          "transcript_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to text transcript of the audio content",
-                            "x-accessibility": true
-                          },
-                          "provenance": {
-                            "title": "Provenance",
-                            "description": "Provenance metadata for this asset, overrides manifest-level provenance",
-                            "type": "object",
-                            "properties": {
-                              "digital_source_type": {
-                                "title": "Digital Source Type",
-                                "description": "IPTC-aligned classification of AI involvement in producing this content",
-                                "type": "string",
-                                "enum": [
-                                  "digital_capture",
-                                  "digital_creation",
-                                  "trained_algorithmic_media",
-                                  "composite_with_trained_algorithmic_media",
-                                  "algorithmic_media",
-                                  "composite_capture",
-                                  "composite_synthetic",
-                                  "human_edits",
-                                  "data_driven_media"
-                                ],
-                                "enumDescriptions": {
-                                  "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
-                                  "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
-                                  "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
-                                  "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
-                                  "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
-                                  "composite_capture": "Multiple digital captures composited together without AI",
-                                  "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
-                                  "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
-                                  "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
-                                }
-                              },
-                              "ai_tool": {
-                                "type": "object",
-                                "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
-                                "properties": {
-                                  "name": {
-                                    "type": "string",
-                                    "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
-                                  },
-                                  "provider": {
-                                    "type": "string",
-                                    "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
-                                  }
-                                },
-                                "required": [
-                                  "name"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "human_oversight": {
-                                "type": "string",
-                                "description": "Level of human involvement in the AI-assisted creation process",
-                                "enum": [
-                                  "none",
-                                  "prompt_only",
-                                  "selected",
-                                  "edited",
-                                  "directed"
-                                ],
-                                "enumDescriptions": {
-                                  "none": "Fully automated with no human involvement in generation",
-                                  "prompt_only": "Human provided the prompt or instructions but did not review outputs",
-                                  "selected": "Human selected from multiple AI-generated candidates",
-                                  "edited": "Human edited or refined AI-generated output",
-                                  "directed": "Human directed the creative process with AI as an assistive tool"
-                                }
-                              },
-                              "declared_by": {
-                                "type": "object",
-                                "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
-                                "properties": {
-                                  "agent_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL of the agent or service that declared this provenance"
-                                  },
-                                  "role": {
-                                    "type": "string",
-                                    "enum": [
-                                      "creator",
-                                      "advertiser",
-                                      "agency",
-                                      "platform",
-                                      "tool"
-                                    ],
-                                    "description": "Role of the declaring party in the supply chain",
-                                    "enumDescriptions": {
-                                      "creator": "The party that created or generated the content",
-                                      "advertiser": "The brand or advertiser that owns the content",
-                                      "agency": "Agency acting on behalf of the advertiser",
-                                      "platform": "Ad platform or publisher that processed the content",
-                                      "tool": "Automated tool or service that attached provenance metadata"
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "role"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "declared_at": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
-                              },
-                              "created_time": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this content was created or generated (ISO 8601)"
-                              },
-                              "c2pa": {
-                                "type": "object",
-                                "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
-                                "properties": {
-                                  "manifest_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL to the C2PA manifest store for this content"
-                                  }
-                                },
-                                "required": [
-                                  "manifest_url"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "disclosure": {
-                                "type": "object",
-                                "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
-                                "properties": {
-                                  "required": {
-                                    "type": "boolean",
-                                    "description": "Whether AI disclosure is required for this content based on applicable regulations"
-                                  },
-                                  "jurisdictions": {
-                                    "type": "array",
-                                    "description": "Jurisdictions where disclosure obligations apply",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "country": {
-                                          "type": "string",
-                                          "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
-                                        },
-                                        "region": {
-                                          "type": "string",
-                                          "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
-                                        },
-                                        "regulation": {
-                                          "type": "string",
-                                          "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
-                                        },
-                                        "label_text": {
-                                          "type": "string",
-                                          "description": "Required disclosure label text for this jurisdiction, in the local language"
-                                        },
-                                        "render_guidance": {
-                                          "type": "object",
-                                          "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
-                                          "minProperties": 1,
-                                          "properties": {
-                                            "persistence": {
-                                              "title": "Disclosure Persistence",
-                                              "description": "How long the disclosure must persist during content playback or display",
-                                              "type": "string",
-                                              "enum": [
-                                                "continuous",
-                                                "initial",
-                                                "flexible"
-                                              ],
-                                              "enumDescriptions": {
-                                                "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
-                                                "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
-                                                "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
-                                              }
-                                            },
-                                            "min_duration_ms": {
-                                              "type": "integer",
-                                              "minimum": 1,
-                                              "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
-                                            },
-                                            "positions": {
-                                              "type": "array",
-                                              "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
-                                              "items": {
-                                                "title": "Disclosure Position",
-                                                "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-                                                "type": "string",
-                                                "enum": [
-                                                  "prominent",
-                                                  "footer",
-                                                  "audio",
-                                                  "subtitle",
-                                                  "overlay",
-                                                  "end_card",
-                                                  "pre_roll",
-                                                  "companion"
-                                                ]
-                                              },
-                                              "minItems": 1,
-                                              "uniqueItems": true
-                                            },
-                                            "ext": {
-                                              "title": "Extension Object",
-                                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                              "type": "object",
-                                              "additionalProperties": true
-                                            }
-                                          },
-                                          "additionalProperties": true
-                                        }
-                                      },
-                                      "required": [
-                                        "country",
-                                        "regulation"
-                                      ],
-                                      "additionalProperties": true
-                                    },
-                                    "minItems": 1
-                                  }
-                                },
-                                "required": [
-                                  "required"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "verification": {
-                                "type": "array",
-                                "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
-                                "minItems": 1,
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "verified_by": {
-                                      "type": "string",
-                                      "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
-                                    },
-                                    "verified_time": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "description": "When the verification was performed (ISO 8601)"
-                                    },
-                                    "result": {
-                                      "type": "string",
-                                      "enum": [
-                                        "authentic",
-                                        "ai_generated",
-                                        "ai_modified",
-                                        "inconclusive"
-                                      ],
-                                      "description": "Verification outcome"
-                                    },
-                                    "confidence": {
-                                      "type": "number",
-                                      "minimum": 0,
-                                      "maximum": 1,
-                                      "description": "Confidence score of the verification result (0.0 to 1.0)"
-                                    },
-                                    "details_url": {
-                                      "type": "string",
-                                      "format": "uri",
-                                      "description": "URL to the full verification report"
-                                    }
-                                  },
-                                  "required": [
-                                    "verified_by",
-                                    "result"
-                                  ],
-                                  "additionalProperties": true
-                                }
-                              },
-                              "ext": {
-                                "title": "Extension Object",
-                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                "type": "object",
-                                "additionalProperties": true
-                              }
-                            },
-                            "additionalProperties": true
                           }
                         },
                         "required": [
                           "delivery_type",
                           "url"
-                        ],
-                        "additionalProperties": true
+                        ]
                       },
                       {
-                        "type": "object",
                         "properties": {
                           "delivery_type": {
                             "type": "string",
@@ -5395,363 +5108,29 @@
                           "content": {
                             "type": "string",
                             "description": "Inline DAAST XML content"
-                          },
-                          "daast_version": {
-                            "title": "DAAST Version",
-                            "description": "DAAST specification version",
-                            "type": "string",
-                            "enum": [
-                              "1.0",
-                              "1.1"
-                            ]
-                          },
-                          "duration_ms": {
-                            "type": "integer",
-                            "description": "Expected audio duration in milliseconds (if known)",
-                            "minimum": 0
-                          },
-                          "tracking_events": {
-                            "type": "array",
-                            "items": {
-                              "title": "DAAST Tracking Event",
-                              "description": "Tracking events for audio ads. Includes DAAST-applicable events from IAB VAST/DAAST conventions, plus flattened Impression, Error, and ViewableImpression elements. creativeView included for companion ad tracking. measurableImpression is an AdCP extension.",
-                              "type": "string",
-                              "enum": [
-                                "impression",
-                                "creativeView",
-                                "loaded",
-                                "start",
-                                "firstQuartile",
-                                "midpoint",
-                                "thirdQuartile",
-                                "complete",
-                                "mute",
-                                "unmute",
-                                "pause",
-                                "resume",
-                                "skip",
-                                "progress",
-                                "clickTracking",
-                                "customClick",
-                                "close",
-                                "error",
-                                "viewable",
-                                "notViewable",
-                                "viewUndetermined",
-                                "measurableImpression",
-                                "viewableImpression"
-                              ]
-                            },
-                            "description": "Tracking events supported by this DAAST tag"
-                          },
-                          "companion_ads": {
-                            "type": "boolean",
-                            "description": "Whether companion display ads are included"
-                          },
-                          "transcript_url": {
-                            "type": "string",
-                            "format": "uri",
-                            "description": "URL to text transcript of the audio content",
-                            "x-accessibility": true
-                          },
-                          "provenance": {
-                            "title": "Provenance",
-                            "description": "Provenance metadata for this asset, overrides manifest-level provenance",
-                            "type": "object",
-                            "properties": {
-                              "digital_source_type": {
-                                "title": "Digital Source Type",
-                                "description": "IPTC-aligned classification of AI involvement in producing this content",
-                                "type": "string",
-                                "enum": [
-                                  "digital_capture",
-                                  "digital_creation",
-                                  "trained_algorithmic_media",
-                                  "composite_with_trained_algorithmic_media",
-                                  "algorithmic_media",
-                                  "composite_capture",
-                                  "composite_synthetic",
-                                  "human_edits",
-                                  "data_driven_media"
-                                ],
-                                "enumDescriptions": {
-                                  "digital_capture": "Captured by a digital device (camera, scanner, screen recording) with no AI involvement",
-                                  "digital_creation": "Created by a human using digital tools (Photoshop, Illustrator, After Effects) without AI generation",
-                                  "trained_algorithmic_media": "Generated entirely by a trained AI model (DALL-E, Midjourney, Stable Diffusion, Sora)",
-                                  "composite_with_trained_algorithmic_media": "Human-created content combined with AI-generated elements (e.g., photo with AI background)",
-                                  "algorithmic_media": "Produced by deterministic algorithms without machine learning (procedural generation, rule-based systems)",
-                                  "composite_capture": "Multiple digital captures composited together without AI",
-                                  "composite_synthetic": "Composite of multiple elements where at least one is AI-generated (e.g., stock photo composited with AI-generated background)",
-                                  "human_edits": "Content augmented, corrected, or enhanced by humans using non-generative tools",
-                                  "data_driven_media": "Assembled from structured data feeds (DCO templates, product catalogs, weather-triggered variants)"
-                                }
-                              },
-                              "ai_tool": {
-                                "type": "object",
-                                "description": "AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.",
-                                "properties": {
-                                  "name": {
-                                    "type": "string",
-                                    "description": "Name of the AI tool or model (e.g., 'DALL-E 3', 'Stable Diffusion XL', 'Gemini')"
-                                  },
-                                  "version": {
-                                    "type": "string",
-                                    "description": "Version identifier for the AI tool or model (e.g., '25.1', '0125', '2.1'). For generative models, use the model version rather than the API version."
-                                  },
-                                  "provider": {
-                                    "type": "string",
-                                    "description": "Organization that provides the AI tool (e.g., 'OpenAI', 'Stability AI', 'Google')"
-                                  }
-                                },
-                                "required": [
-                                  "name"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "human_oversight": {
-                                "type": "string",
-                                "description": "Level of human involvement in the AI-assisted creation process",
-                                "enum": [
-                                  "none",
-                                  "prompt_only",
-                                  "selected",
-                                  "edited",
-                                  "directed"
-                                ],
-                                "enumDescriptions": {
-                                  "none": "Fully automated with no human involvement in generation",
-                                  "prompt_only": "Human provided the prompt or instructions but did not review outputs",
-                                  "selected": "Human selected from multiple AI-generated candidates",
-                                  "edited": "Human edited or refined AI-generated output",
-                                  "directed": "Human directed the creative process with AI as an assistive tool"
-                                }
-                              },
-                              "declared_by": {
-                                "type": "object",
-                                "description": "Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.",
-                                "properties": {
-                                  "agent_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL of the agent or service that declared this provenance"
-                                  },
-                                  "role": {
-                                    "type": "string",
-                                    "enum": [
-                                      "creator",
-                                      "advertiser",
-                                      "agency",
-                                      "platform",
-                                      "tool"
-                                    ],
-                                    "description": "Role of the declaring party in the supply chain",
-                                    "enumDescriptions": {
-                                      "creator": "The party that created or generated the content",
-                                      "advertiser": "The brand or advertiser that owns the content",
-                                      "agency": "Agency acting on behalf of the advertiser",
-                                      "platform": "Ad platform or publisher that processed the content",
-                                      "tool": "Automated tool or service that attached provenance metadata"
-                                    }
-                                  }
-                                },
-                                "required": [
-                                  "role"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "declared_at": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this provenance claim was made (ISO 8601). Distinct from created_time, which records when the content itself was produced. A provenance claim may be attached well after content creation, for example when retroactively declaring AI involvement for regulatory compliance."
-                              },
-                              "created_time": {
-                                "type": "string",
-                                "format": "date-time",
-                                "description": "When this content was created or generated (ISO 8601)"
-                              },
-                              "c2pa": {
-                                "type": "object",
-                                "description": "C2PA Content Credentials reference. Links to the cryptographic provenance manifest for this content. Because file-level C2PA bindings break during ad-tech transcoding, this URL reference preserves the chain of provenance through the supply chain.",
-                                "properties": {
-                                  "manifest_url": {
-                                    "type": "string",
-                                    "format": "uri",
-                                    "description": "URL to the C2PA manifest store for this content"
-                                  }
-                                },
-                                "required": [
-                                  "manifest_url"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "disclosure": {
-                                "type": "object",
-                                "description": "Regulatory disclosure requirements for this content. Indicates whether AI disclosure is required and under which jurisdictions.",
-                                "properties": {
-                                  "required": {
-                                    "type": "boolean",
-                                    "description": "Whether AI disclosure is required for this content based on applicable regulations"
-                                  },
-                                  "jurisdictions": {
-                                    "type": "array",
-                                    "description": "Jurisdictions where disclosure obligations apply",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "country": {
-                                          "type": "string",
-                                          "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'DE', 'CN')"
-                                        },
-                                        "region": {
-                                          "type": "string",
-                                          "description": "Sub-national region code (e.g., 'CA' for California, 'BY' for Bavaria)"
-                                        },
-                                        "regulation": {
-                                          "type": "string",
-                                          "description": "Regulation identifier (e.g., 'eu_ai_act_article_50', 'ca_sb_942', 'cn_deep_synthesis')"
-                                        },
-                                        "label_text": {
-                                          "type": "string",
-                                          "description": "Required disclosure label text for this jurisdiction, in the local language"
-                                        },
-                                        "render_guidance": {
-                                          "type": "object",
-                                          "description": "How the disclosure should be rendered for this jurisdiction. Expresses the declaring party's intent for persistence and position based on regulatory requirements. Publishers control actual rendering but governance agents can audit whether guidance was followed.",
-                                          "minProperties": 1,
-                                          "properties": {
-                                            "persistence": {
-                                              "title": "Disclosure Persistence",
-                                              "description": "How long the disclosure must persist during content playback or display",
-                                              "type": "string",
-                                              "enum": [
-                                                "continuous",
-                                                "initial",
-                                                "flexible"
-                                              ],
-                                              "enumDescriptions": {
-                                                "continuous": "Disclosure must remain visible or audible throughout the entire content display duration. For video and audio, this means the full playback duration. For static formats (display, DOOH), this means the full display slot. For DOOH specifically, 'content duration' means the ad's display slot within the rotation, not the screen's full rotation cycle.",
-                                                "initial": "Disclosure must appear at the start of content for a minimum duration before it may be removed. Pair with min_duration_ms in render_guidance or creative brief to specify the required duration.",
-                                                "flexible": "Disclosure presence is sufficient; placement timing and duration are at the publisher's discretion"
-                                              }
-                                            },
-                                            "min_duration_ms": {
-                                              "type": "integer",
-                                              "minimum": 1,
-                                              "description": "Minimum display duration in milliseconds for initial persistence. Recommended when persistence is initial \u2014 without it, the duration is at the publisher's discretion. At serve time the publisher reads this from provenance since the brief is not available."
-                                            },
-                                            "positions": {
-                                              "type": "array",
-                                              "description": "Preferred disclosure positions in priority order. The first position a format supports should be used.",
-                                              "items": {
-                                                "title": "Disclosure Position",
-                                                "description": "Where a required disclosure should appear within a creative. Used by creative briefs to specify disclosure placement and by formats to declare which positions they can render.",
-                                                "type": "string",
-                                                "enum": [
-                                                  "prominent",
-                                                  "footer",
-                                                  "audio",
-                                                  "subtitle",
-                                                  "overlay",
-                                                  "end_card",
-                                                  "pre_roll",
-                                                  "companion"
-                                                ]
-                                              },
-                                              "minItems": 1,
-                                              "uniqueItems": true
-                                            },
-                                            "ext": {
-                                              "title": "Extension Object",
-                                              "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                              "type": "object",
-                                              "additionalProperties": true
-                                            }
-                                          },
-                                          "additionalProperties": true
-                                        }
-                                      },
-                                      "required": [
-                                        "country",
-                                        "regulation"
-                                      ],
-                                      "additionalProperties": true
-                                    },
-                                    "minItems": 1
-                                  }
-                                },
-                                "required": [
-                                  "required"
-                                ],
-                                "additionalProperties": true
-                              },
-                              "verification": {
-                                "type": "array",
-                                "description": "Third-party verification or detection results for this content. Multiple services may independently evaluate the same content. Provenance is a claim \u2014 verification results attached by the declaring party are supplementary. The enforcing party (e.g., seller/publisher) should run its own verification via get_creative_features or calibrate_content.",
-                                "minItems": 1,
-                                "items": {
-                                  "type": "object",
-                                  "properties": {
-                                    "verified_by": {
-                                      "type": "string",
-                                      "description": "Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')"
-                                    },
-                                    "verified_time": {
-                                      "type": "string",
-                                      "format": "date-time",
-                                      "description": "When the verification was performed (ISO 8601)"
-                                    },
-                                    "result": {
-                                      "type": "string",
-                                      "enum": [
-                                        "authentic",
-                                        "ai_generated",
-                                        "ai_modified",
-                                        "inconclusive"
-                                      ],
-                                      "description": "Verification outcome"
-                                    },
-                                    "confidence": {
-                                      "type": "number",
-                                      "minimum": 0,
-                                      "maximum": 1,
-                                      "description": "Confidence score of the verification result (0.0 to 1.0)"
-                                    },
-                                    "details_url": {
-                                      "type": "string",
-                                      "format": "uri",
-                                      "description": "URL to the full verification report"
-                                    }
-                                  },
-                                  "required": [
-                                    "verified_by",
-                                    "result"
-                                  ],
-                                  "additionalProperties": true
-                                }
-                              },
-                              "ext": {
-                                "title": "Extension Object",
-                                "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
-                                "type": "object",
-                                "additionalProperties": true
-                              }
-                            },
-                            "additionalProperties": true
                           }
                         },
                         "required": [
                           "delivery_type",
                           "content"
-                        ],
-                        "additionalProperties": true
+                        ]
                       }
-                    ]
+                    ],
+                    "discriminator": {
+                      "propertyName": "delivery_type"
+                    },
+                    "additionalProperties": true
                   },
                   {
                     "title": "Markdown Asset",
                     "description": "Markdown-formatted text content following CommonMark specification",
                     "type": "object",
                     "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "markdown",
+                        "description": "Discriminator identifying this as a markdown asset. See /schemas/creative/asset-types for the registry."
+                      },
                       "content": {
                         "type": "string",
                         "description": "Markdown content following CommonMark spec with optional GitHub Flavored Markdown extensions"
@@ -5777,6 +5156,7 @@
                       }
                     },
                     "required": [
+                      "asset_type",
                       "content"
                     ],
                     "additionalProperties": true
@@ -5784,6 +5164,17 @@
                   {
                     "title": "Brief Asset",
                     "description": "Campaign-level creative context as an asset. Carries the creative brief through the manifest so it travels with the creative through regeneration, resizing, and auditing.",
+                    "type": "object",
+                    "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "brief",
+                        "description": "Discriminator identifying this as a brief asset. See /schemas/creative/asset-types for the registry."
+                      }
+                    },
+                    "required": [
+                      "asset_type"
+                    ],
                     "allOf": [
                       {
                         "title": "Creative Brief",
@@ -5977,6 +5368,17 @@
                   {
                     "title": "Catalog Asset",
                     "description": "A typed data feed as a creative asset. Carries catalog context (products, stores, jobs, etc.) within the manifest's assets map.",
+                    "type": "object",
+                    "properties": {
+                      "asset_type": {
+                        "type": "string",
+                        "const": "catalog",
+                        "description": "Discriminator identifying this as a catalog asset. See /schemas/creative/asset-types for the registry."
+                      }
+                    },
+                    "required": [
+                      "asset_type"
+                    ],
                     "allOf": [
                       {
                         "title": "Catalog",
@@ -6450,7 +5852,10 @@
                       }
                     ]
                   }
-                ]
+                ],
+                "discriminator": {
+                  "propertyName": "asset_type"
+                }
               }
             },
             "additionalProperties": true
@@ -7075,11 +6480,13 @@
             "updated_date": "2026-02-20T09:30:00Z",
             "assets": {
               "banner_image": {
+                "asset_type": "image",
                 "url": "https://cdn.example.com/holiday_300x250.png",
                 "width": 300,
                 "height": 250
               },
               "clickthrough_url": {
+                "asset_type": "url",
                 "url": "https://acmecorp.example.com/holiday-sale"
               }
             },
@@ -7119,11 +6526,13 @@
             "updated_date": "2026-02-20T09:35:00Z",
             "assets": {
               "banner_image": {
+                "asset_type": "image",
                 "url": "https://cdn.example.com/holiday_728x90.png",
                 "width": 728,
                 "height": 90
               },
               "clickthrough_url": {
+                "asset_type": "url",
                 "url": "https://acmecorp.example.com/holiday-sale"
               }
             },
@@ -7150,7 +6559,7 @@
     }
   ],
   "_bundled": {
-    "generatedAt": "2026-04-21T21:56:38.435Z",
+    "generatedAt": "2026-04-22T04:00:56.724Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }

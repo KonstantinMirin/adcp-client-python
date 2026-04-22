@@ -16,9 +16,15 @@
       "description": "Offering identifier from the catalog to get details for",
       "x-entity": "offering"
     },
-    "context": {
+    "intent": {
       "type": "string",
-      "description": "Optional natural language context about user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."
+      "description": "Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII."
+    },
+    "context": {
+      "title": "Context Object",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "type": "object",
+      "additionalProperties": true
     },
     "include_products": {
       "type": "boolean",
@@ -44,7 +50,7 @@
   ],
   "additionalProperties": true,
   "_bundled": {
-    "generatedAt": "2026-04-21T21:56:38.639Z",
+    "generatedAt": "2026-04-22T04:00:56.909Z",
     "note": "This is a bundled schema with all $ref resolved inline. For the modular version with references, use the parent directory."
   }
 }
