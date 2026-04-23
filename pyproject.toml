@@ -79,6 +79,10 @@ dev = [
     # tests/test_mcp_middleware_composition.py and future integration
     # tests that exercise the streamable-HTTP ASGI app in-process.
     "asgi-lifespan>=2.1.0",
+    # mypy stubs for the protobuf runtime we use via a2a-sdk 1.0
+    # (``google.protobuf.json_format``, ``struct_pb2``, ``timestamp_pb2``).
+    # Without these mypy flags every import as ``import-untyped``.
+    "types-protobuf>=7.34.1.20260408",
 ]
 docs = [
     "pdoc3>=0.10.0",
