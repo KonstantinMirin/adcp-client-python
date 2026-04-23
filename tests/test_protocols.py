@@ -583,14 +583,14 @@ class TestA2AContextId:
 
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             await adapter._call_a2a_tool("create_media_buy", {})
-            assert adapter.pending_task_id == "task-hitl-1"
+            assert adapter.active_task_id == "task-hitl-1"
 
             await adapter._call_a2a_tool("create_media_buy", {"approval": "yes"})
 
         assert self._captured_task_id(mock_a2a_client.send_message, 0) is None
         assert self._captured_task_id(mock_a2a_client.send_message, 1) == "task-hitl-1"
         # Terminal state clears the pending task.
-        assert adapter.pending_task_id is None
+        assert adapter.active_task_id is None
 
     @pytest.mark.asyncio
     async def test_task_id_cleared_on_completed_state(self, a2a_config):
@@ -618,7 +618,7 @@ class TestA2AContextId:
 
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             await adapter._call_a2a_tool("get_products", {})
-            assert adapter.pending_task_id is None
+            assert adapter.active_task_id is None
 
             await adapter._call_a2a_tool("create_media_buy", {})
 
@@ -645,7 +645,7 @@ class TestA2AContextId:
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             await adapter._call_a2a_tool("get_products", {})
 
-        assert adapter.pending_task_id is None
+        assert adapter.active_task_id is None
 
     @pytest.mark.asyncio
     async def test_task_id_retained_on_working_state(self, a2a_config):
@@ -667,7 +667,7 @@ class TestA2AContextId:
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             await adapter._call_a2a_tool("create_media_buy", {})
 
-        assert adapter.pending_task_id == "task-in-progress"
+        assert adapter.active_task_id == "task-in-progress"
 
     @pytest.mark.asyncio
     async def test_set_context_id_clears_pending_task(self, a2a_config):
@@ -675,12 +675,12 @@ class TestA2AContextId:
         conversation shouldn't try to resume a task from the old one."""
         adapter = A2AAdapter(a2a_config)
         adapter._context_id = "old-ctx"
-        adapter._pending_task_id = "old-task"
+        adapter._active_task_id = "old-task"
 
         adapter.set_context_id("new-ctx")
 
         assert adapter.context_id == "new-ctx"
-        assert adapter.pending_task_id is None
+        assert adapter.active_task_id is None
 
     @pytest.mark.asyncio
     async def test_server_rebinding_context_id_is_honored(self, a2a_config):
@@ -701,6 +701,185 @@ class TestA2AContextId:
 
         assert self._captured_context_id(mock_a2a_client.send_message) == "buyer-proposed"
         assert adapter.context_id == "server-overrode"
+
+    @pytest.mark.asyncio
+    async def test_task_id_retained_on_submitted_state(self, a2a_config):
+        """'submitted' is non-terminal — server has accepted the task but
+        not started processing. Adapter must retain task_id so the next
+        call lands on the same queued task instead of stacking a duplicate.
+        """
+        adapter = A2AAdapter(a2a_config)
+
+        submitted = create_mock_a2a_task(
+            task_id="task-queued",
+            context_id="ctx",
+            state="submitted",
+            parts=[TextPart(text="accepted")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=submitted)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.active_task_id == "task-queued"
+
+    @pytest.mark.asyncio
+    async def test_task_id_retained_on_auth_required_state(self, a2a_config):
+        """'auth-required' is non-terminal — server is blocked pending
+        buyer-side auth. Adapter must retain task_id so the resubmit with
+        credentials lands on the same task."""
+        adapter = A2AAdapter(a2a_config)
+
+        auth_required = create_mock_a2a_task(
+            task_id="task-needs-auth",
+            context_id="ctx",
+            state="auth-required",
+            parts=[TextPart(text="authenticate and retry")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=auth_required)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.active_task_id == "task-needs-auth"
+
+    @pytest.mark.asyncio
+    async def test_task_id_cleared_on_canceled_state(self, a2a_config):
+        """'canceled' is terminal — adapter must clear task_id so the
+        next call starts fresh instead of echoing a dead task."""
+        adapter = A2AAdapter(a2a_config)
+
+        canceled = create_mock_a2a_task(
+            task_id="task-canceled",
+            context_id="ctx",
+            state="canceled",
+            parts=[TextPart(text="canceled by buyer")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=canceled)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.active_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_task_id_cleared_on_rejected_state(self, a2a_config):
+        """'rejected' is terminal — adapter must clear task_id."""
+        adapter = A2AAdapter(a2a_config)
+
+        rejected = create_mock_a2a_task(
+            task_id="task-rejected",
+            context_id="ctx",
+            state="rejected",
+            parts=[TextPart(text="rejected by agent")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=rejected)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.active_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_task_id_cleared_on_unknown_state(self, a2a_config):
+        """'unknown' is treated as terminal — don't cling to a task in
+        an undefined state. Adapter should clear and warn."""
+        adapter = A2AAdapter(a2a_config)
+
+        unknown = create_mock_a2a_task(
+            task_id="task-mystery",
+            context_id="ctx",
+            state="unknown",
+            parts=[TextPart(text="???")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=unknown)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.active_task_id is None
+
+    @pytest.mark.asyncio
+    async def test_state_not_committed_when_post_processing_raises(self, a2a_config):
+        """If _process_task_response raises, the adapter must NOT advance
+        its state — otherwise a retry echoes a task_id the caller never
+        saw a response for. Uses IdempotencyConflictError because it's in
+        the adapter's allow-list to propagate (most exceptions get caught
+        and converted to TaskResult(FAILED), but typed idempotency errors
+        bubble out). Either way the invariant is the same: pre-call state
+        must survive a raise from post-processing.
+        """
+        from adcp.exceptions import IdempotencyConflictError
+
+        adapter = A2AAdapter(a2a_config)
+        adapter._context_id = "prior-ctx"
+        adapter._active_task_id = "prior-task"
+
+        response_task = create_mock_a2a_task(
+            task_id="server-new-task",
+            context_id="server-new-ctx",
+            state="input-required",
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=response_task)
+        )
+
+        boom = IdempotencyConflictError("create_media_buy", errors=[])
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            with patch.object(adapter, "_process_task_response", side_effect=boom):
+                with pytest.raises(IdempotencyConflictError):
+                    await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert adapter.context_id == "prior-ctx"
+        assert adapter.active_task_id == "prior-task"
+
+    @pytest.mark.asyncio
+    async def test_state_not_committed_when_exception_converts_to_failed(self, a2a_config):
+        """Mirror of the IdempotencyConflictError test for the generic
+        exception path. Most exceptions in post-processing get caught by
+        the broad ``except Exception`` at the end of _call_a2a_tool and
+        converted to ``TaskResult(FAILED)`` — the caller never sees the
+        exception, but the adapter still must not have advanced state,
+        or the next call echoes a task_id the caller never saw succeed.
+        """
+        adapter = A2AAdapter(a2a_config)
+        adapter._context_id = "prior-ctx"
+        adapter._active_task_id = "prior-task"
+
+        response_task = create_mock_a2a_task(
+            task_id="server-new-task",
+            context_id="server-new-ctx",
+            state="input-required",
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=response_task)
+        )
+
+        boom = RuntimeError("post-processing blew up")
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            with patch.object(adapter, "_process_task_response", side_effect=boom):
+                result = await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert result.status == TaskStatus.FAILED
+        assert adapter.context_id == "prior-ctx"
+        assert adapter.active_task_id == "prior-task"
 
 
 class TestADCPClientContextId:
@@ -737,14 +916,14 @@ class TestADCPClientContextId:
     def test_constructor_rejects_context_id_on_non_a2a(self, mcp_config):
         from adcp.client import ADCPClient
 
-        with pytest.raises(ValueError, match="only supported for A2A"):
+        with pytest.raises(TypeError, match="only supported for A2A"):
             ADCPClient(mcp_config, context_id="nope")
 
     def test_reset_context_rejects_on_non_a2a(self, mcp_config):
         from adcp.client import ADCPClient
 
         client = ADCPClient(mcp_config)
-        with pytest.raises(ValueError, match="only supported for A2A"):
+        with pytest.raises(TypeError, match="only supported for A2A"):
             client.reset_context("anything")
 
     def test_context_id_property_returns_none_on_non_a2a(self, mcp_config):
@@ -753,20 +932,133 @@ class TestADCPClientContextId:
         client = ADCPClient(mcp_config)
         assert client.context_id is None
 
-    def test_pending_task_id_property_exposes_adapter_state(self, a2a_config):
+    def test_active_task_id_property_exposes_adapter_state(self, a2a_config):
         from adcp.client import ADCPClient
 
         client = ADCPClient(a2a_config)
-        assert client.pending_task_id is None
+        assert client.active_task_id is None
         assert isinstance(client.adapter, A2AAdapter)
-        client.adapter._pending_task_id = "task-mid-flight"
-        assert client.pending_task_id == "task-mid-flight"
+        client.adapter._active_task_id = "task-mid-flight"
+        assert client.active_task_id == "task-mid-flight"
 
-    def test_pending_task_id_returns_none_on_non_a2a(self, mcp_config):
+    def test_active_task_id_returns_none_on_non_a2a(self, mcp_config):
         from adcp.client import ADCPClient
 
         client = ADCPClient(mcp_config)
-        assert client.pending_task_id is None
+        assert client.active_task_id is None
+
+    def test_empty_string_context_id_is_not_seeded(self, a2a_config):
+        """``context_id=""`` from ``os.getenv(...) or ""`` patterns must
+        not silently seed an empty id on the wire."""
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, context_id="")
+        assert client.context_id is None
+
+    def test_empty_string_context_id_ok_on_non_a2a(self, mcp_config):
+        """Empty context_id should be treated as 'not provided' on any
+        protocol — no TypeError on MCP, same as passing None."""
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config, context_id="")
+        assert client.context_id is None
+
+    def test_checkpoint_returns_all_fields(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, context_id="ctx-123")
+        assert isinstance(client.adapter, A2AAdapter)
+        client.adapter._active_task_id = "task-in-flight"
+
+        state = client.checkpoint()
+        assert state == {
+            "agent_id": a2a_config.id,
+            "context_id": "ctx-123",
+            "active_task_id": "task-in-flight",
+        }
+
+    def test_checkpoint_on_non_a2a_carries_agent_id_and_nones(self, mcp_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        assert client.checkpoint() == {
+            "agent_id": mcp_config.id,
+            "context_id": None,
+            "active_task_id": None,
+        }
+
+    def test_from_checkpoint_restores_both_ids(self, a2a_config):
+        """Full resume requires both ids — persisting only context_id
+        orphans the pending task server-side."""
+        from adcp.client import ADCPClient
+
+        state = {
+            "agent_id": a2a_config.id,
+            "context_id": "ctx-resume",
+            "active_task_id": "task-hitl",
+        }
+        client = ADCPClient.from_checkpoint(a2a_config, state)
+
+        assert client.context_id == "ctx-resume"
+        assert client.active_task_id == "task-hitl"
+
+    def test_from_checkpoint_with_empty_state_is_fresh_client(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient.from_checkpoint(a2a_config, {})
+        assert client.context_id is None
+        assert client.active_task_id is None
+
+    def test_from_checkpoint_roundtrips(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        original = ADCPClient(a2a_config, context_id="ctx-orig")
+        assert isinstance(original.adapter, A2AAdapter)
+        original.adapter._active_task_id = "task-orig"
+
+        restored = ADCPClient.from_checkpoint(a2a_config, original.checkpoint())
+        assert restored.context_id == original.context_id
+        assert restored.active_task_id == original.active_task_id
+
+    def test_from_checkpoint_rejects_mismatched_agent_id(self, a2a_config):
+        """A checkpoint minted for Agent A must not be restored onto
+        Agent B — that would leak Agent A's opaque session ids to a
+        different vendor on the next message."""
+        from adcp.client import ADCPClient
+
+        state = {
+            "agent_id": "other-agent",
+            "context_id": "ctx-from-other",
+            "active_task_id": "task-from-other",
+        }
+        with pytest.raises(ValueError, match="minted for agent"):
+            ADCPClient.from_checkpoint(a2a_config, state)
+
+    def test_from_checkpoint_raises_on_non_a2a_with_active_task(self, mcp_config):
+        """Silently dropping active_task_id on a non-A2A restore would
+        mask bugs — raise instead."""
+        from adcp.client import ADCPClient
+
+        state = {
+            "agent_id": mcp_config.id,
+            "context_id": None,
+            "active_task_id": "task-x",
+        }
+        with pytest.raises(TypeError, match="active_task_id"):
+            ADCPClient.from_checkpoint(mcp_config, state)
+
+    def test_from_checkpoint_empty_on_mcp_is_fine(self, mcp_config):
+        """Empty/None checkpoint must round-trip on any protocol."""
+        from adcp.client import ADCPClient
+
+        state = {
+            "agent_id": mcp_config.id,
+            "context_id": None,
+            "active_task_id": None,
+        }
+        client = ADCPClient.from_checkpoint(mcp_config, state)
+        assert client.context_id is None
+        assert client.active_task_id is None
 
 
 class TestMCPAdapter:

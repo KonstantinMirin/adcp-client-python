@@ -370,13 +370,13 @@ async def test_task_id_echoed_on_resume_after_input_required():
             r1 = await client.adapter.create_media_buy({"budget": 1000})
             # After an input-required response the adapter stashed both ids.
             assert client.context_id is not None
-            assert client.pending_task_id is not None
-            retained_task_id = client.pending_task_id
+            assert client.active_task_id is not None
+            retained_task_id = client.active_task_id
             retained_context_id = client.context_id
 
             r2 = await client.adapter.create_media_buy({"approval": "yes"})
-            # Terminal state on turn 2 cleared pending_task_id; context stays.
-            assert client.pending_task_id is None
+            # Terminal state on turn 2 cleared active_task_id; context stays.
+            assert client.active_task_id is None
             assert client.context_id == retained_context_id
 
     assert len(executor.observations) == 2

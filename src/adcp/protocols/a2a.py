@@ -17,6 +17,7 @@ from a2a.types import (
     Role,
     SendMessageRequest,
     Task,
+    TaskState,
     TextPart,
 )
 
@@ -48,11 +49,18 @@ class A2AAdapter(ProtocolAdapter):
     # in-flight states). While the adapter holds a task_id in one of
     # these states, the next outbound Message must echo it back so the
     # server resumes the same task rather than orphaning it and starting
-    # a new one. Terminal states (completed/failed/canceled/rejected)
-    # clear the retained task_id — subsequent calls in the conversation
-    # are new tasks.
-    _NONTERMINAL_TASK_STATES = frozenset(
-        {"submitted", "working", "input-required", "auth-required"}
+    # a new one. Everything else — completed/failed/canceled/rejected
+    # (terminal) and the defensive unknown state — clears the retained
+    # task_id so subsequent calls start a fresh task. Coupled directly
+    # to the TaskState enum so a rename upstream is a type error, not a
+    # silent behavior change.
+    _NONTERMINAL_TASK_STATES: frozenset[TaskState] = frozenset(
+        {
+            TaskState.submitted,
+            TaskState.working,
+            TaskState.input_required,
+            TaskState.auth_required,
+        }
     )
 
     def __init__(self, agent_config: AgentConfig):
@@ -72,8 +80,8 @@ class A2AAdapter(ProtocolAdapter):
         # non-terminal (input-required, working, etc). On terminal states
         # this clears to None so the next call starts a new task under
         # the same context_id. Without this, resume of an input-required
-        # task orphans the server-side pending task.
-        self._pending_task_id: str | None = None
+        # task orphans the server-side in-flight task.
+        self._active_task_id: str | None = None
 
     @property
     def context_id(self) -> str | None:
@@ -91,15 +99,17 @@ class A2AAdapter(ProtocolAdapter):
         return self._context_id
 
     @property
-    def pending_task_id(self) -> str | None:
-        """A2A task_id retained for resume, or None if no task is pending.
+    def active_task_id(self) -> str | None:
+        """A2A task_id the next send must echo to resume the same task.
 
         Populated when the last response was non-terminal (e.g.
-        ``input-required``). Echoed on the next outbound message so the
-        server continues the same task. Clears to None on terminal
-        states (``completed``/``failed``/``canceled``).
+        ``input-required``, ``working``). Echoed on the next outbound
+        message so the server continues the same task. Clears to None
+        on terminal states (``completed``/``failed``/``canceled``/
+        ``rejected``) — and defensively on ``unknown`` — so subsequent
+        calls start a fresh task under the same context.
         """
-        return self._pending_task_id
+        return self._active_task_id
 
     def set_context_id(self, context_id: str | None) -> None:
         """Set the A2A context_id for subsequent message sends.
@@ -113,11 +123,21 @@ class A2AAdapter(ProtocolAdapter):
         format and return the rewritten value on the next response — at
         which point this adapter auto-adopts it.
 
-        Also clears any retained ``pending_task_id``: switching context
+        Also clears any retained ``active_task_id``: switching context
         always starts a fresh task under the new context.
         """
         self._context_id = context_id
-        self._pending_task_id = None
+        self._active_task_id = None
+
+    def _restore_active_task_id(self, task_id: str) -> None:
+        """Internal: rehydrate ``active_task_id`` from a persisted checkpoint.
+
+        Separate from normal in-flight state updates so the checkpoint
+        restore path is an explicit contract — a rename of the storage
+        field fails loudly here instead of silently breaking resume.
+        Intended for ``ADCPClient.from_checkpoint`` only.
+        """
+        self._active_task_id = task_id
 
     async def _get_httpx_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
@@ -279,7 +299,7 @@ class A2AAdapter(ProtocolAdapter):
                 role=Role.user,
                 parts=[Part(root=data_part)],
                 context_id=self._context_id,
-                task_id=self._pending_task_id,
+                task_id=self._active_task_id,
             )
         else:
             # Natural language invocation (flexible)
@@ -290,7 +310,7 @@ class A2AAdapter(ProtocolAdapter):
                 role=Role.user,
                 parts=[Part(root=text_part)],
                 context_id=self._context_id,
-                task_id=self._pending_task_id,
+                task_id=self._active_task_id,
             )
 
         # Build request params
@@ -358,26 +378,48 @@ class A2AAdapter(ProtocolAdapter):
 
                 # Result can be either Task or Message
                 if isinstance(result, Task):
-                    # Retain the server-assigned context_id so subsequent
-                    # turns continue the same A2A conversation. Task.context_id
-                    # is required by a2a-sdk, so no None-guard needed.
-                    self._context_id = result.context_id
-                    # Retain task_id only while the task is non-terminal.
-                    # On terminal states (completed/failed/canceled/rejected)
-                    # the next send must NOT echo this task_id — it starts a
-                    # fresh task under the same context.
+                    # Compute next-turn state from the response but do NOT
+                    # commit yet — _process_task_response and the idempotency
+                    # check below can raise, and leaving the adapter advanced
+                    # after an exception would orphan the legitimate in-flight
+                    # task on the next retry. Commit only after both succeed.
+                    # Task.context_id is required by a2a-sdk, so no None-guard.
+                    next_context_id = result.context_id
                     if result.status.state in self._NONTERMINAL_TASK_STATES:
-                        self._pending_task_id = result.id
+                        next_active_task_id: str | None = result.id
                     else:
-                        self._pending_task_id = None
+                        # Terminal states (completed/failed/canceled/rejected)
+                        # clear the retained task_id — subsequent calls start
+                        # a new task under the same context. The defensive
+                        # unknown state falls here too (don't cling to an
+                        # undefined task); warn so operators notice if a
+                        # server starts emitting it.
+                        next_active_task_id = None
+                        if result.status.state == TaskState.unknown:
+                            logger.warning(
+                                "A2A agent %s returned TaskState.unknown for "
+                                "task_id=%s; clearing active_task_id and "
+                                "starting a fresh task on next call",
+                                self.agent_config.id,
+                                result.id,
+                            )
                     task_result = self._process_task_response(result, debug_info)
                     _idempotency.raise_for_idempotency_error(
                         tool_name, task_result.data, self.agent_config.id
                     )
+                    # All raise-sites have passed; commit next-turn state so
+                    # the adapter reflects the response the caller is about
+                    # to receive.
+                    self._context_id = next_context_id
+                    self._active_task_id = next_active_task_id
                     # Post-receive schema validation. Only runs when the task
                     # carries data (terminal completion); async interim states
                     # with ``data=None`` skip naturally. Strict mode flips the
                     # TaskResult to FAILED; warn mode logs and passes through.
+                    # Runs after the state commit — a payload-schema failure
+                    # doesn't invalidate the A2A envelope ids, and the next
+                    # call in the same conversation should still target the
+                    # right session.
                     if task_result.success and task_result.data is not None:
                         response_outcome = validate_incoming_response(
                             tool_name, task_result.data, self.response_validation_mode
