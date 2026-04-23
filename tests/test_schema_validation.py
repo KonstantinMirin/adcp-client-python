@@ -88,6 +88,21 @@ class TestValidateResponse:
         assert products_issue is not None, "expected an issue at /products"
         assert products_issue.keyword == "type"
         assert products_issue.schema_path
+        # Sanitized message MUST NOT echo the offending value — the
+        # whole point of the sanitizer is keeping tokens/PII out of the
+        # wire envelope and logs.
+        assert "not-an-array" not in products_issue.message
+        assert "expected type" in products_issue.message
+
+    def test_sanitizes_offending_value_out_of_message(self) -> None:
+        """Hostile or buggy payloads can carry secrets in the wrong slot.
+        The error message the caller sees must not echo them back."""
+        secret = "Bearer sk-should-never-appear-in-any-error"
+        outcome = validate_response("get_products", {"products": secret})
+        assert outcome.valid is False
+        for issue in outcome.issues:
+            assert secret not in issue.message
+            assert secret not in issue.schema_path
 
 
 class TestFormatIssues:
@@ -123,6 +138,10 @@ class TestErrorBuilders:
         assert err.tool == "get_products"
         assert err.side == "request"
         assert err.issues == issues
+        # ``details`` is a declared attribute on the class — not a bolt-on.
+        assert err.details["tool"] == "get_products"
+        assert err.details["side"] == "request"
+        assert err.details["issues"][0]["pointer"] == "/foo/bar"
 
     def test_build_adcp_validation_error_payload(self) -> None:
         issues = [
@@ -198,15 +217,24 @@ class TestResolveValidationModes:
             _, resp = resolve_validation_modes()
         assert resp == "strict"
 
-    def test_responses_flip_warn_when_env_is_production(self) -> None:
+    def test_responses_flip_warn_when_adcp_env_is_production(self) -> None:
         with patch.dict(os.environ, {"ADCP_ENV": "production"}, clear=True):
             _, resp = resolve_validation_modes()
         assert resp == "warn"
 
-    def test_responses_flip_warn_when_env_is_prod_shorthand(self) -> None:
-        with patch.dict(os.environ, {"ENV": "prod"}, clear=True):
+    def test_responses_flip_warn_when_adcp_env_is_prod_shorthand(self) -> None:
+        with patch.dict(os.environ, {"ADCP_ENV": "prod"}, clear=True):
             _, resp = resolve_validation_modes()
         assert resp == "warn"
+
+    def test_generic_env_vars_do_not_flip_default(self) -> None:
+        """Only ``ADCP_ENV`` is consulted. Generic ``ENV`` / ``ENVIRONMENT``
+        are set by unrelated tooling (rails, postgres, 12-factor) and
+        must not silently flip the SDK's default — that's a footgun."""
+        for name in ("ENV", "ENVIRONMENT", "PYTHON_ENV"):
+            with patch.dict(os.environ, {name: "production"}, clear=True):
+                _, resp = resolve_validation_modes()
+            assert resp == "strict", f"{name} should not flip the default"
 
     def test_explicit_config_overrides_defaults(self) -> None:
         req, resp = resolve_validation_modes(

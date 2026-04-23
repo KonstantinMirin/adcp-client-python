@@ -11,7 +11,11 @@ from adcp.validation.schema_validator import SchemaValidationError, ValidationIs
 
 @dataclass(frozen=True)
 class ValidationErrorDetails:
-    """Attached to a thrown :class:`SchemaValidationError` via ``details``."""
+    """Mirror of :attr:`SchemaValidationError.details` as a typed dataclass.
+
+    Retained as a public type so callers can annotate their own
+    intermediate structures without depending on the exception class.
+    """
 
     tool: str
     side: str
@@ -35,11 +39,9 @@ def build_validation_error(
     """Build a :class:`SchemaValidationError` carrying every failure.
 
     Strict-mode client hooks raise this so callers can inspect the full
-    pointer list via ``.issues`` rather than only the first message.
+    pointer list via ``.issues`` and the ``details`` dict.
     """
-    err = SchemaValidationError(tool, side, issues)
-    err.details = ValidationErrorDetails(tool=tool, side=side, issues=issues)  # type: ignore[attr-defined]
-    return err
+    return SchemaValidationError(tool, side, issues)
 
 
 def build_adcp_validation_error_payload(
@@ -51,10 +53,16 @@ def build_adcp_validation_error_payload(
     ``details`` keys — ready to splat into
     ``Error(**build_adcp_validation_error_payload(...))`` or into the
     server's ``adcp_error`` response envelope.
+
+    Messages on every ``ValidationIssue`` are already sanitized (see
+    :func:`adcp.validation.schema_validator._safe_message`) — they do
+    not echo user-supplied values, so the wire envelope cannot leak
+    bearer tokens / PII / prompt-injection strings from the offending
+    payload back to the peer.
     """
     first = issues[0] if issues else None
     if first is not None:
-        message = f"{tool} {side} failed schema validation at " f"{first.pointer}: {first.message}"
+        message = f"{tool} {side} failed schema validation at {first.pointer}: {first.message}"
     else:
         message = f"{tool} {side} failed schema validation"
 

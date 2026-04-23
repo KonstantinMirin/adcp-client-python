@@ -8,7 +8,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 from adcp.validation.schema_errors import build_validation_error
 from adcp.validation.schema_validator import (
@@ -33,31 +33,41 @@ class ValidationHookConfig:
       intentionally send partial payloads (error-path tests, exploratory
       probes). Storyboards and compliance runners that want hard-stop
       enforcement pass ``requests="strict"`` explicitly.
-    * ``responses``: ``"strict"`` in dev/test, ``"warn"`` when any of
-      ``ADCP_ENV`` / ``PYTHON_ENV`` / ``ENV`` / ``ENVIRONMENT`` is set
-      to ``production`` (or ``prod``). Strict-by-default makes the SDK
-      a compliance harness: drift from an agent fails the task on the
-      first call, not the Nth storyboard run.
+    * ``responses``: ``"strict"`` in dev/test, ``"warn"`` when
+      ``ADCP_ENV`` is set to ``production`` / ``prod``. Strict-by-default
+      makes the SDK a compliance harness: drift from an agent fails the
+      task on the first call, not the Nth storyboard run.
+
+    Only ``ADCP_ENV`` is consulted — generic ``ENV`` / ``ENVIRONMENT``
+    would collide with unrelated tooling (rails, postgres, 12-factor)
+    and silently flip the SDK's default.
     """
 
     requests: ValidationMode | None = None
     responses: ValidationMode | None = None
 
 
-class DebugLogEntry(dict):  # type: ignore[type-arg]
-    """Thin ``dict`` subclass for debug log append-only entries."""
+class DebugLogEntry(TypedDict, total=False):
+    """Append-only entry shape for the ``debug_logs`` list threaded by
+    the client and server call paths. ``total=False`` so callers can
+    still construct partial entries."""
+
+    type: str
+    message: str
+    timestamp: str
+    schema_variant: str
+    issues: list[dict[str, Any]]
 
 
 def _default_response_mode() -> ValidationMode:
-    """Response default: ``strict`` everywhere except when a common env
-    var explicitly declares a production environment. Read at call time
-    (not import time) so tests that ``patch.dict`` the environment work
-    without a module-level reset hook.
+    """Response default: ``strict`` unless ``ADCP_ENV`` declares production.
+
+    Read at call time (not import time) so tests that ``patch.dict`` the
+    environment work without a module-level reset hook.
     """
-    for name in ("ADCP_ENV", "PYTHON_ENV", "ENV", "ENVIRONMENT"):
-        val = os.environ.get(name)
-        if val and val.lower() in {"prod", "production"}:
-            return "warn"
+    val = os.environ.get("ADCP_ENV")
+    if val and val.lower() in {"prod", "production"}:
+        return "warn"
     return "strict"
 
 
@@ -78,6 +88,8 @@ def _log_warning(
     side: str,
     outcome: ValidationOutcome,
 ) -> None:
+    # Issue messages are sanitized (see schema_validator._safe_message) so
+    # this summary is safe to emit to logs without leaking user values.
     summary = format_issues(outcome.issues)
     logger.warning("Schema validation warning (%s) for %s: %s", side, tool_name, summary)
     if debug_logs is None:

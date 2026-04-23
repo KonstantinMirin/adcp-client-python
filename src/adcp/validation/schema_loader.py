@@ -17,11 +17,20 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
+import warnings
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Any, Literal
 
 logger = logging.getLogger(__name__)
+
+# Serialize first-time init and validator compilation. Concurrent callers
+# on a fresh process can otherwise both walk the schema tree or compile
+# the same validator twice. Result is the same either way, but the lock
+# keeps behaviour deterministic and avoids redundant filesystem walks.
+_init_lock = threading.Lock()
+_compile_lock = threading.Lock()
 
 ResponseVariant = Literal["sync", "submitted", "working", "input-required"]
 Direction = Literal["request", "sync", "submitted", "working", "input-required"]
@@ -117,13 +126,19 @@ def _ensure_state() -> _LoaderState | None:
     global _state
     if _state is not None:
         return _state
-    root = _resolve_schema_root()
-    if root is None:
-        logger.debug("AdCP schemas not found; schema validation will skip all tools")
-        return None
-    _state = _LoaderState(root)
-    _state.file_index = _build_index(root)
-    return _state
+    with _init_lock:
+        # Double-checked pattern: re-read inside the lock in case another
+        # thread initialized while we were waiting.
+        if _state is not None:
+            return _state
+        root = _resolve_schema_root()
+        if root is None:
+            logger.debug("AdCP schemas not found; schema validation will skip all tools")
+            return None
+        new_state = _LoaderState(root)
+        new_state.file_index = _build_index(root)
+        _state = new_state
+        return _state
 
 
 def _load_core_registry(state: _LoaderState) -> None:
@@ -148,18 +163,25 @@ def _make_ref_resolver(state: _LoaderState, base_file: Path) -> Any:
     giving the resolver a ``file://`` base URI lets those resolve against
     disk. Also seeds the core ``$id``-keyed registry so bundled schemas
     that reference a core type by canonical id still resolve.
-    """
-    try:
-        from jsonschema import RefResolver
-    except ImportError as exc:  # pragma: no cover - guarded by dep install
-        raise RuntimeError(
-            "jsonschema is required for AdCP schema validation. "
-            "Install with: pip install 'jsonschema>=4.0.0'"
-        ) from exc
 
-    _load_core_registry(state)
-    base_uri = base_file.resolve().parent.as_uri() + "/"
-    return RefResolver(base_uri=base_uri, referrer={}, store=dict(state.registry))
+    ``RefResolver`` is deprecated in jsonschema 4.18+ (to be replaced by
+    the ``referencing`` library). Suppress the warning locally so
+    downstream projects running ``-W error::DeprecationWarning`` don't
+    crash on import; migration tracked as a follow-up.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            from jsonschema import RefResolver
+        except ImportError as exc:  # pragma: no cover - guarded by dep install
+            raise RuntimeError(
+                "jsonschema is required for AdCP schema validation. "
+                "Install with: pip install 'jsonschema>=4.0.0'"
+            ) from exc
+
+        _load_core_registry(state)
+        base_uri = base_file.resolve().parent.as_uri() + "/"
+        return RefResolver(base_uri=base_uri, referrer={}, store=dict(state.registry))
 
 
 def get_validator(tool_name: str, direction: Direction) -> Any | None:
@@ -194,14 +216,20 @@ def get_validator(tool_name: str, direction: Direction) -> Any | None:
             "Install with: pip install 'jsonschema>=4.0.0'"
         ) from exc
 
-    try:
-        resolver = _make_ref_resolver(state, file)
-        validator = Draft7Validator(schema, resolver=resolver)
-    except SchemaError as exc:
-        logger.warning("Invalid schema %s for %s: %s", file, key, exc)
-        return None
-    state.compiled[key] = validator
-    return validator
+    with _compile_lock:
+        # Re-check: another thread may have compiled the validator for
+        # this key while we were loading the schema off disk.
+        cached = state.compiled.get(key)
+        if cached is not None:
+            return cached
+        try:
+            resolver = _make_ref_resolver(state, file)
+            validator = Draft7Validator(schema, resolver=resolver)
+        except SchemaError as exc:
+            logger.warning("Invalid schema %s for %s: %s", file, key, exc)
+            return None
+        state.compiled[key] = validator
+        return validator
 
 
 def list_validator_keys() -> list[str]:

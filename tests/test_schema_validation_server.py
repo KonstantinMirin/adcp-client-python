@@ -138,3 +138,26 @@ class TestResponses:
         )
         result = await caller(dict(VALID_GET_PRODUCTS))
         assert result["products"] == []
+
+    @pytest.mark.asyncio
+    async def test_adcp_error_envelope_skips_response_validation(self) -> None:
+        """Handler-returned ``adcp_error`` envelopes have their own shape
+        enforced by the ``Error`` builder; validating them against the
+        per-tool success schema would convert a real protocol error
+        (e.g. ``NOT_FOUND``) into a fake ``VALIDATION_ERROR``."""
+        handler = _StubHandler(
+            {
+                "adcp_error": {
+                    "code": "NOT_FOUND",
+                    "message": "no products match the brief",
+                }
+            }
+        )
+        caller = create_tool_caller(
+            handler,
+            "get_products",
+            validation=ValidationHookConfig(responses="strict"),
+        )
+        result = await caller(dict(VALID_GET_PRODUCTS))
+        # Envelope passes through unchanged — no VALIDATION_ERROR raised.
+        assert result["adcp_error"]["code"] == "NOT_FOUND"

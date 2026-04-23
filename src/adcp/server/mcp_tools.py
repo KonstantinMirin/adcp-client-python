@@ -1673,22 +1673,28 @@ def create_tool_caller(
             inject_context(raw_params, result)
 
         if response_mode is not None and response_mode != "off" and isinstance(result, dict):
-            outcome = validate_response(method_name, result)
-            if not outcome.valid:
-                summary = format_issues(outcome.issues)
-                logger.warning(
-                    "Schema validation warning (response) for %s: %s",
-                    method_name,
-                    summary,
-                )
-                if response_mode == "strict":
-                    payload = build_adcp_validation_error_payload(
-                        method_name, "response", outcome.issues
+            # Skip validation when the handler returned the AdCP L3
+            # error envelope (``{"adcp_error": {...}}``). That envelope
+            # has its own shape enforced by the ``Error`` builder; the
+            # per-tool response schema would false-positive on it and
+            # convert a real protocol error into a fake VALIDATION_ERROR.
+            if "adcp_error" not in result:
+                outcome = validate_response(method_name, result)
+                if not outcome.valid:
+                    summary = format_issues(outcome.issues)
+                    logger.warning(
+                        "Schema validation warning (response) for %s: %s",
+                        method_name,
+                        summary,
                     )
-                    raise ADCPTaskError(
-                        operation=method_name,
-                        errors=[Error(**payload)],
-                    )
+                    if response_mode == "strict":
+                        payload = build_adcp_validation_error_payload(
+                            method_name, "response", outcome.issues
+                        )
+                        raise ADCPTaskError(
+                            operation=method_name,
+                            errors=[Error(**payload)],
+                        )
         return result
 
     return call_tool
