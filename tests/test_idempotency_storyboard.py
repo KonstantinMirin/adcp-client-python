@@ -134,6 +134,7 @@ class TestStoryboardPhase3ReplaySamePayload:
             fresh = {
                 "media_buy_id": f"mb_{uuid.uuid4().hex[:8]}",
                 "idempotency_key": key,
+                "packages": [],
             }
             seller_cache[key] = fresh
             return SendMessageSuccessResponse(result=_task_with_data(fresh))
@@ -207,6 +208,7 @@ class TestStoryboardPhase5FreshKeyNewResource:
             fresh = {
                 "media_buy_id": f"mb_{uuid.uuid4().hex[:8]}",
                 "idempotency_key": key,
+                "packages": [],
             }
             seller_cache[key] = fresh
             return SendMessageSuccessResponse(result=_task_with_data(fresh))
@@ -242,7 +244,7 @@ class TestStoryboardPhase6VerifyDedupActuallyHeld:
                 return SendMessageSuccessResponse(result=_task_with_data(data))
             mb_id = f"mb_{uuid.uuid4().hex[:8]}"
             created_ids.add(mb_id)
-            fresh = {"media_buy_id": mb_id, "idempotency_key": key}
+            fresh = {"media_buy_id": mb_id, "idempotency_key": key, "packages": []}
             seller_cache[key] = fresh
             return SendMessageSuccessResponse(result=_task_with_data(fresh))
 

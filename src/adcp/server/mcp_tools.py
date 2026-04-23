@@ -24,6 +24,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
+from adcp.validation.client_hooks import ValidationHookConfig
 
 logger = logging.getLogger(__name__)
 
@@ -1530,6 +1531,8 @@ def _resolve_params_pydantic_model(method: Any) -> type[Any] | None:
 def create_tool_caller(
     handler: ADCPHandler[Any],
     method_name: str,
+    *,
+    validation: ValidationHookConfig | None = None,
 ) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
 
@@ -1548,9 +1551,23 @@ def create_tool_caller(
     ``INVALID_REQUEST`` AdCP error so callers see a spec-typed recovery
     classification rather than a raw stack trace.
 
+    **Schema-driven validation (issue #249).** When ``validation`` is
+    supplied, the dispatcher validates incoming requests and outgoing
+    responses against the bundled AdCP JSON schemas. Request failures
+    raise ``ADCPTaskError(VALIDATION_ERROR)`` before the handler runs,
+    so malformed payloads never hit business logic. Response failures
+    either raise ``VALIDATION_ERROR`` (strict) or log a warning
+    (warn). Defaults to off on the server side — the client-side
+    hooks already catch drift for SDK-built clients, and enabling
+    server validation is a deliberate opt-in for authors who want
+    dispatcher-level enforcement.
+
     Args:
         handler: The ADCP handler instance
         method_name: Name of the method to call
+        validation: Optional :class:`ValidationHookConfig` with
+            per-side modes (``strict`` / ``warn`` / ``off``). Omitting
+            it disables server-side schema validation entirely.
 
     Returns:
         Async callable ``call_tool(params, context=None)``. The ``context``
@@ -1566,13 +1583,44 @@ def create_tool_caller(
     from adcp.exceptions import ADCPTaskError
     from adcp.server.helpers import inject_context
     from adcp.types import Error
+    from adcp.validation.schema_errors import build_adcp_validation_error_payload
+    from adcp.validation.schema_validator import (
+        format_issues,
+        validate_request,
+        validate_response,
+    )
 
     method = getattr(handler, method_name)
     params_model = _resolve_params_pydantic_model(method)
 
+    # Opt-in server-side schema modes. ``None`` keeps validation off
+    # entirely (zero overhead on the hot path) — the TS-port default for
+    # ``createAdcpServer`` is the same: validation is an explicit opt-in.
+    request_mode = validation.requests if validation is not None else None
+    response_mode = validation.responses if validation is not None else None
+
     async def call_tool(params: dict[str, Any], context: ToolContext | None = None) -> Any:
         ctx = context if context is not None else ToolContext()
         raw_params = params  # Preserve the original dict for context echo.
+
+        if request_mode is not None and request_mode != "off":
+            outcome = validate_request(method_name, params)
+            if not outcome.valid:
+                summary = format_issues(outcome.issues)
+                if request_mode == "strict":
+                    payload = build_adcp_validation_error_payload(
+                        method_name, "request", outcome.issues
+                    )
+                    raise ADCPTaskError(
+                        operation=method_name,
+                        errors=[Error(**payload)],
+                    )
+                logger.warning(
+                    "Schema validation warning (request) for %s: %s",
+                    method_name,
+                    summary,
+                )
+
         call_params: Any = params
         if params_model is not None and isinstance(params, dict):
             try:
@@ -1623,6 +1671,30 @@ def create_tool_caller(
         # model (which won't carry the wire ``context`` field).
         if isinstance(result, dict):
             inject_context(raw_params, result)
+
+        if response_mode is not None and response_mode != "off" and isinstance(result, dict):
+            # Skip validation when the handler returned the AdCP L3
+            # error envelope (``{"adcp_error": {...}}``). That envelope
+            # has its own shape enforced by the ``Error`` builder; the
+            # per-tool response schema would false-positive on it and
+            # convert a real protocol error into a fake VALIDATION_ERROR.
+            if "adcp_error" not in result:
+                outcome = validate_response(method_name, result)
+                if not outcome.valid:
+                    summary = format_issues(outcome.issues)
+                    logger.warning(
+                        "Schema validation warning (response) for %s: %s",
+                        method_name,
+                        summary,
+                    )
+                    if response_mode == "strict":
+                        payload = build_adcp_validation_error_payload(
+                            method_name, "response", outcome.issues
+                        )
+                        raise ADCPTaskError(
+                            operation=method_name,
+                            errors=[Error(**payload)],
+                        )
         return result
 
     return call_tool
@@ -1634,7 +1706,13 @@ class MCPToolSet:
     Provides tool definitions and handlers for registering with an MCP server.
     """
 
-    def __init__(self, handler: ADCPHandler[Any], *, advertise_all: bool = False):
+    def __init__(
+        self,
+        handler: ADCPHandler[Any],
+        *,
+        advertise_all: bool = False,
+        validation: ValidationHookConfig | None = None,
+    ):
         """Create tool set from handler.
 
         Args:
@@ -1644,6 +1722,8 @@ class MCPToolSet:
                 SDK's ``not_supported`` default. See
                 :func:`get_tools_for_handler` for the default behavior
                 (override-filtered advertisement).
+            validation: Opt-in schema validation config applied to every
+                tool caller. See :func:`create_tool_caller`.
         """
         self.handler = handler
         self._filtered_definitions = get_tools_for_handler(handler, advertise_all=advertise_all)
@@ -1652,7 +1732,7 @@ class MCPToolSet:
         # Create tool callers only for filtered tools
         for tool_def in self._filtered_definitions:
             name = tool_def["name"]
-            self._tools[name] = create_tool_caller(handler, name)
+            self._tools[name] = create_tool_caller(handler, name, validation=validation)
 
     @property
     def tool_definitions(self) -> list[dict[str, Any]]:
@@ -1681,7 +1761,12 @@ class MCPToolSet:
         return list(self._tools.keys())
 
 
-def create_mcp_tools(handler: ADCPHandler[Any], *, advertise_all: bool = False) -> MCPToolSet:
+def create_mcp_tools(
+    handler: ADCPHandler[Any],
+    *,
+    advertise_all: bool = False,
+    validation: ValidationHookConfig | None = None,
+) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
     This is the main entry point for MCP server integration.
@@ -1711,8 +1796,12 @@ def create_mcp_tools(handler: ADCPHandler[Any], *, advertise_all: bool = False) 
         advertise_all: When True, advertise every tool the handler type
             supports — even those whose method is still the SDK's
             ``not_supported`` default. See :func:`get_tools_for_handler`.
+        validation: Opt-in schema validation config. When supplied,
+            every tool caller validates requests and responses against
+            the bundled AdCP JSON schemas. See
+            :func:`create_tool_caller` for mode semantics.
 
     Returns:
         MCPToolSet with tool definitions and handlers.
     """
-    return MCPToolSet(handler, advertise_all=advertise_all)
+    return MCPToolSet(handler, advertise_all=advertise_all, validation=validation)

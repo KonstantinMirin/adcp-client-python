@@ -31,6 +31,11 @@ from adcp.exceptions import (
 from adcp.protocols.base import ProtocolAdapter
 from adcp.signing.autosign import current_operation as _signing_operation
 from adcp.types.core import AgentConfig, DebugInfo, TaskResult, TaskStatus
+from adcp.validation.client_hooks import (
+    validate_incoming_response,
+    validate_outgoing_request,
+)
+from adcp.validation.schema_validator import SchemaValidationError, format_issues
 
 logger = logging.getLogger(__name__)
 
@@ -241,6 +246,20 @@ class A2AAdapter(ProtocolAdapter):
         params, idempotency_key = _idempotency.inject_key(
             tool_name, params, client_token=self.idempotency_client_token
         )
+
+        # Pre-send schema validation. Matches the MCP adapter: strict mode
+        # surfaces as TaskStatus.FAILED so the SDK's unified failure model
+        # is preserved; warn mode logs and continues; off short-circuits.
+        try:
+            validate_outgoing_request(tool_name, params, self.request_validation_mode)
+        except SchemaValidationError as exc:
+            return TaskResult[Any](
+                status=TaskStatus.FAILED,
+                error=str(exc),
+                success=False,
+                idempotency_key=idempotency_key,
+            )
+
         a2a_client = await self._get_a2a_client()
 
         # Build A2A message
@@ -355,6 +374,26 @@ class A2AAdapter(ProtocolAdapter):
                     _idempotency.raise_for_idempotency_error(
                         tool_name, task_result.data, self.agent_config.id
                     )
+                    # Post-receive schema validation. Only runs when the task
+                    # carries data (terminal completion); async interim states
+                    # with ``data=None`` skip naturally. Strict mode flips the
+                    # TaskResult to FAILED; warn mode logs and passes through.
+                    if task_result.success and task_result.data is not None:
+                        response_outcome = validate_incoming_response(
+                            tool_name, task_result.data, self.response_validation_mode
+                        )
+                        if not response_outcome.valid and self.response_validation_mode == "strict":
+                            task_result = TaskResult[Any](
+                                status=TaskStatus.FAILED,
+                                error=(
+                                    f"Schema validation failed for {tool_name}: "
+                                    f"{format_issues(response_outcome.issues)}"
+                                ),
+                                message=task_result.message,
+                                success=False,
+                                debug_info=task_result.debug_info,
+                                idempotency_key=task_result.idempotency_key,
+                            )
                     return _idempotency.annotate_result(task_result, idempotency_key)
                 else:
                     # Message response (shouldn't happen for send_message, but handle it)

@@ -415,7 +415,12 @@ from adcp.utils import (
     uses_deprecated_assets_field,
 )
 from adcp.validation import (
+    SchemaValidationError,
     ValidationError,
+    ValidationHookConfig,
+    ValidationIssue,
+    ValidationMode,
+    ValidationOutcome,
     validate_adagents,
     validate_agent_authorization,
     validate_product,
@@ -832,7 +837,12 @@ __all__ = [
     "AdagentsTimeoutError",
     "RegistryError",
     # Validation utilities
+    "SchemaValidationError",
     "ValidationError",
+    "ValidationHookConfig",
+    "ValidationIssue",
+    "ValidationMode",
+    "ValidationOutcome",
     "validate_adagents",
     "validate_agent_authorization",
     "validate_product",

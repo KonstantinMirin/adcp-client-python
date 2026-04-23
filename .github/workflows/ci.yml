@@ -274,6 +274,10 @@ jobs:
         if: steps.version-check.outputs.is_prerelease != 'true'
         run: python scripts/fix_schema_refs.py
 
+      - name: Bundle schemas into package
+        if: steps.version-check.outputs.is_prerelease != 'true'
+        run: python scripts/bundle_schemas.py
+
       - name: Generate models
         if: steps.version-check.outputs.is_prerelease != 'true'
         run: python scripts/generate_types.py

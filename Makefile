@@ -51,6 +51,8 @@ regenerate-schemas: ## Download latest schemas and regenerate models
 	$(PYTHON) scripts/sync_schemas.py
 	@echo "Fixing schema references..."
 	$(PYTHON) scripts/fix_schema_refs.py
+	@echo "Bundling schemas into package..."
+	$(PYTHON) scripts/bundle_schemas.py
 	@echo "Generating Pydantic models..."
 	$(PYTHON) scripts/generate_types.py
 	@echo "Consolidating exports..."
@@ -92,6 +94,7 @@ clean: ## Clean generated files and caches
 	@echo "✓ Cleaned all generated files and caches"
 
 build: ## Build distribution packages
+	$(PYTHON) scripts/bundle_schemas.py
 	python -m build
 	@echo "✓ Distribution packages built"
 

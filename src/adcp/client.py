@@ -291,6 +291,7 @@ from adcp.types.generated_poc.tmp.context_match_response import ContextMatchResp
 from adcp.types.generated_poc.tmp.identity_match_request import IdentityMatchRequest
 from adcp.types.generated_poc.tmp.identity_match_response import IdentityMatchResponse
 from adcp.utils.operation_id import create_operation_id
+from adcp.validation.client_hooks import ValidationHookConfig
 
 logger = logging.getLogger(__name__)
 
@@ -310,6 +311,7 @@ class ADCPClient:
         strict_idempotency: bool = False,
         signing: SigningConfig | None = None,
         context_id: str | None = None,
+        validation: ValidationHookConfig | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -344,6 +346,20 @@ class ADCPClient:
                 ``jwks_uri``. Supported on both A2A and MCP
                 (``mcp_transport="streamable_http"``); SSE-transport MCP
                 logs a warning and falls through unsigned.
+            validation: Schema-driven validation modes for outgoing
+                requests and incoming responses against the bundled AdCP
+                JSON schemas. Defaults (matching the TS port): requests
+                in ``warn`` mode (drift logged but not blocked — partial
+                payloads in error-path tests still work) and responses
+                in ``strict`` mode (agent drift fails the task). The
+                response mode flips to ``warn`` when any of ``ADCP_ENV``
+                / ``PYTHON_ENV`` / ``ENV`` / ``ENVIRONMENT`` is set to
+                ``production`` / ``prod``. Storyboards and compliance
+                runners that want hard-stop enforcement everywhere pass
+                ``validation=ValidationHookConfig(requests="strict",
+                responses="strict")``; high-throughput callers can set
+                either side to ``"off"`` to skip the validator entirely
+                with zero overhead.
             context_id: A2A-only. Seed the A2A conversation context. Pass a
                 previously-returned ``context_id`` to resume a session
                 across process restarts, or a self-assigned UUID to name
@@ -394,6 +410,9 @@ class ADCPClient:
             self.adapter.idempotency_capability_check = self._ensure_idempotency_capability
         if signing is not None:
             self.adapter.signing_request_hook = self._sign_outgoing_request
+        # Apply schema validation modes (default: requests=warn, responses=strict
+        # in dev/test, warn in production — see ``ValidationHookConfig`` docs).
+        self.adapter.configure_validation(validation)
 
         if context_id is not None:
             if not isinstance(self.adapter, A2AAdapter):

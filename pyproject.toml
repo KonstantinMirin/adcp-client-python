@@ -52,6 +52,11 @@ dependencies = [
     # idempotency middleware to compute the spec-mandated payload hash for
     # replay detection. Tiny pure-Python dep, no transitive weight.
     "rfc8785>=0.1.4",
+    # JSON Schema validation — backs adcp.validation.schema_validator for
+    # pre-send request / post-receive response drift detection against the
+    # bundled AdCP schemas. Pin to the Draft 7 generation the schemas
+    # declare via ``$schema``.
+    "jsonschema>=4.0.0",
 ]
 
 [project.scripts]
@@ -97,7 +102,15 @@ Issues = "https://github.com/adcontextprotocol/adcp-client-python/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-adcp = ["py.typed", "ADCP_VERSION", "signing/pg/*.sql"]
+adcp = [
+    "py.typed",
+    "ADCP_VERSION",
+    "signing/pg/*.sql",
+    # AdCP JSON schemas, mirrored from ``schemas/cache/`` by
+    # ``scripts/bundle_schemas.py`` so the wheel ships them for
+    # ``adcp.validation.schema_loader``.
+    "_schemas/**/*.json",
+]
 
 [tool.black]
 line-length = 100
@@ -151,6 +164,13 @@ ignore_errors = true
 # guaranteed to be present when the base SDK is installed.
 [[tool.mypy.overrides]]
 module = ["psycopg", "psycopg.*", "psycopg_pool", "psycopg_pool.*"]
+ignore_missing_imports = true
+
+# jsonschema doesn't ship PEP 561 stubs in the default package; the
+# ``types-jsonschema`` stub package is optional and we use
+# :class:`Any`-typed returns across the validator boundary anyway.
+[[tool.mypy.overrides]]
+module = ["jsonschema", "jsonschema.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
