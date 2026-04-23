@@ -514,6 +514,7 @@ def _build_agent_card(
     version: str = "1.0.0",
     extra_skills: list[pb.AgentSkill] | None = None,
     advertise_all: bool = False,
+    push_notifications_supported: bool = False,
 ) -> pb.AgentCard:
     """Build an A2A AgentCard from an ADCPHandler's tool definitions.
 
@@ -555,17 +556,29 @@ def _build_agent_card(
         name=name,
         description=description or f"ADCP agent: {name}",
         version=version,
+        # Ordering is load-bearing: a2a-sdk's v0.3 compat converter
+        # (``a2a.compat.v0_3.conversions.to_compat_agent_card``) sets
+        # ``primary_interface = compat_interfaces[0]``, so the entry it
+        # picks for the top-level 0.3 ``url`` / ``preferredTransport`` /
+        # ``protocolVersion`` back-fill is whichever 0.3 interface it
+        # sees first. Keep 0.3 at index 0. 1.0 clients don't iterate
+        # positionally — they filter by ``protocol_version`` — so
+        # listing 1.0 second has no negotiation cost.
         supported_interfaces=[
             pb.AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="0.3"),
             pb.AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="1.0"),
         ],
         skills=skills,
-        # ``push_notifications=True`` lets buyers register webhooks via
-        # ``tasks/pushNotificationConfig/set``. The a2a-sdk request
-        # handler gates every push-notif op on this capability flag —
-        # leaving it False raises ``PushNotificationNotSupportedError``
-        # even when a ``push_config_store`` is plumbed through.
-        capabilities=pb.AgentCapabilities(streaming=False, push_notifications=True),
+        # Advertise ``push_notifications`` only when the server actually
+        # has a store wired. The a2a-sdk request handler gates every
+        # push-notif op on this capability flag, and advertising it
+        # without a store just means clients hit
+        # ``UnsupportedOperationError`` after a successful capability
+        # probe — a worse UX than "capability says no, don't try".
+        capabilities=pb.AgentCapabilities(
+            streaming=False,
+            push_notifications=push_notifications_supported,
+        ),
         default_input_modes=["application/json"],
         default_output_modes=["application/json"],
     )
@@ -685,6 +698,7 @@ def create_a2a_server(
         version=version,
         extra_skills=_test_controller_skills() if test_controller else None,
         advertise_all=advertise_all,
+        push_notifications_supported=push_config_store is not None,
     )
 
     if task_store is None:

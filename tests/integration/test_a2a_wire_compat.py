@@ -137,3 +137,58 @@ async def test_agent_card_endpoint_advertises_both_interfaces():
     }
     assert "0.3" in versions, card
     assert "1.0" in versions, card
+
+
+@pytest.mark.asyncio
+async def test_malformed_params_returns_clean_jsonrpc_error():
+    """A 0.3-shaped method name with a malformed ``params`` body must
+    come back as a JSON-RPC error envelope, not a 500 / uncaught
+    exception. Guards against future a2a-sdk upgrades quietly narrowing
+    the 0.3 adapter's validator — we should always see a structured
+    JSON-RPC error, never a transport-level failure.
+    """
+    # ``params.message`` intentionally missing required ``parts`` / ``role``
+    # so the 0.3 validator rejects it at parse-time.
+    malformed = {
+        "jsonrpc": "2.0",
+        "id": "bad-1",
+        "method": "message/send",
+        "params": {"message": {"messageId": "m-bad"}},
+    }
+
+    async with _running_server() as base_url:
+        async with httpx.AsyncClient(timeout=10) as http:
+            resp = await http.post(base_url, json=malformed)
+
+    # JSON-RPC-over-HTTP returns 200 with a structured error body;
+    # validation failures must never bubble up as a 500.
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "error" in body, f"expected JSON-RPC error envelope, got: {body}"
+    assert "result" not in body, body
+    # Must be a legal JSON-RPC error code (not 0 / None).
+    assert isinstance(body["error"].get("code"), int)
+
+
+@pytest.mark.asyncio
+async def test_unknown_method_returns_method_not_found():
+    """Method names outside the 0.3 / 1.0 JSON-RPC method sets must
+    come back as a clean ``MethodNotFound`` error, not a transport
+    failure. Ensures the router hasn't quietly narrowed."""
+    unknown = {
+        "jsonrpc": "2.0",
+        "id": "bad-2",
+        "method": "definitely/not/a/real/method",
+        "params": {},
+    }
+
+    async with _running_server() as base_url:
+        async with httpx.AsyncClient(timeout=10) as http:
+            resp = await http.post(base_url, json=unknown)
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "error" in body, body
+    # JSON-RPC 2.0 reserves -32601 for Method Not Found; the a2a-sdk
+    # uses this code for unknown method names.
+    assert body["error"].get("code") == -32601, body

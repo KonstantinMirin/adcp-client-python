@@ -8,15 +8,39 @@ protobuf messages carrying a ``content`` oneof on ``Part`` and
 this module exposes Pydantic-era names as factory shims that build the
 1.0 proto shapes under the hood; tests ``from tests.a2a_compat_shim
 import ...`` and keep their prior constructor forms.
+
+**Side-effect warning.** Importing this module mutates ``a2a.types``
+at process scope — ``pb.Role.user``, ``pb.TaskState.completed``, etc.
+are assigned, and ``pb.TaskStatus.__init__`` is wrapped to accept the
+0.3 string enum form. This is **only safe in test processes**; a
+production program that imports it would silently accept 0.3 string
+``state="completed"`` kwargs in outbound proto construction.
+
+Import is gated on ``sys.modules["pytest"]`` below so the patches only
+land when the interpreter was launched by pytest. Any future edit that
+adds side effects here MUST preserve that gate and MUST NOT introduce
+behavior the adapter or wire serializer could silently depend on.
 """
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from a2a import types as pb
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Value
+
+if "pytest" not in sys.modules:
+    # A production process should never reach this module — the shim's
+    # monkey-patches are test-only. Raise loudly rather than silently
+    # mutate ``a2a.types`` for a non-test caller who imported us by
+    # mistake (e.g. a notebook reproducer standing up the adapter).
+    raise RuntimeError(
+        "tests.a2a_compat_shim must not be imported outside pytest; "
+        "it monkey-patches a2a.types in ways that would break "
+        "production serialization."
+    )
 
 __all__ = [
     "DataPart",

@@ -1024,7 +1024,18 @@ def _normalize_a2a_task_state_to_v03(payload: dict[str, Any]) -> None:
         if isinstance(message, dict):
             _normalize_message_role(message)
 
-    # Task Envelopes carry parts directly under artifacts[].parts[]; no
+    # ``Task.history[]`` carries prior Messages each with a ``role`` that
+    # serializes SCREAMING_SNAKE. ``create_a2a_webhook_payload`` does not
+    # populate ``history`` today, but hand-built Task payloads or proxies
+    # from other sources might — walk them so 0.3 receivers see the
+    # spec-expected lowercase form.
+    history = payload.get("history")
+    if isinstance(history, list):
+        for entry in history:
+            if isinstance(entry, dict):
+                _normalize_message_role(entry)
+
+    # Task envelopes carry parts directly under artifacts[].parts[]; no
     # role field there. But a bare Message payload (edge case) could.
     if "role" in payload:
         _normalize_message_role(payload)
