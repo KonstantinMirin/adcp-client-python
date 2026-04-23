@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""A2A protocol adapter using the official a2a-sdk client."""
+"""A2A protocol adapter using the official a2a-sdk 1.0 client."""
 
 import logging
 import time
@@ -8,18 +8,10 @@ from typing import Any
 from uuid import uuid4
 
 import httpx
-from a2a.client import A2ACardResolver, A2AClient
-from a2a.types import (
-    DataPart,
-    Message,
-    MessageSendParams,
-    Part,
-    Role,
-    SendMessageRequest,
-    Task,
-    TaskState,
-    TextPart,
-)
+from a2a import types as pb
+from a2a.client import A2ACardResolver, Client, ClientConfig, ClientFactory
+from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.struct_pb2 import Value
 
 from adcp import _idempotency
 from adcp.exceptions import (
@@ -41,8 +33,42 @@ from adcp.validation.schema_validator import SchemaValidationError, format_issue
 logger = logging.getLogger(__name__)
 
 
+def _part_data_dict(part: pb.Part) -> dict[str, Any] | None:
+    """Return the dict payload of a Part if it carries a ``data`` oneof, else None."""
+    if part.WhichOneof("content") != "data":
+        return None
+    value = MessageToDict(part.data)
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+def _part_text(part: pb.Part) -> str | None:
+    """Return the text payload of a Part if it carries a ``text`` oneof, else None."""
+    if part.WhichOneof("content") != "text":
+        return None
+    return part.text
+
+
+def _make_data_part(data: dict[str, Any]) -> pb.Part:
+    """Build a Part carrying a ``data`` oneof from a plain dict."""
+    value = Value()
+    ParseDict(data, value)
+    return pb.Part(data=value)
+
+
+def _make_text_part(text: str) -> pb.Part:
+    """Build a Part carrying a ``text`` oneof."""
+    return pb.Part(text=text)
+
+
+def _task_to_redacted_dict(task: pb.Task) -> dict[str, Any]:
+    """Convert a Task proto to a debug-safe dict (camelCase JSON form)."""
+    return MessageToDict(task)
+
+
 class A2AAdapter(ProtocolAdapter):
-    """Adapter for A2A protocol using official a2a-sdk client."""
+    """Adapter for A2A protocol using the official a2a-sdk 1.0 client."""
 
     # A2A task states in which the server is still expecting more from
     # the buyer on the same task (input-required, auth-required, and
@@ -51,15 +77,15 @@ class A2AAdapter(ProtocolAdapter):
     # server resumes the same task rather than orphaning it and starting
     # a new one. Everything else — completed/failed/canceled/rejected
     # (terminal) and the defensive unknown state — clears the retained
-    # task_id so subsequent calls start a fresh task. Coupled directly
-    # to the TaskState enum so a rename upstream is a type error, not a
-    # silent behavior change.
-    _NONTERMINAL_TASK_STATES: frozenset[TaskState] = frozenset(
+    # task_id so subsequent calls start a fresh task. The frozenset
+    # holds protobuf enum int values so a rename upstream is a load-time
+    # error, not a silent behavior change.
+    _NONTERMINAL_TASK_STATES: frozenset[int] = frozenset(
         {
-            TaskState.submitted,
-            TaskState.working,
-            TaskState.input_required,
-            TaskState.auth_required,
+            pb.TaskState.TASK_STATE_SUBMITTED,
+            pb.TaskState.TASK_STATE_WORKING,
+            pb.TaskState.TASK_STATE_INPUT_REQUIRED,
+            pb.TaskState.TASK_STATE_AUTH_REQUIRED,
         }
     )
 
@@ -67,7 +93,8 @@ class A2AAdapter(ProtocolAdapter):
         """Initialize A2A adapter with official A2A client."""
         super().__init__(agent_config)
         self._httpx_client: httpx.AsyncClient | None = None
-        self._a2a_client: A2AClient | None = None
+        self._a2a_client: Client | None = None
+        self._cached_agent_card: pb.AgentCard | None = None
         # A2A contextId for multi-turn conversations. First request sends
         # context_id=None → server mints one and returns it on Task.context_id;
         # we stash it here and echo it back on every subsequent send so the
@@ -187,8 +214,16 @@ class A2AAdapter(ProtocolAdapter):
             )
         return self._httpx_client
 
-    async def _get_a2a_client(self) -> A2AClient:
-        """Get or create the A2A client."""
+    async def _get_a2a_client(self) -> Client:
+        """Get or create the A2A client.
+
+        Uses :class:`~a2a.client.ClientFactory` to build a transport-negotiated
+        :class:`~a2a.client.Client` against the resolved
+        :class:`~a2a.types.AgentCard`. The shared ``httpx.AsyncClient`` is
+        passed into the :class:`~a2a.client.ClientConfig` so the signing
+        request hook and connection pool are reused across every outbound
+        send.
+        """
         if self._a2a_client is None:
             httpx_client = await self._get_httpx_client()
 
@@ -229,18 +264,50 @@ class A2AAdapter(ProtocolAdapter):
                     agent_uri=self.agent_config.agent_uri,
                 ) from e
 
-            self._a2a_client = A2AClient(
-                httpx_client=httpx_client,
-                agent_card=agent_card,
-            )
+            # Build a non-streaming client that reuses our httpx pool.
+            # Streaming is disabled: the ADCP adapter surface is one
+            # request in, one task out — streaming would require an
+            # async iterator API that does not match the SDK contract.
+            self._cached_agent_card = agent_card
+            factory = ClientFactory(ClientConfig(httpx_client=httpx_client, streaming=False))
+            self._a2a_client = factory.create(agent_card)
             logger.debug(f"Created A2A client for agent {self.agent_config.id}")
 
         return self._a2a_client
+
+    async def _send_and_aggregate(
+        self, client: Client, request: pb.SendMessageRequest
+    ) -> pb.StreamResponse:
+        """Send a non-streaming request and return the terminal StreamResponse.
+
+        The 1.0 :meth:`~a2a.client.Client.send_message` is an async
+        generator that yields :class:`StreamResponse` events — with
+        ``streaming=False`` it yields a single event carrying the final
+        task. Pulls that event out so the ADCP adapter can stay
+        request/response. Raises :class:`RuntimeError` if the generator
+        yields nothing (should not happen: the SDK raises before
+        yielding zero events).
+        """
+        last: pb.StreamResponse | None = None
+        stream = client.send_message(request)
+        async for event in stream:
+            last = event
+        if last is None:
+            raise RuntimeError("A2A client yielded no response events")
+        return last
 
     async def close(self) -> None:
         """Close the HTTP client and clean up resources."""
         if self._httpx_client is not None:
             logger.debug(f"Closing A2A adapter client for agent {self.agent_config.id}")
+            # Close the A2A client first so it can drain any transport
+            # state (grpc channel, streaming iterator) before we tear
+            # down the shared httpx pool underneath it.
+            if self._a2a_client is not None:
+                try:
+                    await self._a2a_client.close()
+                except Exception:  # noqa: BLE001
+                    logger.debug("A2A client close raised; ignoring", exc_info=True)
             await self._httpx_client.aclose()
             self._httpx_client = None
             self._a2a_client = None
@@ -286,41 +353,23 @@ class A2AAdapter(ProtocolAdapter):
         message_id = str(uuid4())
 
         if use_explicit_skill:
-            # Explicit skill invocation (deterministic)
-            # Use DataPart with skill name and parameters
-            data_part = DataPart(
-                data={
-                    "skill": tool_name,
-                    "parameters": params,
-                }
-            )
-            message = Message(
-                message_id=message_id,
-                role=Role.user,
-                parts=[Part(root=data_part)],
-                context_id=self._context_id,
-                task_id=self._active_task_id,
-            )
+            # Explicit skill invocation (deterministic): a single DataPart
+            # carrying ``{"skill": tool_name, "parameters": params}``.
+            parts = [_make_data_part({"skill": tool_name, "parameters": params})]
         else:
-            # Natural language invocation (flexible)
-            # Agent interprets intent from text
-            text_part = TextPart(text=self._format_tool_request(tool_name, params))
-            message = Message(
-                message_id=message_id,
-                role=Role.user,
-                parts=[Part(root=text_part)],
-                context_id=self._context_id,
-                task_id=self._active_task_id,
-            )
+            # Natural language invocation (flexible): agent interprets
+            # intent from text.
+            parts = [_make_text_part(self._format_tool_request(tool_name, params))]
 
-        # Build request params
-        params_obj = MessageSendParams(message=message)
-
-        # Build request
-        request = SendMessageRequest(
-            id=str(uuid4()),
-            params=params_obj,
+        message = pb.Message(
+            message_id=message_id,
+            role=pb.Role.ROLE_USER,
+            parts=parts,
+            context_id=self._context_id or "",
+            task_id=self._active_task_id or "",
         )
+
+        request = pb.SendMessageRequest(message=message)
 
         debug_info = None
         debug_request: dict[str, Any] = {}
@@ -339,120 +388,99 @@ class A2AAdapter(ProtocolAdapter):
         # sibling tasks) stay outside the signing scope.
         signing_token = _signing_operation.set(tool_name)
         try:
-            # Use official A2A client
-            sdk_response = await a2a_client.send_message(request)
+            # Non-streaming send returns a single StreamResponse envelope.
+            stream_event = await self._send_and_aggregate(a2a_client, request)
 
-            # SendMessageResponse is a RootModel union - unwrap it to get the actual response
-            # (either JSONRPCSuccessResponse or JSONRPCErrorResponse)
-            response = sdk_response.root if hasattr(sdk_response, "root") else sdk_response
-
-            # Handle JSON-RPC error response
-            if hasattr(response, "error"):
-                error_msg = response.error.message if response.error.message else "Unknown error"
-                if self.agent_config.debug and start_time:
-                    duration_ms = (time.time() - start_time) * 1000
-                    debug_info = DebugInfo(
-                        request=debug_request,
-                        response=_idempotency.deep_redact({"error": response.error.model_dump()}),
-                        duration_ms=duration_ms,
-                    )
-                return TaskResult[Any](
-                    status=TaskStatus.FAILED,
-                    error=error_msg,
-                    success=False,
-                    debug_info=debug_info,
-                    idempotency_key=idempotency_key,
-                )
-
-            # Handle success response
-            if hasattr(response, "result"):
-                result = response.result
+            payload_kind = stream_event.WhichOneof("payload")
+            if payload_kind == "task":
+                result_task = stream_event.task
 
                 if self.agent_config.debug and start_time:
                     duration_ms = (time.time() - start_time) * 1000
                     debug_info = DebugInfo(
                         request=debug_request,
-                        response=_idempotency.deep_redact({"result": result.model_dump()}),
+                        response=_idempotency.deep_redact(
+                            {"result": _task_to_redacted_dict(result_task)}
+                        ),
                         duration_ms=duration_ms,
                     )
 
-                # Result can be either Task or Message
-                if isinstance(result, Task):
-                    # Compute next-turn state from the response but do NOT
-                    # commit yet — _process_task_response and the idempotency
-                    # check below can raise, and leaving the adapter advanced
-                    # after an exception would orphan the legitimate in-flight
-                    # task on the next retry. Commit only after both succeed.
-                    # Task.context_id is required by a2a-sdk, so no None-guard.
-                    next_context_id = result.context_id
-                    if result.status.state in self._NONTERMINAL_TASK_STATES:
-                        next_active_task_id: str | None = result.id
-                    else:
-                        # Terminal states (completed/failed/canceled/rejected)
-                        # clear the retained task_id — subsequent calls start
-                        # a new task under the same context. The defensive
-                        # unknown state falls here too (don't cling to an
-                        # undefined task); warn so operators notice if a
-                        # server starts emitting it.
-                        next_active_task_id = None
-                        if result.status.state == TaskState.unknown:
-                            logger.warning(
-                                "A2A agent %s returned TaskState.unknown for "
-                                "task_id=%s; clearing active_task_id and "
-                                "starting a fresh task on next call",
-                                self.agent_config.id,
-                                result.id,
-                            )
-                    task_result = self._process_task_response(result, debug_info)
-                    _idempotency.raise_for_idempotency_error(
-                        tool_name, task_result.data, self.agent_config.id
-                    )
-                    # All raise-sites have passed; commit next-turn state so
-                    # the adapter reflects the response the caller is about
-                    # to receive.
-                    self._context_id = next_context_id
-                    self._active_task_id = next_active_task_id
-                    # Post-receive schema validation. Only runs when the task
-                    # carries data (terminal completion); async interim states
-                    # with ``data=None`` skip naturally. Strict mode flips the
-                    # TaskResult to FAILED; warn mode logs and passes through.
-                    # Runs after the state commit — a payload-schema failure
-                    # doesn't invalidate the A2A envelope ids, and the next
-                    # call in the same conversation should still target the
-                    # right session.
-                    if task_result.success and task_result.data is not None:
-                        response_outcome = validate_incoming_response(
-                            tool_name, task_result.data, self.response_validation_mode
-                        )
-                        if not response_outcome.valid and self.response_validation_mode == "strict":
-                            task_result = TaskResult[Any](
-                                status=TaskStatus.FAILED,
-                                error=(
-                                    f"Schema validation failed for {tool_name}: "
-                                    f"{format_issues(response_outcome.issues)}"
-                                ),
-                                message=task_result.message,
-                                success=False,
-                                debug_info=task_result.debug_info,
-                                idempotency_key=task_result.idempotency_key,
-                            )
-                    return _idempotency.annotate_result(task_result, idempotency_key)
+                # Compute next-turn state from the response but do NOT
+                # commit yet — _process_task_response and the idempotency
+                # check below can raise, and leaving the adapter advanced
+                # after an exception would orphan the legitimate in-flight
+                # task on the next retry. Commit only after both succeed.
+                next_context_id = result_task.context_id or None
+                if result_task.status.state in self._NONTERMINAL_TASK_STATES:
+                    next_active_task_id: str | None = result_task.id
                 else:
-                    # Message response (shouldn't happen for send_message, but handle it)
-                    agent_id = self.agent_config.id
-                    logger.warning(f"Received Message instead of Task from A2A agent {agent_id}")
-                    return TaskResult[Any](
-                        status=TaskStatus.COMPLETED,
-                        data=None,
-                        message="Received message response",
-                        success=True,
-                        debug_info=debug_info,
+                    # Terminal states (completed/failed/canceled/rejected)
+                    # clear the retained task_id — subsequent calls start
+                    # a new task under the same context. The defensive
+                    # unspecified state falls here too; warn so operators
+                    # notice if a server starts emitting it.
+                    next_active_task_id = None
+                    if result_task.status.state == pb.TaskState.TASK_STATE_UNSPECIFIED:
+                        logger.warning(
+                            "A2A agent %s returned TASK_STATE_UNSPECIFIED for "
+                            "task_id=%s; clearing active_task_id and "
+                            "starting a fresh task on next call",
+                            self.agent_config.id,
+                            result_task.id,
+                        )
+
+                task_result = self._process_task_response(result_task, debug_info)
+                _idempotency.raise_for_idempotency_error(
+                    tool_name, task_result.data, self.agent_config.id
+                )
+                # All raise-sites have passed; commit next-turn state so
+                # the adapter reflects the response the caller is about
+                # to receive.
+                self._context_id = next_context_id
+                self._active_task_id = next_active_task_id
+                # Post-receive schema validation. Only runs when the task
+                # carries data (terminal completion); async interim states
+                # with ``data=None`` skip naturally. Strict mode flips the
+                # TaskResult to FAILED; warn mode logs and passes through.
+                # Runs after the state commit — a payload-schema failure
+                # doesn't invalidate the A2A envelope ids, and the next
+                # call in the same conversation should still target the
+                # right session.
+                if task_result.success and task_result.data is not None:
+                    response_outcome = validate_incoming_response(
+                        tool_name, task_result.data, self.response_validation_mode
                     )
+                    if not response_outcome.valid and self.response_validation_mode == "strict":
+                        task_result = TaskResult[Any](
+                            status=TaskStatus.FAILED,
+                            error=(
+                                f"Schema validation failed for {tool_name}: "
+                                f"{format_issues(response_outcome.issues)}"
+                            ),
+                            message=task_result.message,
+                            success=False,
+                            debug_info=task_result.debug_info,
+                            idempotency_key=task_result.idempotency_key,
+                        )
+                return _idempotency.annotate_result(task_result, idempotency_key)
+
+            if payload_kind == "message":
+                # Message response (shouldn't happen for send_message with
+                # skill invocation, but surface a graceful fallback).
+                agent_id = self.agent_config.id
+                logger.warning(f"Received Message instead of Task from A2A agent {agent_id}")
+                return TaskResult[Any](
+                    status=TaskStatus.COMPLETED,
+                    data=None,
+                    message="Received message response",
+                    success=True,
+                    debug_info=debug_info,
+                )
 
             # Shouldn't reach here
             return TaskResult[Any](
                 status=TaskStatus.FAILED,
-                error="Invalid response from A2A client",
+                error=f"Invalid response from A2A client (payload={payload_kind!r})",
                 success=False,
                 debug_info=debug_info,
                 idempotency_key=idempotency_key,
@@ -519,11 +547,13 @@ class A2AAdapter(ProtocolAdapter):
         finally:
             _signing_operation.reset(signing_token)
 
-    def _process_task_response(self, task: Task, debug_info: DebugInfo | None) -> TaskResult[Any]:
+    def _process_task_response(
+        self, task: pb.Task, debug_info: DebugInfo | None
+    ) -> TaskResult[Any]:
         """Process a Task response from A2A into our TaskResult format."""
         task_state = task.status.state
 
-        if task_state == "completed":
+        if task_state == pb.TaskState.TASK_STATE_COMPLETED:
             # Extract the result from the artifacts array
             result_data = self._extract_result_from_task(task)
 
@@ -542,7 +572,7 @@ class A2AAdapter(ProtocolAdapter):
                 },
                 debug_info=debug_info,
             )
-        elif task_state == "failed":
+        elif task_state == pb.TaskState.TASK_STATE_FAILED:
             # Protocol-level failure - extract error message from TextPart
             error_msg = self._extract_text_from_task(task) or "Task failed"
             return TaskResult[Any](
@@ -552,7 +582,15 @@ class A2AAdapter(ProtocolAdapter):
                 debug_info=debug_info,
             )
         else:
-            # Handle all interim states (submitted, working, input-required, etc.)
+            # Handle all interim states (submitted, working, input-required, etc.).
+            # Metadata ``status`` stays in the 0.3-style lowercase spec form
+            # (``working``, ``input-required``) so downstream consumers don't
+            # need to learn the TaskState_ prefix.
+            state_name = pb.TaskState.Name(task_state)
+            if state_name.startswith("TASK_STATE_"):
+                status_str = state_name[len("TASK_STATE_") :].lower().replace("_", "-")
+            else:
+                status_str = state_name.lower()
             return TaskResult[Any](
                 status=TaskStatus.SUBMITTED,
                 data=None,  # Interim responses may not have structured AdCP content
@@ -561,7 +599,7 @@ class A2AAdapter(ProtocolAdapter):
                 metadata={
                     "task_id": task.id,
                     "context_id": task.context_id,
-                    "status": task_state,
+                    "status": status_str,
                 },
                 debug_info=debug_info,
             )
@@ -572,12 +610,12 @@ class A2AAdapter(ProtocolAdapter):
 
         return f"Execute tool: {tool_name}\nParameters: {json.dumps(params, indent=2)}"
 
-    def _extract_result_from_task(self, task: Task) -> Any:
+    def _extract_result_from_task(self, task: pb.Task) -> Any:
         """
         Extract result data from A2A Task following canonical format.
 
         Per A2A response spec:
-        - Responses MUST include at least one DataPart (kind: "data")
+        - Responses MUST include at least one DataPart (``data`` oneof)
         - When multiple DataParts exist in an artifact, the last one is authoritative
         - When multiple artifacts exist, use the last one (most recent in streaming)
         - DataParts contain structured AdCP payload
@@ -593,19 +631,16 @@ class A2AAdapter(ProtocolAdapter):
             logger.warning("A2A Task artifact has no parts")
             return {}
 
-        # Find all DataParts (kind: "data")
-        # Note: Parts are wrapped in a Part union type, access via .root
-        from a2a.types import DataPart
-
-        data_parts = [p.root for p in target_artifact.parts if isinstance(p.root, DataPart)]
+        data_parts = [
+            d for d in (_part_data_dict(p) for p in target_artifact.parts) if d is not None
+        ]
 
         if not data_parts:
-            logger.warning("A2A Task missing required DataPart (kind: 'data')")
+            logger.warning("A2A Task missing required DataPart (data oneof)")
             return {}
 
         # Use last DataPart as authoritative (handles streaming scenarios within an artifact)
-        last_data_part = data_parts[-1]
-        data = last_data_part.data
+        data = data_parts[-1]
 
         # Some A2A implementations (e.g., ADK) wrap the response in {"response": {...}}
         # Unwrap it to get the actual AdCP payload if present
@@ -614,7 +649,7 @@ class A2AAdapter(ProtocolAdapter):
 
         return data
 
-    def _extract_text_from_task(self, task: Task) -> str | None:
+    def _extract_text_from_task(self, task: pb.Task) -> str | None:
         """Extract human-readable message from TextPart if present."""
         if not task.artifacts:
             return None
@@ -622,11 +657,10 @@ class A2AAdapter(ProtocolAdapter):
         # Use last artifact (most recent in streaming scenarios)
         target_artifact = task.artifacts[-1]
 
-        # Find TextPart (kind: "text")
-        # Note: Parts are wrapped in a Part union type, access via .root
         for part in target_artifact.parts:
-            if isinstance(part.root, TextPart):
-                return part.root.text
+            text = _part_text(part)
+            if text is not None:
+                return text
 
         return None
 
@@ -728,56 +762,24 @@ class A2AAdapter(ProtocolAdapter):
 
         Uses A2A client which already fetched the agent card during initialization.
         """
-        # Get the A2A client (which already fetched the agent card)
-        a2a_client = await self._get_a2a_client()
+        # Ensure the A2A client (and cached agent card) is initialized.
+        await self._get_a2a_client()
 
-        # Fetch the agent card using the official method
-        try:
-            agent_card = await a2a_client.get_card()
+        if self._cached_agent_card is None:
+            raise RuntimeError("Agent card cache was not populated by _get_a2a_client")
+        agent_card: pb.AgentCard = self._cached_agent_card
 
-            # Extract skills from agent card
-            tool_names = [skill.name for skill in agent_card.skills if skill.name]
-
-            logger.info(f"Found {len(tool_names)} tools from A2A agent {self.agent_config.id}")
-            return tool_names
-
-        except httpx.HTTPStatusError as e:
-            status_code = e.response.status_code
-            if status_code in (401, 403):
-                logger.error(f"Authentication failed for A2A agent {self.agent_config.id}")
-                raise ADCPAuthenticationError(
-                    f"Authentication failed: HTTP {status_code}",
-                    agent_id=self.agent_config.id,
-                    agent_uri=self.agent_config.agent_uri,
-                ) from e
-            else:
-                logger.error(f"HTTP {status_code} error fetching agent card: {e}")
-                raise ADCPConnectionError(
-                    f"Failed to fetch agent card: HTTP {status_code}",
-                    agent_id=self.agent_config.id,
-                    agent_uri=self.agent_config.agent_uri,
-                ) from e
-        except httpx.TimeoutException as e:
-            logger.error(f"Timeout fetching agent card for {self.agent_config.id}")
-            raise ADCPTimeoutError(
-                f"Timeout fetching agent card: {e}",
-                agent_id=self.agent_config.id,
-                agent_uri=self.agent_config.agent_uri,
-                timeout=self.agent_config.timeout,
-            ) from e
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error fetching agent card: {e}")
-            raise ADCPConnectionError(
-                f"Failed to fetch agent card: {e}",
-                agent_id=self.agent_config.id,
-                agent_uri=self.agent_config.agent_uri,
-            ) from e
+        tool_names = [skill.name for skill in agent_card.skills if skill.name]
+        logger.info(f"Found {len(tool_names)} tools from A2A agent {self.agent_config.id}")
+        return tool_names
 
     async def get_agent_info(self) -> dict[str, Any]:
         """
         Get agent information including AdCP extension metadata from A2A agent card.
 
-        Uses A2A client's get_card() method to fetch the agent card and extracts:
+        Fetches the agent card via :class:`~a2a.client.A2ACardResolver` and
+        extracts:
+
         - Basic agent info (name, description, version)
         - AdCP extension (extensions.adcp.adcp_version, extensions.adcp.protocols_supported)
         - Available skills/tools
@@ -785,67 +787,33 @@ class A2AAdapter(ProtocolAdapter):
         Returns:
             Dictionary with agent metadata
         """
-        # Get the A2A client (which already fetched the agent card)
-        a2a_client = await self._get_a2a_client()
+        await self._get_a2a_client()
 
         logger.debug(f"Fetching A2A agent info for {self.agent_config.id}")
 
-        try:
-            agent_card = await a2a_client.get_card()
+        if self._cached_agent_card is None:
+            raise RuntimeError("Agent card cache was not populated by _get_a2a_client")
+        agent_card: pb.AgentCard = self._cached_agent_card
 
-            # Extract basic info
-            info: dict[str, Any] = {
-                "name": agent_card.name,
-                "description": agent_card.description,
-                "version": agent_card.version,
-                "protocol": "a2a",
-            }
+        info: dict[str, Any] = {
+            "name": agent_card.name,
+            "description": agent_card.description,
+            "version": agent_card.version,
+            "protocol": "a2a",
+        }
 
-            # Extract skills/tools
-            tool_names = [skill.name for skill in agent_card.skills if skill.name]
-            if tool_names:
-                info["tools"] = tool_names
+        tool_names = [skill.name for skill in agent_card.skills if skill.name]
+        if tool_names:
+            info["tools"] = tool_names
 
-            # Extract AdCP extension metadata
-            # Note: AgentCard type doesn't include extensions in the SDK,
-            # but it may be present at runtime
-            extensions = getattr(agent_card, "extensions", None)
-            if extensions:
-                adcp_ext = extensions.get("adcp")
-                if adcp_ext:
-                    info["adcp_version"] = adcp_ext.get("adcp_version")
-                    info["protocols_supported"] = adcp_ext.get("protocols_supported")
+        # The 1.0 proto :class:`AgentCard` has no ``extensions`` map.
+        # Sellers advertising AdCP capabilities must surface them via
+        # ``skills`` entries or a follow-up
+        # ``get_adcp_capabilities`` call rather than an out-of-band
+        # extensions dict (which the 0.3 Pydantic card accepted).
 
-            logger.info(f"Retrieved agent info for {self.agent_config.id}")
-            return info
-
-        except httpx.HTTPStatusError as e:
-            status_code = e.response.status_code
-            if status_code in (401, 403):
-                raise ADCPAuthenticationError(
-                    f"Authentication failed: HTTP {status_code}",
-                    agent_id=self.agent_config.id,
-                    agent_uri=self.agent_config.agent_uri,
-                ) from e
-            else:
-                raise ADCPConnectionError(
-                    f"Failed to fetch agent card: HTTP {status_code}",
-                    agent_id=self.agent_config.id,
-                    agent_uri=self.agent_config.agent_uri,
-                ) from e
-        except httpx.TimeoutException as e:
-            raise ADCPTimeoutError(
-                f"Timeout fetching agent card: {e}",
-                agent_id=self.agent_config.id,
-                agent_uri=self.agent_config.agent_uri,
-                timeout=self.agent_config.timeout,
-            ) from e
-        except httpx.HTTPError as e:
-            raise ADCPConnectionError(
-                f"Failed to fetch agent card: {e}",
-                agent_id=self.agent_config.id,
-                agent_uri=self.agent_config.agent_uri,
-            ) from e
+        logger.info(f"Retrieved agent info for {self.agent_config.id}")
+        return info
 
     # ========================================================================
     # V3 Protocol Methods - Protocol Discovery

@@ -138,9 +138,7 @@ class TestEndToEndIdempotencyViaTransport:
 
         # Simulate two successive A2A calls from the same authenticated buyer.
         params = {"idempotency_key": key, "brand": {"domain": "acme.test"}}
-        tool_context = _tool_context_from_request(
-            _FakeRequestContext(user=_FakeUser("buyer-acme"))
-        )
+        tool_context = _tool_context_from_request(_FakeRequestContext(user=_FakeUser("buyer-acme")))
         r1 = await executor._tool_callers["create_media_buy"](params, tool_context)
         r2 = await executor._tool_callers["create_media_buy"](params, tool_context)
         assert seller.calls == 1  # middleware dedup'd the second call
@@ -166,12 +164,8 @@ class TestEndToEndIdempotencyViaTransport:
         key = str(uuid.uuid4())
         params = {"idempotency_key": key, "brand": "acme"}
 
-        ctx_a = _tool_context_from_request(
-            _FakeRequestContext(user=_FakeUser("buyer-a"))
-        )
-        ctx_b = _tool_context_from_request(
-            _FakeRequestContext(user=_FakeUser("buyer-b"))
-        )
+        ctx_a = _tool_context_from_request(_FakeRequestContext(user=_FakeUser("buyer-a")))
+        ctx_b = _tool_context_from_request(_FakeRequestContext(user=_FakeUser("buyer-b")))
         r_a = await executor._tool_callers["create_media_buy"](params, ctx_a)
         r_b = await executor._tool_callers["create_media_buy"](params, ctx_b)
         # Same key under distinct principals must NOT collide.
@@ -213,7 +207,7 @@ class TestA2AExecutorUsesRealContext:
 
     @pytest.mark.asyncio
     async def test_execute_passes_tool_context_with_identity(self) -> None:
-        from a2a.types import DataPart, Message, Part, Role
+        from tests.a2a_compat_shim import DataPart, Message, Part, Role
 
         seen: dict[str, Any] = {}
 

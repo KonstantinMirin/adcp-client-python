@@ -17,7 +17,7 @@ Not exported from ``adcp.server`` — import directly::
         result = await downstream_client.create_media_buy(params)
     except ADCPError as e:
         raise translate_error(e, protocol="a2a")
-        # Raises: ServerError(InternalError(message="...", data={...}))
+        # Raises: InternalError(message="...", data={...})
 
     # Normalize deprecated field names from older callers:
     params = normalize_request(params, task_name="create_media_buy")
@@ -28,8 +28,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from a2a.types import InternalError, InvalidParamsError
-from a2a.utils.errors import ServerError
+from a2a.utils.errors import A2AError, InternalError, InvalidParamsError
 from mcp.server.fastmcp.exceptions import ToolError
 
 from adcp.exceptions import (
@@ -103,7 +102,7 @@ def _build_error_data(
 def translate_error(
     exc: ADCPError | Error,
     protocol: Literal["mcp", "a2a"] | Protocol,
-) -> ToolError | ServerError:
+) -> ToolError | A2AError:
     """Translate an AdCP error to a protocol SDK error type.
 
     Returns an error that can be directly raised in a protocol handler::
@@ -114,8 +113,10 @@ def translate_error(
             raise translate_error(e, protocol="mcp")
 
     For MCP, returns ``ToolError`` (from ``mcp.server.fastmcp``).
-    For A2A, returns ``ServerError`` wrapping ``InvalidParamsError``
-    (for correctable errors) or ``InternalError`` (for transient/terminal).
+    For A2A, returns an :class:`~a2a.utils.errors.A2AError` subclass:
+    :class:`~a2a.utils.errors.InvalidParamsError` for correctable errors
+    (client can fix) or :class:`~a2a.utils.errors.InternalError` for
+    transient/terminal (server-side or unfixable).
 
     The ``data`` field on A2A errors preserves recovery classification,
     error_code, suggestion, and details so buyer agents can make
@@ -126,7 +127,8 @@ def translate_error(
         protocol: Target protocol - ``"mcp"`` or ``"a2a"``.
 
     Returns:
-        ``ToolError`` for MCP, ``ServerError`` for A2A. Raise the result.
+        ``ToolError`` for MCP, :class:`~a2a.utils.errors.A2AError`
+        subclass for A2A. Raise the result.
 
     Raises:
         ValueError: If protocol is not ``"mcp"`` or ``"a2a"``.
@@ -215,8 +217,13 @@ def _to_a2a(
     suggestion: str | None = None,
     details: dict[str, Any] | None = None,
     errors: list[Any] | None = None,
-) -> ServerError:
-    """Format error as a ServerError for A2A servers."""
+) -> A2AError:
+    """Format error as an A2AError subclass for A2A servers.
+
+    The a2a-sdk 1.0 request handler catches :class:`A2AError` subclasses
+    and maps them onto JSON-RPC error responses directly — there is no
+    ``ServerError`` wrapper anymore.
+    """
     data = _build_error_data(
         code,
         message,
@@ -230,8 +237,8 @@ def _to_a2a(
     # InternalError for transient/terminal (server-side or unfixable).
     effective_recovery = recovery or _recovery_for_code(code)
     if effective_recovery == "correctable":
-        return ServerError(InvalidParamsError(message=message, data=data))
-    return ServerError(InternalError(message=message, data=data))
+        return InvalidParamsError(message=message, data=data)
+    return InternalError(message=message, data=data)
 
 
 # ============================================================================

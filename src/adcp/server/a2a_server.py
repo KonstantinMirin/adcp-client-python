@@ -24,25 +24,16 @@ import os
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
+from a2a import types as pb
 from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
 from a2a.server.events.event_queue import EventQueue
-from a2a.server.request_handlers.default_request_handler import (
-    DefaultRequestHandler,
-)
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.routes import create_agent_card_routes, create_jsonrpc_routes
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
-from a2a.types import (
-    AgentCapabilities,
-    AgentCard,
-    AgentSkill,
-    Artifact,
-    DataPart,
-    Part,
-    Task,
-    TaskState,
-    TaskStatus,
-    TextPart,
-)
+from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.struct_pb2 import Value
+from starlette.applications import Starlette
 
 from adcp.exceptions import ADCPError, ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
@@ -63,12 +54,12 @@ MessageParser = Callable[[RequestContext], tuple[str | None, dict[str, Any]]]
 """Callable that extracts ``(skill_name, params)`` from an incoming
 A2A :class:`RequestContext`.
 
-The default parser handles ``DataPart(data={"skill": ...,
-"parameters": ...})`` plus a TextPart JSON fallback. Override this
-hook to accept alternative wire shapes — JSON-RPC 2.0 message bodies,
-vendor-specific DataPart schemas, or text-only skill encodings. Return
-``(None, {})`` to signal "no parseable skill"; the executor will emit
-an error Task for the client.
+The default parser handles a DataPart (``data`` oneof) carrying
+``{"skill": ..., "parameters": ...}`` plus a TextPart JSON fallback.
+Override this hook to accept alternative wire shapes — JSON-RPC 2.0
+message bodies, vendor-specific DataPart schemas, or text-only skill
+encodings. Return ``(None, {})`` to signal "no parseable skill"; the
+executor will emit an error Task for the client.
 
 Pair with :meth:`ADCPAgentExecutor._default_parse_request` when you
 want to accept a custom shape *in addition to* the built-in shapes —
@@ -84,6 +75,35 @@ from adcp.server.test_controller import TestControllerStore, _handle_test_contro
 logger = logging.getLogger(__name__)
 
 
+def _part_data_dict(part: pb.Part) -> dict[str, Any] | None:
+    """Return the dict payload of a Part if it carries a ``data`` oneof, else None."""
+    if part.WhichOneof("content") != "data":
+        return None
+    value = MessageToDict(part.data)
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+def _part_text(part: pb.Part) -> str | None:
+    """Return the text payload of a Part if it carries a ``text`` oneof, else None."""
+    if part.WhichOneof("content") != "text":
+        return None
+    return part.text
+
+
+def _make_data_part(data: dict[str, Any]) -> pb.Part:
+    """Build a Part carrying a ``data`` oneof from a plain dict."""
+    value = Value()
+    ParseDict(data, value)
+    return pb.Part(data=value)
+
+
+def _make_text_part(text: str) -> pb.Part:
+    """Build a Part carrying a ``text`` oneof."""
+    return pb.Part(text=text)
+
+
 class ADCPAgentExecutor(AgentExecutor):
     """Bridges ADCPHandler methods to the a2a-sdk AgentExecutor interface.
 
@@ -92,7 +112,7 @@ class ADCPAgentExecutor(AgentExecutor):
     is published back as A2A Task events.
 
     Expects the explicit skill invocation format used by A2AAdapter:
-        DataPart(data={"skill": "get_products", "parameters": {...}})
+        Part(data={"skill": "get_products", "parameters": {...}})
     """
 
     def __init__(
@@ -257,7 +277,7 @@ class ADCPAgentExecutor(AgentExecutor):
         """ADCP operations are synchronous; cancellation sets state to canceled."""
         event = _make_task(
             context,
-            state=TaskState.canceled,
+            state=pb.TaskState.TASK_STATE_CANCELED,
             message="Task canceled",
         )
         await event_queue.enqueue_event(event)
@@ -282,8 +302,8 @@ class ADCPAgentExecutor(AgentExecutor):
     def _default_parse_request(self, context: RequestContext) -> tuple[str | None, dict[str, Any]]:
         """Built-in parser. Supports two formats:
 
-        1. Explicit skill invocation via DataPart:
-           DataPart(data={"skill": "get_products", "parameters": {...}})
+        1. Explicit skill invocation via a DataPart:
+           ``Part(data={"skill": "get_products", "parameters": {...}})``
         2. Natural language fallback via TextPart (best-effort parse)
 
         Exposed as a module-level method so custom parsers can compose
@@ -296,20 +316,22 @@ class ADCPAgentExecutor(AgentExecutor):
 
         # Try DataPart first (explicit skill invocation)
         for part in msg.parts:
-            inner = part.root if hasattr(part, "root") else part
-            if isinstance(inner, DataPart) and isinstance(inner.data, dict):
-                skill = inner.data.get("skill")
-                params = inner.data.get("parameters", {})
-                if skill:
-                    return str(skill), params if isinstance(params, dict) else {}
+            data = _part_data_dict(part)
+            if data is None:
+                continue
+            skill = data.get("skill")
+            params = data.get("parameters", {})
+            if skill:
+                return str(skill), params if isinstance(params, dict) else {}
 
         # Fallback: try to parse TextPart as JSON
         for part in msg.parts:
-            inner = part.root if hasattr(part, "root") else part
-            if isinstance(inner, TextPart):
-                parsed = self._parse_text_request(inner.text)
-                if parsed[0] is not None:
-                    return parsed
+            text = _part_text(part)
+            if text is None:
+                continue
+            parsed = self._parse_text_request(text)
+            if parsed[0] is not None:
+                return parsed
 
         return None, {}
 
@@ -345,7 +367,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
         task = _make_task(
             context,
-            state=TaskState.completed,
+            state=pb.TaskState.TASK_STATE_COMPLETED,
             data=data,
             message=f"Completed {skill_name}",
         )
@@ -360,7 +382,7 @@ class ADCPAgentExecutor(AgentExecutor):
         """Publish a failed task."""
         task = _make_task(
             context,
-            state=TaskState.failed,
+            state=pb.TaskState.TASK_STATE_FAILED,
             message=error_msg,
         )
         await event_queue.enqueue_event(task)
@@ -397,7 +419,7 @@ class ADCPAgentExecutor(AgentExecutor):
 
         task = _make_task(
             context,
-            state=TaskState.failed,
+            state=pb.TaskState.TASK_STATE_FAILED,
             data={"adcp_error": adcp_error},
             message=exc.message,
         )
@@ -450,31 +472,31 @@ def _tool_context_from_request(request: RequestContext) -> ToolContext:
 def _make_task(
     context: RequestContext,
     *,
-    state: TaskState,
+    state: int,
     data: dict[str, Any] | None = None,
     message: str | None = None,
-) -> Task:
+) -> pb.Task:
     """Build an a2a Task event from context and result data."""
-    parts: list[Part] = []
+    parts: list[pb.Part] = []
     if data is not None:
-        parts.append(Part(root=DataPart(data=data)))
+        parts.append(_make_data_part(data))
     if message:
-        parts.append(Part(root=TextPart(text=message)))
+        parts.append(_make_text_part(message))
 
-    artifacts = []
+    artifacts: list[pb.Artifact] = []
     if parts:
         artifacts.append(
-            Artifact(
+            pb.Artifact(
                 artifact_id=str(uuid4()),
                 parts=parts,
             )
         )
 
-    return Task(
+    return pb.Task(
         id=context.task_id or str(uuid4()),
         context_id=context.context_id or str(uuid4()),
-        status=TaskStatus(state=state),
-        artifacts=artifacts if artifacts else None,
+        status=pb.TaskStatus(state=state),  # type: ignore[arg-type]
+        artifacts=artifacts,
     )
 
 
@@ -490,9 +512,9 @@ def _build_agent_card(
     port: int,
     description: str | None = None,
     version: str = "1.0.0",
-    extra_skills: list[AgentSkill] | None = None,
+    extra_skills: list[pb.AgentSkill] | None = None,
     advertise_all: bool = False,
-) -> AgentCard:
+) -> pb.AgentCard:
     """Build an A2A AgentCard from an ADCPHandler's tool definitions.
 
     ``comply_test_controller`` is excluded from the card skills list unless
@@ -504,12 +526,17 @@ def _build_agent_card(
     Honors the same ``advertise_all`` semantic as
     :func:`~adcp.server.get_tools_for_handler` so the published agent
     card reflects what the executor will actually dispatch.
+
+    The card advertises both the 0.3 and 1.0 protocol bindings via
+    ``supported_interfaces`` so ``enable_v0_3_compat`` clients and native
+    1.0 clients see the transport they expect on
+    ``/.well-known/agent-card.json``.
     """
     tool_defs = get_tools_for_handler(handler, advertise_all=advertise_all)
     extra_ids = {s.id for s in extra_skills} if extra_skills else set()
 
     skills = [
-        AgentSkill(
+        pb.AgentSkill(
             id=td["name"],
             name=td["name"],
             description=td.get("description", td["name"]),
@@ -522,13 +549,23 @@ def _build_agent_card(
     if extra_skills:
         skills.extend(extra_skills)
 
-    return AgentCard(
+    url = f"http://localhost:{port}/"
+
+    return pb.AgentCard(
         name=name,
         description=description or f"ADCP agent: {name}",
-        url=f"http://localhost:{port}/",
         version=version,
+        supported_interfaces=[
+            pb.AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="0.3"),
+            pb.AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="1.0"),
+        ],
         skills=skills,
-        capabilities=AgentCapabilities(streaming=False),
+        # ``push_notifications=True`` lets buyers register webhooks via
+        # ``tasks/pushNotificationConfig/set``. The a2a-sdk request
+        # handler gates every push-notif op on this capability flag —
+        # leaving it False raises ``PushNotificationNotSupportedError``
+        # even when a ``push_config_store`` is plumbed through.
+        capabilities=pb.AgentCapabilities(streaming=False, push_notifications=True),
         default_input_modes=["application/json"],
         default_output_modes=["application/json"],
     )
@@ -550,6 +587,12 @@ def create_a2a_server(
     advertise_all: bool = False,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
+
+    The returned app dual-serves the a2a-sdk 0.3 and 1.0 wire formats via
+    ``create_jsonrpc_routes(enable_v0_3_compat=True)``. Existing 0.3
+    clients keep getting lowercase ``"state": "completed"`` and
+    ``"kind": "task"`` discriminators; native 1.0 clients get the new
+    shape. Do not disable the compat flag.
 
     Args:
         handler: An ADCPHandler subclass instance.
@@ -604,8 +647,8 @@ def create_a2a_server(
             composition semantics, and the exception-capture pattern
             audit hooks need.
         message_parser: Optional :data:`MessageParser` for alternative
-            wire shapes. The default parser handles ``DataPart(data={
-            "skill": ..., "parameters": ...})`` plus a TextPart JSON
+            wire shapes. The default parser handles a DataPart carrying
+            ``{"skill": ..., "parameters": ...}`` plus a TextPart JSON
             fallback. Supply this to accept JSON-RPC 2.0 message bodies,
             vendor-specific DataPart schemas, or other layouts. The
             callable returns ``(skill_name, params)`` or ``(None, {})``
@@ -623,8 +666,6 @@ def create_a2a_server(
     Returns:
         A Starlette app ready to be run with uvicorn.
     """
-    from a2a.server.apps.jsonrpc.starlette_app import A2AStarletteApplication
-
     resolved_port = port or int(os.environ.get("PORT", "3001"))
 
     executor = ADCPAgentExecutor(
@@ -656,13 +697,21 @@ def create_a2a_server(
     request_handler = DefaultRequestHandler(
         agent_executor=executor,
         task_store=task_store,
+        agent_card=agent_card,
         push_config_store=push_config_store,
     )
 
-    a2a_app = A2AStarletteApplication(
-        agent_card=agent_card,
-        http_handler=request_handler,
+    # ``enable_v0_3_compat=True`` is load-bearing: it makes the server
+    # dual-serve 0.3 and 1.0 wire formats on the same endpoint so existing
+    # 0.3 buyer clients keep working unchanged. Do not disable.
+    routes = list(create_agent_card_routes(agent_card=agent_card)) + list(
+        create_jsonrpc_routes(
+            request_handler=request_handler,
+            rpc_url="/",
+            enable_v0_3_compat=True,
+        )
     )
+    app = Starlette(routes=routes)
 
     # Startup log lives on the create_a2a_server path (symmetric with
     # MCP's _register_handler_tools). Moved out of
@@ -677,13 +726,13 @@ def create_a2a_server(
         registered=list(executor.supported_skills),
     )
 
-    return a2a_app.build()
+    return app
 
 
-def _test_controller_skills() -> list[AgentSkill]:
+def _test_controller_skills() -> list[pb.AgentSkill]:
     """Build A2A skill definition for comply_test_controller."""
     return [
-        AgentSkill(
+        pb.AgentSkill(
             id="comply_test_controller",
             name="comply_test_controller",
             description="Compliance test controller. Sandbox only, not for production use.",

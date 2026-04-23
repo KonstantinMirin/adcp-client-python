@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from a2a.types import InternalError, InvalidParamsError
-from a2a.utils.errors import ServerError
+from a2a.utils.errors import A2AError, InternalError, InvalidParamsError
 from mcp.server.fastmcp.exceptions import ToolError
 
 from adcp.exceptions import (
@@ -90,38 +89,38 @@ class TestTranslateErrorToA2A:
         """A2A translation returns a ServerError instance."""
         exc = ADCPError("something went wrong")
         result = translate_error(exc, protocol="a2a")
-        assert isinstance(result, ServerError)
+        assert isinstance(result, A2AError)
 
     def test_internal_error_wraps_internal(self):
         """Generic ADCPError wraps InternalError (terminal/transient)."""
         exc = ADCPError("something went wrong")
         result = translate_error(exc, protocol="a2a")
-        assert isinstance(result.error, InternalError)
-        assert result.error.message == "something went wrong"
+        assert isinstance(result, InternalError)
+        assert result.message == "something went wrong"
 
     def test_correctable_error_wraps_invalid_params(self):
         """Error with correctable code wraps InvalidParamsError."""
         err = Error(code="VALIDATION_ERROR", message="Missing field")
         result = translate_error(err, protocol="a2a")
-        assert isinstance(result.error, InvalidParamsError)
+        assert isinstance(result, InvalidParamsError)
 
     def test_data_includes_recovery(self):
         """A2A error data includes recovery classification."""
         exc = ADCPConnectionError("Cannot reach upstream")
         result = translate_error(exc, protocol="a2a")
-        assert result.error.data["recovery"] == "transient"
+        assert result.data["recovery"] == "transient"
 
     def test_data_includes_error_code(self):
         """A2A error data includes the ADCP error code."""
         err = Error(code="BUDGET_TOO_LOW", message="Budget below minimum")
         result = translate_error(err, protocol="a2a")
-        assert result.error.data["error_code"] == "BUDGET_TOO_LOW"
+        assert result.data["error_code"] == "BUDGET_TOO_LOW"
 
     def test_data_includes_suggestion(self):
         """A2A error data includes suggestion when present."""
         exc = ADCPError("bad request", suggestion="Check the budget field")
         result = translate_error(exc, protocol="a2a")
-        assert result.error.data["suggestion"] == "Check the budget field"
+        assert result.data["suggestion"] == "Check the budget field"
 
     def test_data_includes_details(self):
         """A2A error data includes details from Error model."""
@@ -131,7 +130,7 @@ class TestTranslateErrorToA2A:
             details={"max_budget": 10000, "requested": 15000},
         )
         result = translate_error(err, protocol="a2a")
-        assert result.error.data["details"] == {"max_budget": 10000, "requested": 15000}
+        assert result.data["details"] == {"max_budget": 10000, "requested": 15000}
 
     def test_task_error_preserves_original_errors(self):
         """ADCPTaskError passes through the original error list."""
@@ -139,7 +138,7 @@ class TestTranslateErrorToA2A:
         err2 = Error(code="AUDIENCE_TOO_SMALL", message="Audience too small")
         exc = ADCPTaskError("create_media_buy", [err1, err2])
         result = translate_error(exc, protocol="a2a")
-        errors = result.error.data["errors"]
+        errors = result.data["errors"]
         assert len(errors) == 2
         assert errors[0]["code"] == "BUDGET_TOO_LOW"
         assert errors[1]["code"] == "AUDIENCE_TOO_SMALL"
@@ -148,13 +147,13 @@ class TestTranslateErrorToA2A:
         """ADCPAuthenticationError gets terminal recovery."""
         exc = ADCPAuthenticationError("Forbidden")
         result = translate_error(exc, protocol="a2a")
-        assert result.error.data["recovery"] == "terminal"
+        assert result.data["recovery"] == "terminal"
 
     def test_timeout_error_is_transient(self):
         """ADCPTimeoutError gets transient recovery."""
         exc = ADCPTimeoutError("Timed out", timeout=30.0)
         result = translate_error(exc, protocol="a2a")
-        assert result.error.data["recovery"] == "transient"
+        assert result.data["recovery"] == "transient"
 
 
 # ============================================================================
@@ -177,7 +176,7 @@ class TestTranslateErrorValidation:
         assert isinstance(result_mcp, ToolError)
 
         result_a2a = translate_error(err, protocol=Protocol.A2A)
-        assert isinstance(result_a2a, ServerError)
+        assert isinstance(result_a2a, A2AError)
 
     def test_accepts_uppercase_protocol_string(self):
         """Protocol strings are case-insensitive."""

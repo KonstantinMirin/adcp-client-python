@@ -517,7 +517,8 @@ class TestWireTranslation:
         # A2A path: ADCPAgentExecutor._send_adcp_error emits a TaskState.failed
         # with a DataPart carrying {"adcp_error": {"code":..., "recovery":...}}
         # per transport-errors.mdx §A2A Binding.
-        from a2a.types import DataPart, TaskState
+        from a2a import types as pb
+        from google.protobuf.json_format import MessageToDict
 
         from adcp.exceptions import IdempotencyConflictError
         from adcp.server.a2a_server import ADCPAgentExecutor
@@ -541,11 +542,15 @@ class TestWireTranslation:
         await executor._send_adcp_error(FakeQueue(), _make_context_shim(), err)
         assert captured, "executor produced no event"
         task = captured[0]
-        assert task.status.state == TaskState.failed
+        assert task.status.state == pb.TaskState.TASK_STATE_FAILED
         assert task.artifacts, "failed task missing artifacts"
-        data_parts = [p.root for p in task.artifacts[0].parts if isinstance(p.root, DataPart)]
+        data_parts = [
+            MessageToDict(p.data)
+            for p in task.artifacts[0].parts
+            if p.WhichOneof("content") == "data"
+        ]
         assert data_parts, "failed task missing DataPart"
-        adcp_error = data_parts[0].data.get("adcp_error")
+        adcp_error = data_parts[0].get("adcp_error")
         assert adcp_error is not None
         assert adcp_error["code"] == "IDEMPOTENCY_CONFLICT"
         assert adcp_error["recovery"] == "terminal"

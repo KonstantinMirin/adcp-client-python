@@ -12,17 +12,20 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from a2a.types import (
+
+from adcp import ADCPClient
+from adcp.types import AgentConfig, Protocol, UpdateRightsRequest, UpdateRightsResponse
+from tests.a2a_compat_shim import (
     Artifact,
     DataPart,
     Part,
     SendMessageSuccessResponse,
     Task,
+    part_data_dict,
 )
-from a2a.types import TaskStatus as A2ATaskStatus
-
-from adcp import ADCPClient
-from adcp.types import AgentConfig, Protocol, UpdateRightsRequest, UpdateRightsResponse
+from tests.a2a_compat_shim import (
+    TaskStatus as A2ATaskStatus,
+)
 
 
 def _cfg(protocol: Protocol = Protocol.A2A) -> AgentConfig:
@@ -77,8 +80,8 @@ class TestUpdateRightsA2A:
             result = await client.update_rights(req)
 
         sent = mock_client.send_message.call_args[0][0]
-        parts = sent.params.message.parts
-        data = next(p.root.data for p in parts if hasattr(p.root, "data"))
+        parts = sent.message.parts
+        data = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")
         assert data["skill"] == "update_rights"
         params = data["parameters"]
         assert params["rights_id"] == "rts_live_01"

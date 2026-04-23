@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 import pytest
-from a2a.types import Artifact, DataPart, Part, Task, TaskState, TaskStatus
+from a2a.types import TaskState  # TaskState is the proto enum; still exported
 
 from adcp.types.generated_poc.core.push_notification_config import (
     Authentication as PNAuthentication,
@@ -36,6 +36,7 @@ from adcp.webhooks import (
     create_mcp_webhook_payload,
     deliver,
 )
+from tests.a2a_compat_shim import Artifact, DataPart, Part, Task, TaskStatus
 
 # Global DeprecationWarning filter — legacy auth always warns; silence here
 # and assert the warning once in its own dedicated test. The filter strips

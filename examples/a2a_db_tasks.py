@@ -79,7 +79,6 @@ Run::
 from __future__ import annotations
 
 import contextlib
-import json
 import os
 import sqlite3
 import uuid
@@ -90,12 +89,21 @@ from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
+from a2a import types as pb
 from a2a.server.context import ServerCallContext
 from a2a.server.tasks.push_notification_config_store import (
     PushNotificationConfigStore,
 )
 from a2a.server.tasks.task_store import TaskStore
-from a2a.types import PushNotificationConfig, Task
+
+# 1.0 folded ``PushNotificationConfig`` into
+# :class:`a2a.types.TaskPushNotificationConfig`; the example's
+# :meth:`~SqlitePushNotificationConfigStore.set_info` signature still
+# accepts a notification config object — the caller passes a
+# :class:`TaskPushNotificationConfig` instance.
+from a2a.types import Task
+from a2a.types import TaskPushNotificationConfig as PushNotificationConfig
+from google.protobuf.json_format import MessageToJson, Parse
 
 from adcp.server import ADCPHandler, serve
 from adcp.server.responses import capabilities_response, products_response
@@ -192,7 +200,10 @@ class SqliteTaskStore(TaskStore):
 
     async def save(self, task: Task, context: ServerCallContext | None = None) -> None:
         scope = self._scope_from_context(context)
-        task_json = task.model_dump_json(exclude_none=True)
+        # Proto messages serialize via ``MessageToJson``; fields stay in
+        # the canonical proto JSON shape so a different reader on the
+        # same DB (gRPC bridge, future 1.x client) sees the same bytes.
+        task_json = MessageToJson(task, preserving_proto_field_name=True)
         async with self._conn() as conn:
             # NOTE: ``INSERT OR REPLACE`` is last-writer-wins. Production
             # stores should guard with a version column or
@@ -214,8 +225,7 @@ class SqliteTaskStore(TaskStore):
             ).fetchone()
         if row is None:
             return None
-        payload: dict[str, Any] = json.loads(row[0])
-        return Task.model_validate(payload)
+        return Parse(row[0], pb.Task())
 
     async def delete(self, task_id: str, context: ServerCallContext | None = None) -> None:
         scope = self._scope_from_context(context)
@@ -224,6 +234,27 @@ class SqliteTaskStore(TaskStore):
                 "DELETE FROM a2a_tasks WHERE scope = ? AND task_id = ?",
                 (scope, task_id),
             )
+
+    async def list(
+        self,
+        params: pb.ListTasksRequest | None = None,
+        context: ServerCallContext | None = None,
+    ) -> pb.ListTasksResponse:
+        """Return tasks owned by the current scope.
+
+        ``params.page_token`` / ``params.page_size`` support is left as
+        an exercise for the seller — the reference impl returns every
+        task in one response to keep the example compact. Real deployments
+        should implement keyset pagination on ``(updated_at, task_id)``.
+        """
+        scope = self._scope_from_context(context)
+        async with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT task_json FROM a2a_tasks WHERE scope = ? ORDER BY updated_at DESC",
+                (scope,),
+            ).fetchall()
+        tasks = [Parse(row[0], pb.Task()) for row in rows]
+        return pb.ListTasksResponse(tasks=tasks)
 
 
 # ----------------------------------------------------------------------
@@ -410,7 +441,12 @@ class SqlitePushNotificationConfigStore(PushNotificationConfigStore):
         finally:
             conn.close()
 
-    async def set_info(self, task_id: str, notification_config: PushNotificationConfig) -> None:
+    async def set_info(
+        self,
+        task_id: str,
+        notification_config: PushNotificationConfig,
+        context: ServerCallContext | None = None,
+    ) -> None:
         scope = self._scope()
         # PushNotificationConfig.id is optional on the wire; when the
         # client didn't supply one we synthesise a UUID so two clients
@@ -421,7 +457,7 @@ class SqlitePushNotificationConfigStore(PushNotificationConfigStore):
         # config they just created unless they round-trip the
         # server-assigned id.
         config_id = notification_config.id or f"auto-{uuid.uuid4()}"
-        config_json = notification_config.model_dump_json(exclude_none=True)
+        config_json = MessageToJson(notification_config, preserving_proto_field_name=True)
         async with self._conn() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO a2a_push_configs "
@@ -430,16 +466,25 @@ class SqlitePushNotificationConfigStore(PushNotificationConfigStore):
                 (scope, task_id, config_id, config_json),
             )
 
-    async def get_info(self, task_id: str) -> list[PushNotificationConfig]:
+    async def get_info(
+        self,
+        task_id: str,
+        context: ServerCallContext | None = None,
+    ) -> list[PushNotificationConfig]:
         scope = self._scope()
         async with self._conn() as conn:
             rows = conn.execute(
-                "SELECT config_json FROM a2a_push_configs " "WHERE scope = ? AND task_id = ?",
+                "SELECT config_json FROM a2a_push_configs WHERE scope = ? AND task_id = ?",
                 (scope, task_id),
             ).fetchall()
-        return [PushNotificationConfig.model_validate(json.loads(r[0])) for r in rows]
+        return [Parse(r[0], PushNotificationConfig()) for r in rows]
 
-    async def delete_info(self, task_id: str, config_id: str | None = None) -> None:
+    async def delete_info(
+        self,
+        task_id: str,
+        context: ServerCallContext | None = None,
+        config_id: str | None = None,
+    ) -> None:
         scope = self._scope()
         async with self._conn() as conn:
             if config_id is None:
