@@ -11,7 +11,7 @@ import os
 import time
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from a2a.types import Task, TaskStatusUpdateEvent
 from pydantic import BaseModel
@@ -296,6 +296,27 @@ from adcp.validation.client_hooks import ValidationHookConfig
 logger = logging.getLogger(__name__)
 
 
+class Checkpoint(TypedDict):
+    """Persistable session-resume state for an A2A ``ADCPClient``.
+
+    The minimal set of fields needed to reconnect to an in-flight A2A
+    conversation after a process restart. Produced by
+    ``ADCPClient.checkpoint()``; consumed by
+    ``ADCPClient.from_checkpoint()``.
+
+    - ``agent_id`` — binds the checkpoint to the agent that minted it,
+      so a restore against the wrong ``AgentConfig`` fails loudly
+      instead of sending Agent A's ids to Agent B.
+    - ``context_id`` — the A2A conversation id.
+    - ``active_task_id`` — the in-flight task the next message must
+      echo; ``None`` if no task is pending.
+    """
+
+    agent_id: str
+    context_id: str | None
+    active_task_id: str | None
+
+
 class ADCPClient:
     """Client for interacting with a single AdCP agent."""
 
@@ -373,7 +394,12 @@ class ADCPClient:
                 multiple concurrent briefs with the same agent, construct
                 one client per brief rather than sharing.
 
-                Raises ``ValueError`` if passed with a non-A2A protocol.
+                For HITL flows that can span a process restart mid-task,
+                use ``checkpoint()`` / ``from_checkpoint()`` instead of
+                persisting ``context_id`` alone — full resume state is
+                both ``context_id`` AND ``active_task_id``.
+
+                Raises ``TypeError`` if passed with a non-A2A protocol.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
@@ -414,10 +440,14 @@ class ADCPClient:
         # in dev/test, warn in production — see ``ValidationHookConfig`` docs).
         self.adapter.configure_validation(validation)
 
-        if context_id is not None:
+        if context_id:
+            # Empty string is treated as "not provided" — callers using
+            # ``context_id=os.getenv("...") or ""`` patterns shouldn't
+            # silently seed an empty id on the wire.
             if not isinstance(self.adapter, A2AAdapter):
-                raise ValueError(
-                    "context_id is only supported for A2A protocol; " f"got {agent_config.protocol}"
+                raise TypeError(
+                    f"context_id is only supported for A2A protocol; "
+                    f"got {agent_config.protocol}"
                 )
             self.adapter.set_context_id(context_id)
 
@@ -442,17 +472,21 @@ class ADCPClient:
 
         Not safe for concurrent calls on the same client — the adapter
         mutates this on every response. Rule of thumb: one ADCPClient
-        per A2A conversation. Persist this value (e.g., Redis keyed by
-        your brief id) to resume across process restarts by passing it
-        to ``ADCPClient(context_id=...)``.
+        per A2A conversation.
+
+        For simple completed-task resume, persist this value and pass
+        it to ``ADCPClient(context_id=...)``. For HITL flows that may
+        restart mid-``input-required``, use ``checkpoint()`` /
+        ``from_checkpoint()`` — full resume state is both this id AND
+        ``active_task_id``.
         """
         if isinstance(self.adapter, A2AAdapter):
             return self.adapter.context_id
         return None
 
     @property
-    def pending_task_id(self) -> str | None:
-        """A2A task_id pending resume, or None if no task is in-flight.
+    def active_task_id(self) -> str | None:
+        """A2A task_id the next send must echo to resume the same task.
 
         Set when the last A2A response was non-terminal
         (``input-required``, ``working``, ``submitted``,
@@ -460,10 +494,14 @@ class ADCPClient:
         outbound message so the server resumes the same task. Clears
         automatically when the task reaches a terminal state.
 
+        Full resume state is *both* ``context_id`` and
+        ``active_task_id`` — persist both (or use ``checkpoint()``) to
+        survive a process restart mid-HITL without orphaning the task.
+
         Returns ``None`` for non-A2A clients.
         """
         if isinstance(self.adapter, A2AAdapter):
-            return self.adapter.pending_task_id
+            return self.adapter.active_task_id
         return None
 
     def reset_context(self, context_id: str | None = None) -> None:
@@ -477,17 +515,91 @@ class ADCPClient:
         client-supplied ids into their own session format; the client
         auto-adopts the rewritten id on the next response.
 
-        Also clears any pending_task_id — starting a new conversation
+        Also clears any active_task_id — starting a new conversation
         discards any in-flight task on the old one.
 
-        Raises ``ValueError`` when called on a non-A2A client.
+        Raises ``TypeError`` when called on a non-A2A client.
         """
         if not isinstance(self.adapter, A2AAdapter):
-            raise ValueError(
-                "reset_context is only supported for A2A protocol; "
+            raise TypeError(
+                f"reset_context is only supported for A2A protocol; "
                 f"got {self.agent_config.protocol}"
             )
         self.adapter.set_context_id(context_id)
+
+    def checkpoint(self) -> Checkpoint:
+        """Return the minimal state needed to resume this A2A session.
+
+        Full resume for HITL / multi-turn flows requires *both*
+        ``context_id`` (which conversation) AND ``active_task_id``
+        (which in-flight task to echo). Persisting only ``context_id``
+        reconnects to the right conversation but orphans the pending
+        task server-side — the next send starts a new task under the
+        same context, and the original ``input-required`` task is
+        abandoned.
+
+        The returned dict also carries ``agent_id`` so a later
+        ``from_checkpoint`` call against a different ``AgentConfig``
+        fails loudly instead of sending one agent's session ids to
+        another.
+
+        Pair with ``ADCPClient.from_checkpoint(agent_config, state)``.
+
+        Returns a fully-populated ``Checkpoint`` on non-A2A clients
+        with ``context_id``/``active_task_id`` set to ``None``, so
+        generic persist-and-restore code can call this without
+        branching on protocol.
+        """
+        return Checkpoint(
+            agent_id=self.agent_config.id,
+            context_id=self.context_id,
+            active_task_id=self.active_task_id,
+        )
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        agent_config: AgentConfig,
+        state: Checkpoint,
+        **kwargs: Any,
+    ) -> ADCPClient:
+        """Rehydrate an ADCPClient from a prior ``checkpoint()``.
+
+        Restores both ``context_id`` and ``active_task_id`` so a process
+        restart mid-``input-required`` can resume the same task, not
+        orphan it. Accepts the same keyword arguments as ``__init__``
+        (signing, strict_idempotency, etc.) — the checkpoint only
+        carries session-resume state; operational config is re-supplied
+        by the caller.
+
+        Raises ``ValueError`` if the checkpoint's ``agent_id`` doesn't
+        match ``agent_config.id`` — a checkpoint minted for Agent A
+        must not be restored onto Agent B, or the client will leak
+        Agent A's opaque session ids to Agent B on the next message.
+
+        Raises ``TypeError`` on a non-A2A ``agent_config`` if the
+        checkpoint carries a non-empty ``context_id`` or
+        ``active_task_id`` — session-resume state on a protocol that
+        doesn't support it would be silently dropped, masking bugs.
+        An empty/absent checkpoint round-trips cleanly on any protocol.
+        """
+        saved_agent_id = state.get("agent_id") if state else None
+        if saved_agent_id and saved_agent_id != agent_config.id:
+            raise ValueError(
+                f"checkpoint was minted for agent {saved_agent_id!r}, "
+                f"cannot restore against {agent_config.id!r}"
+            )
+        context_id = state.get("context_id") if state else None
+        active_task_id = state.get("active_task_id") if state else None
+        if active_task_id and agent_config.protocol != Protocol.A2A:
+            raise TypeError(
+                f"active_task_id in checkpoint is only supported for A2A "
+                f"protocol; got {agent_config.protocol}"
+            )
+        client = cls(agent_config, context_id=context_id, **kwargs)
+        if active_task_id and isinstance(client.adapter, A2AAdapter):
+            client.adapter._restore_active_task_id(active_task_id)
+        return client
 
     async def _ensure_idempotency_capability(self) -> None:
         """Verify the seller positively declares idempotency support in capabilities.
