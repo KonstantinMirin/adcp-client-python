@@ -167,3 +167,8 @@ IMPLEMENTATION_PLAN.md
 
 # Claude Code harness scratch — scheduled-task lock, session state, etc.
 .claude/
+
+# Committed experts (Claude subagents available to cloud routines)
+!.claude/
+!.claude/agents/
+.claude/settings*.json
