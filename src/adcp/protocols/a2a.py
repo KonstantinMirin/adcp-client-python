@@ -67,6 +67,22 @@ def _task_to_redacted_dict(task: pb.Task) -> dict[str, Any]:
     return MessageToDict(task)
 
 
+def _filter_card_to_version(card: pb.AgentCard, version: str) -> pb.AgentCard:
+    """Return a shallow copy of ``card`` whose ``supported_interfaces``
+    is restricted to entries with ``protocol_version == version``.
+
+    Non-matching entries are dropped; all other card fields are
+    preserved. The resulting card is what we pass to ``ClientFactory``
+    when the user wants to pin a specific A2A wire version.
+    """
+    clone = pb.AgentCard()
+    clone.CopyFrom(card)
+    keep = [iface for iface in card.supported_interfaces if iface.protocol_version == version]
+    del clone.supported_interfaces[:]
+    clone.supported_interfaces.extend(keep)
+    return clone
+
+
 class A2AAdapter(ProtocolAdapter):
     """Adapter for A2A protocol using the official a2a-sdk 1.0 client."""
 
@@ -89,12 +105,26 @@ class A2AAdapter(ProtocolAdapter):
         }
     )
 
-    def __init__(self, agent_config: AgentConfig):
-        """Initialize A2A adapter with official A2A client."""
+    def __init__(
+        self,
+        agent_config: AgentConfig,
+        force_a2a_version: str | None = None,
+    ):
+        """Initialize A2A adapter with official A2A client.
+
+        ``force_a2a_version`` pins the A2A wire version by filtering the
+        peer's advertised ``supported_interfaces`` to only entries whose
+        ``protocol_version`` matches. Intended for tests or for forcing
+        a 0.3-speaking path against a dual-advertising peer. Raises
+        :class:`ADCPConnectionError` on first use if no advertised
+        interface matches. ``None`` lets the SDK's ``ClientFactory``
+        pick the most capable transport the peer supports.
+        """
         super().__init__(agent_config)
         self._httpx_client: httpx.AsyncClient | None = None
         self._a2a_client: Client | None = None
         self._cached_agent_card: pb.AgentCard | None = None
+        self._force_a2a_version = force_a2a_version
         # A2A contextId for multi-turn conversations. First request sends
         # context_id=None → server mints one and returns it on Task.context_id;
         # we stash it here and echo it back on every subsequent send so the
@@ -137,6 +167,28 @@ class A2AAdapter(ProtocolAdapter):
         calls start a fresh task under the same context.
         """
         return self._active_task_id
+
+    @property
+    def a2a_protocol_versions(self) -> list[str] | None:
+        """Sorted list of A2A ``protocol_version`` strings the peer advertises.
+
+        Populated after the first call (or any operation that fetches
+        the ``AgentCard`` — :meth:`list_tools`, :meth:`get_agent_info`,
+        or an ``_call_a2a_tool`` invocation). Returns ``None`` before
+        the card has been fetched so callers can distinguish "not yet
+        known" from "peer advertises nothing" (empty list).
+
+        Example::
+
+            client = ADCPClient(a2a_config)
+            await client.adapter.get_agent_info()
+            print(client.a2a_protocol_versions)  # ['0.3', '1.0']
+        """
+        if self._cached_agent_card is None:
+            return None
+        return sorted(
+            {iface.protocol_version for iface in self._cached_agent_card.supported_interfaces}
+        )
 
     def set_context_id(self, context_id: str | None) -> None:
         """Set the A2A context_id for subsequent message sends.
@@ -269,8 +321,24 @@ class A2AAdapter(ProtocolAdapter):
             # request in, one task out — streaming would require an
             # async iterator API that does not match the SDK contract.
             self._cached_agent_card = agent_card
+            client_card = agent_card
+            if self._force_a2a_version is not None:
+                # Filter the advertised interfaces to the pinned version
+                # before handing the card to ClientFactory; the factory
+                # picks a transport from whatever remains. Raising here
+                # is nicer than a cryptic "no transport available" deep
+                # in the SDK.
+                client_card = _filter_card_to_version(agent_card, self._force_a2a_version)
+                if not client_card.supported_interfaces:
+                    raise ADCPConnectionError(
+                        f"Peer does not advertise A2A protocol_version="
+                        f"{self._force_a2a_version!r}; advertised versions: "
+                        f"{sorted({i.protocol_version for i in agent_card.supported_interfaces})}",
+                        agent_id=self.agent_config.id,
+                        agent_uri=self.agent_config.agent_uri,
+                    )
             factory = ClientFactory(ClientConfig(httpx_client=httpx_client, streaming=False))
-            self._a2a_client = factory.create(agent_card)
+            self._a2a_client = factory.create(client_card)
             logger.debug(f"Created A2A client for agent {self.agent_config.id}")
 
         return self._a2a_client
@@ -800,6 +868,12 @@ class A2AAdapter(ProtocolAdapter):
             "description": agent_card.description,
             "version": agent_card.version,
             "protocol": "a2a",
+            # A2A wire versions the peer advertises. Our server emits
+            # both "0.3" and "1.0" so clients of either era interoperate;
+            # this field lets buyers confirm what a given peer speaks.
+            "a2a_protocol_versions": sorted(
+                {iface.protocol_version for iface in agent_card.supported_interfaces}
+            ),
         }
 
         tool_names = [skill.name for skill in agent_card.skills if skill.name]

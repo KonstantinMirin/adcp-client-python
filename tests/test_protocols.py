@@ -998,6 +998,88 @@ class TestA2AContextId:
         assert adapter.active_task_id == "prior-task"
 
 
+class TestA2AProtocolVersions:
+    """Tests for the ``a2a_protocol_versions`` introspection property."""
+
+    def test_returns_none_before_card_fetch(self, a2a_config):
+        """Until an operation fetches the AgentCard, the list is unknown —
+        not empty. Callers need to distinguish 'not yet known' from
+        'peer advertises nothing'."""
+        adapter = A2AAdapter(a2a_config)
+        assert adapter.a2a_protocol_versions is None
+
+    def test_sorted_from_cached_card(self, a2a_config):
+        """After a card is cached the property returns the sorted set
+        of advertised ``protocol_version`` strings."""
+        adapter = A2AAdapter(a2a_config)
+        card = pb.AgentCard(
+            name="dual",
+            supported_interfaces=[
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="1.0"
+                ),
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="0.3"
+                ),
+            ],
+        )
+        adapter._cached_agent_card = card
+        assert adapter.a2a_protocol_versions == ["0.3", "1.0"]
+
+    def test_empty_list_when_peer_advertises_none(self, a2a_config):
+        """Peer advertises a card but no ``supported_interfaces`` — list
+        is empty (not None), distinct from 'card not yet fetched'."""
+        adapter = A2AAdapter(a2a_config)
+        adapter._cached_agent_card = pb.AgentCard(name="bare")
+        assert adapter.a2a_protocol_versions == []
+
+    def test_client_property_returns_none_on_non_a2a(self, mcp_config):
+        """The ADCPClient-level wrapper returns ``None`` on MCP
+        clients so generic code can probe without branching."""
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        assert client.a2a_protocol_versions is None
+
+    def test_client_property_forwards_adapter_state(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert isinstance(client.adapter, A2AAdapter)
+        # Seed the cache directly; the property reads straight through.
+        client.adapter._cached_agent_card = pb.AgentCard(
+            name="x",
+            supported_interfaces=[
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="0.3"
+                ),
+            ],
+        )
+        assert client.a2a_protocol_versions == ["0.3"]
+
+    def test_force_a2a_version_rejects_on_non_a2a(self, mcp_config):
+        """The pin only makes sense for A2A; MCP callers shouldn't be
+        able to pass it and have it silently no-op."""
+        from adcp.client import ADCPClient
+
+        with pytest.raises(TypeError, match="only supported for A2A"):
+            ADCPClient(mcp_config, force_a2a_version="0.3")
+
+    def test_force_a2a_version_plumbs_to_adapter(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, force_a2a_version="0.3")
+        assert isinstance(client.adapter, A2AAdapter)
+        assert client.adapter._force_a2a_version == "0.3"
+
+    def test_force_a2a_version_defaults_to_none(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert isinstance(client.adapter, A2AAdapter)
+        assert client.adapter._force_a2a_version is None
+
+
 class TestADCPClientContextId:
     """Tests for the ADCPClient-level contextId surface."""
 

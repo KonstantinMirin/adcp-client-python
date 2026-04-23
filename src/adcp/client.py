@@ -333,6 +333,7 @@ class ADCPClient:
         signing: SigningConfig | None = None,
         context_id: str | None = None,
         validation: ValidationHookConfig | None = None,
+        force_a2a_version: str | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -400,6 +401,20 @@ class ADCPClient:
                 both ``context_id`` AND ``active_task_id``.
 
                 Raises ``TypeError`` if passed with a non-A2A protocol.
+            force_a2a_version: A2A-only. Pin the wire version by
+                filtering the peer's advertised
+                ``supported_interfaces`` to entries whose
+                ``protocol_version`` matches. Intended for tests or
+                for forcing a 0.3-speaking path against a
+                dual-advertising peer. Raises
+                :class:`ADCPConnectionError` on the first call if no
+                advertised interface matches. ``None`` (default) lets
+                the SDK's ``ClientFactory`` pick the most capable
+                transport the peer supports. Use
+                :attr:`a2a_protocol_versions` to probe what a peer
+                advertises before pinning.
+
+                Raises ``TypeError`` if passed with a non-A2A protocol.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
@@ -422,10 +437,16 @@ class ADCPClient:
 
         self._idempotency_client_token: str = _uuid4().hex
 
+        if force_a2a_version is not None and agent_config.protocol != Protocol.A2A:
+            raise TypeError(
+                f"force_a2a_version is only supported for A2A protocol; "
+                f"got {agent_config.protocol}"
+            )
+
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
         if agent_config.protocol == Protocol.A2A:
-            self.adapter = A2AAdapter(agent_config)
+            self.adapter = A2AAdapter(agent_config, force_a2a_version=force_a2a_version)
         elif agent_config.protocol == Protocol.MCP:
             self.adapter = MCPAdapter(agent_config)
         else:
@@ -502,6 +523,25 @@ class ADCPClient:
         """
         if isinstance(self.adapter, A2AAdapter):
             return self.adapter.active_task_id
+        return None
+
+    @property
+    def a2a_protocol_versions(self) -> list[str] | None:
+        """A2A ``protocol_version`` strings the peer advertises, sorted.
+
+        Lazily populated after the first operation that fetches the
+        peer's ``AgentCard`` (``fetch_capabilities``, ``list_tools``,
+        ``get_agent_info``, or any skill-call). Returns ``None`` before
+        the card has been fetched so callers can distinguish "not yet
+        known" from "peer advertises nothing" (empty list). Returns
+        ``None`` for non-A2A clients.
+
+        Useful for probing which wire version a peer speaks — buyers
+        running alongside both 0.3-era and 1.0-era agents can use this
+        to confirm what they're talking to.
+        """
+        if isinstance(self.adapter, A2AAdapter):
+            return self.adapter.a2a_protocol_versions
         return None
 
     def reset_context(self, context_id: str | None = None) -> None:
