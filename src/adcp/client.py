@@ -11,7 +11,7 @@ import os
 import time
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from a2a.types import Task, TaskStatusUpdateEvent
 from pydantic import BaseModel
@@ -333,6 +333,7 @@ class ADCPClient:
         signing: SigningConfig | None = None,
         context_id: str | None = None,
         validation: ValidationHookConfig | None = None,
+        force_a2a_version: str | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -400,6 +401,20 @@ class ADCPClient:
                 both ``context_id`` AND ``active_task_id``.
 
                 Raises ``TypeError`` if passed with a non-A2A protocol.
+            force_a2a_version: A2A-only. Pin the wire version by
+                filtering the peer's advertised
+                ``supported_interfaces`` to entries whose
+                ``protocol_version`` matches. Intended for tests or
+                for forcing a 0.3-speaking path against a
+                dual-advertising peer. Raises
+                :class:`ADCPConnectionError` on the first call if no
+                advertised interface matches. ``None`` (default) lets
+                the SDK's ``ClientFactory`` pick the most capable
+                transport the peer supports. Use
+                :attr:`a2a_protocol_versions` to probe what a peer
+                advertises before pinning.
+
+                Raises ``TypeError`` if passed with a non-A2A protocol.
         """
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
@@ -422,10 +437,16 @@ class ADCPClient:
 
         self._idempotency_client_token: str = _uuid4().hex
 
+        if force_a2a_version is not None and agent_config.protocol != Protocol.A2A:
+            raise TypeError(
+                f"force_a2a_version is only supported for A2A protocol; "
+                f"got {agent_config.protocol}"
+            )
+
         # Initialize protocol adapter
         self.adapter: ProtocolAdapter
         if agent_config.protocol == Protocol.A2A:
-            self.adapter = A2AAdapter(agent_config)
+            self.adapter = A2AAdapter(agent_config, force_a2a_version=force_a2a_version)
         elif agent_config.protocol == Protocol.MCP:
             self.adapter = MCPAdapter(agent_config)
         else:
@@ -502,6 +523,25 @@ class ADCPClient:
         """
         if isinstance(self.adapter, A2AAdapter):
             return self.adapter.active_task_id
+        return None
+
+    @property
+    def a2a_protocol_versions(self) -> list[str] | None:
+        """A2A ``protocol_version`` strings the peer advertises, sorted.
+
+        Lazily populated after the first operation that fetches the
+        peer's ``AgentCard`` (``fetch_capabilities``, ``list_tools``,
+        ``get_agent_info``, or any skill-call). Returns ``None`` before
+        the card has been fetched so callers can distinguish "not yet
+        known" from "peer advertises nothing" (empty list). Returns
+        ``None`` for non-A2A clients.
+
+        Useful for probing which wire version a peer speaks — buyers
+        running alongside both 0.3-era and 1.0-era agents can use this
+        to confirm what they're talking to.
+        """
+        if isinstance(self.adapter, A2AAdapter):
+            return self.adapter.a2a_protocol_versions
         return None
 
     def reset_context(self, context_id: str | None = None) -> None:
@@ -3818,7 +3858,36 @@ class ADCPClient:
             Signature verification is NOT applicable for A2A webhooks
             as they arrive through authenticated A2A connections, not HTTP.
         """
-        from a2a.types import DataPart, TextPart
+        from a2a import types as _pb
+        from google.protobuf.json_format import MessageToDict as _MessageToDict
+
+        def _a2a_part_data_dict(part: _pb.Part) -> Any:
+            if part.WhichOneof("content") != "data":
+                return None
+            return _MessageToDict(part.data)
+
+        def _a2a_part_text(part: _pb.Part) -> str | None:
+            if part.WhichOneof("content") != "text":
+                return None
+            return part.text
+
+        def _a2a_state_to_string(state_value: int) -> str:
+            """Map ``TaskState`` int → spec string (``TASK_STATE_COMPLETED`` → ``completed``)."""
+            name = _pb.TaskState.Name(state_value)
+            if name.startswith("TASK_STATE_"):
+                return name[len("TASK_STATE_") :].lower().replace("_", "-")
+            return name.lower()
+
+        def _a2a_timestamp(ts: Any) -> datetime | str:
+            """Convert a proto Timestamp (or string) to datetime/ISO string."""
+            if ts is None:
+                return datetime.now(timezone.utc)
+            if isinstance(ts, str):
+                return ts or datetime.now(timezone.utc)
+            try:
+                return cast(datetime, ts.ToDatetime().replace(tzinfo=timezone.utc))
+            except AttributeError:
+                return datetime.now(timezone.utc)
 
         adcp_data: Any = None
         text_message: str | None = None
@@ -3829,72 +3898,61 @@ class ADCPClient:
 
         # Type detection and extraction based on payload type
         if isinstance(payload, TaskStatusUpdateEvent):
-            # Intermediate status: Extract from status.message.parts[]
             task_id = payload.task_id
-            context_id = payload.context_id
-            status_state = payload.status.state if payload.status else "failed"
+            context_id = payload.context_id or None
+            has_status = payload.HasField("status")
+            status_state = _a2a_state_to_string(payload.status.state) if has_status else "failed"
             timestamp = (
-                payload.status.timestamp
-                if payload.status and payload.status.timestamp
+                _a2a_timestamp(payload.status.timestamp)
+                if has_status and payload.status.HasField("timestamp")
                 else datetime.now(timezone.utc)
             )
 
-            # Extract from status.message.parts[]
-            if payload.status and payload.status.message and payload.status.message.parts:
-                # Extract DataPart for structured AdCP payload
+            if has_status and payload.status.HasField("message") and payload.status.message.parts:
                 data_parts = [
-                    p.root for p in payload.status.message.parts if isinstance(p.root, DataPart)
+                    d
+                    for d in (_a2a_part_data_dict(p) for p in payload.status.message.parts)
+                    if d is not None
                 ]
                 if data_parts:
-                    # Use last DataPart as authoritative
-                    last_data_part = data_parts[-1]
-                    adcp_data = last_data_part.data
-
-                    # Unwrap {"response": {...}} wrapper if present (ADK pattern)
+                    adcp_data = data_parts[-1]
                     if isinstance(adcp_data, dict) and "response" in adcp_data:
                         adcp_data = adcp_data["response"]
 
-                # Extract TextPart for human-readable message
                 for part in payload.status.message.parts:
-                    if isinstance(part.root, TextPart):
-                        text_message = part.root.text
+                    text = _a2a_part_text(part)
+                    if text is not None:
+                        text_message = text
                         break
 
         else:
-            # Terminated status (Task): Extract from artifacts[].parts[]
             task_id = payload.id
-            context_id = payload.context_id
-            status_state = payload.status.state if payload.status else "failed"
+            context_id = payload.context_id or None
+            has_status = payload.HasField("status")
+            status_state = _a2a_state_to_string(payload.status.state) if has_status else "failed"
             timestamp = (
-                payload.status.timestamp
-                if payload.status and payload.status.timestamp
+                _a2a_timestamp(payload.status.timestamp)
+                if has_status and payload.status.HasField("timestamp")
                 else datetime.now(timezone.utc)
             )
 
-            # Extract from task.artifacts[].parts[]
-            # Following A2A spec: use last artifact, last DataPart is authoritative
             if payload.artifacts:
-                # Use last artifact (most recent in streaming scenarios)
                 target_artifact = payload.artifacts[-1]
-
                 if target_artifact.parts:
-                    # Extract DataPart for structured AdCP payload
                     data_parts = [
-                        p.root for p in target_artifact.parts if isinstance(p.root, DataPart)
+                        d
+                        for d in (_a2a_part_data_dict(p) for p in target_artifact.parts)
+                        if d is not None
                     ]
                     if data_parts:
-                        # Use last DataPart as authoritative
-                        last_data_part = data_parts[-1]
-                        adcp_data = last_data_part.data
-
-                        # Unwrap {"response": {...}} wrapper if present (ADK pattern)
+                        adcp_data = data_parts[-1]
                         if isinstance(adcp_data, dict) and "response" in adcp_data:
                             adcp_data = adcp_data["response"]
 
-                    # Extract TextPart for human-readable message
                     for part in target_artifact.parts:
-                        if isinstance(part.root, TextPart):
-                            text_message = part.root.text
+                        text = _a2a_part_text(part)
+                        if text is not None:
+                            text_message = text
                             break
 
         # Map A2A status.state to GeneratedTaskStatus enum

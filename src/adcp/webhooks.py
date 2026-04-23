@@ -33,17 +33,13 @@ from typing import Any, cast
 from urllib.parse import urlsplit
 
 import httpx
+from a2a import types as pb
 from a2a.types import (
-    Artifact,
-    DataPart,
-    Message,
-    Part,
-    Role,
     Task,
-    TaskState,
-    TaskStatus,
     TaskStatusUpdateEvent,
 )
+from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.struct_pb2 import Value
 
 from adcp.server.idempotency.backends import MemoryBackend as MemoryBackend
 from adcp.server.idempotency.webhook_dedup import WebhookDedupStore as WebhookDedupStore
@@ -551,83 +547,108 @@ def create_a2a_webhook_payload(
 
     # Convert datetime to ISO string for A2A protocol
     timestamp_str = timestamp.isoformat() if isinstance(timestamp, datetime) else timestamp
+    timestamp_proto = _isoformat_to_proto_timestamp(timestamp_str) if timestamp_str else None
 
-    # Map GeneratedTaskStatus to A2A status state string
+    # Map GeneratedTaskStatus to A2A TaskState enum value.
     status_value = status.value if hasattr(status, "value") else str(status)
-
-    # Map AdCP status to A2A status state
-    # Note: A2A uses "input-required" (hyphenated) while AdCP uses "input_required" (underscore)
-    status_mapping = {
-        "completed": "completed",
-        "failed": "failed",
-        "working": "working",
-        "submitted": "submitted",
-        "input_required": "input-required",
+    adcp_to_task_state: dict[str, int] = {
+        "completed": pb.TaskState.TASK_STATE_COMPLETED,
+        "failed": pb.TaskState.TASK_STATE_FAILED,
+        "working": pb.TaskState.TASK_STATE_WORKING,
+        "submitted": pb.TaskState.TASK_STATE_SUBMITTED,
+        "input_required": pb.TaskState.TASK_STATE_INPUT_REQUIRED,
+        # Tolerate the hyphenated form servers may echo back.
+        "input-required": pb.TaskState.TASK_STATE_INPUT_REQUIRED,
     }
-    a2a_status_state = status_mapping.get(status_value, status_value)
+    task_state_enum = adcp_to_task_state.get(status_value, pb.TaskState.TASK_STATE_UNSPECIFIED)
 
-    # Build parts for the message/artifact
-    parts: list[Part] = []
+    # Build parts for the message/artifact.
+    parts: list[pb.Part] = []
 
-    # Add DataPart
     # Convert AdcpAsyncResponseData to dict if it's a Pydantic model
     if hasattr(result, "model_dump"):
         result_dict: dict[str, Any] = result.model_dump(mode="json")
     else:
         result_dict = result
 
-    data_part = DataPart(data=result_dict)
-    parts.append(Part(root=data_part))
+    value = Value()
+    ParseDict(result_dict, value)
+    parts.append(pb.Part(data=value))
 
     # Determine if this is a terminated status (Task) or intermediate (TaskStatusUpdateEvent)
     is_terminated = status in [GeneratedTaskStatus.completed, GeneratedTaskStatus.failed]
 
-    # Convert string to TaskState enum
-    task_state_enum = TaskState(a2a_status_state)
-
     if is_terminated:
-        # Create Task object with artifacts for terminated statuses
-        task_status = TaskStatus(state=task_state_enum, timestamp=timestamp_str)
+        status_kwargs: dict[str, Any] = {"state": task_state_enum}
+        if timestamp_proto is not None:
+            status_kwargs["timestamp"] = timestamp_proto
+        task_status = pb.TaskStatus(**status_kwargs)
 
-        # Build artifact with parts
-        # Note: Artifact requires artifact_id, use task_id as prefix
-        if parts:
-            artifact = Artifact(
-                artifact_id=f"{task_id}_result",
-                parts=parts,
-            )
-            artifacts = [artifact]
-        else:
-            artifacts = []
+        artifacts = (
+            [
+                pb.Artifact(
+                    artifact_id=f"{task_id}_result",
+                    parts=parts,
+                )
+            ]
+            if parts
+            else []
+        )
 
-        return Task(
+        return pb.Task(
             id=task_id,
             status=task_status,
             artifacts=artifacts,
             context_id=context_id,
         )
-    else:
-        # Create TaskStatusUpdateEvent with status.message for intermediate statuses
-        # Build message with parts
-        if parts:
-            message_obj = Message(
-                message_id=f"{task_id}_msg",
-                role=Role.agent,  # Agent is responding
-                parts=parts,
-            )
+
+    # Intermediate status: build a Message carrying the parts and nest it
+    # inside TaskStatus.message so the event mirrors the spec shape.
+    message_obj = None
+    if parts:
+        message_obj = pb.Message(
+            message_id=f"{task_id}_msg",
+            role=pb.Role.ROLE_AGENT,
+            parts=parts,
+        )
+
+    status_kwargs = {"state": task_state_enum}
+    if timestamp_proto is not None:
+        status_kwargs["timestamp"] = timestamp_proto
+    if message_obj is not None:
+        status_kwargs["message"] = message_obj
+    task_status = pb.TaskStatus(**status_kwargs)
+
+    return pb.TaskStatusUpdateEvent(
+        task_id=task_id,
+        status=task_status,
+        context_id=context_id,
+    )
+
+
+def _isoformat_to_proto_timestamp(
+    value: str | datetime,
+) -> Any:
+    """Convert an ISO-8601 string or datetime to a ``google.protobuf.Timestamp``.
+
+    Returns ``None`` when the input is falsy. Any parse failure falls back
+    to ``None`` rather than raising — webhook callers may pass pre-formatted
+    strings from non-ISO sources, and losing the timestamp is better than
+    raising mid-delivery.
+    """
+    from google.protobuf.timestamp_pb2 import Timestamp
+
+    if not value:
+        return None
+    ts = Timestamp()
+    try:
+        if isinstance(value, datetime):
+            ts.FromDatetime(value)
         else:
-            message_obj = None
-
-        task_status = TaskStatus(
-            state=task_state_enum, timestamp=timestamp_str, message=message_obj
-        )
-
-        return TaskStatusUpdateEvent(
-            task_id=task_id,
-            status=task_status,
-            context_id=context_id,
-            final=False,  # Intermediate statuses are not final
-        )
+            ts.FromJsonString(value)
+    except (ValueError, TypeError):
+        return None
+    return ts
 
 
 _AUTH_DEPRECATION_WARNED = False
@@ -962,16 +983,68 @@ def _payload_to_dict(
 ) -> dict[str, Any]:
     """Normalize a webhook payload to a JSON-ready dict.
 
-    a2a-sdk ``Task`` / ``TaskStatusUpdateEvent`` serialize with ``by_alias=True``
-    so ``artifact_id`` → ``artifactId`` matches what external A2A receivers
-    expect. MCP-shape dicts / AdCP models are dumped with camelCase-off defaults.
+    a2a-sdk ``Task`` / ``TaskStatusUpdateEvent`` are protobuf messages and
+    serialize through ``MessageToDict`` with camelCase field names
+    (``artifact_id`` → ``artifactId``) so external A2A receivers see the
+    on-wire shape they expect. The protobuf default emits enum states as
+    ``TASK_STATE_COMPLETED``; we post-process to the 0.3-compatible
+    lowercase form (``completed``) so existing A2A buyer webhook
+    receivers keep parsing. MCP-shape dicts / AdCP models are dumped
+    with camelCase-off defaults.
     """
     if isinstance(payload, (Task, TaskStatusUpdateEvent)):
-        return payload.model_dump(mode="json", by_alias=True, exclude_none=True)
+        data = MessageToDict(payload, preserving_proto_field_name=False)
+        _normalize_a2a_task_state_to_v03(data)
+        return data
     if hasattr(payload, "model_dump"):
         model = cast(AdCPBaseModel, payload)
         return model.model_dump(mode="json", exclude_none=True)
     return dict(payload)
+
+
+def _normalize_a2a_task_state_to_v03(payload: dict[str, Any]) -> None:
+    """Rewrite enum fields from 1.0 ``TASK_STATE_*`` / ``ROLE_*`` to 0.3 strings.
+
+    Buyer webhook receivers that parse our A2A ``Task`` /
+    ``TaskStatusUpdateEvent`` envelopes were built against the 0.3 wire
+    shape (``"state": "completed"``, ``"role": "agent"``). The a2a-sdk
+    1.0 protobuf JSON emitter produces ``"state": "TASK_STATE_COMPLETED"``
+    and ``"role": "ROLE_AGENT"`` by default. This helper rewrites those
+    enum-style values in-place to the 0.3 lowercase forms; non-matching
+    values pass through unchanged.
+    """
+    status = payload.get("status")
+    if isinstance(status, dict):
+        state = status.get("state")
+        if isinstance(state, str) and state.startswith("TASK_STATE_"):
+            remainder = state[len("TASK_STATE_") :].lower()
+            # Spec uses hyphens for multi-word states.
+            status["state"] = remainder.replace("_", "-")
+        message = status.get("message")
+        if isinstance(message, dict):
+            _normalize_message_role(message)
+
+    # ``Task.history[]`` carries prior Messages each with a ``role`` that
+    # serializes SCREAMING_SNAKE. ``create_a2a_webhook_payload`` does not
+    # populate ``history`` today, but hand-built Task payloads or proxies
+    # from other sources might — walk them so 0.3 receivers see the
+    # spec-expected lowercase form.
+    history = payload.get("history")
+    if isinstance(history, list):
+        for entry in history:
+            if isinstance(entry, dict):
+                _normalize_message_role(entry)
+
+    # Task envelopes carry parts directly under artifacts[].parts[]; no
+    # role field there. But a bare Message payload (edge case) could.
+    if "role" in payload:
+        _normalize_message_role(payload)
+
+
+def _normalize_message_role(message: dict[str, Any]) -> None:
+    role = message.get("role")
+    if isinstance(role, str) and role.startswith("ROLE_"):
+        message["role"] = role[len("ROLE_") :].lower()
 
 
 def _inject_push_token(

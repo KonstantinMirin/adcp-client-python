@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 import pytest
-from a2a.types import Artifact, DataPart, Part, Task, TaskState, TaskStatus
+from a2a.types import TaskState  # TaskState is the proto enum; still exported
 
 from adcp.types.generated_poc.core.push_notification_config import (
     Authentication as PNAuthentication,
@@ -36,6 +36,7 @@ from adcp.webhooks import (
     create_mcp_webhook_payload,
     deliver,
 )
+from tests.a2a_compat_shim import Artifact, DataPart, Part, Task, TaskStatus
 
 # Global DeprecationWarning filter — legacy auth always warns; silence here
 # and assert the warning once in its own dedicated test. The filter strips
@@ -479,3 +480,69 @@ async def test_deprecation_warning_fires_for_legacy_auth() -> None:
     async with client:
         with pytest.warns(DeprecationWarning, match="AdCP 4.0"):
             await deliver(config, _mcp_payload(), client=client)
+
+
+# -- Outbound wire-normalization: 1.0 proto enums → 0.3 spec strings -----
+
+
+def _normalize(payload: dict[str, Any]) -> dict[str, Any]:
+    """Small helper — call the private normalizer directly on a dict so
+    the tests below don't need to stand up a full webhook dispatch."""
+    from adcp.webhooks import _normalize_a2a_task_state_to_v03
+
+    _normalize_a2a_task_state_to_v03(payload)
+    return payload
+
+
+def test_normalize_rewrites_status_state_to_0_3_lowercase() -> None:
+    out = _normalize({"status": {"state": "TASK_STATE_COMPLETED"}})
+    assert out["status"]["state"] == "completed"
+
+
+def test_normalize_rewrites_status_message_role() -> None:
+    out = _normalize(
+        {
+            "status": {
+                "state": "TASK_STATE_INPUT_REQUIRED",
+                "message": {"role": "ROLE_AGENT"},
+            }
+        }
+    )
+    assert out["status"]["state"] == "input-required"
+    assert out["status"]["message"]["role"] == "agent"
+
+
+def test_normalize_walks_task_history_roles() -> None:
+    """Regression: ``Task.history[]`` carries Messages whose ``role``
+    field serializes SCREAMING_SNAKE. A handroll of a Task envelope
+    that populates history (proxied from another source) must have
+    every role flipped, not just the top-level / status.message."""
+    out = _normalize(
+        {
+            "status": {"state": "TASK_STATE_COMPLETED"},
+            "history": [
+                {"role": "ROLE_USER", "parts": [{"text": "first"}]},
+                {"role": "ROLE_AGENT", "parts": [{"text": "second"}]},
+                "not-a-message",  # heterogeneous entries must be tolerated
+            ],
+        }
+    )
+    assert out["status"]["state"] == "completed"
+    assert out["history"][0]["role"] == "user"
+    assert out["history"][1]["role"] == "agent"
+    assert out["history"][2] == "not-a-message"
+
+
+def test_normalize_passthrough_for_unknown_enum_prefixes() -> None:
+    """Non-enum values that happen not to start with the proto
+    prefixes must survive unchanged — guards against accidental
+    mutation of user-supplied data."""
+    out = _normalize(
+        {
+            "status": {"state": "completed", "message": {"role": "user"}},
+            "role": "user",
+        }
+    )
+    assert out["status"]["state"] == "completed"
+    assert out["status"]["message"]["role"] == "user"
+    assert out["role"] == "user"

@@ -9,25 +9,25 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-from a2a.types import (
+from a2a.types import TaskState, TaskStatusUpdateEvent
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+
+from adcp.client import ADCPClient
+from adcp.exceptions import ADCPWebhookSignatureError
+from adcp.types.core import AgentConfig, Protocol, TaskStatus
+from adcp.webhooks import extract_webhook_result_data, get_adcp_signed_headers_for_webhook
+from tests.a2a_compat_shim import (
     Artifact,
     DataPart,
     Message,
     Part,
     Role,
     Task,
-    TaskState,
-    TaskStatusUpdateEvent,
     TextPart,
 )
-from a2a.types import (
+from tests.a2a_compat_shim import (
     TaskStatus as A2ATaskStatus,
 )
-
-from adcp.client import ADCPClient
-from adcp.exceptions import ADCPWebhookSignatureError
-from adcp.types.core import AgentConfig, Protocol, TaskStatus
-from adcp.webhooks import extract_webhook_result_data, get_adcp_signed_headers_for_webhook
 
 
 class TestMCPWebhooks:
@@ -651,7 +651,6 @@ class TestA2AWebhooks:
                     ],
                 ),
             ),
-            final=False,
         )
 
         result = await self.client.handle_webhook(
@@ -673,7 +672,7 @@ class TestA2AWebhooks:
             task_id="task_888",
             context_id="ctx_999",
             status=A2ATaskStatus(
-                state=TaskState("input-required"),
+                state=TaskState.input_required,
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 message=Message(
                     message_id="msg_888",
@@ -684,7 +683,6 @@ class TestA2AWebhooks:
                     ],
                 ),
             ),
-            final=False,
         )
 
         result = await self.client.handle_webhook(
@@ -713,7 +711,6 @@ class TestA2AWebhooks:
                     ],
                 ),
             ),
-            final=False,
         )
 
         result = await self.client.handle_webhook(
@@ -735,7 +732,6 @@ class TestA2AWebhooks:
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 message=None,  # No message
             ),
-            final=False,
         )
 
         result = await self.client.handle_webhook(
@@ -869,7 +865,6 @@ class TestUnifiedInterface:
                     parts=[Part(root=TextPart(text="Processing"))],
                 ),
             ),
-            final=False,
         )
 
         result = await self.a2a_client.handle_webhook(
@@ -965,7 +960,7 @@ class TestExtractWebhookResultData:
         )
 
         # Convert to dict (simulating JSON deserialization)
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         assert result is not None
@@ -994,11 +989,10 @@ class TestExtractWebhookResultData:
                     ],
                 ),
             ),
-            final=False,
         )
 
         # Convert to dict (simulating JSON deserialization)
-        event_dict = event.model_dump(mode="json")
+        event_dict = _MessageToDict(event, preserving_proto_field_name=False)
         result = extract_webhook_result_data(event_dict)
 
         assert result is not None
@@ -1023,7 +1017,7 @@ class TestExtractWebhookResultData:
         )
 
         # Convert to dict
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         # Should unwrap the response wrapper
@@ -1057,7 +1051,7 @@ class TestExtractWebhookResultData:
             artifacts=[],
         )
 
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         assert result is None
@@ -1078,7 +1072,7 @@ class TestExtractWebhookResultData:
             ],
         )
 
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         assert result is None
@@ -1100,7 +1094,7 @@ class TestExtractWebhookResultData:
             ],
         )
 
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         # Should use last artifact
@@ -1117,10 +1111,9 @@ class TestExtractWebhookResultData:
                 timestamp=datetime.now(timezone.utc).isoformat(),
                 message=None,
             ),
-            final=False,
         )
 
-        event_dict = event.model_dump(mode="json")
+        event_dict = _MessageToDict(event, preserving_proto_field_name=False)
         result = extract_webhook_result_data(event_dict)
 
         assert result is None
@@ -1159,7 +1152,7 @@ class TestExtractWebhookResultData:
             ],
         )
 
-        task_dict = task.model_dump(mode="json")
+        task_dict = _MessageToDict(task, preserving_proto_field_name=False)
         result = extract_webhook_result_data(task_dict)
 
         # Should NOT unwrap (has multiple keys)

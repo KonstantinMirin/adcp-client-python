@@ -4,17 +4,9 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from a2a.types import (
-    AgentCard,
-    Artifact,
-    DataPart,
-    SendMessageSuccessResponse,
-    Task,
-    TextPart,
-)
-from a2a.types import (
-    TaskStatus as A2ATaskStatus,
-)
+from a2a import types as pb
+from google.protobuf.json_format import ParseDict
+from google.protobuf.struct_pb2 import Value
 
 from adcp.protocols.a2a import A2AAdapter
 from adcp.protocols.mcp import MCPAdapter
@@ -32,34 +24,161 @@ def a2a_config():
     )
 
 
+# Spec-string -> protobuf TaskState enum value. Tests exercise the adapter
+# using the 0.3-style lowercase strings a human test author reads in the
+# A2A spec; the helper translates to the 1.0 proto enum at construction
+# time so both the adapter and the fixture agree on a single source of
+# truth for state identity.
+_STATE_TO_PB: dict[str, "pb.TaskState.ValueType"] = {
+    "completed": pb.TaskState.TASK_STATE_COMPLETED,
+    "failed": pb.TaskState.TASK_STATE_FAILED,
+    "working": pb.TaskState.TASK_STATE_WORKING,
+    "submitted": pb.TaskState.TASK_STATE_SUBMITTED,
+    "input-required": pb.TaskState.TASK_STATE_INPUT_REQUIRED,
+    "input_required": pb.TaskState.TASK_STATE_INPUT_REQUIRED,
+    "auth-required": pb.TaskState.TASK_STATE_AUTH_REQUIRED,
+    "auth_required": pb.TaskState.TASK_STATE_AUTH_REQUIRED,
+    "canceled": pb.TaskState.TASK_STATE_CANCELED,
+    "rejected": pb.TaskState.TASK_STATE_REJECTED,
+    "unknown": pb.TaskState.TASK_STATE_UNSPECIFIED,
+}
+
+
+def TextPart(text: str) -> pb.Part:  # noqa: N802 (0.3 fixture shim)
+    """Construct a Part carrying a ``text`` oneof (fixture shim for 1.0)."""
+    return pb.Part(text=text)
+
+
+def DataPart(data: dict) -> pb.Part:  # noqa: N802 (0.3 fixture shim)
+    """Construct a Part carrying a ``data`` oneof (fixture shim for 1.0)."""
+    value = Value()
+    ParseDict(data, value)
+    return pb.Part(data=value)
+
+
 def create_mock_a2a_task(
     task_id: str = "task_123",
     context_id: str = "ctx_456",
     state: str = "completed",
-    parts: list = None,
-) -> Task:
+    parts: list | None = None,
+) -> pb.Task:
     """Helper to create mock A2A Task responses."""
     if parts is None:
         parts = [TextPart(text="Default message"), DataPart(data={})]
 
-    return Task(
+    return pb.Task(
         id=task_id,
         context_id=context_id,
-        status=A2ATaskStatus(state=state),
-        artifacts=[Artifact(artifact_id="artifact_1", parts=parts)],
+        status=pb.TaskStatus(state=_STATE_TO_PB[state]),
+        artifacts=[pb.Artifact(artifact_id="artifact_1", parts=parts)],
     )
 
 
-def create_mock_agent_card() -> AgentCard:
+def _wrap_task_in_stream(task: pb.Task) -> pb.StreamResponse:
+    """Wrap a Task in a StreamResponse envelope (matches BaseClient shape)."""
+    event = pb.StreamResponse()
+    event.task.CopyFrom(task)
+    return event
+
+
+def _send_message_stream(*tasks: pb.Task):
+    """Return an async iterator factory that yields tasks as StreamResponses."""
+    events = [_wrap_task_in_stream(t) for t in tasks]
+
+    async def _gen(request, *, context=None):
+        for event in events:
+            yield event
+
+    return _gen
+
+
+class _SendMessageSuccessAdapter:
+    """Adapter that mimics the 0.3 ``SendMessageSuccessResponse`` container.
+
+    Tests were written against the 0.3 ``send_message`` return shape; in
+    1.0 the client yields ``StreamResponse`` events. This wrapper keeps
+    the old test assertions readable by producing the same constructor
+    signature (``result=task_proto``) while the patched
+    :meth:`A2AAdapter._send_and_aggregate` unwraps it into the 1.0 shape.
+    """
+
+    def __init__(self, result: pb.Task) -> None:
+        self.result = result
+
+
+def SendMessageSuccessResponse(result: pb.Task) -> _SendMessageSuccessAdapter:  # noqa: N802
+    # Factory named to match the 0.3 class the tests mock.
+    return _SendMessageSuccessAdapter(result)
+
+
+class _ClientMock:
+    """Mock a2a-sdk ``Client`` whose ``send_message`` returns a
+    :class:`_SendMessageSuccessAdapter` — matching the 0.3 return-value
+    pattern the existing tests use.
+
+    The 1.0 adapter drains ``client.send_message()`` as an async iterator
+    via :meth:`A2AAdapter._send_and_aggregate`. To keep the tests readable
+    without churning every call site, we patch ``_send_and_aggregate`` to
+    shortcut straight to the mock's return value and repackage it as a
+    :class:`StreamResponse`. Tests inspect ``client.send_message.call_args``
+    exactly as they did against the 0.3 client.
+    """
+
+    def __init__(self) -> None:
+        self.send_message = AsyncMock()
+
+
+def _build_mock_client() -> _ClientMock:
+    return _ClientMock()
+
+
+async def _fake_send_and_aggregate(self, client, request):
+    """Shortcut replacement for :meth:`A2AAdapter._send_and_aggregate`.
+
+    Reads the mocked ``client.send_message`` return value — which in the
+    tests is a ``_SendMessageSuccessAdapter`` or plain ``pb.Task`` — and
+    packages it as the :class:`pb.StreamResponse` the real adapter would
+    pull off the wire.
+    """
+    response = await client.send_message(request)
+    if hasattr(response, "result"):
+        task = response.result
+    else:
+        task = response
+    event = pb.StreamResponse()
+    event.task.CopyFrom(task)
+    return event
+
+
+@pytest.fixture(autouse=True)
+def _patch_send_and_aggregate(monkeypatch):
+    """Auto-apply the ``_send_and_aggregate`` shortcut for every test.
+
+    Keeps the mock surface tests use (``client.send_message`` returns
+    ``SendMessageSuccessResponse(result=task)``) wired to the 1.0 adapter
+    without forcing every test to construct an async iterator by hand.
+    """
+    from adcp.protocols import a2a as _a2a_mod
+
+    monkeypatch.setattr(_a2a_mod.A2AAdapter, "_send_and_aggregate", _fake_send_and_aggregate)
+
+
+def create_mock_agent_card() -> pb.AgentCard:
     """Helper to create mock AgentCard."""
-    return AgentCard(
+    return pb.AgentCard(
         name="test_agent",
         version="1.0.0",
         description="Test A2A agent",
-        url="https://a2a.example.com",
-        capabilities={"streaming": False},
-        defaultInputModes=["text"],
-        defaultOutputModes=["text"],
+        supported_interfaces=[
+            pb.AgentInterface(
+                url="https://a2a.example.com",
+                protocol_binding="JSONRPC",
+                protocol_version="0.3",
+            )
+        ],
+        capabilities=pb.AgentCapabilities(streaming=False),
+        default_input_modes=["text"],
+        default_output_modes=["text"],
         skills=[],
     )
 
@@ -206,26 +325,26 @@ class TestA2AAdapter:
         # compliant get_products response so strict post-receive
         # validation passes — empty products[] keeps the test focused
         # on artifact-ordering semantics, not schema drift.
-        mock_task = Task(
+        mock_task = pb.Task(
             id="task_123",
             context_id="ctx_456",
-            status=A2ATaskStatus(state="completed"),
+            status=pb.TaskStatus(state=pb.TaskState.TASK_STATE_COMPLETED),
             artifacts=[
-                Artifact(
+                pb.Artifact(
                     artifact_id="artifact_1",
                     parts=[
                         TextPart(text="Processing..."),
                         DataPart(data={"status": "working", "progress": 75}),
                     ],
                 ),
-                Artifact(
+                pb.Artifact(
                     artifact_id="artifact_2",
                     parts=[
                         TextPart(text="Processing complete"),
                         DataPart(data={"products": []}),
                     ],
                 ),
-                Artifact(
+                pb.Artifact(
                     artifact_id="artifact_3",
                     parts=[
                         TextPart(text="Final result"),
@@ -355,25 +474,23 @@ class TestA2AAdapter:
         """Test listing tools via A2A agent card."""
         adapter = A2AAdapter(a2a_config)
 
-        # Use MagicMock to allow setting arbitrary attributes
-        mock_agent_card = MagicMock()
-        # Create skill mocks with .name attribute (not using name= parameter)
-        skill1 = MagicMock()
-        skill1.name = "get_products"
-        skill2 = MagicMock()
-        skill2.name = "create_media_buy"
-        skill3 = MagicMock()
-        skill3.name = "list_creative_formats"
-        mock_agent_card.skills = [skill1, skill2, skill3]
+        # A2ACardResolver populates ``_cached_agent_card`` inside
+        # ``_get_a2a_client``; when we patch that method we need to
+        # pre-seed the cache so ``list_tools`` finds the card.
+        adapter._cached_agent_card = pb.AgentCard(
+            name="agent",
+            version="1.0.0",
+            skills=[
+                pb.AgentSkill(id="get_products", name="get_products"),
+                pb.AgentSkill(id="create_media_buy", name="create_media_buy"),
+                pb.AgentSkill(id="list_creative_formats", name="list_creative_formats"),
+            ],
+        )
 
         mock_a2a_client = AsyncMock()
-        mock_a2a_client.get_card = AsyncMock(return_value=mock_agent_card)
 
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             tools = await adapter.list_tools()
-
-            # Verify get_card was called
-            mock_a2a_client.get_card.assert_called_once()
 
             # Verify tool list parsing
             assert len(tools) == 3
@@ -383,26 +500,28 @@ class TestA2AAdapter:
 
     @pytest.mark.asyncio
     async def test_get_agent_info(self, a2a_config):
-        """Test getting agent info including AdCP extension metadata."""
+        """Test getting agent info from an A2A agent card.
+
+        The 1.0 protobuf :class:`AgentCard` doesn't have a generic
+        ``extensions`` field; AdCP metadata advertising is expected to
+        move into the skills list or the agent-card documentation URL
+        in a future spec bump. For now the adapter just surfaces the
+        basic card fields (name/description/version/tools) and no
+        longer attempts to read an ``extensions`` map.
+        """
         adapter = A2AAdapter(a2a_config)
 
-        # Use MagicMock to allow setting arbitrary attributes including extensions
-        mock_agent_card = MagicMock()
-        mock_agent_card.name = "Test AdCP Agent"
-        mock_agent_card.description = "Test agent for AdCP protocol"
-        mock_agent_card.version = "1.0.0"
-        # Create skill mocks with .name attribute (not using name= parameter)
-        skill1 = MagicMock()
-        skill1.name = "get_products"
-        skill2 = MagicMock()
-        skill2.name = "create_media_buy"
-        mock_agent_card.skills = [skill1, skill2]
-        mock_agent_card.extensions = {
-            "adcp": {"adcp_version": "2.4.0", "protocols_supported": ["media_buy", "creative"]}
-        }
+        adapter._cached_agent_card = pb.AgentCard(
+            name="Test AdCP Agent",
+            description="Test agent for AdCP protocol",
+            version="1.0.0",
+            skills=[
+                pb.AgentSkill(id="get_products", name="get_products"),
+                pb.AgentSkill(id="create_media_buy", name="create_media_buy"),
+            ],
+        )
 
         mock_a2a_client = AsyncMock()
-        mock_a2a_client.get_card = AsyncMock(return_value=mock_agent_card)
 
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             info = await adapter.get_agent_info()
@@ -418,26 +537,20 @@ class TestA2AAdapter:
             assert "get_products" in info["tools"]
             assert "create_media_buy" in info["tools"]
 
-            # Verify AdCP extension metadata
-            assert info["adcp_version"] == "2.4.0"
-            assert info["protocols_supported"] == ["media_buy", "creative"]
+            # Proto AgentCard has no extensions field; adcp_* keys must be absent.
+            assert "adcp_version" not in info
+            assert "protocols_supported" not in info
 
     @pytest.mark.asyncio
     async def test_get_agent_info_without_extensions(self, a2a_config):
         """Test getting agent info when AdCP extension is not present."""
         adapter = A2AAdapter(a2a_config)
-
-        # Use MagicMock to allow setting arbitrary attributes
-        mock_agent_card = MagicMock()
-        mock_agent_card.name = "Basic Agent"
-        # Create skill mock with .name attribute (not using name= parameter)
-        skill1 = MagicMock()
-        skill1.name = "get_products"
-        mock_agent_card.skills = [skill1]
-        mock_agent_card.extensions = None
+        adapter._cached_agent_card = pb.AgentCard(
+            name="Basic Agent",
+            skills=[pb.AgentSkill(id="get_products", name="get_products")],
+        )
 
         mock_a2a_client = AsyncMock()
-        mock_a2a_client.get_card = AsyncMock(return_value=mock_agent_card)
 
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             info = await adapter.get_agent_info()
@@ -469,7 +582,10 @@ class TestA2AContextId:
         inside a ``SendMessageRequest`` — drill through to the message.
         """
         request = mock_send_message.call_args[0][0]
-        return request.params.message.context_id
+        # In 1.0 the message sits directly on SendMessageRequest. Empty
+        # string means "no context_id was echoed" (proto string fields
+        # default to empty); expose None so assertions read naturally.
+        return request.message.context_id or None
 
     @pytest.mark.asyncio
     async def test_first_call_sends_no_context_id_and_captures_server_assigned(self, a2a_config):
@@ -508,7 +624,7 @@ class TestA2AContextId:
             await adapter._call_a2a_tool("create_media_buy", {})
 
         second_call = mock_a2a_client.send_message.call_args_list[1]
-        assert second_call[0][0].params.message.context_id == "ctx-session-1"
+        assert second_call[0][0].message.context_id == "ctx-session-1"
         assert adapter.context_id == "ctx-session-1"
 
     @pytest.mark.asyncio
@@ -554,7 +670,7 @@ class TestA2AContextId:
     def _captured_task_id(mock_send_message: AsyncMock, call_index: int = 0) -> str | None:
         """Pull the ``Message.task_id`` off a specific captured send call."""
         request = mock_send_message.call_args_list[call_index][0][0]
-        return request.params.message.task_id
+        return request.message.task_id or None
 
     @pytest.mark.asyncio
     async def test_task_id_retained_when_state_is_input_required(self, a2a_config):
@@ -624,7 +740,7 @@ class TestA2AContextId:
 
         assert self._captured_task_id(mock_a2a_client.send_message, 1) is None
         second_call = mock_a2a_client.send_message.call_args_list[1]
-        assert second_call[0][0].params.message.context_id == "ctx-session"
+        assert second_call[0][0].message.context_id == "ctx-session"
 
     @pytest.mark.asyncio
     async def test_task_id_cleared_on_failed_state(self, a2a_config):
@@ -880,6 +996,88 @@ class TestA2AContextId:
         assert result.status == TaskStatus.FAILED
         assert adapter.context_id == "prior-ctx"
         assert adapter.active_task_id == "prior-task"
+
+
+class TestA2AProtocolVersions:
+    """Tests for the ``a2a_protocol_versions`` introspection property."""
+
+    def test_returns_none_before_card_fetch(self, a2a_config):
+        """Until an operation fetches the AgentCard, the list is unknown —
+        not empty. Callers need to distinguish 'not yet known' from
+        'peer advertises nothing'."""
+        adapter = A2AAdapter(a2a_config)
+        assert adapter.a2a_protocol_versions is None
+
+    def test_sorted_from_cached_card(self, a2a_config):
+        """After a card is cached the property returns the sorted set
+        of advertised ``protocol_version`` strings."""
+        adapter = A2AAdapter(a2a_config)
+        card = pb.AgentCard(
+            name="dual",
+            supported_interfaces=[
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="1.0"
+                ),
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="0.3"
+                ),
+            ],
+        )
+        adapter._cached_agent_card = card
+        assert adapter.a2a_protocol_versions == ["0.3", "1.0"]
+
+    def test_empty_list_when_peer_advertises_none(self, a2a_config):
+        """Peer advertises a card but no ``supported_interfaces`` — list
+        is empty (not None), distinct from 'card not yet fetched'."""
+        adapter = A2AAdapter(a2a_config)
+        adapter._cached_agent_card = pb.AgentCard(name="bare")
+        assert adapter.a2a_protocol_versions == []
+
+    def test_client_property_returns_none_on_non_a2a(self, mcp_config):
+        """The ADCPClient-level wrapper returns ``None`` on MCP
+        clients so generic code can probe without branching."""
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(mcp_config)
+        assert client.a2a_protocol_versions is None
+
+    def test_client_property_forwards_adapter_state(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert isinstance(client.adapter, A2AAdapter)
+        # Seed the cache directly; the property reads straight through.
+        client.adapter._cached_agent_card = pb.AgentCard(
+            name="x",
+            supported_interfaces=[
+                pb.AgentInterface(
+                    url="http://x", protocol_binding="JSONRPC", protocol_version="0.3"
+                ),
+            ],
+        )
+        assert client.a2a_protocol_versions == ["0.3"]
+
+    def test_force_a2a_version_rejects_on_non_a2a(self, mcp_config):
+        """The pin only makes sense for A2A; MCP callers shouldn't be
+        able to pass it and have it silently no-op."""
+        from adcp.client import ADCPClient
+
+        with pytest.raises(TypeError, match="only supported for A2A"):
+            ADCPClient(mcp_config, force_a2a_version="0.3")
+
+    def test_force_a2a_version_plumbs_to_adapter(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config, force_a2a_version="0.3")
+        assert isinstance(client.adapter, A2AAdapter)
+        assert client.adapter._force_a2a_version == "0.3"
+
+    def test_force_a2a_version_defaults_to_none(self, a2a_config):
+        from adcp.client import ADCPClient
+
+        client = ADCPClient(a2a_config)
+        assert isinstance(client.adapter, A2AAdapter)
+        assert client.adapter._force_a2a_version is None
 
 
 class TestADCPClientContextId:

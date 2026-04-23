@@ -8,17 +8,12 @@ import sys
 from typing import Any
 
 import pytest
+from a2a import types as pb
 from a2a.server.agent_execution.context import RequestContext
-from a2a.server.events.event_queue import EventQueue
-from a2a.types import (
-    DataPart,
-    Message,
-    MessageSendParams,
-    Part,
-    Role,
-    Task,
-    TextPart,
-)
+from a2a.server.events.event_queue import EventQueueLegacy as EventQueue
+from google.protobuf.json_format import MessageToDict as _MessageToDict
+from google.protobuf.json_format import ParseDict
+from google.protobuf.struct_pb2 import Value
 
 from adcp.server import ADCPHandler
 from adcp.server.a2a_server import (
@@ -27,6 +22,82 @@ from adcp.server.a2a_server import (
     create_a2a_server,
 )
 from adcp.server.test_controller import TestControllerError, TestControllerStore
+
+# Backwards-compat fixture aliases: tests construct these at the
+# 0.3-era Pydantic call sites (``DataPart(data=...)``, ``TextPart(text=...)``,
+# ``Part(root=data_part)``). In 1.0 everything is a proto ``Part`` with a
+# ``content`` oneof; these helpers produce that shape while keeping
+# the old factory call signatures readable.
+
+
+def DataPart(data: dict) -> pb.Part:  # noqa: N802 (0.3 fixture shim)
+    value = Value()
+    ParseDict(data, value)
+    return pb.Part(data=value)
+
+
+def TextPart(text: str) -> pb.Part:  # noqa: N802 (0.3 fixture shim)
+    return pb.Part(text=text)
+
+
+def Part(root: pb.Part) -> pb.Part:  # noqa: N802 (0.3 fixture shim)
+    """Identity wrapper: the 1.0 ``Part`` has no ``root`` indirection."""
+    return root
+
+
+def Message(  # noqa: N802 (0.3 fixture shim)
+    *, message_id: str, role: pb.Role.ValueType, parts: list
+) -> pb.Message:
+    return pb.Message(message_id=message_id, role=role, parts=parts)
+
+
+# Shim the ``Role.user`` / ``Role.agent`` attribute access the 0.3
+# Pydantic enum exposed onto the 1.0 proto enum. Monkey-patching here
+# keeps every ``Role.user`` call site in the suite untouched.
+pb.Role.user = pb.Role.ROLE_USER  # type: ignore[attr-defined]
+pb.Role.agent = pb.Role.ROLE_AGENT  # type: ignore[attr-defined]
+
+
+# Expose the 1.0 proto types under the 0.3 names the suite uses.
+Task = pb.Task
+Role = pb.Role
+
+
+def MessageSendParams(  # noqa: N802 (0.3 fixture shim)
+    *, message: pb.Message
+) -> pb.SendMessageRequest:
+    """Build a ``SendMessageRequest`` carrying the given message.
+
+    0.3 tests passed ``MessageSendParams(message=msg)`` to
+    :class:`RequestContext`; in 1.0 :class:`RequestContext` accepts a
+    ``SendMessageRequest`` under the ``request=`` kwarg directly. The
+    shim keeps every call site readable while translating to the 1.0
+    shape.
+    """
+    return pb.SendMessageRequest(message=message)
+
+
+# Build a ``ServerCallContext`` once so RequestContext(call_context=...)
+# has something to accept — the tests never read off it, they just need
+# the constructor to succeed.
+def _empty_call_context():
+    from a2a.auth.user import UnauthenticatedUser
+    from a2a.server.context import ServerCallContext
+
+    return ServerCallContext(user=UnauthenticatedUser())
+
+
+# 1.0 RequestContext __init__ uses positional call_context as arg 1.
+# Shadow it with a helper that auto-injects an empty call_context so
+# existing test constructions work without the extra keyword noise.
+_RealRequestContext = RequestContext
+
+
+def RequestContext(*args, **kwargs):  # noqa: N802
+    if "call_context" not in kwargs and not args:
+        kwargs["call_context"] = _empty_call_context()
+    return _RealRequestContext(*args, **kwargs)
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -87,19 +158,19 @@ async def test_execute_with_datapart():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
     # Verify the result data is in the artifact
     assert event.artifacts
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
     assert len(data_parts) >= 1
-    result = data_parts[0].data
+    result = data_parts[0]
     assert "products" in result
     assert result["products"][0]["id"] == "p1"
 
@@ -119,14 +190,14 @@ async def test_context_auto_injected():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result["context"]["correlation_id"] == "test-ctx-123"
 
 
@@ -138,9 +209,9 @@ async def test_execute_unknown_skill():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "failed"
+    assert event.status.state == pb.TaskState.TASK_STATE_FAILED
 
 
 async def test_execute_no_skill_in_message():
@@ -151,9 +222,9 @@ async def test_execute_no_skill_in_message():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "failed"
+    assert event.status.state == pb.TaskState.TASK_STATE_FAILED
 
 
 async def test_execute_json_text_fallback():
@@ -165,9 +236,9 @@ async def test_execute_json_text_fallback():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
 
 async def test_execute_handler_exception():
@@ -186,13 +257,13 @@ async def test_execute_handler_exception():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "failed"
+    assert event.status.state == pb.TaskState.TASK_STATE_FAILED
 
     # Verify exception details are NOT in the error message
-    text_parts = [p.root for p in event.artifacts[0].parts if hasattr(p.root, "text")]
-    error_text = text_parts[0].text
+    text_parts = [p.text for p in event.artifacts[0].parts if p.WhichOneof("content") == "text"]
+    error_text = text_parts[0]
     assert "secret database" not in error_text
     assert "get_products" in error_text
 
@@ -205,9 +276,9 @@ async def test_cancel():
 
     await executor.cancel(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "canceled"
+    assert event.status.state == pb.TaskState.TASK_STATE_CANCELED
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +289,7 @@ async def test_cancel():
 def test_build_agent_card_with_skills():
     card = _build_agent_card(_TestHandler(), name="test-agent", port=3001)
     assert card.name == "test-agent"
-    assert card.url == "http://localhost:3001/"
+    assert card.supported_interfaces[0].url == "http://localhost:3001/"
     skill_ids = [s.id for s in card.skills]
     assert "get_adcp_capabilities" in skill_ids
     assert "get_products" in skill_ids
@@ -245,7 +316,9 @@ def test_create_a2a_server_creates_starlette_app():
     assert hasattr(app, "routes")
     route_paths = [r.path for r in app.routes]
     # A2A well-known agent card endpoint
-    assert "/.well-known/agent.json" in route_paths
+    # 1.0 serves ``/.well-known/agent-card.json`` in addition to the
+    # legacy ``/.well-known/agent.json`` aliased path (compat shim).
+    assert any(p.startswith("/.well-known/agent-card") for p in route_paths)
 
 
 # ---------------------------------------------------------------------------
@@ -286,16 +359,16 @@ async def test_execute_test_controller_list_scenarios():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result["success"] is True
     assert "force_account_status" in result["scenarios"]
 
@@ -318,16 +391,16 @@ async def test_execute_test_controller_force_account_status():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result["success"] is True
     assert result["previous_state"] == "active"
     assert result["current_state"] == "suspended"
@@ -351,16 +424,18 @@ async def test_execute_test_controller_error():
 
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"  # A2A task succeeds; error is in data
+    assert (
+        event.status.state == pb.TaskState.TASK_STATE_COMPLETED
+    )  # A2A task succeeds; error is in data
 
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result["success"] is False
     assert result["error"] == "NOT_FOUND"
 
@@ -407,6 +482,10 @@ class _RecordingTaskStore:
         self.deletes.append(task_id)
         self._store.pop(task_id, None)
 
+    async def list(self, params: Any = None, context: Any = None) -> Any:
+        """New 1.0 abstract method; return an empty ListTasksResponse."""
+        return pb.ListTasksResponse(tasks=list(self._store.values()))
+
 
 def _extract_default_request_handler(app: Any) -> Any:
     """Walk the a2a-sdk Starlette app graph to the DefaultRequestHandler.
@@ -416,17 +495,14 @@ def _extract_default_request_handler(app: Any) -> Any:
     Touching this indirection in one place localises the blast radius if
     a2a-sdk changes its internals.
     """
-    from a2a.server.request_handlers.default_request_handler import (
-        DefaultRequestHandler,
-    )
+    from a2a.server.request_handlers import DefaultRequestHandler
 
     for route in app.routes:
         endpoint = getattr(route, "endpoint", None)
-        a2a_app = getattr(endpoint, "__self__", None) if endpoint else None
-        if a2a_app is None:
+        dispatcher = getattr(endpoint, "__self__", None) if endpoint else None
+        if dispatcher is None:
             continue
-        jsonrpc_handler = getattr(a2a_app, "handler", None)
-        request_handler = getattr(jsonrpc_handler, "request_handler", None)
+        request_handler = getattr(dispatcher, "request_handler", None)
         if isinstance(request_handler, DefaultRequestHandler):
             return request_handler
     raise AssertionError(
@@ -501,15 +577,15 @@ async def test_custom_task_store_receives_saves_from_skill_dispatch():
     handler = _extract_default_request_handler(app)
 
     # A get for a non-existent task should route through our store.
-    # ``on_get_task`` raises ``ServerError(TaskNotFoundError)`` once the
-    # store returns None; that's fine — what we care about is that the
-    # store *was queried*. If the handler bypassed our store and went
-    # somewhere else, the recording set stays empty.
-    from a2a.types import TaskQueryParams
-    from a2a.utils.errors import ServerError
+    # ``on_get_task`` raises :class:`TaskNotFoundError` once the store
+    # returns None; that's fine — what we care about is that the store
+    # *was queried*. If the handler bypassed our store and went somewhere
+    # else, the recording set stays empty. In 1.0, handler methods take
+    # the request as a proto and a :class:`ServerCallContext`.
+    from a2a.utils.errors import A2AError
 
-    with contextlib.suppress(ServerError):
-        await handler.on_get_task(TaskQueryParams(id="does-not-exist"))
+    with contextlib.suppress(A2AError):
+        await handler.on_get_task(pb.GetTaskRequest(id="does-not-exist"), _empty_call_context())
     assert "does-not-exist" in store.gets, (
         "DefaultRequestHandler did not route the get_task call through our "
         "custom store. The kwarg is wired but not exercised."
@@ -529,12 +605,10 @@ async def test_task_store_persists_across_app_recreation():
     (that's the previous test's job)."""
     store = _RecordingTaskStore()
 
-    from a2a.types import TaskStatus
-
     task_1 = Task(
         id="task-persistence-1",
         context_id="ctx-1",
-        status=TaskStatus(state="completed"),
+        status=pb.TaskStatus(state=pb.TaskState.TASK_STATE_COMPLETED),
     )
     await store.save(task_1)
 
@@ -627,16 +701,26 @@ class _RecordingPushConfigStore:
         self.deletes: list[tuple[str, str | None]] = []
         self._store: dict[tuple[str, str], Any] = {}
 
-    async def set_info(self, task_id: str, notification_config: Any) -> None:
+    async def set_info(
+        self,
+        task_id: str,
+        notification_config: Any,
+        context: Any = None,
+    ) -> None:
         config_id = getattr(notification_config, "id", None) or task_id
         self.sets.append((task_id, config_id))
         self._store[(task_id, config_id)] = notification_config
 
-    async def get_info(self, task_id: str) -> list[Any]:
+    async def get_info(self, task_id: str, context: Any = None) -> list[Any]:
         self.gets.append(task_id)
         return [v for (tid, _cid), v in self._store.items() if tid == task_id]
 
-    async def delete_info(self, task_id: str, config_id: str | None = None) -> None:
+    async def delete_info(
+        self,
+        task_id: str,
+        context: Any = None,
+        config_id: str | None = None,
+    ) -> None:
         self.deletes.append((task_id, config_id))
         if config_id is None:
             keys = [k for k in self._store if k[0] == task_id]
@@ -690,7 +774,7 @@ async def test_sqlite_push_config_store_isolates_scopes_by_contextvar():
     import tempfile
     from pathlib import Path
 
-    from a2a.types import PushNotificationConfig
+    from a2a.types import TaskPushNotificationConfig as PushNotificationConfig
 
     example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
     spec = importlib.util.spec_from_file_location("_a2a_db_tasks_example", example_path)
@@ -753,19 +837,17 @@ async def test_custom_push_config_store_receives_sets_from_handler():
     through our store."""
     import contextlib as _ctxlib
 
-    from a2a.types import (
-        PushNotificationConfig,
-        TaskPushNotificationConfig,
-    )
-    from a2a.utils.errors import ServerError
+    from a2a.utils.errors import A2AError
 
     push_store = _RecordingPushConfigStore()
     # Need a populated TaskStore because on_set validates the task exists
     # before forwarding to push_config_store.set_info. Pre-seed a task.
     task_store = _RecordingTaskStore()
-    from a2a.types import TaskStatus
 
-    await task_store.save(Task(id="task-1", context_id="ctx-1", status=TaskStatus(state="working")))
+    await task_store.save(
+        Task(id="task-1", context_id="ctx-1", status=pb.TaskStatus(state="working")),
+        _empty_call_context(),
+    )
 
     app = create_a2a_server(
         _TestHandler(),
@@ -775,14 +857,16 @@ async def test_custom_push_config_store_receives_sets_from_handler():
     )
     handler = _extract_default_request_handler(app)
 
-    params = TaskPushNotificationConfig(
+    # 1.0 folded :class:`PushNotificationConfig` into
+    # :class:`TaskPushNotificationConfig` — all fields now sit directly
+    # on the outer message.
+    params = pb.TaskPushNotificationConfig(
+        id="cfg-1",
         task_id="task-1",
-        push_notification_config=PushNotificationConfig(
-            id="cfg-1", url="https://callback.example/hook"
-        ),
+        url="https://callback.example/hook",
     )
-    with _ctxlib.suppress(ServerError):
-        await handler.on_set_task_push_notification_config(params)
+    with _ctxlib.suppress(A2AError):
+        await handler.on_create_task_push_notification_config(params, _empty_call_context())
 
     assert ("task-1", "cfg-1") in push_store.sets, (
         "DefaultRequestHandler.on_set_task_push_notification_config did not "
@@ -802,7 +886,7 @@ async def test_sqlite_push_config_store_warns_once_on_anonymous_scope():
     import warnings as _warnings
     from pathlib import Path
 
-    from a2a.types import PushNotificationConfig
+    from a2a.types import TaskPushNotificationConfig as PushNotificationConfig
 
     example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
     spec = importlib.util.spec_from_file_location("_a2a_db_tasks_ex_warn", example_path)
@@ -839,7 +923,7 @@ async def test_sqlite_push_config_store_synthesises_config_id_when_omitted():
     import tempfile
     from pathlib import Path
 
-    from a2a.types import PushNotificationConfig
+    from a2a.types import TaskPushNotificationConfig as PushNotificationConfig
 
     example_path = Path(__file__).parent.parent / "examples" / "a2a_db_tasks.py"
     spec = importlib.util.spec_from_file_location("_a2a_db_tasks_ex_uuid", example_path)
@@ -971,15 +1055,15 @@ async def test_middleware_can_short_circuit_without_invoking_handler():
     queue = EventQueue()
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result.get("rate_limited") is True
     assert handler_called is False, (
         "middleware short-circuited but the handler still ran — call_next "
@@ -1015,9 +1099,9 @@ async def test_middleware_observes_handler_exceptions():
     assert isinstance(captured_exceptions[0], RuntimeError)
     # And the executor's normal failure path still runs — the client
     # gets a failed task, not a 500, because middleware re-raised.
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "failed"
+    assert event.status.state == pb.TaskState.TASK_STATE_FAILED
 
 
 async def test_no_middleware_preserves_direct_dispatch():
@@ -1030,9 +1114,9 @@ async def test_no_middleware_preserves_direct_dispatch():
     ctx = RequestContext(request=MessageSendParams(message=_make_datapart_msg("get_products")))
     queue = EventQueue()
     await executor.execute(ctx, queue)
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
 
 @pytest.mark.skipif(
@@ -1088,9 +1172,9 @@ async def test_middleware_can_invoke_call_next_multiple_times_for_retry():
 
     assert call_counts["mw"] == 3
     assert call_counts["handler"] == 3
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
 
 async def test_middleware_can_transform_result_on_return_side():
@@ -1111,15 +1195,15 @@ async def test_middleware_can_transform_result_on_return_side():
     queue = EventQueue()
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
     data_parts = [
-        p.root
+        _MessageToDict(p.data)
         for p in event.artifacts[0].parts
-        if hasattr(p.root, "data") and isinstance(p.root.data, dict)
+        if p.WhichOneof("content") == "data"
     ]
-    result = data_parts[0].data
+    result = data_parts[0]
     assert result["middleware_marker"] == "wrapped"
     # And the handler's original payload is still there.
     assert result["products"][0]["id"] == "p1"
@@ -1147,10 +1231,12 @@ async def test_custom_message_parser_receives_request_context():
         msg = ctx.message
         assert msg is not None
         for part in msg.parts:
-            inner = part.root if hasattr(part, "root") else part
-            if isinstance(inner, DataPart) and isinstance(inner.data, dict):
-                op = inner.data.get("operation")
-                body = inner.data.get("body") or {}
+            if part.WhichOneof("content") != "data":
+                continue
+            data = _MessageToDict(part.data)
+            if isinstance(data, dict):
+                op = data.get("operation")
+                body = data.get("body") or {}
                 if op:
                     return str(op), body if isinstance(body, dict) else {}
         return None, {}
@@ -1166,9 +1252,9 @@ async def test_custom_message_parser_receives_request_context():
     await executor.execute(ctx, queue)
 
     assert len(received) == 1
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
 
 async def test_custom_parser_returning_none_yields_error_task():
@@ -1192,9 +1278,9 @@ async def test_custom_parser_returning_none_yields_error_task():
     queue = EventQueue()
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "failed"
+    assert event.status.state == pb.TaskState.TASK_STATE_FAILED
 
 
 async def test_default_parser_runs_when_no_message_parser_configured():
@@ -1215,9 +1301,9 @@ async def test_default_parser_runs_when_no_message_parser_configured():
     queue = EventQueue()
     await executor.execute(ctx, queue)
 
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED
 
 
 @pytest.mark.skipif(
@@ -1248,19 +1334,18 @@ async def test_custom_parser_can_compose_with_default():
     executor = ADCPAgentExecutor(_Handler())
 
     def composed(ctx: RequestContext) -> tuple[str | None, dict[str, Any]]:
-        # Seller's custom shape: DataPart({"operation": ..., "body": ...})
+        # Seller's custom shape: a Part carrying
+        # ``{"operation": ..., "body": ...}``.
         msg = ctx.message
         if msg is not None:
             for part in msg.parts:
-                inner = part.root if hasattr(part, "root") else part
-                if (
-                    isinstance(inner, DataPart)
-                    and isinstance(inner.data, dict)
-                    and "operation" in inner.data
-                ):
-                    return str(inner.data["operation"]), {
+                if part.WhichOneof("content") != "data":
+                    continue
+                data = _MessageToDict(part.data)
+                if isinstance(data, dict) and "operation" in data:
+                    return str(data["operation"]), {
                         "source": "custom",
-                        **(inner.data.get("body") or {}),
+                        **(data.get("body") or {}),
                     }
         # Fall through to the default for legacy clients.
         return executor._default_parse_request(ctx)
@@ -1276,6 +1361,6 @@ async def test_custom_parser_can_compose_with_default():
     legacy_ctx = RequestContext(request=MessageSendParams(message=legacy_msg))
     queue = EventQueue()
     await executor2.execute(legacy_ctx, queue)
-    event = await queue.dequeue_event(no_wait=True)
+    event = await queue.dequeue_event()
     assert isinstance(event, Task)
-    assert event.status.state == "completed"
+    assert event.status.state == pb.TaskState.TASK_STATE_COMPLETED

@@ -420,10 +420,18 @@ class TestA2AAdapterIntegration:
 
     @pytest.mark.asyncio
     async def test_injects_key_into_outbound_message(self) -> None:
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+            part_data_dict,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         adapter = A2AAdapter(_cfg(Protocol.A2A))
         task = Task(
@@ -438,17 +446,25 @@ class TestA2AAdapterIntegration:
             await adapter._call_a2a_tool("create_media_buy", {"brand": "acme"})
         sent = mock_client.send_message.call_args[0][0]
         # Walk the outbound DataPart to find injected params
-        parts = sent.params.message.parts
-        data = next(p.root.data for p in parts if hasattr(p.root, "data"))
+        parts = sent.message.parts
+        data = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")
         assert "idempotency_key" in data["parameters"]
         assert UUID_RE.match(data["parameters"]["idempotency_key"])
 
     @pytest.mark.asyncio
     async def test_non_mutating_task_omits_key(self) -> None:
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+            part_data_dict,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         adapter = A2AAdapter(_cfg(Protocol.A2A))
         task = Task(
@@ -462,15 +478,24 @@ class TestA2AAdapterIntegration:
         with patch.object(adapter, "_get_a2a_client", return_value=mock_client):
             await adapter._call_a2a_tool("get_products", {"brief": "x"})
         sent = mock_client.send_message.call_args[0][0]
-        data = next(p.root.data for p in sent.params.message.parts if hasattr(p.root, "data"))
+        data = next(
+            part_data_dict(p) for p in sent.message.parts if p.WhichOneof("content") == "data"
+        )
         assert "idempotency_key" not in data["parameters"]
 
     @pytest.mark.asyncio
     async def test_conflict_code_raises(self) -> None:
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         adapter = A2AAdapter(_cfg(Protocol.A2A))
         task = Task(
@@ -505,10 +530,17 @@ class TestA2AAdapterIntegration:
 
     @pytest.mark.asyncio
     async def test_replayed_surfaces_on_result(self) -> None:
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         adapter = A2AAdapter(_cfg(Protocol.A2A))
         task = Task(
@@ -663,10 +695,18 @@ class TestGatherSemantics:
     async def test_gather_siblings_do_not_share_pinned_key(self) -> None:
         import asyncio
 
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+            part_data_dict,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         client = ADCPClient(_cfg())
         adapter: A2AAdapter = client.adapter  # type: ignore[assignment]
@@ -692,8 +732,8 @@ class TestGatherSemantics:
         # Walk the three send_message invocations and extract the keys sent.
         for call in mock_client.send_message.call_args_list:
             req = call[0][0]
-            parts = req.params.message.parts
-            data = next(p.root.data for p in parts if hasattr(p.root, "data"))
+            parts = req.message.parts
+            data = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")
             sent_keys.append(data["parameters"]["idempotency_key"])
 
         assert pinned in sent_keys  # the pinned key was consumed exactly once
@@ -714,10 +754,18 @@ class TestPydanticRoundTrip:
 
     @pytest.mark.asyncio
     async def test_caller_set_pydantic_key_reaches_adapter(self) -> None:
-        from a2a.types import Artifact, DataPart, Part, SendMessageSuccessResponse, Task
-        from a2a.types import TaskStatus as A2ATaskStatus
-
         from adcp.types import ReportUsageRequest
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            Part,
+            SendMessageSuccessResponse,
+            Task,
+            part_data_dict,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         client = ADCPClient(_cfg())
         pinned = str(uuid.uuid4())
@@ -752,8 +800,8 @@ class TestPydanticRoundTrip:
             result = await client.report_usage(req)
 
         sent = mock_client.send_message.call_args[0][0]
-        parts = sent.params.message.parts
-        data = next(p.root.data for p in parts if hasattr(p.root, "data"))
+        parts = sent.message.parts
+        data = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")
         assert data["parameters"]["idempotency_key"] == pinned
         assert result.idempotency_key == pinned
 
@@ -765,64 +813,60 @@ class TestWireFormat:
 
     @pytest.mark.asyncio
     async def test_outbound_http_body_contains_one_unredacted_key(self) -> None:
-        import json
+        """Wire-level assertion: the outbound ``SendMessageRequest`` proto,
+        serialized to JSON for the 1.0 JSON-RPC transport, carries the
+        injected idempotency_key exactly once in the DataPart.parameters.
 
-        import httpx
+        The test builds the outbound request shape by hand (protobuf
+        :meth:`MessageToDict`) from an ``A2AAdapter`` call that intercepts
+        the outbound ``SendMessageRequest`` at the client boundary, so it
+        doesn't depend on a real JSON-RPC transport round-trip.
+        """
+        from google.protobuf.json_format import MessageToDict, MessageToJson
 
         from adcp.protocols.a2a import A2AAdapter
+        from tests.a2a_compat_shim import (
+            Artifact,
+            DataPart,
+            SendMessageSuccessResponse,
+            Task,
+        )
+        from tests.a2a_compat_shim import (
+            TaskStatus as A2ATaskStatus,
+        )
 
         captured: dict[str, Any] = {}
 
-        def handler(request: httpx.Request) -> httpx.Response:
-            captured["url"] = str(request.url)
-            captured["body"] = request.content.decode()
-            # Minimal valid A2A send-message success response with a Task payload.
-            task_body = {
-                "jsonrpc": "2.0",
-                "id": "1",
-                "result": {
-                    "kind": "task",
-                    "id": "t1",
-                    "context_id": "c1",
-                    "status": {"state": "completed"},
-                    "artifacts": [
-                        {
-                            "artifact_id": "a1",
-                            "parts": [{"kind": "data", "data": {"media_buy_id": "mb_1"}}],
-                        }
-                    ],
-                },
-            }
-            return httpx.Response(200, json=task_body)
-
-        adapter = A2AAdapter(_cfg(Protocol.A2A))
-        # Install the MockTransport so httpx routes calls to our handler.
-        transport = httpx.MockTransport(handler)
-        adapter._httpx_client = httpx.AsyncClient(transport=transport)
-
-        # Stub agent-card fetch + A2A client construction so we skip the
-        # well-known.json roundtrip and go straight to send_message.
         mock_a2a_client = AsyncMock()
 
-        async def fake_send(request: Any) -> Any:
-            # Render through a real httpx request so the handler sees the body.
-            body = request.model_dump(by_alias=True, mode="json")
-            resp = await adapter._httpx_client.post("https://example.test/a2a", json=body)
-            from a2a.types import SendMessageSuccessResponse
-
-            return SendMessageSuccessResponse.model_validate(resp.json())
+        async def fake_send(request: Any) -> Any:  # noqa: D401
+            # Capture the wire-format JSON of the outbound SendMessageRequest
+            captured["body"] = MessageToJson(request, preserving_proto_field_name=False)
+            captured["dict"] = MessageToDict(request, preserving_proto_field_name=False)
+            # Return a minimal successful response (Task in the result slot).
+            task = Task(
+                id="t1",
+                context_id="c1",
+                status=A2ATaskStatus(state="completed"),
+                artifacts=[
+                    Artifact(
+                        artifact_id="a1",
+                        parts=[DataPart(data={"media_buy_id": "mb_1"})],
+                    )
+                ],
+            )
+            return SendMessageSuccessResponse(result=task)
 
         mock_a2a_client.send_message = fake_send
+        adapter = A2AAdapter(_cfg(Protocol.A2A))
         with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
             await adapter._call_a2a_tool("create_media_buy", {"brand": "acme"})
 
-        # The outbound HTTP body must carry exactly one idempotency_key, full
-        # (not redacted), present in the parameters object.
+        # The outbound body must carry exactly one idempotency_key, full
+        # (not redacted), inside the DataPart ``parameters`` object.
         assert captured
-        body_json = json.loads(captured["body"])
-        # Walk to the tool parameters
-        parts = body_json["params"]["message"]["parts"]
-        data_part = next(p for p in parts if p.get("kind") == "data")
+        parts = captured["dict"]["message"]["parts"]
+        data_part = next(p for p in parts if "data" in p)
         params = data_part["data"]["parameters"]
         assert "idempotency_key" in params
         assert UUID_RE.match(params["idempotency_key"])

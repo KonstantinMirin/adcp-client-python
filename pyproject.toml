@@ -37,14 +37,13 @@ dependencies = [
     "httpcore>=1.0,<2.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.5.0",
-    # Cap at <1.0 — a2a-sdk 1.0.0 (released 2026-04-20) is a breaking
-    # rewrite that moves types to a2a.types.a2a_pb2, renames
-    # DefaultRequestHandler, removes ServerError from a2a.utils.errors,
-    # and changes Part/Message construction away from ``root=`` kwargs.
-    # Migration is non-trivial (28+ mypy errors across webhooks, client,
-    # protocols/a2a, server/a2a_server, server/translate). Tracked as a
-    # separate compat PR.
-    "a2a-sdk>=0.3.0,<1.0",
+    # A2A protocol v1.0 (protobuf types, ProtoJSON on the wire). We run
+    # on the v1.0 Python SDK with ``enable_v0_3_compat=True`` on the
+    # server-side JSON-RPC route factory, which dual-serves the AgentCard
+    # and preserves 0.3 JSON shapes outbound for existing 0.3 clients.
+    # No coordinated buyer migration needed.
+    "a2a-sdk>=1.0.1,<2.0",
+    "sse-starlette>=2.0",  # required by a2a-sdk v0.3 compat adapter
     "mcp>=1.23.2",
     "email-validator>=2.0.0",
     "cryptography>=41.0.0",
@@ -80,6 +79,10 @@ dev = [
     # tests/test_mcp_middleware_composition.py and future integration
     # tests that exercise the streamable-HTTP ASGI app in-process.
     "asgi-lifespan>=2.1.0",
+    # mypy stubs for the protobuf runtime we use via a2a-sdk 1.0
+    # (``google.protobuf.json_format``, ``struct_pb2``, ``timestamp_pb2``).
+    # Without these mypy flags every import as ``import-untyped``.
+    "types-protobuf>=7.34.1.20260408",
 ]
 docs = [
     "pdoc3>=0.10.0",
@@ -220,4 +223,5 @@ skips = ["B101"]  # Allow assert in code (we're not using -O optimization)
 dev = [
     "datamodel-code-generator==0.56.1",
     "pre-commit>=4.4.0",
+    "types-protobuf>=7.34.1.20260408",
 ]

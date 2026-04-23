@@ -21,19 +21,22 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from a2a.types import (
-    Artifact,
-    DataPart,
-    Part,
-    SendMessageSuccessResponse,
-    Task,
-)
-from a2a.types import TaskStatus as A2ATaskStatus
 
 from adcp.client import ADCPClient
 from adcp.exceptions import IdempotencyConflictError, IdempotencyUnsupportedError
 from adcp.protocols.a2a import A2AAdapter
 from adcp.types.core import AgentConfig, Protocol
+from tests.a2a_compat_shim import (
+    Artifact,
+    DataPart,
+    Part,
+    SendMessageSuccessResponse,
+    Task,
+    part_data_dict,
+)
+from tests.a2a_compat_shim import (
+    TaskStatus as A2ATaskStatus,
+)
 
 
 def _task_with_data(data: dict[str, Any]) -> Task:
@@ -89,9 +92,9 @@ class TestStoryboardPhase2MissingKey:
             # Caller gives no idempotency_key; SDK must inject one.
             await adapter._call_a2a_tool("create_media_buy", {"brand": "acme"})
         sent = mock_client.send_message.call_args[0][0]
-        params = next(p.root.data for p in sent.params.message.parts if hasattr(p.root, "data"))[
-            "parameters"
-        ]
+        params = next(
+            part_data_dict(p) for p in sent.message.parts if p.WhichOneof("content") == "data"
+        )["parameters"]
         assert "idempotency_key" in params
         assert len(params["idempotency_key"]) >= 16
 
@@ -106,9 +109,9 @@ class TestStoryboardPhase2MissingKey:
         with patch.object(adapter, "_get_a2a_client", return_value=mock_client):
             await adapter._call_a2a_tool("get_products", {"brief": "x"})
         sent = mock_client.send_message.call_args[0][0]
-        params = next(p.root.data for p in sent.params.message.parts if hasattr(p.root, "data"))[
-            "parameters"
-        ]
+        params = next(
+            part_data_dict(p) for p in sent.message.parts if p.WhichOneof("content") == "data"
+        )["parameters"]
         assert "idempotency_key" not in params
 
 
@@ -124,8 +127,10 @@ class TestStoryboardPhase3ReplaySamePayload:
         seller_cache: dict[str, dict[str, Any]] = {}
 
         async def mock_send(request: Any) -> SendMessageSuccessResponse:
-            parts = request.params.message.parts
-            params = next(p.root.data for p in parts if hasattr(p.root, "data"))["parameters"]
+            parts = request.message.parts
+            params = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")[
+                "parameters"
+            ]
             key = params["idempotency_key"]
             if key in seller_cache:
                 data = dict(seller_cache[key])
@@ -198,8 +203,10 @@ class TestStoryboardPhase5FreshKeyNewResource:
         seller_cache: dict[str, dict[str, Any]] = {}
 
         async def mock_send(request: Any) -> SendMessageSuccessResponse:
-            parts = request.params.message.parts
-            params = next(p.root.data for p in parts if hasattr(p.root, "data"))["parameters"]
+            parts = request.message.parts
+            params = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")[
+                "parameters"
+            ]
             key = params["idempotency_key"]
             if key in seller_cache:
                 data = dict(seller_cache[key])
@@ -235,8 +242,10 @@ class TestStoryboardPhase6VerifyDedupActuallyHeld:
         created_ids: set[str] = set()
 
         async def mock_send(request: Any) -> SendMessageSuccessResponse:
-            parts = request.params.message.parts
-            params = next(p.root.data for p in parts if hasattr(p.root, "data"))["parameters"]
+            parts = request.message.parts
+            params = next(part_data_dict(p) for p in parts if p.WhichOneof("content") == "data")[
+                "parameters"
+            ]
             key = params["idempotency_key"]
             if key in seller_cache:
                 data = dict(seller_cache[key])
