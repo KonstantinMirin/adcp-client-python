@@ -58,6 +58,30 @@ One of:
 code, classify as **needs-info** and ask one specific repro question.
 Never guess.
 
+## Silent triage: label-only, no comment
+
+Apply `claude-triaged` + matching bucket labels silently (no comment)
+when ALL of these are true:
+
+- Classification is **Feature request**, or pre-classified as
+  RFC / Epic / Tracking / Child-of-open-parent
+- Author association is `OWNER | MEMBER | COLLABORATOR`
+- Body is well-structured (Summary / Description / Steps-to-Reproduce,
+  or >200 chars prose)
+- Issue already carries at least one on-target label
+
+**Still comment when:**
+
+- Author is `NONE` or `FIRST_TIME_CONTRIBUTOR`
+- Classification is **Bug**, **Usage/support**, **Protocol
+  question**, **Dependency/compat**, or **needs-info**
+- You have a duplicate, related open PR, or cross-repo redirect
+- You're about to open a PR
+- `Status: not-actionable` and the reason is non-obvious
+
+The test: would a maintainer skimming the thread *learn something*
+from your comment? If no, stay silent.
+
 ## Pre-PR checks (even for bug/typo)
 
 - **Duplicate check:** `gh search issues --repo adcontextprotocol/adcp-client-python --json number,title,state "<key terms>"`. If a close match exists, link and comment-only.
