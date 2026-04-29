@@ -53,6 +53,17 @@ BLOCKED_METADATA_IPS: frozenset[str] = frozenset(
     }
 )
 
+# Recommended destination ports for hardened SSRF-validated outbound HTTP
+# deployments. AdCP itself does not constrain ``pushNotificationConfig.url``
+# ports (see ``schemas/cache/core/push-notification-config.json``), so the
+# default port-allowlist is permissive — adopters who want a hardening posture
+# pass ``allowed_ports=DEFAULT_ALLOWED_PORTS`` (or a custom set) explicitly.
+# Rejecting non-standard ports closes a smuggle vector for buyers bouncing
+# traffic to internal services on the same routable IP — :25 (SMTP relay),
+# :6379 (Redis), :11211 (Memcached), etc. — but that's an operator choice,
+# not a framework default that breaks legitimate :9443 / :4443 buyers.
+DEFAULT_ALLOWED_PORTS: frozenset[int] = frozenset({443, 8443})
+
 # Upper bound on the number of resolved addresses examined per validation call.
 # A malicious DNS server can return thousands of records as a mild amplification
 # vector against the validator's inner loop.
@@ -104,20 +115,26 @@ class AsyncJwksResolver(Protocol):
     async def __call__(self, keyid: str) -> dict[str, Any] | None: ...
 
 
-def validate_jwks_uri(uri: str, *, allow_private: bool = False) -> None:
-    """Raise SSRFValidationError if `uri` resolves to a blocked IP or has a bad scheme.
+def validate_jwks_uri(
+    uri: str,
+    *,
+    allow_private: bool = False,
+    allowed_ports: frozenset[int] | None = None,
+) -> None:
+    """Raise SSRFValidationError on blocked IP, bad scheme, or disallowed port.
 
-    This is kept as a standalone no-return helper for callers that only
-    want validation — :func:`resolve_and_validate_host` returns the
-    accepted IP when the caller needs it for IP-pinned connects.
+    Standalone no-return helper for callers that only want validation —
+    :func:`resolve_and_validate_host` returns the accepted IP when the
+    caller needs it for IP-pinned connects.
     """
-    resolve_and_validate_host(uri, allow_private=allow_private)
+    resolve_and_validate_host(uri, allow_private=allow_private, allowed_ports=allowed_ports)
 
 
 def resolve_and_validate_host(
     uri: str,
     *,
     allow_private: bool = False,
+    allowed_ports: frozenset[int] | None = None,
 ) -> tuple[str, str, int]:
     """Resolve the URI's hostname once and return ``(hostname, ip, port)``.
 
@@ -138,6 +155,13 @@ def resolve_and_validate_host(
     allow_private:
         Skip the reserved-range check. For tests only; cloud-metadata
         IPs remain blocked unconditionally.
+    allowed_ports:
+        Optional destination-port allowlist. ``None`` (default) imposes
+        no port filter — the URL's port is unrestricted. Hardened
+        deployments pass :data:`DEFAULT_ALLOWED_PORTS` (`{443, 8443}`)
+        or a custom set; the validator then rejects URIs whose port
+        is outside the set. AdCP doesn't constrain webhook ports in
+        the spec, so this is operator policy, not a framework default.
 
     Returns
     -------
@@ -148,8 +172,9 @@ def resolve_and_validate_host(
     Raises
     ------
     SSRFValidationError
-        Scheme is not ``http``/``https``, the hostname doesn't resolve,
-        or every resolved IP is in a blocked range.
+        Scheme is not ``http``/``https``, ``allowed_ports`` is set and
+        the URI's port is outside it, the hostname doesn't resolve, or
+        every resolved IP is in a blocked range.
     """
     parts = urlsplit(uri)
     if parts.scheme not in ("http", "https"):
@@ -177,6 +202,11 @@ def resolve_and_validate_host(
     except (UnicodeError, UnicodeEncodeError) as exc:
         raise SSRFValidationError(f"URI host {host!r} is not IDNA-valid: {exc}") from exc
     port = parts.port if parts.port is not None else (443 if parts.scheme == "https" else 80)
+    if allowed_ports is not None and port not in allowed_ports:
+        raise SSRFValidationError(
+            f"port {port} not allowed for SSRF-validated fetch "
+            f"(allowed: {sorted(allowed_ports) if allowed_ports else '<empty>'})"
+        )
 
     try:
         infos = socket.getaddrinfo(host, None)
@@ -461,6 +491,7 @@ __all__ = [
     "AsyncJwksFetcher",
     "AsyncJwksResolver",
     "CachingJwksResolver",
+    "DEFAULT_ALLOWED_PORTS",
     "DEFAULT_JWKS_COOLDOWN_SECONDS",
     "DEFAULT_JWKS_TIMEOUT_SECONDS",
     "JwksFetcher",

@@ -397,3 +397,296 @@ async def test_receiver_rejects_when_sender_key_wrong() -> None:
         )
     assert not result.ok
     assert result.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_owned_client_rejects_loopback_destination() -> None:
+    """Default sender (no operator client) must reject loopback URLs via SSRF
+    guard. Without pin-and-bind, a buyer-supplied webhook URL pointing at
+    127.0.0.1 lets a public agent reach in-cluster services."""
+    from adcp.signing import SSRFValidationError
+
+    sender = WebhookSender.from_jwk(
+        {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+    )
+    async with sender:
+        with pytest.raises(SSRFValidationError):
+            await sender.send_mcp(
+                url="https://127.0.0.1/webhooks/adcp",
+                task_id="task_ssrf",
+                task_type="create_media_buy",
+                status="completed",
+            )
+
+
+@pytest.mark.asyncio
+async def test_owned_client_rejects_disallowed_port_when_hardening_configured() -> None:
+    """Operators opt in to the port-allowlist hardening posture by passing
+    ``allowed_destination_ports=DEFAULT_ALLOWED_PORTS`` (or a custom set).
+    The sender then rejects buyer URLs on ports outside the set, closing
+    the smuggle vector to internal Redis/SMTP/Memcached on the same
+    routable IP. Without the kwarg, AdCP-spec-compliant ports like
+    :9443/:4443 still pass."""
+    from unittest.mock import patch
+
+    from adcp.signing import DEFAULT_ALLOWED_PORTS, SSRFValidationError
+
+    sender = WebhookSender.from_jwk(
+        {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+        allowed_destination_ports=DEFAULT_ALLOWED_PORTS,
+    )
+    # Mock DNS so we don't hit a live host; the port check fires before
+    # resolution even runs (in resolve_and_validate_host).
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        async with sender:
+            with pytest.raises(SSRFValidationError, match="port 6379 not allowed"):
+                await sender.send_mcp(
+                    url="https://example.com:6379/webhooks/adcp",
+                    task_id="task_port",
+                    task_type="create_media_buy",
+                    status="completed",
+                )
+
+
+@pytest.mark.asyncio
+async def test_send_mcp_threads_operation_id_into_payload() -> None:
+    """``operation_id`` is buyer-supplied and embedded by the buyer in the
+    webhook URL when registering pushNotificationConfig. Per the schema at
+    ``mcp-webhook-payload.json``, publishers MUST echo it in the payload so
+    buyers correlate notifications without parsing URL paths.
+
+    Regression guard for the docstring-vs-schema mismatch noted in the
+    DecisioningPlatform foundations audit (the prior docstring discouraged
+    populating the field, contradicting the schema's MUST)."""
+    captured_payloads: list[dict[str, Any]] = []
+    app = FastAPI()
+
+    @app.post("/webhooks/adcp/{op_id}")
+    async def echo(request: Request, op_id: str) -> JSONResponse:
+        body = await request.body()
+        captured_payloads.append(json.loads(body))
+        return JSONResponse({"ok": True}, status_code=200)
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        sender = WebhookSender.from_jwk(
+            {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+            client=client,
+        )
+        result = await sender.send_mcp(
+            url="http://test/webhooks/adcp/op_abc123",
+            task_id="task_op_id_test",
+            task_type="create_media_buy",
+            status="completed",
+            operation_id="op_abc123",
+            result={"media_buy_id": "mb_1"},
+        )
+
+    assert result.ok
+    assert captured_payloads[0]["operation_id"] == "op_abc123"
+
+
+@pytest.mark.asyncio
+async def test_owned_client_default_allows_non_standard_ports() -> None:
+    """The default ``WebhookSender`` (no operator client, no
+    ``allowed_destination_ports``) accepts AdCP-spec-compliant buyers on
+    non-standard ports — :9443 (Tomcat default), :4443 (Spring Boot
+    default), path-routed multi-tenant gateways.
+
+    Sender-level positive analog of ``test_ssrf_default_imposes_no_port_filter``
+    in ``test_jwks.py`` — confirms the permissive default reaches the
+    actual delivery path, not just the underlying validator. The IP-range
+    check is enforced by the validator and covered separately by
+    ``test_owned_client_rejects_loopback_destination``."""
+    from unittest.mock import patch
+
+    captured: list[tuple[str, int]] = []
+    app = FastAPI()
+
+    @app.post("/webhooks/adcp")
+    async def echo(_request: Request) -> JSONResponse:
+        return JSONResponse({"ok": True}, status_code=200)
+
+    asgi_transport = httpx.ASGITransport(app=app)
+
+    # Stub the pinned-transport build so we don't open a real socket to
+    # a public IP; capture that the build was attempted for the
+    # non-standard port and route the actual POST through ASGI.
+    def fake_build(uri: str, **_kwargs: Any) -> Any:
+        from urllib.parse import urlparse
+
+        parsed = urlparse(uri)
+        captured.append((parsed.hostname or "", parsed.port or 443))
+        return asgi_transport
+
+    sender = WebhookSender.from_jwk(
+        {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+    )
+    with patch(
+        "adcp.webhook_sender.build_async_ip_pinned_transport",
+        side_effect=fake_build,
+    ):
+        async with sender:
+            result = await sender.send_mcp(
+                url="http://test:9443/webhooks/adcp",
+                task_id="task_nonstd",
+                task_type="create_media_buy",
+                status="completed",
+            )
+
+    assert result.ok
+    assert captured == [("test", 9443)]
+
+
+@pytest.mark.asyncio
+async def test_operator_supplied_client_bypasses_ssrf_guard() -> None:
+    """When the operator passes their own httpx client (vetted egress
+    proxy, ASGI test transport, etc.), the framework trusts them
+    completely — pin-and-bind is skipped and the SSRF range check does
+    NOT fire. The operator owns SSRF on their transport.
+
+    Named regression test for the documented contract; without this, a
+    future refactor that mistakenly applies pin-and-bind to both
+    branches breaks ASGI-based unit tests and any vetted-proxy
+    deployments that route via private networks."""
+    app = FastAPI()
+
+    @app.post("/webhooks/adcp")
+    async def echo(_request: Request) -> JSONResponse:
+        return JSONResponse({"ok": True}, status_code=200)
+
+    transport = httpx.ASGITransport(app=app)
+    # base_url is loopback-equivalent. With the SSRF guard active this
+    # would raise SSRFValidationError; under the operator-trust contract
+    # it must succeed.
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        sender = WebhookSender.from_jwk(
+            {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+            client=client,
+        )
+        result = await sender.send_mcp(
+            url="http://test/webhooks/adcp",
+            task_id="task_op_trust",
+            task_type="create_media_buy",
+            status="completed",
+        )
+
+    assert result.ok
+
+
+@pytest.mark.asyncio
+async def test_owned_client_ignores_https_proxy_env() -> None:
+    """``HTTPS_PROXY`` / ``HTTP_PROXY`` env vars MUST NOT defeat the IP
+    pin on the owned-client path. httpx's default ``trust_env=True``
+    routes requests through proxy env vars, which would bypass the
+    AsyncIpPinnedTransport's network_backend entirely — an attacker who
+    controls process env (sidecar config, dotenv, malicious cluster
+    egress policy) could otherwise pivot to receiving the signed
+    webhook body.
+
+    The sender constructs its per-request ``httpx.AsyncClient`` with
+    ``trust_env=False`` to close this. Regression guard: if a future
+    refactor drops the kwarg, this test catches it by setting a proxy
+    env var that points at an unreachable address; the pinned transport
+    must still route via the resolved IP and reach the test ASGI app
+    (which we can't directly observe under a real socket, so we assert
+    the proxy var is ignored by checking the constructor config)."""
+    import os
+    from unittest.mock import MagicMock, patch
+
+    sender = WebhookSender.from_jwk(
+        {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+    )
+
+    captured_kwargs: dict[str, Any] = {}
+
+    class _FakeAsyncClient:
+        def __init__(self, **kwargs: Any) -> None:
+            # Capture kwargs only from the per-request construction in
+            # _send_bytes; __aenter__'s eager _get_client() also flows
+            # through here but its kwargs don't affect the per-request
+            # delivery path. The last writer wins; the per-request call
+            # is the one we care about.
+            captured_kwargs.update(kwargs)
+            self._response = MagicMock(status_code=200, headers={}, content=b"{}")
+
+        async def __aenter__(self) -> _FakeAsyncClient:
+            return self
+
+        async def __aexit__(self, *_args: Any) -> None:
+            return None
+
+        async def aclose(self) -> None:
+            return None
+
+        async def post(self, *_args: Any, **_kwargs: Any) -> Any:
+            return self._response
+
+    # Set HTTPS_PROXY pointing at an unreachable address. With
+    # trust_env=True (the httpx default), this would override the
+    # transport. The sender MUST pass trust_env=False to ignore it.
+    with patch.dict(os.environ, {"HTTPS_PROXY": "http://attacker.invalid:9999"}):
+        with patch(
+            "adcp.webhook_sender.build_async_ip_pinned_transport",
+            return_value=MagicMock(),  # transport itself isn't used here
+        ):
+            with patch("adcp.webhook_sender.httpx.AsyncClient", _FakeAsyncClient):
+                async with sender:
+                    await sender.send_mcp(
+                        url="https://buyer.example.com/webhooks/adcp",
+                        task_id="task_proxy",
+                        task_type="create_media_buy",
+                        status="completed",
+                    )
+
+    # The per-request httpx.AsyncClient construction passes a `transport`
+    # kwarg; the eager __aenter__ construction does not. Asserting both
+    # `transport` is present AND `trust_env=False` is set proves the
+    # captured kwargs are from the per-request construction, not the
+    # eager-init that has nothing to do with HTTPS_PROXY hardening.
+    assert "transport" in captured_kwargs, (
+        "captured kwargs do not include `transport` — the assertion below "
+        "is reading the eager __aenter__ construction, not the per-request "
+        "construction the proxy-bypass guard lives on"
+    )
+    assert captured_kwargs.get("trust_env") is False, (
+        "WebhookSender's per-request httpx.AsyncClient must construct with "
+        "trust_env=False — otherwise HTTPS_PROXY env vars defeat the IP pin"
+    )
+    assert captured_kwargs.get("follow_redirects") is False
+
+
+@pytest.mark.asyncio
+async def test_owned_client_rejects_hostile_url_before_signing() -> None:
+    """Validate-before-sign defense in depth: a hostile URL raises
+    SSRFValidationError synchronously inside ``build_async_ip_pinned_transport``,
+    BEFORE ``sign_webhook`` is called. No Ed25519/ES256 signature ever
+    materializes in process memory for a URL that fails the SSRF guard —
+    anything that snapshots locals on exception (faulthandler, custom
+    logging) cannot capture a signature that wasn't generated.
+
+    Regression guard for the validate-before-sign reorder in _send_bytes."""
+    from unittest.mock import patch
+
+    from adcp.signing import SSRFValidationError
+
+    sender = WebhookSender.from_jwk(
+        {**WEBHOOK_JWK, "d": WEBHOOK_JWK["_private_d_for_test_only"]},
+    )
+    with patch("adcp.webhook_sender.sign_webhook") as mock_sign:
+        async with sender:
+            with pytest.raises(SSRFValidationError):
+                await sender.send_mcp(
+                    url="https://127.0.0.1/webhooks/adcp",
+                    task_id="task_no_sign",
+                    task_type="create_media_buy",
+                    status="completed",
+                )
+    assert mock_sign.called is False, (
+        "sign_webhook was called even though SSRF validation rejected the URL — "
+        "the signature would sit in process memory until the rejection. "
+        "Validate-before-sign ordering is broken; check _send_bytes."
+    )

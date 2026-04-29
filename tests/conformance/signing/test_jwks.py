@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 from adcp.signing import (
+    DEFAULT_ALLOWED_PORTS,
     CachingJwksResolver,
     SignatureVerificationError,
     SSRFValidationError,
@@ -97,6 +98,98 @@ def test_ssrf_caps_resolved_address_scan() -> None:
     ):
         # Must pass: the validator stops scanning before the internal IP.
         validate_jwks_uri("https://example.com/jwks.json")
+
+
+# ---- Port allowlist (opt-in operator hardening) ----
+# Rationale lives in adcp.signing.jwks.DEFAULT_ALLOWED_PORTS docstring.
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://example.com:9443/jwks.json",  # Tomcat default — legitimate
+        "https://example.com:4443/jwks.json",  # Spring Boot default — legitimate
+        "https://example.com:8080/jwks.json",  # buyer's path-routed gateway
+        "http://example.com:80/jwks.json",  # plain HTTP — scheme check is separate
+    ],
+)
+def test_ssrf_default_imposes_no_port_filter(uri: str) -> None:
+    """Without explicit ``allowed_ports``, any port that satisfies the
+    scheme check passes. AdCP doesn't restrict ``pushNotificationConfig.url``
+    to standard ports — :8443/:9443/:4443 are all legitimate buyer
+    deployments."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        validate_jwks_uri(uri)
+
+
+@pytest.mark.parametrize(
+    "uri,port",
+    [
+        ("https://example.com:25/jwks.json", 25),  # SMTP
+        ("https://example.com:6379/jwks.json", 6379),  # Redis
+        ("https://example.com:11211/jwks.json", 11211),  # Memcached
+        ("https://example.com:8080/jwks.json", 8080),  # generic HTTP-alt
+    ],
+)
+def test_ssrf_rejects_disallowed_ports_when_hardening(uri: str, port: int) -> None:
+    """Operators opt into the hardening posture by passing
+    ``DEFAULT_ALLOWED_PORTS`` or a custom set; non-allowlisted ports
+    then reject."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        with pytest.raises(SSRFValidationError, match=f"port {port} not allowed"):
+            validate_jwks_uri(uri, allowed_ports=DEFAULT_ALLOWED_PORTS)
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://example.com/jwks.json",  # implicit :443
+        "https://example.com:443/jwks.json",
+        "https://example.com:8443/jwks.json",
+    ],
+)
+def test_ssrf_default_allowlist_passes_canonical_https_ports(uri: str) -> None:
+    """``DEFAULT_ALLOWED_PORTS = {443, 8443}`` is the recommended hardening
+    set; both canonical-https and HTTPS-alt pass."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        validate_jwks_uri(uri, allowed_ports=DEFAULT_ALLOWED_PORTS)
+
+
+def test_ssrf_allowed_ports_custom_set() -> None:
+    """Adopters with trusted on-prem deployments can permit non-standard ports."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        validate_jwks_uri(
+            "https://example.com:9000/jwks.json",
+            allowed_ports=frozenset({443, 9000}),
+        )
+
+
+def test_ssrf_empty_allowlist_rejects_every_port() -> None:
+    """``allowed_ports=frozenset()`` is meaningful: no port satisfies the
+    set. Distinct from ``allowed_ports=None`` (no filter at all). Used
+    by deployments that want to fail closed unless a port is explicitly
+    permitted."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("93.184.216.34", 0))],
+    ):
+        with pytest.raises(SSRFValidationError, match="port 443 not allowed"):
+            validate_jwks_uri(
+                "https://example.com/jwks.json",
+                allowed_ports=frozenset(),
+            )
 
 
 # ---- CachingJwksResolver ----

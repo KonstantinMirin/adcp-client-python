@@ -44,6 +44,10 @@ from adcp.signing.crypto import (
     load_private_key_pem,
     private_key_from_jwk,
 )
+from adcp.signing.ip_pinned_transport import (
+    AsyncIpPinnedTransport,
+    build_async_ip_pinned_transport,
+)
 from adcp.signing.webhook_signer import sign_webhook
 from adcp.types import GeneratedTaskStatus
 from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
@@ -112,6 +116,8 @@ class WebhookSender:
         alg: str,
         client: httpx.AsyncClient | None = None,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        allow_private_destinations: bool = False,
+        allowed_destination_ports: frozenset[int] | None = None,
     ) -> None:
         self._private_key = private_key
         self._key_id = key_id
@@ -119,6 +125,8 @@ class WebhookSender:
         self._timeout = timeout_seconds
         self._client = client
         self._owns_client = client is None
+        self._allow_private_destinations = allow_private_destinations
+        self._allowed_destination_ports = allowed_destination_ports
 
     @classmethod
     def from_jwk(
@@ -128,6 +136,8 @@ class WebhookSender:
         d_field: str = "d",
         client: httpx.AsyncClient | None = None,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        allow_private_destinations: bool = False,
+        allowed_destination_ports: frozenset[int] | None = None,
     ) -> WebhookSender:
         """Construct from a JWK that includes the private scalar.
 
@@ -135,6 +145,9 @@ class WebhookSender:
         doesn't validate this (you're signing with your own key; validation
         happens at the receiver), but a key whose adcp_use is wrong will be
         rejected by every conformant verifier.
+
+        ``allow_private_destinations`` and ``allowed_destination_ports``
+        forward to :meth:`__init__` — see that signature for semantics.
         """
         # Snapshot the mapping once — a live Mapping could otherwise return
         # different values across the adcp_use / kid / d / alg reads.
@@ -163,6 +176,8 @@ class WebhookSender:
             alg=alg,
             client=client,
             timeout_seconds=timeout_seconds,
+            allow_private_destinations=allow_private_destinations,
+            allowed_destination_ports=allowed_destination_ports,
         )
 
     @classmethod
@@ -175,6 +190,8 @@ class WebhookSender:
         passphrase: bytes | None = None,
         client: httpx.AsyncClient | None = None,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
+        allow_private_destinations: bool = False,
+        allowed_destination_ports: frozenset[int] | None = None,
     ) -> WebhookSender:
         """Load a private key from a PEM file and bind it as a webhook sender.
 
@@ -194,6 +211,8 @@ class WebhookSender:
             client: Optional pre-built :class:`httpx.AsyncClient` to share
                 across the SDK; the sender owns its own client when omitted.
             timeout_seconds: Per-request timeout for the owned client.
+            allow_private_destinations: Forwarded to :meth:`__init__`.
+            allowed_destination_ports: Forwarded to :meth:`__init__`.
 
         Raises:
             ValueError: ``alg`` is not ed25519 / es256, or the PEM contains
@@ -239,6 +258,8 @@ class WebhookSender:
             alg=alg,
             client=client,
             timeout_seconds=timeout_seconds,
+            allow_private_destinations=allow_private_destinations,
+            allowed_destination_ports=allowed_destination_ports,
         )
 
     def __repr__(self) -> str:
@@ -471,7 +492,42 @@ class WebhookSender:
         idempotency_key: str,
         extra_headers: Mapping[str, str] | None,
     ) -> WebhookDeliveryResult:
-        """Sign + POST a pre-serialized body. Shared by send_raw and resend."""
+        """Sign + POST a pre-serialized body through an SSRF-validated transport.
+
+        When the sender owns its httpx client (the default — ``client=None``
+        was passed to ``__init__``), every delivery builds a per-request
+        :class:`adcp.signing.ip_pinned_transport.AsyncIpPinnedTransport`
+        that resolves the destination, runs the full SSRF range check
+        (loopback / RFC 1918 / link-local / CGNAT / IPv6 ULA / multicast /
+        cloud metadata), enforces the port allowlist, and pins the
+        connection to the validated IP. This closes the DNS-rebinding
+        TOCTOU between validate and connect.
+
+        When the operator supplied their own client
+        (``WebhookSender(client=...)`` — typically a vetted egress proxy
+        with mTLS to a known buyer set, or an ASGI transport for testing),
+        the sender trusts the operator's transport completely. Pin-and-bind
+        is skipped; the operator's transport owns SSRF.
+
+        On the owned-client path, SSRF validation runs **before** signing
+        so a hostile URL is rejected without first generating an
+        Ed25519/ES256 signature over the body. That signature would
+        otherwise sit in process memory until the SSRF rejection —
+        anything that snapshots locals on exception (faulthandler,
+        custom logging) could capture it. Validate first, sign second.
+        """
+        # Build the pinned transport up-front for the owned-client path.
+        # This runs SSRF + port validation against the URL before any
+        # signing happens; a hostile URL raises SSRFValidationError here
+        # and the body never gets signed.
+        transport: AsyncIpPinnedTransport | None = None
+        if self._owns_client:
+            transport = build_async_ip_pinned_transport(
+                url,
+                allow_private=self._allow_private_destinations,
+                allowed_ports=self._allowed_destination_ports,
+            )
+
         base_headers = {"Content-Type": "application/json"}
         signed = sign_webhook(
             method="POST",
@@ -495,8 +551,33 @@ class WebhookSender:
             for k, v in extra_headers.items():
                 headers[k] = v
 
-        client = await self._get_client()
-        response = await client.post(url, content=body, headers=headers)
+        if transport is not None:
+            # Owned-client path. ``trust_env=False`` prevents httpx from
+            # routing the request through ``HTTPS_PROXY`` / ``HTTP_PROXY``
+            # env vars — every other pinned-transport callsite in the
+            # codebase sets this for the same reason (default_jwks_fetcher,
+            # async_default_jwks_fetcher, revocation_fetcher). Without it,
+            # an attacker who controls process env can route the signed
+            # webhook through their endpoint, defeating the IP pin entirely.
+            async with httpx.AsyncClient(
+                transport=transport,
+                timeout=self._timeout,
+                follow_redirects=False,
+                trust_env=False,
+            ) as client:
+                response = await client.post(url, content=body, headers=headers)
+        else:
+            # Operator-supplied client — they own the SSRF guarantees on
+            # their transport (proxy allowlist, mTLS, etc.). Reachable as
+            # None after aclose(); explicit raise survives ``python -O``
+            # which would strip an assert.
+            if self._client is None:
+                raise RuntimeError(
+                    "WebhookSender's operator-supplied client was already "
+                    "closed. Construct a new sender or pass a fresh client."
+                )
+            response = await self._client.post(url, content=body, headers=headers)
+
         return WebhookDeliveryResult(
             status_code=response.status_code,
             idempotency_key=idempotency_key,
