@@ -274,7 +274,8 @@ class WebhookSender:
             self._client = None
 
     async def __aenter__(self) -> WebhookSender:
-        await self._get_client()
+        if not self._owns_client:
+            await self._get_client()
         return self
 
     async def __aexit__(self, *args: Any) -> None:
