@@ -931,6 +931,148 @@ class TestA2AContextId:
         assert adapter.active_task_id is None
 
     @pytest.mark.asyncio
+    async def test_rejected_task_result_content(self, a2a_config):
+        """TASK_STATE_REJECTED — adapter routes through the non-COMPLETED
+        else-branch in _process_task_response (a2a.py:618-673), returning
+        ``status=SUBMITTED``, ``data=None``, ``success=True`` (the branch
+        hardcodes success — see follow-up tracker), and metadata carrying
+        the lowercased state, the task id, and the context id."""
+        adapter = A2AAdapter(a2a_config)
+
+        rejected = create_mock_a2a_task(
+            task_id="task-rejected-content",
+            context_id="ctx-rej",
+            state="rejected",
+            parts=[TextPart(text="policy violation: brand safety")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=rejected)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            result = await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert result.status == TaskStatus.SUBMITTED
+        assert result.data is None
+        assert result.error is None
+        assert result.success is True  # FIXME: semantically wrong for REJECTED
+        assert result.message == "policy violation: brand safety"
+        assert result.metadata is not None
+        assert result.metadata["status"] == "rejected"
+        assert result.metadata["task_id"] == "task-rejected-content"
+        assert result.metadata["context_id"] == "ctx-rej"
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "_process_task_response only extracts adcp_error DataParts for COMPLETED "
+            "tasks; rejected tasks lose structured error detail. When this gap is "
+            "fixed (issue #263), flip the test to assert the extracted error "
+            "instead of removing xfail."
+        ),
+    )
+    @pytest.mark.asyncio
+    async def test_rejected_task_adcp_error_datapart_extracted(self, a2a_config):
+        """TASK_STATE_REJECTED with a DataPart carrying adcp_error.
+
+        Strict-xfail: today the DataPart's structured error detail is silently
+        dropped because the adapter only calls ``_extract_result_from_task``
+        for COMPLETED tasks. This test asserts the desired post-fix behavior
+        (error code accessible to callers); ``strict=True`` flips to failure
+        the moment someone fixes the gap so we don't keep documenting it as
+        endorsed."""
+        adapter = A2AAdapter(a2a_config)
+
+        rejected = create_mock_a2a_task(
+            task_id="task-rejected-err",
+            context_id="ctx-rej-err",
+            state="rejected",
+            parts=[
+                DataPart(data={"adcp_error": {"code": "POLICY_VIOLATION", "message": "rejected"}}),
+                TextPart(text="rejected by server"),
+            ],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=rejected)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            result = await adapter._call_a2a_tool("create_media_buy", {})
+
+        # Desired post-fix: structured error surfaces on TaskResult.
+        assert result.error is not None
+        assert "POLICY_VIOLATION" in (result.error or "")
+
+    @pytest.mark.asyncio
+    async def test_rejected_task_drops_datapart_keeps_textpart(self, a2a_config):
+        """TASK_STATE_REJECTED with both a DataPart and a TextPart — pin the
+        current behavior: the TextPart message is preserved, the DataPart's
+        structured payload is not extracted (tracked separately in the strict
+        xfail above). This guards against a regression that drops the human
+        message too."""
+        adapter = A2AAdapter(a2a_config)
+
+        rejected = create_mock_a2a_task(
+            task_id="task-rejected-mixed",
+            context_id="ctx-rej-mixed",
+            state="rejected",
+            parts=[
+                DataPart(data={"adcp_error": {"code": "POLICY_VIOLATION", "message": "rejected"}}),
+                TextPart(text="rejected by server"),
+            ],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=rejected)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            result = await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert result.status == TaskStatus.SUBMITTED
+        assert result.data is None
+        assert result.message == "rejected by server"
+        assert result.metadata is not None
+        assert result.metadata["status"] == "rejected"
+        assert result.metadata["task_id"] == "task-rejected-mixed"
+        assert result.metadata["context_id"] == "ctx-rej-mixed"
+
+    @pytest.mark.asyncio
+    async def test_auth_required_task_result_content(self, a2a_config):
+        """TASK_STATE_AUTH_REQUIRED — non-terminal state. Same else-branch
+        as REJECTED in _process_task_response, so the assertions parallel
+        ``test_rejected_task_result_content``: status SUBMITTED, data None,
+        metadata with state, task id, and context id, plus the challenge
+        message extracted from the TextPart."""
+        adapter = A2AAdapter(a2a_config)
+
+        auth_task = create_mock_a2a_task(
+            task_id="task-auth-content",
+            context_id="ctx-auth",
+            state="auth-required",
+            parts=[TextPart(text="OAuth required: redirect to https://auth.example.com")],
+        )
+        mock_a2a_client = AsyncMock()
+        mock_a2a_client.send_message = AsyncMock(
+            return_value=SendMessageSuccessResponse(result=auth_task)
+        )
+
+        with patch.object(adapter, "_get_a2a_client", return_value=mock_a2a_client):
+            result = await adapter._call_a2a_tool("create_media_buy", {})
+
+        assert result.status == TaskStatus.SUBMITTED
+        assert result.data is None
+        assert result.error is None
+        assert result.success is True
+        assert result.message == "OAuth required: redirect to https://auth.example.com"
+        assert result.metadata is not None
+        assert result.metadata["status"] == "auth-required"
+        assert result.metadata["task_id"] == "task-auth-content"
+        assert result.metadata["context_id"] == "ctx-auth"
+
+    @pytest.mark.asyncio
     async def test_state_not_committed_when_post_processing_raises(self, a2a_config):
         """If _process_task_response raises, the adapter must NOT advance
         its state — otherwise a retry echoes a task_id the caller never
