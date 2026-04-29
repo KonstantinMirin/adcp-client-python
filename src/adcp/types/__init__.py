@@ -169,7 +169,6 @@ from adcp.types._generated import (
     Format,
     FormatCard,
     FormatCardDetailed,
-    FormatId,
     FormatIdParameter,
     FrequencyCap,
     FrequencyCapScope,
@@ -304,6 +303,7 @@ from adcp.types._generated import (
     RightsPricingOption,
     RightsTerms,
     Security,
+    SellerAgentReference,
     SiCapabilities,
     SiGetOfferingRequest,
     SiGetOfferingResponse,
@@ -451,6 +451,7 @@ from adcp.types.aliases import (
     DaastFormatGroupAsset,
     Deployment,
     Destination,
+    FormatId,
     GetAccountFinancialsErrorResponse,
     GetAccountFinancialsSuccessResponse,
     GetBrandIdentityErrorResponse,
@@ -1032,6 +1033,7 @@ __all__ = [
     "ReportingWebhook",
     "AuthenticationScheme",
     "Security",
+    "SellerAgentReference",
     # Asset-content types (payload describing types — distinct from
     # the `<Type>FormatAsset` slot types in aliases.py)
     "AudioContent",
