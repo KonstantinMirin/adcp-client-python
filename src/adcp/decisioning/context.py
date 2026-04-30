@@ -92,7 +92,7 @@ class RequestContext(ToolContext, Generic[TMeta]):
         sets ``caller_identity = account.id`` so caching scopes per
         resolved account, not per raw auth principal.
     :param auth_info: Optional verified principal info. ``None`` when
-        the request is unauthenticated (dev / 'singleton' fixtures).
+        the request is unauthenticated (dev / ``'derived'`` fixtures).
     :param now: Monotonic timestamp for the request — adopters use
         this rather than ``datetime.now()`` directly so tests can
         inject deterministic clocks.
@@ -101,6 +101,51 @@ class RequestContext(ToolContext, Generic[TMeta]):
     HITL background-task path. The framework dispatcher detects the
     returned :class:`TaskHandoff` via type-identity and projects it
     to the wire ``Submitted`` envelope.
+
+    **Identifier disambiguation — when to use which:**
+
+    The context carries four identifier-shaped fields. Each has a
+    distinct role; mixing them up is the most common adopter bug.
+
+    ``account.id`` — "whose data is this?"
+        The resolved tenant / account that owns the call. Read it to
+        route the request to the right adapter instance, scope your
+        DB queries, and stamp audit logs.
+
+    ``auth_principal`` — "who's calling?"
+        The verified caller's identity label. The string varies by
+        auth shape: ``agent_url`` for AdCP v3 signed-request agents
+        (the documented convention; the SDK's signed-request adapter
+        wrappers ship in 4.5.0), OAuth subject claim for bearer
+        flows, mTLS subject for client-cert flows. Read it for
+        per-principal ACLs *within* an account ("can principal X
+        mutate this buy?").
+
+    ``caller_identity`` — "what's the cache scope key?"
+        Composite framework-set key
+        (``<store_module>.<store_qualname>:<account_id>``) used by
+        the idempotency middleware to scope the replay cache.
+        Treat as opaque. Adopter code may log or forward it
+        (rate-limiting, audit) but should not parse, compare, or
+        rewrite it — the format is framework-internal and any
+        adopter assumption about its shape will break when the
+        scope-key composition changes.
+
+    ``tenant_id`` — "which transport tenant?"
+        Inherited from :class:`ToolContext`; set by the transport
+        layer before dispatch (typically from the host header or URL
+        path on multi-tenant deployments). Usually equals
+        ``account.id`` for ``'explicit'``-resolution adopters; can
+        diverge for ``'derived'`` / ``'implicit'`` modes.
+
+    Common patterns:
+
+    * Routing to the right adapter? → ``ctx.account.metadata.adapter``
+      (typed via the ``TMeta`` generic).
+    * Authorization check? → ``ctx.auth_principal`` (who's calling)
+      against ``ctx.account.id`` (whose data they're touching).
+    * Idempotency scope? → don't touch; the framework owns this.
+    * Logging request provenance? → log all four; they're cheap.
 
     :param state: Sync reads of framework-owned in-flight workflow
         state. Default is :class:`adcp.decisioning.state._NotYetWiredStateReader`

@@ -167,8 +167,47 @@ class TaskHandoff(Generic[T]):
             if self._is_pre_approved(req, ctx.account):
                 # Sync fast path — return Success directly
                 return CreateMediaBuySuccess(media_buy_id="mb_1", ...)
-            # HITL slow path — hand off to background trafficker review
+            # Framework-async slow path — hand off to background work
             return ctx.handoff_to_task(self._review_async)
+
+    **What TaskHandoff is for** — short, framework-mediated async work
+    where the adopter awaits an external system (DSP API call,
+    classifier inference, third-party brand-safety scan, generative
+    creative render) inside a coroutine. The handoff fn runs in the
+    same process, the framework awaits it, persists the terminal
+    artifact, and emits a webhook on completion. Typical wall-clock:
+    seconds to minutes.
+
+    **What TaskHandoff is NOT for** — human-driven HITL workflows where
+    a real person eventually clicks "approve" in a queue. The handoff
+    fn would either block the framework's background runner indefinitely
+    (until the human acts), or poll an external queue (which doesn't
+    fit the "fn returns terminal artifact" contract). For human-approval
+    workflows, the recommended pattern is:
+
+    1. Adopter persists the in-flight buy in their own DB and returns
+       ``input-required`` (NOT a TaskHandoff) on the synchronous arm,
+       carrying a stable ``task_id`` they allocated. The
+       ``input-required`` status is in the spec task-status enum
+       (``schemas/cache/enums/task-status.json``); the per-tool
+       ``*_async_response_input_required`` envelopes are in
+       :mod:`adcp.types`.
+    2. Trafficker UI flips the row to approved/rejected on its own
+       schedule.
+    3. Adopter's webhook emitter fires the terminal webhook to the
+       buyer when the human acts. Use the SDK's webhook primitives in
+       :mod:`adcp.webhooks` (payload builders) +
+       :mod:`adcp.webhook_sender` (HMAC-SHA256 signing + IP-pinned
+       transport delivery) — same wire shape the framework uses on the
+       TaskHandoff path.
+
+    The adopter owns the whole lifecycle in the human-driven case; the
+    framework's TaskHandoff projector exists only for the "fn returns
+    terminal artifact within a reasonable wall-clock" shape. v6.1 may
+    add a richer ``ctx.handoff_to_human()`` primitive for the queued-
+    approval pattern; a worked end-to-end example lands with the
+    multi-tenant ``hello_publisher.py`` example in 4.5.0. For v6.0,
+    keep human approvals out of the TaskHandoff path.
     """
 
     __slots__ = ("_fn",)
@@ -236,7 +275,7 @@ class Account(Generic[TMeta]):
     typechecks inside method bodies.
 
     The framework's idempotency middleware scopes its cache by
-    ``account.id``. Adopters in 'singleton' resolution mode MUST
+    ``account.id``. Adopters in ``'derived'`` resolution mode MUST
     synthesize per-principal IDs (e.g. ``f"training-agent:{principal}"``)
     or buyer-to-buyer cache leakage is possible — see
     :class:`adcp.decisioning.SingletonAccounts`.

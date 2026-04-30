@@ -1,20 +1,47 @@
 """Account resolution: ``AccountStore`` Protocol + three reference impls.
 
-Adopters pick a resolution mode at registration time:
+Adopters pick a resolution mode at registration time. The mode literal
+mirrors the JS-side ``AccountStore.resolution`` field
+(``src/lib/server/decisioning/account.ts``) for cross-language parity:
 
-* :class:`SingletonAccounts` — single-process / single-platform
-  deployments (Innovid training-agent, single-publisher proof-of-concept).
-  Synthesizes ``account.id`` per verified principal so idempotency
-  scopes correctly across distinct callers.
-* :class:`ExplicitAccounts` — multi-tenant where the URL or request
-  body identifies the account (``/tenants/<id>``, ``account.account_id``
-  in body). Resolves by the wire reference.
-* :class:`FromAuthAccounts` — multi-tenant or single-tenant where the
-  verified auth principal identifies the account (signed-request bound,
-  OAuth bearer bound). Resolves by ``ctx.auth_info.principal``.
+* :class:`SingletonAccounts` (``resolution='derived'``) — single-process
+  / single-platform deployments (Innovid training-agent, single-publisher
+  proof-of-concept). Synthesizes ``account.id`` per verified principal
+  so idempotency scopes correctly across distinct callers.
+* :class:`ExplicitAccounts` (``resolution='explicit'``) — multi-tenant
+  where the URL or request body identifies the account
+  (``/tenants/<id>``, ``account.account_id`` in body). Resolves by the
+  wire reference.
+* :class:`FromAuthAccounts` (``resolution='implicit'``) — multi-tenant
+  or single-tenant where the verified auth principal identifies the
+  account (signed-request bound, OAuth bearer bound). Resolves by
+  ``ctx.auth_info.principal``.
 
 Adopters with shapes that don't fit these three implement the
 :class:`AccountStore` Protocol directly.
+
+Spec-agent vs auth-layer principal:
+   AdCP v3 introduced agent-to-agent flows where the calling principal
+   IS an agent identified by a stable ``agent_url`` (the agent's
+   well-known URL acting as a global identifier) and a key id (``kid``)
+   on the request signature. The framework's ``AuthInfo.principal``
+   is the verified-principal opaque string the auth layer surfaces —
+   the documented convention is ``agent_url`` for signed-request
+   agents, OAuth subject claim for bearer tokens, mTLS subject for
+   client-cert flows. Adopters wiring ``FromAuthAccounts`` decide
+   what string their auth middleware projects onto
+   ``ctx.auth_info.principal``; the framework treats it opaquely.
+
+   The SDK's signing primitives in :mod:`adcp.signing` verify the
+   request signature against a JWKS provider; it's the adopter's
+   middleware (today) or the framework's built-in
+   ``SignedRequestAuth`` adapter wrapper (Tier 2, lands in 4.5.0)
+   that takes the verified result and writes ``AuthInfo.principal =
+   agent_url`` onto the dispatch context. Adopters wiring this
+   manually before 4.5.0 ships should follow that convention to keep
+   ``adcp.adagents`` (the spec validator that ties an ``agent_url``
+   to a seller's published ``adagents.json`` whitelist) reading the
+   right key.
 """
 
 from __future__ import annotations
@@ -37,18 +64,22 @@ class AccountStore(Protocol, Generic[TMeta]):
 
     The framework calls :meth:`resolve` for every tool dispatch
     (before the handler method runs). Adopters in ``'explicit'`` mode
-    use ``ref.account_id`` from the wire; ``'from_auth'`` mode reads
+    use ``ref.account_id`` from the wire; ``'implicit'`` mode reads
     ``ctx.auth_info`` to look up the principal-bound account;
-    ``'singleton'`` mode synthesizes a per-principal account from the
+    ``'derived'`` mode synthesizes a per-principal account from the
     one platform.
 
     The :attr:`resolution` literal is a structural attribute the
     framework reads at server boot — used by :func:`validate_platform`
     to fail fast on misconfigured deployments (e.g.
-    ``'singleton'`` registered into a multi-tenant ``TenantRegistry``).
+    ``'derived'`` registered into a multi-tenant ``TenantRegistry``).
+    Mirrors the JS-side literal for cross-language parity:
+    ``'explicit'`` (wire ref drives lookup), ``'implicit'`` (verified
+    auth principal drives lookup), ``'derived'`` (single-platform with
+    per-principal id synthesis).
     """
 
-    resolution: Literal["explicit", "from_auth", "singleton"]
+    resolution: Literal["explicit", "implicit", "derived"]
 
     def resolve(
         self,
@@ -60,10 +91,10 @@ class AccountStore(Protocol, Generic[TMeta]):
         :param ref: The wire reference object (typically
             ``request.account`` carrying ``account_id`` /
             ``account_ref``). ``None`` for tools that don't carry an
-            explicit account ref — adopters in ``'singleton'`` /
-            ``'from_auth'`` modes ignore it.
+            explicit account ref — adopters in ``'derived'`` /
+            ``'implicit'`` modes ignore it.
         :param auth_info: Verified principal info. ``None`` for
-            unauthenticated requests (dev / ``'singleton'`` fixtures).
+            unauthenticated requests (dev / ``'derived'`` fixtures).
         :raises adcp.decisioning.AdcpError: ``code='ACCOUNT_NOT_FOUND'``
             when the resolution can't produce a valid account.
 
@@ -111,7 +142,7 @@ class SingletonAccounts(Generic[TMeta]):
         right TypedDict / dataclass instance.
     """
 
-    resolution: Literal["singleton"] = "singleton"
+    resolution: Literal["derived"] = "derived"
 
     def __init__(
         self,
@@ -236,7 +267,7 @@ class FromAuthAccounts(Generic[TMeta]):
         :class:`Account` instance. Sync or async.
     """
 
-    resolution: Literal["from_auth"] = "from_auth"
+    resolution: Literal["implicit"] = "implicit"
 
     def __init__(
         self,
