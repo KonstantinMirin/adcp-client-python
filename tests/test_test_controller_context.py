@@ -318,14 +318,11 @@ async def test_register_test_controller_threads_context_factory():
     tool = mcp._tool_manager._tools["comply_test_controller"]
     # FastMCP's tool wrapper takes the function args as kwargs.
     fn = tool.fn  # type: ignore[attr-defined]
-    result_json = await fn(
+    result = await fn(
         scenario="force_account_status",
         params={"account_id": "acc-1", "status": "suspended"},
     )
 
-    import json
-
-    result = json.loads(result_json)
     assert result["success"] is True
     assert result["current_state"] == "suspended"
     # The factory ran, built a ToolContext, and the store saw the header-
@@ -338,6 +335,27 @@ async def test_register_test_controller_threads_context_factory():
     }
     # And the tool name was populated by RequestMetadata.
     assert received[0].metadata["tool_name"] == "comply_test_controller"
+
+
+async def test_register_test_controller_list_scenarios_returns_dict():
+    """Regression for #314 — comply_test_controller must return a dict (not a
+    JSON string) through the FastMCP registration path so the JS runner's
+    structuredContent unwrapper can read data.success and data.scenarios."""
+
+    class _Store(TestControllerStore):
+        async def force_account_status(self, account_id: str, status: str) -> dict[str, Any]:
+            return {"previous_state": "active", "current_state": status}
+
+    mcp = create_mcp_server(_MinimalHandler(), name="test-agent")
+    register_test_controller(mcp, _Store())
+
+    tool = mcp._tool_manager._tools["comply_test_controller"]
+    fn = tool.fn  # type: ignore[attr-defined]
+    result = await fn(scenario="list_scenarios")
+
+    assert isinstance(result, dict), "must be a dict, not a JSON string"
+    assert result["success"] is True
+    assert "force_account_status" in result["scenarios"]
 
 
 async def test_register_test_controller_rejects_non_toolcontext_from_factory():
