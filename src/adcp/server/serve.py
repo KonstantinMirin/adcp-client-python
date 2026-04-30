@@ -305,6 +305,7 @@ def serve(
     *,
     name: str = "adcp-agent",
     port: int | None = None,
+    host: str | None = None,
     transport: str = "streamable-http",
     instructions: str | None = None,
     test_controller: TestControllerStore | None = None,
@@ -315,6 +316,7 @@ def serve(
     message_parser: MessageParser | None = None,
     advertise_all: bool = False,
     max_request_size: int | None = None,
+    streaming_responses: bool = False,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -371,6 +373,23 @@ def serve(
             entirely (not recommended — the cap is the only guard
             against adversarial payloads exhausting Pydantic validation
             CPU/memory). See :mod:`adcp.server._size_limit`.
+        host: Network interface to bind to (MCP transports only). Defaults
+            to the ``ADCP_HOST`` environment variable, then ``"0.0.0.0"``
+            (all interfaces). Use ``"127.0.0.1"`` for local-only
+            development. Container deployments (Fly.io, k8s, Cloud Run)
+            require ``"0.0.0.0"`` so the process listens on the
+            container's external interface.
+        streaming_responses: When ``False`` (default), the streamable-http
+            transport returns one ``application/json`` response per
+            request. AdCP tools today don't emit progress events, and
+            FastMCP's SSE-internal streaming default has an upstream bug
+            that drops the ASGI response without completing — making the
+            storyboard runner report ``overall_status: "unreachable"``.
+            Set to ``True`` only if your tools genuinely emit progress
+            notifications and your clients consume the SSE stream
+            (MCP transports only). Note: the legacy ``transport="sse"``
+            is a separate (deprecated) MCP transport, unrelated to this
+            flag.
 
     Security:
         This function does NOT configure authentication. In production,
@@ -428,6 +447,7 @@ def serve(
             handler,
             name=name,
             port=port,
+            host=host,
             transport=transport,
             instructions=instructions,
             test_controller=test_controller,
@@ -435,6 +455,7 @@ def serve(
             middleware=middleware,
             advertise_all=advertise_all,
             max_request_size=max_request_size,
+            streaming_responses=streaming_responses,
         )
     else:
         valid = ", ".join(sorted(("a2a", "streamable-http", "sse", "stdio")))
@@ -523,6 +544,7 @@ def _serve_mcp(
     *,
     name: str,
     port: int | None,
+    host: str | None = None,
     transport: str,
     instructions: str | None,
     test_controller: TestControllerStore | None,
@@ -530,17 +552,20 @@ def _serve_mcp(
     middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
     max_request_size: int | None = None,
+    streaming_responses: bool = False,
 ) -> None:
     """Start an MCP server."""
     mcp = create_mcp_server(
         handler,
         name=name,
         port=port,
+        host=host,
         instructions=instructions,
         include_test_controller=test_controller is not None,
         context_factory=context_factory,
         middleware=middleware,
         advertise_all=advertise_all,
+        streaming_responses=streaming_responses,
     )
 
     if test_controller is not None:
@@ -644,11 +669,13 @@ def create_mcp_server(
     *,
     name: str = "adcp-agent",
     port: int | None = None,
+    host: str | None = None,
     instructions: str | None = None,
     include_test_controller: bool = False,
     context_factory: ContextFactory | None = None,
     middleware: Sequence[SkillMiddleware] | None = None,
     advertise_all: bool = False,
+    streaming_responses: bool = False,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -692,6 +719,17 @@ def create_mcp_server(
             :func:`~adcp.server.get_tools_for_handler` for semantics;
             use ``True`` for spec-compliance storyboards or when you
             deliberately want to expose a ``not_supported`` tool.
+        host: Network interface to bind to. Defaults to the ``ADCP_HOST``
+            environment variable, then ``"0.0.0.0"`` (all interfaces).
+            Use ``"127.0.0.1"`` for local-only development.
+        streaming_responses: When ``False`` (default), the streamable-http
+            transport returns one ``application/json`` response per
+            request — the right shape for AdCP tools today (none of which
+            emit progress events). The FastMCP SSE-internal streaming
+            default also has an upstream bug that drops the ASGI response
+            without completing, blocking the storyboard runner. Set to
+            ``True`` only if your tools genuinely emit progress
+            notifications and your clients consume the SSE stream.
 
     Returns:
         A configured FastMCP server instance. Call ``mcp.run()`` to start,
@@ -744,7 +782,15 @@ def create_mcp_server(
     from mcp.server.fastmcp import FastMCP
 
     resolved_port = port or int(os.environ.get("PORT", "3001"))
+    resolved_host = host if host is not None else (os.environ.get("ADCP_HOST") or "0.0.0.0")
     mcp = FastMCP(name, instructions=instructions, port=resolved_port)
+    mcp.settings.host = resolved_host
+    if not streaming_responses:
+        # FastMCP's SSE-internal default has an upstream bug; switching to
+        # stateless JSON-response mode is also semantically correct for
+        # AdCP tools, which return one complete envelope per request.
+        mcp.settings.stateless_http = True
+        mcp.settings.json_response = True
     _register_handler_tools(
         mcp,
         handler,
