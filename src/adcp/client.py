@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     import httpx
     from mcp import ClientSession
 
+from adcp._version import resolve_adcp_version
 from adcp.capabilities import TASK_FEATURE_MAP, FeatureResolver
 from adcp.exceptions import ADCPError, ADCPWebhookSignatureError
 from adcp.protocols.a2a import A2AAdapter
@@ -336,6 +337,7 @@ class ADCPClient:
         context_id: str | None = None,
         validation: ValidationHookConfig | None = None,
         force_a2a_version: str | None = None,
+        adcp_version: str | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
@@ -403,12 +405,13 @@ class ADCPClient:
                 both ``context_id`` AND ``active_task_id``.
 
                 Raises ``TypeError`` if passed with a non-A2A protocol.
-            force_a2a_version: A2A-only. Pin the wire version by
-                filtering the peer's advertised
-                ``supported_interfaces`` to entries whose
-                ``protocol_version`` matches. Intended for tests or
-                for forcing a 0.3-speaking path against a
-                dual-advertising peer. Raises
+            force_a2a_version: A2A-only. Pin the **A2A transport
+                version** (e.g. ``"0.3"``, ``"1.0"``) by filtering the
+                peer's advertised ``supported_interfaces`` to entries
+                whose ``protocol_version`` matches. Not for AdCP
+                protocol pinning — see ``adcp_version`` for that.
+                Intended for tests or for forcing a 0.3-speaking path
+                against a dual-advertising peer. Raises
                 :class:`ADCPConnectionError` on the first call if no
                 advertised interface matches. ``None`` (default) lets
                 the SDK's ``ClientFactory`` pick the most capable
@@ -417,7 +420,41 @@ class ADCPClient:
                 advertises before pinning.
 
                 Raises ``TypeError`` if passed with a non-A2A protocol.
+            adcp_version: AdCP protocol release this client speaks
+                (release-precision string, e.g. ``"3.0"``, ``"3.1"``,
+                ``"3.1-beta"``). Stripe-style per-instance pin: the
+                value is sent as ``adcp_version`` on every outbound
+                request once Stage 3 wires it through the validation
+                hooks; today (Stage 2), it's plumbing only — stored on
+                the instance and exposed via :meth:`get_adcp_version`,
+                with no wire impact yet. ``None`` (default) resolves
+                to the SDK's compile-time pin (``ADCP_VERSION``
+                packaged with the wheel). Cross-major pins raise
+                :class:`ConfigurationError` at construction; install
+                the SDK major that targets your wire version instead.
+                Patch-precision strings (``"3.0.1"``) and build
+                metadata (``"3.0.1+canary"``) are accepted at construction
+                but normalized to release-precision before wire emission
+                per the spec — patches and build metadata are not part
+                of the negotiation contract. ``get_adcp_version()``
+                returns the normalized form.
+
+                Caller-supplied ``adcp_version`` on a per-call params
+                dict wins over the constructor pin: the enricher is
+                the default, not an override. Once Stage 3 threads
+                schema selection through, this becomes a supported
+                per-call override; today it's plumbing-level only.
+
+                Migration from ``adcp_major_version`` (legacy integer
+                wire field): generated request types still expose
+                ``adcp_major_version: int | None`` from the pre-#3493
+                schema. Both fields will coexist on the wire through
+                3.x; servers prefer the new ``adcp_version`` when both
+                are present. Stop populating ``adcp_major_version`` on
+                request models once your seller advertises 3.1 in
+                ``supported_versions``.
         """
+        self._adcp_version: str = resolve_adcp_version(adcp_version)
         self.agent_config = agent_config
         self.webhook_url_template = webhook_url_template
         self.webhook_secret = webhook_secret
@@ -462,6 +499,17 @@ class ADCPClient:
         # Apply schema validation modes (default: requests=warn, responses=strict
         # in dev/test, warn in production — see ``ValidationHookConfig`` docs).
         self.adapter.configure_validation(validation)
+        # Auto-inject the per-instance ``adcp_version`` pin into every
+        # outbound request envelope. Caller-supplied values on the
+        # request object win — the enricher is the default, not an
+        # override — so per-call overrides remain available once the
+        # generated request types declare the field.
+        _pinned_version = self._adcp_version
+
+        def _inject_adcp_version(params: dict[str, Any]) -> dict[str, Any]:
+            return {"adcp_version": _pinned_version, **params}
+
+        self.adapter.envelope_enricher = _inject_adcp_version
 
         if context_id:
             # Empty string is treated as "not provided" — callers using
@@ -478,6 +526,22 @@ class ADCPClient:
         from adcp.simple import SimpleAPI
 
         self.simple = SimpleAPI(self)
+
+    def get_adcp_version(self) -> str:
+        """Return the AdCP protocol release this client is pinned to.
+
+        Resolved at construction from the ``adcp_version`` kwarg, with
+        fallback to the SDK's compile-time pin (``ADCP_VERSION``
+        packaged with the wheel) when the caller didn't pin
+        explicitly. Same value across the client's lifetime — the pin
+        is per-instance, not per-call.
+
+        See ``__init__``'s ``adcp_version`` parameter for the full
+        semantics, including the cross-major fence and the Stage 2 vs
+        Stage 3 distinction (today the pin is plumbing only; Stage 3
+        threads it through schema/validator selection).
+        """
+        return self._adcp_version
 
     @property
     def context_id(self) -> str | None:
@@ -4216,6 +4280,7 @@ class ADCPMultiAgentClient:
         on_activity: Callable[[Activity], None] | None = None,
         handlers: dict[str, Callable[..., Any]] | None = None,
         signing: SigningConfig | None = None,
+        adcp_version: str | dict[str, str] | None = None,
     ):
         """
         Initialize multi-agent client.
@@ -4229,18 +4294,75 @@ class ADCPMultiAgentClient:
             signing: Optional RFC 9421 signing config forwarded to every
                 per-agent ADCPClient. The same identity signs traffic to
                 all agents. See ADCPClient.__init__ for details.
+            adcp_version: AdCP protocol release pin. Three forms:
+
+                - ``None`` (default): every per-agent ADCPClient resolves
+                  the SDK's compile-time pin.
+                - ``str`` (e.g. ``"3.1"``): every agent uses this pin.
+                - ``dict[str, str]`` (e.g.
+                  ``{"seller_a": "3.0", "seller_b": "3.1"}``): per-agent
+                  override map keyed by ``agent.id``. Agents missing
+                  from the map fall back to the SDK default — useful
+                  for holdco/multi-tenant operators where one seller is
+                  ahead of the others on the upgrade cadence.
+
+                See ADCPClient.__init__ for per-instance semantics.
+                Cross-major pins raise ConfigurationError at construction.
         """
-        self.agents = {
-            agent.id: ADCPClient(
-                agent,
-                webhook_url_template=webhook_url_template,
-                webhook_secret=webhook_secret,
-                on_activity=on_activity,
-                signing=signing,
-            )
-            for agent in agents
-        }
+        # Per-agent map → resolve each pin individually for the dict form;
+        # otherwise use the uniform pin for all agents.
+        if isinstance(adcp_version, dict):
+            self._adcp_version: str | None = None  # mixed pins
+            self._per_agent_versions: dict[str, str] = {
+                agent_id: resolve_adcp_version(pin) for agent_id, pin in adcp_version.items()
+            }
+            default_pin = resolve_adcp_version(None)
+            self.agents = {
+                agent.id: ADCPClient(
+                    agent,
+                    webhook_url_template=webhook_url_template,
+                    webhook_secret=webhook_secret,
+                    on_activity=on_activity,
+                    signing=signing,
+                    adcp_version=self._per_agent_versions.get(agent.id, default_pin),
+                )
+                for agent in agents
+            }
+        else:
+            self._adcp_version = resolve_adcp_version(adcp_version)
+            self._per_agent_versions = {}
+            self.agents = {
+                agent.id: ADCPClient(
+                    agent,
+                    webhook_url_template=webhook_url_template,
+                    webhook_secret=webhook_secret,
+                    on_activity=on_activity,
+                    signing=signing,
+                    adcp_version=self._adcp_version,
+                )
+                for agent in agents
+            }
         self.handlers = handlers or {}
+
+    def get_adcp_version(self) -> str:
+        """Return the AdCP protocol release pin for this multi-client.
+
+        Returns the uniform pin when all agents share one. Raises
+        :class:`ValueError` when agents have heterogeneous pins (the
+        ``dict[str, str]`` constructor form) — in that case, query
+        the per-agent pin via ``multi.agent(agent_id).get_adcp_version()``.
+        """
+        if self._adcp_version is not None:
+            return self._adcp_version
+        # Heterogeneous: surface uniformly if all agents agree at runtime.
+        versions = {client.get_adcp_version() for client in self.agents.values()}
+        if len(versions) == 1:
+            return next(iter(versions))
+        raise ValueError(
+            "Multi-agent client has heterogeneous adcp_version pins; "
+            "use multi.agent(agent_id).get_adcp_version() to read per-agent. "
+            f"Pins by agent: { {a: c.get_adcp_version() for a, c in self.agents.items()} }"
+        )
 
     def agent(self, agent_id: str) -> ADCPClient:
         """Get client for specific agent."""

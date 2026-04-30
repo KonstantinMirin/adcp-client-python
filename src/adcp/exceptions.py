@@ -412,6 +412,20 @@ class IdempotencyUnsupportedError(ADCPError):
         super().__init__(message, agent_id, agent_uri, suggestion)
 
 
+class ConfigurationError(ADCPError):
+    """Invalid SDK configuration detected at construction time.
+
+    Raised when a value passed to a client/server constructor cannot
+    be reconciled with the SDK's compile-time pin — most commonly a
+    cross-major ``adcp_version`` (e.g. ``adcp_version="4.0"`` against
+    an SDK built for AdCP 3.x), or an unparseable version string.
+
+    Recovery: install the SDK major that targets the wire version you
+    want to speak. Cross-major pinning is not supported within a
+    single SDK major.
+    """
+
+
 IDEMPOTENCY_ERROR_CODE_MAP: dict[str, type[ADCPTaskError]] = {
     "IDEMPOTENCY_CONFLICT": IdempotencyConflictError,
     "IDEMPOTENCY_EXPIRED": IdempotencyExpiredError,

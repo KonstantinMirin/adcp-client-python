@@ -54,6 +54,31 @@ class ProtocolAdapter(ABC):
         # ``ADCPClient(validation=...)`` or an env override.
         self.request_validation_mode: ValidationMode = "warn"
         self.response_validation_mode: ValidationMode = "strict"
+        # Optional hook applied to every outbound request params dict
+        # before validation/send. The owning ADCPClient installs one to
+        # auto-inject ``adcp_version`` from the per-instance pin. Returns
+        # a new dict (the original is not mutated). Caller-supplied
+        # values on the original dict win — the enricher is the default,
+        # not an override.
+        #
+        # Contract: the validator runs on the enriched dict, so any field
+        # the enricher injects must be either (a) declared in the request
+        # schema, or (b) tolerated by the schema's ``additionalProperties``
+        # policy. Top-level Request models in this SDK declare
+        # ``extra="allow"`` (see ``AdCPBaseModel`` overrides in generated
+        # types) — flipping any of them to ``extra="forbid"`` would break
+        # this assumption silently.
+        self.envelope_enricher: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+
+    def _enrich_outgoing_params(self, params: Any) -> Any:
+        """Apply ``envelope_enricher`` to an outbound params dict.
+
+        No-op for non-dict params (rare — most tool methods pass dicts
+        from ``model_dump()``) and when no enricher is installed.
+        """
+        if self.envelope_enricher is None or not isinstance(params, dict):
+            return params
+        return self.envelope_enricher(params)
 
     def configure_validation(self, config: ValidationHookConfig | None) -> None:
         """Apply a client's :class:`ValidationHookConfig` to this adapter."""
