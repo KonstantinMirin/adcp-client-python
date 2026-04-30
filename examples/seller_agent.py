@@ -25,6 +25,7 @@ from adcp.server import (
     cancel_media_buy_response,
     serve,
 )
+from adcp.server.helpers import valid_actions_for_status
 from adcp.server.responses import (
     capabilities_response,
     creative_formats_response,
@@ -46,6 +47,16 @@ accounts: dict[str, dict[str, Any]] = {}
 media_buys: dict[str, dict[str, Any]] = {}
 creatives: dict[str, dict[str, Any]] = {}
 proposals: dict[str, dict[str, Any]] = {}
+# Used when no account_id is present; single-tenant demo shortcut.
+# Real sellers must scope directives and tasks by account_id.
+_DEFAULT_ACCOUNT_ID = "__default__"
+
+# Test-controller state (force_*/seed_* scenarios only)
+plans: dict[str, dict[str, Any]] = {}
+# Single-shot directives registered by force_create_media_buy_arm; keyed by account_id.
+pending_directives: dict[str, dict[str, Any]] = {}
+# Tasks registered when create_media_buy consumes a 'submitted' directive; keyed by task_id.
+pending_task_completions: dict[str, dict[str, Any]] = {}
 
 PRODUCTS: list[dict[str, Any]] = [
     {
@@ -109,6 +120,12 @@ class DemoSeller(ADCPHandler):
             ["media_buy"],
             idempotency={"supported": False},
             compliance_testing={
+                # AdCP 3.0.1's capabilities-response schema constrains this
+                # enum to the original six scenarios. The new force_* and
+                # seed_* scenarios (added to comply-test-controller-request
+                # in 3.0.1) live on the dynamic list_scenarios response and
+                # are reported there — not advertised here. Once the
+                # capabilities schema's enum catches up, the rest land too.
                 "scenarios": [
                     "force_account_status",
                     "force_media_buy_status",
@@ -197,6 +214,28 @@ class DemoSeller(ADCPHandler):
         return products_response(PRODUCTS)
 
     async def create_media_buy(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
+        account_id = (params.get("account") or {}).get("account_id") or _DEFAULT_ACCOUNT_ID
+        directive = pending_directives.pop(account_id, None)
+        if directive:
+            arm = directive.get("arm")
+            if arm == "input-required":
+                # CreateMediaBuyInputRequired shape per AdCP spec.
+                return {"reason": "APPROVAL_REQUIRED"}
+            if arm == "submitted":
+                # CreateMediaBuyResponse (submitted-task envelope) per AdCP spec.
+                task_id = directive.get("task_id")
+                if task_id:
+                    pending_task_completions[task_id] = {
+                        "state": "submitted",
+                        "account_id": account_id,
+                    }
+                resp: dict[str, Any] = {"status": "submitted"}
+                if task_id:
+                    resp["task_id"] = task_id
+                if directive.get("message"):
+                    resp["message"] = directive["message"]
+                return resp
+
         if not params.get("packages"):
             return adcp_error(
                 "INVALID_REQUEST",
@@ -225,8 +264,7 @@ class DemoSeller(ADCPHandler):
             )
 
         has_creatives = any(
-            pkg.get("creative_assignments") or pkg.get("creatives")
-            for pkg in params["packages"]
+            pkg.get("creative_assignments") or pkg.get("creatives") for pkg in params["packages"]
         )
         status = "active" if has_creatives else "pending_creatives"
 
@@ -237,11 +275,13 @@ class DemoSeller(ADCPHandler):
             "packages": packages,
             "revision": 1,
         }
-        pending_actions = ["sync_creatives", "cancel", "update_budget", "update_dates",
-                           "update_packages", "add_packages"]
+        # Pull valid_actions from the SDK's authoritative state machine —
+        # tracks any future spec churn without manual list maintenance.
         return media_buy_response(
-            mb_id, packages, status=status,
-            valid_actions=pending_actions if status == "pending_creatives" else None,
+            mb_id,
+            packages,
+            status=status,
+            valid_actions=valid_actions_for_status(status) or None,
         )
 
     async def get_media_buys(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
@@ -301,13 +341,11 @@ class DemoSeller(ADCPHandler):
             return cancel_media_buy_response(mb_id, "buyer")
 
         mb["revision"] = mb.get("revision", 1) + 1
-        pending_actions = ["sync_creatives", "cancel", "update_budget", "update_dates",
-                           "update_packages", "add_packages"]
         return update_media_buy_response(
             mb_id,
             status=mb["status"],
             revision=mb["revision"],
-            valid_actions=pending_actions if mb["status"] == "pending_creatives" else None,
+            valid_actions=valid_actions_for_status(mb["status"]) or None,
         )
 
     async def list_creative_formats(
@@ -379,6 +417,14 @@ class DemoSeller(ADCPHandler):
                     "status": "approved",
                 }
             )
+        # Transition any media buys waiting on creatives to pending_start
+        # now that creatives are approved (storyboard creative_fate_after_sync
+        # asserts this). Real sellers would scope by media_buy_id linkage —
+        # the example uses a single-tenant simplification.
+        for mb in media_buys.values():
+            if mb.get("status") == "pending_creatives":
+                mb["status"] = "pending_start"
+                mb["revision"] = mb.get("revision", 1) + 1
         return sync_creatives_response(results)
 
     async def get_media_buy_delivery(
@@ -484,6 +530,143 @@ class DemoStore(TestControllerStore):
         media_buy_id: str | None = None,
     ) -> dict[str, Any]:
         return {"simulated": {"spend_percentage": spend_percentage}}
+
+    async def force_create_media_buy_arm(
+        self,
+        arm: str,
+        task_id: str | None = None,
+        message: str | None = None,
+        *,
+        account: dict[str, Any] | None = None,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        account_id = (account or {}).get("account_id") or _DEFAULT_ACCOUNT_ID
+        pending_directives[account_id] = {"arm": arm, "task_id": task_id, "message": message}
+        forced: dict[str, Any] = {"arm": arm}
+        if arm == "submitted" and task_id:
+            forced["task_id"] = task_id
+        return {"success": True, "forced": forced}
+
+    async def force_task_completion(
+        self,
+        task_id: str,
+        result: dict[str, Any],
+        *,
+        account: dict[str, Any] | None = None,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        task = pending_task_completions.get(task_id)
+        if task is None:
+            raise TestControllerError("NOT_FOUND", f"Task {task_id} not found")
+        caller_id = (account or {}).get("account_id") or _DEFAULT_ACCOUNT_ID
+        if task.get("account_id", _DEFAULT_ACCOUNT_ID) != caller_id:
+            raise TestControllerError("NOT_FOUND", f"Task {task_id} not found")
+        prev = task.get("state", "submitted")
+        if prev == "completed":
+            if task.get("result") != result:
+                raise TestControllerError(
+                    "INVALID_TRANSITION",
+                    "Task already completed with different result",
+                    current_state="completed",
+                )
+            return {
+                "success": True,
+                "previous_state": task.get("previous_state", "submitted"),
+                "current_state": "completed",
+            }
+        pending_task_completions[task_id] = {
+            **task,
+            "state": "completed",
+            "result": result,
+            "previous_state": prev,
+        }
+        return {"success": True, "previous_state": prev, "current_state": "completed"}
+
+    async def seed_product(
+        self,
+        fixture: dict[str, Any] | None = None,
+        product_id: str | None = None,
+        *,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        data = dict(fixture or {})
+        pid = product_id or data.get("product_id") or f"seeded-{uuid.uuid4().hex[:8]}"
+        data["product_id"] = pid
+        for i, p in enumerate(PRODUCTS):
+            if p.get("product_id") == pid:
+                PRODUCTS[i] = data
+                return {"product_id": pid}
+        PRODUCTS.append(data)
+        return {"product_id": pid}
+
+    async def seed_pricing_option(
+        self,
+        fixture: dict[str, Any] | None = None,
+        product_id: str | None = None,
+        pricing_option_id: str | None = None,
+        *,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        data = dict(fixture or {})
+        po_id = (
+            pricing_option_id
+            or data.get("pricing_option_id")
+            or f"po-seeded-{uuid.uuid4().hex[:8]}"
+        )
+        data["pricing_option_id"] = po_id
+        for prod in PRODUCTS:
+            if product_id and prod.get("product_id") != product_id:
+                continue
+            options: list[dict[str, Any]] = prod.setdefault("pricing_options", [])
+            for i, opt in enumerate(options):
+                if opt.get("pricing_option_id") == po_id:
+                    options[i] = data
+                    return {"pricing_option_id": po_id}
+            options.append(data)
+            return {"pricing_option_id": po_id}
+        raise TestControllerError("NOT_FOUND", f"Product '{product_id}' not found")
+
+    async def seed_creative(
+        self,
+        fixture: dict[str, Any] | None = None,
+        creative_id: str | None = None,
+        *,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        data = dict(fixture or {})
+        cid = creative_id or data.get("creative_id") or f"c-seeded-{uuid.uuid4().hex[:8]}"
+        data["creative_id"] = cid
+        creatives[cid] = data
+        return {"creative_id": cid}
+
+    async def seed_plan(
+        self,
+        fixture: dict[str, Any] | None = None,
+        plan_id: str | None = None,
+        *,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        data = dict(fixture or {})
+        pid = plan_id or data.get("plan_id") or f"plan-seeded-{uuid.uuid4().hex[:8]}"
+        data["plan_id"] = pid
+        plans[pid] = data
+        return {"plan_id": pid}
+
+    async def seed_media_buy(
+        self,
+        fixture: dict[str, Any] | None = None,
+        media_buy_id: str | None = None,
+        *,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        data = dict(fixture or {})
+        mb_id = media_buy_id or data.get("media_buy_id") or f"mb-seeded-{uuid.uuid4().hex[:8]}"
+        data["media_buy_id"] = mb_id
+        data.setdefault("status", "active")
+        data.setdefault("currency", "USD")
+        data.setdefault("packages", [])
+        media_buys[mb_id] = data
+        return {"media_buy_id": mb_id}
 
 
 if __name__ == "__main__":
