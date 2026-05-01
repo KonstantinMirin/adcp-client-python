@@ -23,6 +23,8 @@ import pytest
 
 from adcp.decisioning import (
     AudiencePlatform,
+    CreativeAdServerPlatform,
+    CreativeBuilderPlatform,
     DecisioningCapabilities,
     DecisioningPlatform,
     SalesPlatform,
@@ -39,16 +41,21 @@ from adcp.decisioning.types import AdcpError
 
 
 def test_specialism_protocols_are_publicly_exported() -> None:
-    """The three Protocol classes are on ``adcp.decisioning.__all__``
-    so adopters import from the canonical public surface, not the
-    internal ``adcp.decisioning.specialisms.*`` modules."""
+    """All five Protocol classes (Batches 0–2) are on
+    ``adcp.decisioning.__all__`` so adopters import from the canonical
+    public surface, not the internal ``adcp.decisioning.specialisms.*``
+    modules."""
     import adcp.decisioning as dx
 
     assert "SalesPlatform" in dx.__all__
     assert "SignalsPlatform" in dx.__all__
     assert "AudiencePlatform" in dx.__all__
+    assert "CreativeBuilderPlatform" in dx.__all__
+    assert "CreativeAdServerPlatform" in dx.__all__
     assert dx.SignalsPlatform is SignalsPlatform
     assert dx.AudiencePlatform is AudiencePlatform
+    assert dx.CreativeBuilderPlatform is CreativeBuilderPlatform
+    assert dx.CreativeAdServerPlatform is CreativeAdServerPlatform
 
 
 # ---- SignalsPlatform ----
@@ -314,3 +321,235 @@ def test_sales_platform_protocol_still_runtime_checkable() -> None:
             return {}
 
     assert isinstance(_SalesShim(), SalesPlatform)
+
+
+# ---- CreativeBuilderPlatform ----
+
+
+def test_creative_builder_runtime_checkable_is_strict_structural_match() -> None:
+    """``runtime_checkable`` matches by attribute presence across ALL
+    declared Protocol methods (strict structural-AND). Documents the
+    contract: a class implementing only the wire-required methods
+    will NOT pass ``isinstance`` because optional Protocol methods
+    aren't present.
+
+    ``validate_platform`` uses the narrower
+    REQUIRED_METHODS_PER_SPECIALISM gate — that's what production
+    servers actually rely on for spec coverage. This is consistent
+    with SalesPlatform's behavior (same pattern across all
+    specialism Protocols)."""
+
+    class _MinimalBuilder:
+        def build_creative(self, req, ctx):
+            return {}
+
+    # Minimal impl satisfies the wire-required set but lacks the
+    # optional Protocol methods → strict isinstance is False.
+    assert not isinstance(_MinimalBuilder(), CreativeBuilderPlatform)
+
+
+def test_creative_builder_runtime_checkable_full() -> None:
+    """A class with every Protocol method (required + optional) passes
+    the strict runtime_checkable structural match."""
+
+    class _FullBuilder:
+        def build_creative(self, req, ctx):
+            return {}
+
+        def preview_creative(self, req, ctx):
+            return {}
+
+        def sync_creatives(self, req, ctx):
+            return {}
+
+    assert isinstance(_FullBuilder(), CreativeBuilderPlatform)
+
+
+def test_validate_platform_enforces_creative_template_method() -> None:
+    """``creative-template`` requires ``build_creative`` only —
+    Optional methods don't gate server boot. A platform claiming the
+    slug without ``build_creative`` fails fast."""
+
+    class _MissingBuildPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(specialisms=["creative-template"])
+        accounts = SingletonAccounts(account_id="hello")
+
+    with pytest.raises(AdcpError) as exc_info:
+        validate_platform(_MissingBuildPlatform())
+    missing_methods = {m["method"] for m in exc_info.value.details["missing"]}
+    assert "build_creative" in missing_methods
+
+
+def test_validate_platform_passes_creative_template_minimal() -> None:
+    """Minimal ``creative-template`` adopter implementing only
+    ``build_creative`` passes validation; optional methods can be
+    absent."""
+
+    class _MinimalTemplatePlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(specialisms=["creative-template"])
+        accounts = SingletonAccounts(account_id="hello")
+
+        def build_creative(self, req, ctx):
+            return {}
+
+    validate_platform(_MinimalTemplatePlatform())
+
+
+def test_creative_template_and_generative_share_method_set() -> None:
+    """Both creative builder specialisms gate on the same single
+    method (``build_creative``). Drift in
+    REQUIRED_METHODS_PER_SPECIALISM here surfaces as a visible test
+    failure since they should track together."""
+    expected = {"build_creative"}
+    assert REQUIRED_METHODS_PER_SPECIALISM["creative-template"] == expected
+    assert REQUIRED_METHODS_PER_SPECIALISM["creative-generative"] == expected
+
+
+def test_creative_builder_protocol_has_no_refine_creative() -> None:
+    """Regression-guard: ``refine_creative`` was a hallucinated wire
+    surface in earlier port drafts. The spec invokes refinement via
+    ``build_creative`` itself with ``creative_id`` referencing the
+    prior build (per
+    ``schemas/cache/media-buy/build-creative-request.json``); there
+    is no ``refine-creative-*.json`` schema and no wire tool. If
+    someone re-adds ``refine_creative`` to the Protocol thinking it's
+    a missing method, this test breaks."""
+    assert not hasattr(CreativeBuilderPlatform, "refine_creative")
+
+
+def test_build_creative_response_has_no_submitted_arm() -> None:
+    """Regression-guard against ``adcontextprotocol/adcp#3392``: the
+    per-tool ``build-creative-response.json`` ``oneOf`` is strictly
+    Success | MultiSuccess | Error — no Submitted variant. Both the
+    JS and Python Protocols document ``build_creative`` as sync at
+    the wire level (slow generation pipelines await in-request;
+    status changes flow via ``publish_status_change``).
+
+    When adcp#3392 lands and the spec rolls Submitted into the
+    ``oneOf``, this test breaks and forces a coordinated SDK update
+    to the Protocol return type (add ``BuildCreativeAsyncSubmitted``
+    to the union)."""
+    # ``BuildCreativeResponse`` is a typing.Union of the discriminated
+    # arms. Walk its args and assert the wire-required field set
+    # doesn't include task-async submitted hints.
+    import typing
+
+    from adcp.types import BuildCreativeResponse
+
+    arms = typing.get_args(BuildCreativeResponse)
+    assert len(arms) > 0, "BuildCreativeResponse should be a Union of arms"
+    for arm in arms:
+        # Build-creative arms carry creative_manifest / creative_manifests
+        # (Success/MultiSuccess) or errors (Error). None should declare
+        # task_id or status='submitted' — those are Submitted-arm hints.
+        if hasattr(arm, "model_fields"):
+            field_names = set(arm.model_fields.keys())
+            assert "task_id" not in field_names, (
+                f"BuildCreativeResponse arm {arm.__name__} unexpectedly carries "
+                "task_id — adcp#3392 may have landed; update the Protocol "
+                "return type to include the Submitted arm."
+            )
+
+
+# ---- CreativeAdServerPlatform ----
+
+
+def test_creative_ad_server_runtime_checkable_full() -> None:
+    """An ad-server impl with all required + optional methods passes
+    the runtime_checkable check."""
+
+    class _AdServerImpl:
+        def build_creative(self, req, ctx):
+            return {}
+
+        def preview_creative(self, req, ctx):
+            return {}
+
+        def list_creatives(self, req, ctx):
+            return {}
+
+        def get_creative_delivery(self, req, ctx):
+            return {}
+
+        def sync_creatives(self, req, ctx):
+            return {}
+
+    assert isinstance(_AdServerImpl(), CreativeAdServerPlatform)
+
+
+def test_validate_platform_enforces_creative_ad_server_required_methods() -> None:
+    """``creative-ad-server`` requires four methods. A platform
+    claiming the slug without all four fails fast at server boot."""
+
+    class _PartialAdServerPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(specialisms=["creative-ad-server"])
+        accounts = SingletonAccounts(account_id="hello")
+
+        # Implements only build_creative + preview_creative;
+        # missing list_creatives + get_creative_delivery.
+        def build_creative(self, req, ctx):
+            return {}
+
+        def preview_creative(self, req, ctx):
+            return {}
+
+    with pytest.raises(AdcpError) as exc_info:
+        validate_platform(_PartialAdServerPlatform())
+    missing_methods = {m["method"] for m in exc_info.value.details["missing"]}
+    assert "list_creatives" in missing_methods
+    assert "get_creative_delivery" in missing_methods
+
+
+def test_validate_platform_passes_creative_ad_server_with_required_methods() -> None:
+    """Adopter implementing the four required ``creative-ad-server``
+    methods passes validation. ``sync_creatives`` is optional."""
+
+    class _CompleteAdServerPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(specialisms=["creative-ad-server"])
+        accounts = SingletonAccounts(account_id="hello")
+
+        def build_creative(self, req, ctx):
+            return {}
+
+        def preview_creative(self, req, ctx):
+            return {}
+
+        def list_creatives(self, req, ctx):
+            return {}
+
+        def get_creative_delivery(self, req, ctx):
+            return {}
+
+    validate_platform(_CompleteAdServerPlatform())
+
+
+def test_creative_ad_server_required_methods_pinned() -> None:
+    """Contract test — ``creative-ad-server`` requires the four
+    methods JS marks non-optional in the Protocol interface
+    (``build_creative``, ``preview_creative``, ``list_creatives``,
+    ``get_creative_delivery``). ``sync_creatives`` is optional in
+    JS too."""
+    expected = {
+        "build_creative",
+        "preview_creative",
+        "list_creatives",
+        "get_creative_delivery",
+    }
+    assert REQUIRED_METHODS_PER_SPECIALISM["creative-ad-server"] == expected
+
+
+def test_creative_ad_server_distinct_from_builder() -> None:
+    """The two creative Protocols enforce different method sets — an
+    ad-server adopter must implement four methods; a builder adopter
+    only one. Confirms the architectural distinction at the
+    REQUIRED_METHODS layer."""
+    builder_methods = REQUIRED_METHODS_PER_SPECIALISM["creative-template"]
+    ad_server_methods = REQUIRED_METHODS_PER_SPECIALISM["creative-ad-server"]
+    # Builder is a strict subset of ad-server (build_creative is shared).
+    assert builder_methods < ad_server_methods
+    # But ad-server has extra requirements (preview, list, delivery).
+    assert ad_server_methods - builder_methods == {
+        "preview_creative",
+        "list_creatives",
+        "get_creative_delivery",
+    }
