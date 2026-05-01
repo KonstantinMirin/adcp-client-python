@@ -26,6 +26,7 @@ from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.test_controller import SCENARIOS as _CONTROLLER_SCENARIOS
+from adcp.types.error_narrowing import narrow_union_errors
 from adcp.validation.client_hooks import ValidationHookConfig
 
 logger = logging.getLogger(__name__)
@@ -1746,6 +1747,26 @@ def create_tool_caller(
                 errors_list = exc.errors(
                     include_input=False, include_context=False, include_url=False
                 )
+                # Narrow discriminated-union failures to the variant
+                # the user actually intended (Stability AI Emma P2:
+                # 60-line dump → focused error). For non-union
+                # failures the function is a no-op.
+                #
+                # Defensive: if the narrowing helper itself raises
+                # (heuristic edge case, future pydantic format
+                # change), keep the original error list rather than
+                # 500'ing the wire path. The narrowed-error UX is a
+                # nice-to-have; correctness is surfacing SOME error.
+                try:
+                    errors_list = list(narrow_union_errors(errors_list))
+                except Exception:
+                    logger.warning(
+                        "narrow_union_errors raised on %s — passing through "
+                        "unfiltered errors. This is a bug in the narrowing "
+                        "heuristic, NOT in the validation itself.",
+                        method_name,
+                        exc_info=True,
+                    )
                 first: dict[str, Any] = dict(errors_list[0]) if errors_list else {}
                 field_path = ".".join(str(loc) for loc in first.get("loc", ()))
                 message = first.get("msg", "validation failed")
