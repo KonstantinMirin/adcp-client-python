@@ -302,7 +302,70 @@ def maybe_emit_sync_completion(
         )
 
 
+def validate_webhook_sender_for_platform(
+    *,
+    advertised_tools: frozenset[str] | set[str],
+    sender: Any,
+    auto_emit: bool,
+) -> None:
+    """Server-boot fail-fast for the F12 misconfig (Emma sales-direct
+    P0 root cause).
+
+    When an adopter claims a specialism whose tool surface includes
+    any spec-eligible webhook task type (e.g., ``create_media_buy``,
+    ``activate_signal``, ``acquire_rights``) AND auto-emit is on AND
+    no ``webhook_sender`` is wired, every buyer who registers
+    ``push_notification_config.url`` would have their notification
+    silently dropped. The runtime gate at
+    :func:`maybe_emit_sync_completion` warns on the FIRST call, but
+    by then the buyer has already burned a request and the adopter
+    has shipped without webhook wiring.
+
+    This validator surfaces the misconfig at server boot — same
+    posture as ``dispatch.validate_platform``'s governance opt-in
+    gate. Keeps the runtime warning as the second line of defense
+    (covers tool surfaces that can't be statically resolved).
+
+    :raises AdcpError: ``code='INVALID_REQUEST'`` when the
+        configuration would silently drop webhooks. Matches the
+        exception class :func:`validate_platform` raises for sibling
+        boot-time misconfigs (governance opt-in, missing required
+        methods) so adopter ``except AdcpError`` clauses catch all
+        platform-config failures uniformly.
+    """
+    if not auto_emit:
+        return
+    if sender is not None:
+        return
+    eligible = SPEC_WEBHOOK_TASK_TYPES & set(advertised_tools)
+    if not eligible:
+        return
+    from adcp.decisioning.types import AdcpError
+
+    raise AdcpError(
+        "INVALID_REQUEST",
+        message=(
+            "auto_emit_completion_webhooks is enabled and the platform's "
+            "claimed specialisms expose webhook-eligible tools "
+            f"{sorted(eligible)!r}, but no webhook_sender was wired. "
+            "Buyers who register push_notification_config.url on these "
+            "tools would have their notifications silently dropped. "
+            "Either pass a configured WebhookSender via "
+            "adcp.decisioning.serve.create_adcp_server_from_platform("
+            "..., webhook_sender=...), or set "
+            "auto_emit_completion_webhooks=False if you handle webhooks "
+            "manually inside your platform methods."
+        ),
+        recovery="terminal",
+        details={
+            "missing": "webhook_sender",
+            "webhook_eligible_tools": sorted(eligible),
+        },
+    )
+
+
 __all__ = [
     "SPEC_WEBHOOK_TASK_TYPES",
     "maybe_emit_sync_completion",
+    "validate_webhook_sender_for_platform",
 ]
