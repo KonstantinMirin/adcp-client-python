@@ -52,24 +52,88 @@ if TYPE_CHECKING:
     from adcp.decisioning.types import Account
     from adcp.types import (
         AccountReference,
+        AcquireRightsRequest,
+        AcquireRightsResponse,
+        ActivateSignalRequest,
+        ActivateSignalSuccessResponse,
+        BuildCreativeRequest,
+        BuildCreativeResponse,
+        CalibrateContentRequest,
+        CalibrateContentResponse,
+        CheckGovernanceRequest,
+        CheckGovernanceResponse,
+        CreateCollectionListRequest,
+        CreateCollectionListResponse,
+        CreateContentStandardsRequest,
+        CreateContentStandardsResponse,
         CreateMediaBuyRequest,
         CreateMediaBuySuccessResponse,
+        CreatePropertyListRequest,
+        CreatePropertyListResponse,
+        DeleteCollectionListRequest,
+        DeleteCollectionListResponse,
+        DeletePropertyListRequest,
+        DeletePropertyListResponse,
+        GetBrandIdentityRequest,
+        GetBrandIdentitySuccessResponse,
+        GetCollectionListRequest,
+        GetCollectionListResponse,
+        GetContentStandardsRequest,
+        GetContentStandardsResponse,
+        GetCreativeDeliveryRequest,
+        GetCreativeDeliveryResponse,
+        GetCreativeFeaturesRequest,
+        GetCreativeFeaturesResponse,
+        GetMediaBuyArtifactsRequest,
+        GetMediaBuyArtifactsResponse,
         GetMediaBuyDeliveryRequest,
         GetMediaBuyDeliveryResponse,
         GetMediaBuysRequest,
         GetMediaBuysResponse,
+        GetPlanAuditLogsRequest,
+        GetPlanAuditLogsResponse,
         GetProductsRequest,
         GetProductsResponse,
+        GetPropertyListRequest,
+        GetPropertyListResponse,
+        GetRightsRequest,
+        GetRightsSuccessResponse,
+        GetSignalsRequest,
+        GetSignalsResponse,
+        ListCollectionListsRequest,
+        ListCollectionListsResponse,
+        ListContentStandardsRequest,
+        ListContentStandardsResponse,
         ListCreativeFormatsRequest,
         ListCreativeFormatsResponse,
         ListCreativesRequest,
         ListCreativesResponse,
+        ListPropertyListsRequest,
+        ListPropertyListsResponse,
+        PreviewCreativeRequest,
+        PreviewCreativeResponse,
         ProvidePerformanceFeedbackRequest,
         ProvidePerformanceFeedbackResponse,
+        ReportPlanOutcomeRequest,
+        ReportPlanOutcomeResponse,
+        SyncAudiencesRequest,
+        SyncAudiencesSuccessResponse,
         SyncCreativesRequest,
         SyncCreativesSuccessResponse,
+        SyncPlansRequest,
+        SyncPlansResponse,
+        UpdateCollectionListRequest,
+        UpdateCollectionListResponse,
+        UpdateContentStandardsRequest,
+        UpdateContentStandardsResponse,
         UpdateMediaBuyRequest,
         UpdateMediaBuySuccessResponse,
+        UpdatePropertyListRequest,
+        UpdatePropertyListResponse,
+        UpdateRightsRequest,
+        UpdateRightsResponse,
+        ValidateContentDeliveryRequest,
+        ValidateContentDeliveryResponse,
     )
     from adcp.webhook_sender import WebhookSender
 
@@ -78,15 +142,13 @@ if TYPE_CHECKING:
 # Class-level advertised tool surface
 # ---------------------------------------------------------------------------
 
-#: All sales-* tools the v6.0 PlatformHandler shim covers. Auto-registered
-#: with the framework's tool-discovery seam via ``__init_subclass__`` —
-#: ``tools/list`` filters to this set unless the operator passes
-#: ``advertise_all=True``. Adopters who only implement a subset of these
-#: methods on their ``DecisioningPlatform`` subclass: the framework's
-#: existing override-detection (``_is_method_overridden``) handles the
-#: filter — methods inherited from the base ``DecisioningPlatform`` (which
-#: doesn't define them) are NOT in the override set, so the framework
-#: drops the tool from ``tools/list`` automatically.
+#: All wire tools the PlatformHandler shim covers. Each Protocol family
+#: contributes its required + optional methods. The framework's
+#: ``tools/list`` filters to this set; adopters get only the tools their
+#: claimed specialism Protocols cover, plus the framework's
+#: ``_is_method_overridden`` filter drops shims whose platform method
+#: isn't implemented (sales-only adopters don't accidentally advertise
+#: ``build_creative``).
 _SALES_ADVERTISED_TOOLS: frozenset[str] = frozenset(
     {
         "get_products",
@@ -100,6 +162,156 @@ _SALES_ADVERTISED_TOOLS: frozenset[str] = frozenset(
         "list_creatives",
     }
 )
+_CREATIVE_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "build_creative",
+        "preview_creative",
+        "get_creative_delivery",
+    }
+)
+_SIGNALS_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "get_signals",
+        "activate_signal",
+    }
+)
+_AUDIENCE_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "sync_audiences",
+    }
+)
+_GOVERNANCE_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "check_governance",
+        "sync_plans",
+        "report_plan_outcome",
+        "get_plan_audit_logs",
+    }
+)
+_BRAND_RIGHTS_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "get_brand_identity",
+        "get_rights",
+        "acquire_rights",
+        "update_rights",
+    }
+)
+_CONTENT_STANDARDS_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "list_content_standards",
+        "get_content_standards",
+        "create_content_standards",
+        "update_content_standards",
+        "calibrate_content",
+        "validate_content_delivery",
+        "get_media_buy_artifacts",
+        "get_creative_features",
+    }
+)
+_PROPERTY_LISTS_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "create_property_list",
+        "update_property_list",
+        "get_property_list",
+        "list_property_lists",
+        "delete_property_list",
+    }
+)
+_COLLECTION_LISTS_ADVERTISED_TOOLS: frozenset[str] = frozenset(
+    {
+        "create_collection_list",
+        "update_collection_list",
+        "get_collection_list",
+        "list_collection_lists",
+        "delete_collection_list",
+    }
+)
+
+#: Methods adopters MAY leave unimplemented per their Protocol. The shim
+#: surfaces ``AdcpError(code='UNSUPPORTED_FEATURE')`` to buyers calling
+#: an unimplemented optional method instead of leaking AttributeError.
+#: Required methods (per ``REQUIRED_METHODS_PER_SPECIALISM``) are
+#: enforced at server boot by ``validate_platform`` — the optional set
+#: complements that gate at runtime.
+_OPTIONAL_PLATFORM_METHODS: frozenset[str] = frozenset(
+    {
+        # Sales-* optional (gated by claim, not method presence)
+        "get_media_buys",
+        "provide_performance_feedback",
+        "list_creative_formats",
+        "list_creatives",
+        # CreativeBuilderPlatform optional
+        "preview_creative",
+        # ContentStandardsPlatform optional analyzer reads
+        "get_media_buy_artifacts",
+        "get_creative_features",
+        # AudiencePlatform adopter-internal helper (not wire-served, but
+        # listed here for symmetry should a future shim wire it)
+        "poll_audience_statuses",
+    }
+)
+
+
+def _project_build_creative(result: Any) -> Any:
+    """Project the adopter's ``build_creative`` return into the wire
+    envelope shape.
+
+    The :class:`CreativeBuilderPlatform.build_creative` Protocol
+    declares the return as ``CreativeManifest | Sequence[CreativeManifest]
+    | BuildCreativeSuccessResponse`` — three ergonomic arms. The wire
+    envelope per ``schemas/cache/media-buy/build-creative-response.json``
+    has only two success arms: ``{creative_manifest: ...}`` (single)
+    or ``{creative_manifests: [...]}`` (multi). This helper wraps the
+    bare-manifest and list cases.
+
+    Mirrors the JS-side ``projectBuildCreativeReturn`` at
+    ``src/lib/server/decisioning/runtime/from-platform.ts``. Without
+    this, an adopter returning a bare :class:`CreativeManifest` (which
+    the Protocol explicitly allows) would ship an unwrapped object that
+    fails wire ``oneOf`` validation downstream.
+    """
+    # Already an envelope (has the wire field present).
+    if hasattr(result, "creative_manifest") or hasattr(result, "creative_manifests"):
+        return result
+    if isinstance(result, dict) and (
+        "creative_manifest" in result or "creative_manifests" in result
+    ):
+        return result
+    # Sequence of manifests → multi-success envelope.
+    if isinstance(result, list):
+        return {
+            "creative_manifests": [
+                m.model_dump(mode="json") if hasattr(m, "model_dump") else m for m in result
+            ]
+        }
+    # Bare CreativeManifest → single-success envelope.
+    if hasattr(result, "model_dump"):
+        return {"creative_manifest": result.model_dump(mode="json")}
+    # Unknown shape — pass through and let wire validation surface.
+    return result
+
+
+def _project_sync_audiences(result: Any) -> Any:
+    """Project the adopter's ``sync_audiences`` return into the wire
+    envelope shape.
+
+    The :class:`AudiencePlatform.sync_audiences` Protocol allows
+    adopters to return either a list of audience-result rows (the
+    JS-side ergonomic) or a fully-shaped
+    :class:`SyncAudiencesSuccessResponse`. The wire envelope per
+    ``schemas/cache/media-buy/sync-audiences-response.json`` is
+    ``{audiences: [rows]}``. This helper wraps the list case.
+
+    Mirrors the JS-side response wrapping at
+    ``src/lib/server/decisioning/runtime/from-platform.ts:2242-2249``.
+    """
+    if isinstance(result, list):
+        return {
+            "audiences": [
+                r.model_dump(mode="json") if hasattr(r, "model_dump") else r for r in result
+            ]
+        }
+    return result
 
 
 class PlatformHandler(ADCPHandler[ToolContext]):
@@ -131,7 +343,17 @@ class PlatformHandler(ADCPHandler[ToolContext]):
     they pass ``advertise_all=True``.
     """
 
-    advertised_tools: ClassVar[set[str]] = set(_SALES_ADVERTISED_TOOLS)
+    advertised_tools: ClassVar[set[str]] = (
+        set(_SALES_ADVERTISED_TOOLS)
+        | set(_CREATIVE_ADVERTISED_TOOLS)
+        | set(_SIGNALS_ADVERTISED_TOOLS)
+        | set(_AUDIENCE_ADVERTISED_TOOLS)
+        | set(_GOVERNANCE_ADVERTISED_TOOLS)
+        | set(_BRAND_RIGHTS_ADVERTISED_TOOLS)
+        | set(_CONTENT_STANDARDS_ADVERTISED_TOOLS)
+        | set(_PROPERTY_LISTS_ADVERTISED_TOOLS)
+        | set(_COLLECTION_LISTS_ADVERTISED_TOOLS)
+    )
 
     _agent_type = "decisioning platform"
 
@@ -461,6 +683,814 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             await _invoke_platform_method(
                 self._platform,
                 "list_creatives",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    # ----- Optional-method gate -----
+
+    def _require_platform_method(self, method_name: str) -> None:
+        """Raise ``UNSUPPORTED_FEATURE`` if the adopter's platform
+        doesn't implement ``method_name``.
+
+        Used by shims for OPTIONAL Protocol methods (per
+        ``_OPTIONAL_PLATFORM_METHODS``). Required methods are caught
+        at server boot by ``validate_platform``; optional methods can
+        legitimately be absent and need a runtime gate. Without this,
+        a buyer calling an optional method on a platform that doesn't
+        implement it would see ``INTERNAL_ERROR`` from the
+        AttributeError wrapper in ``_invoke_platform_method`` —
+        adopter contract violation, not buyer-fixable.
+        """
+        if not hasattr(self._platform, method_name):
+            from adcp.decisioning.types import AdcpError
+
+            raise AdcpError(
+                "UNSUPPORTED_FEATURE",
+                message=(
+                    f"This platform doesn't implement {method_name!r}. "
+                    "The method is optional on the per-specialism Protocol; "
+                    "the adopter chose not to wire it."
+                ),
+                recovery="terminal",
+            )
+
+    # ----- CreativeBuilderPlatform / CreativeAdServerPlatform -----
+
+    async def build_creative(  # type: ignore[override]
+        self,
+        params: BuildCreativeRequest,
+        context: ToolContext | None = None,
+    ) -> BuildCreativeResponse:
+        """Build / retrieve a creative.
+
+        Three discriminated return arms per the per-specialism
+        Protocol: a single :class:`CreativeManifest`, a list of
+        manifests (multi-format), or a fully-shaped
+        :class:`BuildCreativeSuccessResponse`. The shim projects bare
+        manifests / lists to the wire envelope shape so adopters can
+        return the ergonomic form (per the JS-side
+        ``projectBuildCreativeReturn`` parity).
+
+        Wire envelope per
+        ``schemas/cache/media-buy/build-creative-response.json``:
+        ``{creative_manifest: ...}`` (single) or
+        ``{creative_manifests: [...]}`` (multi).
+        """
+        self._require_platform_method("build_creative")
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "build_creative",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        return cast("BuildCreativeResponse", _project_build_creative(result))
+
+    async def preview_creative(  # type: ignore[override]
+        self,
+        params: PreviewCreativeRequest,
+        context: ToolContext | None = None,
+    ) -> PreviewCreativeResponse:
+        """Optional on :class:`CreativeBuilderPlatform`; required on
+        :class:`CreativeAdServerPlatform`. Surface
+        ``UNSUPPORTED_FEATURE`` when the adopter's platform doesn't
+        implement it (Builder adopters who don't render preview)."""
+        self._require_platform_method("preview_creative")
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "PreviewCreativeResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "preview_creative",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_creative_delivery(  # type: ignore[override]
+        self,
+        params: GetCreativeDeliveryRequest,
+        context: ToolContext | None = None,
+    ) -> GetCreativeDeliveryResponse:
+        """Required on :class:`CreativeAdServerPlatform` — per-creative
+        delivery actuals (impressions, spend, pacing)."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "get_creative_delivery",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("get_creative_delivery", params, result)
+        return cast("GetCreativeDeliveryResponse", result)
+
+    # ----- SignalsPlatform -----
+
+    async def get_signals(  # type: ignore[override]
+        self,
+        params: GetSignalsRequest,
+        context: ToolContext | None = None,
+    ) -> GetSignalsResponse:
+        """Catalog discovery for signal-marketplace / signal-owned."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "get_signals",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("get_signals", params, result)
+        return cast("GetSignalsResponse", result)
+
+    async def activate_signal(  # type: ignore[override]
+        self,
+        params: ActivateSignalRequest,
+        context: ToolContext | None = None,
+    ) -> ActivateSignalSuccessResponse:
+        """Provision a signal onto destination platforms."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "activate_signal",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("activate_signal", params, result)
+        return cast("ActivateSignalSuccessResponse", result)
+
+    # ----- AudiencePlatform -----
+
+    async def sync_audiences(  # type: ignore[override]
+        self,
+        params: SyncAudiencesRequest,
+        context: ToolContext | None = None,
+    ) -> SyncAudiencesSuccessResponse:
+        """Push audiences to the platform.
+
+        Wire shape carries ``audiences[]`` on the request; the platform
+        method signature is ``sync_audiences(audiences, ctx)`` — adopter
+        ergonomic per the JS reference. Arg-projection extracts the
+        list.
+
+        Two return arms per the per-specialism Protocol: a list of
+        audience-result rows (the JS-side ergonomic) or a fully-shaped
+        :class:`SyncAudiencesSuccessResponse`. The shim projects the
+        list arm to the wire envelope ``{audiences: [...]}`` so adopters
+        can return the ergonomic form.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "sync_audiences",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+            arg_projector={"audiences": getattr(params, "audiences", []) or []},
+        )
+        projected = _project_sync_audiences(result)
+        self._maybe_auto_emit_sync_completion("sync_audiences", params, projected)
+        return cast("SyncAudiencesSuccessResponse", projected)
+
+    # ----- CampaignGovernancePlatform -----
+
+    async def check_governance(  # type: ignore[override]
+        self,
+        params: CheckGovernanceRequest,
+        context: ToolContext | None = None,
+    ) -> CheckGovernanceResponse:
+        """Runtime governance decision (approved / denied / conditions).
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/governance/check-governance-request.json``
+        (``additionalProperties: false`` — account is forbidden);
+        resolve via auth only. See :meth:`provide_performance_feedback`
+        for the no-ref account resolution caveat.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "CheckGovernanceResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "check_governance",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def sync_plans(  # type: ignore[override]
+        self,
+        params: SyncPlansRequest,
+        context: ToolContext | None = None,
+    ) -> SyncPlansResponse:
+        """Plan CRUD with delta upsert into governance agent.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/governance/sync-plans-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "SyncPlansResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "sync_plans",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def report_plan_outcome(  # type: ignore[override]
+        self,
+        params: ReportPlanOutcomeRequest,
+        context: ToolContext | None = None,
+    ) -> ReportPlanOutcomeResponse:
+        """Outcome reporting from sellers (delivery actuals).
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/governance/report-plan-outcome-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "ReportPlanOutcomeResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "report_plan_outcome",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_plan_audit_logs(  # type: ignore[override]
+        self,
+        params: GetPlanAuditLogsRequest,
+        context: ToolContext | None = None,
+    ) -> GetPlanAuditLogsResponse:
+        """Audit log read for governance decisions + outcomes.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/governance/get-plan-audit-logs-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "GetPlanAuditLogsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "get_plan_audit_logs",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    # ----- BrandRightsPlatform -----
+
+    async def get_brand_identity(  # type: ignore[override]
+        self,
+        params: GetBrandIdentityRequest,
+        context: ToolContext | None = None,
+    ) -> GetBrandIdentitySuccessResponse:
+        """Read brand identity record (catalog + identity record).
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/brand-rights/get-brand-identity-request.json``
+        (``additionalProperties: false``); resolve via auth only. See
+        :meth:`provide_performance_feedback` for the no-ref account
+        resolution caveat.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "get_brand_identity",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("get_brand_identity", params, result)
+        return cast("GetBrandIdentitySuccessResponse", result)
+
+    async def get_rights(  # type: ignore[override]
+        self,
+        params: GetRightsRequest,
+        context: ToolContext | None = None,
+    ) -> GetRightsSuccessResponse:
+        """List rights matching a brand + use query.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/brand-rights/get-rights-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "get_rights",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("get_rights", params, result)
+        return cast("GetRightsSuccessResponse", result)
+
+    async def acquire_rights(  # type: ignore[override]
+        self,
+        params: AcquireRightsRequest,
+        context: ToolContext | None = None,
+    ) -> AcquireRightsResponse:
+        """Acquire rights — 4-arm discriminated success union
+        (acquired / pending / rejected / error). Rejection-as-data per
+        the Protocol; the ``error`` arm covers rights-system failures
+        the buyer can retry against (vs. ``AdcpError`` for adopter
+        infrastructure failures).
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/brand-rights/acquire-rights-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "acquire_rights",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("acquire_rights", params, result)
+        return cast("AcquireRightsResponse", result)
+
+    async def update_rights(  # type: ignore[override]
+        self,
+        params: UpdateRightsRequest,
+        context: ToolContext | None = None,
+    ) -> UpdateRightsResponse:
+        """Mutate an existing rights acquisition (extend term, change
+        usage scope, revoke).
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/brand-rights/update-rights-request.json``
+        (``additionalProperties: false``); resolve via auth only.
+
+        Not currently in :data:`SPEC_WEBHOOK_TASK_TYPES` — buyers
+        registering ``push_notification_config.url`` won't get an
+        auto-emit; rely on ``publishStatusChange`` for long-running
+        update state. Bump the spec enum and the
+        ``SPEC_WEBHOOK_TASK_TYPES`` constant in lockstep when this
+        joins the closed enum.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "UpdateRightsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "update_rights",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    # ----- ContentStandardsPlatform -----
+
+    async def list_content_standards(  # type: ignore[override]
+        self,
+        params: ListContentStandardsRequest,
+        context: ToolContext | None = None,
+    ) -> ListContentStandardsResponse:
+        """Discover content standards published by this agent.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/content-standards/list-content-standards-request.json``;
+        resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "ListContentStandardsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "list_content_standards",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_content_standards(  # type: ignore[override]
+        self,
+        params: GetContentStandardsRequest,
+        context: ToolContext | None = None,
+    ) -> GetContentStandardsResponse:
+        """Wire request has no ``account`` field per
+        ``schemas/cache/content-standards/get-content-standards-request.json``;
+        resolve via auth only."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "GetContentStandardsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "get_content_standards",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def create_content_standards(  # type: ignore[override]
+        self,
+        params: CreateContentStandardsRequest,
+        context: ToolContext | None = None,
+    ) -> CreateContentStandardsResponse:
+        """Wire request has no ``account`` field; resolve via auth only."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "CreateContentStandardsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "create_content_standards",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def update_content_standards(  # type: ignore[override]
+        self,
+        params: UpdateContentStandardsRequest,
+        context: ToolContext | None = None,
+    ) -> UpdateContentStandardsResponse:
+        """Wire request has no ``account`` field; resolve via auth only."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "UpdateContentStandardsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "update_content_standards",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def calibrate_content(  # type: ignore[override]
+        self,
+        params: CalibrateContentRequest,
+        context: ToolContext | None = None,
+    ) -> CalibrateContentResponse:
+        """Calibrate content against published standards.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/content-standards/calibrate-content-request.json``;
+        resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "CalibrateContentResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "calibrate_content",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def validate_content_delivery(  # type: ignore[override]
+        self,
+        params: ValidateContentDeliveryRequest,
+        context: ToolContext | None = None,
+    ) -> ValidateContentDeliveryResponse:
+        """Post-flight conformance check.
+
+        Wire request has no ``account`` field per
+        ``schemas/cache/content-standards/validate-content-delivery-request.json``;
+        resolve via auth only.
+        """
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(None, tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "ValidateContentDeliveryResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "validate_content_delivery",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_media_buy_artifacts(  # type: ignore[override]
+        self,
+        params: GetMediaBuyArtifactsRequest,
+        context: ToolContext | None = None,
+    ) -> GetMediaBuyArtifactsResponse:
+        """Optional analyzer read — adopters without artifact archival
+        surface ``UNSUPPORTED_FEATURE``."""
+        self._require_platform_method("get_media_buy_artifacts")
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "GetMediaBuyArtifactsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "get_media_buy_artifacts",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_creative_features(  # type: ignore[override]
+        self,
+        params: GetCreativeFeaturesRequest,
+        context: ToolContext | None = None,
+    ) -> GetCreativeFeaturesResponse:
+        """Optional analyzer read — adopters without analyzer pipelines
+        surface ``UNSUPPORTED_FEATURE``."""
+        self._require_platform_method("get_creative_features")
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "GetCreativeFeaturesResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "get_creative_features",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    # ----- PropertyListsPlatform -----
+
+    async def create_property_list(  # type: ignore[override]
+        self,
+        params: CreatePropertyListRequest,
+        context: ToolContext | None = None,
+    ) -> CreatePropertyListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "create_property_list",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("create_property_list", params, result)
+        return cast("CreatePropertyListResponse", result)
+
+    async def update_property_list(  # type: ignore[override]
+        self,
+        params: UpdatePropertyListRequest,
+        context: ToolContext | None = None,
+    ) -> UpdatePropertyListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "update_property_list",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("update_property_list", params, result)
+        return cast("UpdatePropertyListResponse", result)
+
+    async def get_property_list(  # type: ignore[override]
+        self,
+        params: GetPropertyListRequest,
+        context: ToolContext | None = None,
+    ) -> GetPropertyListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "get_property_list",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("get_property_list", params, result)
+        return cast("GetPropertyListResponse", result)
+
+    async def list_property_lists(  # type: ignore[override]
+        self,
+        params: ListPropertyListsRequest,
+        context: ToolContext | None = None,
+    ) -> ListPropertyListsResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "list_property_lists",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("list_property_lists", params, result)
+        return cast("ListPropertyListsResponse", result)
+
+    async def delete_property_list(  # type: ignore[override]
+        self,
+        params: DeletePropertyListRequest,
+        context: ToolContext | None = None,
+    ) -> DeletePropertyListResponse:
+        """Security-critical: revokes the per-seller fetch_token and
+        signals cache invalidation. Compromise-driven revocation MUST
+        also trigger this path."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        result = await _invoke_platform_method(
+            self._platform,
+            "delete_property_list",
+            params,
+            ctx,
+            executor=self._executor,
+            registry=self._registry,
+        )
+        self._maybe_auto_emit_sync_completion("delete_property_list", params, result)
+        return cast("DeletePropertyListResponse", result)
+
+    # ----- CollectionListsPlatform -----
+
+    async def create_collection_list(  # type: ignore[override]
+        self,
+        params: CreateCollectionListRequest,
+        context: ToolContext | None = None,
+    ) -> CreateCollectionListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "CreateCollectionListResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "create_collection_list",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def update_collection_list(  # type: ignore[override]
+        self,
+        params: UpdateCollectionListRequest,
+        context: ToolContext | None = None,
+    ) -> UpdateCollectionListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "UpdateCollectionListResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "update_collection_list",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def get_collection_list(  # type: ignore[override]
+        self,
+        params: GetCollectionListRequest,
+        context: ToolContext | None = None,
+    ) -> GetCollectionListResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "GetCollectionListResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "get_collection_list",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def list_collection_lists(  # type: ignore[override]
+        self,
+        params: ListCollectionListsRequest,
+        context: ToolContext | None = None,
+    ) -> ListCollectionListsResponse:
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "ListCollectionListsResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "list_collection_lists",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            ),
+        )
+
+    async def delete_collection_list(  # type: ignore[override]
+        self,
+        params: DeleteCollectionListRequest,
+        context: ToolContext | None = None,
+    ) -> DeleteCollectionListResponse:
+        """Security-critical: revokes the fetch_token. See
+        :meth:`delete_property_list` for the same security contract."""
+        tool_ctx = context or ToolContext()
+        account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        ctx = self._build_ctx(tool_ctx, account)
+        return cast(
+            "DeleteCollectionListResponse",
+            await _invoke_platform_method(
+                self._platform,
+                "delete_collection_list",
                 params,
                 ctx,
                 executor=self._executor,
