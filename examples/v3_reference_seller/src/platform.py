@@ -61,6 +61,15 @@ from adcp.decisioning import (
     project_account_for_response,
     project_business_entity_for_response,
 )
+from adcp.decisioning.capabilities import (
+    Account as CapsAccount,
+)
+from adcp.decisioning.capabilities import (
+    MediaBuy as CapsMediaBuy,
+)
+from adcp.decisioning.capabilities import (
+    Specialism as CapsSpecialism,
+)
 from adcp.decisioning.specialisms import SalesPlatform
 from adcp.server import current_tenant
 from adcp.types import (
@@ -216,15 +225,19 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         # ``delivery_type: guaranteed/non_guaranteed`` directly so we
         # claim both — adopters whose upstream is non-guaranteed-only
         # narrow this to the single specialism.
-        specialisms=("sales-non-guaranteed", "sales-guaranteed"),
-        channels=("display", "video"),
-        pricing_models=("cpm",),
-        # Required by the spec whenever ``media_buy`` is in
-        # ``supported_protocols``. The reference seller invoices the
-        # operator (agency / brand buying direct) and supports
-        # agent-consolidated billing for platforms acting on behalf
-        # of multiple advertisers.
-        supported_billing=("operator", "agent"),
+        specialisms=[
+            CapsSpecialism.sales_non_guaranteed,
+            CapsSpecialism.sales_guaranteed,
+        ],
+        # ``account.supported_billing`` is required by the spec
+        # whenever ``media_buy`` is in ``supported_protocols``. The
+        # reference seller invoices the operator (agency / brand
+        # buying direct) and supports agent-consolidated billing for
+        # platforms acting on behalf of multiple advertisers.
+        account=CapsAccount(supported_billing=["operator", "agent"]),
+        # Pricing declared on the structured ``media_buy`` block —
+        # the reference seller supports CPM only.
+        media_buy=CapsMediaBuy(supported_pricing_models=["cpm"]),
     )
 
     def __init__(
