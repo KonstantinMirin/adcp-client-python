@@ -256,6 +256,31 @@ class DecisioningCapabilities:
                 stacklevel=2,
             )
 
+        # ``supported_protocols`` semantically rolls UP FROM specialisms
+        # per spec — it's the storyboard commitment, with specialisms as
+        # the sub-claims that contribute to it. The framework's
+        # auto-derivation (see ``handler.py:get_adcp_capabilities``) is
+        # ergonomic but inverts the spec's data direction. Adopters
+        # leaning on auto-derive get a one-shot UserWarning steering
+        # them toward declaring ``supported_protocols`` explicitly. The
+        # auto-derive path is supported indefinitely; the warning is a
+        # gentle nudge toward the spec-aligned form, not a deprecation.
+        if self.supported_protocols is None and self.specialisms:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.supported_protocols was not declared; "
+                    "the framework will auto-derive it from ``specialisms`` via "
+                    "``SPECIALISM_TO_PROTOCOLS``. Per spec, ``supported_protocols`` is "
+                    "the primary storyboard-commitment declaration — set it "
+                    "explicitly via ``supported_protocols=[SupportedProtocol.media_buy, "
+                    "...]`` so the spec's intent (specialisms roll up to protocols) "
+                    "is preserved at the declaration site. Auto-derivation is not "
+                    "deprecated; this warning fires once per declaration site."
+                ),
+                UserWarning,
+                stacklevel=2,
+            )
+
 
 #: Specialisms that depend on framework-supplied
 #: :data:`adcp.decisioning.state.GovernanceContextJWS` reads. Claiming

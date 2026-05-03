@@ -177,6 +177,62 @@ def test_legacy_field_warnings_fire_at_construction_not_projection() -> None:
         )
 
 
+def test_auto_derive_supported_protocols_emits_warning_at_construction() -> None:
+    """When ``supported_protocols`` is omitted and ``specialisms`` is set,
+    ``DecisioningCapabilities`` auto-derives the wire field via
+    ``SPECIALISM_TO_PROTOCOLS``. Per spec, ``supported_protocols`` is the
+    primary storyboard-commitment declaration with specialisms as sub-claims;
+    auto-derivation is ergonomic but inverts the spec's data direction.
+    The dataclass emits a ``UserWarning`` at construction nudging adopters
+    toward the explicit declaration form.
+
+    The warning is NOT a deprecation — auto-derive stays supported. It's a
+    one-shot nudge per declaration site (Python's warnings registry
+    deduplicates by ``(message, module, lineno)``).
+    """
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            # supported_protocols deliberately omitted — triggers auto-derive.
+        )
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "auto-derive" in messages
+    assert "supported_protocols" in messages
+
+
+def test_explicit_supported_protocols_does_not_emit_auto_derive_warning() -> None:
+    """When ``supported_protocols`` is set explicitly, no auto-derive
+    warning fires — the adopter is on the spec-aligned path."""
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import SupportedProtocol
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            supported_protocols=[SupportedProtocol.media_buy],
+        )
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "auto-derive" not in messages
+
+
 def test_signals_features_and_content_standards_re_exported() -> None:
     """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
     and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which
