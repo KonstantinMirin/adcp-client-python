@@ -77,6 +77,7 @@ from adcp.types.capabilities import (
     RequestSigning,
     SiCapabilities,
     Signals,
+    SignalsFeatures,
     Specialism,
     SponsoredIntelligence,
     SupportedProtocol,
@@ -89,6 +90,9 @@ from adcp.types.capabilities import (
 )
 from adcp.types.capabilities import (
     CapabilitiesAccount as Account,
+)
+from adcp.types.capabilities import (
+    CapabilitiesContentStandards as ContentStandards,
 )
 from adcp.types.capabilities import (
     CapabilitiesCreative as Creative,
@@ -110,6 +114,7 @@ __all__ = [
     "ComplianceTesting",
     "Components",
     "CompromiseNotification",
+    "ContentStandards",
     "ConversionTracking",
     "Creative",
     "CreativeSpecs",
@@ -134,6 +139,7 @@ __all__ = [
     "RequestSigning",
     "SiCapabilities",
     "Signals",
+    "SignalsFeatures",
     "Specialism",
     "SponsoredIntelligence",
     "SupportedProtocol",

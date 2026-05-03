@@ -134,6 +134,37 @@ def test_submodule_all_matches_imports() -> None:
         assert hasattr(caps, name), f"__all__ lists {name!r} but it is not importable"
 
 
+def test_signals_features_and_content_standards_re_exported() -> None:
+    """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
+    and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which
+    collides with the unrelated wire ``adcp.types.ContentStandards``) are
+    surfaced through :mod:`adcp.decisioning.capabilities` so adopters
+    declaring deep Signals / MediaBuy blocks don't have to dig into
+    ``generated_poc``.
+    """
+    from adcp.decisioning.capabilities import (
+        ContentStandards,
+        MediaBuy,
+        Signals,
+        SignalsFeatures,
+    )
+    from adcp.types import ContentStandards as WireContentStandards
+
+    # Content-standards collision guard — same pattern as Account / MediaBuy / Creative.
+    assert ContentStandards is not WireContentStandards
+    assert ContentStandards.__name__ == "ContentStandards"
+
+    # SignalsFeatures usable on a Signals declaration.
+    sig = Signals(features=SignalsFeatures(catalog_signals=True))
+    assert sig.features is not None
+    assert sig.features.catalog_signals is True
+
+    # ContentStandards usable on a MediaBuy declaration.
+    mb = MediaBuy(content_standards=ContentStandards(supports_local_evaluation=True))
+    assert mb.content_standards is not None
+    assert mb.content_standards.supports_local_evaluation is True
+
+
 def test_decisioning_capabilities_accepts_structured_fields() -> None:
     """``DecisioningCapabilities`` carries instances of the wire-spec
     capability sub-models. Validates the dataclass widening (commit 2 of
