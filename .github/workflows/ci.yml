@@ -482,10 +482,9 @@ jobs:
   storyboard-v3-reference-seller:
     name: AdCP storyboard runner — v3 reference seller (translator)
     runs-on: ubuntu-latest
-    # Non-blocking until storyboard tooling settles for the translator
-    # pattern. Promote to required once the JS mock-server's
-    # sales-guaranteed surface is canonical.
-    continue-on-error: true
+    # Required as of @adcp/sdk@6.7.0 (sales-guaranteed mock-server
+    # canonicalized; closes #449). Storyboard run + traffic-counter
+    # assertions gate every PR's translator-pattern conformance.
     services:
       postgres:
         image: postgres:16
@@ -529,6 +528,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,pg]"
+          # Example-local deps: the v3 reference seller imports
+          # sqlalchemy + asyncpg (async Postgres driver) which aren't
+          # in the SDK's [dev,pg] extras. Install inline rather than
+          # adding an example-only optional-dependencies group.
+          pip install "sqlalchemy>=2.0" "asyncpg>=0.29" "respx>=0.20"
 
       - name: Pre-install @adcp/sdk (once, then call binary directly)
         run: |
