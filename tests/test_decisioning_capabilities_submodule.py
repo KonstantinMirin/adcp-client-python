@@ -132,3 +132,97 @@ def test_submodule_all_matches_imports() -> None:
 
     for name in caps.__all__:
         assert hasattr(caps, name), f"__all__ lists {name!r} but it is not importable"
+
+
+def test_decisioning_capabilities_accepts_structured_fields() -> None:
+    """``DecisioningCapabilities`` carries instances of the wire-spec
+    capability sub-models. Validates the dataclass widening (commit 2 of
+    the projection work) — every wire block has a corresponding field.
+
+    No projection is exercised here; that lands in the projection-rewrite
+    commit. The aim is to confirm adopters can declare every spec block
+    and the dataclass holds the value typed.
+    """
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import (
+        Account,
+        Adcp,
+        Brand,
+        ComplianceTesting,
+        Creative,
+        Execution,
+        GeoMetros,
+        Governance,
+        IdempotencySupported,
+        Identity,
+        MediaBuy,
+        RequestSigning,
+        Signals,
+        SupportedProtocol,
+        Targeting,
+        WebhookSigning,
+    )
+
+    # SponsoredIntelligence has required nested fields (endpoint, capabilities)
+    # — constructing it requires more setup than this widening-smoke test
+    # warrants. Adopters who claim sponsored_intelligence wire it explicitly;
+    # platforms that don't claim it leave the field None.
+    caps = DecisioningCapabilities(
+        specialisms=["sales-non-guaranteed"],
+        adcp=Adcp(
+            major_versions=[3],
+            idempotency=IdempotencySupported(supported=True, replay_ttl_seconds=86400),
+        ),
+        account=Account(supported_billing=["operator"]),
+        media_buy=MediaBuy(
+            supported_pricing_models=["cpm"],
+            execution=Execution(
+                targeting=Targeting(
+                    geo_countries=True,
+                    geo_metros=GeoMetros(nielsen_dma=True),
+                ),
+            ),
+        ),
+        signals=Signals(),
+        governance=Governance(),
+        brand=Brand(),
+        creative=Creative(),
+        request_signing=RequestSigning(supported=True),
+        webhook_signing=WebhookSigning(supported=True),
+        identity=Identity(),
+        compliance_testing=ComplianceTesting(scenarios=["force_media_buy_status"]),
+        supported_protocols=[SupportedProtocol.media_buy],
+    )
+
+    # Spot-check that the typed fields round-trip.
+    assert caps.adcp is not None
+    assert caps.adcp.major_versions[0].root == 3
+    assert caps.account is not None
+    assert caps.media_buy is not None
+    assert caps.media_buy.execution is not None
+    assert caps.media_buy.execution.targeting is not None
+    assert caps.media_buy.execution.targeting.geo_countries is True
+    assert caps.supported_protocols == [SupportedProtocol.media_buy]
+
+
+def test_decisioning_capabilities_legacy_fields_still_default_empty() -> None:
+    """Legacy flat fields (``pricing_models``, ``supported_billing``,
+    ``channels``) still construct as empty lists by default — back-compat
+    contract is preserved at the dataclass level. Deprecation warnings
+    fire later at projection time, not at construction.
+    """
+    from adcp.decisioning import DecisioningCapabilities
+
+    caps = DecisioningCapabilities(specialisms=["sales-non-guaranteed"])
+
+    assert caps.pricing_models == []
+    assert caps.supported_billing == []
+    assert caps.channels == []
+    assert caps.creative_agents == []
+    assert caps.config == {}
+    assert caps.governance_aware is False
+    # New structured fields default to None
+    assert caps.adcp is None
+    assert caps.account is None
+    assert caps.media_buy is None
+    assert caps.supported_protocols is None
