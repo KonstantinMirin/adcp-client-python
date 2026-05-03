@@ -46,8 +46,13 @@ def test_platform_satisfies_decisioning_protocol() -> None:
     assert issubclass(V3ReferenceSeller, SalesPlatform)
     # Translator claims BOTH guaranteed and non-guaranteed sales —
     # real GAM-shaped publishers sell both surfaces.
-    assert "sales-non-guaranteed" in V3ReferenceSeller.capabilities.specialisms
-    assert "sales-guaranteed" in V3ReferenceSeller.capabilities.specialisms
+    # ``specialisms`` is ``list[Specialism | str]`` (#479) — extract slug
+    # uniformly via ``.value``.
+    declared = {
+        s.value if hasattr(s, "value") else s for s in V3ReferenceSeller.capabilities.specialisms
+    }
+    assert "sales-non-guaranteed" in declared
+    assert "sales-guaranteed" in declared
 
 
 def test_buyer_registry_satisfies_protocol() -> None:
