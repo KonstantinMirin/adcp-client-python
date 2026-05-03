@@ -233,6 +233,97 @@ def test_explicit_supported_protocols_does_not_emit_auto_derive_warning() -> Non
     assert "auto-derive" not in messages
 
 
+def test_compliance_testing_without_controller_warns_at_serve() -> None:
+    """A platform that declares ``compliance_testing`` but doesn't wire
+    a ``test_controller=`` to ``serve()`` advertises a capability it
+    can't honor — buyers calling ``comply_test_controller`` will fail.
+    The framework soft-warns at ``serve()`` time so the adopter sees
+    the mismatch immediately, before the first buyer query.
+
+    Soft-warn (not fail-fast) because adopters may legitimately stage
+    the capability declaration ahead of the controller wiring (e.g.
+    rolling out the change across two PRs).
+    """
+    import warnings
+
+    from adcp.decisioning import (
+        DecisioningCapabilities,
+        DecisioningPlatform,
+        SingletonAccounts,
+    )
+    from adcp.decisioning.capabilities import ComplianceTesting, SupportedProtocol
+    from adcp.decisioning.serve import serve
+
+    class _TestPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(
+            supported_protocols=[SupportedProtocol.media_buy],
+            supported_billing=["operator"],
+            compliance_testing=ComplianceTesting(scenarios=["force_media_buy_status"]),
+        )
+        accounts = SingletonAccounts(account_id="test")
+
+    # Stub out the actual MCP server boot so the test doesn't open a port.
+    # We're checking the warning fires before _adcp_serve is invoked.
+    import unittest.mock as mock
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with mock.patch("adcp.server.serve.serve"):
+            serve(_TestPlatform())
+
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "compliance_testing" in messages
+    assert "test_controller" in messages
+
+
+def test_compliance_testing_with_controller_does_not_warn() -> None:
+    """When ``test_controller`` is wired alongside the
+    ``compliance_testing`` declaration, the seller is consistent and no
+    footgun warning fires."""
+    import warnings
+
+    from adcp.decisioning import (
+        DecisioningCapabilities,
+        DecisioningPlatform,
+        SingletonAccounts,
+    )
+    from adcp.decisioning.capabilities import ComplianceTesting, SupportedProtocol
+    from adcp.decisioning.serve import serve
+    from adcp.server import TestControllerStore
+
+    class _TestPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(
+            supported_protocols=[SupportedProtocol.media_buy],
+            supported_billing=["operator"],
+            compliance_testing=ComplianceTesting(scenarios=["force_media_buy_status"]),
+        )
+        accounts = SingletonAccounts(account_id="test")
+
+    import unittest.mock as mock
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with mock.patch("adcp.server.serve.serve"):
+            serve(_TestPlatform(), test_controller=TestControllerStore())
+
+    footgun = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning)
+        and "compliance_testing" in str(w.message)
+        and "test_controller" in str(w.message)
+    ]
+    assert not footgun, (
+        f"Expected no compliance_testing footgun warning when controller is wired; "
+        f"got: {[str(w.message) for w in footgun]}"
+    )
+
+
 def test_signals_features_and_content_standards_re_exported() -> None:
     """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
     and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which

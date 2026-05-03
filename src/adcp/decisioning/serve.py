@@ -30,6 +30,7 @@ Stage-3 wiring per the dispatch design doc:
 from __future__ import annotations
 
 import os
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 
@@ -412,6 +413,38 @@ def serve(
     ):
         serve_kwargs["test_controller_account_resolver"] = _build_test_controller_account_resolver(
             platform
+        )
+
+    # Compliance-testing capability footgun — adopter declared
+    # ``capabilities.compliance_testing`` but didn't wire a
+    # ``test_controller=`` to ``serve()``. Buyers reading the projected
+    # capabilities response will see ``compliance_testing`` advertised
+    # and try to drive scenarios via ``comply_test_controller`` — which
+    # then 404s because no controller is registered. Soft-warn rather
+    # than fail-fast: adopters may legitimately declare the capability
+    # while the controller is being wired in a follow-up PR, and a hard
+    # boot error blocks that staged rollout.
+    if (
+        platform.capabilities.compliance_testing is not None
+        and serve_kwargs.get("test_controller") is None
+    ):
+        warnings.warn(
+            (
+                "DecisioningCapabilities.compliance_testing is declared but "
+                "no test_controller= was passed to serve(). Buyers reading "
+                "this seller's capabilities will see compliance_testing "
+                "advertised and try to drive scenarios via "
+                "comply_test_controller — which will fail because no "
+                "controller is registered. Either pass "
+                "``test_controller=TestControllerStore(...)`` to ``serve()`` "
+                "OR drop ``compliance_testing`` from "
+                "``DecisioningCapabilities``. Capability declaration is a "
+                "buyer-facing commitment; mismatched-vs-implemented "
+                "advertisements are the kind of footgun the spec asks "
+                "sellers to avoid."
+            ),
+            UserWarning,
+            stacklevel=2,
         )
 
     server_name = name or type(platform).__name__
