@@ -188,7 +188,14 @@ def create_media_buy_store(
     assignment site (``platform.media_buy_store = ...``) without
     aliasing the underlying persistence layer.
     """
-    claimed = set(capabilities.specialisms) & _OVERLAY_ECHO_SPECIALISMS
+    # ``capabilities.specialisms`` is ``list[Specialism | str]`` per #479
+    # — spec-known slugs are coerced to ``Specialism`` enum members at
+    # construction; novel/typo slugs pass through as strings. Extract the
+    # slug uniformly before set intersection.
+    declared_slugs = {
+        entry.value if hasattr(entry, "value") else entry for entry in capabilities.specialisms
+    }
+    claimed = declared_slugs & _OVERLAY_ECHO_SPECIALISMS
     if claimed:
         return _ActiveMediaBuyStore(adopter_store)
     return _NoopMediaBuyStore(adopter_store)
