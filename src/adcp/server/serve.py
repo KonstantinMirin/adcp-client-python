@@ -444,6 +444,9 @@ def serve(
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
+    allowed_hosts: Sequence[str] | None = None,
+    allowed_origins: Sequence[str] | None = None,
+    enable_dns_rebinding_protection: bool | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -691,6 +694,9 @@ def serve(
             base_url=base_url,
             specialisms=specialisms,
             description=description,
+            allowed_hosts=allowed_hosts,
+            allowed_origins=allowed_origins,
+            enable_dns_rebinding_protection=enable_dns_rebinding_protection,
         )
     elif transport == "both":
         _serve_mcp_and_a2a(
@@ -713,6 +719,9 @@ def serve(
             base_url=base_url,
             specialisms=specialisms,
             description=description,
+            allowed_hosts=allowed_hosts,
+            allowed_origins=allowed_origins,
+            enable_dns_rebinding_protection=enable_dns_rebinding_protection,
         )
     else:
         valid = ", ".join(sorted(("a2a", "both", "streamable-http", "sse", "stdio")))
@@ -996,6 +1005,9 @@ def _serve_mcp(
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
+    allowed_hosts: Sequence[str] | None = None,
+    allowed_origins: Sequence[str] | None = None,
+    enable_dns_rebinding_protection: bool | None = None,
 ) -> None:
     """Start an MCP server."""
     mcp = create_mcp_server(
@@ -1010,6 +1022,9 @@ def _serve_mcp(
         advertise_all=advertise_all,
         streaming_responses=streaming_responses,
         validation=validation,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+        enable_dns_rebinding_protection=enable_dns_rebinding_protection,
     )
 
     if test_controller is not None:
@@ -1199,6 +1214,9 @@ def _build_mcp_and_a2a_app(
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
+    allowed_hosts: Sequence[str] | None = None,
+    allowed_origins: Sequence[str] | None = None,
+    enable_dns_rebinding_protection: bool | None = None,
 ) -> Any:
     """Build the unified MCP+A2A ASGI app without starting a server.
 
@@ -1233,6 +1251,9 @@ def _build_mcp_and_a2a_app(
         advertise_all=advertise_all,
         streaming_responses=streaming_responses,
         validation=validation,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+        enable_dns_rebinding_protection=enable_dns_rebinding_protection,
     )
     if test_controller is not None:
         from adcp.server.test_controller import register_test_controller
@@ -1336,6 +1357,9 @@ def _serve_mcp_and_a2a(
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
+    allowed_hosts: Sequence[str] | None = None,
+    allowed_origins: Sequence[str] | None = None,
+    enable_dns_rebinding_protection: bool | None = None,
 ) -> None:
     """Serve MCP and A2A on a single port via path dispatch.
 
@@ -1377,6 +1401,9 @@ def _serve_mcp_and_a2a(
         base_url=base_url,
         specialisms=specialisms,
         description=description,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+        enable_dns_rebinding_protection=enable_dns_rebinding_protection,
     )
     app = _apply_asgi_middleware(app, asgi_middleware)
 
@@ -1411,6 +1438,9 @@ def create_mcp_server(
     advertise_all: bool = False,
     streaming_responses: bool = False,
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
+    allowed_hosts: Sequence[str] | None = None,
+    allowed_origins: Sequence[str] | None = None,
+    enable_dns_rebinding_protection: bool | None = None,
 ) -> Any:
     """Create a FastMCP server from an ADCP handler without starting it.
 
@@ -1526,6 +1556,32 @@ def create_mcp_server(
         # AdCP tools, which return one complete envelope per request.
         mcp.settings.stateless_http = True
         mcp.settings.json_response = True
+    # FastMCP's TransportSecurityMiddleware enforces DNS-rebinding
+    # protection: the default ``allowed_hosts`` accepts only loopback
+    # patterns (``127.0.0.1:*``, ``localhost:*``, ``[::1]:*``). Adopters
+    # serving multi-tenant subdomain hosts (``acme.example.com``,
+    # ``acme.localhost``) extend the list or the transport returns
+    # ``421 Misdirected Request`` and MCP discovery fails. Adopters
+    # whose outer ASGI middleware already validates hosts against a
+    # tenant table (e.g. :class:`SubdomainTenantMiddleware`) can set
+    # ``enable_dns_rebinding_protection=False`` so the MCP-layer check
+    # doesn't duplicate the upstream validation.
+    if (
+        enable_dns_rebinding_protection is not None
+        or allowed_hosts is not None
+        or allowed_origins is not None
+    ):
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        if mcp.settings.transport_security is None:
+            mcp.settings.transport_security = TransportSecuritySettings()
+        ts = mcp.settings.transport_security
+        if enable_dns_rebinding_protection is not None:
+            ts.enable_dns_rebinding_protection = enable_dns_rebinding_protection
+        if allowed_hosts:
+            ts.allowed_hosts = [*ts.allowed_hosts, *allowed_hosts]
+        if allowed_origins:
+            ts.allowed_origins = [*ts.allowed_origins, *allowed_origins]
     _register_handler_tools(
         mcp,
         handler,

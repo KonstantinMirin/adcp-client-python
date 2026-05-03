@@ -90,6 +90,14 @@ async def _bootstrap_schema(engine) -> None:
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # asyncpg binds connection-internal Future objects to the loop
+    # they were opened on. Bootstrapping via ``asyncio.run`` runs on
+    # a transient loop that closes when ``asyncio.run`` returns; if
+    # those connections stay in the pool, uvicorn's own loop trips
+    # ``RuntimeError: got Future attached to a different loop`` on
+    # the first request. Dispose so uvicorn opens a fresh pool on
+    # its own loop.
+    await engine.dispose()
 
 
 def main() -> None:
@@ -170,6 +178,27 @@ def main() -> None:
         validation=ValidationHookConfig(requests="strict", responses="strict"),
         mock_ad_server=mock_ad_server,
         enable_debug_endpoints=True,
+        # The reference platform doesn't emit completion webhooks —
+        # turn off the F12 auto-emit gate so server boot doesn't trip
+        # ``validate_webhook_sender_for_platform``. Adopters whose
+        # platforms need webhook delivery wire a
+        # :class:`WebhookSender` (or
+        # :class:`InMemoryWebhookDeliverySupervisor`) and remove this
+        # kwarg — see the webhook_supervisor module for the wiring
+        # pattern.
+        auto_emit_completion_webhooks=False,
+        # FastMCP's TransportSecurityMiddleware enforces DNS-rebinding
+        # protection: its default ``allowed_hosts`` accepts only
+        # loopback (``127.0.0.1:*``, ``localhost:*``, ``[::1]:*``), so
+        # subdomain hosts like ``acme.localhost:3001`` are rejected
+        # with ``421 Misdirected Request``. ``SubdomainTenantMiddleware``
+        # above already validates the Host header against the seeded
+        # tenant table — that's the load-bearing host check for this
+        # seller. Disabling the MCP-layer check avoids duplicating
+        # the same validation against a static, hard-to-extend list.
+        # Adopters that don't run a tenant-aware ASGI middleware leave
+        # this kwarg unset to keep the FastMCP defaults active.
+        enable_dns_rebinding_protection=False,
     )
 
 

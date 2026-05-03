@@ -396,8 +396,10 @@ jobs:
           for i in $(seq 1 60); do
             # Any HTTP response (including 405 on GET to a POST-only endpoint)
             # means the server is up and accepting connections.
+            # ``||`` runs on the assignment so curl's "000" stdout and the
+            # fallback don't concatenate when the connection is refused.
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 \
-              http://127.0.0.1:3001/mcp 2>/dev/null || echo "000")
+              http://127.0.0.1:3001/mcp 2>/dev/null) || HTTP_CODE="000"
             if [ "$HTTP_CODE" != "000" ]; then
               echo "Seller agent ready (HTTP ${HTTP_CODE}, pid ${AGENT_PID})"
               break
@@ -554,8 +556,10 @@ jobs:
           # renames or removes a specific network. The endpoint is
           # always present on the harness-side mock.
           for i in $(seq 1 120); do
+            # ``||`` runs on the assignment so curl's "000" stdout and the
+            # fallback don't concatenate when the connection is refused.
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 \
-              http://127.0.0.1:4503/_debug/traffic 2>/dev/null || echo "000")
+              http://127.0.0.1:4503/_debug/traffic 2>/dev/null) || HTTP_CODE="000"
             if [ "$HTTP_CODE" = "200" ]; then
               echo "Upstream mock ready (HTTP 200, pid $MOCK_PID, $i polls)"
               break
@@ -589,8 +593,10 @@ jobs:
           SELLER_PID=$!
           echo "SELLER_PID=$SELLER_PID" >> "$GITHUB_ENV"
           for i in $(seq 1 60); do
+            # ``||`` runs on the assignment so curl's "000" stdout and the
+            # fallback don't concatenate when the connection is refused.
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 1 \
-              http://127.0.0.1:3001/mcp 2>/dev/null || echo "000")
+              http://127.0.0.1:3001/mcp 2>/dev/null) || HTTP_CODE="000"
             if [ "$HTTP_CODE" != "000" ]; then
               echo "Seller ready (HTTP ${HTTP_CODE}, pid ${SELLER_PID})"
               break
