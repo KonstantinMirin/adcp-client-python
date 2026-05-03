@@ -462,6 +462,123 @@ async def test_projection_channels_warns_but_does_not_project(make_handler) -> N
 
 
 @pytest.mark.asyncio
+async def test_projection_emits_idempotency_unsupported_through_handler(make_handler) -> None:
+    """``IdempotencyUnsupported`` arm projects with the discriminator and
+    no ``replay_ttl_seconds`` — guards against the discriminated-union
+    projection regressing to always-supported."""
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import Account, Adcp, IdempotencyUnsupported
+
+    handler = make_handler(
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            adcp=Adcp(major_versions=[3], idempotency=IdempotencyUnsupported(supported=False)),
+            account=Account(supported_billing=["operator"]),
+        )
+    )
+    response = await handler.get_adcp_capabilities()
+    assert response["adcp"]["idempotency"] == {"supported": False}
+    # The ``replay_ttl_seconds`` field MUST NOT appear on the unsupported arm
+    # (spec invariant — IdempotencyUnsupported's "not required" clause).
+    assert "replay_ttl_seconds" not in response["adcp"]["idempotency"]
+
+
+@pytest.mark.asyncio
+async def test_projection_carries_major_versions_through_adcp_block(make_handler) -> None:
+    """When the adopter declares ``Adcp(major_versions=[3, 4], ...)``,
+    the projected response carries ``[3, 4]`` — not the helper's default
+    of ``[3]``. Guards against silent override-loss when the structured
+    Adcp block is set."""
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import Account, Adcp, IdempotencySupported
+
+    handler = make_handler(
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            adcp=Adcp(
+                major_versions=[3, 4],
+                idempotency=IdempotencySupported(supported=True, replay_ttl_seconds=86400),
+            ),
+            account=Account(supported_billing=["operator"]),
+        )
+    )
+    response = await handler.get_adcp_capabilities()
+    assert response["adcp"]["major_versions"] == [3, 4]
+
+
+@pytest.mark.asyncio
+async def test_projection_si_block_constructs_with_submodule_imports(make_handler) -> None:
+    """Sponsored Intelligence requires nested ``Endpoint`` and
+    ``SiCapabilities`` blocks. Adopters constructing SI declarations
+    pull these from :mod:`adcp.decisioning.capabilities` — the
+    re-export coverage test for the submodule's ``__all__`` is the
+    only thing keeping deeply-nested SI declarations off ``generated_poc``
+    direct imports.
+    """
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import (
+        Endpoint,
+        SiCapabilities,
+        SponsoredIntelligence,
+        Transport,
+    )
+
+    # ``Endpoint.transports`` is required + minItems: 1; construct one
+    # transport via the re-exported ``Transport`` type.
+    si = SponsoredIntelligence(
+        endpoint=Endpoint(transports=[Transport(type="mcp", url="https://si.example.com/mcp")]),
+        capabilities=SiCapabilities(),
+    )
+    handler = make_handler(
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            sponsored_intelligence=si,
+        )
+    )
+    response = await handler.get_adcp_capabilities()
+    assert "sponsored_intelligence" in response
+
+
+def test_bare_capabilities_emits_empty_supported_protocols_at_boot() -> None:
+    """A platform with no specialisms and no ``supported_protocols``
+    override emits an empty list at projection — the boot-time validator
+    surfaces it as a configuration error (per spec ``minItems: 1``)
+    rather than the SDK silently lying ``["media_buy"]``."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from adcp.decisioning import (
+        DecisioningCapabilities,
+        DecisioningPlatform,
+        InMemoryTaskRegistry,
+        SingletonAccounts,
+    )
+    from adcp.decisioning.handler import PlatformHandler
+    from adcp.decisioning.types import AdcpError
+    from adcp.decisioning.validate_capabilities import validate_capabilities_response_shape
+
+    class _Bare(DecisioningPlatform):
+        capabilities = DecisioningCapabilities()
+        accounts = SingletonAccounts(account_id="bare")
+
+    handler = PlatformHandler(
+        _Bare(),
+        executor=ThreadPoolExecutor(max_workers=1),
+        registry=InMemoryTaskRegistry(),
+    )
+    with pytest.raises(AdcpError) as excinfo:
+        validate_capabilities_response_shape(handler)
+    # Boot validator wraps the schema-validator's structured issues into
+    # ``details``; one of them MUST name ``supported_protocols`` so the
+    # operator can find the misconfiguration.
+    err = excinfo.value
+    issues = err.details.get("issues", []) if err.details else []
+    issue_text = " ".join(f"{i.get('pointer', '')} {i.get('message', '')}" for i in issues)
+    assert (
+        "supported_protocols" in issue_text
+    ), f"Expected validator to surface supported_protocols misconfiguration; got: {err}"
+
+
+@pytest.mark.asyncio
 async def test_projection_validates_against_response_schema(make_handler) -> None:
     """Round-trip a fully-populated declaration through the projection and
     confirm the response validates against

@@ -32,6 +32,48 @@ Layering::
 
 from __future__ import annotations
 
+from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+    A2ui,
+    Adcp,
+    AgeRestriction,
+    AttributionWindow,
+    AudienceTargeting,
+    Avatar,
+    Brand,
+    Commerce,
+    ComplianceTesting,
+    Components,
+    CompromiseNotification,
+    ConversionTracking,
+    CreativeSpecs,
+    Endpoint,
+    Execution,
+    Features,
+    GeoMetros,
+    GeoPostalAreas,
+    GeoProximity,
+    Governance,
+    Idempotency,
+    Identity,
+    KeyOrigins,
+    KeywordTargets,
+    MatchingLatencyHours,
+    Modalities,
+    NegativeKeywords,
+    Portfolio,
+    RequestSigning,
+    Signals,
+    Specialism,
+    SponsoredIntelligence,
+    SupportedProtocol,
+    Targeting,
+    Transport,
+    TrustedMatch,
+    Video,
+    Voice,
+    WebhookSigning,
+)
+
 # Top-level capability protocol blocks.
 #
 # Three names (``Account``, ``MediaBuy``, ``Creative``) collide with
@@ -46,35 +88,14 @@ from __future__ import annotations
 from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
     Account as CapabilitiesAccount,
 )
+
+# ``Capabilities`` (line 580 of the generated module) is the SI-block's
+# inner ``capabilities`` field type — modalities / components / commerce
+# / a2ui / mcp_apps. Re-aliased here as ``SiCapabilities`` to disambiguate
+# from :class:`adcp.decisioning.DecisioningCapabilities` and to make the
+# import site self-documenting.
 from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
-    Adcp,
-    AgeRestriction,
-    AttributionWindow,
-    AudienceTargeting,
-    Brand,
-    ComplianceTesting,
-    ConversionTracking,
-    CreativeSpecs,
-    Execution,
-    Features,
-    GeoMetros,
-    GeoPostalAreas,
-    GeoProximity,
-    Governance,
-    Idempotency,
-    Identity,
-    KeywordTargets,
-    MatchingLatencyHours,
-    NegativeKeywords,
-    Portfolio,
-    RequestSigning,
-    Signals,
-    Specialism,
-    SponsoredIntelligence,
-    SupportedProtocol,
-    Targeting,
-    TrustedMatch,
-    WebhookSigning,
+    Capabilities as SiCapabilities,
 )
 from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
     Creative as CapabilitiesCreative,
@@ -97,17 +118,23 @@ from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response im
 )
 
 __all__ = [
+    "A2ui",
     "Adcp",
     "AgeRestriction",
     "AttributionWindow",
     "AudienceTargeting",
+    "Avatar",
     "Brand",
     "CapabilitiesAccount",
     "CapabilitiesCreative",
     "CapabilitiesMediaBuy",
+    "Commerce",
     "ComplianceTesting",
+    "Components",
+    "CompromiseNotification",
     "ConversionTracking",
     "CreativeSpecs",
+    "Endpoint",
     "Execution",
     "Features",
     "GeoMetros",
@@ -118,16 +145,22 @@ __all__ = [
     "IdempotencySupported",
     "IdempotencyUnsupported",
     "Identity",
+    "KeyOrigins",
     "KeywordTargets",
     "MatchingLatencyHours",
+    "Modalities",
     "NegativeKeywords",
     "Portfolio",
     "RequestSigning",
     "Signals",
+    "SiCapabilities",
     "Specialism",
     "SponsoredIntelligence",
     "SupportedProtocol",
     "Targeting",
+    "Transport",
     "TrustedMatch",
+    "Video",
+    "Voice",
     "WebhookSigning",
 ]

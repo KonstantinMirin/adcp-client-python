@@ -38,13 +38,24 @@ from adcp.decisioning.serve import (
 
 
 class _BarePlatform(DecisioningPlatform):
-    # ``supported_billing`` is declared so the boot-time
-    # capabilities-shape validator (DX #422) accepts the projection.
-    # The bare-specialism case projects to
-    # ``supported_protocols=['media_buy']`` (handler.py fallback for
-    # minItems: 1 satisfaction); the spec then requires
-    # ``account.supported_billing``.
-    capabilities = DecisioningCapabilities(supported_billing=("agent",))
+    # Declares ``supported_protocols=["media_buy"]`` explicitly via the
+    # override path — the test platform has no business-logic methods,
+    # so we can't claim ``sales-non-guaranteed`` (would trip the
+    # SalesPlatform method-coverage validator). The override is the
+    # 5%-case escape hatch for platforms claiming a protocol without
+    # an enumerated specialism. (Pre-#479 the handler silently defaulted
+    # ``supported_protocols`` to ``["media_buy"]`` when no specialism
+    # was declared; that masked storyboard-commitment lies. The new
+    # projection emits empty list and the boot validator rejects it,
+    # forcing adopters — including this fixture — to be explicit.)
+    # ``supported_billing`` is required by the spec when ``media_buy``
+    # is claimed.
+    from adcp.decisioning.capabilities import SupportedProtocol  # noqa: PLC0415
+
+    capabilities = DecisioningCapabilities(
+        supported_protocols=[SupportedProtocol.media_buy],
+        supported_billing=("agent",),
+    )
     accounts = SingletonAccounts(account_id="hello")
 
 

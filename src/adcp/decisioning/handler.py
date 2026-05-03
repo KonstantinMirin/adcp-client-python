@@ -905,30 +905,38 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             for entry in caps.specialisms:
                 slug = entry.value if hasattr(entry, "value") else entry
                 protocols.update(SPECIALISM_TO_PROTOCOLS.get(slug, frozenset()))
-            # ``supported_protocols`` is required + minItems: 1. When a
-            # platform declares only meta specialisms (governance-aware-seller
-            # alone, signed-requests alone), we have no protocol to claim —
-            # fall through to ``media_buy`` as the most common default so
-            # the capabilities response stays spec-valid.
-            supported_protocols = sorted(protocols) if protocols else ["media_buy"]
+            # ``supported_protocols`` is the storyboard commitment per
+            # spec. When no declared specialism resolves to a protocol
+            # (e.g. only meta specialisms like ``governance-aware-seller``
+            # claimed, or no specialisms at all), emit an empty list
+            # rather than silently default to ``["media_buy"]`` — claiming
+            # a protocol the adopter never declared forces them to fail
+            # the baseline storyboard for that protocol. The boot-time
+            # validator
+            # (:func:`adcp.decisioning.validate_capabilities.validate_capabilities_response_shape`)
+            # catches the empty list as an explicit configuration error,
+            # giving adopters a clean failure pointing at the declaration
+            # site rather than a wire-shaped lie. Adopters who claim a
+            # protocol without an enumerated specialism set
+            # ``supported_protocols`` explicitly.
+            supported_protocols = sorted(protocols)
 
-        # ----- adcp.idempotency: structured > default -----
-        idempotency_payload: dict[str, Any]
-        if caps.adcp is not None:
-            # Pull the ``Adcp`` block's nested idempotency declaration
-            # through ``model_dump`` so the discriminated-union arm
-            # (supported / unsupported) serializes correctly.
-            adcp_dump = caps.adcp.model_dump(mode="json", exclude_none=True)
-            idempotency_payload = adcp_dump.get("idempotency", {"supported": False})
-        else:
-            idempotency_payload = {"supported": False}
-
+        # ----- adcp block: structured > default -----
+        # When the adopter declares a full :class:`Adcp` block, take it
+        # in its entirety so ``major_versions`` and any future fields
+        # (``supported_versions``, ``build_version``) get carried
+        # through to the wire. When unset, the envelope helper's default
+        # of ``major_versions=[3]`` plus ``idempotency={"supported": False}``
+        # keeps the response spec-valid (though buyers will treat the
+        # seller as retry-unsafe).
         from adcp.server.responses import capabilities_response
 
         response = capabilities_response(
             supported_protocols,
-            idempotency=idempotency_payload,
+            idempotency={"supported": False},
         )
+        if caps.adcp is not None:
+            response["adcp"] = caps.adcp.model_dump(mode="json", exclude_none=True)
 
         # ----- structured capability blocks (model_dump for each) -----
         # Each block emits only when the adopter has declared a value.
