@@ -419,4 +419,7 @@ def test_capabilities_can_opt_into_governance_aware() -> None:
         governance_aware=True,
     )
     assert caps.governance_aware is True
-    assert "governance-spend-authority" in caps.specialisms
+    # ``specialisms`` is normalized to ``list[Specialism | str]`` —
+    # spec-known slugs are coerced to enum members at construction.
+    slugs = [s.value if hasattr(s, "value") else s for s in caps.specialisms]
+    assert "governance-spend-authority" in slugs

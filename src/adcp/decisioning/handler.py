@@ -653,7 +653,11 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         """
         claimed = self._platform.capabilities.specialisms
         serving: set[str] = set()
-        for slug in claimed:
+        for entry in claimed:
+            # ``specialisms`` is ``list[Specialism | str]`` — spec-known
+            # entries are coerced to enum by ``__post_init__``; novel /
+            # pre-spec slugs pass through as strings.
+            slug = entry.value if hasattr(entry, "value") else entry
             tools = SPECIALISM_TO_ADVERTISED_TOOLS.get(slug)
             if tools is not None:
                 serving |= set(tools)
@@ -872,7 +876,9 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         caps = self._platform.capabilities
 
         protocols: set[str] = set()
-        for slug in caps.specialisms:
+        for entry in caps.specialisms:
+            # ``specialisms`` is ``list[Specialism | str]`` — extract slug.
+            slug = entry.value if hasattr(entry, "value") else entry
             protocols.update(SPECIALISM_TO_PROTOCOLS.get(slug, frozenset()))
         # ``supported_protocols`` is required + minItems: 1. When a
         # platform declares only meta specialisms (governance-aware-seller

@@ -25,6 +25,7 @@ from adcp.types.capabilities import (
     Identity,
     RequestSigning,
     Signals,
+    Specialism,
     SponsoredIntelligence,
     SupportedProtocol,
     WebhookSigning,
@@ -155,7 +156,7 @@ class DecisioningCapabilities:
     """
 
     # SDK-internal dispatch (not wire fields)
-    specialisms: list[str] = field(default_factory=list)
+    specialisms: list[Specialism | str] = field(default_factory=list)
     creative_agents: list[Any] = field(default_factory=list)
     config: dict[str, Any] = field(default_factory=dict)
     governance_aware: bool = False
@@ -179,6 +180,39 @@ class DecisioningCapabilities:
     channels: list[str] = field(default_factory=list)
     pricing_models: list[str] = field(default_factory=list)
     supported_billing: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Normalize spec-known specialism strings to enum members.
+
+        Accepts either ``Specialism`` enum members (the type-safe form
+        adopters should prefer) or AdCP slug strings (back-compat with
+        existing code, novel pre-spec slugs, and intentional-typo paths
+        the validator wants to diagnose). Strings that match a known
+        ``Specialism`` value are coerced; unknown strings pass through
+        unchanged so :func:`adcp.decisioning.dispatch.validate_platform`
+        can surface them with typo-detection or forward-compat warnings
+        at server boot.
+
+        Adopter code is encouraged to import ``Specialism`` from
+        :mod:`adcp.decisioning.capabilities` and write
+        ``specialisms=[Specialism.sales_non_guaranteed]`` for clean
+        type checks. The string path stays available for config-driven
+        declarations, downstream test code, and pre-spec experimental
+        slugs.
+        """
+        coerced: list[Specialism | str] = []
+        for entry in self.specialisms:
+            if isinstance(entry, Specialism):
+                coerced.append(entry)
+                continue
+            try:
+                coerced.append(Specialism(entry))
+            except ValueError:
+                # Novel / typo / pre-spec slug — keep as string so the
+                # validator's typo-vs-novel-vs-unenforced classification
+                # at boot can surface the right diagnostic.
+                coerced.append(entry)
+        self.specialisms = coerced
 
 
 #: Specialisms that depend on framework-supplied
