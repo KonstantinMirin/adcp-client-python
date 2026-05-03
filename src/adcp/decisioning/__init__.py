@@ -114,6 +114,13 @@ from adcp.decisioning.platform import (
     DecisioningPlatform,
 )
 from adcp.decisioning.platform_router import PlatformRouter
+from adcp.decisioning.property_list import (
+    PropertyListFetcher,
+    filter_products_by_property_list,
+    property_list_capability_enabled,
+    resolve_property_list,
+    validate_property_list_config,
+)
 from adcp.decisioning.registry import (
     ApiKeyCredential,
     BillingMode,
@@ -298,9 +305,14 @@ __all__ = [
     "PostgresTaskRegistry",
     "Proposal",
     "PropertyList",
+    "PropertyListFetcher",
     "PropertyListReference",
     "ProductConfigStore",
+    "property_list_capability_enabled",
     "PropertyListsPlatform",
+    "filter_products_by_property_list",
+    "resolve_property_list",
+    "validate_property_list_config",
     "RateLimitedBuyerAgentRegistry",
     "RateLimitedError",
     "RequestContext",
