@@ -11,6 +11,7 @@ existing transport machinery.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -213,6 +214,47 @@ class DecisioningCapabilities:
                 # at boot can surface the right diagnostic.
                 coerced.append(entry)
         self.specialisms = coerced
+
+        # Deprecation warnings for legacy flat fields. Fire at
+        # construction so ``stacklevel=2`` points at the adopter's
+        # ``DecisioningCapabilities(...)`` declaration site (where the
+        # legacy field was set), not at the MCP dispatcher that later
+        # called ``get_adcp_capabilities``. Python's warnings registry
+        # deduplicates by ``(message, module, lineno)`` so each unique
+        # declaration warns once per process.
+        if self.supported_billing:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.supported_billing is deprecated; "
+                    "set ``account=Account(supported_billing=[...])`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if self.pricing_models:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.pricing_models is deprecated; "
+                    "set ``media_buy=MediaBuy(supported_pricing_models=[...])`` "
+                    "instead. Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if self.channels:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.channels is deprecated and no longer "
+                    "projected to the wire (the spec's ``portfolio.primary_channels`` "
+                    "requires ``portfolio.publisher_domains`` alongside, which the "
+                    "flat ``channels`` field cannot supply). Set "
+                    "``media_buy=MediaBuy(portfolio=Portfolio(...))`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
 
 #: Specialisms that depend on framework-supplied

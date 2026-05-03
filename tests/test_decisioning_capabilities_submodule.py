@@ -134,6 +134,49 @@ def test_submodule_all_matches_imports() -> None:
         assert hasattr(caps, name), f"__all__ lists {name!r} but it is not importable"
 
 
+def test_legacy_field_warnings_fire_at_construction_not_projection() -> None:
+    """Legacy-field DeprecationWarnings fire in
+    ``DecisioningCapabilities.__post_init__`` so ``stacklevel=2`` lands
+    on the adopter's declaration site (where the legacy field was set),
+    not at the dispatcher that calls ``get_adcp_capabilities`` later.
+
+    Construction-time emit means adopters see the migration message
+    immediately when they instantiate the dataclass — not buried in a
+    later transport layer. Multiple legacy fields on one declaration
+    fire one warning each (Python's warnings registry deduplicates by
+    ``(message, module, lineno)`` so the same line warns once per
+    process).
+    """
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            supported_billing=["operator"],
+            pricing_models=["cpm"],
+            channels=["display"],
+        )
+
+    deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+    messages = " ".join(str(w.message) for w in deprecations)
+    assert "supported_billing is deprecated" in messages
+    assert "pricing_models is deprecated" in messages
+    assert "channels is deprecated" in messages
+
+    # Construction-time emit: the warning frame's filename is NOT the
+    # handler module (where the projection runs). It's the test frame —
+    # the adopter's declaration site.
+    handler_filename_substr = "decisioning/handler.py"
+    for w in deprecations:
+        assert handler_filename_substr not in w.filename, (
+            f"Deprecation fired from {w.filename} — should fire from adopter "
+            "declaration, not handler projection."
+        )
+
+
 def test_signals_features_and_content_standards_re_exported() -> None:
     """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
     and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which
@@ -413,57 +456,59 @@ async def test_projection_supported_protocols_override(make_handler) -> None:
 
 @pytest.mark.asyncio
 async def test_projection_legacy_supported_billing_warns_and_projects(make_handler) -> None:
-    """Legacy ``supported_billing`` still projects when ``account`` is None,
-    with a DeprecationWarning."""
+    """Legacy ``supported_billing`` still projects when ``account`` is None.
+
+    The ``DeprecationWarning`` fires at construction (in
+    ``DecisioningCapabilities.__post_init__``) so ``stacklevel=2`` points at
+    the adopter's declaration site, not the dispatcher. Wrap the
+    construction in ``pytest.warns``, not the projection.
+    """
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="supported_billing"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="supported_billing"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     assert response["account"]["supported_billing"] == ["operator"]
 
 
 @pytest.mark.asyncio
 async def test_projection_legacy_pricing_models_warns_and_projects(make_handler) -> None:
-    """Legacy ``pricing_models`` still projects when ``media_buy`` is None,
-    with a DeprecationWarning."""
+    """Legacy ``pricing_models`` still projects when ``media_buy`` is None.
+    Construction-time DeprecationWarning per the same pattern."""
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="pricing_models"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
             pricing_models=["cpm", "cpc"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="pricing_models"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     assert response["media_buy"]["supported_pricing_models"] == ["cpm", "cpc"]
 
 
 @pytest.mark.asyncio
 async def test_projection_structured_wins_over_legacy(make_handler) -> None:
     """When both structured and legacy forms are set, structured wins —
-    legacy still emits its DeprecationWarning."""
+    legacy still emits its DeprecationWarning at construction."""
     from adcp.decisioning import DecisioningCapabilities
     from adcp.decisioning.capabilities import Account, MediaBuy
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             account=Account(supported_billing=["agent"]),  # structured: agent
             supported_billing=["operator"],  # legacy: operator (loses)
             media_buy=MediaBuy(supported_pricing_models=["cpcv"]),  # structured: cpcv
             pricing_models=["cpm"],  # legacy: cpm (loses)
         )
-    )
-    with pytest.warns(DeprecationWarning):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     # Structured forms win.
     billing = response["account"]["supported_billing"]
     # Note: model_dump preserves enum-value form for SupportedBillingEnum.
@@ -474,20 +519,20 @@ async def test_projection_structured_wins_over_legacy(make_handler) -> None:
 
 @pytest.mark.asyncio
 async def test_projection_channels_warns_but_does_not_project(make_handler) -> None:
-    """Legacy ``channels`` warns but is no longer projected (the spec's
-    ``portfolio.primary_channels`` requires ``portfolio.publisher_domains``
-    alongside, which the flat field can't supply)."""
+    """Legacy ``channels`` warns at construction but is no longer projected
+    (the spec's ``portfolio.primary_channels`` requires
+    ``portfolio.publisher_domains`` alongside, which the flat field can't
+    supply)."""
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="channels"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
             channels=["display", "video"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="channels"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     # No portfolio block emitted — channels alone can't satisfy the spec.
     assert "portfolio" not in response.get("media_buy", {})
 
