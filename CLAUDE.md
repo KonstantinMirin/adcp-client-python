@@ -185,6 +185,43 @@ git worktree remove /tmp/claude-issue-<N>-<slug>
 **Branch naming:** always follow `claude/issue-<N>-<short-slug>` — branch-protection
 rules enforce this pattern and PRs from non-conforming names may be rejected.
 
+## Parallel Agent Coordination
+
+When spawning parallel sub-agents, each agent must receive an explicit write-scope
+declaration in its prompt. Agents do not detect or refuse out-of-scope writes at
+runtime; this contract is the only enforcement mechanism.
+
+**Prompt template for a parallel sub-agent:**
+
+```
+Task: <what this agent should do>
+
+Read scope (consult freely):
+- <file or glob pattern>
+- <file or glob pattern>
+
+Write scope (the ONLY files this agent may create or modify — exact paths, no globs):
+- <exact file path>
+- <exact file path>
+
+Do not edit files outside your write scope even if you believe the change
+would be an improvement. If you discover during execution that you need to write
+a file outside your scope, stop and record it in your reply instead.
+```
+
+**Pre-spawn checklist:**
+
+1. List every file any agent in the group is expected to write. If an agent may
+   discover additional files during execution, note that in your scope planning —
+   do not silently expand the write scope at runtime.
+2. Partition that set so each file appears in exactly one agent's write scope.
+   For files both agents need to write, assign one owner; have the other emit the
+   required change as a note in its reply.
+3. Pass each agent its partition explicitly (see template above).
+4. After all agents complete, check for collisions:
+   `git log --name-only --oneline -<N>` (N = number of agent commits), then look
+   for the same file appearing in more than one entry.
+
 ## Additional Important Reminders
 
 **NEVER**:
