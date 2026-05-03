@@ -850,83 +850,186 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         """Project the platform's :class:`DecisioningCapabilities` into a
         spec-conformant ``get_adcp_capabilities`` response.
 
+        The projection mirrors the wire spec block-by-block. Each
+        top-level capability block (``account``, ``media_buy``,
+        ``signals``, ``governance``, ``sponsored_intelligence``,
+        ``brand``, ``creative``, ``request_signing``, ``webhook_signing``,
+        ``identity``, ``compliance_testing``) is emitted via
+        ``model_dump(mode="json", exclude_none=True)`` when the
+        adopter has declared a value.
+
         Auto-derives:
 
-        * ``supported_protocols`` from the union of
-          :data:`SPECIALISM_TO_PROTOCOLS` over the platform's claimed
-          specialisms.
-        * ``account.supported_billing`` from
-          :attr:`DecisioningCapabilities.supported_billing`. Required by
-          spec (``protocol/get-adcp-capabilities-response.json`` lines
-          129-131) whenever ``media_buy`` is in ``supported_protocols``;
-          missing here surfaces as a wire-validation failure when the
-          server is wired with ``ValidationHookConfig(responses="strict")``.
-        * ``media_buy.supported_pricing_models`` from
-          :attr:`DecisioningCapabilities.pricing_models`.
-        * ``media_buy.portfolio.primary_channels`` from
-          :attr:`DecisioningCapabilities.channels`.
+        * ``adcp.idempotency`` from
+          :attr:`DecisioningCapabilities.adcp` (when set) or defaults
+          to ``{"supported": False}`` so the response stays spec-valid.
+        * ``supported_protocols`` from
+          :attr:`DecisioningCapabilities.supported_protocols` (override)
+          or, when None, the union of :data:`SPECIALISM_TO_PROTOCOLS`
+          over the platform's claimed specialisms.
+        * Wire-level ``specialisms`` field from spec-known entries in
+          :attr:`DecisioningCapabilities.specialisms` (novel / typo
+          strings are filtered — only spec-defined slugs reach the wire).
 
-        Adopters who need to override this projection (custom
-        capability blocks, vendor-specific feature flags) override
+        Legacy-field projection (deprecation warnings emitted):
+
+        * ``account.supported_billing`` falls back to
+          :attr:`DecisioningCapabilities.supported_billing` when
+          ``account`` isn't set. ``DeprecationWarning``.
+        * ``media_buy.supported_pricing_models`` falls back to
+          :attr:`DecisioningCapabilities.pricing_models` when
+          ``media_buy`` isn't set. ``DeprecationWarning``.
+        * ``channels`` is no longer projected — the spec's
+          ``portfolio.primary_channels`` requires
+          ``portfolio.publisher_domains`` alongside, which the flat
+          ``channels`` field can't supply. Adopters who set ``channels``
+          get a ``DeprecationWarning`` pointing at
+          ``media_buy.portfolio``.
+
+        Adopters who need a custom projection (vendor-specific feature
+        flags, hand-shaped sub-blocks) override
         ``get_adcp_capabilities`` on a :class:`PlatformHandler`
-        subclass — the base shim is intentionally minimal so the
-        projection is auditable.
+        subclass.
         """
         del params, context  # Discovery; no auth or input required.
         caps = self._platform.capabilities
 
-        protocols: set[str] = set()
-        for entry in caps.specialisms:
-            # ``specialisms`` is ``list[Specialism | str]`` — extract slug.
-            slug = entry.value if hasattr(entry, "value") else entry
-            protocols.update(SPECIALISM_TO_PROTOCOLS.get(slug, frozenset()))
-        # ``supported_protocols`` is required + minItems: 1. When a
-        # platform declares only meta specialisms (governance-aware-seller
-        # alone, signed-requests alone), we have no protocol to claim
-        # — fall through to ``media_buy`` as the most common default
-        # so the capabilities response stays spec-valid. Adopters who
-        # disagree subclass and override.
-        supported_protocols = sorted(protocols) if protocols else ["media_buy"]
+        # ----- supported_protocols: explicit override > derive from specialisms -----
+        supported_protocols: list[str]
+        if caps.supported_protocols is not None:
+            supported_protocols = [
+                p.value if hasattr(p, "value") else str(p) for p in caps.supported_protocols
+            ]
+        else:
+            protocols: set[str] = set()
+            for entry in caps.specialisms:
+                slug = entry.value if hasattr(entry, "value") else entry
+                protocols.update(SPECIALISM_TO_PROTOCOLS.get(slug, frozenset()))
+            # ``supported_protocols`` is required + minItems: 1. When a
+            # platform declares only meta specialisms (governance-aware-seller
+            # alone, signed-requests alone), we have no protocol to claim —
+            # fall through to ``media_buy`` as the most common default so
+            # the capabilities response stays spec-valid.
+            supported_protocols = sorted(protocols) if protocols else ["media_buy"]
+
+        # ----- adcp.idempotency: structured > default -----
+        idempotency_payload: dict[str, Any]
+        if caps.adcp is not None:
+            # Pull the ``Adcp`` block's nested idempotency declaration
+            # through ``model_dump`` so the discriminated-union arm
+            # (supported / unsupported) serializes correctly.
+            adcp_dump = caps.adcp.model_dump(mode="json", exclude_none=True)
+            idempotency_payload = adcp_dump.get("idempotency", {"supported": False})
+        else:
+            idempotency_payload = {"supported": False}
 
         from adcp.server.responses import capabilities_response
 
-        # Default to ``idempotency: {supported: false}`` when the
-        # platform doesn't declare one. The spec requires
-        # ``adcp.idempotency`` (``required: ["major_versions",
-        # "idempotency"]`` on the ``adcp`` block); a base shim that
-        # claims media_buy without it ships an invalid response.
-        # Adopters who wire :class:`adcp.server.idempotency.IdempotencyStore`
-        # override this shim and pass ``store.capability()``.
         response = capabilities_response(
             supported_protocols,
-            idempotency={"supported": False},
+            idempotency=idempotency_payload,
         )
 
-        # account.supported_billing is REQUIRED on the wire whenever
-        # media_buy is claimed (spec invariant). We always emit the
-        # account block when supported_billing is declared so adopters
-        # claiming non-media-buy protocols still get a valid response.
-        if caps.supported_billing:
-            response["account"] = {
-                "supported_billing": list(caps.supported_billing),
-            }
+        # ----- structured capability blocks (model_dump for each) -----
+        # Each block emits only when the adopter has declared a value.
+        # ``exclude_none=True`` keeps the wire shape minimal (every
+        # nested optional collapses cleanly).
+        if caps.account is not None:
+            response["account"] = caps.account.model_dump(mode="json", exclude_none=True)
+        if caps.media_buy is not None:
+            response["media_buy"] = caps.media_buy.model_dump(mode="json", exclude_none=True)
+        if caps.signals is not None:
+            response["signals"] = caps.signals.model_dump(mode="json", exclude_none=True)
+        if caps.governance is not None:
+            response["governance"] = caps.governance.model_dump(mode="json", exclude_none=True)
+        if caps.sponsored_intelligence is not None:
+            response["sponsored_intelligence"] = caps.sponsored_intelligence.model_dump(
+                mode="json", exclude_none=True
+            )
+        if caps.brand is not None:
+            response["brand"] = caps.brand.model_dump(mode="json", exclude_none=True)
+        if caps.creative is not None:
+            response["creative"] = caps.creative.model_dump(mode="json", exclude_none=True)
+        if caps.request_signing is not None:
+            response["request_signing"] = caps.request_signing.model_dump(
+                mode="json", exclude_none=True
+            )
+        if caps.webhook_signing is not None:
+            response["webhook_signing"] = caps.webhook_signing.model_dump(
+                mode="json", exclude_none=True
+            )
+        if caps.identity is not None:
+            response["identity"] = caps.identity.model_dump(mode="json", exclude_none=True)
+        if caps.compliance_testing is not None:
+            response["compliance_testing"] = caps.compliance_testing.model_dump(
+                mode="json", exclude_none=True
+            )
 
-        # media_buy block: ``supported_pricing_models`` is the single
-        # field the framework can project from ``DecisioningCapabilities``
-        # without crossing a spec required-property gate. ``portfolio``
-        # would be the natural home for ``channels``, but the spec
-        # requires ``portfolio.publisher_domains`` when ``portfolio`` is
-        # present and ``DecisioningCapabilities`` doesn't carry that
-        # data — emitting ``portfolio`` from channels alone would ship
-        # an invalid response. Adopters who want ``portfolio`` override
-        # ``get_adcp_capabilities`` on a :class:`PlatformHandler`
-        # subclass and supply ``publisher_domains`` themselves.
-        if "media_buy" in supported_protocols and caps.pricing_models:
-            # Spec requires uniqueItems on supported_pricing_models;
-            # dedupe via dict.fromkeys to preserve declaration order.
-            response["media_buy"] = {
-                "supported_pricing_models": list(dict.fromkeys(caps.pricing_models)),
-            }
+        # ----- wire ``specialisms`` field: spec-known entries only -----
+        # Only spec-defined enum members reach the wire — novel / typo
+        # strings stay diagnostic-only at the dispatch layer and don't
+        # leak into the capabilities response.
+        wire_specialisms = [entry.value for entry in caps.specialisms if hasattr(entry, "value")]
+        if wire_specialisms:
+            response["specialisms"] = wire_specialisms
+
+        # ----- legacy flat-field projection + deprecation warnings -----
+        # Fire DeprecationWarning for every legacy field that's set,
+        # whether or not it gets projected. Python's warnings registry
+        # deduplicates by (message, module, lineno) so each call site
+        # warns once per process by default — adopters see the migration
+        # message at first projection and then nothing for the lifetime
+        # of the server.
+        if caps.supported_billing:
+            import warnings
+
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.supported_billing is deprecated; "
+                    "set ``account=Account(supported_billing=[...])`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Project only when the structured form isn't set.
+            if caps.account is None:
+                response["account"] = {"supported_billing": list(caps.supported_billing)}
+
+        if caps.pricing_models:
+            import warnings
+
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.pricing_models is deprecated; "
+                    "set ``media_buy=MediaBuy(supported_pricing_models=[...])`` "
+                    "instead. Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if caps.media_buy is None and "media_buy" in supported_protocols:
+                # Spec requires uniqueItems on supported_pricing_models;
+                # dedupe via dict.fromkeys to preserve declaration order.
+                response["media_buy"] = {
+                    "supported_pricing_models": list(dict.fromkeys(caps.pricing_models)),
+                }
+
+        if caps.channels:
+            import warnings
+
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.channels is deprecated and no longer "
+                    "projected to the wire (the spec's ``portfolio.primary_channels`` "
+                    "requires ``portfolio.publisher_domains`` alongside, which the "
+                    "flat ``channels`` field cannot supply). Set "
+                    "``media_buy=MediaBuy(portfolio=Portfolio(...))`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
         return response
 
