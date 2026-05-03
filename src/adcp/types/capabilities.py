@@ -97,8 +97,25 @@ from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response im
 from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
     Capabilities as SiCapabilities,
 )
+
+# ``ContentStandards`` collides with ``adcp.types.ContentStandards`` (the
+# unrelated wire model on the content-standards protocol). Same
+# disambiguation pattern as ``Account`` / ``MediaBuy`` / ``Creative`` —
+# imported here under a ``Capabilities*`` alias and re-aliased back to
+# the wire-spec name within :mod:`adcp.decisioning.capabilities`.
+from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+    ContentStandards as CapabilitiesContentStandards,
+)
 from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
     Creative as CapabilitiesCreative,
+)
+
+# ``Features2`` is the codegen name for the ``Signals.features`` type
+# (numbered because ``Features`` already names the media_buy features
+# block at line 142 of the generated module). Surface under a stable
+# adopter-facing name so signals declarations read cleanly.
+from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+    Features2 as SignalsFeatures,
 )
 
 # ``Idempotency`` ships as a ``oneOf`` on the wire (``IdempotencySupported``
@@ -126,6 +143,7 @@ __all__ = [
     "Avatar",
     "Brand",
     "CapabilitiesAccount",
+    "CapabilitiesContentStandards",
     "CapabilitiesCreative",
     "CapabilitiesMediaBuy",
     "Commerce",
@@ -152,8 +170,9 @@ __all__ = [
     "NegativeKeywords",
     "Portfolio",
     "RequestSigning",
-    "Signals",
     "SiCapabilities",
+    "Signals",
+    "SignalsFeatures",
     "Specialism",
     "SponsoredIntelligence",
     "SupportedProtocol",

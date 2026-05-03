@@ -134,6 +134,237 @@ def test_submodule_all_matches_imports() -> None:
         assert hasattr(caps, name), f"__all__ lists {name!r} but it is not importable"
 
 
+def test_legacy_field_warnings_fire_at_construction_not_projection() -> None:
+    """Legacy-field DeprecationWarnings fire in
+    ``DecisioningCapabilities.__post_init__`` so ``stacklevel=2`` lands
+    on the adopter's declaration site (where the legacy field was set),
+    not at the dispatcher that calls ``get_adcp_capabilities`` later.
+
+    Construction-time emit means adopters see the migration message
+    immediately when they instantiate the dataclass — not buried in a
+    later transport layer. Multiple legacy fields on one declaration
+    fire one warning each (Python's warnings registry deduplicates by
+    ``(message, module, lineno)`` so the same line warns once per
+    process).
+    """
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            supported_billing=["operator"],
+            pricing_models=["cpm"],
+            channels=["display"],
+        )
+
+    deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+    messages = " ".join(str(w.message) for w in deprecations)
+    assert "supported_billing is deprecated" in messages
+    assert "pricing_models is deprecated" in messages
+    assert "channels is deprecated" in messages
+
+    # Construction-time emit: the warning frame's filename is NOT the
+    # handler module (where the projection runs). It's the test frame —
+    # the adopter's declaration site.
+    handler_filename_substr = "decisioning/handler.py"
+    for w in deprecations:
+        assert handler_filename_substr not in w.filename, (
+            f"Deprecation fired from {w.filename} — should fire from adopter "
+            "declaration, not handler projection."
+        )
+
+
+def test_auto_derive_supported_protocols_emits_warning_at_construction() -> None:
+    """When ``supported_protocols`` is omitted and ``specialisms`` is set,
+    ``DecisioningCapabilities`` auto-derives the wire field via
+    ``SPECIALISM_TO_PROTOCOLS``. Per spec, ``supported_protocols`` is the
+    primary storyboard-commitment declaration with specialisms as sub-claims;
+    auto-derivation is ergonomic but inverts the spec's data direction.
+    The dataclass emits a ``UserWarning`` at construction nudging adopters
+    toward the explicit declaration form.
+
+    The warning is NOT a deprecation — auto-derive stays supported. It's a
+    one-shot nudge per declaration site (Python's warnings registry
+    deduplicates by ``(message, module, lineno)``).
+    """
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            # supported_protocols deliberately omitted — triggers auto-derive.
+        )
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "auto-derive" in messages
+    assert "supported_protocols" in messages
+
+
+def test_explicit_supported_protocols_does_not_emit_auto_derive_warning() -> None:
+    """When ``supported_protocols`` is set explicitly, no auto-derive
+    warning fires — the adopter is on the spec-aligned path."""
+    import warnings
+
+    from adcp.decisioning import DecisioningCapabilities
+    from adcp.decisioning.capabilities import SupportedProtocol
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        DecisioningCapabilities(
+            specialisms=["sales-non-guaranteed"],
+            supported_protocols=[SupportedProtocol.media_buy],
+        )
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "auto-derive" not in messages
+
+
+def test_compliance_testing_without_controller_warns_at_serve() -> None:
+    """A platform that declares ``compliance_testing`` but doesn't wire
+    a ``test_controller=`` to ``serve()`` advertises a capability it
+    can't honor — buyers calling ``comply_test_controller`` will fail.
+    The framework soft-warns at ``serve()`` time so the adopter sees
+    the mismatch immediately, before the first buyer query.
+
+    Soft-warn (not fail-fast) because adopters may legitimately stage
+    the capability declaration ahead of the controller wiring (e.g.
+    rolling out the change across two PRs).
+    """
+    import warnings
+
+    from adcp.decisioning import (
+        DecisioningCapabilities,
+        DecisioningPlatform,
+        SingletonAccounts,
+    )
+    from adcp.decisioning.capabilities import ComplianceTesting, SupportedProtocol
+    from adcp.decisioning.serve import serve
+
+    class _TestPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(
+            supported_protocols=[SupportedProtocol.media_buy],
+            supported_billing=["operator"],
+            compliance_testing=ComplianceTesting(scenarios=["force_media_buy_status"]),
+        )
+        accounts = SingletonAccounts(account_id="test")
+
+    # Stub out the actual MCP server boot so the test doesn't open a port.
+    # We're checking the warning fires before _adcp_serve is invoked.
+    import sys
+    import unittest.mock as mock
+
+    # ``adcp.server.serve`` is both a submodule and a re-exported function;
+    # Python 3.10's import resolution differs from 3.11+. Reference the
+    # module explicitly via ``sys.modules`` so the patch target lands on
+    # the module's ``serve`` attribute regardless of Python version.
+    server_serve_mod = sys.modules["adcp.server.serve"]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with mock.patch.object(server_serve_mod, "serve"):
+            serve(_TestPlatform())
+
+    user_warnings = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning) and not issubclass(w.category, DeprecationWarning)
+    ]
+    messages = " ".join(str(w.message) for w in user_warnings)
+    assert "compliance_testing" in messages
+    assert "test_controller" in messages
+
+
+def test_compliance_testing_with_controller_does_not_warn() -> None:
+    """When ``test_controller`` is wired alongside the
+    ``compliance_testing`` declaration, the seller is consistent and no
+    footgun warning fires."""
+    import warnings
+
+    from adcp.decisioning import (
+        DecisioningCapabilities,
+        DecisioningPlatform,
+        SingletonAccounts,
+    )
+    from adcp.decisioning.capabilities import ComplianceTesting, SupportedProtocol
+    from adcp.decisioning.serve import serve
+    from adcp.server import TestControllerStore
+
+    class _TestPlatform(DecisioningPlatform):
+        capabilities = DecisioningCapabilities(
+            supported_protocols=[SupportedProtocol.media_buy],
+            supported_billing=["operator"],
+            compliance_testing=ComplianceTesting(scenarios=["force_media_buy_status"]),
+        )
+        accounts = SingletonAccounts(account_id="test")
+
+    import sys
+    import unittest.mock as mock
+
+    server_serve_mod = sys.modules["adcp.server.serve"]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        with mock.patch.object(server_serve_mod, "serve"):
+            serve(_TestPlatform(), test_controller=TestControllerStore())
+
+    footgun = [
+        w
+        for w in caught
+        if issubclass(w.category, UserWarning)
+        and "compliance_testing" in str(w.message)
+        and "test_controller" in str(w.message)
+    ]
+    assert not footgun, (
+        f"Expected no compliance_testing footgun warning when controller is wired; "
+        f"got: {[str(w.message) for w in footgun]}"
+    )
+
+
+def test_signals_features_and_content_standards_re_exported() -> None:
+    """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
+    and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which
+    collides with the unrelated wire ``adcp.types.ContentStandards``) are
+    surfaced through :mod:`adcp.decisioning.capabilities` so adopters
+    declaring deep Signals / MediaBuy blocks don't have to dig into
+    ``generated_poc``.
+    """
+    from adcp.decisioning.capabilities import (
+        ContentStandards,
+        MediaBuy,
+        Signals,
+        SignalsFeatures,
+    )
+    from adcp.types import ContentStandards as WireContentStandards
+
+    # Content-standards collision guard — same pattern as Account / MediaBuy / Creative.
+    assert ContentStandards is not WireContentStandards
+    assert ContentStandards.__name__ == "ContentStandards"
+
+    # SignalsFeatures usable on a Signals declaration.
+    sig = Signals(features=SignalsFeatures(catalog_signals=True))
+    assert sig.features is not None
+    assert sig.features.catalog_signals is True
+
+    # ContentStandards usable on a MediaBuy declaration.
+    mb = MediaBuy(content_standards=ContentStandards(supports_local_evaluation=True))
+    assert mb.content_standards is not None
+    assert mb.content_standards.supports_local_evaluation is True
+
+
 def test_decisioning_capabilities_accepts_structured_fields() -> None:
     """``DecisioningCapabilities`` carries instances of the wire-spec
     capability sub-models. Validates the dataclass widening (commit 2 of
@@ -382,57 +613,59 @@ async def test_projection_supported_protocols_override(make_handler) -> None:
 
 @pytest.mark.asyncio
 async def test_projection_legacy_supported_billing_warns_and_projects(make_handler) -> None:
-    """Legacy ``supported_billing`` still projects when ``account`` is None,
-    with a DeprecationWarning."""
+    """Legacy ``supported_billing`` still projects when ``account`` is None.
+
+    The ``DeprecationWarning`` fires at construction (in
+    ``DecisioningCapabilities.__post_init__``) so ``stacklevel=2`` points at
+    the adopter's declaration site, not the dispatcher. Wrap the
+    construction in ``pytest.warns``, not the projection.
+    """
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="supported_billing"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="supported_billing"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     assert response["account"]["supported_billing"] == ["operator"]
 
 
 @pytest.mark.asyncio
 async def test_projection_legacy_pricing_models_warns_and_projects(make_handler) -> None:
-    """Legacy ``pricing_models`` still projects when ``media_buy`` is None,
-    with a DeprecationWarning."""
+    """Legacy ``pricing_models`` still projects when ``media_buy`` is None.
+    Construction-time DeprecationWarning per the same pattern."""
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="pricing_models"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
             pricing_models=["cpm", "cpc"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="pricing_models"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     assert response["media_buy"]["supported_pricing_models"] == ["cpm", "cpc"]
 
 
 @pytest.mark.asyncio
 async def test_projection_structured_wins_over_legacy(make_handler) -> None:
     """When both structured and legacy forms are set, structured wins —
-    legacy still emits its DeprecationWarning."""
+    legacy still emits its DeprecationWarning at construction."""
     from adcp.decisioning import DecisioningCapabilities
     from adcp.decisioning.capabilities import Account, MediaBuy
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             account=Account(supported_billing=["agent"]),  # structured: agent
             supported_billing=["operator"],  # legacy: operator (loses)
             media_buy=MediaBuy(supported_pricing_models=["cpcv"]),  # structured: cpcv
             pricing_models=["cpm"],  # legacy: cpm (loses)
         )
-    )
-    with pytest.warns(DeprecationWarning):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     # Structured forms win.
     billing = response["account"]["supported_billing"]
     # Note: model_dump preserves enum-value form for SupportedBillingEnum.
@@ -443,20 +676,20 @@ async def test_projection_structured_wins_over_legacy(make_handler) -> None:
 
 @pytest.mark.asyncio
 async def test_projection_channels_warns_but_does_not_project(make_handler) -> None:
-    """Legacy ``channels`` warns but is no longer projected (the spec's
-    ``portfolio.primary_channels`` requires ``portfolio.publisher_domains``
-    alongside, which the flat field can't supply)."""
+    """Legacy ``channels`` warns at construction but is no longer projected
+    (the spec's ``portfolio.primary_channels`` requires
+    ``portfolio.publisher_domains`` alongside, which the flat field can't
+    supply)."""
     from adcp.decisioning import DecisioningCapabilities
 
-    handler = make_handler(
-        DecisioningCapabilities(
+    with pytest.warns(DeprecationWarning, match="channels"):
+        caps = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
             channels=["display", "video"],
         )
-    )
-    with pytest.warns(DeprecationWarning, match="channels"):
-        response = await handler.get_adcp_capabilities()
+    handler = make_handler(caps)
+    response = await handler.get_adcp_capabilities()
     # No portfolio block emitted — channels alone can't satisfy the spec.
     assert "portfolio" not in response.get("media_buy", {})
 

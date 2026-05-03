@@ -11,6 +11,7 @@ existing transport machinery.
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -213,6 +214,72 @@ class DecisioningCapabilities:
                 # at boot can surface the right diagnostic.
                 coerced.append(entry)
         self.specialisms = coerced
+
+        # Deprecation warnings for legacy flat fields. Fire at
+        # construction so ``stacklevel=2`` points at the adopter's
+        # ``DecisioningCapabilities(...)`` declaration site (where the
+        # legacy field was set), not at the MCP dispatcher that later
+        # called ``get_adcp_capabilities``. Python's warnings registry
+        # deduplicates by ``(message, module, lineno)`` so each unique
+        # declaration warns once per process.
+        if self.supported_billing:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.supported_billing is deprecated; "
+                    "set ``account=Account(supported_billing=[...])`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if self.pricing_models:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.pricing_models is deprecated; "
+                    "set ``media_buy=MediaBuy(supported_pricing_models=[...])`` "
+                    "instead. Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if self.channels:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.channels is deprecated and no longer "
+                    "projected to the wire (the spec's ``portfolio.primary_channels`` "
+                    "requires ``portfolio.publisher_domains`` alongside, which the "
+                    "flat ``channels`` field cannot supply). Set "
+                    "``media_buy=MediaBuy(portfolio=Portfolio(...))`` instead. "
+                    "Will be removed in v5."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        # ``supported_protocols`` semantically rolls UP FROM specialisms
+        # per spec — it's the storyboard commitment, with specialisms as
+        # the sub-claims that contribute to it. The framework's
+        # auto-derivation (see ``handler.py:get_adcp_capabilities``) is
+        # ergonomic but inverts the spec's data direction. Adopters
+        # leaning on auto-derive get a one-shot UserWarning steering
+        # them toward declaring ``supported_protocols`` explicitly. The
+        # auto-derive path is supported indefinitely; the warning is a
+        # gentle nudge toward the spec-aligned form, not a deprecation.
+        if self.supported_protocols is None and self.specialisms:
+            warnings.warn(
+                (
+                    "DecisioningCapabilities.supported_protocols was not declared; "
+                    "the framework will auto-derive it from ``specialisms`` via "
+                    "``SPECIALISM_TO_PROTOCOLS``. Per spec, ``supported_protocols`` is "
+                    "the primary storyboard-commitment declaration — set it "
+                    "explicitly via ``supported_protocols=[SupportedProtocol.media_buy, "
+                    "...]`` so the spec's intent (specialisms roll up to protocols) "
+                    "is preserved at the declaration site. Auto-derivation is not "
+                    "deprecated; this warning fires once per declaration site."
+                ),
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 #: Specialisms that depend on framework-supplied

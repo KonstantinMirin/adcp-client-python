@@ -991,63 +991,22 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         if wire_specialisms:
             response["specialisms"] = wire_specialisms
 
-        # ----- legacy flat-field projection + deprecation warnings -----
-        # Fire DeprecationWarning for every legacy field that's set,
-        # whether or not it gets projected. Python's warnings registry
-        # deduplicates by (message, module, lineno) so each call site
-        # warns once per process by default — adopters see the migration
-        # message at first projection and then nothing for the lifetime
-        # of the server.
-        if caps.supported_billing:
-            import warnings
-
-            warnings.warn(
-                (
-                    "DecisioningCapabilities.supported_billing is deprecated; "
-                    "set ``account=Account(supported_billing=[...])`` instead. "
-                    "Will be removed in v5."
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # Project only when the structured form isn't set.
-            if caps.account is None:
-                response["account"] = {"supported_billing": list(caps.supported_billing)}
-
-        if caps.pricing_models:
-            import warnings
-
-            warnings.warn(
-                (
-                    "DecisioningCapabilities.pricing_models is deprecated; "
-                    "set ``media_buy=MediaBuy(supported_pricing_models=[...])`` "
-                    "instead. Will be removed in v5."
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if caps.media_buy is None and "media_buy" in supported_protocols:
-                # Spec requires uniqueItems on supported_pricing_models;
-                # dedupe via dict.fromkeys to preserve declaration order.
-                response["media_buy"] = {
-                    "supported_pricing_models": list(dict.fromkeys(caps.pricing_models)),
-                }
-
-        if caps.channels:
-            import warnings
-
-            warnings.warn(
-                (
-                    "DecisioningCapabilities.channels is deprecated and no longer "
-                    "projected to the wire (the spec's ``portfolio.primary_channels`` "
-                    "requires ``portfolio.publisher_domains`` alongside, which the "
-                    "flat ``channels`` field cannot supply). Set "
-                    "``media_buy=MediaBuy(portfolio=Portfolio(...))`` instead. "
-                    "Will be removed in v5."
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        # ----- legacy flat-field projection -----
+        # Deprecation warnings for legacy fields fire at construction in
+        # ``DecisioningCapabilities.__post_init__`` — they point at the
+        # adopter's declaration site, not at the dispatcher. Here we only
+        # project the legacy values when the structured equivalent isn't
+        # set. ``channels`` doesn't project to anything because the spec's
+        # ``portfolio.primary_channels`` requires ``publisher_domains``
+        # alongside, which the flat field can't supply.
+        if caps.supported_billing and caps.account is None:
+            response["account"] = {"supported_billing": list(caps.supported_billing)}
+        if caps.pricing_models and caps.media_buy is None and "media_buy" in supported_protocols:
+            # Spec requires uniqueItems on supported_pricing_models;
+            # dedupe via dict.fromkeys to preserve declaration order.
+            response["media_buy"] = {
+                "supported_pricing_models": list(dict.fromkeys(caps.pricing_models)),
+            }
 
         return response
 

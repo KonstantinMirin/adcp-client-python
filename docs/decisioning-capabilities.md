@@ -109,6 +109,27 @@ The framework auto-derives a few things:
   by setting `supported_protocols=[SupportedProtocol.media_buy, ...]`
   explicitly when claiming a protocol whose specialisms aren't all
   enumerated.
+
+  **Spec note**: per the AdCP spec, `supported_protocols` is the
+  primary storyboard-commitment declaration; specialisms are
+  sub-claims that *roll up to* a protocol. The auto-derive direction
+  inverts that data flow for ergonomics. It works fine in practice,
+  but the spec-aligned form is to declare both — the SDK emits a
+  one-shot `UserWarning` at construction when you omit
+  `supported_protocols`. The warning is a nudge, not a deprecation
+  (auto-derive stays supported indefinitely):
+
+  ```python
+  # Auto-derive — works, fires a one-shot UserWarning per declaration site.
+  DecisioningCapabilities(specialisms=[Specialism.sales_non_guaranteed])
+
+  # Spec-aligned — silent.
+  DecisioningCapabilities(
+      specialisms=[Specialism.sales_non_guaranteed],
+      supported_protocols=[SupportedProtocol.media_buy],
+  )
+  ```
+
 - **Wire-level `specialisms` field** — emitted from spec-known entries
   in your `specialisms` list. Novel/typo strings stay diagnostic-only at
   the dispatch validator and don't leak into the wire.
