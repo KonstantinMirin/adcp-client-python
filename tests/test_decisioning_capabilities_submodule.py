@@ -264,11 +264,18 @@ def test_compliance_testing_without_controller_warns_at_serve() -> None:
 
     # Stub out the actual MCP server boot so the test doesn't open a port.
     # We're checking the warning fires before _adcp_serve is invoked.
+    import sys
     import unittest.mock as mock
+
+    # ``adcp.server.serve`` is both a submodule and a re-exported function;
+    # Python 3.10's import resolution differs from 3.11+. Reference the
+    # module explicitly via ``sys.modules`` so the patch target lands on
+    # the module's ``serve`` attribute regardless of Python version.
+    server_serve_mod = sys.modules["adcp.server.serve"]
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        with mock.patch("adcp.server.serve.serve"):
+        with mock.patch.object(server_serve_mod, "serve"):
             serve(_TestPlatform())
 
     user_warnings = [
