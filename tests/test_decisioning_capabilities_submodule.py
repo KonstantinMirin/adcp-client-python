@@ -311,11 +311,14 @@ def test_compliance_testing_with_controller_does_not_warn() -> None:
         )
         accounts = SingletonAccounts(account_id="test")
 
+    import sys
     import unittest.mock as mock
+
+    server_serve_mod = sys.modules["adcp.server.serve"]
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        with mock.patch("adcp.server.serve.serve"):
+        with mock.patch.object(server_serve_mod, "serve"):
             serve(_TestPlatform(), test_controller=TestControllerStore())
 
     footgun = [
