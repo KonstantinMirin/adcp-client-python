@@ -308,5 +308,9 @@ def test_decisioning_platform_subclass_attributes() -> None:
         accounts = SingletonAccounts(account_id="hello")
 
     s = HelloSeller()
-    assert s.capabilities.specialisms == ["sales-non-guaranteed"]
+    # ``specialisms`` is normalized to ``list[Specialism | str]`` —
+    # spec-known slugs are coerced to enum members at construction.
+    assert len(s.capabilities.specialisms) == 1
+    only = s.capabilities.specialisms[0]
+    assert (only.value if hasattr(only, "value") else only) == "sales-non-guaranteed"
     assert s.accounts.resolution == "derived"

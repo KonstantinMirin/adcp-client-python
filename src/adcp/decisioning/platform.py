@@ -14,6 +14,23 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from adcp.types.capabilities import (
+    Adcp,
+    Brand,
+    CapabilitiesAccount,
+    CapabilitiesCreative,
+    CapabilitiesMediaBuy,
+    ComplianceTesting,
+    Governance,
+    Identity,
+    RequestSigning,
+    Signals,
+    Specialism,
+    SponsoredIntelligence,
+    SupportedProtocol,
+    WebhookSigning,
+)
+
 if TYPE_CHECKING:
     from adcp.decisioning.accounts import AccountStore
 
@@ -27,17 +44,74 @@ class DecisioningCapabilities:
     the framework's auto-generated ``get_adcp_capabilities`` response
     so buyers can pre-flight without trial-and-error tool calls.
 
+    Capability declaration shape mirrors the AdCP wire spec
+    (``protocol/get-adcp-capabilities-response.json``). Adopters import
+    the typed sub-models from :mod:`adcp.decisioning.capabilities` —
+    that submodule re-exports under wire-spec names, so declarations
+    read 1:1 against the spec::
+
+        from adcp.decisioning import DecisioningCapabilities
+        from adcp.decisioning.capabilities import (
+            Account, MediaBuy, Targeting, GeoMetros,
+            IdempotencySupported, Specialism,
+        )
+
+        capabilities = DecisioningCapabilities(
+            specialisms=[Specialism.sales_non_guaranteed.value],
+            adcp=Adcp(
+                major_versions=[3],
+                idempotency=IdempotencySupported(
+                    supported=True, replay_ttl_seconds=86400,
+                ),
+            ),
+            account=Account(supported_billing=["operator"]),
+            media_buy=MediaBuy(
+                supported_pricing_models=["cpm"],
+                execution=Execution(
+                    targeting=Targeting(geo_countries=True),
+                ),
+            ),
+        )
+
+    Wire capability blocks (one field per top-level wire field):
+
+    :param adcp: Core protocol info — ``major_versions`` and
+        ``idempotency``. Required on the wire; defaults to ``None``
+        means the framework will project a non-conformant response
+        (the boot-time validator catches this).
+    :param account: Account-management capabilities (billing, OAuth,
+        sandbox).
+    :param media_buy: Media-buy protocol capabilities — pricing
+        models, reporting delivery methods, execution targeting, etc.
+        Expected when ``media_buy`` is in ``supported_protocols``.
+    :param signals: Signals protocol capabilities. Only emit when
+        ``signals`` is in ``supported_protocols``.
+    :param governance: Governance protocol capabilities.
+    :param sponsored_intelligence: SI protocol capabilities.
+    :param brand: Brand protocol capabilities.
+    :param creative: Creative protocol capabilities.
+    :param request_signing: RFC 9421 inbound request signing posture.
+    :param webhook_signing: Outbound webhook-signing posture.
+    :param identity: Operator key-scoping / compromise-response
+        identity posture (advisory in 3.x).
+    :param compliance_testing: Deterministic-testing capability via
+        ``comply_test_controller``. Omit entirely if unsupported.
+    :param supported_protocols: Override for the ``supported_protocols``
+        wire field. Default ``None`` = derive from
+        :attr:`specialisms` via ``SPECIALISM_TO_PROTOCOLS``. Set
+        explicitly when claiming a protocol whose specialisms aren't
+        all listed (e.g. transitional state, generic seller passing the
+        baseline storyboard without claiming a specific specialism).
+
+    SDK-internal dispatch (not wire fields):
+
     :param specialisms: AdCP specialism slugs the platform claims —
         e.g. ``['sales-non-guaranteed', 'sales-broadcast-tv']``,
         ``['audience-sync']``, ``['signal-marketplace',
         'signal-owned']``. Each maps to a ``Protocol`` class under
-        :mod:`adcp.decisioning.specialisms`.
-    :param channels: Inventory channels the platform serves —
-        ``'display'``, ``'video'``, ``'olv'``, ``'ctv'``, ``'audio'``,
-        ``'dooh'``. Surfaced on capabilities; not enforced.
-    :param pricing_models: Pricing models the platform supports —
-        ``'cpm'``, ``'cpc'``, ``'cpa'``, ``'cpcv'``. Surfaced on
-        capabilities.
+        :mod:`adcp.decisioning.specialisms`. Drives method-conformance
+        validation at boot AND projects to the wire ``specialisms``
+        field.
     :param creative_agents: Optional list of creative-agent endpoints
         the platform delegates creative review/generation to. Empty
         list means "no creative-agent integration; review is in-house."
@@ -59,26 +133,86 @@ class DecisioningCapabilities:
         ship. The flag itself is the contract that lands now; the
         enforcement lands in Stage 3. See
         ``docs/proposals/decisioning-platform-dispatch-design.md#d15``.
+
+    Deprecated flat-declaration shortcuts (will be removed in v5):
+
+    :param channels: Inventory channels the platform serves —
+        ``'display'``, ``'video'``, etc. Not currently projected to any
+        wire field (the spec's ``portfolio.primary_channels`` requires
+        ``portfolio.publisher_domains`` alongside, which the flat
+        ``channels`` field cannot supply). Use
+        ``media_buy=MediaBuy(portfolio=Portfolio(...))`` instead.
+        Deprecated; emits ``DeprecationWarning`` at projection.
+    :param pricing_models: Pricing models — ``'cpm'``, ``'cpc'``, etc.
+        Superseded by ``media_buy.supported_pricing_models``. The
+        projection prefers the structured field when both are set;
+        emits ``DeprecationWarning`` when ``pricing_models`` is set.
     :param supported_billing: Billing parties this seller invoices —
-        any subset of ``{"operator", "agent", "advertiser"}``. Required
-        on the wire whenever the seller claims ``media_buy`` (per
-        ``protocol/get-adcp-capabilities-response.json`` —
-        ``account.supported_billing`` ``minItems: 1``). Surfaced on
-        the auto-projected ``get_adcp_capabilities`` response under
-        ``account.supported_billing``. ``operator`` = seller invoices
-        the operator (agency / brand buying direct); ``agent`` = agent
-        consolidates billing across brands; ``advertiser`` = seller
-        invoices the advertiser directly. Buyers MUST pass one of
-        these in ``sync_accounts``.
+        any subset of ``{"operator", "agent", "advertiser"}``.
+        Superseded by ``account.supported_billing``. The projection
+        prefers the structured field when both are set; emits
+        ``DeprecationWarning`` when ``supported_billing`` is set
+        (alone or alongside ``account``).
     """
 
-    specialisms: list[str] = field(default_factory=list)
-    channels: list[str] = field(default_factory=list)
-    pricing_models: list[str] = field(default_factory=list)
+    # SDK-internal dispatch (not wire fields)
+    specialisms: list[Specialism | str] = field(default_factory=list)
     creative_agents: list[Any] = field(default_factory=list)
     config: dict[str, Any] = field(default_factory=dict)
     governance_aware: bool = False
+
+    # Wire capability blocks (mirror ``GetAdcpCapabilitiesResponse``)
+    adcp: Adcp | None = None
+    account: CapabilitiesAccount | None = None
+    media_buy: CapabilitiesMediaBuy | None = None
+    signals: Signals | None = None
+    governance: Governance | None = None
+    sponsored_intelligence: SponsoredIntelligence | None = None
+    brand: Brand | None = None
+    creative: CapabilitiesCreative | None = None
+    request_signing: RequestSigning | None = None
+    webhook_signing: WebhookSigning | None = None
+    identity: Identity | None = None
+    compliance_testing: ComplianceTesting | None = None
+    supported_protocols: list[SupportedProtocol] | None = None
+
+    # Deprecated flat-declaration shortcuts (removed in v5)
+    channels: list[str] = field(default_factory=list)
+    pricing_models: list[str] = field(default_factory=list)
     supported_billing: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Normalize spec-known specialism strings to enum members.
+
+        Accepts either ``Specialism`` enum members (the type-safe form
+        adopters should prefer) or AdCP slug strings (back-compat with
+        existing code, novel pre-spec slugs, and intentional-typo paths
+        the validator wants to diagnose). Strings that match a known
+        ``Specialism`` value are coerced; unknown strings pass through
+        unchanged so :func:`adcp.decisioning.dispatch.validate_platform`
+        can surface them with typo-detection or forward-compat warnings
+        at server boot.
+
+        Adopter code is encouraged to import ``Specialism`` from
+        :mod:`adcp.decisioning.capabilities` and write
+        ``specialisms=[Specialism.sales_non_guaranteed]`` for clean
+        type checks. The string path stays available for config-driven
+        declarations, downstream test code, and pre-spec experimental
+        slugs.
+        """
+        coerced: list[Specialism | str] = []
+        for entry in self.specialisms:
+            if isinstance(entry, Specialism):
+                coerced.append(entry)
+                continue
+            try:
+                coerced.append(Specialism(entry))
+            except ValueError:
+                # Novel / typo / pre-spec slug — keep as string so the
+                # validator's typo-vs-novel-vs-unenforced classification
+                # at boot can surface the right diagnostic.
+                coerced.append(entry)
+        self.specialisms = coerced
 
 
 #: Specialisms that depend on framework-supplied

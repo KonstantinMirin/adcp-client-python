@@ -133,14 +133,24 @@ def test_signals_only_platform_emits_signals_protocol(executor: ThreadPoolExecut
     assert response["account"]["supported_billing"] == ["agent"]
 
 
-def test_bare_platform_falls_through_to_media_buy(executor: ThreadPoolExecutor) -> None:
-    """A platform with no specialisms still produces a spec-valid
-    response — fall through to ``media_buy`` so the response stays
-    minItems-1 valid on ``supported_protocols``."""
+def test_bare_platform_emits_empty_supported_protocols(executor: ThreadPoolExecutor) -> None:
+    """A platform with no specialisms emits an empty
+    ``supported_protocols`` list — the projection refuses to silently
+    default to ``["media_buy"]`` because that lies about a storyboard
+    commitment the adopter never made.
+
+    The boot-time validator
+    (``validate_capabilities_response_shape``) catches the empty list
+    and raises ``INVALID_REQUEST`` with a structured error pointing the
+    operator at the configuration site. Adopters who claim a protocol
+    without an enumerated specialism set ``supported_protocols``
+    explicitly via ``DecisioningCapabilities(supported_protocols=[...])``.
+    """
     handler = _build_handler(_BarePlatform(), executor)
     response = asyncio.run(handler.get_adcp_capabilities())
 
-    assert response["supported_protocols"] == ["media_buy"]
+    # Empty list — no protocol claimed.
+    assert response["supported_protocols"] == []
     # No supported_billing declared → no account block.
     assert "account" not in response
 

@@ -71,7 +71,10 @@ def test_capabilities_claim_both_sales_specialisms() -> None:
     supports ``delivery_type: guaranteed/non_guaranteed`` directly."""
     from src.platform import V3ReferenceSeller
 
-    specialisms = set(V3ReferenceSeller.capabilities.specialisms)
+    # ``specialisms`` is ``list[Specialism | str]`` (#479) — extract slug.
+    specialisms = {
+        s.value if hasattr(s, "value") else s for s in V3ReferenceSeller.capabilities.specialisms
+    }
     assert {"sales-non-guaranteed", "sales-guaranteed"} == specialisms
 
 

@@ -653,10 +653,16 @@ def validate_platform(platform: DecisioningPlatform) -> None:
         )
 
     # Specialism-method coverage.
+    # ``capabilities.specialisms`` is ``list[Specialism | str]`` —
+    # spec-known entries are coerced to enum at construction; novel /
+    # pre-spec slugs pass through as strings (so this validator can
+    # surface them with typo-vs-novel diagnostics). Lookup tables are
+    # keyed by AdCP slug strings, so extract a slug regardless of form.
     missing: list[tuple[str, str]] = []
     unknown: list[str] = []
     governance_specialisms_claimed: list[str] = []
-    for specialism in platform.capabilities.specialisms:
+    for entry in platform.capabilities.specialisms:
+        specialism = entry.value if hasattr(entry, "value") else entry
         if specialism in GOVERNANCE_SPECIALISMS:
             governance_specialisms_claimed.append(specialism)
         try:
@@ -778,7 +784,8 @@ def validate_platform(platform: DecisioningPlatform) -> None:
     # diagnostic.
     recommended_missing: list[tuple[str, str]] = []
     seen_methods: set[str] = set()
-    for specialism in platform.capabilities.specialisms:
+    for entry in platform.capabilities.specialisms:
+        specialism = entry.value if hasattr(entry, "value") else entry
         recommended = RECOMMENDED_METHODS_PER_SPECIALISM.get(specialism)
         if recommended is None:
             continue

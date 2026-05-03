@@ -34,6 +34,13 @@ ALLOWED_FILES = {
     SRC_ROOT / "types" / "_ergonomic.py",
     SRC_ROOT / "types" / "_generated.py",
     SRC_ROOT / "types" / "__init__.py",
+    # ``capabilities.py`` is a re-export layer for the bundled
+    # ``get_adcp_capabilities_response`` sub-models — it disambiguates
+    # the ``Account`` / ``MediaBuy`` / ``Creative`` name collisions
+    # before adopters import them via :mod:`adcp.decisioning.capabilities`.
+    # Same architectural role as ``aliases.py`` (re-exports + renames),
+    # so the same direct ``generated_poc`` import access applies.
+    SRC_ROOT / "types" / "capabilities.py",
 }
 
 # Frozen baseline of pre-existing violations — paths relative to repo root.
