@@ -400,6 +400,20 @@ def serve(
         buyer_agent_registry=buyer_agent_registry,
     )
 
+    # Phase 1 sandbox-authority — wire the comply controller's account
+    # gate to the platform's AccountStore. When a test_controller is
+    # present and the adopter hasn't supplied their own resolver, build
+    # a closure over ``platform.accounts.resolve`` so the gate refuses
+    # for live-mode accounts. Adopters supplying their own resolver
+    # (``test_controller_account_resolver=``) take precedence.
+    if (
+        serve_kwargs.get("test_controller") is not None
+        and "test_controller_account_resolver" not in serve_kwargs
+    ):
+        serve_kwargs["test_controller_account_resolver"] = _build_test_controller_account_resolver(
+            platform
+        )
+
     server_name = name or type(platform).__name__
     debug_traffic_source = mock_ad_server.get_traffic if mock_ad_server is not None else None
     _adcp_serve(
@@ -410,6 +424,29 @@ def serve(
         debug_traffic_source=debug_traffic_source,
         **serve_kwargs,
     )
+
+
+def _build_test_controller_account_resolver(
+    platform: DecisioningPlatform,
+) -> Any:
+    """Build a closure over ``platform.accounts.resolve`` for the
+    comply controller's sandbox gate.
+
+    The resolver takes a wire account ref dict (from the request's
+    ``account`` or ``context.account``) plus the verified ``auth_info``
+    threaded by the comply dispatch out of ``ToolContext.metadata``.
+    ``FromAuthAccounts`` adopters (signed-request agents,
+    OAuth-bearer-bound vendors) need auth_info to find the principal's
+    account; without it the store would raise ``AUTH_INVALID``, which
+    the gate now treats as DENY rather than fall-through. See
+    :mod:`adcp.decisioning.account_mode`.
+    """
+    from adcp.decisioning.context import AuthInfo
+
+    def _resolve(ref: dict[str, Any] | None, *, auth_info: AuthInfo | None = None) -> Any:
+        return platform.accounts.resolve(ref, auth_info=auth_info)
+
+    return _resolve
 
 
 __all__ = [
