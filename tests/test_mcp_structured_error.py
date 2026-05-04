@@ -344,6 +344,80 @@ async def test_context_echo_round_trips_through_register_tool():
 
 
 @pytest.mark.asyncio
+async def test_dispatcher_wrap_to_internal_error_preserves_context_echo():
+    """Pin the chain: a non-AdcpError raised from a DecisioningPlatform
+    method is wrapped to ``AdcpError("INTERNAL_ERROR")`` by
+    ``_invoke_platform_method``, then projected through ``serve.py``'s
+    decisioning branch via ``build_mcp_error_result``, with the
+    request's ``context`` field echoed onto the wire envelope.
+
+    The test asserts both halves:
+    1. The wrap actually ran — ``details.caused_by`` carries the
+       original :class:`ValueError` class name (set by
+       ``_internal_error_details``).
+    2. The request context survived the wrap and lands as a sibling
+       of ``adcp_error`` in ``structuredContent``.
+
+    Without (1) the test would pass even if the wrap step were
+    skipped — we'd be re-asserting #560's coverage of an explicit
+    AdcpError raise. The ``caused_by`` check pins the wrap path
+    specifically.
+    """
+    from mcp.server.fastmcp import FastMCP
+
+    from adcp.server.serve import _register_tool
+
+    async def caller(_kwargs: dict[str, Any], *, context: Any = None) -> Any:
+        from concurrent.futures import ThreadPoolExecutor
+
+        from pydantic import BaseModel
+
+        from adcp.decisioning.dispatch import _build_request_context, _invoke_platform_method
+        from adcp.decisioning.task_registry import InMemoryTaskRegistry
+        from adcp.decisioning.types import Account
+        from adcp.server.base import ToolContext
+
+        class _CrashingPlatform:
+            async def get_products(self, params, ctx):
+                raise ValueError("oops, internal-state bug")
+
+        class _Req(BaseModel):
+            pass
+
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            ctx_obj = _build_request_context(
+                ToolContext(),
+                Account(id="acct-1"),
+                None,
+            )
+            return await _invoke_platform_method(
+                _CrashingPlatform(),
+                "get_products",
+                _Req(),
+                ctx_obj,
+                executor=executor,
+                registry=InMemoryTaskRegistry(),
+            )
+        finally:
+            executor.shutdown(wait=True)
+
+    mcp = FastMCP("test-562-dispatch-wrap")
+    _register_tool(mcp, "get_products", "test", {"type": "object"}, caller)
+
+    request_context = {"correlation_id": "buyer-req-562"}
+    result = await mcp.call_tool("get_products", {"context": request_context})
+
+    assert isinstance(result, CallToolResult)
+    assert result.isError is True
+    # (1) The wrap ran — INTERNAL_ERROR with caused_by = ValueError.
+    assert result.structuredContent["adcp_error"]["code"] == "INTERNAL_ERROR"
+    assert result.structuredContent["adcp_error"]["details"]["caused_by"]["type"] == "ValueError"
+    # (2) Context echoed end-to-end.
+    assert result.structuredContent.get("context") == request_context
+
+
+@pytest.mark.asyncio
 async def test_success_path_unchanged():
     """Regression: success-path responses still validate against the
     output schema. The structuredContent error bypass MUST NOT leak
