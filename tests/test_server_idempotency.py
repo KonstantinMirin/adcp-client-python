@@ -482,6 +482,330 @@ class TestInstanceMethodDecorator:
         assert seller.calls == 1
 
 
+class TestWrapArgProjectionCalling:
+    """Issue #559: ``@IdempotencyStore.wrap`` was called with the
+    framework's arg-projector convention (``method(**kwargs, ctx=ctx)``)
+    on tools like ``update_media_buy`` and raised ``TypeError: missing
+    1 required positional argument: 'params'``. The salesagent kill-
+    nginx spike shipped a workaround that disabled idempotency on
+    ``update_media_buy`` entirely.
+
+    These tests pin the wrap's three-convention behavior:
+    1. Positional ``(self, params, ctx)`` — original behavior.
+    2. Keyword ``(self, params=..., context=...)``.
+    3. Arg-projected ``(self, **arg_projector_kwargs, ctx=...)`` —
+       the bug case.
+    """
+
+    @pytest.mark.asyncio
+    async def test_arg_projected_with_pydantic_kwarg_succeeds(self) -> None:
+        """``update_media_buy`` style: the framework calls
+        ``method(media_buy_id=..., patch=<UpdateMediaBuyRequest>, ctx=...)``.
+        The wrap should find ``patch`` (the only Pydantic kwarg),
+        extract ``idempotency_key`` from it, and forward the original
+        kwargs unchanged to the inner handler."""
+        from pydantic import BaseModel
+
+        class Patch(BaseModel):
+            idempotency_key: str
+            new_total_budget: float
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+                self.last_kwargs: dict[str, Any] = {}
+
+            @store.wrap
+            async def update_media_buy(
+                self, media_buy_id: str, patch: Patch, ctx: ToolContext
+            ) -> dict[str, Any]:
+                self.calls += 1
+                self.last_kwargs = {
+                    "media_buy_id": media_buy_id,
+                    "patch": patch,
+                }
+                return {"media_buy_id": media_buy_id, "status": "updated"}
+
+        seller = SellerHandler()
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="principal-a")
+        patch = Patch(idempotency_key=key, new_total_budget=500.0)
+
+        # Two retries with same key + payload → handler runs once.
+        r1 = await seller.update_media_buy(media_buy_id="mb-1", patch=patch, ctx=ctx)
+        r2 = await seller.update_media_buy(media_buy_id="mb-1", patch=patch, ctx=ctx)
+        assert seller.calls == 1
+        assert r1 == r2
+        # Confirm the inner handler received the original arg-projected
+        # kwargs verbatim — wrap is signature-transparent.
+        assert seller.last_kwargs["media_buy_id"] == "mb-1"
+        assert seller.last_kwargs["patch"] is patch
+
+    @pytest.mark.asyncio
+    async def test_arg_projected_conflict_raises_idempotency_conflict(self) -> None:
+        """Same key + different patch payload → ``IdempotencyConflictError``,
+        same as the positional path."""
+        from pydantic import BaseModel
+
+        class Patch(BaseModel):
+            idempotency_key: str
+            new_total_budget: float
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def update_media_buy(
+                self, media_buy_id: str, patch: Patch, ctx: ToolContext
+            ) -> dict[str, Any]:
+                self.calls += 1
+                return {"media_buy_id": media_buy_id, "status": "updated"}
+
+        seller = SellerHandler()
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="principal-a")
+        await seller.update_media_buy(
+            media_buy_id="mb-1",
+            patch=Patch(idempotency_key=key, new_total_budget=500.0),
+            ctx=ctx,
+        )
+        with pytest.raises(IdempotencyConflictError):
+            await seller.update_media_buy(
+                media_buy_id="mb-1",
+                patch=Patch(idempotency_key=key, new_total_budget=999.0),
+                ctx=ctx,
+            )
+        assert seller.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_arg_projected_no_pydantic_kwarg_falls_through(self) -> None:
+        """``sync_audiences`` style: ``arg_projector={"audiences": [...]}``.
+        No Pydantic model in kwargs and no top-level ``idempotency_key``
+        — wrap finds no key, runs handler without dedup. Same fall-
+        through as a missing key. Not a regression — adopters who want
+        idempotency on this shape need to project the params model
+        directly."""
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def sync_audiences(
+                self, audiences: list[dict], ctx: ToolContext
+            ) -> dict[str, Any]:
+                self.calls += 1
+                return {"synced": len(audiences)}
+
+        seller = SellerHandler()
+        ctx = ToolContext(caller_identity="principal-a")
+
+        # Two calls with identical args — no key → both run.
+        await seller.sync_audiences(audiences=[{"id": "a1"}], ctx=ctx)
+        await seller.sync_audiences(audiences=[{"id": "a1"}], ctx=ctx)
+        assert seller.calls == 2
+
+    @pytest.mark.asyncio
+    async def test_arg_projected_top_level_idempotency_key_works(self) -> None:
+        """When ``arg_projector`` happens to expose ``idempotency_key``
+        at the top level (the wrap's fallback path), dedup still
+        works. This covers tools whose projection strips out the
+        Pydantic wrapper but keeps the key as a kwarg."""
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def some_tool(
+                self, idempotency_key: str, payload: list, ctx: ToolContext
+            ) -> dict[str, Any]:
+                self.calls += 1
+                return {"ran": True}
+
+        seller = SellerHandler()
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="principal-a")
+        await seller.some_tool(idempotency_key=key, payload=[1, 2], ctx=ctx)
+        await seller.some_tool(idempotency_key=key, payload=[1, 2], ctx=ctx)
+        assert seller.calls == 1
+
+    @pytest.mark.asyncio
+    async def test_arg_projected_uses_ctx_kwarg_for_scope(self) -> None:
+        """The framework uses ``ctx=`` (not ``context=``) for projected
+        calls. Verify the scope key is extracted from the ``ctx``
+        kwarg correctly — without this, principals collapse and
+        cross-buyer replay becomes possible."""
+        from pydantic import BaseModel
+
+        class Patch(BaseModel):
+            idempotency_key: str
+            value: int
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def update_media_buy(
+                self, media_buy_id: str, patch: Patch, ctx: ToolContext
+            ) -> dict[str, Any]:
+                self.calls += 1
+                return {"media_buy_id": media_buy_id}
+
+        seller = SellerHandler()
+        key = str(uuid.uuid4())
+        ctx_a = ToolContext(caller_identity="principal-a")
+        ctx_b = ToolContext(caller_identity="principal-b")
+        patch = Patch(idempotency_key=key, value=1)
+
+        # Same key, different principals → DIFFERENT cache scope.
+        # Both calls run — no cross-principal replay.
+        await seller.update_media_buy(media_buy_id="mb-1", patch=patch, ctx=ctx_a)
+        await seller.update_media_buy(media_buy_id="mb-1", patch=patch, ctx=ctx_b)
+        assert seller.calls == 2
+
+    @pytest.mark.asyncio
+    async def test_keyword_calling_convention_works(self) -> None:
+        """``method(self, params=..., context=...)`` — the third
+        convention, less common but valid."""
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def create_media_buy(
+                self, params: dict, context: ToolContext | None = None
+            ) -> dict[str, Any]:
+                self.calls += 1
+                return {"id": "mb-1"}
+
+        seller = SellerHandler()
+        key = str(uuid.uuid4())
+        ctx = ToolContext(caller_identity="principal-a")
+        await seller.create_media_buy(params={"idempotency_key": key, "b": 1}, context=ctx)
+        await seller.create_media_buy(params={"idempotency_key": key, "b": 1}, context=ctx)
+        assert seller.calls == 1
+
+
+class TestWrapResolveCallArgsEdgeCases:
+    """Edge cases code-reviewer flagged on PR #567."""
+
+    @pytest.mark.asyncio
+    async def test_explicit_none_context_does_not_fall_through_to_ctx(self) -> None:
+        """``handler(self, params=p, context=None, ctx=real_ctx)`` — the
+        explicit ``context=None`` must win, not silently fall back to
+        ``ctx``. Falsy-context values (None, empty objects) shouldn't
+        trigger the alternate-key lookup."""
+        from adcp.server.idempotency.store import _resolve_call_args
+
+        real_ctx = ToolContext(caller_identity="real-principal")
+        handler_self, params, context = _resolve_call_args(
+            args=(object(),),  # self
+            kwargs={"params": {"k": "v"}, "context": None, "ctx": real_ctx},
+        )
+        assert context is None  # Explicit None wins over ctx fallback.
+
+    @pytest.mark.asyncio
+    async def test_multi_pydantic_kwarg_prefers_named_params(self) -> None:
+        """When multiple Pydantic kwargs are present, the resolver
+        prefers ``params`` / ``request`` / ``patch`` by name (in that
+        order) before falling back to first-by-iteration. Without
+        this, a tool with two Pydantic models would hash whichever
+        the framework happened to insert first into kwargs — order-
+        dependent and brittle."""
+        from pydantic import BaseModel
+
+        from adcp.server.idempotency.store import _resolve_call_args
+
+        class Filter(BaseModel):
+            field: str
+
+        class Patch(BaseModel):
+            idempotency_key: str
+            value: int
+
+        # ``filter`` is inserted before ``patch`` — first-by-iteration
+        # would pick ``filter``. Named-preference picks ``patch``.
+        handler_self, params, context = _resolve_call_args(
+            args=(object(),),
+            kwargs={
+                "filter": Filter(field="x"),
+                "patch": Patch(idempotency_key="k", value=1),
+                "ctx": ToolContext(caller_identity="p"),
+            },
+        )
+        assert isinstance(params, Patch)
+
+    @pytest.mark.asyncio
+    async def test_first_pydantic_falls_back_when_no_preferred_name(self) -> None:
+        """No ``params`` / ``request`` / ``patch`` kwarg → fall back to
+        first-by-iteration. Pin this so future maintainers don't break
+        the contract by accident."""
+        from pydantic import BaseModel
+
+        from adcp.server.idempotency.store import _resolve_call_args
+
+        class Audience(BaseModel):
+            idempotency_key: str
+            id: str
+
+        handler_self, params, context = _resolve_call_args(
+            args=(object(),),
+            kwargs={
+                "audience": Audience(idempotency_key="k", id="a1"),
+                "ctx": ToolContext(caller_identity="p"),
+            },
+        )
+        assert isinstance(params, Audience)
+
+    @pytest.mark.asyncio
+    async def test_duck_typed_non_pydantic_model_dump_no_longer_matches(self) -> None:
+        """``isinstance(BaseModel)`` is stricter than ``hasattr(model_dump)``.
+        A duck-typed object with a ``model_dump`` method (e.g. a custom
+        SQLAlchemy adapter) should NOT accidentally be treated as the
+        params source."""
+
+        class FakeModel:
+            def model_dump(self) -> dict[str, Any]:
+                return {"idempotency_key": "k"}
+
+        store = IdempotencyStore(backend=MemoryBackend(), ttl_seconds=86400)
+
+        class SellerHandler:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            @store.wrap
+            async def some_tool(self, fake: FakeModel, ctx: ToolContext) -> dict[str, Any]:
+                self.calls += 1
+                return {"ok": True}
+
+        seller = SellerHandler()
+        ctx = ToolContext(caller_identity="p")
+        # FakeModel is NOT a BaseModel, so it falls through to the
+        # kwargs-dict fallback. No idempotency_key at the top level
+        # of kwargs (the key lives inside fake.model_dump() — which
+        # the resolver doesn't introspect on non-BaseModel objects).
+        # Both calls run; this is the intended behavior — adopters
+        # who want idempotency must use real Pydantic models OR
+        # surface idempotency_key at the top of kwargs.
+        await seller.some_tool(fake=FakeModel(), ctx=ctx)
+        await seller.some_tool(fake=FakeModel(), ctx=ctx)
+        assert seller.calls == 2
+
+
 class TestCachedResponseImmutability:
     @pytest.mark.asyncio
     async def test_mutating_replay_does_not_poison_cache(self) -> None:
