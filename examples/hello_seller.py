@@ -1,15 +1,21 @@
-"""Hello-seller — the smallest possible v6.0 DecisioningPlatform.
+"""Hello-seller — the canonical v6.0 DecisioningPlatform starting point.
 
-A minimal :class:`SalesPlatform` adopter showing the canonical surface:
+A minimal :class:`SalesPlatform` adopter showing the full required surface:
 
 * :class:`DecisioningCapabilities` declared on the class body
 * :class:`SingletonAccounts` for the dev/single-tenant case
-* Five required ``sales-non-guaranteed`` methods (``get_products``,
-  ``create_media_buy``, ``update_media_buy``, ``sync_creatives``,
-  ``get_media_buy_delivery``) — all sync, sync return path. The full
-  required set is enforced at server boot by ``validate_platform``
-  via :data:`REQUIRED_METHODS_PER_SPECIALISM` — omitting any of the
-  five fails fast with INVALID_REQUEST.
+* Nine ``sales-non-guaranteed`` methods — five hard-required
+  (``get_products``, ``create_media_buy``, ``update_media_buy``,
+  ``sync_creatives``, ``get_media_buy_delivery``) plus four soft-required
+  by the SalesPlatform Protocol in v6.0 rc.1+
+  (``get_media_buys``, ``list_creative_formats``, ``list_creatives``,
+  ``provide_performance_feedback``; in
+  :data:`~adcp.decisioning.dispatch.RECOMMENDED_METHODS_PER_SPECIALISM`).
+  The authoritative list is
+  :data:`~adcp.decisioning.dispatch.REQUIRED_METHODS_PER_SPECIALISM` +
+  :data:`~adcp.decisioning.dispatch.RECOMMENDED_METHODS_PER_SPECIALISM`;
+  ``validate_platform`` checks both at server boot — hard-fail for the
+  five, soft-warn for the four.
 
 Run::
 
@@ -18,7 +24,7 @@ Run::
 Then:
 
 * MCP discovery: connect with any AdCP MCP buyer
-* List tools: should advertise just the 3 implemented + the
+* List tools: should advertise the 9 seller methods + the
   framework's protocol tools
 * Call ``get_products``: returns one product
 * Call ``create_media_buy``: returns the success envelope
@@ -77,13 +83,19 @@ from adcp.decisioning import (
 
 
 class HelloSeller(DecisioningPlatform):
-    """The canonical minimal v6.0 sales-non-guaranteed adopter.
+    """The canonical v6.0 sales-non-guaranteed adopter.
 
-    Implements all five required methods of ``sales-non-guaranteed``
-    (the full contract per :data:`REQUIRED_METHODS_PER_SPECIALISM`):
-    ``get_products``, ``create_media_buy``, ``update_media_buy``,
-    ``sync_creatives``, ``get_media_buy_delivery``. ``validate_platform``
-    runs at boot and fails fast on any missing method.
+    Implements all nine methods of the ``sales-non-guaranteed`` surface: the
+    five hard-required (``get_products``, ``create_media_buy``,
+    ``update_media_buy``, ``sync_creatives``, ``get_media_buy_delivery``)
+    and the four soft-required by the SalesPlatform Protocol in v6.0 rc.1+
+    (``get_media_buys``, ``list_creative_formats``, ``list_creatives``,
+    ``provide_performance_feedback``;
+    see :data:`~adcp.decisioning.dispatch.RECOMMENDED_METHODS_PER_SPECIALISM`).
+
+    ``validate_platform`` runs at boot and fails fast on any missing
+    hard-required method; it soft-warns (or hard-fails in strict mode) for
+    the four rc.1+ methods. This example passes all checks cleanly.
     """
 
     capabilities = DecisioningCapabilities(
@@ -233,6 +245,75 @@ class HelloSeller(DecisioningPlatform):
                 },
             ],
         }
+
+    # ---- v6.0 rc.1 recommended methods (RECOMMENDED_METHODS_PER_SPECIALISM) --
+    # Staged for promotion to hard-required at v6.0 rc.1 GA. Stubs return the
+    # minimal valid wire shape. Wire each to your production systems before
+    # declaring rc.1 compliance (set ADCP_DECISIONING_STRICT_VALIDATE_PLATFORM=1
+    # in CI to confirm the full surface is present).
+
+    def get_media_buys(
+        self,
+        req: Any,
+        ctx: RequestContext[Any],
+    ) -> dict[str, Any]:
+        """List media buys for the resolved account.
+
+        Return all active media buys here. Wire to your order-management
+        system in production; buyers use this for status polling and
+        reconciliation.
+        """
+        return {"media_buys": []}
+
+    def list_creative_formats(
+        self,
+        req: Any,
+        ctx: RequestContext[Any],
+    ) -> dict[str, Any]:
+        """Catalog of accepted creative formats.
+
+        Return the full list of format definitions this seller accepts.
+        Wire to your creative-spec registry in production; buyers use this
+        to validate creatives before submission.
+        """
+        return {"formats": []}
+
+    def list_creatives(
+        self,
+        req: Any,
+        ctx: RequestContext[Any],
+    ) -> dict[str, Any]:
+        """List the seller's view of buyer-uploaded creatives.
+
+        Return all creatives the buyer has synced. Wire to your creative
+        asset store in production; buyers use this to check approval
+        statuses and discover available creatives.
+
+        ``query_summary`` and ``pagination`` are required by the spec
+        envelope — fill ``total_matching``/``returned`` from the
+        post-filter result count and ``has_more`` from the cursor state
+        once you have a real store.
+        """
+        return {
+            "query_summary": {"total_matching": 0, "returned": 0},
+            "pagination": {"has_more": False},
+            "creatives": [],
+        }
+
+    def provide_performance_feedback(
+        self,
+        req: Any,
+        ctx: RequestContext[Any],
+    ) -> dict[str, Any]:
+        """Buyer-supplied performance signal back to the seller.
+
+        Acknowledge receipt and log to your analytics pipeline in
+        production. Buyers send conversion events (clicks, installs,
+        purchases) here so the seller can optimize pacing and targeting.
+        """
+        return {"success": True}
+
+    # -------------------------------------------------------------------------
 
     @staticmethod
     def _get_packages(req: Any) -> list[dict[str, Any]]:
