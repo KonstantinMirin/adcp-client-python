@@ -50,6 +50,7 @@ from adcp.decisioning.property_list import (
     property_list_capability_enabled,
 )
 from adcp.decisioning.refine import (
+    RefineResult,
     assert_buying_mode_consistent,
     has_refine_support,
     project_refine_response,
@@ -1070,6 +1071,15 @@ class PlatformHandler(ADCPHandler[ToolContext]):
     ) -> GetProductsResponse:
         """Invoke the platform's ``get_products`` method and apply fields projection.
 
+        When the platform is a :class:`PlatformRouter` with per-tenant
+        ``proposal_managers`` wired, the router's own ``get_products``
+        method handles the proposal-side dispatch (per-tenant
+        :class:`ProposalManager` lookup, refine-mode selection,
+        fall-through to the tenant's :class:`DecisioningPlatform`).
+        The handler delegates uniformly via
+        :func:`_invoke_platform_method`; the routing decision lives
+        on the router.
+
         When ``params.fields`` is set the framework drops unrequested product
         fields after the platform method returns, always retaining the eight
         schema-required fields.  When ``params.fields`` is ``None`` the
@@ -1118,7 +1128,16 @@ class PlatformHandler(ADCPHandler[ToolContext]):
                 executor=self._executor,
                 registry=self._registry,
             )
-            return project_refine_response(refine_result, params.refine or [])
+            # Two refine return shapes coexist:
+            # - Direct platform.refine_get_products returns a RefineResult
+            #   (typed object with per_refine_outcome) — framework projects
+            #   to wire response.
+            # - PlatformRouter.refine_get_products forwards to the per-tenant
+            #   ProposalManager.refine_products which returns a wire-shaped
+            #   GetProductsResponse directly. Skip projection in that case.
+            if isinstance(refine_result, RefineResult):
+                return project_refine_response(refine_result, params.refine or [])
+            return cast("GetProductsResponse", refine_result)
         # Resolve time_budget to a seconds deadline. _resolve_account and
         # _build_ctx are intentionally outside this try/except so their
         # AdcpErrors propagate unmodified; only the platform call is deadline-

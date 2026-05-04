@@ -177,6 +177,14 @@ def create_adcp_server_from_platform(
         receiver would handle it but explicit suppression matches the
         v5 manual-emit posture for adopters mid-migration).
 
+    To wire a :class:`ProposalManager` (v1 two-platform composition),
+    pass it on a :class:`PlatformRouter` via
+    ``proposal_managers={tenant_id: ProposalManager}``. The router is
+    the per-tenant binding point — single-tenant adopters use a
+    one-entry router (``platforms={"default": ...}``,
+    ``proposal_managers={"default": ...}``). See
+    ``docs/proposals/product-architecture.md`` § "Tenant binding model".
+
     :raises ValueError: when ``executor`` and ``thread_pool_size`` are
         both supplied (D5 mutually-exclusive validation).
     :raises AdcpError: from :func:`validate_platform` when the
