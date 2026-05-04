@@ -49,6 +49,14 @@ from adcp.decisioning.property_list import (
     maybe_apply_property_list_filter,
     property_list_capability_enabled,
 )
+from adcp.decisioning.proposal_dispatch import (
+    mark_proposal_consumed,
+    maybe_hydrate_recipes_for_create_media_buy,
+    maybe_hydrate_recipes_for_media_buy_id,
+    maybe_intercept_finalize,
+    maybe_persist_draft_after_get_products,
+    release_proposal_reservation,
+)
 from adcp.decisioning.refine import (
     RefineResult,
     assert_buying_mode_consistent,
@@ -606,6 +614,30 @@ def _method_accepts_configs(platform: Any, method_name: str) -> bool:
         return False
 
 
+def _extract_media_buy_id(result: Any) -> str | None:
+    """Pull ``media_buy_id`` off a ``create_media_buy`` return — handles
+    Pydantic models, plain dicts, and the ``Submitted`` envelope shape.
+
+    Returns ``None`` for handoff returns (no media_buy_id yet) or when
+    the field is missing — the caller skips ``mark_consumed`` in that
+    case and the proposal stays in ``COMMITTED`` state until a
+    subsequent successful create_media_buy hits the same ID.
+    """
+    if result is None:
+        return None
+    if isinstance(result, dict):
+        # Submitted envelope path doesn't carry media_buy_id; the
+        # standard success shape does.
+        if result.get("status") == "submitted":
+            return None
+        value = result.get("media_buy_id")
+    else:
+        value = getattr(result, "media_buy_id", None)
+    if value is None:
+        return None
+    return str(value)
+
+
 class PlatformHandler(ADCPHandler[ToolContext]):
     """ADCPHandler subclass that routes wire requests to a
     :class:`DecisioningPlatform` via :func:`_invoke_platform_method`.
@@ -1146,6 +1178,23 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         if mode == "refine":
             from adcp.decisioning.types import AdcpError
 
+            # v1.5 finalize interception (D2 + D7). When the request
+            # carries a refine[i].action='finalize' AND the resolved
+            # tenant has a finalize-capable manager + wired store, the
+            # framework intercepts before refine_products and runs the
+            # finalize lifecycle: hydrate draft → call finalize_proposal →
+            # commit → project wire response. No-op when finalize isn't
+            # in scope; falls through to the v1 refine path.
+            finalize_response = await maybe_intercept_finalize(
+                self._platform,
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+            )
+            if finalize_response is not None:
+                return cast("GetProductsResponse", finalize_response)
+
             if not has_refine_support(self._platform):
                 raise AdcpError(
                     "INVALID_REQUEST",
@@ -1173,7 +1222,12 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             #   ProposalManager.refine_products which returns a wire-shaped
             #   GetProductsResponse directly. Skip projection in that case.
             if isinstance(refine_result, RefineResult):
-                return project_refine_response(refine_result, params.refine or [])
+                projected: GetProductsResponse = project_refine_response(
+                    refine_result, params.refine or []
+                )
+                await maybe_persist_draft_after_get_products(self._platform, projected, ctx)
+                return projected
+            await maybe_persist_draft_after_get_products(self._platform, refine_result, ctx)
             return cast("GetProductsResponse", refine_result)
         # Resolve time_budget to a seconds deadline. _resolve_account and
         # _build_ctx are intentionally outside this try/except so their
@@ -1239,6 +1293,11 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             )
         if params.fields:
             response = _project_product_fields(response, params.fields)
+        # v1.5: persist draft proposals from brief / wholesale calls so
+        # subsequent finalize / create_media_buy can hydrate from the
+        # store. No-op when no proposal_store is wired for this tenant
+        # or when the response carries no proposals.
+        await maybe_persist_draft_after_get_products(self._platform, response, ctx)
         return response
 
     async def create_media_buy(  # type: ignore[override]
@@ -1279,18 +1338,60 @@ class PlatformHandler(ADCPHandler[ToolContext]):
                         details={"caused_by": {"type": type(exc).__name__}},
                     ) from exc
 
+        # v1.5: when params.proposal_id is set AND a tenant store is
+        # wired, hydrate ctx.recipes from the committed proposal +
+        # validate expiry / capability overlap before the adapter runs.
+        # Returns the ProposalRecord (state=CONSUMING) so we can
+        # finalize_consumption on success or release_consumption on
+        # failure. The two-phase commit prevents the inventory
+        # double-spend race that a check-then-act sequence would expose.
+        proposal_record = await maybe_hydrate_recipes_for_create_media_buy(
+            self._platform, params, ctx
+        )
+
         extra: dict[str, Any] | None = (
             {"configs": configs} if self._create_media_buy_accepts_configs else None
         )
-        result = await _invoke_platform_method(
-            self._platform,
-            "create_media_buy",
-            params,
-            ctx,
-            executor=self._executor,
-            registry=self._registry,
-            extra_kwargs=extra,
-        )
+        try:
+            result = await _invoke_platform_method(
+                self._platform,
+                "create_media_buy",
+                params,
+                ctx,
+                executor=self._executor,
+                registry=self._registry,
+                extra_kwargs=extra,
+            )
+        except BaseException:
+            # Adapter raised — roll back the consumption reservation so
+            # the buyer can retry. If we leave it in CONSUMING, the next
+            # create_media_buy(proposal_id=X) call would see
+            # PROPOSAL_NOT_COMMITTED until the eviction window passes.
+            # BaseException catches AdcpError + asyncio.CancelledError +
+            # generic exceptions; the reservation gets released no matter
+            # how the adapter exits.
+            if proposal_record is not None:
+                await release_proposal_reservation(self._platform, proposal_record, ctx)
+            raise
+        # Finalize the consumption once create_media_buy returns
+        # successfully. Idempotent on re-call with the same media_buy_id
+        # (idempotency_key replays land here too).
+        if proposal_record is not None:
+            media_buy_id = _extract_media_buy_id(result)
+            if media_buy_id is not None:
+                await mark_proposal_consumed(
+                    self._platform,
+                    proposal_record,
+                    media_buy_id=media_buy_id,
+                    ctx=ctx,
+                )
+            # else: TaskHandoff path returned a Submitted envelope; the
+            # proposal stays CONSUMING until the handoff resolves. The
+            # framework's _project_handoff on_complete hook (wired below
+            # for v1.5+) finalizes consumption when the bg task lands.
+            # Until that hook is wired for create_media_buy specifically,
+            # the proposal will sit in CONSUMING until eviction — flagged
+            # as a v1.5.1 follow-up.
         self._maybe_auto_emit_sync_completion("create_media_buy", params, result)
         return cast("CreateMediaBuySuccessResponse", result)
 
@@ -1307,6 +1408,15 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         tool_ctx = context or ToolContext()
         account = await self._resolve_account(params.account, tool_ctx)
         ctx = self._build_ctx(tool_ctx, account)
+        # v1.5: hydrate ctx.recipes from the consumed proposal via the
+        # ProposalStore reverse-index. Re-validates capability overlap
+        # against any packages on the patch (Resolutions §5).
+        await maybe_hydrate_recipes_for_media_buy_id(
+            self._platform,
+            params.media_buy_id,
+            ctx,
+            packages=list(getattr(params, "packages", None) or []),
+        )
         result = await _invoke_platform_method(
             self._platform,
             "update_media_buy",
@@ -1346,6 +1456,14 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         tool_ctx = context or ToolContext()
         account = await self._resolve_account(params.account, tool_ctx)
         ctx = self._build_ctx(tool_ctx, account)
+        # v1.5: hydrate ctx.recipes for the consumed proposal — adapter
+        # reads ``ctx.recipes[product_id]`` for per-product delivery
+        # logic. Hydrates from the first media_buy_id on the request;
+        # multi-buy responses re-hydrate per call.
+        media_buy_ids = list(getattr(params, "media_buy_ids", None) or [])
+        first_id = str(media_buy_ids[0]) if media_buy_ids else ""
+        if first_id:
+            await maybe_hydrate_recipes_for_media_buy_id(self._platform, first_id, ctx)
         return cast(
             "GetMediaBuyDeliveryResponse",
             await _invoke_platform_method(

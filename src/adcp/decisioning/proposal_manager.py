@@ -57,6 +57,7 @@ tenant. Single-tenant adopters use a one-entry router.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -78,6 +79,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from adcp.decisioning.context import RequestContext
+    from adcp.decisioning.recipe import Recipe
     from adcp.decisioning.types import MaybeAsync
     from adcp.types import GetProductsRequest, GetProductsResponse
 
@@ -140,9 +142,15 @@ class ProposalCapabilities:
     sales_specialism: SalesSpecialism
 
     refine: bool = False
+    finalize: bool = False
+    expires_at_grace_seconds: int = 0
     dynamic_products: bool = False
     rate_card_pricing: bool = False
     availability_reservations: bool = False
+    # ``multi_decisioning`` retained for v1 source-compat (adopters who
+    # set it pass through harmlessly). Per v1.5 § D2 / Resolutions §6,
+    # the framework no longer reads this field. Stops appearing on new
+    # adopter declarations; v1.6+ removes it entirely.
     multi_decisioning: bool = False
 
     def __post_init__(self) -> None:
@@ -162,6 +170,94 @@ class ProposalCapabilities:
                 recovery="terminal",
                 field="sales_specialism",
             )
+        # ``expires_at_grace_seconds`` must be non-negative; a negative
+        # value would shrink the inventory hold rather than extend it,
+        # which contradicts the design's intent.
+        if self.expires_at_grace_seconds < 0:
+            raise AdcpError(
+                "INVALID_REQUEST",
+                message=(
+                    "ProposalCapabilities.expires_at_grace_seconds must be "
+                    f">= 0; got {self.expires_at_grace_seconds!r}. The "
+                    "grace window extends the inventory hold past "
+                    "expires_at; negative values would shrink it."
+                ),
+                recovery="terminal",
+                field="expires_at_grace_seconds",
+            )
+
+
+@dataclass(frozen=True)
+class FinalizeProposalRequest:
+    """Framework-internal request shape passed to
+    :meth:`ProposalManager.finalize_proposal`.
+
+    Constructed by the dispatcher when a buyer's ``get_products``
+    request with ``buying_mode='refine'`` carries a
+    ``refine[i].action='finalize'`` entry. Adopter doesn't parse the
+    wire envelope; the framework projects.
+
+    :param proposal_id: The draft proposal the buyer is asking to
+        finalize. Hydrated from the wire's ``refine[i].proposal_id``
+        field.
+    :param recipes: ``product_id -> Recipe`` mapping pulled from the
+        :class:`adcp.decisioning.ProposalStore` draft. The adopter's
+        finalize logic typically lock-prices these and emits the
+        committed proposal.
+    :param proposal_payload: The draft's wire ``Proposal`` shape
+        (the same payload the adopter returned on the prior
+        ``get_products`` / ``refine_products`` call). Adopter
+        typically modifies this with locked pricing and returns it
+        on :class:`FinalizeProposalSuccess`.
+    :param ask: The buyer's per-entry refine ``ask`` text — what they
+        want finalized. Free-form; adopter consumes.
+    :param parent_request: The parent :class:`GetProductsRequest` so
+        the adopter sees the full envelope (account, etc.) without
+        the framework projecting fields one-by-one.
+    """
+
+    proposal_id: str
+    recipes: dict[str, Recipe]
+    proposal_payload: dict[str, Any]
+    ask: str | None
+    parent_request: GetProductsRequest
+
+
+@dataclass(frozen=True)
+class FinalizeProposalSuccess:
+    """Adopter-returned shape from
+    :meth:`ProposalManager.finalize_proposal` — inline commit.
+
+    Framework calls
+    :meth:`adcp.decisioning.ProposalStore.commit` with these fields
+    before projecting the wire response. The buyer sees the committed
+    :class:`~adcp.types.Proposal` with ``proposal_status='committed'``
+    + ``expires_at`` populated on the next ``get_products`` response
+    payload.
+
+    :param proposal: The wire ``Proposal`` shape with locked pricing
+        and ``proposal_status='committed'``. Adopter typically
+        derives this from
+        :attr:`FinalizeProposalRequest.proposal_payload` with
+        modifications. **Must be JSON-serializable end-to-end** —
+        nested Pydantic models and other non-JSON types don't survive
+        a process restart through a durable :class:`ProposalStore`
+        backing. Adopters wiring durable stores call ``.model_dump()``
+        before assignment, or build dicts directly.
+    :param expires_at: Inventory hold deadline. After this (plus the
+        adopter's
+        :attr:`ProposalCapabilities.expires_at_grace_seconds`
+        window), the framework rejects ``create_media_buy`` calls
+        referencing the proposal with ``PROPOSAL_EXPIRED``.
+    :param recipes: Optional refreshed recipe mapping. ``None``
+        (default) preserves the draft's recipes verbatim. Adopters
+        whose finalize logic mutates recipe fields (e.g. locking a
+        line-item template id) supply a fresh mapping.
+    """
+
+    proposal: dict[str, Any]
+    expires_at: datetime
+    recipes: dict[str, Recipe] | None = None
 
 
 @runtime_checkable
@@ -234,6 +330,21 @@ class ProposalManager(Protocol):
         ``create_media_buy`` calls.
         """
         ...
+
+    # NOTE: ``finalize_proposal`` is intentionally NOT a Protocol member.
+    # Per Resolutions §7 of the v1.5 design doc, the framework detects
+    # finalize support via ``hasattr(manager, "finalize_proposal")`` AND
+    # ``manager.capabilities.finalize is True``. Putting the method on the
+    # ``runtime_checkable`` Protocol body would break ``isinstance(...)``
+    # for any v1 manager that doesn't declare finalize (every adopter who
+    # ships catalog-mode without committing proposals). Mirrors v1's
+    # ``refine_products`` posture — present on the Protocol surface only
+    # because adopters declaring ``refine=True`` need a typed signature
+    # to write against; absent from runtime conformance checks.
+    #
+    # Adopters declaring ``finalize=True`` who don't implement the method
+    # get a clear error at ``serve()`` time; the boot-time validator walks
+    # methods like ``_is_method_overridden`` from the dispatch design D3.
 
     # Optional refine surface — capability-gated.
     def refine_products(
@@ -449,6 +560,8 @@ def _request_to_dict(req: Any) -> dict[str, Any]:
 
 
 __all__ = [
+    "FinalizeProposalRequest",
+    "FinalizeProposalSuccess",
     "MockProposalManager",
     "ProposalCapabilities",
     "ProposalManager",
