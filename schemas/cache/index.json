@@ -3,12 +3,12 @@
   "title": "AdCP Schema Registry",
   "version": "1.0.0",
   "description": "Registry of all AdCP JSON schemas for validation and discovery",
-  "adcp_version": "3.0.5",
+  "adcp_version": "3.0.7",
   "versioning": {
-    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.5. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ \u2192 /schemas/3.0.5/."
+    "note": "AdCP uses build-time versioning. This directory contains schemas for AdCP 3.0.7. Full semantic versions are available at /schemas/{version}/ (e.g., /schemas/2.5.0/). Major version aliases point to the latest release: /schemas/v3/ \u2192 /schemas/3.0.7/."
   },
-  "lastUpdated": "2026-05-02",
-  "baseUrl": "/schemas/3.0.5",
+  "lastUpdated": "2026-05-08",
+  "baseUrl": "/schemas/3.0.7",
   "schemas": {
     "core": {
       "description": "Core data models used throughout AdCP",
