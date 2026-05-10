@@ -750,7 +750,8 @@ from a2a.utils.constants import (  # noqa: E402  (intentional placement after Be
 _A2A_DISCOVERY_PATHS: frozenset[str] = frozenset(
     {
         _A2A_AGENT_CARD_PATH,  # 1.0 canonical: ``/.well-known/agent-card.json``.
-        "/.well-known/agent.json",  # Legacy 0.3 alias retained by enable_v0_3_compat=True.
+        # Legacy 0.3 alias — route registered explicitly in create_a2a_server.
+        "/.well-known/agent.json",
     }
 )
 
@@ -762,7 +763,8 @@ class A2ABearerAuthMiddleware:
     :func:`adcp.server.a2a_server.create_a2a_server` with this
     middleware to require a valid bearer header on every JSON-RPC
     request, while leaving the spec-mandated public discovery
-    surface (``/.well-known/agent-card.json``) accessible.
+    surface (``/.well-known/agent-card.json`` and the 0.3 alias
+    ``/.well-known/agent.json``) accessible.
 
     Designed to compose with a2a-sdk's
     :class:`DefaultServerCallContextBuilder`: on auth success the
