@@ -1870,6 +1870,7 @@ def create_tool_caller(
     method_name: str,
     *,
     validation: ValidationHookConfig | None = None,
+    pre_validation_hook: Callable[[str, dict[str, Any]], dict[str, Any]] | None = None,
 ) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
 
@@ -1899,12 +1900,36 @@ def create_tool_caller(
     server validation is a deliberate opt-in for authors who want
     dispatcher-level enforcement.
 
+    **Pre-validation hook (issue #614).** When ``pre_validation_hook`` is
+    supplied, it is called with ``(tool_name, shallow_copy_of_args)`` and
+    must return a ``dict`` that replaces the wire args before schema
+    validation and Pydantic ``model_validate`` run. The framework passes
+    a shallow copy of the incoming params dict, so the hook may mutate
+    its argument freely or return a brand-new dict — either style is safe.
+    The original wire params are captured before the copy is made, so
+    context echo always reflects what the buyer sent. Use this to apply
+    spec-mandated defaults for pre-v3 buyers that omit required fields
+    (e.g. ``buying_mode``, ``format_id`` shape coercion, ``asset_type``
+    inference). The hook runs on every call; keep it fast.
+    Exceptions from the hook surface as ``INVALID_REQUEST`` — do not raise
+    for missing-but-defaultable fields, only for structurally unusable args.
+
+    .. note::
+        For the specific case of buyers omitting ``account``, see issue
+        #623 ("Typed dispatcher rejects valid request when ``account`` is
+        omitted") — that will be the canonical spec-level fix for that
+        field. Once #623 lands you can drop any ``account`` placeholder
+        hook entry.
+
     Args:
         handler: The ADCP handler instance
         method_name: Name of the method to call
         validation: Optional :class:`ValidationHookConfig` with
             per-side modes (``strict`` / ``warn`` / ``off``). Omitting
             it disables server-side schema validation entirely.
+        pre_validation_hook: Optional callable ``(tool_name, args) -> args``
+            invoked on the raw wire dict before schema + Pydantic validation.
+            See the **Pre-validation hook** section above.
 
     Returns:
         Async callable ``call_tool(params, context=None)``. The ``context``
@@ -1938,7 +1963,22 @@ def create_tool_caller(
 
     async def call_tool(params: dict[str, Any], context: ToolContext | None = None) -> Any:
         ctx = context if context is not None else ToolContext()
-        raw_params = params  # Preserve the original dict for context echo.
+
+        raw_params = params  # Preserve original wire params for context echo.
+
+        if pre_validation_hook is not None:
+            try:
+                params = pre_validation_hook(method_name, dict(params))
+            except Exception as exc:
+                raise ADCPTaskError(
+                    operation=method_name,
+                    errors=[
+                        Error(
+                            code="INVALID_REQUEST",
+                            message=f"pre_validation_hook raised {type(exc).__name__}: {exc}",
+                        )
+                    ],
+                ) from exc
 
         if request_mode is not None and request_mode != "off":
             outcome = validate_request(method_name, params)
@@ -2069,6 +2109,7 @@ class MCPToolSet:
         *,
         advertise_all: bool = False,
         validation: ValidationHookConfig | None = None,
+        pre_validation_hooks: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] | None = None,
     ):
         """Create tool set from handler.
 
@@ -2081,6 +2122,9 @@ class MCPToolSet:
                 (override-filtered advertisement).
             validation: Opt-in schema validation config applied to every
                 tool caller. See :func:`create_tool_caller`.
+            pre_validation_hooks: Optional dict mapping tool name to a
+                ``(tool_name, args) -> args`` callable. Applied before
+                schema + Pydantic validation. See :func:`create_tool_caller`.
         """
         self.handler = handler
         self._filtered_definitions = get_tools_for_handler(handler, advertise_all=advertise_all)
@@ -2089,7 +2133,10 @@ class MCPToolSet:
         # Create tool callers only for filtered tools
         for tool_def in self._filtered_definitions:
             name = tool_def["name"]
-            self._tools[name] = create_tool_caller(handler, name, validation=validation)
+            hook = (pre_validation_hooks or {}).get(name)
+            self._tools[name] = create_tool_caller(
+                handler, name, validation=validation, pre_validation_hook=hook
+            )
 
     @property
     def tool_definitions(self) -> list[dict[str, Any]]:
@@ -2123,6 +2170,7 @@ def create_mcp_tools(
     *,
     advertise_all: bool = False,
     validation: ValidationHookConfig | None = None,
+    pre_validation_hooks: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] | None = None,
 ) -> MCPToolSet:
     """Create MCP tools from an ADCP handler.
 
@@ -2157,8 +2205,16 @@ def create_mcp_tools(
             every tool caller validates requests and responses against
             the bundled AdCP JSON schemas. See
             :func:`create_tool_caller` for mode semantics.
+        pre_validation_hooks: Optional dict mapping tool name to a
+            ``(tool_name, args) -> args`` callable. Applied before schema
+            + Pydantic validation. See :func:`create_tool_caller`.
 
     Returns:
         MCPToolSet with tool definitions and handlers.
     """
-    return MCPToolSet(handler, advertise_all=advertise_all, validation=validation)
+    return MCPToolSet(
+        handler,
+        advertise_all=advertise_all,
+        validation=validation,
+        pre_validation_hooks=pre_validation_hooks,
+    )
