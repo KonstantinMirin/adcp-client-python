@@ -144,6 +144,13 @@ from adcp.server.serve import (
     serve,
 )
 from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
+from adcp.server.tenant_registry import (
+    PlatformFactory,
+    TenantHealthState,
+    TenantRegistry,
+    TenantResolution,
+    TenantValidator,
+)
 from adcp.server.tenant_router import (
     CallableSubdomainTenantRouter,
     InMemorySubdomainTenantRouter,
@@ -217,6 +224,12 @@ __all__ = [
     # Idempotency middleware (AdCP #2315 seller side)
     "IdempotencyStore",
     "MemoryBackend",
+    # Multi-tenant registry with health tracking
+    "PlatformFactory",
+    "TenantHealthState",
+    "TenantRegistry",
+    "TenantResolution",
+    "TenantValidator",
     # Subdomain tenant routing
     "CallableSubdomainTenantRouter",
     "InMemorySubdomainTenantRouter",
