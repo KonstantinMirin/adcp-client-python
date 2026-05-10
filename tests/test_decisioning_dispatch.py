@@ -410,6 +410,23 @@ def test_build_request_context_threads_account_and_auth() -> None:
     assert ctx.caller_identity == "caller_x"
     assert ctx.tenant_id == "tenant_y"
     assert ctx.metadata == {"foo": "bar"}
+    # Fixture ToolContext has no "transport" in metadata — transport is None.
+    assert ctx.transport is None
+
+
+@pytest.mark.parametrize("transport_value", ["mcp", "a2a"])
+def test_build_request_context_extracts_transport_from_metadata(transport_value: str) -> None:
+    """Transport is lifted from ToolContext.metadata into the typed field and ContextVar."""
+    from adcp.server.auth import current_transport
+
+    tool_ctx = ToolContext(metadata={"transport": transport_value, "tool_name": "get_products"})
+    account: Account[Any] = Account(id="acct_b")
+    ctx = _build_request_context(tool_ctx, account, None)
+    assert ctx.transport == transport_value
+    assert current_transport.get() == transport_value
+    # SDK-owned keys are stripped from handler-visible metadata.
+    assert "transport" not in ctx.metadata
+    assert "tool_name" not in ctx.metadata
 
 
 def test_build_request_context_uses_composite_key_when_store_supplied() -> None:
