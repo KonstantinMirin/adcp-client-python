@@ -56,7 +56,7 @@ from adcp.signing.webhook_verifier import (
     WebhookVerifyOptions,
     verify_webhook_signature,
 )
-from adcp.types import GeneratedTaskStatus, McpWebhookPayload, TaskType
+from adcp.types import AdcpProtocol, GeneratedTaskStatus, McpWebhookPayload, TaskType
 from adcp.types.base import AdCPBaseModel
 from adcp.webhook_receiver import (
     LegacyHmacFallback,
@@ -67,6 +67,34 @@ from adcp.webhook_receiver import (
     WebhookReceiver,
     WebhookReceiverConfig,
 )
+
+# `task_type` → `protocol` mapping. Mirrors the JS reference
+# implementation's `TOOL_PROTOCOL_MAP` in
+# `adcontextprotocol/adcp-client:src/lib/server/decisioning/runtime/protocol-for-tool.ts`
+# so cross-SDK webhook bodies classify operations identically. Updated
+# alongside `task-type.json` enum extensions.
+_TASK_TYPE_TO_PROTOCOL: dict[TaskType, AdcpProtocol] = {
+    TaskType.create_media_buy: AdcpProtocol.media_buy,
+    TaskType.update_media_buy: AdcpProtocol.media_buy,
+    TaskType.sync_creatives: AdcpProtocol.creative,
+    TaskType.activate_signal: AdcpProtocol.signals,
+    TaskType.get_signals: AdcpProtocol.signals,
+    TaskType.create_property_list: AdcpProtocol.governance,
+    TaskType.update_property_list: AdcpProtocol.governance,
+    TaskType.get_property_list: AdcpProtocol.governance,
+    TaskType.list_property_lists: AdcpProtocol.governance,
+    TaskType.delete_property_list: AdcpProtocol.governance,
+    TaskType.sync_accounts: AdcpProtocol.media_buy,
+    TaskType.get_account_financials: AdcpProtocol.media_buy,
+    TaskType.get_creative_delivery: AdcpProtocol.creative,
+    TaskType.sync_event_sources: AdcpProtocol.media_buy,
+    TaskType.sync_audiences: AdcpProtocol.media_buy,
+    TaskType.sync_catalogs: AdcpProtocol.media_buy,
+    TaskType.log_event: AdcpProtocol.media_buy,
+    TaskType.get_brand_identity: AdcpProtocol.brand,
+    TaskType.get_rights: AdcpProtocol.brand,
+    TaskType.acquire_rights: AdcpProtocol.brand,
+}
 
 
 def generate_webhook_idempotency_key() -> str:
@@ -93,7 +121,7 @@ def create_mcp_webhook_payload(
     operation_id: str | None = None,
     message: str | None = None,
     context_id: str | None = None,
-    domain: str | None = None,
+    protocol: AdcpProtocol | str | None = None,
     idempotency_key: str | None = None,
     token: str | None = None,
 ) -> McpWebhookPayload:
@@ -125,7 +153,10 @@ def create_mcp_webhook_payload(
             notifications without parsing URL paths.
         message: Human-readable summary of task state.
         context_id: Session/conversation identifier.
-        domain: AdCP domain this task belongs to.
+        protocol: AdCP protocol this task belongs to (see :class:`AdcpProtocol`).
+            Auto-derived from ``task_type`` when omitted, matching the JS
+            SDK's ``protocolForTool`` so cross-SDK bodies classify
+            operations identically. Pass an explicit value to override.
         idempotency_key: Sender-generated key stable across retries of the
             same event. Defaults to a freshly-generated UUID v4 — callers
             retrying delivery of the same event MUST pass the key from
@@ -177,6 +208,19 @@ def create_mcp_webhook_payload(
 
     status_value = status.value if hasattr(status, "value") else str(status)
 
+    # Auto-derive `protocol` from `task_type` when caller doesn't override.
+    # Matches `protocolForTool` in the JS reference SDK so cross-SDK bodies
+    # classify operations identically.
+    if protocol is None:
+        try:
+            task_type_enum = task_type if isinstance(task_type, TaskType) else TaskType(task_type)
+        except ValueError:
+            # Unknown string — let `model_validate` raise the canonical
+            # task_type error below rather than swallow it here.
+            task_type_enum = None
+        if task_type_enum is not None:
+            protocol = _TASK_TYPE_TO_PROTOCOL.get(task_type_enum)
+
     # Foreign BaseModel subclasses (anything outside AdcpAsyncResponseData)
     # don't match the discriminated-union variants by identity — dump to a
     # dict so the union picks by shape, matching the dict path.
@@ -186,11 +230,10 @@ def create_mcp_webhook_payload(
     else:
         result_value = result
 
-    # `domain` and `token` aren't in the schema but are accepted via
-    # `extra='allow'`; they round-trip through `model_dump`.
+    # `token` isn't a typed schema field but is accepted via `extra='allow'`;
+    # it round-trips through `model_dump`. Tracked upstream for promotion to
+    # a typed field on `mcp-webhook-payload.json`.
     extras: dict[str, Any] = {}
-    if domain is not None:
-        extras["domain"] = domain
     if token is not None:
         # Buyer-supplied token from push_notification_config.token,
         # echoed back per push-notification-config.json spec text:
@@ -202,6 +245,7 @@ def create_mcp_webhook_payload(
             "idempotency_key": idempotency_key,
             "task_id": task_id,
             "task_type": task_type,
+            "protocol": protocol,
             "status": status_value,
             "timestamp": timestamp,
             "operation_id": operation_id,
