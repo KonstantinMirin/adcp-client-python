@@ -124,6 +124,7 @@ class ServeConfig:
     task_store: TaskStore | None = None
     push_config_store: PushNotificationConfigStore | None = None
     message_parser: MessageParser | None = None
+    public_url: str | None = None
 
     # --- Shared infrastructure ---
     test_controller: TestControllerStore | None = None
@@ -144,7 +145,7 @@ class ServeConfig:
     debug_traffic_source: Callable[[], dict[str, int]] | None = None
 
     def __post_init__(self) -> None:
-        _a2a_only = ("task_store", "push_config_store", "message_parser")
+        _a2a_only = ("task_store", "push_config_store", "message_parser", "public_url")
         _mcp_only = ("instructions", "streaming_responses")
         if self.transport == "a2a":
             mcp_set = sorted(f for f in _mcp_only if getattr(self, f) not in (None, False))
@@ -533,6 +534,7 @@ def serve(
     allowed_origins: Sequence[str] | None = None,
     enable_dns_rebinding_protection: bool | None = None,
     auth: BearerTokenAuth | None = None,
+    public_url: str | None = None,
 ) -> None:
     """Start an MCP or A2A server from an ADCP handler or server builder.
 
@@ -714,6 +716,18 @@ def serve(
             stdio, ``auth`` is ignored with a warning (no HTTP layer).
             For non-bearer schemes (mTLS, signed-request derivation),
             wire your own middleware via ``asgi_middleware=`` instead.
+        public_url: Optional public base URL for the A2A agent card
+            (``/.well-known/agent-card.json``). When set, replaces the
+            default ``http://localhost:{port}/`` in every
+            ``supportedInterfaces`` entry so external clients discover
+            the correct endpoint instead of the internal socket address.
+            Use this when the agent runs behind a load balancer, reverse
+            proxy, or cloud-run service (e.g.
+            ``public_url="https://agent.example.com/"``). Automatically
+            falls back to the ``PUBLIC_URL`` environment variable when
+            the kwarg is ``None``, enabling zero-code-change
+            configuration on Cloud Run, Fly.io, and Railway. Ignored for
+            MCP transports. Trailing slash is normalised automatically.
 
     Example (MCP):
         from adcp.server import ADCPHandler, serve
@@ -763,6 +777,7 @@ def serve(
         base_url = config.base_url
         specialisms = config.specialisms
         description = config.description
+        public_url = config.public_url
 
     # Accept ADCPServerBuilder from adcp_server() decorator pattern
     from adcp.server.builder import ADCPServerBuilder
@@ -804,6 +819,7 @@ def serve(
             specialisms=specialisms,
             description=description,
             auth=auth,
+            public_url=public_url,
         )
     elif transport in ("streamable-http", "sse", "stdio"):
         _serve_mcp(
@@ -856,6 +872,7 @@ def serve(
             allowed_origins=allowed_origins,
             enable_dns_rebinding_protection=enable_dns_rebinding_protection,
             auth=auth,
+            public_url=public_url,
         )
     else:
         valid = ", ".join(sorted(("a2a", "both", "streamable-http", "sse", "stdio")))
@@ -1386,6 +1403,7 @@ def _serve_a2a(
     specialisms: list[str] | None = None,
     description: str | None = None,
     auth: BearerTokenAuth | None = None,
+    public_url: str | None = None,
 ) -> None:
     """Start an A2A server using uvicorn."""
     import uvicorn
@@ -1410,6 +1428,7 @@ def _serve_a2a(
         advertise_all=advertise_all,
         validation=validation,
         auth=auth,
+        public_url=public_url,
     )
     # Auth wraps the A2A app innermost (closer to the inner Starlette
     # router than the discovery + size-limit + asgi_middleware
@@ -1469,6 +1488,7 @@ def _build_mcp_and_a2a_app(
     allowed_origins: Sequence[str] | None = None,
     enable_dns_rebinding_protection: bool | None = None,
     auth: BearerTokenAuth | None = None,
+    public_url: str | None = None,
 ) -> Any:
     """Build the unified MCP+A2A ASGI app without starting a server.
 
@@ -1557,6 +1577,7 @@ def _build_mcp_and_a2a_app(
         advertise_all=advertise_all,
         validation=validation,
         auth=auth,
+        public_url=public_url,
     )
     # Auth wraps both legs *before* ``_dispatch`` captures references —
     # otherwise the closure points at unwrapped apps and auth is
@@ -1645,6 +1666,7 @@ def _serve_mcp_and_a2a(
     allowed_origins: Sequence[str] | None = None,
     enable_dns_rebinding_protection: bool | None = None,
     auth: BearerTokenAuth | None = None,
+    public_url: str | None = None,
 ) -> None:
     """Serve MCP and A2A on a single port via path dispatch.
 
@@ -1691,6 +1713,7 @@ def _serve_mcp_and_a2a(
         allowed_origins=allowed_origins,
         enable_dns_rebinding_protection=enable_dns_rebinding_protection,
         auth=auth,
+        public_url=public_url,
     )
     app = _apply_asgi_middleware(app, asgi_middleware)
 
