@@ -70,7 +70,7 @@ from adcp.decisioning.types import (
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from pydantic import BaseModel
+    from pydantic import BaseModel, ValidationError
 
     from adcp.decisioning.accounts import AccountStore
     from adcp.decisioning.context import AuthInfo, RequestContext
@@ -630,6 +630,47 @@ def _internal_error_details(exc: BaseException) -> dict[str, Any]:
             # repr; adopters can still triage via server logs.
             pass
     return details
+
+
+# ---------------------------------------------------------------------------
+# _validation_error_to_invalid_request — request-validation error wrapper
+# ---------------------------------------------------------------------------
+
+
+def _validation_error_to_invalid_request(method_name: str, exc: ValidationError) -> AdcpError:
+    """Convert a ``pydantic.ValidationError`` raised inside a platform method
+    to ``AdcpError('INVALID_REQUEST', recovery='correctable')``.
+
+    The generic ``except Exception`` handler wraps all unhandled exceptions as
+    ``INTERNAL_ERROR``. But a ``ValidationError`` from a platform delegate
+    almost always means the buyer supplied a request field that failed the
+    seller's stricter schema — semantically an ``INVALID_REQUEST`` the buyer
+    can correct. This matches the behaviour of
+    :func:`_coerce_params_to_platform_type` for the annotation-coercion path.
+
+    Uses :func:`adcp.types.error_narrowing.narrow_union_errors` to strip
+    discriminated-union noise from the ``details.validation_errors`` list.
+    Both ``narrow_union_errors`` and ``exc.errors()`` are part of stable
+    in-repo / Pydantic APIs respectively, so a failure here would be a
+    genuine bug worth surfacing rather than masking with a fallback.
+    """
+    from adcp.types.error_narrowing import narrow_union_errors
+
+    raw = exc.errors(include_input=False, include_context=False, include_url=False)
+    errors: list[Any] = list(narrow_union_errors(raw))
+    first: dict[str, Any] = dict(errors[0]) if errors else {}
+    field_path = ".".join(str(loc) for loc in first.get("loc", ()))
+    msg = first.get("msg", "validation failed")
+    return AdcpError(
+        "INVALID_REQUEST",
+        message=(
+            f"Request validation failed for {method_name!r}: {msg}"
+            + (f" (field: {field_path!r})" if field_path else "")
+        ),
+        field=field_path or None,
+        recovery="correctable",
+        details={"validation_errors": errors},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1294,6 +1335,10 @@ async def _invoke_platform_method(
         to release the consumption reservation so the buyer can retry.
         Hook errors are logged but never block exception propagation.
     """
+    # pydantic is a required dep; import here (not at module level) to mirror
+    # the lazy-import discipline used throughout this module.
+    from pydantic import ValidationError as _ValidationError  # noqa: PLC0415
+
     method = getattr(platform, method_name)
     # Re-validate through the platform method's own annotation when it's a
     # stricter subclass of the shim's already-deserialized type.  Skipped
@@ -1406,6 +1451,21 @@ async def _invoke_platform_method(
             recovery="terminal",
             details=_internal_error_details(exc),
         )
+        if on_failure is not None:
+            await _safe_on_failure_call(on_failure, wrapped, method_name)
+        raise wrapped from exc
+    except _ValidationError as exc:
+        # A ValidationError that escaped the platform delegate is almost
+        # always the buyer sending a field that fails the seller's stricter
+        # request schema.  Surface it as INVALID_REQUEST (correctable) so
+        # the buyer knows the payload is fixable and gets the field path.
+        # Mirrors _coerce_params_to_platform_type for the annotation path.
+        logger.warning(
+            "pydantic.ValidationError in platform.%s — wrapping to INVALID_REQUEST",
+            method_name,
+            exc_info=True,
+        )
+        wrapped = _validation_error_to_invalid_request(method_name, exc)
         if on_failure is not None:
             await _safe_on_failure_call(on_failure, wrapped, method_name)
         raise wrapped from exc
