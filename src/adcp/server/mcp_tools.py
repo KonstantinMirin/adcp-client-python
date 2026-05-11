@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import difflib
 import logging
+import os
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -1945,6 +1946,7 @@ def create_tool_caller(
     from adcp.exceptions import ADCPTaskError
     from adcp.server.helpers import inject_context
     from adcp.types import Error
+    from adcp.validation.envelope import UnsupportedVersionError, detect_wire_version
     from adcp.validation.schema_errors import build_adcp_validation_error_payload
     from adcp.validation.schema_validator import (
         format_issues,
@@ -1980,8 +1982,52 @@ def create_tool_caller(
                     ],
                 ) from exc
 
+        # Wire-version detection: read ``adcp_version`` / ``adcp_major_version``
+        # off the post-hook params (legacy buyers may rely on a hook to
+        # populate the envelope, so this runs after pre_validation_hook).
+        # ``None`` means the buyer didn't claim a version — fall through
+        # to the SDK pin via ``version=None`` on the validator.
+        #
+        # Strictness gate: setting ``ADCP_STRICT_VERSION_ENVELOPE=1``
+        # raises ``VERSION_UNSUPPORTED`` for unsupported claims (the
+        # spec-prescribed behaviour). The default (off) logs a warning
+        # and falls through to SDK-pin validation — adopters with test
+        # fixtures using placeholder version values (``adcp_major_version=4``
+        # was a common sentinel before this gate existed) keep working
+        # while they migrate. Strict will become the default in 5.3.
+        try:
+            wire_version = detect_wire_version(params)
+        except UnsupportedVersionError as exc:
+            if os.environ.get("ADCP_STRICT_VERSION_ENVELOPE", "0") == "1":
+                raise ADCPTaskError(
+                    operation=method_name,
+                    errors=[
+                        Error(
+                            code="VERSION_UNSUPPORTED",
+                            message=str(exc),
+                            # Preserve the wire field's original type so
+                            # buyer telemetry sees the same shape they
+                            # sent (int for ``adcp_major_version``, str
+                            # for ``adcp_version``).
+                            details={
+                                "claimed_version": exc.wire_value,
+                                "supported_versions": list(exc.supported),
+                            },
+                        )
+                    ],
+                ) from exc
+            logger.warning(
+                "Wire-version envelope rejected by detect_wire_version (%s); "
+                "falling through to SDK-pin validation. "
+                "Set ADCP_STRICT_VERSION_ENVELOPE=1 to raise "
+                "VERSION_UNSUPPORTED instead. Strict will become the default "
+                "in 5.3.",
+                exc,
+            )
+            wire_version = None
+
         if request_mode is not None and request_mode != "off":
-            outcome = validate_request(method_name, params)
+            outcome = validate_request(method_name, params, version=wire_version)
             if not outcome.valid:
                 summary = format_issues(outcome.issues)
                 if request_mode == "strict":
@@ -2076,7 +2122,7 @@ def create_tool_caller(
             # per-tool response schema would false-positive on it and
             # convert a real protocol error into a fake VALIDATION_ERROR.
             if "adcp_error" not in result:
-                outcome = validate_response(method_name, result)
+                outcome = validate_response(method_name, result, version=wire_version)
                 if not outcome.valid:
                     summary = format_issues(outcome.issues)
                     logger.warning(
@@ -2109,7 +2155,9 @@ class MCPToolSet:
         *,
         advertise_all: bool = False,
         validation: ValidationHookConfig | None = None,
-        pre_validation_hooks: dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] | None = None,
+        pre_validation_hooks: (
+            dict[str, Callable[[str, dict[str, Any]], dict[str, Any]]] | None
+        ) = None,
     ):
         """Create tool set from handler.
 
