@@ -66,7 +66,7 @@ import logging
 import random
 from dataclasses import replace as _dc_replace
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import select
 
@@ -75,11 +75,12 @@ from adcp.decisioning import (
     AdcpError,
     DecisioningCapabilities,
     DecisioningPlatform,
-    ExplicitAccounts,
     MockAdServer,
+    RefinementOutcome,
+    RefineResult,
     StaticBearer,
+    SyncAccountsResultRow,
     UpstreamHttpClient,
-    project_account_for_response,
     project_business_entity_for_response,
 )
 from adcp.decisioning.capabilities import (
@@ -97,9 +98,7 @@ from adcp.decisioning.capabilities import (
 from adcp.decisioning.specialisms import SalesPlatform
 from adcp.server import current_tenant
 from adcp.types import (
-    Account as AccountWire,
-)
-from adcp.types import (
+    BusinessEntity,
     CreateMediaBuyRequest,
     CreateMediaBuySuccessResponse,
     Format,
@@ -109,8 +108,6 @@ from adcp.types import (
     GetMediaBuysResponse,
     GetProductsRequest,
     GetProductsResponse,
-    ListAccountsRequest,
-    ListAccountsResponse,
     ListCreativeFormatsRequest,
     ListCreativeFormatsResponse,
     ListCreativesRequest,
@@ -118,8 +115,6 @@ from adcp.types import (
     Product,
     ProvidePerformanceFeedbackRequest,
     ProvidePerformanceFeedbackSuccessResponse,
-    SyncAccountsRequest,
-    SyncAccountsSuccessResponse,
     SyncCreativeResult,
     SyncCreativesRequest,
     SyncCreativesSuccessResponse,
@@ -149,9 +144,20 @@ def _make_account_store(
     sessionmaker: async_sessionmaker,
     *,
     mock_upstream_url: str | None,
-) -> ExplicitAccounts:
-    """Adopter ``AccountStore`` — resolves ``request.account.account_id``
-    against the ``accounts`` table.
+):
+    """Adopter ``AccountStore`` — resolves AdCP account references to a
+    framework :class:`Account`. Supports two reference shapes per the
+    v3 spec:
+
+    * ``{account_id: "..."}`` — explicit lookup against the ``accounts``
+      table's ``account_id`` column. The path adopters use once they've
+      onboarded a buyer and shared the persistent ``account_id``.
+    * ``{brand: {...}, operator: "..."}`` — buyer-brand-shaped reference
+      with no ``account_id``. The seller resolves to the FIRST active
+      account associated with the authenticated buyer agent. This is
+      the path AdCP storyboards exercise for "discover products" flows
+      where the buyer hasn't yet been issued a per-relationship
+      ``account_id``.
 
     Reads ``ext`` (the upstream routing payload, ``{"network_code":
     ..., "advertiser_id": ...}``) onto :attr:`Account.metadata` so
@@ -181,76 +187,24 @@ def _make_account_store(
       conformance / storyboard accounts only.
     """
 
-    async def loader(account_id: str) -> Account[dict[str, Any]]:
-        if mock_upstream_url is None:
-            # Reference seller is mock-mode by design — every Account
-            # this loader returns will have ``mode='mock'`` and rely on
-            # ``metadata['mock_upstream_url']`` for upstream routing. If
-            # the platform was constructed without a mock_upstream_url,
-            # there is no URL to stamp; resolving here would produce an
-            # Account that ``upstream_for(ctx)`` cannot route. Fail loud
-            # at the resolution boundary rather than letting the
-            # placeholder cascade into an httpx ConnectError downstream.
-            raise AdcpError(
-                "CONFIGURATION_ERROR",
-                message=(
-                    "V3ReferenceSeller account loader was invoked without a "
-                    "mock_upstream_url. Pass mock_upstream_url to "
-                    "V3ReferenceSeller(...) (sourced from the MOCK_AD_SERVER_URL "
-                    "env in app.main), or override the AccountStore in tests "
-                    "that construct Account objects directly."
-                ),
-                recovery="terminal",
-            )
-        tenant = current_tenant()
-        if tenant is None:
-            raise AdcpError(
-                "AUTH_REQUIRED",
-                message=(
-                    "AccountStore.resolve called without a tenant context. "
-                    "Wire the SubdomainTenantMiddleware before serve()."
-                ),
-                recovery="terminal",
-            )
-        async with sessionmaker() as session:
-            result = await session.execute(
-                select(AccountRow).where(
-                    AccountRow.tenant_id == tenant.id,
-                    AccountRow.account_id == account_id,
-                )
-            )
-            row = result.scalar_one_or_none()
-        if row is None or row.status != "active":
-            raise AdcpError(
-                "ACCOUNT_NOT_FOUND",
-                message=f"No active account {account_id!r} under tenant {tenant.id!r}.",
-                recovery="terminal",
-                field="account.account_id",
-            )
+    def _project_row(row: AccountRow) -> Account[dict[str, Any]]:
+        """Translate an :class:`AccountRow` to the framework
+        :class:`Account` shape. Shared by both resolution paths."""
         ext_payload = row.ext or {}
         network_code = ext_payload.get("network_code")
         advertiser_id = ext_payload.get("advertiser_id")
         if not network_code or not advertiser_id:
             # Server-side onboarding misconfig from the buyer's POV: the
             # account exists but is unusable until ``ext`` is reseeded.
-            # SERVICE_UNAVAILABLE + ``recovery='transient'`` lets the
-            # buyer surface a "contact your seller" error and retry once
-            # onboarding fixes the row.
             raise AdcpError(
                 "SERVICE_UNAVAILABLE",
                 message=(
-                    f"Account {account_id!r} is missing upstream routing "
+                    f"Account {row.account_id!r} is missing upstream routing "
                     "(ext.network_code / ext.advertiser_id). Reseed the "
                     "account with translator-pattern routing."
                 ),
                 recovery="transient",
             )
-        # Reference seller is mock-mode by design — its only upstream
-        # is the per-specialism mock-server fixture. Adopters with a
-        # real production upstream branch on the row's lifecycle to
-        # decide ``mode``: live for production accounts, sandbox for
-        # the adopter's own test infra, mock only for conformance /
-        # storyboard accounts.
         return Account(
             id=row.id,
             name=row.name,
@@ -268,12 +222,310 @@ def _make_account_store(
                 # route the UpstreamHttpClient at the mock-server.
                 "mock_upstream_url": mock_upstream_url,
             },
-            # Mark the mode as deliberately set so the framework's
-            # observed-modes tracker counts the account correctly.
             _mode_explicit=True,
         )
 
-    return ExplicitAccounts(loader=loader)
+    class _V3ReferenceAccountStore:
+        """Custom AccountStore supporting explicit-id AND brand-shaped
+        references, plus ``sync_accounts`` (upsert) and ``list_accounts``
+        (list) per the AdCP 3.0.9 §accounts/overview contract. The
+        framework's tool-advertising layer probes ``upsert`` / ``list``
+        as callables on this object; without them ``sales-*`` agents
+        silently drop both tools and the storyboard's
+        ``account_discovery`` probe fails (see #377).
+
+        Bank details on ``billing_entity`` are persisted on
+        :attr:`AccountRow.billing_entity` (JSON column). The framework's
+        :func:`to_wire_account` / :func:`to_wire_sync_accounts_row`
+        strip ``billing_entity.bank`` on every emit — adopters do not
+        re-apply the write-only projection here.
+        """
+
+        resolution: ClassVar[str] = "explicit"
+
+        async def resolve(
+            self,
+            ref: dict[str, Any] | None,
+            auth_info: Any = None,
+        ) -> Account[dict[str, Any]]:
+            if mock_upstream_url is None:
+                raise AdcpError(
+                    "CONFIGURATION_ERROR",
+                    message=(
+                        "V3ReferenceSeller account store was invoked without a "
+                        "mock_upstream_url. Pass mock_upstream_url to "
+                        "V3ReferenceSeller(...) (sourced from MOCK_AD_SERVER_URL "
+                        "env in app.main), or override the AccountStore in tests "
+                        "that construct Account objects directly."
+                    ),
+                    recovery="terminal",
+                )
+            tenant = current_tenant()
+            if tenant is None:
+                raise AdcpError(
+                    "AUTH_REQUIRED",
+                    message=(
+                        "AccountStore.resolve called without a tenant context. "
+                        "Wire the SubdomainTenantMiddleware before serve()."
+                    ),
+                    recovery="terminal",
+                )
+
+            # Path 1: explicit `account_id` on the wire ref.
+            account_id: str | None = None
+            if ref is not None:
+                account_id = ref.get("account_id")
+
+            async with sessionmaker() as session:
+                if account_id:
+                    result = await session.execute(
+                        select(AccountRow).where(
+                            AccountRow.tenant_id == tenant.id,
+                            AccountRow.account_id == account_id,
+                            AccountRow.status == "active",
+                        )
+                    )
+                    row = result.scalar_one_or_none()
+                    if row is None:
+                        raise AdcpError(
+                            "ACCOUNT_NOT_FOUND",
+                            message=(
+                                f"No active account {account_id!r} under " f"tenant {tenant.id!r}."
+                            ),
+                            recovery="terminal",
+                            field="account.account_id",
+                        )
+                    return _project_row(row)
+
+                # Path 2: brand-shaped reference (no account_id). Resolve
+                # to the first active account for the authenticated
+                # buyer agent. The buyer-agent's agent_url is the
+                # `principal` field on auth_info — populated by the
+                # framework's auth middleware from the validated bearer.
+                principal: str | None = None
+                if auth_info is not None:
+                    principal = getattr(auth_info, "principal", None)
+                if not principal:
+                    raise AdcpError(
+                        "ACCOUNT_NOT_FOUND",
+                        message=(
+                            "Request did not include `account.account_id` "
+                            "and no authenticated buyer-agent principal was "
+                            "available to resolve a brand-shaped reference. "
+                            "Send `account.account_id` explicitly, or "
+                            "authenticate with a bearer token bound to a "
+                            "seeded buyer agent."
+                        ),
+                        recovery="correctable",
+                        field="account.account_id",
+                    )
+                ba_result = await session.execute(
+                    select(BuyerAgentRow).where(
+                        BuyerAgentRow.tenant_id == tenant.id,
+                        BuyerAgentRow.agent_url == principal,
+                    )
+                )
+                buyer_agent = ba_result.scalar_one_or_none()
+                if buyer_agent is None:
+                    raise AdcpError(
+                        "ACCOUNT_NOT_FOUND",
+                        message=(
+                            f"No buyer agent matches principal {principal!r} "
+                            f"under tenant {tenant.id!r}."
+                        ),
+                        recovery="terminal",
+                    )
+                acct_result = await session.execute(
+                    select(AccountRow)
+                    .where(
+                        AccountRow.tenant_id == tenant.id,
+                        AccountRow.buyer_agent_id == buyer_agent.id,
+                        AccountRow.status == "active",
+                    )
+                    .limit(1)
+                )
+                row = acct_result.scalar_one_or_none()
+                if row is None:
+                    raise AdcpError(
+                        "ACCOUNT_NOT_FOUND",
+                        message=(
+                            f"Buyer agent {principal!r} has no active accounts "
+                            f"under tenant {tenant.id!r}."
+                        ),
+                        recovery="terminal",
+                    )
+                return _project_row(row)
+
+        async def upsert(
+            self,
+            refs: list[Any],
+            ctx: Any = None,
+        ) -> list[SyncAccountsResultRow]:
+            """``sync_accounts`` surface — upsert per buyer-supplied
+            :class:`AccountReference` under the authenticated buyer
+            agent. The framework projects each returned row through
+            :func:`to_wire_sync_accounts_row` (stripping
+            ``billing_entity.bank``) before emit.
+            """
+            tenant = current_tenant()
+            if tenant is None:
+                raise AdcpError(
+                    "AUTH_REQUIRED",
+                    message="sync_accounts requires a tenant context.",
+                    recovery="terminal",
+                )
+            principal = getattr(getattr(ctx, "auth_info", None), "principal", None)
+            if not principal:
+                raise AdcpError(
+                    "AUTH_REQUIRED",
+                    message=(
+                        "sync_accounts requires an authenticated buyer-agent "
+                        "principal — there's no anonymous-create path."
+                    ),
+                    recovery="terminal",
+                )
+            rows: list[SyncAccountsResultRow] = []
+            async with sessionmaker() as session, session.begin():
+                ba_q = await session.execute(
+                    select(BuyerAgentRow).where(
+                        BuyerAgentRow.tenant_id == tenant.id,
+                        BuyerAgentRow.agent_url == principal,
+                    )
+                )
+                buyer_agent_row = ba_q.scalar_one_or_none()
+                if buyer_agent_row is None:
+                    raise AdcpError(
+                        "ACCOUNT_NOT_FOUND",
+                        message=(
+                            f"No buyer agent matches principal {principal!r} "
+                            f"under tenant {tenant.id!r}."
+                        ),
+                        recovery="terminal",
+                    )
+                for incoming in refs:
+                    brand_domain = incoming.brand.domain
+                    natural_account_id = f"{brand_domain}::{incoming.operator}"
+                    billing_entity_payload: dict[str, Any] | None = None
+                    if incoming.billing_entity is not None:
+                        billing_entity_payload = incoming.billing_entity.model_dump(
+                            mode="json", exclude_none=True
+                        )
+                    existing_q = await session.execute(
+                        select(AccountRow).where(
+                            AccountRow.tenant_id == tenant.id,
+                            AccountRow.account_id == natural_account_id,
+                        )
+                    )
+                    existing = existing_q.scalar_one_or_none()
+                    billing_value = (
+                        incoming.billing.value
+                        if hasattr(incoming.billing, "value")
+                        else (str(incoming.billing) if incoming.billing is not None else None)
+                    )
+                    if existing is None:
+                        new_row = AccountRow(
+                            tenant_id=tenant.id,
+                            buyer_agent_id=buyer_agent_row.id,
+                            account_id=natural_account_id,
+                            name=f"{brand_domain} c/o {incoming.operator}",
+                            status="active",
+                            billing=billing_value,
+                            billing_entity=billing_entity_payload,
+                            sandbox=bool(incoming.sandbox),
+                        )
+                        session.add(new_row)
+                        action: str = "created"
+                    else:
+                        existing.billing = billing_value
+                        existing.billing_entity = billing_entity_payload
+                        existing.sandbox = bool(incoming.sandbox)
+                        existing.updated_at = datetime.now(timezone.utc)
+                        action = "updated"
+                    # Pass through the buyer-supplied BusinessEntity (bank
+                    # and all) so to_wire_sync_accounts_row exercises the
+                    # write-only strip — the spec contract is "buyer
+                    # writes bank, never reads bank back".
+                    rows.append(
+                        SyncAccountsResultRow(
+                            brand=incoming.brand.model_dump(mode="json", exclude_none=True),
+                            operator=incoming.operator,
+                            action=action,
+                            status="active",
+                            account_id=natural_account_id,
+                            name=f"{brand_domain} c/o {incoming.operator}",
+                            billing=billing_value,  # type: ignore[arg-type]
+                            billing_entity=incoming.billing_entity,
+                            sandbox=bool(incoming.sandbox),
+                        )
+                    )
+            return rows
+
+        async def list(
+            self,
+            filter: dict[str, Any] | None = None,
+            ctx: Any = None,
+        ) -> list[Account[dict[str, Any]]]:
+            """``list_accounts`` surface — return the accounts visible to
+            the calling buyer-agent principal. The framework projects each
+            entry through :func:`to_wire_account` (stripping
+            ``billing_entity.bank``) before emit.
+            """
+            tenant = current_tenant()
+            if tenant is None:
+                raise AdcpError(
+                    "AUTH_REQUIRED",
+                    message="list_accounts requires a tenant context.",
+                    recovery="terminal",
+                )
+            principal = getattr(getattr(ctx, "auth_info", None), "principal", None)
+            async with sessionmaker() as session:
+                if not principal:
+                    return []
+                ba_q = await session.execute(
+                    select(BuyerAgentRow).where(
+                        BuyerAgentRow.tenant_id == tenant.id,
+                        BuyerAgentRow.agent_url == principal,
+                    )
+                )
+                buyer_agent_row = ba_q.scalar_one_or_none()
+                if buyer_agent_row is None:
+                    return []
+                stmt = select(AccountRow).where(
+                    AccountRow.tenant_id == tenant.id,
+                    AccountRow.buyer_agent_id == buyer_agent_row.id,
+                )
+                status_filter = (filter or {}).get("status")
+                if status_filter:
+                    stmt = stmt.where(AccountRow.status == status_filter)
+                result = await session.execute(stmt.order_by(AccountRow.created_at.desc()))
+                rows = list(result.scalars())
+            accounts: list[Account[dict[str, Any]]] = []
+            for row in rows:
+                entity_payload = row.billing_entity or None
+                billing_entity = (
+                    BusinessEntity.model_validate(entity_payload)
+                    if entity_payload is not None
+                    else None
+                )
+                accounts.append(
+                    Account(
+                        id=row.account_id,
+                        name=row.name,
+                        status=row.status,
+                        mode="mock",
+                        billing_entity=billing_entity,
+                        metadata={
+                            "tenant_id": row.tenant_id,
+                            "buyer_agent_id": row.buyer_agent_id,
+                            "account_id": row.account_id,
+                            "billing": row.billing,
+                            "sandbox": row.sandbox,
+                        },
+                    )
+                )
+            return accounts
+
+    return _V3ReferenceAccountStore()
 
 
 # ---------------------------------------------------------------------------
@@ -291,6 +543,69 @@ _DELIVERY_STATUS_MAP: dict[str, str] = {
     "canceled": "canceled",
     "rejected": "rejected",
 }
+
+
+# Per-package fields the seller persists locally because the mock-server
+# upstream's line-item model stores only ``(product_id, budget,
+# ad_unit_targeting, creative_ids)``. Without this shadow store the spec's
+# echo contract (``targeting_overlay``, ``measurement_terms``, etc. must
+# survive create → get / update) is unsatisfiable. Real adopters whose
+# ad server stores the full package shape upstream drop this layer.
+_PERSISTED_PACKAGE_FIELDS: tuple[str, ...] = (
+    "product_id",
+    "format_ids",
+    "budget",
+    "pricing_option_id",
+    "bid_price",
+    "impressions",
+    "pacing",
+    "start_time",
+    "end_time",
+    "catalogs",
+    "optimization_goals",
+    "targeting_overlay",
+    "measurement_terms",
+    "performance_standards",
+    "creative_assignments",
+    "agency_estimate_number",
+)
+
+
+def _project_request_package_echo(pkg: Any) -> dict[str, Any]:
+    """Project a buyer-requested package's echo fields onto a plain dict.
+
+    Shared by the confirmed-package response shape and the seller-local
+    shadow-store entry: same field set, same projection. The package_id
+    is added by the caller (issued upstream as ``line_item_id``).
+    """
+    out: dict[str, Any] = {}
+    for field in _PERSISTED_PACKAGE_FIELDS:
+        value = getattr(pkg, field, None)
+        if value is None:
+            continue
+        if hasattr(value, "model_dump"):
+            out[field] = value.model_dump(mode="json", exclude_none=True)
+        elif isinstance(value, list):
+            out[field] = [
+                (
+                    item.model_dump(mode="json", exclude_none=True)
+                    if hasattr(item, "model_dump")
+                    else item
+                )
+                for item in value
+            ]
+        else:
+            out[field] = value
+    return out
+
+
+def _projected_package_state(state: dict[str, Any]) -> dict[str, Any]:
+    """Project a shadow-store package entry onto the wire-shape fields.
+
+    Drops the internal ``canceled`` / ``paused`` keys and returns the
+    echo fields verbatim. Caller injects ``package_id`` separately.
+    """
+    return {k: v for k, v in state.items() if k not in {"canceled", "paused"}}
 
 
 class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
@@ -407,6 +722,22 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         self._mock_ad_server = mock_ad_server
         self._approval_poll_interval_s = approval_poll_interval_s
         self._approval_poll_max_iterations = approval_poll_max_iterations
+        # Seller-local shadow store for state the mock-server doesn't
+        # model: per-package ``targeting_overlay`` / ``measurement_terms``
+        # echo data, plus media-buy and per-package ``canceled`` / ``paused``
+        # flags. Keyed by upstream ``order_id``. Real adopters whose ad
+        # server tracks this shape upstream drop the shadow store.
+        self._buy_state: dict[str, dict[str, Any]] = {}
+        # Monotonic per-buy revision counter (update_media_buy's
+        # optimistic-concurrency token).
+        self._buy_revisions: dict[str, int] = {}
+        # Bidirectional buyer-creative-id ↔ upstream-creative-id map.
+        # The upstream mints ``cr_<uuid>`` on every upload regardless of
+        # ``client_request_id``, so the seller has to track the mapping
+        # to (a) echo the buyer's id in ``list_creatives`` and (b)
+        # translate before calling ``attach_creative`` upstream.
+        self._creative_id_map: dict[str, str] = {}  # buyer_id → upstream_id
+        self._creative_id_reverse: dict[str, str] = {}  # upstream_id → buyer_id
         # AccountStore is always wired. ``app.main`` passes the
         # MOCK_AD_SERVER_URL env so resolved accounts route at the JS
         # mock-server fixture. Tests that bypass the AccountStore (by
@@ -555,6 +886,38 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
             )
         return GetProductsResponse(products=products)
 
+    # ----- refine_get_products ---------------------------------------------
+
+    async def refine_get_products(
+        self, req: GetProductsRequest, ctx: RequestContext
+    ) -> RefineResult:
+        """Spec-conformant refine response with no real refinement engine.
+
+        The v3 reference seller is a translator with no pricing /
+        forecasting model of its own — the upstream mock-server returns
+        the same product set regardless of buyer-supplied refinements.
+        We re-fetch the base product list and mark every refine entry
+        ``partial`` with a note pointing the buyer at the absence of an
+        upstream refinement engine. Adopters with a real model swap
+        each outcome to ``applied`` (or ``unable`` per-entry) and project
+        actual pricing changes onto the returned products.
+        """
+        base = await self.get_products(req, ctx)
+        notes = (
+            "Reference seller has no refinement engine — products and pricing "
+            "are returned unchanged. Adopters with a real forecaster implement "
+            "this method against their pricing model."
+        )
+        outcomes = [
+            RefinementOutcome(status="partial", notes=notes)
+            for _ in (getattr(req, "refine", None) or [])
+        ]
+        return RefineResult(
+            products=list(base.products or []),
+            proposals=None,
+            per_refine_outcome=outcomes,
+        )
+
     # ----- create_media_buy ------------------------------------------------
 
     async def create_media_buy(self, req: CreateMediaBuyRequest, ctx: RequestContext):
@@ -566,7 +929,16 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         Buyer experience: ``{status: 'submitted', task_id}`` immediately;
         framework's task registry surfaces the success on
         ``tasks/get`` polling once the upstream approves.
+
+        Measurement terms gating: this seller cannot guarantee zero
+        variance on billing measurement (``max_variance_percent == 0``
+        is unworkable for any real third-party measurement vendor). We
+        reject such requests up front with ``TERMS_REJECTED`` rather
+        than accepting them and letting the upstream silently violate
+        the buyer's term. Adopters whose ad server has different terms
+        capacity edit ``_reject_unworkable_terms`` to match.
         """
+        self._reject_unworkable_terms(req)
         if ctx.buyer_agent is None or ctx.account is None:
             raise AdcpError(
                 "SERVICE_UNAVAILABLE",
@@ -606,7 +978,9 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         # Sync fast path — the upstream may auto-approve on creation
         # for non-guaranteed delivery (rare, but possible).
         if order.get("status") in {"approved", "delivering"} and not approval_task_id:
-            return self._project_create_success(order, req, budget_amount, budget_currency)
+            return await self._project_create_success(
+                order, req, budget_amount, budget_currency, client, network_code
+            )
 
         # No approval task but status not already terminal-success —
         # the upstream has either auto-progressed past creation or is
@@ -620,7 +994,9 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 "media_buy.confirm",
                 {"order_id": order_id, "status": current.get("status")},
             )
-            return self._finalize_create_or_raise(current, req, budget_amount, budget_currency)
+            return await self._finalize_create_or_raise(
+                current, req, budget_amount, budget_currency, client, network_code
+            )
 
         # Slow path — hand off to background polling. The framework
         # allocates a task_id, returns the Submitted envelope, and runs
@@ -688,18 +1064,65 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 "media_buy.confirm",
                 {"order_id": order_id, "status": approved_order.get("status")},
             )
-            return self._finalize_create_or_raise(
-                approved_order, req, budget_amount, budget_currency
+            return await self._finalize_create_or_raise(
+                approved_order, req, budget_amount, budget_currency, client, network_code
             )
 
-        return ctx.handoff_to_task(_poll_until_approved)
+        # Reference seller is mock-mode against a fast upstream — auto-approval
+        # completes within milliseconds. Awaiting the polling synchronously
+        # lets create_media_buy return the full CreateMediaBuySuccessResponse
+        # with media_buy_id in the response body, which is what AdCP
+        # storyboards and most buyers expect. Production adopters with slow
+        # real-world approvals swap this for the task-handoff path:
+        #
+        #     return ctx.handoff_to_task(_poll_until_approved)
+        #
+        # which returns a Submitted({task_id, status: 'submitted'}) envelope
+        # and runs the polling coroutine in the background while buyers
+        # poll via tasks/get.
+        return await _poll_until_approved(None)
 
-    def _finalize_create_or_raise(
+    def _reject_unworkable_terms(self, req: CreateMediaBuyRequest) -> None:
+        """Reject ``create_media_buy`` requests whose ``measurement_terms``
+        propose terms this seller cannot fulfill.
+
+        Adopters tune this list to match their ad-server's tolerance.
+        For the reference seller we reject:
+
+        * ``billing_measurement.max_variance_percent == 0`` — zero
+          variance on third-party measurement is unworkable; any real
+          measurement vendor has noise floor > 0.
+        """
+        for pkg in req.packages or []:
+            measurement_terms = getattr(pkg, "measurement_terms", None)
+            if measurement_terms is None:
+                continue
+            billing = getattr(measurement_terms, "billing_measurement", None)
+            if billing is None:
+                continue
+            mvp = getattr(billing, "max_variance_percent", None)
+            if mvp is not None and mvp <= 0:
+                raise AdcpError(
+                    "TERMS_REJECTED",
+                    message=(
+                        "billing_measurement.max_variance_percent must be > 0. "
+                        "Zero-variance measurement is unworkable — every real "
+                        "third-party measurement vendor has a non-zero noise "
+                        "floor. Propose a variance >= 5% to match this seller's "
+                        "measurement capacity."
+                    ),
+                    recovery="correctable",
+                    field="packages[].measurement_terms.billing_measurement.max_variance_percent",
+                )
+
+    async def _finalize_create_or_raise(
         self,
         order: dict[str, Any],
         req: CreateMediaBuyRequest,
         budget_amount: float,
         budget_currency: str,
+        client: UpstreamHttpClient,
+        network_code: str,
     ) -> CreateMediaBuySuccessResponse:
         """Project a terminal upstream order onto a buyer-facing success
         response — but refuse to fabricate success when the upstream is
@@ -729,28 +1152,72 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 ),
                 recovery="transient",
             )
-        return self._project_create_success(order, req, budget_amount, budget_currency)
+        return await self._project_create_success(
+            order, req, budget_amount, budget_currency, client, network_code
+        )
 
-    def _project_create_success(
+    async def _project_create_success(
         self,
         order: dict[str, Any],
         req: CreateMediaBuyRequest,
         budget_amount: float,
         budget_currency: str,
+        client: UpstreamHttpClient,
+        network_code: str,
     ) -> CreateMediaBuySuccessResponse:
         """Translate upstream ``Order`` to AdCP
-        :class:`CreateMediaBuySuccessResponse`."""
+        :class:`CreateMediaBuySuccessResponse`.
+
+        Side-effect: persists each requested package as an upstream
+        line item via ``add_line_item``, then mirrors the spec-marked
+        echo fields into the seller-local shadow store keyed by the
+        line-item id. The upstream-issued ``line_item_id`` is returned
+        as the AdCP ``package_id``.
+        """
         invoice_recipient = None
         if req.invoice_recipient is not None:
             # Project bank details out before echoing on response.
             invoice_recipient = project_business_entity_for_response(req.invoice_recipient)
         del budget_amount, budget_currency
         wire_status = _DELIVERY_STATUS_MAP.get(order.get("status", ""), "active")
+        # Spec: when no creatives were supplied at create time, the buy
+        # transitions to ``pending_creatives`` until the buyer calls
+        # ``sync_creatives``. Otherwise carry the upstream-derived status.
+        req_packages = list(req.packages or [])
+        no_creatives_supplied = req_packages and all(
+            getattr(pkg, "creatives", None) is None
+            and getattr(pkg, "creative_assignments", None) is None
+            for pkg in req_packages
+        )
+        if no_creatives_supplied:
+            wire_status = "pending_creatives"
+        order_id = order["order_id"]
+        buy_state = self._buy_state.setdefault(order_id, {"packages": {}, "canceled": False})
+        response_packages: list[dict[str, Any]] = []
+        for idx, pkg in enumerate(req_packages):
+            line_item = await upstream_helpers.add_line_item(
+                client,
+                network_code=network_code,
+                order_id=order_id,
+                payload={
+                    "product_id": pkg.product_id,
+                    "budget": float(getattr(pkg, "budget", 0.0) or 0.0),
+                    "client_request_id": f"{req.idempotency_key}:pkg:{idx}",
+                },
+            )
+            package_id = str(line_item.get("line_item_id") or f"pkg_{order_id}_{idx:03d}")
+            echo = _project_request_package_echo(pkg)
+            buy_state["packages"][package_id] = {
+                **echo,
+                "canceled": False,
+                "paused": False,
+            }
+            response_packages.append({"package_id": package_id, **echo})
         return CreateMediaBuySuccessResponse.model_validate(
             {
-                "media_buy_id": order["order_id"],
+                "media_buy_id": order_id,
                 "status": wire_status,
-                "packages": [],
+                "packages": response_packages,
                 "invoice_recipient": (
                     invoice_recipient.model_dump(mode="json", exclude_none=True)
                     if invoice_recipient is not None
@@ -764,26 +1231,161 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
     async def update_media_buy(
         self, media_buy_id: str, patch: UpdateMediaBuyRequest, ctx: RequestContext
     ) -> UpdateMediaBuySuccessResponse:
-        """The mock upstream has no order-update endpoint.
+        """Apply buyer-supplied changes to a media buy.
 
-        Real GAM-fronting adopters wire this to
-        ``LineItemService.performLineItemAction`` (pause / resume /
-        archive) and to per-line-item budget / flight updates. The
-        mock has neither, so the buyer-facing posture is
-        ``UNSUPPORTED_FEATURE`` (terminal). See MIGRATION.md →
-        "What this seller doesn't yet support upstream".
+        The mock-server upstream has no PATCH endpoint for orders or line
+        items, so cancel / pause / package-state changes are stored in the
+        seller-local shadow store (``self._buy_state``). Per-package
+        creative assignments DO go upstream via ``POST
+        /v1/orders/{id}/lineitems/{li}/creative-attach``. Real GAM-fronting
+        adopters wire the cancel/pause path to
+        ``LineItemService.performLineItemAction`` and drop the shadow
+        store.
         """
-        del media_buy_id, patch, ctx
-        raise AdcpError(
-            "UNSUPPORTED_FEATURE",
-            message=(
-                "update_media_buy is not implemented against the JS "
-                "mock-server upstream — the mock has no order-update "
-                "endpoint. Adopters with a real upstream wire their "
-                "PATCH /orders / line-item update flow here (e.g. GAM's "
-                "LineItemService.performLineItemAction)."
-            ),
-            recovery="terminal",
+        if ctx.account is None:
+            raise AdcpError(
+                "SERVICE_UNAVAILABLE",
+                message="Dispatch should have populated account.",
+                recovery="transient",
+            )
+        network_code = ctx.account.metadata["network_code"]
+        client = self._client(ctx)
+
+        # Validate the media buy exists upstream. The SDK maps a 404 onto
+        # ``MEDIA_BUY_NOT_FOUND`` automatically.
+        await upstream_helpers.get_order(client, network_code=network_code, order_id=media_buy_id)
+
+        # Validate referenced packages exist on the order. The mock's
+        # ``serializeOrder`` strips ``line_items`` from ``GET /orders/{id}``
+        # — they're only readable via the dedicated lineitems endpoint.
+        line_items = await upstream_helpers.list_line_items(
+            client, network_code=network_code, order_id=media_buy_id
+        )
+        existing_ids = {li.get("line_item_id") for li in line_items if li.get("line_item_id")}
+
+        if patch.packages:
+            for pkg_patch in patch.packages:
+                pkg_id = getattr(pkg_patch, "package_id", None)
+                if pkg_id is not None and pkg_id not in existing_ids:
+                    raise AdcpError(
+                        "PACKAGE_NOT_FOUND",
+                        message=(
+                            f"Package {pkg_id!r} not found on media buy "
+                            f"{media_buy_id!r}. The buyer must reference an "
+                            f"existing package — see ``create_media_buy``'s "
+                            f"response for the issued package_ids."
+                        ),
+                        recovery="terminal",
+                    )
+
+        buy_state = self._buy_state.setdefault(
+            media_buy_id, {"packages": {}, "canceled": False, "paused": False}
+        )
+
+        # Buy-level cancel — irreversible. A second cancel is NOT_CANCELLABLE.
+        if patch.canceled:
+            if buy_state.get("canceled"):
+                raise AdcpError(
+                    "NOT_CANCELLABLE",
+                    message=(
+                        f"Media buy {media_buy_id!r} is already canceled. "
+                        "Cancellation is irreversible."
+                    ),
+                    recovery="terminal",
+                )
+            buy_state["canceled"] = True
+            buy_state["cancellation_reason"] = patch.cancellation_reason
+        # Buy-level pause / resume.
+        if patch.paused is not None:
+            buy_state["paused"] = bool(patch.paused)
+
+        affected_packages: list[dict[str, Any]] = []
+        for pkg_patch in patch.packages or []:
+            pkg_id = getattr(pkg_patch, "package_id", None)
+            if pkg_id is None:
+                continue
+            pkg_state = buy_state["packages"].setdefault(
+                pkg_id, {"canceled": False, "paused": False}
+            )
+            if getattr(pkg_patch, "canceled", None):
+                pkg_state["canceled"] = True
+            if getattr(pkg_patch, "paused", None) is not None:
+                pkg_state["paused"] = bool(pkg_patch.paused)
+            # Echo-field patches use replacement semantics per the wire
+            # spec on UpdateMediaBuyRequest.Package — when the buyer
+            # supplies a field, it replaces the persisted value; when the
+            # field is absent, the previous value survives.
+            patch_echo = _project_request_package_echo(pkg_patch)
+            pkg_state.update(patch_echo)
+            # Attach buyer-assigned creatives upstream so the mock surfaces
+            # the assignment on subsequent ``GET .../lineitems`` reads.
+            new_assignments = list(getattr(pkg_patch, "creative_assignments", None) or [])
+            if new_assignments:
+                existing_assignments = list(pkg_state.get("creative_assignments") or [])
+                seen_creative_ids = {
+                    a.get("creative_id") if isinstance(a, dict) else getattr(a, "creative_id", None)
+                    for a in existing_assignments
+                }
+                for ca in new_assignments:
+                    creative_id = getattr(ca, "creative_id", None)
+                    if creative_id is None:
+                        continue
+                    if creative_id in seen_creative_ids:
+                        continue
+                    # Translate buyer's creative_id to the upstream id
+                    # before issuing attach_creative. Pass through unchanged
+                    # when no mapping is known (the upstream will surface
+                    # a 404 → CREATIVE_NOT_FOUND).
+                    upstream_creative_id = self._creative_id_map.get(creative_id, creative_id)
+                    await upstream_helpers.attach_creative(
+                        client,
+                        network_code=network_code,
+                        order_id=media_buy_id,
+                        line_item_id=pkg_id,
+                        creative_id=upstream_creative_id,
+                    )
+                    existing_assignments.append(
+                        ca.model_dump(mode="json", exclude_none=True)
+                        if hasattr(ca, "model_dump")
+                        else {"creative_id": creative_id}
+                    )
+                    seen_creative_ids.add(creative_id)
+                pkg_state["creative_assignments"] = existing_assignments
+            affected_packages.append({"package_id": pkg_id, **_projected_package_state(pkg_state)})
+
+        # Bump the optimistic-concurrency revision token.
+        revision = self._buy_revisions.get(media_buy_id, 0) + 1
+        self._buy_revisions[media_buy_id] = revision
+
+        # Compute response status. Cancel beats pause beats whatever the
+        # upstream says — buyer's intent is the source of truth for the
+        # local-state fields.
+        if buy_state.get("canceled"):
+            response_status = "canceled"
+        elif buy_state.get("paused"):
+            response_status = "paused"
+        else:
+            order_now = await upstream_helpers.get_order(
+                client, network_code=network_code, order_id=media_buy_id
+            )
+            upstream_status = order_now.get("status", "")
+            # If creatives have just landed on previously empty line items,
+            # the buy advances out of pending_creatives.
+            any_creatives = any(
+                (state.get("creative_assignments") or [])
+                for state in buy_state["packages"].values()
+            )
+            response_status = _DELIVERY_STATUS_MAP.get(upstream_status, "active")
+            if response_status == "pending_creatives" and any_creatives:
+                response_status = "pending_start"
+
+        return UpdateMediaBuySuccessResponse.model_validate(
+            {
+                "media_buy_id": media_buy_id,
+                "status": response_status,
+                "revision": revision,
+                "affected_packages": affected_packages or None,
+            }
         )
 
     # ----- sync_creatives --------------------------------------------------
@@ -808,6 +1410,24 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         results: list[SyncCreativeResult] = []
         client = self._client(ctx)
         for creative in req.creatives:
+            # Re-sync of a known creative_id is a no-op upload — the
+            # upstream's idempotency table is keyed on body-fingerprint
+            # and rejects same-key/different-body with 409. The spec
+            # treats sync as an upsert that may carry refreshed assets;
+            # the seller treats the second call as "creative already
+            # known, just acknowledge". The buyer's intent for the new
+            # placement flows through the ``assignments`` field below.
+            if creative.creative_id in self._creative_id_map:
+                results.append(
+                    SyncCreativeResult.model_validate(
+                        {
+                            "creative_id": creative.creative_id,
+                            "action": "unchanged",
+                            "status": creative.status or "approved",
+                        }
+                    )
+                )
+                continue
             # The upstream's ``format_id`` is a string; the AdCP
             # ``format_id`` is a structured ``{agent_url, id}`` object.
             # Pass the ``id`` through — adopters whose upstream uses a
@@ -823,9 +1443,13 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
             snippet = getattr(creative, "snippet", None)
             if snippet is not None:
                 payload["snippet"] = str(snippet)
-            await upstream_helpers.upload_creative(
+            upstream_resp = await upstream_helpers.upload_creative(
                 client, network_code=network_code, payload=payload
             )
+            upstream_id = str(upstream_resp.get("creative_id") or "")
+            if upstream_id:
+                self._creative_id_map[creative.creative_id] = upstream_id
+                self._creative_id_reverse[upstream_id] = creative.creative_id
             results.append(
                 SyncCreativeResult.model_validate(
                     {
@@ -835,6 +1459,46 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                     }
                 )
             )
+        # Apply bulk creative-to-package assignments. Each entry attaches
+        # the creative upstream via the line-item's creative-attach
+        # endpoint. Missing buy/package context is the buyer's error to
+        # diagnose — sellers surface upstream errors verbatim.
+        for assignment in getattr(req, "assignments", None) or []:
+            buyer_creative_id = getattr(assignment, "creative_id", None)
+            package_id = getattr(assignment, "package_id", None)
+            if not buyer_creative_id or not package_id:
+                continue
+            upstream_creative_id = self._creative_id_map.get(buyer_creative_id, buyer_creative_id)
+            # Find the owning order via the shadow store: package_ids are
+            # globally unique (upstream line_item ids).
+            owning_order_id = next(
+                (
+                    oid
+                    for oid, state in self._buy_state.items()
+                    if package_id in state.get("packages", {})
+                ),
+                None,
+            )
+            if owning_order_id is None:
+                continue
+            await upstream_helpers.attach_creative(
+                client,
+                network_code=network_code,
+                order_id=owning_order_id,
+                line_item_id=package_id,
+                creative_id=upstream_creative_id,
+            )
+            pkg_state = self._buy_state[owning_order_id]["packages"].setdefault(
+                package_id, {"canceled": False, "paused": False}
+            )
+            existing = list(pkg_state.get("creative_assignments") or [])
+            if not any(
+                (e.get("creative_id") if isinstance(e, dict) else getattr(e, "creative_id", None))
+                == buyer_creative_id
+                for e in existing
+            ):
+                existing.append({"creative_id": buyer_creative_id})
+                pkg_state["creative_assignments"] = existing
         self._record(
             "creative.upload",
             {"network_code": network_code, "count": len(req.creatives) if req.creatives else 0},
@@ -897,6 +1561,11 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 else:
                     raise
             wire_status = _DELIVERY_STATUS_MAP.get(upstream_status, "active")
+            buy_state = self._buy_state.get(order_id, {})
+            if buy_state.get("canceled"):
+                wire_status = "canceled"
+            elif buy_state.get("paused"):
+                wire_status = "paused"
             totals = upstream_row.get("totals", {})
             report_currency = upstream_row.get("currency", report_currency)
             if report_period is None and upstream_row.get("reporting_period"):
@@ -967,17 +1636,49 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         upstream_orders = [
             o for o in payload.get("orders", []) if o.get("advertiser_id") == advertiser_id
         ]
+        # Narrow to the requested media_buy_ids when the buyer supplied
+        # them. Storyboards chain get_media_buys after create with the
+        # captured media_buy_id; without this filter the response leaks
+        # every advertiser-scoped buy and the buyer's ``media_buys[0]``
+        # lookup hits a different scenario's order.
+        if getattr(req, "media_buy_ids", None):
+            wanted_ids = {str(x) for x in req.media_buy_ids}
+            upstream_orders = [o for o in upstream_orders if o.get("order_id") in wanted_ids]
         page = upstream_orders[offset : offset + limit]
         media_buys: list[dict[str, Any]] = []
         for order in page:
+            order_id = order["order_id"]
+            buy_state = self._buy_state.get(order_id, {})
             wire_status = _DELIVERY_STATUS_MAP.get(order.get("status", ""), "active")
+            if buy_state.get("canceled"):
+                wire_status = "canceled"
+            elif buy_state.get("paused"):
+                wire_status = "paused"
+            line_items = await upstream_helpers.list_line_items(
+                client, network_code=network_code, order_id=order_id
+            )
+            packages: list[dict[str, Any]] = []
+            for li in line_items:
+                pkg_id = li.get("line_item_id")
+                if pkg_id is None:
+                    continue
+                pkg_state = buy_state.get("packages", {}).get(pkg_id, {})
+                pkg_entry: dict[str, Any] = {
+                    "package_id": pkg_id,
+                    **_projected_package_state(pkg_state),
+                }
+                if pkg_state.get("canceled"):
+                    pkg_entry["canceled"] = True
+                if pkg_state.get("paused"):
+                    pkg_entry["paused"] = True
+                packages.append(pkg_entry)
             media_buys.append(
                 {
-                    "media_buy_id": order["order_id"],
+                    "media_buy_id": order_id,
                     "status": wire_status,
                     "currency": order.get("currency", "USD"),
                     "total_budget": float(order.get("budget", 0.0)),
-                    "packages": [],
+                    "packages": packages,
                     "created_at": order.get("created_at"),
                     "updated_at": order.get("updated_at"),
                 }
@@ -1137,11 +1838,24 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         upstream_creatives = [
             c for c in payload.get("creatives", []) if c.get("advertiser_id") == advertiser_id
         ]
+        # Apply the buyer-supplied filter on creative_ids. The wire schema
+        # accepts buyer-facing ids; translate each through the buyer↔upstream
+        # map before matching upstream rows.
+        filters = getattr(req, "filters", None)
+        wanted_ids = list(getattr(filters, "creative_ids", None) or []) if filters else []
+        if wanted_ids:
+            upstream_wanted = {self._creative_id_map.get(cid, cid) for cid in wanted_ids}
+            upstream_creatives = [
+                c for c in upstream_creatives if c.get("creative_id") in upstream_wanted
+            ]
         total = len(upstream_creatives)
         page = upstream_creatives[offset : offset + limit]
         creatives = [
             {
-                "creative_id": c["creative_id"],
+                # Surface the buyer's original creative_id when the seller
+                # owns the mapping; falls back to the upstream id when the
+                # creative was synced outside this seller instance.
+                "creative_id": self._creative_id_reverse.get(c["creative_id"], c["creative_id"]),
                 "name": c["name"],
                 "format_id": {"agent_url": agent_url, "id": c.get("format_id", "")},
                 "status": _project_creative_status(c.get("status", "active")),
@@ -1160,202 +1874,6 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 "query_summary": {"total_matching": total, "returned": len(creatives)},
                 "pagination": {"has_more": has_more, "total_count": total},
                 "creatives": creatives,
-            }
-        )
-
-    # ----- sync_accounts ---------------------------------------------------
-
-    async def sync_accounts(
-        self, req: SyncAccountsRequest, ctx: RequestContext
-    ) -> SyncAccountsSuccessResponse:
-        """Upsert incoming accounts under the authenticated buyer agent.
-
-        **Local Postgres only — this is the translator's commercial
-        identity layer.** The AdCP account → upstream ``network_code``
-        mapping is the durable record this seller owns; the upstream
-        ad server doesn't model AdCP accounts at all.
-        """
-        if ctx.buyer_agent is None:
-            raise AdcpError(
-                "SERVICE_UNAVAILABLE",
-                message="Dispatch should have populated buyer_agent.",
-                recovery="transient",
-            )
-        tenant = current_tenant()
-        if tenant is None:
-            raise AdcpError(
-                "AUTH_REQUIRED",
-                message="sync_accounts requires a tenant context.",
-                recovery="terminal",
-            )
-        results: list[dict[str, Any]] = []
-        async with self._sessionmaker() as session, session.begin():
-            ba_q = await session.execute(
-                select(BuyerAgentRow).where(
-                    BuyerAgentRow.tenant_id == tenant.id,
-                    BuyerAgentRow.agent_url == ctx.buyer_agent.agent_url,
-                )
-            )
-            buyer_agent_row = ba_q.scalar_one_or_none()
-            if buyer_agent_row is None:
-                raise AdcpError(
-                    "SERVICE_UNAVAILABLE",
-                    message=(
-                        "Authenticated buyer_agent has no matching row — registry / table drift."
-                    ),
-                    recovery="transient",
-                )
-            for incoming in req.accounts:
-                brand_domain = incoming.brand.domain
-                natural_account_id = f"{brand_domain}::{incoming.operator}"
-                billing_entity_payload: dict[str, Any] | None = None
-                if incoming.billing_entity is not None:
-                    billing_entity_payload = incoming.billing_entity.model_dump(
-                        mode="json", exclude_none=True
-                    )
-                existing_q = await session.execute(
-                    select(AccountRow).where(
-                        AccountRow.tenant_id == tenant.id,
-                        AccountRow.account_id == natural_account_id,
-                    )
-                )
-                existing = existing_q.scalar_one_or_none()
-                billing_value = (
-                    incoming.billing.value
-                    if hasattr(incoming.billing, "value")
-                    else str(incoming.billing)
-                )
-                if existing is None:
-                    new_row = AccountRow(
-                        tenant_id=tenant.id,
-                        buyer_agent_id=buyer_agent_row.id,
-                        account_id=natural_account_id,
-                        name=f"{brand_domain} c/o {incoming.operator}",
-                        status="active",
-                        billing=billing_value,
-                        billing_entity=billing_entity_payload,
-                        sandbox=bool(incoming.sandbox),
-                    )
-                    session.add(new_row)
-                    action = "created"
-                else:
-                    existing.billing = billing_value
-                    existing.billing_entity = billing_entity_payload
-                    existing.sandbox = bool(incoming.sandbox)
-                    existing.updated_at = datetime.now(timezone.utc)
-                    action = "updated"
-                response_billing: dict[str, Any] | None = None
-                if incoming.billing_entity is not None:
-                    response_billing = project_business_entity_for_response(
-                        incoming.billing_entity
-                    ).model_dump(mode="json", exclude_none=True)
-                results.append(
-                    {
-                        "account_id": natural_account_id,
-                        "brand": incoming.brand.model_dump(mode="json", exclude_none=True),
-                        "operator": incoming.operator,
-                        "name": f"{brand_domain} c/o {incoming.operator}",
-                        "action": action,
-                        "status": "active",
-                        "billing": billing_value,
-                        "billing_entity": response_billing,
-                        "sandbox": bool(incoming.sandbox),
-                    }
-                )
-        self._record("accounts.sync", {"count": len(req.accounts)})
-        return SyncAccountsSuccessResponse.model_validate(
-            {"accounts": results, "dry_run": bool(req.dry_run)}
-        )
-
-    # ----- list_accounts ---------------------------------------------------
-
-    async def list_accounts(
-        self, req: ListAccountsRequest, ctx: RequestContext
-    ) -> ListAccountsResponse:
-        """List accounts for the authenticated buyer agent.
-
-        Local Postgres only — the upstream doesn't know about AdCP
-        accounts. Every row is run through
-        :func:`project_account_for_response` so the spec's
-        write-only ``billing_entity.bank`` field cannot leak on the
-        wire.
-        """
-        if ctx.buyer_agent is None:
-            raise AdcpError(
-                "SERVICE_UNAVAILABLE",
-                message="Dispatch should have populated buyer_agent.",
-                recovery="transient",
-            )
-        tenant = current_tenant()
-        if tenant is None:
-            raise AdcpError(
-                "AUTH_REQUIRED",
-                message="list_accounts requires a tenant context.",
-                recovery="terminal",
-            )
-        limit = 50
-        offset = 0
-        if req.pagination is not None:
-            limit = getattr(req.pagination, "limit", None) or 50
-            offset = getattr(req.pagination, "offset", None) or 0
-        async with self._sessionmaker() as session:
-            ba_q = await session.execute(
-                select(BuyerAgentRow).where(
-                    BuyerAgentRow.tenant_id == tenant.id,
-                    BuyerAgentRow.agent_url == ctx.buyer_agent.agent_url,
-                )
-            )
-            buyer_agent_row = ba_q.scalar_one_or_none()
-            if buyer_agent_row is None:
-                self._record(
-                    "accounts.list",
-                    {"buyer_agent_id": ctx.buyer_agent.agent_url},
-                )
-                return ListAccountsResponse.model_validate(
-                    {
-                        "accounts": [],
-                        "pagination": {"has_more": False, "total_count": 0},
-                    }
-                )
-            stmt = select(AccountRow).where(
-                AccountRow.tenant_id == tenant.id,
-                AccountRow.buyer_agent_id == buyer_agent_row.id,
-            )
-            if req.status is not None:
-                status_value = req.status.value if hasattr(req.status, "value") else str(req.status)
-                stmt = stmt.where(AccountRow.status == status_value)
-            # Total-count probe runs against the same WHERE clause as
-            # the page query so ``pagination.total_count`` matches
-            # ``list_creatives`` semantics. Adopters with very large
-            # account tables swap this for a separate count() query
-            # rather than materializing all rows.
-            all_q = await session.execute(stmt)
-            total_count = len(list(all_q.scalars()))
-            page_q = await session.execute(
-                stmt.order_by(AccountRow.created_at.desc()).limit(limit).offset(offset)
-            )
-            rows = list(page_q.scalars())
-
-        projected_accounts: list[dict[str, Any]] = []
-        for row in rows:
-            wire_account = AccountWire.model_validate(
-                {
-                    "account_id": row.account_id,
-                    "name": row.name,
-                    "status": row.status,
-                    "billing": row.billing,
-                    "billing_entity": row.billing_entity,
-                    "sandbox": row.sandbox,
-                }
-            )
-            safe = project_account_for_response(wire_account)
-            projected_accounts.append(safe.model_dump(mode="json", exclude_none=True))
-        self._record("accounts.list", {"buyer_agent_id": ctx.buyer_agent.agent_url})
-        has_more = offset + len(rows) < total_count
-        return ListAccountsResponse.model_validate(
-            {
-                "accounts": projected_accounts,
-                "pagination": {"has_more": has_more, "total_count": total_count},
             }
         )
 

@@ -56,11 +56,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from adcp.decisioning import AdcpError, InMemoryMockAdServer, serve
+from adcp.decisioning.context import AuthInfo
+from adcp.decisioning.registry import ApiKeyCredential
 from adcp.server import (
     SubdomainTenantMiddleware,
     ToolContext,
     current_tenant,
 )
+from adcp.server.auth import BearerTokenAuth, Principal, auth_context_factory
 from adcp.validation import ValidationHookConfig
 from adcp.webhook_sender import WebhookSender
 from adcp.webhook_supervisor import InMemoryWebhookDeliverySupervisor
@@ -79,35 +82,126 @@ logger = logging.getLogger(__name__)
 
 def _build_context_factory():
     """``context_factory`` that pins :attr:`ToolContext.tenant_id`
-    from the resolved tenant.
+    from the resolved tenant AND upgrades the bearer-flow
+    ``adcp.auth_info`` with a typed :class:`ApiKeyCredential`.
+
+    The SDK's :func:`adcp.server.auth.auth_context_factory` populates
+    ``metadata["adcp.auth_info"]`` with ``credential=None`` for bearer
+    flows because raw bearer tokens are server-internal (see
+    :func:`auth_context_factory`'s docstring). Without a typed
+    credential the framework's :class:`BuyerAgentRegistry` dispatch
+    falls into the no-credential branch and returns
+    ``PERMISSION_DENIED`` — so adopters that wire a registry alongside
+    bearer auth MUST upgrade the ``AuthInfo`` here.
+
+    The validator (see :func:`_make_validate_token`) stashes the raw
+    bearer token in ``Principal.metadata["api_key_id"]``; this factory
+    reads it back to construct the :class:`ApiKeyCredential` that
+    :meth:`BuyerAgentRegistry.resolve_by_credential` matches against
+    the ``api_key_id`` column.
     """
+    from dataclasses import replace
 
     def build(meta: RequestMetadata) -> ToolContext:
+        ctx = auth_context_factory(meta)
+        # Pin tenant from SubdomainTenantMiddleware. Subdomain wins for
+        # tenant routing; the validator's tenant_id is only the token's
+        # home tenant and may not match the host the request came in on.
         tenant = current_tenant()
-        return ToolContext(
-            request_id=meta.request_id,
-            tenant_id=tenant.id if tenant else None,
-        )
+        if tenant is not None:
+            ctx = replace(ctx, tenant_id=tenant.id)
+
+        # Upgrade bearer-flow auth_info with a typed ApiKeyCredential
+        # when the validator stashed the raw token in principal metadata.
+        # ctx.metadata is a dict; mutate in place rather than rebuilding.
+        api_key_id = ctx.metadata.get("api_key_id")
+        existing = ctx.metadata.get("adcp.auth_info")
+        if api_key_id and isinstance(existing, AuthInfo):
+            ctx.metadata["adcp.auth_info"] = AuthInfo(
+                kind="api_key",
+                key_id=api_key_id,
+                principal=existing.principal,
+                credential=ApiKeyCredential(kind="api_key", key_id=api_key_id),
+            )
+        return ctx
 
     return build
 
 
-async def _bootstrap_schema(engine) -> None:
-    """Create all tables. Idempotent (CREATE TABLE IF NOT EXISTS).
+async def _load_token_map(sessionmaker) -> dict[str, Principal]:
+    """Eagerly load all ``BuyerAgent`` rows with a non-null
+    ``api_key_id`` into a ``token → Principal`` map.
+
+    Consumed by the sync validator returned from
+    :func:`_make_validate_token`. ``BearerTokenAuth.validate_token``
+    must be sync when ``transport="both"`` (the A2A leg's middleware
+    cannot await an async validator), so we pay one DB scan at boot
+    and serve every subsequent request from memory. The seed is small
+    and stable for the reference seller; adopters with dynamic admin
+    paths swap in their own validator backed by a cache with TTL-based
+    reload.
+    """
+    from sqlalchemy import select
+
+    from .models import BuyerAgent as BuyerAgentRow
+
+    token_map: dict[str, Principal] = {}
+    async with sessionmaker() as session:
+        result = await session.execute(
+            select(BuyerAgentRow).where(BuyerAgentRow.api_key_id.is_not(None))
+        )
+        for row in result.scalars():
+            token_map[row.api_key_id] = Principal(
+                caller_identity=row.agent_url,
+                tenant_id=row.tenant_id,
+                metadata={"api_key_id": row.api_key_id},
+            )
+    return token_map
+
+
+def _make_validate_token(token_map: dict[str, Principal]):
+    """Sync validator returning the pre-loaded :class:`Principal` for
+    a bearer token, or ``None`` for unknown tokens.
+
+    The returned Principal carries the raw token in metadata under
+    ``api_key_id`` so :func:`_build_context_factory` can attach a
+    typed :class:`ApiKeyCredential` to the dispatch context — the
+    framework's :class:`BuyerAgentRegistry` then resolves
+    commercially via :meth:`resolve_by_credential`.
+    """
+
+    def validate_token(token: str) -> Principal | None:
+        if not token:
+            return None
+        return token_map.get(token)
+
+    return validate_token
+
+
+async def _bootstrap_schema_and_load_tokens(engine, sessionmaker) -> dict[str, Principal]:
+    """Bootstrap the schema (idempotent ``CREATE TABLE IF NOT EXISTS``)
+    AND load the bearer-token map in the same event loop, then dispose
+    the engine before returning.
 
     Production adopters use Alembic — this entrypoint sticks with
-    ``create_all`` for fast iteration.
+    ``create_all`` for fast iteration. Token loading happens here
+    (rather than separately) because ``BearerTokenAuth.validate_token``
+    must be sync for ``transport="both"``, so we pay one DB scan at
+    boot and serve every subsequent request from memory.
+
+    asyncpg binds connection-internal Future objects to the loop they
+    were opened on. Bootstrapping via ``asyncio.run`` runs on a
+    transient loop that closes when ``asyncio.run`` returns; if those
+    connections stay in the pool, uvicorn's own loop trips
+    ``RuntimeError: got Future attached to a different loop`` on the
+    first request. Dispose before returning so uvicorn opens a fresh
+    pool on its own loop.
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    # asyncpg binds connection-internal Future objects to the loop
-    # they were opened on. Bootstrapping via ``asyncio.run`` runs on
-    # a transient loop that closes when ``asyncio.run`` returns; if
-    # those connections stay in the pool, uvicorn's own loop trips
-    # ``RuntimeError: got Future attached to a different loop`` on
-    # the first request. Dispose so uvicorn opens a fresh pool on
-    # its own loop.
+    token_map = await _load_token_map(sessionmaker)
     await engine.dispose()
+    return token_map
 
 
 def main() -> None:
@@ -146,7 +240,7 @@ def main() -> None:
     engine = create_async_engine(db_url, pool_size=10, max_overflow=20)
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
-    asyncio.run(_bootstrap_schema(engine))
+    token_map = asyncio.run(_bootstrap_schema_and_load_tokens(engine, sessionmaker))
 
     router = SqlSubdomainTenantRouter(sessionmaker=sessionmaker)
     audit_sink = make_audit_sink(sessionmaker)
@@ -234,6 +328,14 @@ def main() -> None:
         host="0.0.0.0",
         transport="both",
         buyer_agent_registry=buyer_registry,
+        # Bearer auth wired so the framework extracts the
+        # ``Authorization: Bearer <token>`` header, resolves the token
+        # to a seeded BuyerAgent via api_key_id lookup, and threads the
+        # raw token into the dispatch context so
+        # ``BuyerAgentRegistry.resolve_by_credential`` can re-resolve
+        # commercially. Without this, every dispatched skill hits the
+        # registry with credential=None and returns PERMISSION_DENIED.
+        auth=BearerTokenAuth(validate_token=_make_validate_token(token_map)),
         context_factory=_build_context_factory(),
         asgi_middleware=[
             (SubdomainTenantMiddleware, {"router": router}),

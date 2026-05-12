@@ -47,8 +47,13 @@ sys.path.insert(0, str(_HERE.parent))
 def test_v3_reference_seller_exposes_full_sales_surface() -> None:
     """The seller declares both ``sales-non-guaranteed`` and
     ``sales-guaranteed`` — verify every method on the SalesPlatform
-    Protocol (required + optional) plus the account ops are present
-    on the class."""
+    Protocol (required + optional) is on the class, and that the
+    account-op surfaces (``sync_accounts`` / ``list_accounts``) are
+    exposed via the :class:`AccountStore` — the framework dispatches
+    those tools through ``platform.accounts.upsert`` /
+    ``platform.accounts.list``, not through methods on the platform."""
+    from unittest.mock import MagicMock
+
     from src.platform import V3ReferenceSeller
 
     required_methods = {
@@ -64,12 +69,20 @@ def test_v3_reference_seller_exposes_full_sales_surface() -> None:
         "list_creative_formats",
         "list_creatives",
     }
-    account_ops = {"sync_accounts", "list_accounts"}
 
-    for name in required_methods | optional_methods | account_ops:
+    for name in required_methods | optional_methods:
         assert hasattr(V3ReferenceSeller, name), f"V3ReferenceSeller missing {name}"
         attr = getattr(V3ReferenceSeller, name)
         assert callable(attr), f"V3ReferenceSeller.{name} is not callable"
+
+    # Instance-level: account-op tools route through the AccountStore.
+    instance = V3ReferenceSeller(sessionmaker=MagicMock(), upstream_api_key="t")
+    assert callable(
+        getattr(instance.accounts, "upsert", None)
+    ), "AccountStore must expose upsert for sync_accounts tool advertising"
+    assert callable(
+        getattr(instance.accounts, "list", None)
+    ), "AccountStore must expose list for list_accounts tool advertising"
 
 
 def test_capabilities_claim_both_sales_specialisms() -> None:
@@ -136,21 +149,130 @@ def test_list_accounts_projection_strips_bank_details() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_accounts_runs_projection_on_every_row(
+async def test_account_store_upsert_creates_then_updates_and_strips_bank(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """End-to-end: drive ``V3ReferenceSeller.list_accounts`` against a
-    mocked session whose row carries bank details and assert no
-    response account leaks them.
+    """End-to-end: drive ``AccountStore.upsert`` with a buyer-supplied
+    :class:`AccountReference` carrying full bank details, then project
+    the returned rows through the framework's
+    :func:`to_wire_sync_accounts_row`. Bank details MUST round-trip
+    into the persisted row but MUST NOT appear on the wire-projected
+    response."""
+    import src.platform as platform_module
+    from src.models import BuyerAgent as BuyerAgentRow
+    from src.platform import V3ReferenceSeller
+
+    from adcp.decisioning import AuthInfo
+    from adcp.decisioning.account_projection import to_wire_sync_accounts_row
+    from adcp.decisioning.accounts import ResolveContext
+    from adcp.types import SyncAccountsRequest
+
+    bank_block = {
+        "account_holder": "Pinnacle Media LLC",
+        "iban": "DE89370400440532013000",
+        "bic": "COBADEFFXXX",
+    }
+    buyer_agent_row = BuyerAgentRow(
+        id="ba_acme_signed",
+        tenant_id="t_acme",
+        agent_url="https://signed-buyer.example/",
+        display_name="Signed Buyer",
+        status="active",
+        billing_capabilities=["operator", "agent"],
+    )
+
+    ba_result = MagicMock()
+    ba_result.scalar_one_or_none = MagicMock(return_value=buyer_agent_row)
+    # Existing-account probe — returns None to take the ``created`` path.
+    missing_result = MagicMock()
+    missing_result.scalar_one_or_none = MagicMock(return_value=None)
+
+    session = MagicMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
+    session.begin = MagicMock(return_value=session)
+    session.execute = AsyncMock(side_effect=[ba_result, missing_result])
+    session.add = MagicMock()
+    sessionmaker = MagicMock(return_value=session)
+
+    class _Tenant:
+        id = "t_acme"
+
+    monkeypatch.setattr(platform_module, "current_tenant", lambda: _Tenant())
+
+    platform = V3ReferenceSeller(
+        sessionmaker=sessionmaker,
+        upstream_api_key="test-key",
+        mock_upstream_url="http://up.test",
+    )
+
+    ctx = ResolveContext(
+        auth_info=AuthInfo(kind="anonymous", principal="https://signed-buyer.example/"),
+        tool_name="sync_accounts",
+    )
+    # Use the parsed SyncAccountsRequest.accounts[] shape — the framework
+    # passes these typed entries straight into upsert(refs, ctx).
+    req = SyncAccountsRequest.model_validate(
+        {
+            "idempotency_key": "k_" + "z" * 18,
+            "accounts": [
+                {
+                    "brand": {"domain": "acme-corp.com"},
+                    "operator": "pinnacle-media.com",
+                    "billing": "agent",
+                    "billing_entity": {
+                        "legal_name": "Pinnacle Media LLC",
+                        "tax_id": "12-3456789",
+                        "address": {
+                            "street": "123 Main St",
+                            "city": "Berlin",
+                            "postal_code": "10117",
+                            "country": "DE",
+                        },
+                        "contacts": [
+                            {"role": "billing", "name": "AP", "email": "ap@pinnacle.example"}
+                        ],
+                        "bank": bank_block,
+                    },
+                }
+            ],
+        }
+    )
+
+    rows = await platform.accounts.upsert(list(req.accounts), ctx=ctx)
+    assert len(rows) == 1
+    assert rows[0].action == "created"
+
+    # Persisted row carried the full bank block (write side).
+    added_row = session.add.call_args.args[0]
+    assert added_row.billing_entity["bank"] == bank_block
+
+    # Wire-projected row strips bank (read side).
+    wire = to_wire_sync_accounts_row(rows[0])
+    assert wire["billing_entity"]["legal_name"] == "Pinnacle Media LLC"
+    assert (
+        "bank" not in wire["billing_entity"]
+    ), f"bank details leaked through to_wire_sync_accounts_row: {wire}"
+
+
+@pytest.mark.asyncio
+async def test_account_store_list_strips_bank_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: drive ``AccountStore.list`` against a mocked session
+    whose row carries bank details, project through the framework's
+    :func:`to_wire_account`, and assert no response account leaks the
+    bank block. Mirrors how the dispatch shim wraps the upstream's
+    response.
     """
     import src.platform as platform_module
     from src.models import Account as AccountRow
     from src.models import BuyerAgent as BuyerAgentRow
     from src.platform import V3ReferenceSeller
 
-    from adcp.decisioning import RequestContext
-    from adcp.decisioning.registry import BuyerAgent
-    from adcp.types import ListAccountsRequest
+    from adcp.decisioning import AuthInfo
+    from adcp.decisioning.account_projection import to_wire_account
+    from adcp.decisioning.accounts import ResolveContext
 
     bank_block = {
         "account_holder": "Pinnacle Media LLC",
@@ -186,16 +308,13 @@ async def test_list_accounts_runs_projection_on_every_row(
 
     ba_result = MagicMock()
     ba_result.scalar_one_or_none = MagicMock(return_value=buyer_agent_row)
-    # Two scalars() consumers: the total-count probe and the page query.
-    count_result = MagicMock()
-    count_result.scalars = MagicMock(return_value=iter([account_row]))
     accounts_result = MagicMock()
     accounts_result.scalars = MagicMock(return_value=iter([account_row]))
 
     session = MagicMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
-    session.execute = AsyncMock(side_effect=[ba_result, count_result, accounts_result])
+    session.execute = AsyncMock(side_effect=[ba_result, accounts_result])
     sessionmaker = MagicMock(return_value=session)
 
     class _Tenant:
@@ -206,29 +325,21 @@ async def test_list_accounts_runs_projection_on_every_row(
     platform = V3ReferenceSeller(
         sessionmaker=sessionmaker,
         upstream_api_key="test-key",
+        mock_upstream_url="http://up.test",
     )
 
-    ctx = RequestContext(
-        buyer_agent=BuyerAgent(
-            agent_url="https://signed-buyer.example/",
-            display_name="Signed Buyer",
-            status="active",
-            billing_capabilities=frozenset({"operator", "agent"}),
-        ),
-        account=None,
+    ctx = ResolveContext(
+        auth_info=AuthInfo(kind="anonymous", principal="https://signed-buyer.example/"),
+        tool_name="list_accounts",
     )
-    req = ListAccountsRequest()
-    resp = await platform.list_accounts(req, ctx)
-
-    payload = resp.model_dump(mode="json", exclude_none=True)
-    assert payload["accounts"], "expected at least one account in response"
-    for acct in payload["accounts"]:
-        assert (
-            "billing_entity" in acct
-        ), f"billing_entity missing from list_accounts response: {acct}"
-        assert (
-            "bank" not in acct["billing_entity"]
-        ), f"bank details leaked on list_accounts response: {acct}"
+    accounts = await platform.accounts.list({}, ctx=ctx)
+    assert len(accounts) == 1
+    wire = to_wire_account(accounts[0])
+    assert wire["billing_entity"]["legal_name"] == "Pinnacle Media LLC"
+    assert wire["billing_entity"]["tax_id"] == "12-3456789"
+    assert (
+        "bank" not in wire["billing_entity"]
+    ), f"bank details leaked through to_wire_account projection: {wire}"
 
 
 # ---------------------------------------------------------------------------
@@ -298,6 +409,32 @@ def _platform_with_upstream() -> Any:
     )
 
 
+_LINE_ITEM_COUNTER = {"n": 0}
+
+
+def _mock_add_line_item_route(respx_mock: Any, order_id: str) -> None:
+    """Per-test helper: mock ``POST /v1/orders/{order_id}/lineitems`` to
+    return a fresh line_item_id on each call. Mirrors the mock-server's
+    behavior (each POST returns a distinct ``line_item_id``)."""
+    import re
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        _LINE_ITEM_COUNTER["n"] += 1
+        return httpx.Response(
+            201,
+            json={
+                "line_item_id": f"li_test_{_LINE_ITEM_COUNTER['n']:04d}",
+                "order_id": order_id,
+                "status": "pending_creatives",
+                "creative_ids": [],
+            },
+        )
+
+    respx_mock.post(re.compile(rf"/v1/orders/{re.escape(order_id)}/lineitems$")).mock(
+        side_effect=_handler
+    )
+
+
 @pytest.mark.asyncio
 @respx.mock(base_url=_RESPX_BASE_URL)
 async def test_get_products_translates_upstream_to_adcp(respx_mock: Any) -> None:
@@ -357,14 +494,16 @@ async def test_get_products_translates_upstream_to_adcp(respx_mock: Any) -> None
 
 @pytest.mark.asyncio
 @respx.mock(base_url=_RESPX_BASE_URL)
-async def test_create_media_buy_returns_task_handoff_on_pending_approval(
+async def test_create_media_buy_sync_polls_to_success_on_pending_approval(
     respx_mock: Any,
 ) -> None:
     """When the upstream returns ``pending_approval`` + ``approval_task_id``,
-    the platform returns a :class:`TaskHandoff` so the framework
-    surfaces the wire ``Submitted`` envelope to the buyer."""
-    from adcp.decisioning.types import TaskHandoff
-    from adcp.types import CreateMediaBuyRequest
+    the platform sync-polls until the approval task completes and returns
+    the full :class:`CreateMediaBuySuccessResponse` with ``media_buy_id``.
+    AdCP storyboards expect synchronous create — production adopters with
+    slow real-world approvals swap to ``ctx.handoff_to_task`` (see the
+    docstring in ``platform.create_media_buy``)."""
+    from adcp.types import CreateMediaBuyRequest, CreateMediaBuySuccessResponse
 
     respx_mock.post("/v1/orders").mock(
         return_value=httpx.Response(
@@ -382,6 +521,37 @@ async def test_create_media_buy_returns_task_handoff_on_pending_approval(
             },
         )
     )
+    # Approval task completes on the first poll.
+    respx_mock.get("/v1/tasks/task_abc").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "task_id": "task_abc",
+                "order_id": "ord_q2_volta_launch",
+                "status": "completed",
+                "result": {"outcome": "approved"},
+                "created_at": "2026-04-01T00:00:00Z",
+                "updated_at": "2026-04-01T00:00:00Z",
+            },
+        )
+    )
+    # Re-fetch after polling completes.
+    respx_mock.get("/v1/orders/ord_q2_volta_launch").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "order_id": "ord_q2_volta_launch",
+                "name": "Volta Launch",
+                "status": "approved",
+                "advertiser_id": "adv_volta_motors",
+                "currency": "USD",
+                "budget": 25000.0,
+                "created_at": "2026-04-01T00:00:00Z",
+                "updated_at": "2026-04-01T00:00:00Z",
+            },
+        )
+    )
+    _mock_add_line_item_route(respx_mock, "ord_q2_volta_launch")
     platform = _platform_with_upstream()
     ctx = _build_ctx()
     req = CreateMediaBuyRequest.model_validate(
@@ -408,11 +578,11 @@ async def test_create_media_buy_returns_task_handoff_on_pending_approval(
         }
     )
     result = await platform.create_media_buy(req, ctx)
-    # Translator's slow path — buyer sees Submitted envelope.
-    assert isinstance(result, TaskHandoff), f"expected TaskHandoff, got {type(result)!r}"
+    assert isinstance(result, CreateMediaBuySuccessResponse)
+    assert result.media_buy_id == "ord_q2_volta_launch"
     # The upstream call carried the buyer's idempotency_key as the
     # client_request_id — replay safety travels through the wire.
-    sent = respx_mock.calls.last.request
+    sent = respx_mock.calls[0].request
     body = sent.read().decode("utf-8")
     assert "k_" + "a" * 18 in body
     assert "adv_volta_motors" in body
@@ -443,6 +613,7 @@ async def test_create_media_buy_sync_fast_path_when_upstream_already_approved(
             },
         )
     )
+    _mock_add_line_item_route(respx_mock, "ord_fast_path")
     platform = _platform_with_upstream()
     ctx = _build_ctx()
     req = CreateMediaBuyRequest.model_validate(
@@ -474,12 +645,171 @@ async def test_create_media_buy_sync_fast_path_when_upstream_already_approved(
 
 
 @pytest.mark.asyncio
-async def test_update_media_buy_raises_unsupported_feature() -> None:
-    """The mock upstream has no order-update endpoint. The platform
-    raises spec-conformant ``UNSUPPORTED_FEATURE`` so buyers get a
-    structured error instead of a 500."""
+@respx.mock(base_url=_RESPX_BASE_URL)
+async def test_create_media_buy_echoes_packages_with_seller_minted_ids(
+    respx_mock: Any,
+) -> None:
+    """Confirmed-package response shape: seller mints a ``package_id``
+    per requested package and echoes the spec-marked echo fields so
+    buyers can chain off the id and verify targeting / measurement-terms
+    persistence. Without these the AdCP storyboard suite's
+    ``inventory_list_targeting`` / ``invalid_transitions`` /
+    ``creative_fate_after_cancellation`` scenarios cannot capture
+    ``packages[0].package_id`` to drive their follow-up probes."""
+    from adcp.types import CreateMediaBuyRequest, CreateMediaBuySuccessResponse
+
+    respx_mock.post("/v1/orders").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "order_id": "ord_lists",
+                "name": "Lists Buy",
+                "status": "approved",
+                "advertiser_id": "adv_volta_motors",
+                "currency": "USD",
+                "budget": 100.0,
+                "created_at": "2026-04-01T00:00:00Z",
+                "updated_at": "2026-04-01T00:00:00Z",
+            },
+        )
+    )
+    _mock_add_line_item_route(respx_mock, "ord_lists")
+    platform = _platform_with_upstream()
+    ctx = _build_ctx()
+    req = CreateMediaBuyRequest.model_validate(
+        {
+            "account": {"account_id": "signed-buyer-main"},
+            "idempotency_key": "k_" + "l" * 18,
+            "brand": {"domain": "lists.example"},
+            "total_budget": {"amount": 100.0, "currency": "USD"},
+            "start_time": "asap",
+            "end_time": "2026-06-30T23:59:59Z",
+            "packages": [
+                {
+                    "product_id": "sports_preroll_q2_guaranteed",
+                    "format_ids": [
+                        {
+                            "agent_url": "https://reference.adcp.org",
+                            "id": "video_16x9_30s",
+                        }
+                    ],
+                    "budget": 100.0,
+                    "pricing_option_id": "sports_preroll_q2_guaranteed-cpm",
+                    "targeting_overlay": {
+                        "property_list": {
+                            "agent_url": "https://reference.adcp.org",
+                            "list_id": "prop_premium_news",
+                        },
+                        "collection_list": {
+                            "agent_url": "https://reference.adcp.org",
+                            "list_id": "coll_evening_news",
+                        },
+                    },
+                    "creative_assignments": [{"creative_id": "cr_demo_v1"}],
+                }
+            ],
+        }
+    )
+    result = await platform.create_media_buy(req, ctx)
+    assert isinstance(result, CreateMediaBuySuccessResponse)
+    assert result.packages is not None
+    assert len(result.packages) == 1
+    pkg = result.packages[0]
+    # package_id is the upstream-issued line_item_id (li_test_NNNN from the
+    # _mock_add_line_item_route fixture).
+    assert pkg.package_id is not None and pkg.package_id.startswith("li_test_")
+    assert pkg.product_id == "sports_preroll_q2_guaranteed"
+    # Spec-marked echo: list targeting fields persist on the confirmed package.
+    assert pkg.targeting_overlay is not None
+    assert pkg.targeting_overlay.property_list is not None
+    assert pkg.targeting_overlay.property_list.list_id == "prop_premium_news"
+    assert pkg.targeting_overlay.collection_list is not None
+    assert pkg.targeting_overlay.collection_list.list_id == "coll_evening_news"
+    # Buyer supplied a creative_assignment — status reflects upstream-derived
+    # status ("approved" → "pending_start"), not pending_creatives.
+    assert result.status.value == "pending_start"
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_RESPX_BASE_URL)
+async def test_create_media_buy_no_creatives_returns_pending_creatives_status(
+    respx_mock: Any,
+) -> None:
+    """When the buyer supplies no ``creatives`` and no
+    ``creative_assignments`` on any package, the seller surfaces
+    ``status='pending_creatives'`` so the buyer's next step is
+    ``sync_creatives``. AdCP storyboard
+    ``pending_creatives_to_start/create_without_creatives`` gates on
+    this transition."""
+    from adcp.types import CreateMediaBuyRequest, CreateMediaBuySuccessResponse
+
+    respx_mock.post("/v1/orders").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "order_id": "ord_pending_creatives",
+                "name": "Pending Creatives Buy",
+                "status": "approved",
+                "advertiser_id": "adv_volta_motors",
+                "currency": "USD",
+                "budget": 100.0,
+                "created_at": "2026-04-01T00:00:00Z",
+                "updated_at": "2026-04-01T00:00:00Z",
+            },
+        )
+    )
+    _mock_add_line_item_route(respx_mock, "ord_pending_creatives")
+    platform = _platform_with_upstream()
+    ctx = _build_ctx()
+    req = CreateMediaBuyRequest.model_validate(
+        {
+            "account": {"account_id": "signed-buyer-main"},
+            "idempotency_key": "k_" + "p" * 18,
+            "brand": {"domain": "pending.example"},
+            "total_budget": {"amount": 100.0, "currency": "USD"},
+            "start_time": "asap",
+            "end_time": "2026-06-30T23:59:59Z",
+            "packages": [
+                {
+                    "product_id": "sports_preroll_q2_guaranteed",
+                    "format_ids": [
+                        {
+                            "agent_url": "https://reference.adcp.org",
+                            "id": "video_16x9_30s",
+                        }
+                    ],
+                    "budget": 100.0,
+                    "pricing_option_id": "sports_preroll_q2_guaranteed-cpm",
+                }
+            ],
+        }
+    )
+    result = await platform.create_media_buy(req, ctx)
+    assert isinstance(result, CreateMediaBuySuccessResponse)
+    assert result.status.value == "pending_creatives"
+    assert result.packages is not None
+    assert result.packages[0].package_id is not None
+    assert result.packages[0].package_id.startswith("li_test_")
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_RESPX_BASE_URL)
+async def test_update_media_buy_cancel_marks_local_state(respx_mock: Any) -> None:
+    """A buy-level ``canceled: true`` patch sets the shadow-store flag
+    and the response surfaces ``status='canceled'``. Re-cancel raises
+    ``NOT_CANCELLABLE``."""
     from adcp.decisioning import AdcpError
-    from adcp.types import UpdateMediaBuyRequest
+    from adcp.types import UpdateMediaBuyRequest, UpdateMediaBuySuccessResponse
+
+    respx_mock.get("/v1/orders/ord_test").mock(
+        return_value=httpx.Response(
+            200,
+            json={"order_id": "ord_test", "status": "active"},
+        )
+    )
+    respx_mock.get("/v1/orders/ord_test/lineitems").mock(
+        return_value=httpx.Response(200, json={"line_items": []})
+    )
 
     platform = _platform_with_upstream()
     ctx = _build_ctx()
@@ -488,11 +818,134 @@ async def test_update_media_buy_raises_unsupported_feature() -> None:
             "account": {"account_id": "signed-buyer-main"},
             "media_buy_id": "ord_test",
             "idempotency_key": "k_" + "u" * 18,
+            "canceled": True,
+            "cancellation_reason": "buyer changed mind",
+        }
+    )
+    result = await platform.update_media_buy("ord_test", patch, ctx)
+    assert isinstance(result, UpdateMediaBuySuccessResponse)
+    assert result.status.value == "canceled"
+    assert result.revision == 1
+
+    # Re-cancel — irreversible.
+    patch2 = UpdateMediaBuyRequest.model_validate(
+        {
+            "account": {"account_id": "signed-buyer-main"},
+            "media_buy_id": "ord_test",
+            "idempotency_key": "k_" + "v" * 18,
+            "canceled": True,
+        }
+    )
+    with pytest.raises(AdcpError) as excinfo:
+        await platform.update_media_buy("ord_test", patch2, ctx)
+    assert excinfo.value.code == "NOT_CANCELLABLE"
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_RESPX_BASE_URL)
+async def test_update_media_buy_unknown_media_buy_id_raises_not_found(
+    respx_mock: Any,
+) -> None:
+    """An unknown ``media_buy_id`` resolves to ``MEDIA_BUY_NOT_FOUND``,
+    not ``UNSUPPORTED_FEATURE`` — the storyboard's negative-path probe
+    gates on this distinction."""
+    from adcp.decisioning import AdcpError
+    from adcp.types import UpdateMediaBuyRequest
+
+    respx_mock.get("/v1/orders/missing").mock(
+        return_value=httpx.Response(404, json={"error": "not found"})
+    )
+
+    platform = _platform_with_upstream()
+    ctx = _build_ctx()
+    patch = UpdateMediaBuyRequest.model_validate(
+        {
+            "account": {"account_id": "signed-buyer-main"},
+            "media_buy_id": "missing",
+            "idempotency_key": "k_" + "n" * 18,
+        }
+    )
+    with pytest.raises(AdcpError) as excinfo:
+        await platform.update_media_buy("missing", patch, ctx)
+    assert excinfo.value.code == "MEDIA_BUY_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+@respx.mock(base_url=_RESPX_BASE_URL)
+async def test_update_media_buy_unknown_package_id_raises_not_found(
+    respx_mock: Any,
+) -> None:
+    """A package_id not on the upstream order resolves to
+    ``PACKAGE_NOT_FOUND``, not ``UNSUPPORTED_FEATURE``."""
+    from adcp.decisioning import AdcpError
+    from adcp.types import UpdateMediaBuyRequest
+
+    respx_mock.get("/v1/orders/ord_test").mock(
+        return_value=httpx.Response(
+            200,
+            json={"order_id": "ord_test", "status": "active"},
+        )
+    )
+    respx_mock.get("/v1/orders/ord_test/lineitems").mock(
+        return_value=httpx.Response(
+            200,
+            json={"line_items": [{"line_item_id": "li_known"}]},
+        )
+    )
+
+    platform = _platform_with_upstream()
+    ctx = _build_ctx()
+    patch = UpdateMediaBuyRequest.model_validate(
+        {
+            "account": {"account_id": "signed-buyer-main"},
+            "media_buy_id": "ord_test",
+            "idempotency_key": "k_" + "p" * 18,
+            "packages": [{"package_id": "li_unknown", "paused": True}],
         }
     )
     with pytest.raises(AdcpError) as excinfo:
         await platform.update_media_buy("ord_test", patch, ctx)
-    assert excinfo.value.code == "UNSUPPORTED_FEATURE"
+    assert excinfo.value.code == "PACKAGE_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_create_media_buy_aggressive_terms_raises_terms_rejected() -> None:
+    """``measurement_terms.billing_measurement.max_variance_percent == 0``
+    is unworkable for any real measurement vendor; the platform rejects
+    up front with ``TERMS_REJECTED``. The aggressive-terms storyboard
+    gates on this specific code."""
+    from adcp.decisioning import AdcpError
+    from adcp.types import CreateMediaBuyRequest
+
+    platform = _platform_with_upstream()
+    ctx = _build_ctx()
+    req = CreateMediaBuyRequest.model_validate(
+        {
+            "brand": {"domain": "acmeoutdoor.example"},
+            "account": {"account_id": "signed-buyer-main"},
+            "idempotency_key": "k_" + "t" * 18,
+            "start_time": "2026-05-01T00:00:00Z",
+            "end_time": "2026-05-31T23:59:59Z",
+            "packages": [
+                {
+                    "product_id": "prod_test",
+                    "budget": 25000,
+                    "pricing_option_id": "po_test",
+                    "measurement_terms": {
+                        "billing_measurement": {
+                            "vendor": {"domain": "videoamp.example"},
+                            "measurement_window": "c30",
+                            "max_variance_percent": 0,
+                        },
+                        "makegood_policy": {"available_remedies": ["credit"]},
+                    },
+                }
+            ],
+        }
+    )
+    with pytest.raises(AdcpError) as excinfo:
+        await platform.create_media_buy(req, ctx)
+    assert excinfo.value.code == "TERMS_REJECTED"
 
 
 @pytest.mark.asyncio
@@ -582,6 +1035,11 @@ async def test_get_media_buys_filters_by_advertiser_id(respx_mock: Any) -> None:
                 ]
             },
         )
+    )
+    # get_media_buys reads line_items for each matched order to project
+    # per-package state. Only ord_volta_1 passes the advertiser_id filter.
+    respx_mock.get("/v1/orders/ord_volta_1/lineitems").mock(
+        return_value=httpx.Response(200, json={"line_items": []})
     )
     platform = _platform_with_upstream()
     ctx = _build_ctx()
@@ -1057,6 +1515,7 @@ async def test_create_media_buy_no_task_id_path_refetches_and_projects(
             },
         )
     )
+    _mock_add_line_item_route(respx_mock, "ord_no_task")
     platform = _platform_with_upstream()
     ctx = _build_ctx()
     req = CreateMediaBuyRequest.model_validate(
@@ -1226,15 +1685,9 @@ async def test_create_media_buy_raises_when_polling_times_out(
             ],
         }
     )
-    handoff = await platform.create_media_buy(req, ctx)
-    # Drive the handoff fn directly — the framework would wrap it in
-    # background dispatch. We assert it raises rather than fabricates.
-    # ``TaskHandoff`` exposes no public driver — the framework dispatches
-    # via the private ``_fn`` attr; reach for it here so the test can
-    # observe the AdcpError the coroutine would raise into the registry.
-    fn = handoff._fn  # type: ignore[attr-defined]  # noqa: SLF001
+    # Sync-poll exhausts the polling window and raises directly.
     with pytest.raises(AdcpError) as excinfo:
-        await fn(None)
+        await platform.create_media_buy(req, ctx)
     assert excinfo.value.code == "SERVICE_UNAVAILABLE"
     assert excinfo.value.recovery == "transient"
 
@@ -1303,12 +1756,9 @@ async def test_create_media_buy_raises_when_task_rejected(respx_mock: Any) -> No
             ],
         }
     )
-    handoff = await platform.create_media_buy(req, ctx)
-    # See ``test_create_media_buy_raises_when_polling_times_out`` above
-    # for why the test reaches for the private ``_fn`` attr.
-    fn = handoff._fn  # type: ignore[attr-defined]  # noqa: SLF001
+    # Sync-poll reaches the rejected task and raises directly.
     with pytest.raises(AdcpError) as excinfo:
-        await fn(None)
+        await platform.create_media_buy(req, ctx)
     assert excinfo.value.code == "POLICY_VIOLATION"
     assert "Brand-safety" in str(excinfo.value)
 
