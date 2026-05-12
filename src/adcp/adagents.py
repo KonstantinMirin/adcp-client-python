@@ -22,6 +22,81 @@ from adcp.validation import ValidationError, validate_adagents
 DiscoveryMethod = Literal["direct", "authoritative_location", "ads_txt_managerdomain"]
 
 
+# authorization_type discriminator -> required selector field, per the AdCP
+# adagents.json JSON Schema (every authorized_agents entry must satisfy one
+# of the oneOf variants with the matching selector array).
+_AUTHORIZATION_TYPE_TO_SELECTOR: dict[str, str] = {
+    "property_ids": "property_ids",
+    "property_tags": "property_tags",
+    "inline_properties": "properties",
+    "publisher_properties": "publisher_properties",
+    "signal_ids": "signal_ids",
+    "signal_tags": "signal_tags",
+}
+
+EntryErrorKind = Literal[
+    "missing_url",
+    "missing_authorized_for",
+    "missing_authorization_type",
+    "unknown_authorization_type",
+    "missing_selector_for_type",
+    "not_an_object",
+    "empty_authorized_agents",
+]
+
+
+@dataclass(frozen=True)
+class AdagentsEntryError:
+    """A single schema violation found in an adagents.json file.
+
+    ``kind`` is a stable string literal callers can branch on (e.g.,
+    distinguish a publisher who shipped bare entries from one who picked
+    an unknown authorization_type). ``message`` is developer-facing and
+    its wording may change between releases — pattern-match on ``kind``
+    when surfacing publisher-facing diagnostics.
+
+    For file-level errors (e.g., ``empty_authorized_agents``) ``index``
+    is ``-1`` and ``url`` is ``None``.
+    """
+
+    index: int
+    kind: EntryErrorKind
+    message: str
+    url: str | None = None
+
+
+@dataclass(frozen=True)
+class AdagentsValidationReport:
+    """Result of structurally validating a parsed adagents.json.
+
+    Distinguishes the two failure modes that
+    :func:`get_properties_by_agent` collapses into an empty list:
+    a schema-invalid file (``schema_valid`` is False, ``errors`` populated)
+    versus a valid file that simply doesn't list the caller's agent.
+
+    ``authorized_agents_count`` and ``properties_count`` reflect the
+    array lengths as observed in the input — they are reported regardless
+    of ``schema_valid`` so callers can show "0 agents listed" diagnostics
+    on partially-broken files.
+
+    ``is_reference`` is True for the URL-reference variant of the schema
+    (an ``authoritative_location`` pointer with no inline
+    ``authorized_agents`` array). Callers that received a report with
+    ``is_reference=True`` should follow the redirect (e.g., via
+    :func:`fetch_adagents`) and validate the resolved file. This flag
+    lets callers distinguish a legitimate URL-reference file from an
+    inline file that happens to have zero entries (which is itself
+    invalid per the schema's ``minItems: 1`` constraint on
+    ``authorized_agents``).
+    """
+
+    schema_valid: bool
+    errors: list[AdagentsEntryError]
+    authorized_agents_count: int
+    properties_count: int
+    is_reference: bool = False
+
+
 @dataclass
 class AdAgentsValidationResult:
     """Result of discovering and validating a publisher's adagents.json.
@@ -541,6 +616,11 @@ async def fetch_adagents(
         Callers who need to know which discovery path produced the
         data (direct, authoritative_location, or ads_txt_managerdomain)
         should call :func:`validate_adagents_domain` instead.
+
+        ``fetch_adagents`` performs only minimal structural checks. To
+        report per-entry schema violations (e.g., bare entries missing
+        ``authorization_type``) without raising, pass the returned data
+        to :func:`validate_adagents_structure`.
     """
     publisher_domain = _validate_publisher_domain(publisher_domain)
 
@@ -995,6 +1075,188 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
         return _resolve_agent_properties(agent, top_level_properties)
 
     return []
+
+
+def validate_adagents_structure(adagents_data: dict[str, Any]) -> AdagentsValidationReport:
+    """Structurally validate a parsed adagents.json against the AdCP schema.
+
+    Use this to distinguish a schema-invalid file from a valid file that
+    doesn't list a particular agent. :func:`get_properties_by_agent`
+    returns ``[]`` for both cases, which makes "publisher hasn't
+    authorized us yet" indistinguishable from "publisher's file is
+    structurally broken." This helper reports per-entry violations
+    against the authoritative ``authorized_agents`` oneOf in the AdCP
+    adagents.json schema.
+
+    The two real-world failure modes this catches in production
+    publisher files are:
+
+    * **Bare entries** — ``{url, authorized_for}`` with no
+      ``authorization_type``. The agent looks listed, but matches no
+      schema variant, so the SDK treats the entry as authorizing
+      nothing.
+    * **Wrong selector for type** — e.g.,
+      ``{authorization_type: "property_ids", property_tags: [...]}``,
+      where the discriminator and selector array disagree.
+
+    Args:
+        adagents_data: Parsed adagents.json (the dict returned by
+            :func:`fetch_adagents` or loaded directly from JSON).
+
+    Returns:
+        :class:`AdagentsValidationReport`. ``schema_valid`` is True only
+        when every entry in ``authorized_agents`` satisfies the schema.
+
+    Raises:
+        AdagentsValidationError: If ``adagents_data`` is not a dict, or
+            ``authorized_agents`` is not a list. These are
+            input-shape errors, not per-entry schema violations.
+
+    Notes:
+        * URL-reference variants (``authoritative_location`` form) have
+          no inline ``authorized_agents`` array. They're reported with
+          ``is_reference=True``, ``authorized_agents_count == 0``, and
+          ``schema_valid=True``. Callers should follow the redirect
+          (e.g., via :func:`fetch_adagents`, which resolves it
+          automatically) and re-validate the resolved file.
+        * The schema targets AdCP 3.0. Files written against 2.5 (no
+          signal_ids / signal_tags variants) will flag those entries as
+          ``unknown_authorization_type`` — correct for the 3.0 target,
+          but worth knowing if you're validating mixed-version traffic.
+        * Selector-array *item* patterns (e.g., the
+          ``^[a-zA-Z0-9_-]+$`` constraint on each signal_id) are out of
+          scope. This helper validates the discriminator + required
+          selector array; it does not deep-validate selector contents.
+    """
+    if not isinstance(adagents_data, dict):
+        raise AdagentsValidationError("adagents_data must be a dictionary")
+
+    authorized_agents = adagents_data.get("authorized_agents")
+    if authorized_agents is None:
+        # URL-reference variant: file points at an authoritative_location
+        # rather than carrying an inline authorized_agents array.
+        properties = adagents_data.get("properties", [])
+        is_reference = isinstance(adagents_data.get("authoritative_location"), str)
+        return AdagentsValidationReport(
+            schema_valid=True,
+            errors=[],
+            authorized_agents_count=0,
+            properties_count=len(properties) if isinstance(properties, list) else 0,
+            is_reference=is_reference,
+        )
+
+    if not isinstance(authorized_agents, list):
+        raise AdagentsValidationError("'authorized_agents' must be an array")
+
+    properties = adagents_data.get("properties", [])
+    properties_count = len(properties) if isinstance(properties, list) else 0
+
+    errors: list[AdagentsEntryError] = []
+
+    if len(authorized_agents) == 0:
+        # Inline variant requires minItems: 1 on authorized_agents.
+        errors.append(
+            AdagentsEntryError(
+                index=-1,
+                kind="empty_authorized_agents",
+                message=(
+                    "adagents.json inline variant requires at least one entry "
+                    "in 'authorized_agents' (schema minItems: 1)"
+                ),
+            )
+        )
+
+    for index, entry in enumerate(authorized_agents):
+        if not isinstance(entry, dict):
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="not_an_object",
+                    message=f"authorized_agents[{index}] is not a JSON object",
+                )
+            )
+            continue
+
+        raw_url = entry.get("url")
+        url = raw_url if isinstance(raw_url, str) and raw_url else None
+
+        if url is None:
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="missing_url",
+                    message=f"authorized_agents[{index}] is missing required 'url'",
+                )
+            )
+
+        authorized_for = entry.get("authorized_for")
+        if not isinstance(authorized_for, str) or not authorized_for:
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="missing_authorized_for",
+                    message=(
+                        f"authorized_agents[{index}] is missing required "
+                        "'authorized_for' description (string, minLength 1)"
+                    ),
+                    url=url,
+                )
+            )
+
+        authorization_type = entry.get("authorization_type")
+        if authorization_type is None:
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="missing_authorization_type",
+                    message=(
+                        f"authorized_agents[{index}] is missing required "
+                        "'authorization_type' discriminator (expected one of: "
+                        f"{', '.join(sorted(_AUTHORIZATION_TYPE_TO_SELECTOR))})"
+                    ),
+                    url=url,
+                )
+            )
+            continue
+
+        if authorization_type not in _AUTHORIZATION_TYPE_TO_SELECTOR:
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="unknown_authorization_type",
+                    message=(
+                        f"authorized_agents[{index}] has unknown "
+                        f"authorization_type={authorization_type!r} "
+                        f"(expected one of: "
+                        f"{', '.join(sorted(_AUTHORIZATION_TYPE_TO_SELECTOR))})"
+                    ),
+                    url=url,
+                )
+            )
+            continue
+
+        required_selector = _AUTHORIZATION_TYPE_TO_SELECTOR[authorization_type]
+        selector_value = entry.get(required_selector)
+        if not isinstance(selector_value, list) or len(selector_value) == 0:
+            errors.append(
+                AdagentsEntryError(
+                    index=index,
+                    kind="missing_selector_for_type",
+                    message=(
+                        f"authorized_agents[{index}] has "
+                        f"authorization_type={authorization_type!r} but is "
+                        f"missing required non-empty {required_selector!r} array"
+                    ),
+                    url=url,
+                )
+            )
+
+    return AdagentsValidationReport(
+        schema_valid=not errors,
+        errors=errors,
+        authorized_agents_count=len(authorized_agents),
+        properties_count=properties_count,
+    )
 
 
 class AuthorizationContext:
