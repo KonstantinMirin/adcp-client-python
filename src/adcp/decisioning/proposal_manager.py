@@ -137,6 +137,26 @@ class ProposalCapabilities:
         Kevel for non-guaranteed-remnant in the same proposal).
         Informational in v1; the per-recipe-kind routing lands in
         a subsequent PR alongside the typed-recipe registry.
+    :param auto_commit_on_put_draft: Opt-in shortcut for managers
+        that issue directly-consumable proposals from ``get_products``
+        without a separate ``finalize_proposal`` step. When ``True``,
+        the framework calls :meth:`ProposalStore.commit` immediately
+        after :meth:`ProposalStore.put_draft` on every proposal
+        returned, promoting ``DRAFT → COMMITTED`` so that
+        ``create_media_buy(proposal_id=X)`` can call
+        ``try_reserve_consumption`` without a separate buyer round-trip.
+        Mutually exclusive with ``finalize=True`` (finalize is the
+        explicit lifecycle; auto-commit is the bypass). Adopters
+        wiring their own commit lifecycle (e.g. webhook-driven
+        approval) leave this ``False``. See #723.
+    :param auto_commit_ttl_seconds: TTL applied to the auto-committed
+        proposal's ``expires_at``. Used only when
+        :attr:`auto_commit_on_put_draft` is ``True``. Defaults to
+        ``604800`` (7 days), matching the salesagent's adopter
+        choice. Tune up for long-running RFPs; tune down for
+        spot-market flows. Cap is enforced soft (a warning fires for
+        values > 30 days) — buyers retrying past the TTL get
+        ``PROPOSAL_EXPIRED`` and re-request the brief.
     """
 
     sales_specialism: SalesSpecialism
@@ -152,6 +172,8 @@ class ProposalCapabilities:
     # the framework no longer reads this field. Stops appearing on new
     # adopter declarations; v1.6+ removes it entirely.
     multi_decisioning: bool = False
+    auto_commit_on_put_draft: bool = False
+    auto_commit_ttl_seconds: int = 7 * 24 * 3600  # 7 days, salesagent default
 
     def __post_init__(self) -> None:
         # Spec only allows the two slugs at v1. Adopter passing a
@@ -184,6 +206,87 @@ class ProposalCapabilities:
                 ),
                 recovery="terminal",
                 field="expires_at_grace_seconds",
+            )
+        # #723: auto-commit and finalize are mutually exclusive
+        # lifecycles. ``finalize=True`` says "buyer drives DRAFT →
+        # COMMITTED explicitly"; ``auto_commit_on_put_draft=True`` says
+        # "framework promotes on put_draft so no explicit step is
+        # needed." Both on at once produces a state-machine race
+        # (the framework auto-commits, then the buyer's finalize call
+        # rejects because the proposal is no longer DRAFT). Loud-fail
+        # at construction.
+        if self.auto_commit_on_put_draft and self.finalize:
+            raise AdcpError(
+                "INVALID_REQUEST",
+                message=(
+                    "ProposalCapabilities: auto_commit_on_put_draft=True and "
+                    "finalize=True are mutually exclusive. auto-commit "
+                    "skips the explicit finalize step (proposals from "
+                    "get_products are committed-on-issuance); finalize "
+                    "requires the buyer to drive the transition. Pick one. "
+                    "See #723."
+                ),
+                recovery="terminal",
+                field="auto_commit_on_put_draft",
+            )
+        # #723 product safety: auto-commit on guaranteed-direct issues
+        # a silent inventory hold on every ``get_products`` call. GAM /
+        # ad-server proposal lifecycles require explicit reservation
+        # precisely because trafficking ops won't accept silent holds
+        # — a 7-day default TTL would burn inventory across thousands
+        # of catalog probes per day. Loud-fail; adopters who need
+        # auto-commit on guaranteed-direct can re-evaluate the
+        # commercial commitment by wiring the explicit ``finalize``
+        # path instead.
+        if self.auto_commit_on_put_draft and self.sales_specialism == "sales-guaranteed":
+            raise AdcpError(
+                "INVALID_REQUEST",
+                message=(
+                    "ProposalCapabilities: auto_commit_on_put_draft=True is "
+                    "not permitted on sales_specialism='sales-guaranteed'. "
+                    "Auto-commit issues a silent inventory hold on every "
+                    "get_products call (7-day default TTL); guaranteed-"
+                    "direct flows require explicit buyer-driven reservation "
+                    "via the finalize=True lifecycle to avoid unintended "
+                    "commitments. Either switch to "
+                    "sales_specialism='sales-non-guaranteed' (catalog / "
+                    "spot-market flows where auto-commit is appropriate) "
+                    "or set finalize=True instead."
+                ),
+                recovery="terminal",
+                field="auto_commit_on_put_draft",
+            )
+        if self.auto_commit_ttl_seconds <= 0:
+            raise AdcpError(
+                "INVALID_REQUEST",
+                message=(
+                    "ProposalCapabilities.auto_commit_ttl_seconds must be "
+                    f"> 0; got {self.auto_commit_ttl_seconds!r}. Zero or "
+                    "negative TTL would mark proposals expired on commit, "
+                    "making every consumption attempt fail with "
+                    "PROPOSAL_EXPIRED."
+                ),
+                recovery="terminal",
+                field="auto_commit_ttl_seconds",
+            )
+        # Soft-cap warning: a TTL longer than 30 days holds inventory
+        # for an entire month per catalog probe. Operators can extend
+        # for long-running RFP flows, but the SDK surfaces a heads-up
+        # so the default doesn't drift past what the adopter intended.
+        _soft_cap_seconds = 30 * 24 * 3600
+        if self.auto_commit_on_put_draft and self.auto_commit_ttl_seconds > _soft_cap_seconds:
+            import warnings as _warnings
+
+            _warnings.warn(
+                f"ProposalCapabilities.auto_commit_ttl_seconds="
+                f"{self.auto_commit_ttl_seconds} exceeds the soft cap of "
+                f"{_soft_cap_seconds} (30 days). Auto-committed proposals "
+                "hold inventory for the full TTL — verify your commercial "
+                "model supports holds this long. The framework permits "
+                "it; this warning fires once per declaration site so the "
+                "choice is visible at boot.",
+                UserWarning,
+                stacklevel=3,
             )
 
 
