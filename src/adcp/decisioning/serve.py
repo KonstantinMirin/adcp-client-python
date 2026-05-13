@@ -88,6 +88,7 @@ def create_adcp_server_from_platform(
     config_store: ProductConfigStore | None = None,
     property_list_fetcher: PropertyListFetcher | None = None,
     advertise_all: bool = False,
+    validate_at_init: bool = True,
 ) -> tuple[PlatformHandler, ThreadPoolExecutor, TaskRegistry]:
     """Build the :class:`PlatformHandler` + supporting wiring from a
     :class:`DecisioningPlatform`.
@@ -186,6 +187,27 @@ def create_adcp_server_from_platform(
         regardless of override status. Stored on the returned handler
         so adopters can call ``handler.get_advertised_tools()`` to
         inspect the effective set without standing up a server.
+    :param validate_at_init: When ``True`` (default), the framework
+        runs :func:`validate_capabilities_response_shape` during
+        construction — fail-fast boot validation for the projected
+        capabilities response. The sync validator drives the async
+        handler via :func:`asyncio.run`, so the call **fails** with
+        ``RuntimeError: asyncio.run() cannot be called from a running
+        event loop`` when the constructor is invoked from inside an
+        async context (test fixtures, Starlette ``lifespan``,
+        in-process A2A test clients). Pass ``False`` in those
+        contexts and run the async validator yourself::
+
+            handler, executor, registry = create_adcp_server_from_platform(
+                platform, validate_at_init=False,
+            )
+            await validate_capabilities_response_shape_async(handler)
+
+        The other boot validators (:func:`validate_platform`,
+        :func:`validate_webhook_signing_for_capabilities`,
+        :func:`validate_idempotency_wiring`) are synchronous-pure and
+        always run; this flag only gates the capabilities-response
+        check. See #700.
 
     To wire a :class:`ProposalManager` (v1 two-platform composition),
     pass it on a :class:`PlatformRouter` via
@@ -349,11 +371,18 @@ def create_adcp_server_from_platform(
     # operator sees one structured AdcpError before the server starts
     # taking traffic, instead of buyers discovering a malformed
     # capabilities envelope on first contact.
-    from adcp.decisioning.validate_capabilities import (
-        validate_capabilities_response_shape,
-    )
+    #
+    # The sync validator drives the async handler via ``asyncio.run``,
+    # which raises ``RuntimeError`` when called from inside an already-
+    # running event loop. ``validate_at_init=False`` opts out so async
+    # callers (test fixtures, ``lifespan`` handlers, in-process A2A
+    # clients) can run the async sibling themselves — see #700.
+    if validate_at_init:
+        from adcp.decisioning.validate_capabilities import (
+            validate_capabilities_response_shape,
+        )
 
-    validate_capabilities_response_shape(handler)
+        validate_capabilities_response_shape(handler)
 
     # Boot-time fail-fast: idempotency advertised but no @wrap applied.
     # Buyers reading IdempotencySupported(supported=True) on the
@@ -387,6 +416,7 @@ def serve(
     mock_ad_server: Any | None = None,
     enable_debug_endpoints: bool = False,
     pre_validation_hooks: dict[str, Any] | None = None,
+    validate_at_init: bool = True,
     **serve_kwargs: Any,
 ) -> None:
     """One-call wrapper — build the handler and serve over MCP.
@@ -468,6 +498,13 @@ def serve(
         The hook receives a shallow copy of the wire args, so it may
         mutate its argument freely or return a new dict — either style
         is safe. Context echo always reflects the original wire input.
+    :param validate_at_init: Forwarded to
+        :func:`create_adcp_server_from_platform`. Default ``True``
+        runs the capabilities-shape boot validator in sync; pass
+        ``False`` and run :func:`validate_capabilities_response_shape_async`
+        yourself when invoking ``serve()`` from inside a running event
+        loop (e.g. ``asyncio.run(your_main())`` that calls
+        ``adcp.decisioning.serve`` for a sidecar binary). See #700.
     """
     # Local import to avoid a circular at module-load time. Adopter
     # serves never run during foundation imports anyway.
@@ -487,6 +524,7 @@ def serve(
         config_store=config_store,
         property_list_fetcher=property_list_fetcher,
         advertise_all=advertise_all,
+        validate_at_init=validate_at_init,
     )
 
     # Phase 1 sandbox-authority — wire the comply controller's account
