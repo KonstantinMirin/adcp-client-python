@@ -391,9 +391,25 @@ jobs:
         # own CI running AdCP's own canonical runner — tracking latest
         # surfaces protocol drift as soon as it ships, which is the
         # point of this job.
+        #
+        # Vendor missing fixtures into the SDK install:
+        # ``@adcp/sdk`` does not ship two fixtures its storyboard runner
+        # needs — ``aao-reference-formats.json`` (AAO format catalog,
+        # upstream adcontextprotocol/adcp#3307) and
+        # ``v1-canonical-mapping.json`` (v1→v2 format mapping registry
+        # at schemas/cache/3.1.0-beta.2/registries/). The SDK's own
+        # error messages recommend vendoring both at the exact paths
+        # below. We keep copies under ``tests/fixtures/`` and drop them
+        # into the SDK's expected locations post-install; idempotent if
+        # upstream later ships them in the npm tarball.
         run: |
           npm install -g @adcp/sdk@latest
           adcp --version
+          SDK_ROOT="$(npm root -g)/@adcp/sdk"
+          mkdir -p "${SDK_ROOT}/test/lib/v2-projection-fixtures"
+          cp tests/fixtures/aao-reference-formats.json "${SDK_ROOT}/test/lib/v2-projection-fixtures/aao-reference-formats.json"
+          mkdir -p "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries"
+          cp tests/fixtures/v1-canonical-mapping.json "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries/v1-canonical-mapping.json"
 
       - name: Install dependencies
         run: |
@@ -548,9 +564,16 @@ jobs:
           pip install "sqlalchemy>=2.0" "asyncpg>=0.29" "respx>=0.20"
 
       - name: Pre-install @adcp/sdk (once, then call binary directly)
+        # See the comment on the storyboard job's install step for the
+        # AAO reference-formats fixture rationale (upstream adcp#3307).
         run: |
           npm install -g @adcp/sdk@latest
           adcp --version
+          SDK_ROOT="$(npm root -g)/@adcp/sdk"
+          mkdir -p "${SDK_ROOT}/test/lib/v2-projection-fixtures"
+          cp tests/fixtures/aao-reference-formats.json "${SDK_ROOT}/test/lib/v2-projection-fixtures/aao-reference-formats.json"
+          mkdir -p "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries"
+          cp tests/fixtures/v1-canonical-mapping.json "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries/v1-canonical-mapping.json"
 
       - name: Start JS mock-server upstream
         run: |
@@ -757,9 +780,16 @@ jobs:
             ${{ runner.os }}-npm-
 
       - name: Pre-install @adcp/sdk
+        # See the comment on the storyboard job's install step for the
+        # AAO reference-formats fixture rationale (upstream adcp#3307).
         run: |
           npm install -g @adcp/sdk@latest
           adcp --version
+          SDK_ROOT="$(npm root -g)/@adcp/sdk"
+          mkdir -p "${SDK_ROOT}/test/lib/v2-projection-fixtures"
+          cp tests/fixtures/aao-reference-formats.json "${SDK_ROOT}/test/lib/v2-projection-fixtures/aao-reference-formats.json"
+          mkdir -p "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries"
+          cp tests/fixtures/v1-canonical-mapping.json "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries/v1-canonical-mapping.json"
 
       - name: Install dependencies
         run: |
@@ -858,9 +888,16 @@ jobs:
             ${{ runner.os }}-npm-
 
       - name: Pre-install @adcp/sdk
+        # See the comment on the storyboard job's install step for the
+        # AAO reference-formats fixture rationale (upstream adcp#3307).
         run: |
           npm install -g @adcp/sdk@latest
           adcp --version
+          SDK_ROOT="$(npm root -g)/@adcp/sdk"
+          mkdir -p "${SDK_ROOT}/test/lib/v2-projection-fixtures"
+          cp tests/fixtures/aao-reference-formats.json "${SDK_ROOT}/test/lib/v2-projection-fixtures/aao-reference-formats.json"
+          mkdir -p "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries"
+          cp tests/fixtures/v1-canonical-mapping.json "${SDK_ROOT}/schemas/cache/3.1.0-beta.2/registries/v1-canonical-mapping.json"
 
       - name: Install dependencies
         run: |
