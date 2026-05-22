@@ -224,3 +224,278 @@ async def test_factory_passes_verifier_errors_through_unchanged(
         )
     assert exc.value.code == "request_signature_required"
     assert exc.value.step == 0
+
+
+# ---- key_origins consistency wiring ----
+
+
+def _resolved_with_origins(key_origins: dict[str, str] | None) -> AgentResolution:
+    """Variant of ``_RESOLVED_AGENT`` carrying a specific ``key_origins`` map.
+
+    Used to pin the verifier-side wiring: ``verify_from_agent_url`` must
+    surface ``identity.key_origins`` from the capabilities response into
+    ``VerifyOptions.expected_key_origins`` so the verifier's
+    ``_maybe_check_key_origin`` step actually engages. Without this the
+    SDK's recommended buyer entrypoint silently skips the spec's
+    shared-tenancy-spoof defense.
+    """
+    return AgentResolution(
+        agent_url="https://buyer.example.com/mcp",
+        brand_json_url="https://example.com/.well-known/brand.json",
+        agent_entry={
+            "type": "sales",
+            "url": "https://buyer.example.com/mcp",
+            "jwks_uri": "https://example.com/.well-known/jwks.json",
+        },
+        jwks_uri="https://example.com/.well-known/jwks.json",
+        jwks={"keys": []},
+        fetched_at=0.0,
+        key_origins=key_origins,
+        trace=[],
+    )
+
+
+@pytest.mark.asyncio
+async def test_factory_threads_key_origins_into_verify_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the resolution carries an ``identity.key_origins`` map,
+    ``VerifyOptions.expected_key_origins`` is set to it. Pins the
+    production wiring against the bypass the original review flagged
+    (Argus on PR #789): without this the SDK's recommended helper
+    builds ``VerifyOptions`` with ``expected_key_origins=None`` and the
+    spec's consistency check silently no-ops in production."""
+    origins = {"request_signing": "https://example.com"}
+    seen: dict[str, Any] = {}
+
+    async def fake_resolve(*args, **kwargs):
+        return _resolved_with_origins(origins)
+
+    async def fake_verify_starlette(request, *, options):  # type: ignore[no-untyped-def]
+        seen["options"] = options
+        return "ok"
+
+    monkeypatch.setattr(agent_resolver, "async_resolve_agent", fake_resolve)
+    monkeypatch.setattr("adcp.signing.middleware.verify_starlette_request", fake_verify_starlette)
+
+    await verify_from_agent_url(
+        _FakeStarletteRequest(),
+        "https://buyer.example.com/mcp",
+        agent_type="sales",
+        operation="get_products",
+    )
+    assert seen["options"].expected_key_origins == origins
+    # Default ``signing_purpose`` is ``"request_signing"`` — the most
+    # common buyer path. Webhook callers override.
+    assert seen["options"].signing_purpose == "request_signing"
+
+
+@pytest.mark.asyncio
+async def test_factory_passes_signing_purpose_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The new ``signing_purpose`` kwarg propagates to ``VerifyOptions``
+    so webhook-signing callers can route to ``identity.key_origins.webhook_signing``
+    instead of ``request_signing``. Default is request-side; webhook
+    paths must opt in."""
+    seen: dict[str, Any] = {}
+
+    async def fake_resolve(*args, **kwargs):
+        return _resolved_with_origins({"webhook_signing": "https://hooks.example.com"})
+
+    async def fake_verify_starlette(request, *, options):  # type: ignore[no-untyped-def]
+        seen["options"] = options
+        return "ok"
+
+    monkeypatch.setattr(agent_resolver, "async_resolve_agent", fake_resolve)
+    monkeypatch.setattr("adcp.signing.middleware.verify_starlette_request", fake_verify_starlette)
+
+    await verify_from_agent_url(
+        _FakeStarletteRequest(),
+        "https://buyer.example.com/mcp",
+        agent_type="sales",
+        operation="webhook",
+        signing_purpose="webhook_signing",
+        posture="supported",
+    )
+    assert seen["options"].signing_purpose == "webhook_signing"
+    assert seen["options"].posture == "supported"
+
+
+@pytest.mark.asyncio
+async def test_factory_resolver_carries_brand_json_source_marker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The JWKS resolver passed to the verifier MUST carry
+    ``jwks_source = "brand_json"`` so the verifier's
+    ``_maybe_check_key_origin`` step engages. A bare
+    :class:`StaticJwksResolver` (which is what the pre-fix code used)
+    would skip the check because ``jwks_source`` is absent — exactly
+    the bypass Argus flagged on the original PR #789."""
+    seen: dict[str, Any] = {}
+
+    async def fake_resolve(*args, **kwargs):
+        return _resolved_with_origins({"request_signing": "https://example.com"})
+
+    async def fake_verify_starlette(request, *, options):  # type: ignore[no-untyped-def]
+        seen["options"] = options
+        return "ok"
+
+    monkeypatch.setattr(agent_resolver, "async_resolve_agent", fake_resolve)
+    monkeypatch.setattr("adcp.signing.middleware.verify_starlette_request", fake_verify_starlette)
+
+    await verify_from_agent_url(
+        _FakeStarletteRequest(),
+        "https://buyer.example.com/mcp",
+        agent_type="sales",
+        operation="get_products",
+    )
+    resolver = seen["options"].jwks_resolver
+    # The discriminant is on the class, not the instance — the verifier
+    # reads it via ``type(resolver).jwks_source`` so subclassing carries
+    # the marker without per-instance state.
+    assert getattr(type(resolver), "jwks_source", None) == "brand_json"
+
+
+@pytest.mark.asyncio
+async def test_factory_passes_none_origins_when_capabilities_omit_them(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Operators on legacy 3.0 deployments don't advertise
+    ``identity.key_origins``. The resolution carries ``None`` and the
+    factory propagates it; the verifier-side check skips on
+    ``expected_key_origins is None`` per the ``_maybe_check_key_origin``
+    contract. This preserves back-compat — the new defense engages
+    only when the operator opts in by publishing the origins map."""
+    seen: dict[str, Any] = {}
+
+    async def fake_resolve(*args, **kwargs):
+        return _resolved_with_origins(None)
+
+    async def fake_verify_starlette(request, *, options):  # type: ignore[no-untyped-def]
+        seen["options"] = options
+        return "ok"
+
+    monkeypatch.setattr(agent_resolver, "async_resolve_agent", fake_resolve)
+    monkeypatch.setattr("adcp.signing.middleware.verify_starlette_request", fake_verify_starlette)
+
+    await verify_from_agent_url(
+        _FakeStarletteRequest(),
+        "https://buyer.example.com/mcp",
+        agent_type="sales",
+        operation="get_products",
+    )
+    assert seen["options"].expected_key_origins is None
+
+
+# ---- Integration: production resolver drives the real verifier path ----
+#
+# The mocked tests above pin the wiring; this test pins the END-TO-END:
+# the production ``_BrandJsonStaticJwksResolver`` class drives the real
+# ``_maybe_check_key_origin`` step (no mocking of ``verify_starlette_request``
+# or the verifier internals). Catches the class of bug Argus flagged on
+# the first pass: the subclass carried the ``jwks_source`` marker but
+# not the ``jwks_uri`` attribute, so the verifier's
+# ``getattr(resolver, "jwks_uri", None) → None`` produced an
+# ``actual_origin=""`` mismatch on every legitimate signer.
+
+
+def test_brand_json_static_resolver_carries_jwks_uri_attribute() -> None:
+    """``_BrandJsonStaticJwksResolver`` MUST expose ``jwks_uri`` on the
+    instance — the verifier reads it via ``getattr(resolver, "jwks_uri",
+    None)`` and compares the host to the declared origin. Argus's first
+    review caught this gap; the subclass needs the URI even though
+    ``StaticJwksResolver.__init__`` doesn't accept it."""
+    from adcp.signing.agent_resolver import _BrandJsonStaticJwksResolver
+
+    resolver = _BrandJsonStaticJwksResolver(
+        {"keys": []},
+        jwks_uri="https://keys.brand.example/.well-known/jwks.json",
+    )
+    assert resolver.jwks_uri == "https://keys.brand.example/.well-known/jwks.json"
+    assert type(resolver).jwks_source == "brand_json"
+
+
+def test_maybe_check_key_origin_accepts_brand_json_resolver_with_matching_origin() -> None:
+    """Drives the production ``_BrandJsonStaticJwksResolver`` against
+    the real ``_maybe_check_key_origin`` step. Without the subclass's
+    ``__init__`` storing ``jwks_uri``, this check would fire mismatch
+    on every legitimate signer (the verifier would compare
+    ``actual_origin=""`` against the declared origin and reject).
+    The success path here is the regression test for that bypass."""
+    from adcp.signing.agent_resolver import _BrandJsonStaticJwksResolver
+    from adcp.signing.verifier import _maybe_check_key_origin
+
+    resolver = _BrandJsonStaticJwksResolver(
+        {"keys": []},
+        jwks_uri="https://keys.brand.example/.well-known/jwks.json",
+    )
+
+    # No raise — host matches the declared origin.
+    _maybe_check_key_origin(
+        resolver=resolver,
+        expected_key_origins={"request_signing": "https://keys.brand.example"},
+        signing_purpose="request_signing",
+        posture=None,
+    )
+
+
+def test_maybe_check_key_origin_rejects_mismatched_origin_on_brand_json_resolver() -> None:
+    """Negative side of the integration check: same production resolver
+    class, but the declared origin points elsewhere → step 7 raises
+    ``request_signature_key_origin_mismatch`` with the host pair in the
+    detail map. Pins the rejection direction (so a future refactor
+    can't accidentally flip the comparison)."""
+    from adcp.signing.agent_resolver import _BrandJsonStaticJwksResolver
+    from adcp.signing.errors import REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH
+    from adcp.signing.verifier import _maybe_check_key_origin
+
+    resolver = _BrandJsonStaticJwksResolver(
+        {"keys": []},
+        jwks_uri="https://keys.brand.example/.well-known/jwks.json",
+    )
+
+    with pytest.raises(SignatureVerificationError) as exc_info:
+        _maybe_check_key_origin(
+            resolver=resolver,
+            expected_key_origins={"request_signing": "https://attacker.example"},
+            signing_purpose="request_signing",
+            posture=None,
+        )
+    assert exc_info.value.code == REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH
+    assert exc_info.value.detail is not None
+    assert exc_info.value.detail["actual_origin"] == "keys.brand.example"
+    assert exc_info.value.detail["expected_origin"] == "attacker.example"
+
+
+@pytest.mark.asyncio
+async def test_factory_construction_threads_jwks_uri_into_resolver(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``verify_from_agent_url`` MUST construct the wrapper with
+    ``jwks_uri=resolution.jwks_uri`` so the verifier's consistency
+    check has a real host to compare. The bug Argus traced on the
+    first review pass was exactly this construction site missing the
+    keyword."""
+    seen: dict[str, Any] = {}
+
+    async def fake_resolve(*args, **kwargs):
+        return _resolved_with_origins({"request_signing": "https://example.com"})
+
+    async def fake_verify_starlette(request, *, options):  # type: ignore[no-untyped-def]
+        seen["options"] = options
+        return "ok"
+
+    monkeypatch.setattr(agent_resolver, "async_resolve_agent", fake_resolve)
+    monkeypatch.setattr("adcp.signing.middleware.verify_starlette_request", fake_verify_starlette)
+
+    await verify_from_agent_url(
+        _FakeStarletteRequest(),
+        "https://buyer.example.com/mcp",
+        agent_type="sales",
+        operation="get_products",
+    )
+    resolver = seen["options"].jwks_resolver
+    # Production resolver MUST carry the URI as an instance attribute,
+    # not just the source-marker class attribute.
+    assert resolver.jwks_uri == "https://example.com/.well-known/jwks.json"
