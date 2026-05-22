@@ -35,12 +35,14 @@ to raise the webhook-family codes instead of the request family.
 
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Mapping
 from typing import Literal
 from urllib.parse import urlsplit
 
 import idna
 
+from adcp.signing._idna_canonicalize import canonicalize_host
 from adcp.signing.errors import (
     REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH,
     REQUEST_SIGNATURE_KEY_ORIGIN_MISSING,
@@ -149,28 +151,47 @@ def check_key_origin_consistency(
             detail={
                 "purpose": purpose,
                 # Use the canonicalized values when available; fall back
-                # to the raw inputs for diagnostic accuracy when one
-                # side failed to canonicalize. Spec wording is
+                # to a best-effort host extraction (NOT the raw URL — the
+                # field name promises a host, and surfacing a full URL on
+                # canonicalization failure was inconsistent with the
+                # success path's host-only shape). Spec wording is
                 # ``expected_origin`` / ``actual_origin`` verbatim.
-                "expected_origin": declared_host if declared_host is not None else declared,
-                "actual_origin": actual_host if actual_host is not None else jwks_uri,
+                "expected_origin": _diagnostic_host(declared_host, declared),
+                "actual_origin": _diagnostic_host(actual_host, jwks_uri),
             },
         )
+
+
+def _diagnostic_host(canonical: str | None, raw: str) -> str:
+    """Return ``canonical`` if present, else a best-effort host from
+    ``raw``, else the empty string.
+
+    Used to keep ``expected_origin`` / ``actual_origin`` host-shaped
+    in the mismatch detail payload even when canonicalization failed.
+    Falls through to ``_extract_host`` (the same URL/bare-host parser
+    the canonicalization step uses) for the best-effort path, so the
+    diagnostic value still reflects "the host the operator/verifier
+    pointed at" rather than the full URL surface.
+    """
+    if canonical is not None:
+        return canonical
+    host = _extract_host(raw)
+    return host or ""
 
 
 def _origin_host(value: str) -> str | None:
     """Return the host portion of a URL or bare origin, canonicalized
     for byte-equality comparison.
 
-    Canonicalization mirrors the package-wide IDNA-2008 (UTS#46)
-    convention used by ``jwks.py``, ``ip_pinned_transport.py``, and
-    ``revocation_fetcher.py``: ASCII-lowercase, then
-    ``idna.encode(host, uts46=True).decode("ascii")`` to convert IDN
-    U-labels to their A-label (Punycode) form. IDNA-2008 (vs the
-    stdlib's IDNA-2003) preserves Eszett (``ß``) and final-sigma per
-    spec rather than mapping them away, which is the canonicalization
-    the request-signing spec mandates for cross-implementation
-    byte-equality.
+    Delegates to :func:`canonicalize_host` for the package-wide
+    IDNA-2008 (UTS#46) convention shared with ``jwks.py``,
+    ``ip_pinned_transport.py``, and ``revocation_fetcher.py``.
+    IDNA-2008 preserves Eszett (``ß``) and final-sigma rather than
+    mapping them away (which IDNA-2003 does), matching the
+    canonicalization the request-signing spec mandates for
+    cross-implementation byte-equality. IP literals short-circuit
+    through ``ipaddress.ip_address`` so they're not rejected by
+    IDNA-2008's reject-purely-numeric-label rule.
 
     **Bare-host and URL forms are normalized symmetrically.** A bare
     host like ``"keys.brand.com"`` is processed through the same
@@ -186,8 +207,9 @@ def _origin_host(value: str) -> str | None:
     **Trailing-dot equality.** ``host.example.`` and ``host.example``
     are the same FQDN at the protocol layer (the dot denotes the root
     zone). A counterparty serving the dot form while the capability
-    declares the no-dot form (or vice versa) must not mismatch. We
-    strip a single trailing dot before IDNA encoding.
+    declares the no-dot form (or vice versa) must not mismatch.
+    :func:`canonicalize_host` strips a single trailing dot before
+    encoding.
 
     Returns ``None`` when the input is structurally invalid (no
     resolvable host, or it parses but contains characters that don't
@@ -196,11 +218,10 @@ def _origin_host(value: str) -> str | None:
     host = _extract_host(value)
     if host is None:
         return None
-    host = host.rstrip(".").lower()
     if not host:
         return None
     try:
-        return idna.encode(host, uts46=True).decode("ascii").lower()
+        return canonicalize_host(host)
     except (idna.IDNAError, UnicodeError, UnicodeEncodeError):
         return None
 
@@ -215,6 +236,12 @@ def _extract_host(value: str) -> str | None:
     re-parse so port / userinfo / query / fragment all strip the same
     way they would for an explicit URL — closing the bare-host vs URL
     asymmetry that the bare-host fallback used to have.
+
+    **Bare IPv6 needs bracket synthesis.** ``urlsplit("https://2001:db8::1")``
+    interprets the first ``:`` as the port separator and produces
+    ``hostname="2001"``, which then fails canonicalization downstream.
+    Detect bare IPv6 (multiple ``:`` and no scheme, not already
+    bracketed) and add brackets before re-parsing.
     """
     parts = urlsplit(value)
     if parts.hostname:
@@ -226,6 +253,18 @@ def _extract_host(value: str) -> str | None:
     stripped = value.strip()
     if not stripped:
         return None
+    # Bare IPv6 needs brackets to survive urlsplit's port-separator
+    # interpretation of ``:``. ``ipaddress.ip_address`` rejects
+    # bracketed and dotted-quad-with-port forms; using it as the
+    # IPv6 detector is precise.
+    if not stripped.startswith("["):
+        try:
+            ip = ipaddress.ip_address(stripped)
+        except ValueError:
+            pass
+        else:
+            if ip.version == 6:
+                stripped = f"[{stripped}]"
     parts = urlsplit(f"https://{stripped}")
     return parts.hostname or None
 

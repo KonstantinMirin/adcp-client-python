@@ -8,6 +8,7 @@ taxonomy — conformance requires byte-for-byte match on the code string.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -42,6 +43,7 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_DIGEST_MISMATCH,
     REQUEST_SIGNATURE_HEADER_MALFORMED,
     REQUEST_SIGNATURE_INVALID,
+    REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
     REQUEST_SIGNATURE_KEY_PURPOSE_INVALID,
     REQUEST_SIGNATURE_KEY_REVOKED,
     REQUEST_SIGNATURE_KEY_UNKNOWN,
@@ -514,13 +516,13 @@ def _maybe_check_key_origin(
     """Run the ADCP #3690 step 7 ``identity.key_origins`` check when
     the resolver sourced its keys from brand.json.
 
-    Resolver contract (duck-typed):
+    Resolver contract (duck-typed; conformance is also surfaced by
+    :class:`adcp.signing.BrandSourcedJwksResolver`):
 
-    * ``jwks_source``: one of ``"brand_json"`` / ``"publisher_pin"`` /
-      absent. Only ``"brand_json"`` engages the check; ``"publisher_pin"``
-      and absence skip it. Absence is treated as "skip" so legacy
-      :class:`JwksResolver` implementations that predate this attribute
-      keep working without behavior change.
+    * ``jwks_source``: ``"brand_json"`` engages the check; any other
+      value (or absence) skips it. Absence is treated as "skip" so
+      legacy :class:`JwksResolver` implementations that predate this
+      attribute keep working without behavior change.
     * ``jwks_uri``: the resolved JWKS URI whose host is canonicalized
       and compared against the declared origin. Required when the
       resolver advertises ``jwks_source == "brand_json"``; a brand-json
@@ -528,24 +530,74 @@ def _maybe_check_key_origin(
       we fail closed via the mismatch path (``actual_origin`` becomes
       ``None``).
 
-    Returns silently when:
+    Skip + warn cases (both fire :func:`warnings.warn` so the
+    one-time message in the operator's log surfaces the misconfig):
 
-    * ``expected_key_origins`` is ``None`` (adopter hasn't plumbed
-      capabilities through), OR
-    * the resolver isn't brand-json-sourced.
+    * ``jwks_source == "brand_json"`` + ``expected_key_origins is None``:
+      the resolver IS brand-json-sourced but the caller didn't surface
+      the operator's declared ``identity.key_origins`` map, so the
+      spec-mandated check silently no-ops. ``UserWarning`` — the
+      adopter needs to thread ``expected_key_origins`` through
+      ``VerifyOptions``.
+    * ``expected_key_origins`` set + resolver has no ``jwks_source``:
+      adopter upgraded the SDK but their custom resolver predates the
+      discriminant. ``DeprecationWarning`` — set
+      ``jwks_source = "brand_json"`` on the resolver class (or
+      conform to :class:`BrandSourcedJwksResolver`) to engage the
+      spec defense; without it the SDK silently downgrades to no-check.
     """
-    if expected_key_origins is None:
-        return
     source = getattr(resolver, "jwks_source", None)
+    if expected_key_origins is None:
+        if source == "brand_json":
+            warnings.warn(
+                "Resolver advertises jwks_source='brand_json' but VerifyOptions "
+                "did not supply expected_key_origins — the spec-mandated "
+                "identity.key_origins consistency check (ADCP #3690 step 7) "
+                "is silently skipped. Thread the operator's "
+                "identity.key_origins map through VerifyOptions(expected_key_origins=...) "
+                "to engage the check; pass an empty dict if the operator "
+                "advertises no map and you want the missing-declaration "
+                "rejection (request_signature_key_origin_missing) to fire.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return
     if source != "brand_json":
+        if source is None:
+            warnings.warn(
+                "VerifyOptions supplied expected_key_origins but the JWKS "
+                "resolver has no jwks_source attribute. The "
+                "identity.key_origins consistency check is silently skipped "
+                "on this path (back-compat for pre-#776 resolvers). Set "
+                "jwks_source='brand_json' on the resolver class (or conform "
+                "to adcp.signing.BrandSourcedJwksResolver) to engage the "
+                "ADCP #3690 step 7 defense.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         return
     jwks_uri = getattr(resolver, "jwks_uri", None)
-    # ``jwks_uri`` may be ``None`` if the brand-json resolver hasn't
-    # populated it yet (cold cache + failed refresh). The consistency
-    # check fails closed on a missing actual host — same posture as
-    # ``_origin_host`` returning ``None``.
+    if not jwks_uri:
+        # A brand-json resolver that hasn't populated ``jwks_uri`` (cold
+        # cache + failed refresh, or a misconfigured custom resolver) is
+        # a resolver-side I/O failure, not a key-origin mismatch — the
+        # verifier has no resolved host to compare. Surface as
+        # ``REQUEST_SIGNATURE_JWKS_UNAVAILABLE`` so dashboards aggregate
+        # this cold-cache shape with other resolver-fetch failures
+        # rather than with adversarial origin-mismatch traffic.
+        raise SignatureVerificationError(
+            REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
+            step=7,
+            message=(
+                "brand-json resolver did not populate jwks_uri (cold cache "
+                "or misconfigured resolver); key_origins consistency check "
+                "cannot proceed without a resolved host to compare against "
+                f"identity.key_origins.{signing_purpose}"
+            ),
+            detail={"purpose": signing_purpose},
+        )
     check_key_origin_consistency(
-        jwks_uri=jwks_uri or "",
+        jwks_uri=jwks_uri,
         key_origins=expected_key_origins,
         purpose=signing_purpose,
         posture=posture,

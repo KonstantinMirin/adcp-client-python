@@ -329,6 +329,14 @@ def _extract_brand_json_url(capabilities: dict[str, Any]) -> str:
     return brand_json_url
 
 
+#: Per-entry size clamp on ``identity.key_origins`` values. DNS hostname
+#: limit is 253 octets (RFC 1035); origin strings carry scheme+host so
+#: the practical cap is a bit higher, but 512 is well above any
+#: legitimate value while still bounding the surface against a
+#: pathologically-large entry from a 64 KiB capabilities body.
+_MAX_KEY_ORIGIN_VALUE_BYTES = 512
+
+
 def _extract_key_origins(capabilities: dict[str, Any]) -> dict[str, str] | None:
     """Pluck ``identity.key_origins`` from the capabilities body.
 
@@ -338,6 +346,14 @@ def _extract_key_origins(capabilities: dict[str, Any]) -> dict[str, str] | None:
     only raises ``request_signature_key_origin_missing`` when a signed
     purpose is actually exercised). Filters values to strings — a
     malformed entry is skipped rather than poisoning the whole map.
+
+    **Per-entry length cap (``_MAX_KEY_ORIGIN_VALUE_BYTES``).** Each
+    origin value is bounded to 512 bytes — well above any legitimate
+    ``scheme + host + port`` shape but tight enough that a pathological
+    multi-kilobyte value from the 64 KiB capabilities body doesn't
+    propagate through downstream comparisons. Entries exceeding the cap
+    are skipped (the verifier then surfaces the purpose as missing on
+    the consistency check).
 
     Forward-compat with operators on 3.0 schemas: the map travels under
     ``additionalProperties: true`` and the SDK reads it as a plain dict
@@ -352,8 +368,13 @@ def _extract_key_origins(capabilities: dict[str, Any]) -> dict[str, str] | None:
         return None
     out: dict[str, str] = {}
     for purpose, origin in raw.items():
-        if isinstance(purpose, str) and isinstance(origin, str) and origin:
-            out[purpose] = origin
+        if not (isinstance(purpose, str) and isinstance(origin, str) and origin):
+            continue
+        if len(origin.encode("utf-8")) > _MAX_KEY_ORIGIN_VALUE_BYTES:
+            # Length-capped entry — skip rather than truncate (a
+            # truncated host would silently match the wrong domain).
+            continue
+        out[purpose] = origin
     return out or None
 
 
@@ -557,6 +578,40 @@ def resolve_agent(
 # ---- verify factory ----
 
 
+class _BrandJsonStaticJwksResolver(StaticJwksResolver):
+    """A :class:`StaticJwksResolver` carrying the ``"brand_json"``
+    source discriminant AND the resolved ``jwks_uri``.
+
+    Conforms to :class:`adcp.signing.BrandSourcedJwksResolver` — the
+    verifier's ``_maybe_check_key_origin`` engages the spec's
+    consistency check on every signed request routed through
+    :func:`verify_from_agent_url`. Adopters wiring custom resolvers
+    declare the same conformance by setting ``jwks_source = "brand_json"``
+    (class attribute) and exposing ``jwks_uri`` (instance attribute);
+    they MAY also import :class:`BrandSourcedJwksResolver` to type-check
+    the contract at static analysis time.
+
+    The brand.json walk in :func:`async_resolve_agent` resolved this
+    JWKS — that's exactly the source the spec's key-origin consistency
+    check (ADCP #3690 step 7) defends. The verifier reads
+    ``getattr(resolver, "jwks_uri", None)`` to look up the resolved
+    host for the comparison. :class:`StaticJwksResolver` does not
+    carry a ``jwks_uri`` (it's a static keyset), so this subclass
+    stores the brand.json-resolved URI on the instance. Without it
+    the check would mismatch every legitimate signer with
+    ``actual_origin=""``.
+
+    Defined inside the module rather than as a public type because the
+    helper composition is internal to the buyer-side verify factory.
+    """
+
+    jwks_source: ClassVar[Literal["brand_json"]] = "brand_json"
+
+    def __init__(self, jwks: dict[str, Any], *, jwks_uri: str) -> None:
+        super().__init__(jwks)
+        self.jwks_uri = jwks_uri
+
+
 async def verify_from_agent_url(
     request: Any,
     agent_url: str,
@@ -672,38 +727,6 @@ async def verify_from_agent_url(
         posture=posture,
     )
     return await verify_starlette_request(request, options=options)
-
-
-class _BrandJsonStaticJwksResolver(StaticJwksResolver):
-    """A :class:`StaticJwksResolver` carrying the ``"brand_json"``
-    source discriminant AND the resolved ``jwks_uri``.
-
-    The brand.json walk in :func:`async_resolve_agent` resolved this
-    JWKS — that's exactly the source the spec's key-origin consistency
-    check (ADCP #3690 step 7) defends. The verifier's
-    ``_maybe_check_key_origin`` step skips when ``jwks_source`` is
-    absent (treating absence as publisher-pin-equivalent); marking the
-    static resolver here engages the check on every signed request
-    routed through :func:`verify_from_agent_url`.
-
-    The verifier reads ``getattr(resolver, "jwks_uri", None)`` to look
-    up the resolved host for the consistency comparison.
-    :class:`StaticJwksResolver` does not carry a ``jwks_uri`` (it's a
-    static keyset), so this subclass stores the brand.json-resolved
-    URI on the instance. Without it the check would mismatch every
-    legitimate signer with ``actual_origin=""``.
-
-    Defined inside the module rather than as a public type because the
-    discriminant is internal — adopters wiring custom resolvers set
-    their own ``jwks_source = "brand_json"`` class attribute and
-    ``jwks_uri`` instance attribute directly.
-    """
-
-    jwks_source: ClassVar[Literal["brand_json", "publisher_pin"]] = "brand_json"
-
-    def __init__(self, jwks: dict[str, Any], *, jwks_uri: str) -> None:
-        super().__init__(jwks)
-        self.jwks_uri = jwks_uri
 
 
 # ---- helpers ----
