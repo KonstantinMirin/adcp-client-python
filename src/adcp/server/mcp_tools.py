@@ -27,27 +27,14 @@ from typing import Any
 
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.test_controller import SCENARIOS as _CONTROLLER_SCENARIOS
+from adcp.types import (
+    MEDIA_BUY_LEGACY_STATUS_VALUES,
+    unwrap_enum_value,
+)
 from adcp.types.error_narrowing import narrow_union_errors
 from adcp.validation.client_hooks import ValidationHookConfig
 
 logger = logging.getLogger(__name__)
-
-
-_MEDIA_BUY_STATUS_VALUES = {
-    "draft",
-    "pending_creatives",
-    "pending_start",
-    "active",
-    "paused",
-    "completed",
-    "canceled",
-    "cancelled",
-    "rejected",
-}
-
-
-def _enum_value(value: Any) -> Any:
-    return getattr(value, "value", value)
 
 
 def _looks_like_sync_media_buy_success(method_name: str, result: dict[str, Any]) -> bool:
@@ -71,20 +58,20 @@ def _normalize_response_envelope(
     account-specific inventory as globally cacheable.
     """
     if _looks_like_sync_media_buy_success(method_name, result):
-        raw_status = _enum_value(result.get("status"))
-        media_buy_status = _enum_value(result.get("media_buy_status"))
+        raw_status = unwrap_enum_value(result.get("status"))
+        media_buy_status = unwrap_enum_value(result.get("media_buy_status"))
         if raw_status is not None:
             result["status"] = raw_status
         if media_buy_status is not None:
             result["media_buy_status"] = media_buy_status
-        if media_buy_status is None and raw_status in _MEDIA_BUY_STATUS_VALUES:
-            if raw_status != "completed":
-                result["media_buy_status"] = raw_status
-                result["status"] = "completed"
+        if media_buy_status is None and raw_status in MEDIA_BUY_LEGACY_STATUS_VALUES:
+            result["media_buy_status"] = raw_status
+            result["status"] = "completed"
         elif media_buy_status is not None and raw_status in {None, media_buy_status}:
             result["status"] = "completed"
 
-    result.setdefault("status", "completed")
+    if "status" not in result and "task_id" not in result:
+        result["status"] = "completed"
     if (
         method_name in {"get_products", "get_signals"}
         and "cache_scope" not in result

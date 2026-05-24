@@ -48,6 +48,25 @@ class _LegacyCreateMediaBuyStatusHandler(ADCPHandler[Any]):
         }
 
 
+class _InvalidLegacyCreateMediaBuyStatusHandler(ADCPHandler[Any]):
+    async def create_media_buy(self, params: dict[str, Any], ctx: ToolContext) -> dict[str, Any]:
+        return {
+            "media_buy_id": "mb_1",
+            "packages": [],
+            "status": "draft",
+            "revision": 1,
+            "confirmed_at": "2026-05-23T10:00:00Z",
+            "sandbox": True,
+        }
+
+
+class _TaskIdWithoutStatusHandler(ADCPHandler[Any]):
+    async def create_media_buy(self, params: dict[str, Any], ctx: ToolContext) -> dict[str, Any]:
+        return {
+            "task_id": "task_1",
+        }
+
+
 class _EnumMediaBuyStatusHandler(ADCPHandler[Any]):
     async def create_media_buy(self, params: dict[str, Any], ctx: ToolContext) -> dict[str, Any]:
         return {
@@ -255,6 +274,74 @@ class TestResponses:
         update_result = await update({"media_buy_id": "mb_1"})
         assert update_result["media_buy_status"] == "paused"
         assert update_result["status"] == "completed"
+
+    @pytest.mark.asyncio
+    async def test_invalid_legacy_media_buy_status_is_not_rewritten(self) -> None:
+        handler = _InvalidLegacyCreateMediaBuyStatusHandler()
+        caller = create_tool_caller(
+            handler,
+            "create_media_buy",
+            validation=ValidationHookConfig(responses="warn"),
+        )
+        result = await caller(
+            {
+                "brand": {"domain": "acme.example"},
+                "packages": [
+                    {
+                        "product_id": "premium-homepage",
+                        "budget": 1000,
+                        "pricing_option_id": "po-cpm-homepage",
+                    }
+                ],
+            }
+        )
+        assert result["status"] == "draft"
+        assert "media_buy_status" not in result
+
+    @pytest.mark.asyncio
+    async def test_task_id_response_without_status_is_not_marked_completed(self) -> None:
+        handler = _TaskIdWithoutStatusHandler()
+        warn_caller = create_tool_caller(
+            handler,
+            "create_media_buy",
+            validation=ValidationHookConfig(responses="warn"),
+        )
+        result = await warn_caller(
+            {
+                "brand": {"domain": "acme.example"},
+                "packages": [
+                    {
+                        "product_id": "premium-homepage",
+                        "budget": 1000,
+                        "pricing_option_id": "po-cpm-homepage",
+                    }
+                ],
+            }
+        )
+        assert result["task_id"] == "task_1"
+        assert "status" not in result
+
+        caller = create_tool_caller(
+            handler,
+            "create_media_buy",
+            validation=ValidationHookConfig(responses="strict"),
+        )
+        with pytest.raises(ADCPTaskError) as info:
+            await caller(
+                {
+                    "brand": {"domain": "acme.example"},
+                    "packages": [
+                        {
+                            "product_id": "premium-homepage",
+                            "budget": 1000,
+                            "pricing_option_id": "po-cpm-homepage",
+                        }
+                    ],
+                }
+            )
+        first = info.value.errors[0]
+        assert first.code == "VALIDATION_ERROR"
+        assert first.details["side"] == "response"
 
     @pytest.mark.asyncio
     async def test_account_scoped_wholesale_requires_explicit_cache_scope(self) -> None:

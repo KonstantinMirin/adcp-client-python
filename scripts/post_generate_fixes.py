@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """
 Post-generation fixes for generated Pydantic models.
 
@@ -1517,10 +1518,11 @@ from ..core import error as error_1
 # Backward-compatible SDK response arms. Upstream beta 3 schemas collapse this
 # task response to the common protocol envelope, but the Python SDK keeps the
 # historical numbered variants as ergonomic construction/parsing aliases.
-from collections.abc import Sequence
 from typing import Any, Literal, TypeAlias
 
 from pydantic import ConfigDict, model_validator
+
+from adcp.types.media_buy_status_helpers import MEDIA_BUY_LEGACY_STATUS_VALUES, unwrap_enum_value
 
 from ..core import error as error_1
 from ..core import ext as ext_1
@@ -1528,21 +1530,11 @@ from ..core import package as package_1
 from ..core.protocol_envelope import ProtocolEnvelope
 from ..enums import media_buy_status as media_buy_status_1
 from ..enums import task_status as task_status_1
-
-
-_MEDIA_BUY_STATUS_VALUES = {
-    "pending_creatives",
-    "pending_start",
-    "active",
-    "paused",
-    "rejected",
-    "canceled",
-}
-
-
-def _value(value: Any) -> Any:
-    return getattr(value, "value", value)
 """
+    update_media_header = media_header.replace(
+        "from typing import Any, Literal, TypeAlias",
+        "from collections.abc import Sequence\nfrom typing import Any, Literal, TypeAlias",
+    )
 
     simple_error_arms: dict[str, tuple[str, str, str]] = {
         "media_buy/build_creative_response.py": (
@@ -1935,12 +1927,15 @@ class CreateMediaBuyResponse1(AdcpVersionEnvelope):
     def _normalize_legacy_status(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        raw_status = _value(data.get("status"))
-        media_buy_status = _value(data.get("media_buy_status"))
+        raw_status = unwrap_enum_value(data.get("status"))
+        media_buy_status = unwrap_enum_value(data.get("media_buy_status"))
         if raw_status is None:
             data = dict(data)
             data["status"] = "completed"
-        elif media_buy_status is None and raw_status in _MEDIA_BUY_STATUS_VALUES:
+        elif raw_status == "completed":
+            data = dict(data)
+            data["status"] = "completed"
+        elif media_buy_status is None and raw_status in MEDIA_BUY_LEGACY_STATUS_VALUES:
             data = dict(data)
             data["media_buy_status"] = raw_status
             data["status"] = "completed"
@@ -1988,7 +1983,7 @@ __all__ = [
         "media_buy/update_media_buy_response.py",
         "UpdateMediaBuyResponse",
         "class UpdateMediaBuyResponse1",
-        media_header
+        update_media_header
         + """
 
 class UpdateMediaBuyResponse1(AdcpVersionEnvelope):
@@ -2005,12 +2000,15 @@ class UpdateMediaBuyResponse1(AdcpVersionEnvelope):
     def _normalize_legacy_status(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        raw_status = _value(data.get("status"))
-        media_buy_status = _value(data.get("media_buy_status"))
+        raw_status = unwrap_enum_value(data.get("status"))
+        media_buy_status = unwrap_enum_value(data.get("media_buy_status"))
         if raw_status is None:
             data = dict(data)
             data["status"] = "completed"
-        elif media_buy_status is None and raw_status in _MEDIA_BUY_STATUS_VALUES:
+        elif raw_status == "completed":
+            data = dict(data)
+            data["status"] = "completed"
+        elif media_buy_status is None and raw_status in MEDIA_BUY_LEGACY_STATUS_VALUES:
             data = dict(data)
             data["media_buy_status"] = raw_status
             data["status"] = "completed"

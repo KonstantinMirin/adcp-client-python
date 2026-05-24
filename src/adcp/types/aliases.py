@@ -1877,6 +1877,7 @@ __all__ = [
     # Update media buy responses
     "UpdateMediaBuySuccessResponse",
     "UpdateMediaBuyErrorResponse",
+    "UpdateMediaBuyResponse3",
     "UpdateMediaBuySubmittedResponse",
     # Validate content delivery responses
     "ValidateContentDeliverySuccessResponse",
