@@ -784,6 +784,17 @@ SignalType = SignalCatalogType
 UrlType = UrlAssetType
 AvailableReportingFrequency = ReportingFrequency
 
+# Internal normalization helpers used by generated response models and server
+# envelope handling. Keep these importable through ``adcp.types`` for the
+# repo's generated-type layering rule, but leave them out of ``__all__`` so they
+# do not become part of the documented public API.
+from adcp.types.media_buy_status_helpers import (  # noqa: E402
+    MEDIA_BUY_LEGACY_STATUS_VALUES as MEDIA_BUY_LEGACY_STATUS_VALUES,
+)
+from adcp.types.media_buy_status_helpers import (
+    unwrap_enum_value as unwrap_enum_value,
+)
+
 __all__ = [
     # A2UI types
     "A2UiComponent",

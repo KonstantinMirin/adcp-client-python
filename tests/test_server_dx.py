@@ -175,7 +175,7 @@ class TestMediaBuyResponse:
             CreateMediaBuySubmittedResponse(task_id="task-123", status="working")
 
     def test_typed_success_does_not_infer_completed_lifecycle(self):
-        from adcp.types import CreateMediaBuySuccessResponse
+        from adcp.types import CreateMediaBuySuccessResponse, MediaBuyStatus
 
         result = CreateMediaBuySuccessResponse(
             media_buy_id="mb-123",
@@ -185,6 +185,15 @@ class TestMediaBuyResponse:
 
         assert result.status == "completed"
         assert result.media_buy_status is None
+
+        enum_result = CreateMediaBuySuccessResponse(
+            media_buy_id="mb-123",
+            packages=[],
+            status=MediaBuyStatus.completed,
+        )
+
+        assert enum_result.status == "completed"
+        assert enum_result.media_buy_status is None
 
 
 class TestMediaBuyErrorResponse:
@@ -225,7 +234,7 @@ class TestUpdateMediaBuyResponse:
             )
 
     def test_typed_success_does_not_infer_completed_lifecycle(self):
-        from adcp.types import UpdateMediaBuySuccessResponse
+        from adcp.types import MediaBuyStatus, UpdateMediaBuySuccessResponse
 
         result = UpdateMediaBuySuccessResponse(
             media_buy_id="mb-123",
@@ -234,6 +243,14 @@ class TestUpdateMediaBuyResponse:
 
         assert result.status == "completed"
         assert result.media_buy_status is None
+
+        enum_result = UpdateMediaBuySuccessResponse(
+            media_buy_id="mb-123",
+            status=MediaBuyStatus.completed,
+        )
+
+        assert enum_result.status == "completed"
+        assert enum_result.media_buy_status is None
 
     def test_typed_submitted_response(self):
         from adcp import UpdateMediaBuyResponse3, UpdateMediaBuySubmittedResponse
