@@ -137,24 +137,36 @@ def _widen_media_buy_output_schema_for_legacy_statuses(
     """
     if tool_name not in {"create_media_buy", "update_media_buy"}:
         return
-    any_of = schema.get("anyOf")
-    if not isinstance(any_of, list) or not any_of:
-        return
-    success_schema = any_of[0]
-    if not isinstance(success_schema, dict):
-        return
-    properties = success_schema.get("properties")
-    if not isinstance(properties, dict):
-        return
-    status_schema = properties.get("status")
-    if not isinstance(status_schema, dict):
-        return
+    variants = schema.get("anyOf") or schema.get("oneOf") or []
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+        required = variant.get("required")
+        properties = variant.get("properties")
+        if not isinstance(required, list) or not isinstance(properties, dict):
+            continue
+        if "media_buy_id" not in required or "status" not in properties:
+            continue
 
-    widened = dict(status_schema)
-    widened.pop("const", None)
-    widened["enum"] = sorted({"completed", *MEDIA_BUY_LEGACY_STATUS_VALUES})
-    widened.setdefault("type", "string")
-    properties["status"] = widened
+        status_schema = properties.get("status")
+        if not (isinstance(status_schema, dict) and status_schema.get("const") == "completed"):
+            continue
+
+        variant["required"] = [field for field in required if field != "status"]
+        properties["status"] = {
+            "anyOf": [
+                {"const": "completed", "type": "string"},
+                {
+                    "enum": sorted(MEDIA_BUY_LEGACY_STATUS_VALUES),
+                    "title": "MediaBuyStatus",
+                    "type": "string",
+                },
+            ],
+            "description": (
+                "Task envelope status for AdCP 3.1+ sync responses, or the "
+                "media-buy lifecycle status for AdCP 3.0 compatibility."
+            ),
+        }
 
 
 # MCP ToolAnnotations — behavioral hints for agent planning.

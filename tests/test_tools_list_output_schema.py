@@ -99,8 +99,11 @@ def test_media_buy_output_schema_accepts_negotiated_30_statuses() -> None:
 
     for tool_name in ("create_media_buy", "update_media_buy"):
         schema = by_name[tool_name]["outputSchema"]
-        success_status = schema["anyOf"][0]["properties"]["status"]
-        assert set(success_status["enum"]) == expected_statuses
+        success_schema = schema["anyOf"][0]
+        success_status = success_schema["properties"]["status"]
+        status_variants = success_status["anyOf"]
+        assert "status" not in success_schema["required"]
+        assert {status_variants[0]["const"], *status_variants[1]["enum"]} == expected_statuses
 
 
 def test_new_brand_creative_tools_have_output_schema() -> None:
