@@ -303,6 +303,26 @@ the projection layer against these fixtures so an upstream-contract
 drift (e.g., a dropped `canonical:` annotation, a renamed slot)
 surfaces immediately in CI.
 
+### 6.1.0-beta.1
+
+- **`SalesPlatform` Protocol gains `sync_catalogs`.** The method is
+  required at boot only when claiming `sales-catalog-driven`
+  (`validate_platform` enforces this). However, because `SalesPlatform`
+  is `@runtime_checkable`, any code doing
+  `isinstance(my_platform, SalesPlatform)` will now return `False` on
+  platforms that don't implement `sync_catalogs` — even those claiming
+  `sales-non-guaranteed` or other sales-* specialisms.
+
+  **Migration:** Add a stub `sync_catalogs` to any platform that uses
+  `SalesPlatform` for a structural `isinstance` check:
+
+  ```python
+  def sync_catalogs(self, req, ctx):
+      return {"catalogs": []}
+  ```
+
+  Platforms actually claiming `sales-catalog-driven` must implement the
+  full contract (see `examples/hello_seller_catalog.py`).
 
 ### Canonical-formats polish (post-#741)
 
