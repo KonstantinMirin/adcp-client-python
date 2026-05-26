@@ -34,6 +34,8 @@ from adcp.validation import ValidationError, validate_adagents
 logger = logging.getLogger(__name__)
 
 DiscoveryMethod = Literal["direct", "authoritative_location", "ads_txt_managerdomain"]
+PropertyResolutionMode = Literal["strict", "permissive"]
+_BARE_AUTHORIZED_AGENT_KEYS = {"url", "authorized_for"}
 
 
 # authorization_type discriminator -> required selector field, per the AdCP
@@ -1296,6 +1298,17 @@ def _resolve_agent_properties(
     return []
 
 
+def _is_bare_authorized_agent_entry(agent: dict[str, Any]) -> bool:
+    """Return True only for the exact legacy bare-entry shape."""
+    return (
+        set(agent).issubset(_BARE_AUTHORIZED_AGENT_KEYS)
+        and isinstance(agent.get("url"), str)
+        and bool(agent["url"])
+        and isinstance(agent.get("authorized_for"), str)
+        and bool(agent["authorized_for"])
+    )
+
+
 def _build_domain_index(
     properties: list[dict[str, Any]],
 ) -> dict[str, list[dict[str, Any]]]:
@@ -1610,6 +1623,65 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
     Raises:
         AdagentsValidationError: If adagents_data is malformed
     """
+    return _resolve_properties_for_agent(adagents_data, agent_url, permissive_bare_top_level=False)
+
+
+def resolve_properties_for_agent(
+    adagents_data: dict[str, Any],
+    agent_url: str,
+    *,
+    mode: PropertyResolutionMode = "strict",
+) -> list[dict[str, Any]]:
+    """Resolve properties for an agent with an explicit strict/permissive mode.
+
+    ``mode="strict"`` is identical to :func:`get_properties_by_agent` and
+    only honors schema-conformant authorization selectors plus the historical
+    inline ``properties`` legacy shape.
+
+    ``mode="permissive"`` keeps every strict selector behavior unchanged, but
+    treats one exact matching bare ``authorized_agents`` entry
+    (``{"url": ..., "authorized_for": ...}``) as authorizing the file's
+    top-level ``properties[]``. This is for operational binding of
+    non-conformant publisher files that list an agent URL without an
+    ``authorization_type`` or selector. If the agent is not listed, has any
+    explicit or unknown selector field, or has multiple same-URL entries, the
+    resolver still returns the strict result.
+
+    Args:
+        adagents_data: Parsed adagents.json data
+        agent_url: URL of the agent to filter by
+        mode: ``"strict"`` for spec-conformant resolution, ``"permissive"``
+            to opt into bare-entry top-level property fallback.
+
+    Returns:
+        List of properties for the specified agent.
+
+    Raises:
+        AdagentsValidationError: If adagents_data is malformed
+        ValueError: If mode is not ``"strict"`` or ``"permissive"``
+    """
+    if mode == "strict":
+        return _resolve_properties_for_agent(
+            adagents_data,
+            agent_url,
+            permissive_bare_top_level=False,
+        )
+    if mode == "permissive":
+        return _resolve_properties_for_agent(
+            adagents_data,
+            agent_url,
+            permissive_bare_top_level=True,
+        )
+    raise ValueError("mode must be 'strict' or 'permissive'")
+
+
+def _resolve_properties_for_agent(
+    adagents_data: dict[str, Any],
+    agent_url: str,
+    *,
+    permissive_bare_top_level: bool,
+) -> list[dict[str, Any]]:
+    """Implementation shared by strict and opt-in permissive property resolution."""
     if not isinstance(adagents_data, dict):
         raise AdagentsValidationError("adagents_data must be a dictionary")
 
@@ -1636,6 +1708,7 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
 
     domain_index = _build_domain_index(revoked_top_level)
 
+    matches: list[dict[str, Any]] = []
     for agent in authorized_agents:
         if not isinstance(agent, dict):
             continue
@@ -1646,11 +1719,25 @@ def get_properties_by_agent(adagents_data: dict[str, Any], agent_url: str) -> li
 
         if normalize_url(agent_url_from_json) != normalized_agent_url:
             continue
+        matches.append(agent)
 
+    resolved: list[dict[str, Any]] = []
+    for agent in matches:
         # revoked_top_level pre-filters revoked domains from the per-domain
         # index, so inline resolution honors revocation transparently.
-        resolved = _resolve_agent_properties(agent, revoked_top_level, domain_index)
+        for prop in _resolve_agent_properties(agent, revoked_top_level, domain_index):
+            if prop not in resolved:
+                resolved.append(prop)
+
+    if resolved:
         return resolved
+
+    if (
+        permissive_bare_top_level
+        and len(matches) == 1
+        and _is_bare_authorized_agent_entry(matches[0])
+    ):
+        return [p for p in revoked_top_level if isinstance(p, dict)]
 
     return []
 
