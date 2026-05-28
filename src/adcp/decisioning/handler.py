@@ -63,6 +63,7 @@ from adcp.decisioning.proposal_dispatch import (
     maybe_hydrate_recipes_for_media_buy_id,
     maybe_intercept_finalize,
     maybe_persist_draft_after_get_products,
+    maybe_validate_refine_proposal_refs,
     release_proposal_reservation,
 )
 from adcp.decisioning.refine import (
@@ -95,7 +96,6 @@ logger = logging.getLogger(__name__)
 # crashes inside the shim with ``'dict' object has no attribute
 # 'account'`` (Emma sales-direct backend test, verdict 2/10).
 from adcp.types import (
-    AccountReference,
     AcquireRightsRequest,
     AcquireRightsResponse,
     ActivateSignalRequest,
@@ -1333,7 +1333,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
 
     async def _resolve_account(
         self,
-        ref: AccountReference | None,
+        ref: object | None,
         ctx: ToolContext,
     ) -> Account[Any]:
         """Resolve a wire :class:`AccountReference` to a typed
@@ -1800,6 +1800,8 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             )
             if finalize_response is not None:
                 return cast("GetProductsResponse", finalize_response)
+
+            await maybe_validate_refine_proposal_refs(self._platform, params, ctx)
 
             if not has_refine_support(self._platform):
                 raise AdcpError(

@@ -197,10 +197,23 @@ async def test_refine_overwrites_draft(
 @pytest.mark.asyncio
 async def test_refine_unknown_proposal_is_correctable_not_found(
     handler: PlatformHandler,
+    router: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Storyboard requires unknown proposal refine references to classify as
-    buyer-correctable, not as internal persistence failures."""
+    buyer-correctable before adopter refine logic can run."""
     from adcp.types import GetProductsRequest
+
+    manager = router.proposal_manager_for_tenant("default")
+    assert manager is not None
+    refine_called = False
+
+    async def _refine_should_not_run(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal refine_called
+        refine_called = True
+        return {}
+
+    monkeypatch.setattr(manager, "refine_products", _refine_should_not_run)
 
     refine_req = GetProductsRequest.model_validate(
         {
@@ -209,6 +222,7 @@ async def test_refine_unknown_proposal_is_correctable_not_found(
                 {
                     "scope": "proposal",
                     "proposal_id": "prop_unknown_proposal_not_found",
+                    "action": "include",
                     "ask": "Refine a proposal that does not exist.",
                 },
             ],
@@ -221,6 +235,7 @@ async def test_refine_unknown_proposal_is_correctable_not_found(
     assert exc.value.code == "PROPOSAL_NOT_FOUND"
     assert exc.value.recovery == "correctable"
     assert exc.value.field == "refine[0].proposal_id"
+    assert refine_called is False
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +289,35 @@ async def test_finalize_commits_proposal(
     assert record is not None
     assert record.state == ProposalState.COMMITTED
     assert record.expires_at is not None
+
+
+@pytest.mark.asyncio
+async def test_finalize_unknown_proposal_is_correctable(
+    handler: PlatformHandler,
+) -> None:
+    """Finalize can recover from an unknown proposal by asking for a fresh
+    draft proposal_id, so it should not be classified as terminal."""
+    from adcp.types import GetProductsRequest
+
+    finalize_req = GetProductsRequest.model_validate(
+        {
+            "buying_mode": "refine",
+            "refine": [
+                {
+                    "scope": "proposal",
+                    "proposal_id": "unknown_proposal",
+                    "action": "finalize",
+                },
+            ],
+        }
+    )
+
+    with pytest.raises(AdcpError) as exc_info:
+        await handler.get_products(finalize_req, ToolContext())
+
+    assert exc_info.value.code == "PROPOSAL_NOT_FOUND"
+    assert exc_info.value.recovery == "correctable"
+    assert exc_info.value.field == "refine[0].proposal_id"
 
 
 # ---------------------------------------------------------------------------
@@ -340,6 +384,35 @@ async def test_create_media_buy_hydrates_and_consumes(
     reverse_record = await store.get_by_media_buy_id(media_buy_id, expected_account_id="acct_demo")
     assert reverse_record is not None
     assert reverse_record.proposal_id == PROPOSAL_ID
+
+
+@pytest.mark.asyncio
+async def test_create_media_buy_unknown_proposal_is_correctable(
+    handler: PlatformHandler,
+) -> None:
+    """Accepting an unknown proposal can recover by obtaining and finalizing
+    a fresh proposal_id."""
+    from adcp.types import CreateMediaBuyRequest
+
+    cmb_req = CreateMediaBuyRequest.model_validate(
+        {
+            "proposal_id": "unknown_proposal",
+            "total_budget": {"amount": 50000, "currency": "USD"},
+            "start_time": "2026-04-01T00:00:00Z",
+            "end_time": "2026-06-30T23:59:59Z",
+            "buyer_ref": "test-buyer-unknown",
+            "idempotency_key": _CMB_IDEM + "unknown",
+            "brand": _BRAND,
+            "account": _ACCOUNT,
+        }
+    )
+
+    with pytest.raises(AdcpError) as exc_info:
+        await handler.create_media_buy(cmb_req, ToolContext())
+
+    assert exc_info.value.code == "PROPOSAL_NOT_FOUND"
+    assert exc_info.value.recovery == "correctable"
+    assert exc_info.value.field == "proposal_id"
 
 
 # ---------------------------------------------------------------------------
