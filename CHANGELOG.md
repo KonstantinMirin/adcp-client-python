@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.3.0-beta.6](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.5...v6.3.0-beta.6) (2026-05-28)
+
+
+### Bug Fixes
+
+* **validation:** bundle schemas before wheel builds ([0cdcf29](https://github.com/adcontextprotocol/adcp-client-python/commit/0cdcf29b6902961b9b81150049fda9eb3628130e))
+
 ## [6.3.0-beta.5](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.4...v6.3.0-beta.5) (2026-05-28)
 
 
