@@ -209,6 +209,168 @@ def _image_format_options(
     ]
 
 
+def _seeded_format_options(
+    *,
+    product_id: str,
+    name: str,
+    format_ids: list[Any],
+) -> list[dict[str, Any]]:
+    options: list[dict[str, Any]] = []
+    for i, fmt in enumerate(format_ids):
+        if not isinstance(fmt, dict):
+            continue
+        v1_format_id = fmt.get("id") or "display_300x250"
+        v1_agent_url = fmt.get("agent_url") or AGENT_URL
+        option_id = f"storyboard_{product_id}_{i}"
+        display_name = f"{name} - {v1_format_id}"
+        if "video" in v1_format_id:
+            options.append(
+                {
+                    "format_kind": "video_hosted",
+                    "format_option_id": option_id,
+                    "display_name": display_name,
+                    "v1_format_ref": [{"agent_url": v1_agent_url, "id": v1_format_id}],
+                    "params": {},
+                }
+            )
+            continue
+
+        width, height = (970, 250) if "970x250" in v1_format_id else (300, 250)
+        option = _image_format_options(
+            format_option_id=option_id,
+            display_name=display_name,
+            v1_format_id=v1_format_id,
+            width=width,
+            height=height,
+        )[0]
+        option["v1_format_ref"][0]["agent_url"] = v1_agent_url
+        options.append(option)
+    if options:
+        return options
+    return _image_format_options(
+        format_option_id=f"storyboard_{product_id}_0",
+        display_name=f"{name} - display_300x250",
+        v1_format_id="display_300x250",
+        width=300,
+        height=250,
+    )
+
+
+def _allowed_actions_for_packages(packages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    products_by_id = {p.get("product_id"): p for p in PRODUCTS}
+    actions: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for package in packages:
+        product = products_by_id.get(package.get("product_id")) or {}
+        for action in product.get("allowed_actions") or []:
+            if not isinstance(action, dict):
+                continue
+            action_id = action.get("action")
+            if not action_id or action_id in seen:
+                continue
+            seen.add(action_id)
+            actions.append(action)
+    return actions
+
+
+def _resolve_available_actions(
+    packages: list[dict[str, Any]],
+    status: str,
+) -> list[dict[str, Any]]:
+    available: list[dict[str, Any]] = []
+    for action in _allowed_actions_for_packages(packages):
+        allowed_statuses = action.get("allowed_statuses")
+        if allowed_statuses and status not in allowed_statuses:
+            continue
+        modes = action.get("modes") or []
+        if not modes:
+            continue
+        item: dict[str, Any] = {
+            "action": action["action"],
+            "mode": modes[0],
+        }
+        for field in ("sla", "terms_ref"):
+            if action.get(field) is not None:
+                item[field] = action[field]
+        available.append(item)
+    return available
+
+
+def _attempted_action_for_update(
+    params: dict[str, Any],
+    mb: dict[str, Any],
+) -> str | None:
+    if params.get("canceled") is True:
+        return "cancel"
+    if params.get("paused") is True:
+        return "pause"
+    if params.get("paused") is False:
+        return "resume"
+    if params.get("end_time") is not None:
+        return "extend_flight"
+
+    existing_by_id = {p.get("package_id"): p for p in mb.get("packages", [])}
+    for pkg_update in params.get("packages") or []:
+        pkg_id = pkg_update.get("package_id")
+        current = existing_by_id.get(pkg_id) if pkg_id else None
+        if not current or pkg_update.get("budget") is None:
+            continue
+        current_budget = current.get("budget") or 0
+        new_budget = pkg_update["budget"]
+        if new_budget > current_budget:
+            return "increase_budget"
+        if new_budget < current_budget:
+            return "decrease_budget"
+    return None
+
+
+def _action_not_allowed_response(
+    *,
+    attempted_action: str,
+    reason: str,
+    currently_available_actions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    recovery = (
+        "terminal"
+        if reason in {"not_supported_on_product", "not_supported_on_buy"}
+        else "correctable"
+    )
+    return {
+        "errors": [
+            {
+                "code": "ACTION_NOT_ALLOWED",
+                "message": f"Action '{attempted_action}' is not currently available",
+                "recovery": recovery,
+                "details": {
+                    "attempted_action": attempted_action,
+                    "reason": reason,
+                    "currently_available_actions": currently_available_actions,
+                },
+            }
+        ]
+    }
+
+
+def _products_for_request(params: dict[str, Any]) -> list[dict[str, Any]]:
+    brief = str(params.get("brief") or "").lower()
+    if not brief:
+        return PRODUCTS
+
+    matches: list[dict[str, Any]] = []
+    rest: list[dict[str, Any]] = []
+    for product in PRODUCTS:
+        product_id = str(product.get("product_id") or "")
+        product_key = product_id.replace("-", " ").replace("_", " ").lower()
+        product_name = str(product.get("name") or "").lower()
+        if (product_key and product_key in brief) or (product_name and product_name in brief):
+            matches.append(product)
+        else:
+            rest.append(product)
+    if not matches:
+        return PRODUCTS
+    return matches + rest
+
+
 PRODUCTS: list[dict[str, Any]] = [
     {
         "product_id": "premium-homepage",
@@ -488,6 +650,7 @@ class DemoSeller(ADCPHandler):
         return sync_governance_response(results)
 
     async def get_products(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
+        products = _products_for_request(params)
         if params.get("buying_mode") == "refine":
             proposal = params.get("proposal", {}) or {}
             proposal_id = proposal.get("proposal_id") or f"prop-{uuid.uuid4().hex[:8]}"
@@ -510,12 +673,12 @@ class DemoSeller(ADCPHandler):
             else:
                 allocations = [
                     {
-                        "product_id": PRODUCTS[0]["product_id"],
+                        "product_id": products[0]["product_id"],
                         "allocation_percentage": 100.0,
                     }
                 ]
             return {
-                **products_response(PRODUCTS, cache_scope="public"),
+                **products_response(products, cache_scope="public"),
                 "proposals": [
                     {
                         "proposal_id": proposal_id,
@@ -525,7 +688,7 @@ class DemoSeller(ADCPHandler):
                     }
                 ],
             }
-        return products_response(PRODUCTS, cache_scope="public")
+        return products_response(products, cache_scope="public")
 
     async def create_media_buy(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
         account_id = (params.get("account") or {}).get("account_id") or _DEFAULT_ACCOUNT_ID
@@ -617,6 +780,7 @@ class DemoSeller(ADCPHandler):
             pkg.get("creative_assignments") or pkg.get("creatives") for pkg in params["packages"]
         )
         status = "active" if has_creatives else "pending_creatives"
+        available_actions = _resolve_available_actions(packages, status)
 
         mb_id = f"mb-{uuid.uuid4().hex[:8]}"
         confirmed_at = _now_z()
@@ -626,10 +790,11 @@ class DemoSeller(ADCPHandler):
             "packages": packages,
             "confirmed_at": confirmed_at,
             "revision": 1,
+            "available_actions": available_actions,
         }
         # Pull valid_actions from the SDK's authoritative state machine —
         # tracks any future spec churn without manual list maintenance.
-        return media_buy_response(
+        resp = media_buy_response(
             mb_id,
             packages,
             status=status,
@@ -637,6 +802,9 @@ class DemoSeller(ADCPHandler):
             confirmed_at=confirmed_at,
             valid_actions=valid_actions_for_status(status) or None,
         )
+        if available_actions:
+            resp["available_actions"] = available_actions
+        return resp
 
     async def get_media_buys(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
         requested_ids = params.get("media_buy_ids")
@@ -645,18 +813,19 @@ class DemoSeller(ADCPHandler):
             if requested_ids and mb_id not in requested_ids:
                 continue
             total_budget = sum((pkg.get("budget") or 0) for pkg in mb.get("packages", []))
-            results.append(
-                {
-                    "media_buy_id": mb_id,
-                    "status": mb["status"],
-                    "confirmed_at": mb.get("confirmed_at") or _now_z(),
-                    "revision": mb.get("revision", 1),
-                    "currency": mb.get("currency", "USD"),
-                    "packages": mb.get("packages", []),
-                    "total_budget": total_budget,
-                    **_health_fields_for_media_buy(mb_id, mb),
-                }
-            )
+            result = {
+                "media_buy_id": mb_id,
+                "status": mb["status"],
+                "confirmed_at": mb.get("confirmed_at") or _now_z(),
+                "revision": mb.get("revision", 1),
+                "currency": mb.get("currency", "USD"),
+                "packages": mb.get("packages", []),
+                "total_budget": total_budget,
+                **_health_fields_for_media_buy(mb_id, mb),
+            }
+            if mb.get("available_actions"):
+                result["available_actions"] = mb["available_actions"]
+            results.append(result)
         return media_buys_response(results)
 
     async def update_media_buy(self, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
@@ -673,6 +842,35 @@ class DemoSeller(ADCPHandler):
 
         if params.get("revision") and params["revision"] != mb.get("revision", 1):
             return adcp_error("CONFLICT", "Revision mismatch - refetch and retry")
+
+        product_actions = _allowed_actions_for_packages(mb.get("packages", []))
+        attempted_action = _attempted_action_for_update(params, mb)
+        if product_actions and attempted_action:
+            currently_available = mb.get("available_actions") or _resolve_available_actions(
+                mb.get("packages", []),
+                mb["status"],
+            )
+            available_by_action = {a.get("action"): a for a in currently_available}
+            product_by_action = {a.get("action"): a for a in product_actions}
+            if attempted_action not in product_by_action:
+                return _action_not_allowed_response(
+                    attempted_action=attempted_action,
+                    reason="not_supported_on_product",
+                    currently_available_actions=currently_available,
+                )
+            available = available_by_action.get(attempted_action)
+            if available is None:
+                return _action_not_allowed_response(
+                    attempted_action=attempted_action,
+                    reason="wrong_status",
+                    currently_available_actions=currently_available,
+                )
+            if available.get("mode") != "self_serve":
+                return _action_not_allowed_response(
+                    attempted_action=attempted_action,
+                    reason="mode_mismatch",
+                    currently_available_actions=currently_available,
+                )
 
         if params.get("packages"):
             existing_by_id = {p["package_id"]: p for p in mb.get("packages", [])}
@@ -708,24 +906,34 @@ class DemoSeller(ADCPHandler):
             ):
                 mb["status"] = "active"
                 status = "active"
+                mb["available_actions"] = _resolve_available_actions(
+                    mb.get("packages", []),
+                    status,
+                )
         if params.get("paused") is True and status == "active":
             mb["status"] = "paused"
+            mb["available_actions"] = _resolve_available_actions(mb.get("packages", []), "paused")
         elif params.get("paused") is False and status == "paused":
             mb["status"] = "active"
+            mb["available_actions"] = _resolve_available_actions(mb.get("packages", []), "active")
         elif params.get("canceled") is True:
             if status in ("completed", "rejected", "canceled"):
                 return adcp_error("NOT_CANCELLABLE", f"Cannot cancel a {status} media buy")
             mb["status"] = "canceled"
+            mb["available_actions"] = []
             mb["revision"] = mb.get("revision", 1) + 1
             return cancel_media_buy_response(mb_id, "buyer", revision=mb["revision"])
 
         mb["revision"] = mb.get("revision", 1) + 1
-        return update_media_buy_response(
+        resp = update_media_buy_response(
             mb_id,
             status=mb["status"],
             revision=mb["revision"],
             valid_actions=valid_actions_for_status(mb["status"]) or None,
         )
+        if mb.get("available_actions"):
+            resp["available_actions"] = mb["available_actions"]
+        return resp
 
     async def list_creative_formats(
         self, params: dict[str, Any], context: Any = None
@@ -1059,6 +1267,12 @@ class DemoStore(TestControllerStore):
             )
             for fmt in data["format_ids"]
         ]
+        if not data.get("format_options"):
+            data["format_options"] = _seeded_format_options(
+                product_id=pid,
+                name=data["name"],
+                format_ids=data["format_ids"],
+            )
         data.setdefault("pricing_options", [])
         data.setdefault(
             "reporting_capabilities",
