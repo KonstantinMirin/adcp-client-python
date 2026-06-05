@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.0.0-beta.7](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.7...v7.0.0-beta.7) (2026-06-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **server:** Debug endpoints now fail closed when enable_debug_endpoints=True unless callers pass debug_validate_request= or explicitly set debug_public=True for local/test deployments.
+
+### Features
+
+* **protocol:** support AdCP 3.1.0-rc.8 ([#912](https://github.com/adcontextprotocol/adcp-client-python/issues/912)) ([9782830](https://github.com/adcontextprotocol/adcp-client-python/commit/9782830499d2ac8dbec62a4070b866bfc173b804))
+* **registry:** update rc9 capabilities ([#916](https://github.com/adcontextprotocol/adcp-client-python/issues/916)) ([432e2a5](https://github.com/adcontextprotocol/adcp-client-python/commit/432e2a5152fc96e3d36a35e3c7f758f72a2fec4b))
+* **server:** harden MCP session lifecycle ([#908](https://github.com/adcontextprotocol/adcp-client-python/issues/908)) ([caa2735](https://github.com/adcontextprotocol/adcp-client-python/commit/caa273531422f20298192f5dd7e33f36b8e02db4))
+
+
+### Bug Fixes
+
+* **types:** generate schema enums as StrEnum ([#915](https://github.com/adcontextprotocol/adcp-client-python/issues/915)) ([6ad4fe4](https://github.com/adcontextprotocol/adcp-client-python/commit/6ad4fe4e7db413b4be15c797d34d5d9670abdc7e))
+
 ## [6.3.0-beta.7](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.6...v6.3.0-beta.7) (2026-05-30)
 
 ### Features
