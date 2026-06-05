@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.0.0-beta.7](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.7...v7.0.0-beta.7) (2026-06-05)
+## [6.3.0-beta.8](https://github.com/adcontextprotocol/adcp-client-python/compare/v6.3.0-beta.7...v6.3.0-beta.8) (2026-06-05)
 
 
 ### ⚠ BREAKING CHANGES
