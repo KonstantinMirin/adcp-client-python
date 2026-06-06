@@ -24,6 +24,10 @@ from adcp.types.core import (
 from adcp.types.registry import (
     BrandActivity,
     BrandRegistryItem,
+    CommunityMirrorDeleteResponse,
+    CommunityMirrorGetResponse,
+    CommunityMirrorListResponse,
+    CommunityMirrorPublishResponse,
     DomainLookupResult,
     FederatedAgentWithDetails,
     FederatedPublisher,
@@ -36,6 +40,57 @@ from adcp.types.registry import (
 DEFAULT_REGISTRY_URL = "https://agenticadvertising.org"
 MAX_BULK_DOMAINS = 100
 MAX_BULK_POLICIES = 100
+
+_COMMUNITY_MIRROR_PLATFORM_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
+
+
+def _normalize_community_mirror_platform(platform: str) -> str:
+    """Trim, lowercase, and validate a community mirror platform key."""
+    normalized = platform.strip().lower() if isinstance(platform, str) else ""
+    if not normalized:
+        raise RegistryError("platform is required")
+    if not _COMMUNITY_MIRROR_PLATFORM_RE.match(normalized):
+        raise RegistryError("platform must match ^[a-z0-9_-]{1,64}$")
+    return normalized
+
+
+def build_community_mirror_adagents(config: dict[str, Any]) -> dict[str, Any]:
+    """Build a catalog-only community mirror adagents.json publish body.
+
+    The publish endpoint is catalog-only: it has no ``authorized_agents`` field
+    and the service forces ``authorized_agents: []`` server-side. This helper
+    refuses caller-supplied authorization claims or generator-only flags and
+    strips the ``platform`` key, which is a publish-time routing key rather than
+    catalog content.
+
+    Args:
+        config: Catalog config with ``catalog_etag`` and a non-empty ``formats``
+            list. May include ``properties`` and ``superseded_by``.
+
+    Returns:
+        The catalog publish body (no ``authorized_agents`` key).
+
+    Raises:
+        RegistryError: If authorization claims, generator-only flags, or the
+            ``catalog_etag``/``formats`` requirements are violated.
+    """
+    if "authorized_agents" in config:
+        raise RegistryError(
+            "authorized_agents is not accepted for community mirror adagents catalogs"
+        )
+    if "include_schema" in config or "include_timestamp" in config:
+        raise RegistryError(
+            "include_schema and include_timestamp are not accepted for "
+            "community mirror adagents catalogs"
+        )
+    catalog_etag = config.get("catalog_etag")
+    if not isinstance(catalog_etag, str) or not catalog_etag.strip():
+        raise RegistryError("catalog_etag is required")
+    formats = config.get("formats")
+    if not isinstance(formats, list) or len(formats) == 0:
+        raise RegistryError("formats must contain at least one catalog format")
+
+    return {k: v for k, v in config.items() if k != "platform"}
 
 
 class RegistryClient:
@@ -1475,6 +1530,238 @@ class RegistryClient:
         )
 
         return cast(dict[str, Any], resp.json())
+
+    # ========================================================================
+    # Community Mirror Lifecycle
+    # ========================================================================
+
+    async def publish_community_mirror_adagents(
+        self,
+        platform: str,
+        config: dict[str, Any],
+        *,
+        auth_token: str,
+    ) -> CommunityMirrorPublishResponse:
+        """Publish or update a catalog-only community mirror adagents.json descriptor.
+
+        Persists the mirror under ``PUT /api/registry/mirrors/{platform}``. Use
+        ``create_adagents`` (the generator endpoint) when you only need to
+        validate or preview the document without saving it. The publish body is
+        catalog-only; the service forces ``authorized_agents: []``.
+
+        Args:
+            platform: Stable platform key. Trimmed/lowercased and validated
+                against ``^[a-z0-9_-]{1,64}$``.
+            config: Catalog config (see ``build_community_mirror_adagents``).
+                Any ``properties[].platform`` values must match ``platform``.
+            auth_token: Bearer token required for save operations.
+
+        Returns:
+            The publish response.
+
+        Raises:
+            RegistryError: On platform/catalog validation or HTTP errors.
+        """
+        normalized_platform = _normalize_community_mirror_platform(platform)
+        catalog = build_community_mirror_adagents(config)
+        self._assert_community_mirror_properties_match_platform(normalized_platform, catalog)
+        resp = await self._request_ok(
+            "PUT",
+            f"/api/registry/mirrors/{url_quote(normalized_platform, safe='')}",
+            json_body=catalog,
+            auth_token=auth_token,
+            operation="Community mirror publish",
+        )
+        return self._parse(CommunityMirrorPublishResponse, resp.json(), "Community mirror publish")
+
+    async def get_community_mirror_adagents(
+        self, platform: str
+    ) -> CommunityMirrorGetResponse | None:
+        """Retrieve a published catalog-only community mirror adagents.json descriptor.
+
+        Fetches ``GET /api/registry/mirrors/{platform}``. The response carries the
+        platform metadata (``platform``, ``catalog_etag``, ``superseded_by``,
+        ``created_at``, ``updated_at``) plus the stored catalog-only
+        ``adagents_json`` document. ``superseded_by`` is reported at both the
+        wrapper level and on ``adagents_json`` by the service, so no hydration is
+        needed. The catalog-only invariant (``authorized_agents`` empty) is
+        enforced by the response model.
+
+        Args:
+            platform: Platform key. Trimmed/lowercased and validated.
+
+        Returns:
+            The mirror response, or ``None`` if no mirror exists (HTTP 404).
+
+        Raises:
+            RegistryError: If the registry returns a mismatched platform or an
+                invalid (non-catalog) mirror body, or on other HTTP errors.
+        """
+        normalized_platform = _normalize_community_mirror_platform(platform)
+        resp = await self._request(
+            "GET",
+            f"/api/registry/mirrors/{url_quote(normalized_platform, safe='')}",
+            operation="Community mirror fetch",
+            allow_404=True,
+        )
+        if resp is None:
+            return None
+        mirror = self._parse(CommunityMirrorGetResponse, resp.json(), "Community mirror fetch")
+
+        if mirror.platform != normalized_platform:
+            raise RegistryError("Registry returned mismatched community mirror platform")
+        return mirror
+
+    async def list_community_mirror_adagents(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> CommunityMirrorListResponse:
+        """List published community mirror catalogs with their current etags.
+
+        Fetches ``GET /api/registry/mirrors``. The list projection includes
+        presence and freshness metadata but omits the full ``adagents_json``
+        body; fetch a platform-specific mirror for the full document.
+
+        Args:
+            limit: Optional page size. The service defaults to 100 and clamps
+                values to the 1-500 range.
+            offset: Optional zero-based result offset. The service defaults to 0
+                and clamps negative values to 0.
+
+        Returns:
+            The list response (``mirrors`` summaries plus ``total``).
+        """
+        params: dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
+        resp = await self._request_ok(
+            "GET",
+            "/api/registry/mirrors",
+            params=params or None,
+            operation="Community mirror list",
+        )
+        return self._parse(CommunityMirrorListResponse, resp.json(), "Community mirror list")
+
+    async def upsert_community_mirror_adagents(
+        self,
+        config: dict[str, Any],
+        *,
+        platform: str | None = None,
+        auth_token: str,
+    ) -> CommunityMirrorPublishResponse:
+        """Publish or update a community mirror, inferring the platform key.
+
+        The platform key is resolved from the ``platform`` argument, then
+        ``config["platform"]``, then a single consistent ``properties[].platform``
+        value. Ambiguous property platforms raise an error.
+
+        Args:
+            config: Catalog config (see ``build_community_mirror_adagents``).
+            platform: Explicit platform key. Takes precedence over inference.
+            auth_token: Bearer token required for save operations.
+
+        Returns:
+            The publish response.
+
+        Raises:
+            RegistryError: If a platform key cannot be resolved, property
+                platforms are ambiguous, or on validation/HTTP errors.
+        """
+        resolved_platform = (
+            platform
+            if platform is not None
+            else self._community_mirror_platform_from_config(config)
+        )
+        return await self.publish_community_mirror_adagents(
+            resolved_platform, config, auth_token=auth_token
+        )
+
+    async def delete_community_mirror_adagents(
+        self,
+        platform: str,
+        *,
+        force: bool = False,
+        auth_token: str,
+    ) -> CommunityMirrorDeleteResponse:
+        """Delete a published community mirror and retire its derived rows.
+
+        Issues ``DELETE /api/registry/mirrors/{platform}``. Without ``force``,
+        the service refuses (HTTP 409) to delete a mirror that has not first
+        published a ``superseded_by`` migration URL; set ``force=True`` to delete
+        anyway.
+
+        Args:
+            platform: Platform key. Trimmed/lowercased and validated.
+            force: Delete a mirror that has no ``superseded_by`` migration URL.
+            auth_token: Bearer token required for delete operations.
+
+        Returns:
+            The delete response.
+
+        Raises:
+            RegistryError: If the mirror has not been superseded and ``force`` is
+                not set (HTTP 409), or on other platform/HTTP errors.
+        """
+        normalized_platform = _normalize_community_mirror_platform(platform)
+        params = {"force": "true"} if force else None
+        resp = await self._request_ok(
+            "DELETE",
+            f"/api/registry/mirrors/{url_quote(normalized_platform, safe='')}",
+            params=params,
+            auth_token=auth_token,
+            operation="Community mirror delete",
+        )
+        return self._parse(CommunityMirrorDeleteResponse, resp.json(), "Community mirror delete")
+
+    def _community_mirror_platform_from_config(self, config: dict[str, Any]) -> str:
+        """Infer the platform key from a community mirror config."""
+        config_platform = config.get("platform")
+        if isinstance(config_platform, str) and config_platform.strip():
+            return config_platform
+
+        properties = config.get("properties")
+        if isinstance(properties, list):
+            platforms: set[str] = set()
+            for prop in properties:
+                if not isinstance(prop, dict):
+                    continue
+                prop_platform = prop.get("platform")
+                if isinstance(prop_platform, str) and prop_platform.strip():
+                    platforms.add(_normalize_community_mirror_platform(prop_platform))
+            if len(platforms) == 1:
+                return next(iter(platforms))
+            if len(platforms) > 1:
+                raise RegistryError(
+                    "platform is ambiguous; pass "
+                    "upsert_community_mirror_adagents(config, platform=...)"
+                )
+
+        raise RegistryError("platform is required for community mirror publish")
+
+    def _assert_community_mirror_properties_match_platform(
+        self,
+        normalized_platform: str,
+        catalog: dict[str, Any],
+    ) -> None:
+        """Reject catalogs whose property platforms disagree with the key."""
+        properties = catalog.get("properties")
+        if not isinstance(properties, list):
+            return
+        for prop in properties:
+            if not isinstance(prop, dict):
+                continue
+            prop_platform = prop.get("platform")
+            if prop_platform is None:
+                continue
+            if (
+                not isinstance(prop_platform, str)
+                or _normalize_community_mirror_platform(prop_platform) != normalized_platform
+            ):
+                raise RegistryError(f"properties[].platform must match {normalized_platform}")
 
     # ========================================================================
     # Search
