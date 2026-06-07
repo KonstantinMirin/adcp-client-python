@@ -29,7 +29,7 @@ serve(MySeller(), name="my-seller")
 Validate with storyboards:
 ```bash
 python agent.py &
-npx @adcp/client storyboard run http://localhost:3001/mcp media_buy_seller --json
+npx @adcp/sdk storyboard run http://localhost:3001/mcp media_buy_seller --json
 ```
 
 | Agent type | Skill | Storyboard | Steps |
@@ -222,6 +222,7 @@ for 6.0 progress.
 - **[API Reference](https://adcontextprotocol.github.io/adcp-client-python/)** - Complete API documentation with type signatures and examples
 - **[Protocol Spec](https://github.com/adcontextprotocol/adcp)** - Ad Context Protocol specification
 - **[Handler authoring](docs/handler-authoring.md)** - Building an AdCP-compliant agent on `adcp.server`
+- **[Testing your AdCP server](docs/testing-your-adcp-server.md)** - In-process harness for unit tests plus storyboard-runner compliance grading
 - **[Multi-tenant contract](docs/multi-tenant-contract.md)** - Scope invariants every multi-tenant agent must satisfy
 - **[Examples](examples/)** - Code examples and usage patterns
 
