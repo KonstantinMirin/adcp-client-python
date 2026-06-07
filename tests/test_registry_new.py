@@ -22,12 +22,14 @@ from adcp.registry import RegistryClient
 from adcp.types.registry import (
     BrandActivity,
     BrandRegistryItem,
+    CreateAdagentsResponse,
     DomainLookupResult,
     FederatedAgentWithDetails,
     FederatedPublisher,
     FeedPage,
     PropertyActivity,
     PropertyRegistryItem,
+    SuccessLiteral,
     ValidationResult,
 )
 
@@ -50,9 +52,7 @@ class TestRequestHelper:
     @pytest.mark.asyncio
     async def test_get_returns_response(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"ok": True})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"ok": True}))
         rc = RegistryClient(client=mock_client)
         result = await rc.get_registry_stats()
         assert result["ok"] is True
@@ -77,9 +77,7 @@ class TestRequestHelper:
     @pytest.mark.asyncio
     async def test_get_connection_error_raises(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            side_effect=httpx.ConnectError("connection refused")
-        )
+        mock_client.get = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
         rc = RegistryClient(client=mock_client)
         with pytest.raises(RegistryError, match="failed"):
             await rc.get_registry_stats()
@@ -111,9 +109,7 @@ class TestRequestHelper:
     @pytest.mark.asyncio
     async def test_expected_status_set_accepts_202(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(
-            return_value=_mock_response(202, {"success": True})
-        )
+        mock_client.post = AsyncMock(return_value=_mock_response(202, {"success": True}))
         rc = RegistryClient(client=mock_client)
         result = await rc.request_crawl("pub.com", auth_token="sk")
         assert result["success"] is True
@@ -121,9 +117,7 @@ class TestRequestHelper:
     @pytest.mark.asyncio
     async def test_expected_status_set_accepts_200(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {"success": True})
-        )
+        mock_client.post = AsyncMock(return_value=_mock_response(200, {"success": True}))
         rc = RegistryClient(client=mock_client)
         result = await rc.request_crawl("pub.com", auth_token="sk")
         assert result["success"] is True
@@ -131,9 +125,7 @@ class TestRequestHelper:
     @pytest.mark.asyncio
     async def test_auth_token_sets_bearer_header(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {"success": True})
-        )
+        mock_client.post = AsyncMock(return_value=_mock_response(200, {"success": True}))
         rc = RegistryClient(client=mock_client)
         await rc.save_brand("x.com", "X", auth_token="sk_secret")
         headers = mock_client.post.call_args.kwargs["headers"]
@@ -273,11 +265,14 @@ class TestGetBrandJson:
     async def test_returns_data(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "acme.com",
-                "url": "https://acme.com/.well-known/brand.json",
-                "data": {"brand_name": "Acme"},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "acme.com",
+                    "url": "https://acme.com/.well-known/brand.json",
+                    "data": {"brand_name": "Acme"},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_brand_json("acme.com")
@@ -310,10 +305,15 @@ class TestSaveBrand:
     async def test_saves_brand(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "domain": "acme.com",
-                "id": "123", "message": "ok",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "domain": "acme.com",
+                    "id": "123",
+                    "message": "ok",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.save_brand("acme.com", "Acme Corp", auth_token="sk_test")
@@ -323,9 +323,15 @@ class TestSaveBrand:
     async def test_sends_auth_header(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "domain": "x", "id": "1", "message": "ok",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "domain": "x",
+                    "id": "1",
+                    "message": "ok",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.save_brand("acme.com", "Acme", auth_token="sk_secret")
@@ -336,14 +342,22 @@ class TestSaveBrand:
     async def test_sends_body_with_manifest(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "domain": "x", "id": "1", "message": "ok",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "domain": "x",
+                    "id": "1",
+                    "message": "ok",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.save_brand(
-            "acme.com", "Acme",
-            auth_token="sk", brand_manifest={"logo": "https://acme.com/logo.png"},
+            "acme.com",
+            "Acme",
+            auth_token="sk",
+            brand_manifest={"logo": "https://acme.com/logo.png"},
         )
         body = mock_client.post.call_args.kwargs["json"]
         assert body["domain"] == "acme.com"
@@ -374,13 +388,20 @@ class TestListBrands:
     async def test_returns_brands(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "brands": [
-                    {"domain": "acme.com", "source": "brand_json",
-                     "has_manifest": True, "verified": True},
-                ],
-                "stats": {"total": 1},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "brands": [
+                        {
+                            "domain": "acme.com",
+                            "source": "brand_json",
+                            "has_manifest": True,
+                            "verified": True,
+                        },
+                    ],
+                    "stats": {"total": 1},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.list_brands()
@@ -391,9 +412,7 @@ class TestListBrands:
     @pytest.mark.asyncio
     async def test_sends_search_param(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"brands": [], "stats": {}})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"brands": [], "stats": {}}))
         rc = RegistryClient(client=mock_client)
         await rc.list_brands(search="acme", limit=50, offset=10)
         params = mock_client.get.call_args.kwargs["params"]
@@ -404,9 +423,7 @@ class TestListBrands:
     @pytest.mark.asyncio
     async def test_returns_empty_list_when_no_brands(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"brands": [], "stats": {}})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"brands": [], "stats": {}}))
         rc = RegistryClient(client=mock_client)
         assert await rc.list_brands() == []
 
@@ -416,14 +433,22 @@ class TestBrandHistory:
     async def test_returns_history(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "acme.com", "total": 2,
-                "revisions": [
-                    {"revision_number": 2, "editor_name": "test",
-                     "edit_summary": "Updated", "is_rollback": False,
-                     "created_at": "2026-01-01T00:00:00Z"},
-                ],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "acme.com",
+                    "total": 2,
+                    "revisions": [
+                        {
+                            "revision_number": 2,
+                            "editor_name": "test",
+                            "edit_summary": "Updated",
+                            "is_rollback": False,
+                            "created_at": "2026-01-01T00:00:00Z",
+                        },
+                    ],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.brand_history("acme.com")
@@ -444,9 +469,13 @@ class TestEnrichBrand:
     async def test_returns_enrichment(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "acme.com", "enrichment": {"logos": []},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "acme.com",
+                    "enrichment": {"logos": []},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.enrich_brand("acme.com")
@@ -472,13 +501,21 @@ class TestListProperties:
     async def test_returns_properties(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "properties": [
-                    {"domain": "pub.com", "source": "adagents_json",
-                     "property_count": 5, "agent_count": 2, "verified": True},
-                ],
-                "stats": {"total": 1},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "properties": [
+                        {
+                            "domain": "pub.com",
+                            "source": "adagents_json",
+                            "property_count": 5,
+                            "agent_count": 2,
+                            "verified": True,
+                        },
+                    ],
+                    "stats": {"total": 1},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.list_properties()
@@ -522,9 +559,7 @@ class TestValidateProperty:
     @pytest.mark.asyncio
     async def test_sends_domain_as_param(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"valid": True})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"valid": True}))
         rc = RegistryClient(client=mock_client)
         await rc.validate_property("pub.com")
         params = mock_client.get.call_args.kwargs["params"]
@@ -536,9 +571,14 @@ class TestSaveProperty:
     async def test_saves_property(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "message": "ok", "id": "123",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "message": "ok",
+                    "id": "123",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.save_property(
@@ -565,7 +605,9 @@ class TestSaveProperty:
         )
         rc = RegistryClient(client=mock_client)
         await rc.save_property(
-            "pub.com", [{"url": "https://a.com"}], auth_token="sk",
+            "pub.com",
+            [{"url": "https://a.com"}],
+            auth_token="sk",
             properties=[{"type": "website", "name": "My Site"}],
             contact={"name": "Admin", "email": "admin@pub.com"},
         )
@@ -588,14 +630,22 @@ class TestPropertyHistory:
     async def test_returns_history(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "pub.com", "total": 1,
-                "revisions": [
-                    {"revision_number": 1, "editor_name": "test",
-                     "edit_summary": "Created", "is_rollback": False,
-                     "created_at": "2026-01-01T00:00:00Z"},
-                ],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "pub.com",
+                    "total": 1,
+                    "revisions": [
+                        {
+                            "revision_number": 1,
+                            "editor_name": "test",
+                            "edit_summary": "Created",
+                            "is_rollback": False,
+                            "created_at": "2026-01-01T00:00:00Z",
+                        },
+                    ],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.property_history("pub.com")
@@ -614,13 +664,17 @@ class TestCheckPropertyList:
     async def test_returns_results(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "summary": {"total": 2, "remove": 0, "modify": 0, "assess": 1, "ok": 1},
-                "remove": [], "modify": [],
-                "assess": [{"domain": "unknown.com"}],
-                "ok": [{"domain": "nytimes.com", "source": "adagents_json"}],
-                "report_id": "rpt-123",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "summary": {"total": 2, "remove": 0, "modify": 0, "assess": 1, "ok": 1},
+                    "remove": [],
+                    "modify": [],
+                    "assess": [{"domain": "unknown.com"}],
+                    "ok": [{"domain": "nytimes.com", "source": "adagents_json"}],
+                    "report_id": "rpt-123",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.check_property_list(["nytimes.com", "unknown.com"])
@@ -631,10 +685,17 @@ class TestCheckPropertyList:
     async def test_sends_domains_in_body(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "summary": {"total": 0, "remove": 0, "modify": 0, "assess": 0, "ok": 0},
-                "remove": [], "modify": [], "assess": [], "ok": [], "report_id": "x",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "summary": {"total": 0, "remove": 0, "modify": 0, "assess": 0, "ok": 0},
+                    "remove": [],
+                    "modify": [],
+                    "assess": [],
+                    "ok": [],
+                    "report_id": "x",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.check_property_list(["a.com", "b.com"])
@@ -647,9 +708,12 @@ class TestGetPropertyCheckReport:
     async def test_returns_report(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "summary": {"total": 1, "remove": 0, "modify": 0, "assess": 0, "ok": 1},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "summary": {"total": 1, "remove": 0, "modify": 0, "assess": 0, "ok": 1},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_property_check_report("rpt-123")
@@ -674,12 +738,15 @@ class TestListAgents:
     async def test_returns_agents(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "agents": [
-                    {"url": "https://agent.example.com", "name": "Test", "type": "creative"},
-                ],
-                "count": 1,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "agents": [
+                        {"url": "https://agent.example.com", "name": "Test", "type": "creative"},
+                    ],
+                    "count": 1,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.list_agents()
@@ -690,13 +757,14 @@ class TestListAgents:
     @pytest.mark.asyncio
     async def test_sends_all_boolean_params(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"agents": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"agents": []}))
         rc = RegistryClient(client=mock_client)
         await rc.list_agents(
-            type="creative", health=True, capabilities=True,
-            properties=True, compliance=True,
+            type="creative",
+            health=True,
+            capabilities=True,
+            properties=True,
+            compliance=True,
         )
         params = mock_client.get.call_args.kwargs["params"]
         assert params["type"] == "creative"
@@ -708,9 +776,7 @@ class TestListAgents:
     @pytest.mark.asyncio
     async def test_returns_empty_list(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"agents": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"agents": []}))
         rc = RegistryClient(client=mock_client)
         assert await rc.list_agents() == []
 
@@ -720,9 +786,13 @@ class TestListPublishers:
     async def test_returns_publishers(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "publishers": [{"domain": "pub.com"}], "count": 1,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "publishers": [{"domain": "pub.com"}],
+                    "count": 1,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.list_publishers()
@@ -732,9 +802,7 @@ class TestListPublishers:
     @pytest.mark.asyncio
     async def test_returns_empty_list(self):
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {"publishers": []})
-        )
+        mock_client.get = AsyncMock(return_value=_mock_response(200, {"publishers": []}))
         rc = RegistryClient(client=mock_client)
         assert await rc.list_publishers() == []
 
@@ -744,14 +812,22 @@ class TestSearchAgents:
     async def test_sends_filters(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "results": [], "cursor": None, "has_more": False,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "results": [],
+                    "cursor": None,
+                    "has_more": False,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.search_agents(
-            auth_token="sk", channels="ctv,olv", markets="US",
-            has_tmp=True, min_properties=10,
+            auth_token="sk",
+            channels="ctv,olv",
+            markets="US",
+            has_tmp=True,
+            min_properties=10,
         )
         params = mock_client.get.call_args.kwargs["params"]
         assert params["channels"] == "ctv,olv"
@@ -763,9 +839,14 @@ class TestSearchAgents:
     async def test_sends_auth_header(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "results": [], "cursor": None, "has_more": False,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "results": [],
+                    "cursor": None,
+                    "has_more": False,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.search_agents(auth_token="sk_secret")
@@ -796,9 +877,7 @@ class TestRequestCrawl:
     @pytest.mark.asyncio
     async def test_sends_auth_header(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(
-            return_value=_mock_response(202, {"success": True})
-        )
+        mock_client.post = AsyncMock(return_value=_mock_response(202, {"success": True}))
         rc = RegistryClient(client=mock_client)
         await rc.request_crawl("pub.com", auth_token="sk_key")
         headers = mock_client.post.call_args.kwargs["headers"]
@@ -824,11 +903,14 @@ class TestLookupDomain:
     async def test_returns_lookup(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "pub.com",
-                "authorized_agents": [{"url": "https://agent.com"}],
-                "sales_agents_claiming": [],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "pub.com",
+                    "authorized_agents": [{"url": "https://agent.com"}],
+                    "sales_agents_claiming": [],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.lookup_domain("pub.com")
@@ -840,10 +922,14 @@ class TestLookupDomain:
     async def test_url_encodes_domain(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "domain": "pub.com", "authorized_agents": [],
-                "sales_agents_claiming": [],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "domain": "pub.com",
+                    "authorized_agents": [],
+                    "sales_agents_claiming": [],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.lookup_domain("pub.com")
@@ -856,10 +942,14 @@ class TestLookupPropertyIdentifier:
     async def test_returns_result(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "identifier_type": "domain", "identifier_value": "pub.com",
-                "agents": [{"url": "https://agent.com"}],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "identifier_type": "domain",
+                    "identifier_value": "pub.com",
+                    "agents": [{"url": "https://agent.com"}],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.lookup_property_identifier("domain", "pub.com")
@@ -881,11 +971,14 @@ class TestValidateProductAuthorization:
     async def test_returns_result(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "authorized": True,
-                "agent_url": "https://agent.com",
-                "results": [{"authorized": True}],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "authorized": True,
+                    "agent_url": "https://agent.com",
+                    "results": [{"authorized": True}],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.validate_product_authorization(
@@ -910,10 +1003,13 @@ class TestExpandProductIdentifiers:
     async def test_returns_result(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "agent_url": "https://agent.com",
-                "expanded": [{"domain": "pub.com", "identifiers": []}],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "agent_url": "https://agent.com",
+                    "expanded": [{"domain": "pub.com", "identifiers": []}],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.expand_product_identifiers(
@@ -938,16 +1034,19 @@ class TestValidatePropertyAuthorization:
     async def test_returns_result(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "agent_url": "https://agent.com", "identifier_type": "domain",
-                "identifier_value": "pub.com", "authorized": True,
-                "checked_at": "2026-01-01T00:00:00Z",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "agent_url": "https://agent.com",
+                    "identifier_type": "domain",
+                    "identifier_value": "pub.com",
+                    "authorized": True,
+                    "checked_at": "2026-01-01T00:00:00Z",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
-        result = await rc.validate_property_authorization(
-            "https://agent.com", "domain", "pub.com"
-        )
+        result = await rc.validate_property_authorization("https://agent.com", "domain", "pub.com")
         assert result["authorized"] is True
 
     @pytest.mark.asyncio
@@ -955,9 +1054,7 @@ class TestValidatePropertyAuthorization:
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=_mock_response(200, {}))
         rc = RegistryClient(client=mock_client)
-        await rc.validate_property_authorization(
-            "https://agent.com", "domain", "pub.com"
-        )
+        await rc.validate_property_authorization("https://agent.com", "domain", "pub.com")
         params = mock_client.get.call_args.kwargs["params"]
         assert params["agent_url"] == "https://agent.com"
         assert params["identifier_type"] == "domain"
@@ -969,12 +1066,17 @@ class TestGetAgentDomains:
     async def test_returns_domains(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "agent_url": "https://agent.com",
-                "properties": [{"domain": "pub.com"}],
-                "identifiers": [], "property_count": 1,
-                "identifier_count": 0, "generated_at": "2026-01-01T00:00:00Z",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "agent_url": "https://agent.com",
+                    "properties": [{"domain": "pub.com"}],
+                    "identifiers": [],
+                    "property_count": 1,
+                    "identifier_count": 0,
+                    "generated_at": "2026-01-01T00:00:00Z",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_agent_domains("https://agent.com")
@@ -984,11 +1086,17 @@ class TestGetAgentDomains:
     async def test_url_encodes_agent_url(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "agent_url": "https://agent.com", "properties": [],
-                "identifiers": [], "property_count": 0,
-                "identifier_count": 0, "generated_at": "",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "agent_url": "https://agent.com",
+                    "properties": [],
+                    "identifiers": [],
+                    "property_count": 0,
+                    "identifier_count": 0,
+                    "generated_at": "",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.get_agent_domains("https://agent.com/path")
@@ -1007,11 +1115,14 @@ class TestValidateAdagents:
     async def test_returns_validation(self):
         mock_client = MagicMock()
         mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True,
-                "data": {"domain": "pub.com", "found": True},
-                "timestamp": "2026-01-01T00:00:00Z",
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "data": {"domain": "pub.com", "found": True},
+                    "timestamp": "2026-01-01T00:00:00Z",
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.validate_adagents("pub.com")
@@ -1027,28 +1138,45 @@ class TestValidateAdagents:
         assert body["domain"] == "pub.com"
 
 
+_CREATE_ADAGENTS_RESPONSE = {
+    "success": True,
+    "data": {
+        "success": True,
+        "adagents_json": '{\n  "authorized_agents": []\n}',
+        "validation": {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "domain": "pub.com",
+            "url": "https://pub.com/.well-known/adagents.json",
+            "discovery_method": "direct",
+        },
+    },
+    "timestamp": "2026-01-01T00:00:00Z",
+}
+
+
 class TestCreateAdagents:
     @pytest.mark.asyncio
     async def test_returns_generated(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "data": {"success": True},
-                "timestamp": "2026-01-01T00:00:00Z",
-            })
-        )
+        mock_client.post = AsyncMock(return_value=_mock_response(200, _CREATE_ADAGENTS_RESPONSE))
         rc = RegistryClient(client=mock_client)
         result = await rc.create_adagents([{"url": "https://agent.com"}])
-        assert result["success"] is True
+        assert isinstance(result, CreateAdagentsResponse)
+        assert result.success is SuccessLiteral.boolean_True
+        assert result.data.adagents_json == '{\n  "authorized_agents": []\n}'
+        assert result.data.validation.valid is True
 
     @pytest.mark.asyncio
     async def test_sends_optional_params(self):
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(return_value=_mock_response(200, {}))
+        mock_client.post = AsyncMock(return_value=_mock_response(200, _CREATE_ADAGENTS_RESPONSE))
         rc = RegistryClient(client=mock_client)
         await rc.create_adagents(
             [{"url": "https://agent.com"}],
-            include_schema=True, include_timestamp=True,
+            include_schema=True,
+            include_timestamp=True,
             properties=[{"type": "website", "name": "My Site"}],
         )
         body = mock_client.post.call_args.kwargs["json"]
@@ -1067,11 +1195,16 @@ class TestApiDiscovery:
     async def test_returns_discovery(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "name": "AAO Registry", "version": "1.0.0",
-                "documentation": "https://docs.example.com",
-                "openapi": "/openapi/registry.yaml", "endpoints": {},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "name": "AAO Registry",
+                    "version": "1.0.0",
+                    "documentation": "https://docs.example.com",
+                    "openapi": "/openapi/registry.yaml",
+                    "endpoints": {},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.api_discovery()
@@ -1083,10 +1216,14 @@ class TestSearch:
     async def test_returns_results(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "brands": [{"domain": "acme.com"}],
-                "publishers": [], "properties": [],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "brands": [{"domain": "acme.com"}],
+                    "publishers": [],
+                    "properties": [],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.search("acme")
@@ -1096,9 +1233,14 @@ class TestSearch:
     async def test_sends_query_param(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "brands": [], "publishers": [], "properties": [],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "brands": [],
+                    "publishers": [],
+                    "properties": [],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.search("test query")
@@ -1111,15 +1253,20 @@ class TestLookupManifestRef:
     async def test_returns_ref(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "found": True,
-                "reference": {
-                    "reference_type": "url",
-                    "manifest_url": "https://acme.com/.well-known/brand.json",
-                    "agent_url": None, "agent_id": None,
-                    "verification_status": "valid",
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "found": True,
+                    "reference": {
+                        "reference_type": "url",
+                        "manifest_url": "https://acme.com/.well-known/brand.json",
+                        "agent_url": None,
+                        "agent_id": None,
+                        "verification_status": "valid",
+                    },
                 },
-            })
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.lookup_manifest_ref("acme.com")
@@ -1148,10 +1295,15 @@ class TestDiscoverAgent:
     async def test_returns_agent_info(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "name": "Test Agent", "protocols": ["mcp"],
-                "type": "creative", "stats": {"format_count": 5},
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "name": "Test Agent",
+                    "protocols": ["mcp"],
+                    "type": "creative",
+                    "stats": {"format_count": 5},
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.discover_agent("https://agent.example.com")
@@ -1172,9 +1324,13 @@ class TestGetAgentFormats:
     async def test_returns_formats(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "formats": [{"format_id": "banner_300x250"}],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "formats": [{"format_id": "banner_300x250"}],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_agent_formats("https://agent.example.com")
@@ -1186,9 +1342,13 @@ class TestGetAgentProducts:
     async def test_returns_products(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "success": True, "products": [{"product_id": "premium_video"}],
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "success": True,
+                    "products": [{"product_id": "premium_video"}],
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_agent_products("https://agent.example.com")
@@ -1200,11 +1360,17 @@ class TestValidatePublisher:
     async def test_returns_validation(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "valid": True, "domain": "pub.com", "agent_count": 2,
-                "property_count": 5, "property_type_counts": {"website": 5},
-                "tag_count": 3,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "valid": True,
+                    "domain": "pub.com",
+                    "agent_count": 2,
+                    "property_count": 5,
+                    "property_type_counts": {"website": 5},
+                    "tag_count": 3,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.validate_publisher("pub.com")
@@ -1222,16 +1388,24 @@ class TestGetFeed:
     async def test_returns_feed_page(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "events": [
-                    {"event_id": "evt-1", "event_type": "property.created",
-                     "entity_type": "property", "entity_id": "pub.com",
-                     "payload": {}, "actor": "system",
-                     "created_at": "2026-01-01T00:00:00Z"},
-                ],
-                "cursor": "evt-1",
-                "has_more": False,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "events": [
+                        {
+                            "event_id": "evt-1",
+                            "event_type": "property.created",
+                            "entity_type": "property",
+                            "entity_id": "pub.com",
+                            "payload": {},
+                            "actor": "system",
+                            "created_at": "2026-01-01T00:00:00Z",
+                        },
+                    ],
+                    "cursor": "evt-1",
+                    "has_more": False,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_feed(auth_token="sk_test")
@@ -1246,14 +1420,21 @@ class TestGetFeed:
     async def test_sends_auth_and_params(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "events": [], "cursor": None, "has_more": False,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "events": [],
+                    "cursor": None,
+                    "has_more": False,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         await rc.get_feed(
-            auth_token="sk_secret", cursor="cur-1",
-            types="property.*", limit=50,
+            auth_token="sk_secret",
+            cursor="cur-1",
+            types="property.*",
+            limit=50,
         )
         call_args = mock_client.get.call_args
         headers = call_args.kwargs["headers"]
@@ -1276,9 +1457,14 @@ class TestGetFeed:
     async def test_empty_feed(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(
-            return_value=_mock_response(200, {
-                "events": [], "cursor": None, "has_more": False,
-            })
+            return_value=_mock_response(
+                200,
+                {
+                    "events": [],
+                    "cursor": None,
+                    "has_more": False,
+                },
+            )
         )
         rc = RegistryClient(client=mock_client)
         result = await rc.get_feed(auth_token="sk")
