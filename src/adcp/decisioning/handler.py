@@ -46,6 +46,13 @@ from adcp.decisioning.account_projection import (
 )
 from adcp.decisioning.accounts import ResolveContext, _call_with_optional_ctx
 from adcp.decisioning.context import AuthInfo
+from adcp.decisioning.discovery_guards import (
+    assert_account_resolved_for_async,
+    assert_discovery_push_consistent,
+    reject_hand_rolled_submitted,
+    reject_wholesale_handoff,
+    reject_wholesale_handoff_before_launch,
+)
 from adcp.decisioning.dispatch import (
     _build_request_context,
     _invoke_platform_method,
@@ -1451,10 +1458,16 @@ class PlatformHandler(ADCPHandler[ToolContext]):
     ) -> None:
         """Fire the F12 sync-completion webhook if applicable.
 
-        Skips TaskHandoff projections — those go through the registry
-        completion path which emits its own webhook on terminal state.
-        The auto-emit fires on the sync-success arm only, mirroring the
-        JS-side ``routeIfHandoff`` logic at
+        Skips TaskHandoff projections — on the async (handoff) arm the
+        terminal completion / failure webhook is delivered from the
+        background completion path in
+        :func:`adcp.decisioning.dispatch._project_handoff`
+        (:func:`adcp.decisioning.webhook_emit.emit_terminal_completion_webhook`),
+        fired exactly once after ``registry.complete`` / ``registry.fail``
+        when the buyer registered ``push_notification_config``. This gate
+        fires on the sync-success arm only; skipping the submitted
+        projection here is what keeps the two paths from double-delivering.
+        Mirrors the JS-side ``routeIfHandoff`` logic at
         ``src/lib/server/decisioning/runtime/from-platform.ts``.
 
         TaskHandoff projection returns the exact 2-key dict ``{"task_id":
@@ -1469,8 +1482,10 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             and set(result.keys()) == {"task_id", "status"}
             and result.get("status") == "submitted"
         ):
-            # TaskHandoff projection — registry completion path emits
-            # its own webhook on terminal state.
+            # TaskHandoff projection — the background completion path in
+            # _project_handoff owns the terminal webhook for this task
+            # (delivered once when push config is present); skipping here
+            # prevents a double-delivery.
             return
         maybe_emit_sync_completion(
             sender=self._webhook_sender,
@@ -1480,6 +1495,26 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             params=params,
             result=result,
         )
+
+    def _handoff_webhook_kwargs(self) -> dict[str, Any]:
+        """Webhook delivery kwargs threaded into :func:`_invoke_platform_method`
+        for the async (handoff) completion path.
+
+        The supervisor takes precedence over the bare sender (retry +
+        circuit breaker), matching the resolution order
+        :func:`maybe_emit_sync_completion` uses on the sync arm. When a
+        request hands off AND the buyer registered
+        ``push_notification_config``, the background completion path
+        delivers the terminal completion / failure webhook to that
+        target. The sync arm's auto-emit gate is wired separately via
+        :meth:`_maybe_auto_emit_sync_completion`; both honor the same
+        ``auto_emit_completion_webhooks`` flag so an adopter emitting
+        manually never gets a framework double-delivery on either arm.
+        """
+        return {
+            "webhook_target": self._webhook_supervisor or self._webhook_sender,
+            "webhook_auto_emit": self._auto_emit_completion_webhooks,
+        }
 
     def _build_ctx(
         self,
@@ -1777,7 +1812,19 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         # mutual-exclusion rules (refine+brief, wholesale+brief, refine
         # without refine[]).
         assert_buying_mode_consistent(params)
+        # Guard (a): wholesale + push_notification_config is rejected
+        # before the platform method runs — wholesale discovery is a
+        # synchronous rate-card read with no async lifecycle. The
+        # platform method is never invoked on this path.
+        assert_discovery_push_consistent(params, mode_field="buying_mode")
         account = await self._resolve_account(params.account, tool_ctx)
+        # Guard (c) pre-dispatch: a buyer-supplied push_notification_config
+        # makes the request async up front. If the account is unresolved
+        # (sentinel/empty id) the eventual task_id would be unreachable —
+        # reject before invoking the platform method.
+        _has_push = getattr(params, "push_notification_config", None) is not None
+        if _has_push:
+            assert_account_resolved_for_async(None, account_id=account.id, has_push=True)
         ctx = self._build_ctx(tool_ctx, account)
         # Refine flow: when buying_mode='refine' the framework dispatches
         # to refine_get_products() (when present) and projects the result
@@ -1854,6 +1901,35 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         # AdcpErrors propagate unmodified; only the platform call is deadline-
         # wrapped.
         deadline = resolve_time_budget(params.time_budget)
+
+        # Terminal side-effect (persist draft proposals) threaded as an
+        # on_complete hook so it fires on COMPLETION in BOTH the sync and
+        # handoff paths — never at submit. On the handoff path the bg task
+        # awaits the adopter's coroutine, then fires this hook with the
+        # terminal GetProductsResponse before registry.complete; on the
+        # sync path it fires inline with the adapter's return. This mirrors
+        # create_media_buy's consumption-finalize hook (handler.py
+        # create_media_buy). The hook persists the raw adapter result;
+        # buyer-presentation projections (property-list, pagination,
+        # fields) shape only the wire response, not the stored draft.
+        captured_platform = self._platform
+        captured_ctx = ctx
+
+        async def _persist_draft_hook(get_products_result: Any) -> None:
+            await maybe_persist_draft_after_get_products(
+                captured_platform, get_products_result, captured_ctx
+            )
+
+        # Guard (b) pre-launch: a wholesale call that hands off is rejected
+        # the instant dispatch detects the TaskHandoff — before any registry
+        # row, persist-draft, background coroutine, or completion webhook.
+        # Belt-and-braces post-dispatch check stays below.
+        pre_handoff_reject = (
+            (lambda: reject_wholesale_handoff_before_launch("buying_mode"))
+            if mode == "wholesale"
+            else None
+        )
+
         coro = _invoke_platform_method(
             self._platform,
             "get_products",
@@ -1861,6 +1937,9 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            on_complete=_persist_draft_hook,
+            pre_handoff_reject=pre_handoff_reject,
+            **self._handoff_webhook_kwargs(),
         )
         try:
             result = await (
@@ -1891,6 +1970,37 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             return GetProductsResponse.model_validate(
                 project_incomplete_response(interval=interval, unit=unit)
             )
+        # Post-dispatch discovery guards (run on the raw result before any
+        # success-shape projection). ``result`` is either a typed
+        # GetProductsResponse (sync) or the framework's submitted
+        # projection dict (handoff). Both reject with
+        # INVALID_REQUEST / correctable.
+        #   (d) hand-rolled submitted: adopter built {'status':'submitted'}
+        #       by hand instead of ctx.handoff_to_task — no registry row.
+        #   (b) wholesale + handoff: wholesale MUST be synchronous. The
+        #       pre-launch arm (pre_handoff_reject above) already rejected
+        #       it before any task/draft/webhook side effect; this is the
+        #       belt-and-braces post-dispatch check.
+        # Guard (c) — async + unresolved account — is NOT re-checked here.
+        # The push arm is rejected pre-dispatch above (correctable
+        # field='account'); the no-push handoff arm is owned by
+        # compose_caller_identity, which fails closed inside _build_ctx
+        # (terminal INVALID_REQUEST) BEFORE the platform method runs, so no
+        # task row is ever minted against an unresolved account. A
+        # post-dispatch (c) re-check would be unreachable: reaching this
+        # line means _build_ctx succeeded, i.e. the account resolved.
+        reject_hand_rolled_submitted(result)
+        reject_wholesale_handoff(result, mode=mode, mode_field="buying_mode")
+        # Handoff path: the submitted envelope is returned verbatim, the
+        # same as create_media_buy. Success-shape projections (property
+        # list, pagination, fields, draft persist) apply only to the sync
+        # success arm. When the buyer registered push_notification_config,
+        # the terminal completion / failure webhook is delivered from the
+        # background completion path in _project_handoff exactly once; with
+        # no push config the buyer polls tasks/get. Either way nothing fires
+        # here at submit time.
+        if isinstance(result, dict) and result.get("status") == "submitted":
+            return cast("GetProductsResponse", result)
         response = cast("GetProductsResponse", result)
         # Post-adapter: capability-gated property-list filter.
         response = cast(
@@ -1913,11 +2023,10 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             )
         if params.fields:
             response = _project_product_fields(response, params.fields)
-        # v1.5: persist draft proposals from brief / wholesale calls so
-        # subsequent finalize / create_media_buy can hydrate from the
-        # store. No-op when no proposal_store is wired for this tenant
-        # or when the response carries no proposals.
-        await maybe_persist_draft_after_get_products(self._platform, response, ctx)
+        # Draft proposals are persisted by the _persist_draft_hook
+        # on_complete seam (threaded above) so the same side-effect fires
+        # on both the sync and handoff completion paths. The hook ran
+        # inline on the sync path before this point.
         return response
 
     async def create_media_buy(  # type: ignore[override]
@@ -2041,6 +2150,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             extra_kwargs=extra,
             on_complete=on_complete,
             on_failure=on_failure,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("create_media_buy", params, result)
         return cast("CreateMediaBuyResponse", result)
@@ -2097,6 +2207,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             registry=self._registry,
             arg_projector={"media_buy_id": params.media_buy_id, "patch": params},
             on_complete=on_complete,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("update_media_buy", params, result)
         return cast("UpdateMediaBuySuccessResponse", result)
@@ -2116,6 +2227,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("sync_creatives", params, result)
         return cast("SyncCreativesSuccessResponse", result)
@@ -2446,6 +2558,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("get_creative_delivery", params, result)
         return cast("GetCreativeDeliveryResponse", result)
@@ -2479,10 +2592,40 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         params: GetSignalsRequest,
         context: ToolContext | None = None,
     ) -> GetSignalsResponse:
-        """Catalog discovery for signal-marketplace / signal-owned."""
+        """Catalog discovery for signal-marketplace / signal-owned.
+
+        Synchronous by default; ``discovery_mode='brief'`` MAY hand off to
+        a background task (submitted / working arms — no input_required).
+        ``discovery_mode='wholesale'`` MUST stay synchronous.
+        """
         tool_ctx = context or ToolContext()
+        # Guard (a): wholesale + push_notification_config is rejected
+        # before the platform method runs. Wholesale signal discovery is a
+        # synchronous catalog read with no async lifecycle.
+        assert_discovery_push_consistent(params, mode_field="discovery_mode")
         account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
+        # Guard (c) pre-dispatch: push_notification_config makes the request
+        # async up front; reject against an unresolved account before
+        # _build_ctx (whose compose_caller_identity would otherwise raise a
+        # less-specific terminal error on the sentinel id) and before the
+        # platform method runs.
+        _has_push = getattr(params, "push_notification_config", None) is not None
+        if _has_push:
+            assert_account_resolved_for_async(None, account_id=account.id, has_push=True)
         ctx = self._build_ctx(tool_ctx, account)
+        mode = getattr(params, "discovery_mode", None)
+        if mode is None:
+            mode_str = None
+        else:
+            mode_str = mode.value if hasattr(mode, "value") else str(mode)
+        # Guard (b) pre-launch: a wholesale call that hands off is rejected
+        # before any registry row / background coroutine / completion
+        # webhook. Belt-and-braces post-dispatch check stays below.
+        pre_handoff_reject = (
+            (lambda: reject_wholesale_handoff_before_launch("discovery_mode"))
+            if mode_str == "wholesale"
+            else None
+        )
         result = await _invoke_platform_method(
             self._platform,
             "get_signals",
@@ -2490,7 +2633,28 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            pre_handoff_reject=pre_handoff_reject,
+            **self._handoff_webhook_kwargs(),
         )
+        # Post-dispatch discovery guards (mirror get_products):
+        #   (d) hand-rolled submitted, (b) wholesale + handoff. Both
+        #       INVALID_REQUEST / correctable. Guard (b) here is the
+        #       belt-and-braces check; the pre-launch arm above already
+        #       rejected a wholesale handoff before any side effect.
+        # Guard (c) — async + unresolved account — is NOT re-checked here:
+        # the push arm is rejected pre-dispatch above (correctable
+        # field='account'), and the no-push handoff arm is owned by
+        # compose_caller_identity, which fails closed terminally inside
+        # _build_ctx before the platform method runs. Reaching this line
+        # means the account resolved, so a post-dispatch (c) check is
+        # unreachable.
+        reject_hand_rolled_submitted(result)
+        reject_wholesale_handoff(result, mode=mode_str, mode_field="discovery_mode")
+        # On the handoff arm the terminal completion / failure webhook is
+        # delivered from _project_handoff's background path when the buyer
+        # registered push_notification_config; the sync auto-emit gate below
+        # skips the {task_id, status} submitted projection so there is no
+        # double-delivery.
         self._maybe_auto_emit_sync_completion("get_signals", params, result)
         return cast("GetSignalsResponse", result)
 
@@ -2511,6 +2675,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("activate_signal", params, result)
         return cast("ActivateSignalSuccessResponse", result)
@@ -2546,6 +2711,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             executor=self._executor,
             registry=self._registry,
             arg_projector={"audiences": getattr(params, "audiences", []) or []},
+            **self._handoff_webhook_kwargs(),
         )
         projected = _project_sync_audiences(result)
         self._maybe_auto_emit_sync_completion("sync_audiences", params, projected)
@@ -2582,6 +2748,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         projected = _project_sync_catalogs(result)
         self._maybe_auto_emit_sync_completion("sync_catalogs", params, projected)
@@ -2720,6 +2887,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("get_brand_identity", params, result)
         return cast("GetBrandIdentitySuccessResponse", result)
@@ -2745,6 +2913,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("get_rights", params, result)
         return cast("GetRightsSuccessResponse", result)
@@ -2774,6 +2943,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("acquire_rights", params, result)
         return cast("AcquireRightsResponse", result)
@@ -3064,6 +3234,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("create_property_list", params, result)
         return cast("CreatePropertyListResponse", result)
@@ -3083,6 +3254,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("update_property_list", params, result)
         return cast("UpdatePropertyListResponse", result)
@@ -3102,6 +3274,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("get_property_list", params, result)
         return cast("GetPropertyListResponse", result)
@@ -3121,6 +3294,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("list_property_lists", params, result)
         return cast("ListPropertyListsResponse", result)
@@ -3143,6 +3317,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ctx,
             executor=self._executor,
             registry=self._registry,
+            **self._handoff_webhook_kwargs(),
         )
         self._maybe_auto_emit_sync_completion("delete_property_list", params, result)
         return cast("DeletePropertyListResponse", result)
