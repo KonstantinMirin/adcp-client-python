@@ -55,6 +55,24 @@ BLOCKED_METADATA_IPS: frozenset[str] = frozenset(
     }
 )
 
+# Reserved ranges that Python's ``ipaddress`` flags do NOT classify, so the
+# ``is_private``/``is_reserved``/... check below misses them on its own.
+#
+# * ``100.64.0.0/10`` — RFC 6598 carrier-grade NAT. AdCP names this range
+#   explicitly in the reserved-range deny list a fetcher MUST apply
+#   (spec 3.1.1, "Webhook URL validation (SSRF)", step 2), but
+#   ``is_private`` is False for it: RFC 6598 designates shared address
+#   space, not private space. It is routable inside carrier and container
+#   networks (and is where Alibaba's metadata endpoint lives), so leaving
+#   it open is a real SSRF path into an operator's internal network.
+# * ``192.88.99.0/24`` — RFC 7526 deprecated 6to4 relay anycast. Traffic
+#   sent here is tunnelled by whatever relay answers, which makes the
+#   destination unattributable; ``is_reserved`` does not cover it.
+_EXTRA_BLOCKED_NETWORKS: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...] = (
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("192.88.99.0/24"),
+)
+
 # Recommended destination ports for hardened SSRF-validated outbound HTTP
 # deployments. AdCP itself does not constrain ``pushNotificationConfig.url``
 # ports (see ``schemas/cache/core/push-notification-config.json``), so the
@@ -272,6 +290,7 @@ def resolve_and_validate_host(
             or ip.is_multicast
             or ip.is_reserved
             or ip.is_unspecified
+            or any(ip in network for network in _EXTRA_BLOCKED_NETWORKS)
         ):
             last_rejection = f"resolved IP {ip} is in a reserved range"
             # Historical behavior of validate_jwks_uri was to raise on

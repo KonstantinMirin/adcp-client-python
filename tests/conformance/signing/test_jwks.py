@@ -88,6 +88,55 @@ def test_ssrf_blocks_oracle_metadata() -> None:
             validate_jwks_uri("http://oracle-metadata.example/jwks.json")
 
 
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("100.64.0.1", "RFC 6598 CGNAT lower bound"),
+        ("100.100.100.1", "CGNAT mid-range — Alibaba metadata's neighbourhood"),
+        ("100.127.255.254", "RFC 6598 CGNAT upper bound"),
+        ("192.88.99.1", "RFC 7526 deprecated 6to4 relay anycast"),
+    ],
+)
+def test_ssrf_blocks_ranges_python_flags_miss(resolved_ip: str, why: str) -> None:
+    """Reserved ranges that `ipaddress`'s own flags do not classify.
+
+    `is_private` is False across 100.64.0.0/10 — RFC 6598 designates shared
+    address space, not private space — so the flag check alone lets carrier
+    and container-network addresses through. AdCP 3.1.1 names the range in
+    the deny list a fetcher MUST apply ("Webhook URL validation (SSRF)",
+    step 2).
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", (resolved_ip, 0))],
+    ):
+        with pytest.raises(SSRFValidationError, match="reserved range"):
+            validate_jwks_uri("https://buyer-supplied.example/jwks.json")
+
+
+def test_ssrf_cgnat_honours_allow_private_override() -> None:
+    """CGNAT follows the same `allow_private` gate as every other reserved
+    range — it is not unconditional like the cloud-metadata list, so on-prem
+    and test deployments keep their documented escape hatch."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("100.64.0.1", 0))],
+    ):
+        validate_jwks_uri("https://cgnat-host.example/jwks.json", allow_private=True)
+
+
+def test_ssrf_alibaba_metadata_blocked_despite_allow_private() -> None:
+    """Regression guard for the interaction between the new CGNAT range and
+    the metadata list: 100.100.100.200 sits inside 100.64.0.0/10, and the
+    metadata check must keep winning so `allow_private` cannot unblock it."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("100.100.100.200", 0))],
+    ):
+        with pytest.raises(SSRFValidationError, match="metadata"):
+            validate_jwks_uri("http://alibaba-metadata.example/jwks.json", allow_private=True)
+
+
 def test_ssrf_caps_resolved_address_scan() -> None:
     # Build 100 records where the first 32 are public and the 33rd is internal.
     # With the cap at 32, the scan stops before reaching the loopback address.
