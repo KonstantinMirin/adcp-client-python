@@ -94,7 +94,9 @@ def test_ssrf_blocks_oracle_metadata() -> None:
         ("100.64.0.1", "RFC 6598 CGNAT lower bound"),
         ("100.100.100.1", "CGNAT mid-range — Alibaba metadata's neighbourhood"),
         ("100.127.255.254", "RFC 6598 CGNAT upper bound"),
+        ("192.88.99.0", "RFC 7526 6to4 relay anycast lower bound"),
         ("192.88.99.1", "RFC 7526 deprecated 6to4 relay anycast"),
+        ("192.88.99.255", "RFC 7526 6to4 relay anycast upper bound"),
     ],
 )
 def test_ssrf_blocks_ranges_python_flags_miss(resolved_ip: str, why: str) -> None:
@@ -112,6 +114,43 @@ def test_ssrf_blocks_ranges_python_flags_miss(resolved_ip: str, why: str) -> Non
     ):
         with pytest.raises(SSRFValidationError, match="reserved range"):
             validate_jwks_uri("https://buyer-supplied.example/jwks.json")
+
+
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("2606:4700:4700::1111", "public IPv6"),
+        ("2001:4860:4860::8888", "public IPv6, different allocation"),
+    ],
+)
+def test_ssrf_ipv6_accepted_against_ipv4_only_extra_networks(resolved_ip: str, why: str) -> None:
+    """A public IPv6 resolution must pass, not raise, not crash.
+
+    `_EXTRA_BLOCKED_NETWORKS` holds only IPv4 networks, and the membership
+    test runs against a possibly-IPv6 address. CPython's
+    `_BaseNetwork.__contains__` returns False on a version mismatch rather
+    than raising (only the ordering operators raise), so a v6 address falls
+    through to the flag checks. That behaviour is load-bearing here, so pin
+    it with a test rather than leaving it as an assumption about CPython.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(10, 1, 6, "", (resolved_ip, 0, 0, 0))],
+    ):
+        validate_jwks_uri("https://ipv6-host.example/jwks.json")
+
+
+def test_ssrf_6to4_relay_honours_allow_private_override() -> None:
+    """The 6to4 relay range follows the same `allow_private` gate as CGNAT.
+
+    Only CGNAT had override coverage; both new ranges sit behind the same
+    gate, so pin both rather than inferring the second from the first.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("192.88.99.1", 0))],
+    ):
+        validate_jwks_uri("https://relay-host.example/jwks.json", allow_private=True)
 
 
 def test_ssrf_cgnat_honours_allow_private_override() -> None:
