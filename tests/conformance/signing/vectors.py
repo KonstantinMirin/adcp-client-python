@@ -98,6 +98,9 @@ def load_canonicalization_cases() -> list[tuple[str, dict[str, Any]]]:
 
 
 def _write_manifest() -> None:
+    # Shallow copy, then REPLACE "files" rather than mutating it in place --
+    # ``_MANIFEST["files"]`` is what ``VECTOR_MANIFEST`` is bound to, and
+    # mutating it here would rewrite the pin the tests grade against.
     document = dict(_MANIFEST)
     document["files"] = dict(sorted(on_disk_files().items()))
     MANIFEST_PATH.write_text(json.dumps(document, indent=2) + "\n")
