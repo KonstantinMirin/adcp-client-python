@@ -37,17 +37,17 @@ KEYS_BY_KID = {k["kid"]: k for k in json.loads((VECTORS_DIR / "keys.json").read_
 # exemption behind.
 KNOWN_VERIFIER_GAPS: dict[str, str] = {
     "021-duplicate-signature-input-label.json": (
-        "duplicate Signature-Input dictionary key is silently resolved instead of "
+        "#976: duplicate Signature-Input dictionary key is silently resolved instead of "
         "rejected (RFC 8941 §3.2 / covered-component smuggling)"
     ),
     "022-multi-valued-content-type.json": (
-        "multi-valued Content-Type on a covered non-list field is not rejected at parse"
+        "#976: multi-valued Content-Type on a covered non-list field is not rejected at parse"
     ),
     "023-multi-valued-content-digest.json": (
-        "multi-valued Content-Digest (duplicate RFC 9530 algorithm) is not rejected at parse"
+        "#976: multi-valued Content-Digest (duplicate RFC 9530 algorithm) is not rejected at parse"
     ),
     "026-non-ascii-host.json": (
-        "raw IDN U-label in the authority is not rejected; @target-uri canonicalization "
+        "#977: raw IDN U-label in the authority is not rejected; @target-uri canonicalization "
         "applies no UTS-46 A-label conversion"
     ),
 }

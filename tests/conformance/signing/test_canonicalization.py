@@ -34,18 +34,18 @@ KNOWN_CANONICALIZATION_GAPS: dict[str, str] = {
     # No UTS-46 A-label conversion on the signing path. adcp.signing has a
     # canonicalize_host() helper, but canonical.py does not call it, so an IDN
     # authority signs and verifies under a non-ASCII host.
-    "idn-to-punycode": "IDN host is not converted to a Punycode A-label",
-    "idn-mixed-case-to-punycode": "IDN host is not converted to a Punycode A-label",
+    "idn-to-punycode": "#977: IDN host is not converted to a Punycode A-label",
+    "idn-mixed-case-to-punycode": "#977: IDN host is not converted to a Punycode A-label",
     # urlunsplit() cannot distinguish "no query" from "empty query", so the
     # trailing '?' is dropped and signer/verifier can disagree on the base.
-    "trailing-empty-query-preserved": "trailing '?' with an empty query is dropped",
+    "trailing-empty-query-preserved": "#979: trailing '?' with an empty query is dropped",
     # Malformed authorities are canonicalized rather than rejected; the spec's
     # request_target_uri_malformed code is not implemented at all.
-    "malformed-port-without-host": "authority with a port but no host is accepted",
-    "malformed-userinfo-without-host": "authority with userinfo but no host is accepted",
-    "malformed-empty-authority": "empty authority is accepted",
-    "malformed-bare-ipv6": "unbracketed IPv6 literal is accepted",
-    "malformed-ipv6-zone-identifier": "RFC 6874 zone identifier is accepted",
+    "malformed-port-without-host": "#978: authority with a port but no host is accepted",
+    "malformed-userinfo-without-host": "#978: authority with userinfo but no host is accepted",
+    "malformed-empty-authority": "#978: empty authority is accepted",
+    "malformed-bare-ipv6": "#978: unbracketed IPv6 literal is accepted",
+    "malformed-ipv6-zone-identifier": "#978: RFC 6874 zone identifier is accepted",
 }
 
 
