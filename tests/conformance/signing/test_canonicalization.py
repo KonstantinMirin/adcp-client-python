@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from _pytest.mark import ParameterSet
 
 from adcp.signing.canonical import (
     build_signature_base,
@@ -58,7 +57,7 @@ def _vectors_with_expected_base() -> list[tuple[str, Path]]:
     ]
 
 
-def _canonicalization_params() -> list[ParameterSet]:
+def _canonicalization_params() -> list[Any]:
     params = []
     for name, case in load_canonicalization_cases():
         marks = []

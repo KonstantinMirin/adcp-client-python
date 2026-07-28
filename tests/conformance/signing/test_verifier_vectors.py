@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 import pytest
-from _pytest.mark import ParameterSet
 
 from adcp.signing import (
     InMemoryReplayStore,
@@ -103,7 +103,7 @@ def _build_options(vector: dict) -> tuple[VerifyOptions, InMemoryReplayStore]:
 _vector_id = lambda v: v if isinstance(v, str) else v.name  # noqa: E731
 
 
-def _negative_params() -> list[ParameterSet]:
+def _negative_params() -> list[Any]:
     """Negative vectors, with known verifier gaps marked strict-xfail."""
     params = []
     for name, path in load_vector_set("negative"):
