@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from adcp.signing.canonical import REQUEST_TARGET_URI_MALFORMED
+
 
 class SignatureVerificationError(Exception):
     """Raised when a request signature fails any step of the verifier checklist.
@@ -121,6 +123,14 @@ WEBHOOK_SIGNATURE_KEY_ORIGIN_MISSING = "webhook_signature_key_origin_missing"
 REQUEST_TO_WEBHOOK_CODE = {
     REQUEST_SIGNATURE_REQUIRED: WEBHOOK_SIGNATURE_REQUIRED,
     REQUEST_SIGNATURE_HEADER_MALFORMED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
+    # Deliberately NOT a new `webhook_target_uri_malformed`. The AdCP spec
+    # defines `request_target_uri_malformed` (it is graded by the shipped
+    # canonicalization vectors) but names no webhook twin, and no bundled
+    # schema enumerates webhook signing codes. Minting one here would put a
+    # string on the wire that nothing upstream defines. A malformed target URI
+    # is the same failure class as a malformed header, so it retags onto the
+    # existing code until the spec says otherwise.
+    REQUEST_TARGET_URI_MALFORMED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
     REQUEST_SIGNATURE_PARAMS_INCOMPLETE: WEBHOOK_SIGNATURE_PARAMS_INCOMPLETE,
     REQUEST_SIGNATURE_TAG_INVALID: WEBHOOK_SIGNATURE_TAG_INVALID,
     REQUEST_SIGNATURE_ALG_NOT_ALLOWED: WEBHOOK_SIGNATURE_ALG_NOT_ALLOWED,

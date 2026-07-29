@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from adcp.signing.canonical import (
+    TargetUriMalformedError,
     _lookup,
     build_signature_base,
     parse_signature_input_header,
@@ -312,6 +313,17 @@ def verify_request_signature(
         base = build_signature_base(method=method, url=url, headers=headers, parsed=parsed).encode(
             "utf-8"
         )
+    except TargetUriMalformedError as exc:
+        # MUST precede the (ValueError, KeyError) clause below: TargetUriMalformedError
+        # IS a ValueError, so reordering these two silently downgrades every
+        # malformed-authority rejection to request_signature_header_malformed
+        # with the suite still green. test_target_uri_malformed_boundary.py
+        # guards the ordering.
+        raise SignatureVerificationError(
+            exc.code,
+            step=6,
+            message=f"signature base construction failed: {exc}",
+        ) from exc
     except (ValueError, KeyError) as exc:
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_HEADER_MALFORMED,
