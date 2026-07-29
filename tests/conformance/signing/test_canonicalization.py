@@ -29,11 +29,7 @@ from tests.conformance.signing.vectors import (
 # Cases from canonicalization.json that the SDK does not yet satisfy, mapped to
 # the issue tracking each gap. Marked strict so a fix XPASSes and forces the
 # entry to be retired instead of lingering.
-KNOWN_CANONICALIZATION_GAPS: dict[str, str] = {
-    # urlunsplit() cannot distinguish "no query" from "empty query", so the
-    # trailing '?' is dropped and signer/verifier can disagree on the base.
-    "trailing-empty-query-preserved": "#979: trailing '?' with an empty query is dropped",
-}
+KNOWN_CANONICALIZATION_GAPS: dict[str, str] = {}
 
 
 def _vectors_with_expected_base() -> list[tuple[str, Path]]:
