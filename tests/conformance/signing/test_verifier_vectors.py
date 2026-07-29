@@ -46,9 +46,15 @@ KNOWN_VERIFIER_GAPS: dict[str, str] = {
     "023-multi-valued-content-digest.json": (
         "#976: multi-valued Content-Digest (duplicate RFC 9530 algorithm) is not rejected at parse"
     ),
+    # The signer half of #977 has landed: @target-uri canonicalization now
+    # converts a U-label to its A-label form. This vector is the verifier half
+    # -- a U-label arriving on the wire must be REJECTED, not converted -- and
+    # it expects request_signature_header_malformed at step 1, which is #976's
+    # precheck. Same predicate (canonical.host_has_raw_non_ascii), different
+    # code at a different step; it retires with #976, not with the conversion.
     "026-non-ascii-host.json": (
-        "#977: raw IDN U-label in the authority is not rejected; @target-uri canonicalization "
-        "applies no UTS-46 A-label conversion"
+        "#977 (verifier half): raw IDN U-label on the wire is not rejected at step 1; "
+        "lands with #976's strict header precheck"
     ),
 }
 
