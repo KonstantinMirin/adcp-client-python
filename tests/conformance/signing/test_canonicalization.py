@@ -228,3 +228,45 @@ def test_authority_that_empties_after_normalization_is_rejected(url: str) -> Non
     assert getattr(excinfo.value, "code", None) == "request_target_uri_malformed"
     with pytest.raises(ValueError):
         canonicalize_authority(url)
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        # RFC 3986 §3.2.3: `port = *DIGIT`, so an EMPTY port is legal and means
+        # "default" -- normalizers SHOULD drop it and its colon. Rejecting it
+        # would refuse a valid URI.
+        ("https://host:/p", "host"),
+        ("https://[::1]:/p", "[::1]"),
+        # ...and a real port still survives.
+        ("https://host:8443/p", "host:8443"),
+    ],
+    ids=["empty-port", "empty-port-ipv6", "real-port"],
+)
+def test_empty_port_is_normalized_away_not_rejected(url: str, expected: str) -> None:
+    assert canonicalize_authority(url) == expected
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://host:-80/p", "https://host:8_0/p", "https://host:٨٠/p", "https://host:8a/p"],
+    ids=["negative", "underscore-separator", "arabic-indic-digits", "alphanumeric"],
+)
+def test_non_digit_port_is_rejected_with_the_spec_code(url: str) -> None:
+    """The port was never validated -- it went straight into `int()`.
+
+    Three distinct failures came out of that. `int("-80")` yielded the
+    authority ``host:-80``, which is not a valid authority at all. `int("8_0")`
+    is 80, because Python accepts underscore digit separators. And
+    `int("٨٠")` is also 80, because `int()` accepts non-ASCII digits -- so
+    ``host:٨٠`` and ``host:80`` collapsed to the SAME canonical authority.
+    That last one is a raw-vs-canonical differential: a peer that does not
+    fold Arabic-Indic digits computes a different `@authority` for the same
+    bytes, and the signature fails for a reason neither side can see.
+
+    Note `str.isdigit()` alone does not close this -- `"٨٠".isdigit()` is
+    True. The gate has to be ASCII digits specifically.
+    """
+    with pytest.raises(ValueError) as excinfo:
+        canonicalize_authority(url)
+    assert getattr(excinfo.value, "code", None) == "request_target_uri_malformed"

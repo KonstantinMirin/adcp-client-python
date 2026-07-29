@@ -236,16 +236,49 @@ def _canon_authority(netloc: str, scheme: str) -> str:
         host = netloc[: end + 1]
         tail = netloc[end + 1 :]
         if tail.startswith(":"):
-            port = int(tail[1:])
+            port = _port_or_reject(tail[1:], netloc)
     elif ":" in netloc:
         host, portstr = netloc.rsplit(":", 1)
-        port = int(portstr)
+        port = _port_or_reject(portstr, netloc)
     else:
         host = netloc
     host = _canon_host(host, netloc)
     if port is not None and port != _DEFAULT_PORTS.get(scheme):
         return f"{host}:{port}"
     return host
+
+
+_ASCII_DIGITS = frozenset("0123456789")
+
+
+def _port_or_reject(portstr: str, netloc: str) -> int | None:
+    """Parse a port per RFC 3986 §3.2.3 (`port = *DIGIT`), or reject.
+
+    The port used to go straight into `int()`, which is far more permissive
+    than the grammar and produced three distinct problems:
+
+    * `int("-80")` gave the authority `host:-80`, which is not an authority.
+    * `int("8_0")` is 80 -- Python accepts underscore digit separators.
+    * `int("٨٠")` is also 80 -- `int()` accepts non-ASCII digits, so
+      `host:٨٠` and `host:80` collapsed to the SAME canonical authority. A
+      peer that does not fold Arabic-Indic digits derives a different
+      `@authority` from identical bytes, and the signature fails for a reason
+      neither side can see in its own logs.
+
+    `str.isdigit()` does not close that last one -- `"٨٠".isdigit()` is True --
+    so the test is ASCII digits specifically.
+
+    An EMPTY port is legal and means "default": the grammar is `*DIGIT`, and
+    §3.2.3 says a normalizer should drop the port and its colon when empty. So
+    `https://host:/p` normalizes to `host` rather than being rejected.
+    """
+    if not portstr:
+        return None
+    if not all(ch in _ASCII_DIGITS for ch in portstr):
+        raise TargetUriMalformedError(
+            netloc, f"the port {portstr!r} is not a sequence of ASCII digits"
+        )
+    return int(portstr)
 
 
 def _canon_host(host: str, netloc: str) -> str:
