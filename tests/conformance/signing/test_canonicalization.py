@@ -45,6 +45,12 @@ KNOWN_CANONICALIZATION_GAPS: dict[str, str] = {
     "malformed-empty-authority": "#978: empty authority is accepted",
     "malformed-bare-ipv6": "#978: unbracketed IPv6 literal is accepted",
     "malformed-ipv6-zone-identifier": "#978: RFC 6874 zone identifier is accepted",
+    # This one is refused today, but by urlsplit() rather than by us: a bare
+    # ValueError carrying no code. It belongs in the ledger with its five
+    # siblings so all six reject cases retire together under #978.
+    "malformed-ipv6-missing-closing-bracket": (
+        "#978: refused by urlsplit with a bare ValueError that carries no error code"
+    ),
 }
 
 
@@ -104,11 +110,18 @@ def test_canonicalization_case(name: str, case: dict[str, Any]) -> None:
     url = case["input_url"]
 
     if case.get("reject"):
-        # The spec's expected_error_code here is request_target_uri_malformed,
-        # which the SDK does not define. Assert the refusal, which is the
-        # behavioral obligation; the code mapping follows once it exists.
-        with pytest.raises(ValueError):
+        # Assert the code the vector ships, not merely that something raised.
+        # `https://[::1/p` is refused inside urlsplit() with a bare ValueError
+        # carrying no code, so a bare `pytest.raises(ValueError)` passes for the
+        # wrong reason and grades nothing -- the refusal has to be ours, and it
+        # has to name which rule fired.
+        with pytest.raises(ValueError) as excinfo:
             canonicalize_target_uri(url)
+        actual_code = getattr(excinfo.value, "code", None)
+        assert actual_code == case["expected_error_code"], (
+            f"{name}: expected error code {case['expected_error_code']!r}, got "
+            f"{actual_code!r} from {type(excinfo.value).__name__} ({case['rule']})"
+        )
         return
 
     assert (
