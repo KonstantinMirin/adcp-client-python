@@ -127,6 +127,15 @@ class DockerLocalhostRewrite:
         # Accept an already-bracketed IPv6 literal by unwrapping it first;
         # the brackets are re-applied below from the canonical form.
         inner = value[1:-1] if value.startswith("[") and value.endswith("]") else value
+        if not inner:
+            # `"[]"` survives the non-empty check above and empties here. An
+            # empty host is the one outcome this guard exists to prevent: it
+            # assembles to `https://:9000/hook`, an authority with a port and
+            # no host -- exactly the shape @target-uri canonicalization rejects.
+            raise ValueError(
+                f"DockerLocalhostRewrite(rewrite_to=...) must be a hostname or IP "
+                f"literal; got {value!r}, which has no host"
+            )
 
         # Structural rejection comes FIRST and is the actual point of this
         # guard: `rewrite_to` is interpolated straight into the netloc, so any
@@ -171,7 +180,21 @@ class DockerLocalhostRewrite:
             # refusing them here would break the case this class exists for.
             # Structural safety is already established above; anything further
             # is the resolver's business, not ours.
-            object.__setattr__(self, "rewrite_to", inner.lower().rstrip("."))
+            # One trailing root dot, matching `canonicalize_host` -- `rstrip`
+            # would eat every dot, so `"."` and `".."` normalized to the empty
+            # host rather than being rejected.
+            ascii_host = inner.lower()
+            if ascii_host.endswith("."):
+                ascii_host = ascii_host[:-1]
+            if not ascii_host or any(label == "" for label in ascii_host.split(".")):
+                # Catches `"."`, `".."` and `"a..b"`. An empty label is not a
+                # host, and `".."` in particular survives a single-dot strip as
+                # `"."` -- non-empty, but still no host.
+                raise ValueError(
+                    f"DockerLocalhostRewrite(rewrite_to=...) must be a hostname or IP "
+                    f"literal; got {value!r}, which normalizes to an empty label"
+                )
+            object.__setattr__(self, "rewrite_to", ascii_host)
             return
 
         # Non-ASCII: convert to A-labels so the netloc is wire-legal. Failure

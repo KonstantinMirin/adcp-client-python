@@ -124,6 +124,24 @@ def test_rewrite_to_hostname_and_ipv4_still_accepted() -> None:
     )
 
 
+@pytest.mark.parametrize("bad", ["[]", "[.]", ".", "..", "...", "a..b"])
+def test_rewrite_to_rejects_values_that_normalize_to_no_host(bad: str) -> None:
+    """An empty host is the outcome this guard exists to prevent.
+
+    These reach the empty host by two different routes the earlier checks each
+    miss: ``"[]"`` is non-empty until the brackets come off, and ``"."`` /
+    ``".."`` are non-empty until the trailing root dot is stripped. Both used
+    to assemble to ``https://:9000/hook`` — an authority with a port and no
+    host, which is precisely the shape ``@target-uri`` canonicalization
+    rejects, produced by the hook meant to keep the authority well-formed.
+
+    ``"a..b"`` is here because the fix is stated as "no empty label" rather
+    than "not empty", and an interior empty label is the same defect.
+    """
+    with pytest.raises(ValueError, match="rewrite_to"):
+        DockerLocalhostRewrite(rewrite_to=bad)
+
+
 @pytest.mark.parametrize(
     "name", ["my_service", "host_gateway", "docker_host.local", "_dns-sd._udp.local"]
 )
