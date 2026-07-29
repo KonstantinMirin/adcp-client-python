@@ -1906,8 +1906,9 @@ Applied to Assets94.assets via _forward_compat._apply_forward_compat().
 # Each alias imports its variant directly from the source module named in the
 # alias prefix. Grouped by base name in __all__ below; sorted by module here.
 # Notable shape differences worth disambiguating:
-#   - creative.list_creatives_response.Creative is the full creative record;
-#     get_creative_delivery_response.Creative (the bare-name winner) is a lean
+#   - creative.list_creatives_response split its full creative record into
+#     legacy-format and canonical-format branches in AdCP 3.1.8; both are
+#     distinct from get_creative_delivery_response.Creative, which is a lean
 #     totals view.
 #   - core.notification_config.Authentication makes ``credentials`` optional;
 #     the other four Authentication variants require it.
@@ -1984,7 +1985,10 @@ from adcp.types.generated_poc.creative.list_creatives_request import (
     Sort as ListCreativesSort,
 )
 from adcp.types.generated_poc.creative.list_creatives_response import (
-    Creative as ListCreativesCreative,
+    Creatives as ListCreativesLegacyCreative,
+)
+from adcp.types.generated_poc.creative.list_creatives_response import (
+    Creatives1 as ListCreativesCanonicalCreative,
 )
 from adcp.types.generated_poc.creative.sync_creatives_response import (
     Creative as SyncCreativesCreative,
@@ -2026,6 +2030,9 @@ from adcp.types.generated_poc.trusted_match.provider_registration import (
     TmpxMacro as ProviderRegistrationTmpxMacro,
 )
 
+ListCreativesCreative: TypeAlias = ListCreativesLegacyCreative
+ListCreativesCreativeItem: TypeAlias = ListCreativesLegacyCreative | ListCreativesCanonicalCreative
+
 # ============================================================================
 # EXPORTS
 # ============================================================================
@@ -2035,6 +2042,9 @@ __all__ = [
     # Creative
     "DeliveryCreative",
     "ListCreativesCreative",
+    "ListCreativesLegacyCreative",
+    "ListCreativesCanonicalCreative",
+    "ListCreativesCreativeItem",
     "SyncCreativesCreative",
     "BuildCreativeCreative",
     "CapabilitiesCreative",
