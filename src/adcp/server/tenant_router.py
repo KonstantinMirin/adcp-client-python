@@ -501,6 +501,21 @@ def normalize_host_key(value: str) -> str:
         host = None
     if not host:
         host = raw.lower()  # unparseable authority -> best-effort key
+
+    # Re-run the IP-literal test on the EXTRACTED host, not just the raw input.
+    # The short-circuit above only sees `[2001:DB8::0:1]`; once a port is
+    # attached, `urlsplit` is what strips the brackets, and the address landed
+    # here uncompressed. That made the function non-idempotent over its own
+    # output -- `[2001:DB8::0:1]:443` keyed to `2001:db8::0:1` while the bare
+    # form keyed to `2001:db8::1` -- so a tenant registered under one was
+    # unreachable from the other. Idempotency is load-bearing here:
+    # InMemorySubdomainTenantRouter normalizes registration keys and then
+    # normalizes the lookup host again.
+    try:
+        return str(ipaddress.ip_address(host))
+    except ValueError:
+        pass
+
     if host.endswith("."):
         host = host[:-1]  # single FQDN-root dot, matching canonicalize_host
 

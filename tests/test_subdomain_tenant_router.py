@@ -582,3 +582,43 @@ async def _async_pass_through(scope, receive, send) -> None:
     isolation. Never reached when the middleware short-circuits."""
     await send({"type": "http.response.start", "status": 200, "headers": []})
     await send({"type": "http.response.body", "body": b""})
+
+
+@pytest.mark.parametrize(
+    ("with_port", "bare"),
+    [
+        ("[2001:DB8::0:1]:443", "2001:db8::0:1"),
+        ("[::1]:8080", "::1"),
+        ("[2001:db8:0:0:0:0:0:1]:9000", "2001:db8::1"),
+    ],
+    ids=["uncompressed-upper", "loopback", "fully-expanded"],
+)
+def test_non_canonical_ipv6_with_port_keys_the_same_as_the_bare_form(
+    with_port: str, bare: str
+) -> None:
+    """A port must not change which tenant an IPv6 host resolves to.
+
+    The bare-literal short-circuit only sees the raw input. Once a port is
+    attached, ``urlsplit`` is what removes the brackets, and the address
+    arrived downstream uncompressed -- so ``[2001:DB8::0:1]:443`` keyed to
+    ``2001:db8::0:1`` while the bare form keyed to ``2001:db8::1``. A tenant
+    registered under one was unreachable from the other, and the function was
+    not idempotent over its own output.
+
+    Idempotency is load-bearing rather than tidy: ``InMemorySubdomainTenantRouter``
+    normalizes registration keys at construction and normalizes the Host again
+    at lookup, so a non-idempotent key silently fails to match itself.
+    """
+    key = normalize_host_key(with_port)
+    assert key == normalize_host_key(bare)
+    assert normalize_host_key(key) == key, "normalize_host_key must be idempotent"
+
+
+def test_ipv6_tenant_is_reachable_with_and_without_a_port() -> None:
+    """The end-to-end consequence: same tenant, either Host spelling."""
+    router = InMemorySubdomainTenantRouter(
+        tenants={"[2001:DB8::0:1]": Tenant(id="v6", display_name="IPv6 Tenant")}
+    )
+    for host in ("[2001:DB8::0:1]", "[2001:db8::1]:443", "2001:db8::0:1"):
+        resolved = asyncio.run(router.resolve(host))
+        assert resolved is not None and resolved.id == "v6", f"unreachable via {host!r}"
