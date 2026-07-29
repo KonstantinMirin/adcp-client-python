@@ -126,7 +126,17 @@ def canonicalize_target_uri(url: str) -> str:
         path = "/"
     # RFC 9421 §2.2.2 + RFC 7230 §5.5: effective request URI excludes the
     # fragment (client-local, never sent on wire).
-    return urlunsplit((scheme, netloc, path, parts.query, ""))
+    target = urlunsplit((scheme, netloc, path, parts.query, ""))
+    if not parts.query and "?" in url.split("#", 1)[0]:
+        # `urlsplit` maps both `/p` and `/p?` to `query == ""`, and `urlunsplit`
+        # emits no `?` for an empty string -- so the two collapse to one
+        # signature base. A signer that sent `/p?` and a verifier that
+        # reconstructs `/p` then sign different bytes for different URLs and
+        # agree, which is exactly the confusion `@target-uri` exists to prevent.
+        # The distinction has to be recovered from the raw URL because it is
+        # already lost by the time `parts` exists.
+        target += "?"
+    return target
 
 
 def canonicalize_authority(url: str) -> str:
