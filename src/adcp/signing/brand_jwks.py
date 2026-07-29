@@ -45,7 +45,9 @@ from typing import Any, ClassVar, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
+import idna
 
+from adcp.signing._idna_canonicalize import canonicalize_host
 from adcp.signing.jwks import (
     AsyncCachingJwksResolver,
     AsyncJwksFetcher,
@@ -566,7 +568,17 @@ async def _fetch_brand_json(
         if client_factory is not None:
             client_cm = client_factory(url)
         else:
-            transport = build_async_ip_pinned_transport(url, allow_private=allow_private)
+            # The transport builder resolves + validates the host up
+            # front, so it — not the later request — is where an SSRF
+            # refusal surfaces. It must sit inside the same handler as
+            # the request or the refusal escapes the resolver's
+            # documented error contract as a raw SSRFValidationError.
+            try:
+                transport = build_async_ip_pinned_transport(url, allow_private=allow_private)
+            except SSRFValidationError as exc:
+                raise BrandJsonResolverError(
+                    "fetch_failed", f"brand.json URL failed SSRF check: {exc}"
+                ) from exc
             client_cm = httpx.AsyncClient(
                 transport=transport,
                 timeout=timeout_seconds,
@@ -691,6 +703,19 @@ def _canonicalize_url(raw: str, *, allow_private: bool) -> str:
 
     * Scheme lowercased.
     * Host lowercased (``urlsplit`` does NOT do this — we do it).
+    * Trailing FQDN-root dot stripped (``brand.example.`` and
+      ``brand.example`` are the same host).
+    * Unicode U-labels encoded to A-labels (``bücher.example`` →
+      ``xn--bcher-kva.example``), via the package-wide UTS#46
+      convention in :mod:`adcp.signing._idna_canonicalize`. A host the
+      IDNA encoder refuses (e.g. an underscore label) is rejected with
+      ``invalid_url`` rather than passed through.
+    * IP literals normalized to their canonical form, and IPv6
+      literals re-bracketed. ``urlsplit(...).hostname`` returns IPv6
+      hosts *de-bracketed*, so rebuilding the authority from it
+      without re-adding brackets emits ``https://::1/x`` — a string
+      with no parseable host, and with a non-default port a string
+      whose port can no longer be separated from the address.
     * Default port (443 for https, 80 for http) stripped.
     * Fragments stripped — they aren't sent on the wire and must not
       smuggle loop-detection aliases into ``seen``.
@@ -699,6 +724,10 @@ def _canonicalize_url(raw: str, *, allow_private: bool) -> str:
     ``https://x.example/`` as distinct strings; the JS-side resolver
     canonicalizes both via ``new URL``, so a Python-only deployment
     would fail open where JS fails closed.
+
+    The returned string is required to be a URL the transport layer
+    accepts: it is fed straight to ``build_async_ip_pinned_transport``
+    and ``client.get`` on every redirect hop.
     """
     try:
         parts = urlsplit(raw)
@@ -711,9 +740,21 @@ def _canonicalize_url(raw: str, *, allow_private: bool) -> str:
     scheme = parts.scheme.lower()
     if scheme != "https" and not (allow_private and scheme == "http"):
         raise BrandJsonResolverError("invalid_url", "brand.json URL must use https://")
-    host = parts.hostname or ""
-    if not host:
+    raw_host = parts.hostname or ""
+    if not raw_host:
         raise BrandJsonResolverError("invalid_url", "brand.json URL has no host")
+    try:
+        host = canonicalize_host(raw_host)
+    except (idna.IDNAError, UnicodeError) as exc:
+        raise BrandJsonResolverError(
+            "invalid_url", f"brand.json URL host is not a valid IDNA name: {exc}"
+        ) from exc
+    # ``canonicalize_host`` returns IPv6 literals UNBRACKETED (its step
+    # 3 short-circuits to ``str(ipaddress.ip_address(...))``); putting
+    # the brackets back is the caller's job. A canonicalized DNS name
+    # never contains ':', so this is an unambiguous IPv6 test.
+    if ":" in host:
+        host = f"[{host}]"
     port = parts.port
     if port is not None and port == _DEFAULT_PORTS.get(scheme):
         port = None
@@ -874,6 +915,40 @@ def _pick_agent(
     return _SelectedAgent(url=url, jwks_uri=jwks_uri)
 
 
+def _canonical_origin(raw: str, label: str) -> str:
+    """`scheme://host[:port]` in the same canonical form on both sides.
+
+    Shares its host handling with :func:`_canonicalize_url` -- same
+    `canonicalize_host`, same re-bracketing, same default-port elision -- so an
+    origin equality test cannot be defeated by spelling. Deliberately built
+    from `.hostname` rather than `.netloc`: `.netloc` is the one accessor that
+    retains userinfo, and `https://user@brand.example` must compare equal to
+    `https://brand.example` rather than pivoting trust onto a different string.
+    """
+    try:
+        parts = urlsplit(raw)
+    except ValueError as exc:
+        raise BrandJsonResolverError("invalid_url", f"{label} is not a valid URL") from exc
+    if not parts.scheme or not parts.netloc:
+        raise BrandJsonResolverError("invalid_url", f"{label} is not a valid URL")
+    raw_host = parts.hostname or ""
+    if not raw_host:
+        raise BrandJsonResolverError("invalid_url", f"{label} has no host")
+    try:
+        host = canonicalize_host(raw_host)
+    except (idna.IDNAError, UnicodeError) as exc:
+        raise BrandJsonResolverError(
+            "invalid_url", f"{label} host is not a valid IDNA name: {exc}"
+        ) from exc
+    if ":" in host:  # canonicalize_host returns IPv6 unbracketed
+        host = f"[{host}]"
+    scheme = parts.scheme.lower()
+    port = parts.port
+    if port is not None and port == _DEFAULT_PORTS.get(scheme):
+        port = None
+    return f"{scheme}://{host}" if port is None else f"{scheme}://{host}:{port}"
+
+
 def _default_jwks_uri(agent_url: str, final_brand_url: str) -> str:
     """Spec fallback: when ``agent.jwks_uri`` is absent, default to
     ``<agent_origin>/.well-known/jwks.json``.
@@ -886,15 +961,16 @@ def _default_jwks_uri(agent_url: str, final_brand_url: str) -> str:
     agent on a different origin from their brand.json MUST declare an
     explicit ``jwks_uri``.
     """
-    try:
-        agent_parts = urlsplit(agent_url)
-    except ValueError as exc:
-        raise BrandJsonResolverError("invalid_url", "agent.url is not a valid URL") from exc
-    if not agent_parts.scheme or not agent_parts.netloc:
-        raise BrandJsonResolverError("invalid_url", "agent.url is not a valid URL")
-    brand_parts = urlsplit(final_brand_url)
-    agent_origin = f"{agent_parts.scheme}://{agent_parts.netloc}"
-    brand_origin = f"{brand_parts.scheme}://{brand_parts.netloc}"
+    agent_origin = _canonical_origin(agent_url, "agent.url")
+    # ``final_brand_url`` has already been through ``_canonicalize_url``, but
+    # canonicalizing it again is required rather than merely tidy: the two
+    # sides of this comparison MUST be produced by the same function or the
+    # check compares a canonical string to a raw one. That asymmetry is the
+    # defect -- a publisher spelling the same origin identically on both sides
+    # (a U-label, a trailing root dot, a default port) got told their agent was
+    # on a different origin from their brand.json, which it was not.
+    # Re-canonicalizing is idempotent, so this costs nothing.
+    brand_origin = _canonical_origin(final_brand_url, "brand.json URL")
     if agent_origin != brand_origin:
         raise BrandJsonResolverError(
             "jwks_origin_mismatch",
