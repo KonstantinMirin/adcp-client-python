@@ -116,6 +116,13 @@ WEBHOOK_SIGNATURE_BRAND_JSON_AMBIGUOUS = "webhook_signature_brand_json_ambiguous
 WEBHOOK_SIGNATURE_KEY_ORIGIN_MISMATCH = "webhook_signature_key_origin_mismatch"
 WEBHOOK_SIGNATURE_KEY_ORIGIN_MISSING = "webhook_signature_key_origin_missing"
 
+# Structural code for a malformed authority on the webhook profile. Named
+# without the ``webhook_signature_`` prefix the rest of this family carries
+# because the spec names it that way: security.mdx's webhook checklist lists
+# ``webhook_target_uri_malformed`` in the error taxonomy and requires it at
+# step 10 for a malformed or mismatched authority.
+WEBHOOK_TARGET_URI_MALFORMED = "webhook_target_uri_malformed"
+
 # Code-family translation used by the webhook verifier wrapper. The verifier
 # pipeline raises request_signature_* codes; the wrapper retags them into
 # webhook_signature_* before exposing to callers. Keeps the 300-line verifier
@@ -123,14 +130,7 @@ WEBHOOK_SIGNATURE_KEY_ORIGIN_MISSING = "webhook_signature_key_origin_missing"
 REQUEST_TO_WEBHOOK_CODE = {
     REQUEST_SIGNATURE_REQUIRED: WEBHOOK_SIGNATURE_REQUIRED,
     REQUEST_SIGNATURE_HEADER_MALFORMED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
-    # Deliberately NOT a new `webhook_target_uri_malformed`. The AdCP spec
-    # defines `request_target_uri_malformed` (it is graded by the shipped
-    # canonicalization vectors) but names no webhook twin, and no bundled
-    # schema enumerates webhook signing codes. Minting one here would put a
-    # string on the wire that nothing upstream defines. A malformed target URI
-    # is the same failure class as a malformed header, so it retags onto the
-    # existing code until the spec says otherwise.
-    REQUEST_TARGET_URI_MALFORMED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
+    REQUEST_TARGET_URI_MALFORMED: WEBHOOK_TARGET_URI_MALFORMED,
     REQUEST_SIGNATURE_PARAMS_INCOMPLETE: WEBHOOK_SIGNATURE_PARAMS_INCOMPLETE,
     REQUEST_SIGNATURE_TAG_INVALID: WEBHOOK_SIGNATURE_TAG_INVALID,
     REQUEST_SIGNATURE_ALG_NOT_ALLOWED: WEBHOOK_SIGNATURE_ALG_NOT_ALLOWED,

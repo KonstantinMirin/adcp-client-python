@@ -203,3 +203,28 @@ def test_multi_label_signature_input_selects_sig1() -> None:
     assert labels["sig2"].components == ("@method", "@target-uri")
     assert labels["sig1"].params["nonce"] == "KXYnfEfJ0PBRZXQyVXfVQA"
     assert labels["sig2"].params["nonce"] == "DIFFERENT-NONCE-FOR-SIG2____"
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://./p", "https://../p", "https://.:443/p", "https://a..b/p"],
+    ids=["root-dot-only", "double-dot", "root-dot-with-port", "interior-empty-label"],
+)
+def test_authority_that_empties_after_normalization_is_rejected(url: str) -> None:
+    """A host must still be a host once the root dot comes off.
+
+    ``_malformed_authority_reason`` judges the raw netloc, where ``.`` and
+    ``..`` are non-empty and pass as hosts. Stripping the root dot is what
+    empties them, so the check has to run again afterwards. Without it
+    ``https://./p`` canonicalized to ``https:///p`` -- the empty authority
+    ``malformed-empty-authority`` rejects, reached by a path that skipped the
+    gate.
+
+    ``a..b`` is here because the rule is "no empty label", not merely
+    "not empty".
+    """
+    with pytest.raises(ValueError) as excinfo:
+        canonicalize_target_uri(url)
+    assert getattr(excinfo.value, "code", None) == "request_target_uri_malformed"
+    with pytest.raises(ValueError):
+        canonicalize_authority(url)

@@ -267,6 +267,14 @@ def _canon_host(host: str, netloc: str) -> str:
     """
     if host.endswith("."):
         host = host[:-1]
+    if not host or any(label == "" for label in host.split(".")):
+        # Re-checked AFTER the strip. `_malformed_authority_reason` runs on the
+        # raw netloc, where `.` and `..` are non-empty and look like hosts; it
+        # is only stripping the root dot that empties them. Without this,
+        # `https://./p` canonicalized to `https:///p` -- the empty authority
+        # this very module rejects two functions up, reached by a path that
+        # skipped the check.
+        raise TargetUriMalformedError(netloc, "the authority carries no host once normalized")
     if not host_has_raw_non_ascii(host):
         return host.lower()
     try:

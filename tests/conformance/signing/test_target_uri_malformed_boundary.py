@@ -38,7 +38,7 @@ from adcp.signing import (
     verify_request_signature,
 )
 from adcp.signing.errors import (
-    WEBHOOK_SIGNATURE_HEADER_MALFORMED,
+    WEBHOOK_TARGET_URI_MALFORMED,
     SignatureVerificationError,
 )
 from adcp.webhooks import (
@@ -164,9 +164,12 @@ def test_webhook_verifier_retags_target_uri_malformed_without_map_warning(
     no entry is therefore silently *tolerated* -- the caller just gets a vaguer
     code and the receiver's logs get noisier.
 
-    The expected twin is the EXISTING ``webhook_signature_header_malformed``: same
-    failure class, and no new wire-visible string is minted for a code the AdCP
-    webhook taxonomy does not define anywhere in this repo.
+    The expected twin is ``webhook_target_uri_malformed``. It is named without
+    the ``webhook_signature_`` prefix the rest of the family carries because the
+    spec names it that way: security.mdx's webhook checklist lists it in the
+    error taxonomy and requires it at step 10 for a malformed or mismatched
+    authority. Retagging onto ``webhook_signature_header_malformed`` instead
+    would put a stable but WRONG code on the wire.
     """
     headers = _signed_webhook_headers()
 
@@ -180,9 +183,9 @@ def test_webhook_verifier_retags_target_uri_malformed_without_map_warning(
                 options=_webhook_verify_options(),
             )
 
-    assert exc_info.value.code == WEBHOOK_SIGNATURE_HEADER_MALFORMED, (
+    assert exc_info.value.code == WEBHOOK_TARGET_URI_MALFORMED, (
         f"verify_webhook_signature({MALFORMED_URL!r}) must retag "
-        f"{REQUEST_TARGET_URI_MALFORMED!r} to {WEBHOOK_SIGNATURE_HEADER_MALFORMED!r}; "
+        f"{REQUEST_TARGET_URI_MALFORMED!r} to {WEBHOOK_TARGET_URI_MALFORMED!r}; "
         f"got {exc_info.value.code!r}"
     )
     unmapped = [
