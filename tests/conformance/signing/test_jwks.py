@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from typing import Any
 from unittest.mock import patch
 
@@ -17,6 +18,19 @@ from adcp.signing import (
 )
 
 # ---- SSRF validation ----
+
+
+def _addrinfo(ip: str) -> tuple[int, int, int, str, tuple]:
+    """Build a `getaddrinfo` record with the sockaddr shape matching the family.
+
+    AF_INET carries a 2-tuple `(addr, port)`; AF_INET6 a 4-tuple
+    `(addr, port, flowinfo, scope_id)`. Parametrised tests mix both families,
+    and a v6 address in a v4-shaped record would exercise a resolution the
+    stdlib never actually produces.
+    """
+    if ":" in ip:
+        return (socket.AF_INET6, socket.SOCK_STREAM, 6, "", (ip, 0, 0, 0))
+    return (socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0))
 
 
 @pytest.mark.parametrize(
@@ -86,6 +100,136 @@ def test_ssrf_blocks_oracle_metadata() -> None:
     ):
         with pytest.raises(SSRFValidationError):
             validate_jwks_uri("http://oracle-metadata.example/jwks.json")
+
+
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("100.64.0.1", "RFC 6598 CGNAT lower bound"),
+        ("100.100.100.1", "CGNAT mid-range — Alibaba metadata's neighbourhood"),
+        ("100.127.255.254", "RFC 6598 CGNAT upper bound"),
+        ("192.88.99.0", "RFC 7526 6to4 relay anycast lower bound"),
+        ("192.88.99.1", "RFC 7526 deprecated 6to4 relay anycast"),
+        ("192.88.99.255", "RFC 7526 6to4 relay anycast upper bound"),
+        ("192.31.196.1", "RFC 7535 AS112-v4 anycast"),
+        ("192.52.193.1", "RFC 7450 AMT anycast"),
+        ("192.175.48.1", "RFC 7534 AS112 direct delegation"),
+        ("2001:20::1", "RFC 7343 ORCHIDv2 (IPv6)"),
+    ],
+)
+def test_ssrf_blocks_ranges_python_flags_miss(resolved_ip: str, why: str) -> None:
+    """Reserved ranges that `ipaddress`'s own flags do not classify.
+
+    Every range here is non-reserved under all six flags on the whole
+    supported interpreter matrix (3.10-3.13) — verified empirically, not
+    assumed. `is_private` is False across 100.64.0.0/10 because RFC 6598
+    designates *shared* address space rather than private space, and it
+    remains False on 3.12.9 / 3.13.11, so the entry is load-bearing on every
+    supported version rather than redundant on newer ones.
+
+    AdCP 3.1.1 names 100.64.0.0/10 in the deny list a fetcher MUST apply
+    ("Webhook URL validation (SSRF)", step 2). The remainder are IANA
+    special-use anycast and non-routable identifier space, never a legitimate
+    JWKS or webhook destination.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[_addrinfo(resolved_ip)],
+    ):
+        with pytest.raises(SSRFValidationError, match="reserved range"):
+            validate_jwks_uri("https://buyer-supplied.example/jwks.json")
+
+
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("2002:a9fe:a9fe::", "6to4 2002::/16 embedding 169.254.169.254"),
+        ("2002:0a00:0001::", "6to4 2002::/16 embedding 10.0.0.1"),
+        ("2001::1", "Teredo 2001::/32"),
+        ("64:ff9b::a9fe:a9fe", "NAT64 64:ff9b::/96 embedding 169.254.169.254"),
+        ("64:ff9b::a00:1", "NAT64 64:ff9b::/96 embedding 10.0.0.1"),
+        ("192.0.0.8", "IPv4 NAT64 dummy address"),
+    ],
+)
+def test_ssrf_flag_covered_special_ranges_stay_blocked(resolved_ip: str, why: str) -> None:
+    """Special-use ranges the flags already cover, pinned against regression.
+
+    These are deliberately NOT in `_EXTRA_BLOCKED_NETWORKS`: `ipaddress`
+    classifies the whole prefix reserved on every supported version, so the
+    embedded IPv4 in the tunnel forms needs no decoding — the address is
+    rejected before anything is unwrapped.
+
+    That makes the block a dependency on CPython's classification rather than
+    on our own list, which is exactly the kind of assumption worth pinning: if
+    a future release reclassified any of these, the deny list would need an
+    explicit entry and this test is what would say so.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[_addrinfo(resolved_ip)],
+    ):
+        with pytest.raises(SSRFValidationError):
+            validate_jwks_uri("https://buyer-supplied.example/jwks.json")
+
+
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("2606:4700:4700::1111", "public IPv6"),
+        ("2001:4860:4860::8888", "public IPv6, different allocation"),
+    ],
+)
+def test_ssrf_ipv6_accepted_against_ipv4_only_extra_networks(resolved_ip: str, why: str) -> None:
+    """A public IPv6 resolution must pass, not raise, not crash.
+
+    `_EXTRA_BLOCKED_NETWORKS` holds only IPv4 networks, and the membership
+    test runs against a possibly-IPv6 address. CPython's
+    `_BaseNetwork.__contains__` returns False on a version mismatch rather
+    than raising (only the ordering operators raise), so a v6 address falls
+    through to the flag checks. That behaviour is load-bearing here, so pin
+    it with a test rather than leaving it as an assumption about CPython.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(10, 1, 6, "", (resolved_ip, 0, 0, 0))],
+    ):
+        validate_jwks_uri("https://ipv6-host.example/jwks.json")
+
+
+def test_ssrf_6to4_relay_honours_allow_private_override() -> None:
+    """The 6to4 relay range follows the same `allow_private` gate as CGNAT.
+
+    Only CGNAT had override coverage; both new ranges sit behind the same
+    gate, so pin both rather than inferring the second from the first.
+    """
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("192.88.99.1", 0))],
+    ):
+        validate_jwks_uri("https://relay-host.example/jwks.json", allow_private=True)
+
+
+def test_ssrf_cgnat_honours_allow_private_override() -> None:
+    """CGNAT follows the same `allow_private` gate as every other reserved
+    range — it is not unconditional like the cloud-metadata list, so on-prem
+    and test deployments keep their documented escape hatch."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("100.64.0.1", 0))],
+    ):
+        validate_jwks_uri("https://cgnat-host.example/jwks.json", allow_private=True)
+
+
+def test_ssrf_alibaba_metadata_blocked_despite_allow_private() -> None:
+    """Regression guard for the interaction between the new CGNAT range and
+    the metadata list: 100.100.100.200 sits inside 100.64.0.0/10, and the
+    metadata check must keep winning so `allow_private` cannot unblock it."""
+    with patch(
+        "adcp.signing.jwks.socket.getaddrinfo",
+        return_value=[(2, 1, 6, "", ("100.100.100.200", 0))],
+    ):
+        with pytest.raises(SSRFValidationError, match="metadata"):
+            validate_jwks_uri("http://alibaba-metadata.example/jwks.json", allow_private=True)
 
 
 def test_ssrf_caps_resolved_address_scan() -> None:

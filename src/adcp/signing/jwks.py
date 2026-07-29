@@ -55,6 +55,50 @@ BLOCKED_METADATA_IPS: frozenset[str] = frozenset(
     }
 )
 
+# Reserved ranges that Python's ``ipaddress`` flags do NOT classify, so the
+# ``is_private``/``is_reserved``/... check below misses them on its own.
+#
+# * ``100.64.0.0/10`` — RFC 6598 carrier-grade NAT. AdCP names this range
+#   explicitly in the reserved-range deny list a fetcher MUST apply
+#   (spec 3.1.1, "Webhook URL validation (SSRF)", step 2), but
+#   ``is_private`` is False for it: RFC 6598 designates shared address
+#   space, not private space. It is routable inside carrier and container
+#   networks (and is where Alibaba's metadata endpoint lives), so leaving
+#   it open is a real SSRF path into an operator's internal network.
+# * ``192.88.99.0/24`` — RFC 7526 deprecated 6to4 relay anycast. Traffic
+#   sent here is tunnelled by whatever relay answers, which makes the
+#   destination unattributable; ``is_reserved`` does not cover it.
+# * ``192.31.196.0/24`` (RFC 7535 AS112-v4), ``192.52.193.0/24`` (RFC 7450
+#   AMT), ``192.175.48.0/24`` (RFC 7534 AS112 direct delegation) and
+#   ``2001:20::/28`` (RFC 7343 ORCHIDv2) — IANA special-use anycast and
+#   non-routable identifier space. None is ever a legitimate JWKS or webhook
+#   destination, and none is caught by any flag.
+#
+# Verified empirically across the supported interpreter matrix (3.10, 3.11,
+# 3.12, 3.13): every range above is classified non-reserved by all six flags on
+# ALL of them, so each entry is load-bearing on every supported version — none
+# is redundant anywhere. In particular ``100.64.0.0/10`` is still
+# ``is_private == False`` on 3.12.9 and 3.13.11.
+#
+# ``not ip.is_global`` is NOT a usable substitute: it reports True (i.e.
+# globally reachable) for the 6to4-relay, AS112, AMT and ORCHIDv2 ranges on
+# every supported version, so it would close none of these holes.
+#
+# Ranges deliberately absent because the flags already cover them on every
+# supported version — 6to4 ``2002::/16``, Teredo ``2001::/32``, NAT64
+# ``64:ff9b::/96``, and IPv4 NAT64 ``192.0.0.8``. Their embedded IPv4 needs no
+# decoding: the whole prefix is rejected before any address is unwrapped.
+# ``test_ssrf_flag_covered_special_ranges_stay_blocked`` pins that so a future
+# CPython reclassification cannot silently open them.
+_EXTRA_BLOCKED_NETWORKS: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...] = (
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("192.88.99.0/24"),
+    ipaddress.ip_network("192.31.196.0/24"),
+    ipaddress.ip_network("192.52.193.0/24"),
+    ipaddress.ip_network("192.175.48.0/24"),
+    ipaddress.ip_network("2001:20::/28"),
+)
+
 # Recommended destination ports for hardened SSRF-validated outbound HTTP
 # deployments. AdCP itself does not constrain ``pushNotificationConfig.url``
 # ports (see ``schemas/cache/core/push-notification-config.json``), so the
@@ -272,6 +316,7 @@ def resolve_and_validate_host(
             or ip.is_multicast
             or ip.is_reserved
             or ip.is_unspecified
+            or any(ip in network for network in _EXTRA_BLOCKED_NETWORKS)
         ):
             last_rejection = f"resolved IP {ip} is in a reserved range"
             # Historical behavior of validate_jwks_uri was to raise on
