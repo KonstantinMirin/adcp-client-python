@@ -107,8 +107,6 @@ from adcp.types import (
     AcquireRightsResponse,
     ActivateSignalRequest,
     ActivateSignalSuccessResponse,
-    BuildCreativeRequest,
-    BuildCreativeResponse,
     CalibrateContentRequest,
     CalibrateContentResponse,
     CheckGovernanceRequest,
@@ -158,14 +156,10 @@ from adcp.types import (
     ListCollectionListsResponse,
     ListContentStandardsRequest,
     ListContentStandardsResponse,
-    ListCreativeFormatsRequest,
-    ListCreativeFormatsResponse,
     ListCreativesRequest,
     ListCreativesResponse,
     ListPropertyListsRequest,
     ListPropertyListsResponse,
-    PreviewCreativeRequest,
-    PreviewCreativeResponse,
     ProvidePerformanceFeedbackRequest,
     ProvidePerformanceFeedbackResponse,
     ReportPlanOutcomeRequest,
@@ -199,6 +193,18 @@ from adcp.types import (
     VerifyBrandClaimsRequest,
     VerifyBrandClaimsResponseBulk,
     project_geo_postal_areas,
+)
+from adcp.types.legacy import (
+    LegacyBuildCreativeRequest,
+    LegacyBuildCreativeResponse,
+    LegacyPreviewCreativeRequest,
+    LegacyPreviewCreativeResponse,
+)
+from adcp.types.legacy import (
+    LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest,
+)
+from adcp.types.legacy import (
+    LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
 )
 
 if TYPE_CHECKING:
@@ -369,10 +375,10 @@ _OPTIONAL_PLATFORM_METHODS: frozenset[str] = frozenset(
         # Sales-* optional (gated by claim, not method presence)
         "get_media_buys",
         "provide_performance_feedback",
-        "list_creative_formats",
+        "list_creative_formats_legacy",
         "list_creatives",
         # CreativeBuilderPlatform optional
-        "preview_creative",
+        "preview_creative_legacy",
         "validate_input",
         # BrandRightsPlatform optional verification reads.
         "verify_brand_claim",
@@ -390,6 +396,11 @@ _OPTIONAL_PLATFORM_METHODS: frozenset[str] = frozenset(
         "sync_catalogs",
     }
 )
+
+_OPTIONAL_LEGACY_WIRE_TO_ADOPTER = {
+    "list_creative_formats": "list_creative_formats_legacy",
+    "preview_creative": "preview_creative_legacy",
+}
 
 
 #: Map each spec specialism slug to the tools that specialism's Protocol
@@ -1198,6 +1209,9 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         ):
             serving.discard("list_accounts")
             self._log_account_tool_dropped("list_accounts", "list")
+        for wire_name, adopter_name in _OPTIONAL_LEGACY_WIRE_TO_ADOPTER.items():
+            if wire_name in serving and not callable(getattr(self._platform, adopter_name, None)):
+                serving.discard(wire_name)
         return frozenset(serving)
 
     def _log_account_tool_dropped(self, tool_name: str, method_name: str) -> None:
@@ -1298,6 +1312,15 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         self._property_list_fetcher = property_list_fetcher
         self._media_buy_store = media_buy_store
         self._advertise_all = advertise_all
+        # Compatibility adapters are authored by the adopter platform, while
+        # the wire boundary operates on this handler. Forward them explicitly
+        # so request normalization and response downgrade use the adopter's
+        # declared mappings without exposing legacy identity to platform
+        # method inputs.
+        self.legacy_format_converter = getattr(platform, "legacy_format_converter", None)
+        self.canonical_format_legacy_resolver = getattr(
+            platform, "canonical_format_legacy_resolver", None
+        )
 
         # Cache whether the platform's create_media_buy accepts 'configs'
         # so we only pay the inspect.signature cost at construction time.
@@ -1802,6 +1825,17 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             response["media_buy"] = {
                 "supported_pricing_models": list(dict.fromkeys(caps.pricing_models)),
             }
+
+        # Canonical creative models are framework-native for AdCP 3.1+.
+        # Apply this after adopter capability projection so examples and
+        # downstream platforms do not need to repeat the SDK-owned flag.
+        # A negotiated 3.0 response omits the unknown feature entirely.
+        from adcp.server.responses import _apply_canonical_creatives_capability
+
+        _apply_canonical_creatives_capability(
+            response,
+            adcp_version=(context.resolved_adcp_version if context is not None else None),
+        )
 
         if has_scoped_caps:
             from adcp.decisioning.validate_capabilities import _validate_response_dict
@@ -2341,7 +2375,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             ),
         )
 
-    async def list_creative_formats(  # type: ignore[override]
+    async def list_creative_formats_legacy(  # type: ignore[override]
         self,
         params: ListCreativeFormatsRequest,
         context: ToolContext | None = None,
@@ -2349,6 +2383,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         """Wire request has no ``account`` field. See
         :meth:`provide_performance_feedback` for the no-ref account
         resolution caveat."""
+        self._require_platform_method("list_creative_formats_legacy")
         tool_ctx = context or ToolContext()
         account = await self._resolve_account(None, tool_ctx)
         ctx = self._build_ctx(tool_ctx, account)
@@ -2356,7 +2391,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             "ListCreativeFormatsResponse",
             await _invoke_platform_method(
                 self._platform,
-                "list_creative_formats",
+                "list_creative_formats_legacy",
                 params,
                 ctx,
                 executor=self._executor,
@@ -2508,11 +2543,11 @@ class PlatformHandler(ADCPHandler[ToolContext]):
 
     # ----- CreativeBuilderPlatform / CreativeAdServerPlatform -----
 
-    async def build_creative(  # type: ignore[override]
+    async def build_creative_legacy(  # type: ignore[override]
         self,
-        params: BuildCreativeRequest,
+        params: LegacyBuildCreativeRequest,
         context: ToolContext | None = None,
-    ) -> BuildCreativeResponse:
+    ) -> LegacyBuildCreativeResponse:
         """Build / retrieve a creative.
 
         Three discriminated return arms per the per-specialism
@@ -2528,38 +2563,38 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         ``{creative_manifest: ...}`` (single) or
         ``{creative_manifests: [...]}`` (multi).
         """
-        self._require_platform_method("build_creative")
+        self._require_platform_method("build_creative_legacy")
         tool_ctx = context or ToolContext()
         account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
         ctx = self._build_ctx(tool_ctx, account)
         result = await _invoke_platform_method(
             self._platform,
-            "build_creative",
+            "build_creative_legacy",
             params,
             ctx,
             executor=self._executor,
             registry=self._registry,
         )
-        return cast("BuildCreativeResponse", _project_build_creative(result))
+        return cast("LegacyBuildCreativeResponse", _project_build_creative(result))
 
-    async def preview_creative(  # type: ignore[override]
+    async def preview_creative_legacy(  # type: ignore[override]
         self,
-        params: PreviewCreativeRequest,
+        params: LegacyPreviewCreativeRequest,
         context: ToolContext | None = None,
-    ) -> PreviewCreativeResponse:
+    ) -> LegacyPreviewCreativeResponse:
         """Optional on :class:`CreativeBuilderPlatform`; required on
         :class:`CreativeAdServerPlatform`. Surface
         ``UNSUPPORTED_FEATURE`` when the adopter's platform doesn't
         implement it (Builder adopters who don't render preview)."""
-        self._require_platform_method("preview_creative")
+        self._require_platform_method("preview_creative_legacy")
         tool_ctx = context or ToolContext()
         account = await self._resolve_account(getattr(params, "account", None), tool_ctx)
         ctx = self._build_ctx(tool_ctx, account)
         return cast(
-            "PreviewCreativeResponse",
+            "LegacyPreviewCreativeResponse",
             await _invoke_platform_method(
                 self._platform,
-                "preview_creative",
+                "preview_creative_legacy",
                 params,
                 ctx,
                 executor=self._executor,

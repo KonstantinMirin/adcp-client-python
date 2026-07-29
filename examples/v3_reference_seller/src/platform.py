@@ -22,7 +22,7 @@ Optional (v6.0 rc.1+):
 * :meth:`get_media_buys` — ``GET /v1/orders``
 * :meth:`provide_performance_feedback` — ``POST /v1/orders/{id}/conversions``
   (CAPI is the GAM-flavored equivalent of perf feedback)
-* :meth:`list_creative_formats` — STATIC (publisher-defined; no upstream
+* :meth:`list_creative_formats_legacy` — STATIC (publisher-defined; no upstream
   endpoint)
 * :meth:`list_creatives` — ``GET /v1/creatives``
 
@@ -71,6 +71,7 @@ from urllib.parse import urlsplit
 
 from sqlalchemy import select
 
+from adcp.canonical_formats import LegacyFormatConversionContext, migrated_format_option_id
 from adcp.decisioning import (
     Account,
     AdcpError,
@@ -88,6 +89,9 @@ from adcp.decisioning.capabilities import (
     Account as CapsAccount,
 )
 from adcp.decisioning.capabilities import (
+    Features as MediaBuyFeatures,
+)
+from adcp.decisioning.capabilities import (
     MediaBuy as CapsMediaBuy,
 )
 from adcp.decisioning.capabilities import (
@@ -99,6 +103,7 @@ from adcp.decisioning.capabilities import (
 from adcp.decisioning.specialisms import SalesPlatform
 from adcp.server import current_tenant
 from adcp.server.helpers import valid_actions_for_status
+from adcp.server.responses import list_creatives_response
 from adcp.types import (
     BusinessEntity,
     CreateMediaBuyRequest,
@@ -110,10 +115,7 @@ from adcp.types import (
     GetMediaBuysResponse,
     GetProductsRequest,
     GetProductsResponse,
-    ListCreativeFormatsRequest,
-    ListCreativeFormatsResponse,
     ListCreativesRequest,
-    ListCreativesResponse,
     MediaBuyStatus,
     Product,
     ProvidePerformanceFeedbackRequest,
@@ -124,6 +126,15 @@ from adcp.types import (
     UpdateMediaBuyRequest,
     UpdateMediaBuySuccessResponse,
 )
+from adcp.types.legacy import (
+    LegacyFormat,
+)
+from adcp.types.legacy import (
+    LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest,
+)
+from adcp.types.legacy import (
+    LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
+)
 
 from . import upstream as upstream_helpers
 
@@ -131,6 +142,26 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
     from adcp.decisioning import RequestContext
+
+
+_STORYBOARD_LEGACY_FORMAT_OWNERS = {
+    "https://creative.adcontextprotocol.org",
+    "https://reference.adcp.org",
+    "https://your-platform.example.com",
+}
+
+
+def _legacy_format_converter(context: LegacyFormatConversionContext) -> dict[str, Any] | None:
+    """Explicitly map the reference fixture catalogs into canonical kinds."""
+
+    ref = context.format_id
+    if str(ref.agent_url).rstrip("/") not in _STORYBOARD_LEGACY_FORMAT_OWNERS:
+        return None
+    return {
+        "format_kind": "video_hosted" if "video" in ref.id else "image",
+        "params": {},
+    }
+
 
 from .models import Account as AccountRow
 from .models import BuyerAgent as BuyerAgentRow
@@ -564,7 +595,9 @@ _DELIVERY_STATUS_MAP: dict[str, str] = {
 # ad server stores the full package shape upstream drop this layer.
 _PERSISTED_PACKAGE_FIELDS: tuple[str, ...] = (
     "product_id",
-    "format_ids",
+    "format_option_refs",
+    "format_kind",
+    "params",
     "budget",
     "pricing_option_id",
     "bid_price",
@@ -651,7 +684,7 @@ def _product_format_options(
     product_id: str,
     name: str,
     format_ids: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+) -> list[Format]:
     options: list[dict[str, Any]] = []
     for i, fmt in enumerate(format_ids):
         v1_format_id = str(fmt.get("id") or "display_300x250")
@@ -686,7 +719,7 @@ def _product_format_options(
                 },
             }
         )
-    return options
+    return [Format.model_validate(option) for option in options]
 
 
 def _projected_package_state(state: dict[str, Any]) -> dict[str, Any]:
@@ -723,6 +756,7 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
     #: template replace this value with their real production ad-server
     #: URL when migrating accounts to ``mode='live'``.
     upstream_url = "https://sales-guaranteed.example.invalid/v1"
+    legacy_format_converter = staticmethod(_legacy_format_converter)
 
     capabilities = DecisioningCapabilities(
         # Real GAM-shaped publishers sell BOTH guaranteed (IO-driven)
@@ -742,7 +776,11 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         account=CapsAccount(supported_billing=["operator", "agent"]),
         # Pricing declared on the structured ``media_buy`` block —
         # the reference seller supports CPM only.
-        media_buy=CapsMediaBuy(supported_pricing_models=["cpm"]),
+        media_buy=CapsMediaBuy(
+            supported_pricing_models=["cpm"],
+            # The translator is the explicit legacy interoperability fixture.
+            features=MediaBuyFeatures(canonical_creatives=False),
+        ),
     )
 
     def __init__(
@@ -960,7 +998,6 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                         "selection_type": "all",
                     }
                 ],
-                "format_ids": format_ids,
                 "format_options": format_options,
                 "reporting_capabilities": {
                     "available_reporting_frequencies": ["daily"],
@@ -977,12 +1014,6 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                 "pricing_options": [pricing_option],
             }
             product = Product.model_validate(product_payload)
-            # The generated ProductFormatDeclaration currently omits the
-            # canonical discriminator fields during validation. Restore
-            # the already-built wire declarations so 3.1 translators see
-            # the published closed format set.
-            product.format_ids = format_ids  # type: ignore[assignment]
-            product.format_options = format_options  # type: ignore[assignment]
             products.append(product)
         return GetProductsResponse(products=products)
 
@@ -1535,12 +1566,15 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
                     )
                 )
                 continue
-            # The upstream's ``format_id`` is a string; the AdCP
-            # ``format_id`` is a structured ``{agent_url, id}`` object.
-            # Pass the ``id`` through — adopters whose upstream uses a
-            # different format namespace map across here.
-            format_id_raw = creative.format_id
-            format_id_str = format_id_raw.id if hasattr(format_id_raw, "id") else str(format_id_raw)
+            # The upstream still names generated formats. This explicit
+            # translator owns that compatibility mapping; canonical SDK
+            # models never reverse-guess a legacy identity after dispatch.
+            format_kind = getattr(creative.format_kind, "value", creative.format_kind)
+            format_id_str = {
+                "image": "display_300x250",
+                "video_hosted": "video_16x9_30s",
+                "video_linear": "video_16x9_30s",
+            }.get(str(format_kind), str(format_kind))
             payload: dict[str, Any] = {
                 "name": creative.name,
                 "format_id": format_id_str,
@@ -1890,7 +1924,7 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
 
     # ----- list_creative_formats -------------------------------------------
 
-    async def list_creative_formats(
+    async def list_creative_formats_legacy(
         self, req: ListCreativeFormatsRequest, ctx: RequestContext
     ) -> ListCreativeFormatsResponse:
         """Static catalog of accepted formats — the upstream has no
@@ -1900,21 +1934,21 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
         del req, ctx
         agent_url = "https://reference.adcp.org"
         formats = [
-            Format.model_validate(
+            LegacyFormat.model_validate(
                 {
                     "format_id": {"agent_url": agent_url, "id": "display_300x250"},
                     "name": "Display 300x250 (medium rectangle)",
                     "description": "IAB standard 300x250 display banner.",
                 }
             ),
-            Format.model_validate(
+            LegacyFormat.model_validate(
                 {
                     "format_id": {"agent_url": agent_url, "id": "display_728x90"},
                     "name": "Display 728x90 (leaderboard)",
                     "description": "IAB standard 728x90 display banner.",
                 }
             ),
-            Format.model_validate(
+            LegacyFormat.model_validate(
                 {
                     "format_id": {"agent_url": agent_url, "id": "video_16x9_30s"},
                     "name": "Video 16:9 30s",
@@ -1929,7 +1963,7 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
 
     async def list_creatives(
         self, req: ListCreativesRequest, ctx: RequestContext
-    ) -> ListCreativesResponse:
+    ) -> dict[str, Any]:
         """``GET /v1/creatives`` → AdCP ``Creative[]``.
 
         Pagination is offset/limit applied client-side after the
@@ -1943,7 +1977,6 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
             )
         network_code = ctx.account.metadata["network_code"]
         advertiser_id = ctx.account.metadata["advertiser_id"]
-        agent_url = "https://reference.adcp.org"
         limit = 50
         offset = 0
         if req.pagination is not None:
@@ -1966,31 +1999,68 @@ class V3ReferenceSeller(DecisioningPlatform, SalesPlatform):
             ]
         total = len(upstream_creatives)
         page = upstream_creatives[offset : offset + limit]
-        creatives = [
-            {
-                # Surface the buyer's original creative_id when the seller
-                # owns the mapping; falls back to the upstream id when the
-                # creative was synced outside this seller instance.
-                "creative_id": self._creative_id_reverse.get(c["creative_id"], c["creative_id"]),
-                "name": c["name"],
-                "format_id": {"agent_url": agent_url, "id": c.get("format_id", "")},
-                "status": _project_creative_status(c.get("status", "active")),
-                "created_date": c.get("created_at"),
-                "updated_date": c.get("created_at"),
+        creatives: list[dict[str, Any]] = []
+        format_options: list[Format] = []
+        for c in page:
+            legacy_ref = {
+                "agent_url": "https://reference.adcp.org",
+                "id": str(c.get("format_id") or "display_300x250"),
             }
-            for c in page
-        ]
+            option_id = migrated_format_option_id(legacy_ref)
+            format_kind = "video_hosted" if "video" in legacy_ref["id"] else "image"
+            width, height = _format_dimensions(legacy_ref["id"])
+            params: dict[str, Any] = (
+                {}
+                if format_kind == "video_hosted"
+                else {
+                    "sizes": [{"width": width, "height": height}],
+                    "asset_source": "buyer_uploaded",
+                    "ssl_required": True,
+                    "image_formats": ["jpg", "png", "gif"],
+                }
+            )
+            format_options.append(
+                Format.model_validate(
+                    {
+                        "format_option_id": option_id,
+                        "publisher_domain": "reference.adcp.org",
+                        "format_kind": format_kind,
+                        "params": params,
+                        # Compatibility evidence is private to Format and
+                        # cannot leak through model_dump/model_json_schema.
+                        "v1_format_ref": [legacy_ref],
+                    }
+                )
+            )
+            creatives.append(
+                {
+                    # Surface the buyer's original creative_id when the seller
+                    # owns the mapping; falls back to the upstream id when the
+                    # creative was synced outside this seller instance.
+                    "creative_id": self._creative_id_reverse.get(
+                        c["creative_id"], c["creative_id"]
+                    ),
+                    "name": c["name"],
+                    "format_kind": format_kind,
+                    "format_option_ref": {
+                        "scope": "publisher",
+                        "publisher_domain": "reference.adcp.org",
+                        "format_option_id": option_id,
+                    },
+                    "status": _project_creative_status(c.get("status", "active")),
+                    "created_date": c.get("created_at"),
+                    "updated_date": c.get("created_at"),
+                }
+            )
         has_more = offset + len(creatives) < total
         self._record(
             "creatives.list",
             {"network_code": network_code, "advertiser_id": advertiser_id},
         )
-        return ListCreativesResponse.model_validate(
-            {
-                "query_summary": {"total_matching": total, "returned": len(creatives)},
-                "pagination": {"has_more": has_more, "total_count": total},
-                "creatives": creatives,
-            }
+        return list_creatives_response(
+            creatives,
+            format_declarations=format_options,
+            pagination={"has_more": has_more, "total_count": total},
         )
 
 
