@@ -206,6 +206,8 @@ async def test_nine_actual_artifacts_preserve_ordinary_writes_and_frozen_b22_mou
                 ),
             )
             request = {
+                # B2.2 is an immutable installed rc.6 binary; this request
+                # deliberately uses its historical public protocol pin.
                 "adcp_version": "3.2-rc.6",
                 "account": {"account_id": case.config.account_id},
                 "idempotency_key": "frozen-feed-mixed-batch",
