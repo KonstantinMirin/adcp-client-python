@@ -2,8 +2,8 @@
   "schema_version": 1,
   "pending_source_leads": {
     "python_main": {
-      "commit": "940c95e0c2d93758ed334b3edff59cbe933362d4",
-      "status": "accepted_source_base_not_selected_artifact"
+      "commit": "4d066171cdda2a802a71d4776c1c51132d5baff7",
+      "status": "selected_published_b18_artifact"
     },
     "python_pr1208": {
       "head": "a124afd3",
@@ -31,9 +31,12 @@
   },
   "protocol": {
     "required_contract": {
-      "version": "3.2.0-rc.6",
-      "bundle_selected": false,
-      "status": "required_alignment_not_a_selected_protocol_bundle"
+      "version": "3.2.0-rc.7",
+      "source_commit": "4ca13ae5cb65dff40aa514619f677293616522cd",
+      "bundle_url": "https://adcontextprotocol.org/protocol/3.2.0-rc.7.tgz",
+      "bundle_sha256": "942b24c66500839b3db21e74f69f2fe34d6ac18f898acc1f67aa126e35547994",
+      "bundle_selected": true,
+      "status": "live_default_protocol_bundle"
     },
     "historical_fixture_rc4": {
       "version": "3.2.0-rc.4",
@@ -49,52 +52,24 @@
   "python": {
     "candidate": {
       "package": "adcp",
-      "version": "8.0.0b15",
-      "source_commit": "25e0c7278a19493345975881d1578c76fc64dc1b",
-      "source_tree": "bcc4ad30ea4ee43d7b82f39e12f60b5a3ac2aead",
-      "source_parents": [
-        "7af569985174235739be4007e693d10ccb604817",
-        "fe1a1cbd070bc94ec32685026ad39ec55058dc73"
-      ],
-      "adoption_base": "1f953c40d761be71d11fde84c78359ff2074fe7c",
-      "build_kind": "prepublication_exact_pr1208_head",
-      "artifact_policy": "local_path_plus_sha256_plus_source_tree_plus_dependency_runtime_record",
-      "version_string_occupied": true,
-      "known_independent_builds": [
-        {
-          "builder": "sdk_owner_reference",
-          "vcs_wheel_sha256": "0e7e189b98a1e512c6273547c341a458dcebcc15691268178bddf56e42385a28",
-          "sdist_wheel_sha256": "b6a7a68f188b021e2bc11c8fa6b4e86aff7eaf1311c7eeb2d6ad90c7d60133fc",
-          "wheel_bytes": 89865398,
-          "sdist_sha256": "c77b77a19a2a2eb5fc5804b7dcf500ae06cf87994ec4d8d441275bc7e5c06c91",
-          "sdist_bytes": 84213583
-        },
-        {
-          "builder": "python_expert",
-          "installed_wheel_sha256": "5beb75ed7ef9a406184c3049efd67e87d08d05c46fa1a4b28eab09a7271bc268",
-          "wheel_bytes": 89865399,
-          "qualification": "separate_six_case_public_composition_evidence_not_matrix_coverage"
-        },
-        {
-          "builder": "reporting_interop_harness",
-          "vcs_wheel_sha256": "11987e93f01dfab250071238fd78d94fa646a2de2c468a38396a7103ba19c327",
-          "sdist_wheel_sha256": "a5afc1a02a91ec6a0f06bc301c0d92d2a1013173786274f0620bcfdcd5175e73",
-          "wheel_bytes": 89865398,
-          "sdist_sha256": "b52f7bd8bf25361ccbca98705a7201744cd30e252c171fa91aa829731fce83b1",
-          "sdist_bytes": 84200303,
-          "wheel_member_count": 7813,
-          "sdk_member_count": 7807,
-          "all_member_manifest_sha256": "397b9b58ad4e72d68e1380a5ad86ff9a76852ca873c3466b78d7c9890035cfa5",
-          "sdk_member_manifest_sha256": "0ed3b8de391a04be9aee477c6db11aa82e0edca12b1651ab9935dc83ba73b333",
-          "metadata_sha256": "cfae23f8b2a21b0425a7122dfea285d7a1edf0afdb9428b995df3919d95ca28a",
-          "build": {
-            "python": "3.10.21",
-            "build": "1.6.1",
-            "setuptools": "84.0.0",
-            "wheel": "0.48.0"
-          }
-        }
-      ],
+      "version": "8.0.0b18",
+      "tag": "v8.0.0-beta.18",
+      "source_commit": "4d066171cdda2a802a71d4776c1c51132d5baff7",
+      "source_tree": "a8f75ebb71bb4df6ccee170ec847e45f0120f93f",
+      "build_kind": "published_pypi_release",
+      "artifact_policy": "exact_registry_url_plus_sha256_plus_installed_member_manifest",
+      "registry": "https://pypi.org/simple/adcp/",
+      "wheel_url": "https://files.pythonhosted.org/packages/bc/cf/c796c2e7cd01e52ad82b90108aacdf960418c2cda0409198442cd1e8356b/adcp-8.0.0b18-py3-none-any.whl",
+      "wheel_sha256": "3eabf30fbdae298111f3bbb4f4efb36f193dd08d7845217948ed211d7476e2c3",
+      "wheel_bytes": 41453193,
+      "sdist_url": "https://files.pythonhosted.org/packages/dc/d9/b8d8e200d1b287154f8fcf08e2702b420875d463dc93fecb7622b30e6a4b/adcp-8.0.0b18.tar.gz",
+      "sdist_sha256": "d1bdb7e6c19e0e61432c0b300dfcd8f990d93f096964c4c8ad1401a68cc8bb50",
+      "sdist_bytes": 39026062,
+      "sdk_member_count": 4644,
+      "sdk_member_manifest_sha256": "6c32ffbaf5d7df2cfa153ae3ded161dd4a9e68e0df29b2445b8a91bb5647cf86",
+      "wheel_member_count": 4650,
+      "wheel_member_manifest_sha256": "02568a1d04adaee6c01046d758ba88d74f649782d1d0b38fe501f643c39e42af",
+      "metadata_sha256": "75495d145623b70f6554c409a4d052291fe5db6a54a79124a8199795ccd49b5f",
       "development_dependency_controls": [
         {
           "python": "3.10.21",
@@ -111,10 +86,39 @@
           "lock_sha256": "1e6d45d094fd24b61e749ed0d658ed1d9f6a5e54e7977bc8cbefe3fcabeccb69"
         }
       ],
-      "protocol": "3.2.0-rc.4",
+      "protocol": "3.2.0-rc.7",
       "python_floor": "3.10"
     },
     "previous_released": {
+      "package": "adcp",
+      "version": "8.0.0b16",
+      "tag": "v8.0.0-beta.16",
+      "source_commit": "8ca7dfe09facd3b4744665447e16a80474f021d7",
+      "source_tree": "6f4b1fbf66242c86c05902add7c645d71932141a",
+      "build_kind": "published_pypi_release",
+      "artifact_policy": "exact_registry_url_plus_sha256_plus_installed_member_manifest",
+      "registry": "https://pypi.org/simple/adcp/",
+      "wheel_url": "https://files.pythonhosted.org/packages/97/07/74355b24ace6d7618cd330cc970a0ba24f82673e5e1e1e7767d153f73989/adcp-8.0.0b16-py3-none-any.whl",
+      "wheel_sha256": "7589a546cacdddce3a7a827adaa11d4ccab34768c558689b1c6850b85cd098b1",
+      "wheel_bytes": 89996534,
+      "sdist_url": "https://files.pythonhosted.org/packages/4f/da/a28b326027be7be2ffe5c7aeb4ef69512676701d2189073dcd40d1f8ba21/adcp-8.0.0b16.tar.gz",
+      "sdist_sha256": "b971a13d1461c010150c7f89a0246ab23ce38fb1962fb42164f8356af9deaab2",
+      "sdist_bytes": 84411474,
+      "sdk_member_count": 7843,
+      "sdk_member_manifest_sha256": "51a37d87a8f61e77ff6815f661728c84d16c85d7430ab1987d3a3bd6a84dceab",
+      "wheel_member_count": 7849,
+      "wheel_member_manifest_sha256": "71088aede23b143408e63e640a3c66f8f4244bd29a36d2bf82b5c04d3ab72300",
+      "metadata_sha256": "4ecc5b7c14b679a1917e41fb29c66c83b0ed4a062af6bb0d6d300fc71857afce",
+      "protocol": "3.2.0-rc.6",
+      "python_floor": "3.10"
+    },
+    "latest_stable_canary": {
+      "observed_version": "7.0.2",
+      "protocol": "3.1.15",
+      "blocking": false,
+      "feature_envelope": "reporting_unsupported"
+    },
+    "historical_previous_b15": {
       "package": "adcp",
       "version": "8.0.0b15",
       "tag": "v8.0.0-beta.15",
@@ -126,12 +130,6 @@
       "sdist_bytes": 71947572,
       "protocol": "3.2.0-rc.3",
       "feature_envelope": "buyer_core_and_typed_reporting_client_only"
-    },
-    "latest_stable_canary": {
-      "observed_version": "7.0.2",
-      "protocol": "3.1.15",
-      "blocking": false,
-      "feature_envelope": "reporting_unsupported"
     }
   },
   "typescript": {
@@ -162,39 +160,6 @@
         "manifest_sha256": "17fffd769ea636bc0206975c9fee478cb3f8b0ce1858af01353b431f5c185c06"
       },
       "qualification": "registry_archive_and_exact_npm_lock_selected; matrix_execution_pending",
-      "acceptance": false
-    },
-    "development_candidate_rc47": {
-      "package": "@adcp/sdk",
-      "version": "14.0.0-rc.47",
-      "integrity": "sha512-Zi2r9CZ2HJmB7i8XTlt5Z1QrVq+nnKkTcl8fSQUkjsi3ChhVtR24BIu/6Gg7yz5ctBWfMR2Lxqn4wv8kh3Wygw==",
-      "tarball_sha256": "1b14aeddab973809f1850e189f833ef645d061e25c82d74046c97fd92d346e49",
-      "registry_git_head": "b0d2886f0f5b8668fc134568c4cd22a4ef89e2fa",
-      "source_tree": "12515822c5814dcf2a0bb3c4d92e7b3ad023df46",
-      "protocol": "3.2.0-rc.6",
-      "package_engines_node": "^20.19.0 || >=22.12.0",
-      "development_runtime_pin": "22.12.0",
-      "development_runtime_status": "selected_not_executed_by_this_harness",
-      "selection_scope": "development_aligned_Q1_Q4_only",
-      "executable_harness_input": false,
-      "package_lock": null,
-      "transitive_lock": null,
-      "installed_member_binding": null,
-      "retained_member_evidence": {
-        "universal_compliance_subset_members": 55,
-        "scope": "universal_compliance_subset_only_not_complete_package_binding",
-        "complete_installed_members_expected": 6261,
-        "complete_installed_member_binding_available": false,
-        "can_substitute_for_transitive_lock": false
-      },
-      "qualification": {
-        "independent_source_review": "approved",
-        "calendar_suite": 8,
-        "calendar_case_c1": 12,
-        "calendar_case_c2": 8,
-        "t1_response_headers": "fixed",
-        "node_timezone_identities": "pinned_in_expert_evidence_not_yet_copied_to_harness"
-      },
       "acceptance": false
     },
     "historical_candidate_rc45": {
@@ -230,16 +195,36 @@
     },
     "previous_compatible": {
       "package": "@adcp/sdk",
-      "version": "14.0.0-rc.41",
-      "tarball": "https://registry.npmjs.org/@adcp/sdk/-/sdk-14.0.0-rc.41.tgz",
-      "integrity": "sha512-Qfs+ujKBpIjf7m9jcuzxvN/XCXUssxhR5xCvxCq4oqMR3aMJjnuTgzjxltPtv+A6LOxwmX1ia8sMRdhVSehdBg==",
-      "shasum": "394b62123fb31c02aeec92f7f12874142fac9a09",
-      "tarball_sha256": "c9bb1e22b63dfedf6bc1ae9c07d1a1312465489671e9841dd5f1425b817b0a90",
-      "registry_git_head": "51bf16d1b5425bd9aa2f37e7960ec9c1634d5fc6",
-      "package_lock": "scripts/ci/reporting_interop/npm/rc41/package-lock.json",
-      "package_lock_sha256": "2059bd6794ff8f2f06f5ec83187ba7de5607f262b9b0a18a4d0d0be5682efa74",
-      "protocol": "3.2.0-rc.4",
-      "node_floor": "22.12.0"
+      "version": "14.0.0-rc.47",
+      "integrity": "sha512-Zi2r9CZ2HJmB7i8XTlt5Z1QrVq+nnKkTcl8fSQUkjsi3ChhVtR24BIu/6Gg7yz5ctBWfMR2Lxqn4wv8kh3Wygw==",
+      "tarball_sha256": "1b14aeddab973809f1850e189f833ef645d061e25c82d74046c97fd92d346e49",
+      "registry_git_head": "b0d2886f0f5b8668fc134568c4cd22a4ef89e2fa",
+      "source_tree": "12515822c5814dcf2a0bb3c4d92e7b3ad023df46",
+      "protocol": "3.2.0-rc.6",
+      "package_engines_node": "^20.19.0 || >=22.12.0",
+      "development_runtime_pin": "22.12.0",
+      "development_runtime_status": "selected_not_executed_by_this_harness",
+      "selection_scope": "prior_compatible_1199_positive_skew",
+      "executable_harness_input": true,
+      "package_lock": "scripts/ci/reporting_interop/npm/rc47/package-lock.json",
+      "transitive_lock": "scripts/ci/reporting_interop/npm/rc47/package-lock.json",
+      "installed_member_binding": {
+        "member_count": 6261,
+        "manifest_sha256": "81f661470397bd9d02ceb640710f728804cecd0b4d06660301540531df054593"
+      },
+      "retained_member_evidence": {
+        "universal_compliance_subset_members": 55,
+        "scope": "universal_compliance_subset_only_not_complete_package_binding",
+        "complete_installed_members_expected": 6261,
+        "complete_installed_member_binding_available": false,
+        "can_substitute_for_transitive_lock": false
+      },
+      "qualification": "registry_archive_exact_npm_lock_and_installed_members_verified",
+      "acceptance": false,
+      "tarball": "https://registry.npmjs.org/@adcp/sdk/-/sdk-14.0.0-rc.47.tgz",
+      "tarball_bytes": 19686924,
+      "tarball_members": 6261,
+      "package_lock_sha256": "2f62e22374e69362042923e7f960a28a4abb8a3ac429653a90e47cccba74294a"
     },
     "latest_canary": {
       "observed_version": "13.1.1",
@@ -261,6 +246,52 @@
       "blocking": false,
       "qualification": "historical_supplemental_core_lead_not_current_candidate",
       "public_core_buyer": "reconcileReportingCoreV1"
+    },
+    "historical_previous_rc41": {
+      "package": "@adcp/sdk",
+      "version": "14.0.0-rc.41",
+      "tarball": "https://registry.npmjs.org/@adcp/sdk/-/sdk-14.0.0-rc.41.tgz",
+      "integrity": "sha512-Qfs+ujKBpIjf7m9jcuzxvN/XCXUssxhR5xCvxCq4oqMR3aMJjnuTgzjxltPtv+A6LOxwmX1ia8sMRdhVSehdBg==",
+      "shasum": "394b62123fb31c02aeec92f7f12874142fac9a09",
+      "tarball_sha256": "c9bb1e22b63dfedf6bc1ae9c07d1a1312465489671e9841dd5f1425b817b0a90",
+      "registry_git_head": "51bf16d1b5425bd9aa2f37e7960ec9c1634d5fc6",
+      "package_lock": "scripts/ci/reporting_interop/npm/rc41/package-lock.json",
+      "package_lock_sha256": "2059bd6794ff8f2f06f5ec83187ba7de5607f262b9b0a18a4d0d0be5682efa74",
+      "protocol": "3.2.0-rc.4",
+      "node_floor": "22.12.0"
+    },
+    "development_candidate_rc47": {
+      "package": "@adcp/sdk",
+      "version": "14.0.0-rc.47",
+      "integrity": "sha512-Zi2r9CZ2HJmB7i8XTlt5Z1QrVq+nnKkTcl8fSQUkjsi3ChhVtR24BIu/6Gg7yz5ctBWfMR2Lxqn4wv8kh3Wygw==",
+      "tarball_sha256": "1b14aeddab973809f1850e189f833ef645d061e25c82d74046c97fd92d346e49",
+      "registry_git_head": "b0d2886f0f5b8668fc134568c4cd22a4ef89e2fa",
+      "source_tree": "12515822c5814dcf2a0bb3c4d92e7b3ad023df46",
+      "protocol": "3.2.0-rc.6",
+      "package_engines_node": "^20.19.0 || >=22.12.0",
+      "development_runtime_pin": "22.12.0",
+      "development_runtime_status": "selected_not_executed_by_this_harness",
+      "selection_scope": "development_aligned_Q1_Q4_only",
+      "executable_harness_input": false,
+      "package_lock": null,
+      "transitive_lock": null,
+      "installed_member_binding": null,
+      "retained_member_evidence": {
+        "universal_compliance_subset_members": 55,
+        "scope": "universal_compliance_subset_only_not_complete_package_binding",
+        "complete_installed_members_expected": 6261,
+        "complete_installed_member_binding_available": false,
+        "can_substitute_for_transitive_lock": false
+      },
+      "qualification": {
+        "independent_source_review": "approved",
+        "calendar_suite": 8,
+        "calendar_case_c1": 12,
+        "calendar_case_c2": 8,
+        "t1_response_headers": "fixed",
+        "node_timezone_identities": "pinned_in_expert_evidence_not_yet_copied_to_harness"
+      },
+      "acceptance": false
     }
   }
 }

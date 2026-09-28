@@ -194,6 +194,8 @@ jobs:
                      tests/conformance/decisioning/test_pg_task_webhook_outbox.py \
                      tests/conformance/decisioning/test_pg_reference_workflow_queue.py \
                      tests/conformance/reporting/ \
+                     tests/test_reporting_storyboard_orchestration.py::test_database_owner_returns_node_postgres_uri_after_psycopg_validation \
+                     tests/test_reporting_storyboard_orchestration.py::test_node_database_url_materializes_libpq_default_user \
                      --ignore=tests/conformance/reporting/test_reporting_notification_process_matrix.py \
                      --ignore-glob='tests/conformance/reporting/test_reporting_status_*.py' \
                      --ignore=tests/conformance/reporting/test_reporting_materializer_rolling.py \
@@ -223,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
-    needs: [pg-conformance, pg-reporting-status, pg-reporting-materializer, pg-reporting-receipts, pg-reporting-receipt-compatibility, pg-reporting-feed, pg-reporting-feed-compatibility, pg-reporting-feed-installed, pg-reporting-production, pg-reporting-production-compatibility, pg-reporting-production-installed]
+    needs: [pg-conformance, pg-reporting-status, pg-reporting-materializer, pg-reporting-receipts, pg-reporting-receipt-compatibility, pg-reporting-feed, pg-reporting-feed-compatibility, pg-reporting-feed-installed, pg-reporting-production, pg-reporting-production-compatibility, pg-reporting-production-installed, reporting-installed-artifact-matrix]
     if: ${{ always() }}
     steps:
       - name: Require every Postgres conformance lane
@@ -239,8 +241,9 @@ jobs:
           PRODUCTION_RESULT: ${{ needs.pg-reporting-production.result }}
           PRODUCTION_COMPATIBILITY_RESULT: ${{ needs.pg-reporting-production-compatibility.result }}
           PRODUCTION_INSTALLED_RESULT: ${{ needs.pg-reporting-production-installed.result }}
+          REPORTING_INTEROP_RESULT: ${{ needs.reporting-installed-artifact-matrix.result }}
         run: |
-          if [ "$PG_RESULT" != "success" ] || [ "$STATUS_RESULT" != "success" ] || [ "$MATERIALIZER_RESULT" != "success" ] || [ "$RECEIPTS_RESULT" != "success" ] || [ "$RECEIPT_COMPATIBILITY_RESULT" != "success" ] || [ "$FEED_RESULT" != "success" ] || [ "$FEED_COMPATIBILITY_RESULT" != "success" ] || [ "$FEED_INSTALLED_RESULT" != "success" ] || [ "$PRODUCTION_RESULT" != "success" ] || [ "$PRODUCTION_COMPATIBILITY_RESULT" != "success" ] || [ "$PRODUCTION_INSTALLED_RESULT" != "success" ]; then
+          if [ "$PG_RESULT" != "success" ] || [ "$STATUS_RESULT" != "success" ] || [ "$MATERIALIZER_RESULT" != "success" ] || [ "$RECEIPTS_RESULT" != "success" ] || [ "$RECEIPT_COMPATIBILITY_RESULT" != "success" ] || [ "$FEED_RESULT" != "success" ] || [ "$FEED_COMPATIBILITY_RESULT" != "success" ] || [ "$FEED_INSTALLED_RESULT" != "success" ] || [ "$PRODUCTION_RESULT" != "success" ] || [ "$PRODUCTION_COMPATIBILITY_RESULT" != "success" ] || [ "$PRODUCTION_INSTALLED_RESULT" != "success" ] || [ "$REPORTING_INTEROP_RESULT" != "success" ]; then
             echo "Postgres conformance matrix result: $PG_RESULT"
             echo "Reporting status conformance result: $STATUS_RESULT"
             echo "Durable materializer conformance result: $MATERIALIZER_RESULT"
@@ -252,6 +255,7 @@ jobs:
             echo "pg-reporting-production result: $PRODUCTION_RESULT"
             echo "pg-reporting-production-compatibility result: $PRODUCTION_COMPATIBILITY_RESULT"
             echo "pg-reporting-production-installed result: $PRODUCTION_INSTALLED_RESULT"
+            echo "Installed reporting interop 2x2 result: $REPORTING_INTEROP_RESULT"
             exit 1
           fi
           echo "All Postgres conformance lanes passed"
@@ -1291,6 +1295,123 @@ jobs:
             exit 1
           fi
           echo "Reference seller storyboard matrix passed"
+
+  reporting-installed-artifact-matrix:
+    name: Reliable reporting installed artifacts — positive 2x2
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Set up Node 22.12.0
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22.12.0"
+
+      - name: Materialize exact installed artifact inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_ROOT="${RUNNER_TEMP}/reporting-1199-inputs"
+          mkdir -p "${INPUT_ROOT}/python" "${INPUT_ROOT}/ts-stable" "${INPUT_ROOT}/ts-candidate"
+
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 5 \
+            --retry-connrefused --connect-timeout 15 --max-time 180 \
+            https://files.pythonhosted.org/packages/97/07/74355b24ace6d7618cd330cc970a0ba24f82673e5e1e1e7767d153f73989/adcp-8.0.0b16-py3-none-any.whl \
+            --output "${INPUT_ROOT}/python/adcp-8.0.0b16-py3-none-any.whl"
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 5 \
+            --retry-connrefused --connect-timeout 15 --max-time 180 \
+            https://files.pythonhosted.org/packages/bc/cf/c796c2e7cd01e52ad82b90108aacdf960418c2cda0409198442cd1e8356b/adcp-8.0.0b18-py3-none-any.whl \
+            --output "${INPUT_ROOT}/python/adcp-8.0.0b18-py3-none-any.whl"
+          echo "7589a546cacdddce3a7a827adaa11d4ccab34768c558689b1c6850b85cd098b1  ${INPUT_ROOT}/python/adcp-8.0.0b16-py3-none-any.whl" | sha256sum --check
+          echo "3eabf30fbdae298111f3bbb4f4efb36f193dd08d7845217948ed211d7476e2c3  ${INPUT_ROOT}/python/adcp-8.0.0b18-py3-none-any.whl" | sha256sum --check
+          python -m venv "${INPUT_ROOT}/python/stable"
+          python -m venv "${INPUT_ROOT}/python/candidate"
+          "${INPUT_ROOT}/python/stable/bin/pip" install --retries 5 --timeout 30 \
+            "${INPUT_ROOT}/python/adcp-8.0.0b16-py3-none-any.whl[pg]"
+          "${INPUT_ROOT}/python/candidate/bin/pip" install --retries 5 --timeout 30 \
+            "${INPUT_ROOT}/python/adcp-8.0.0b18-py3-none-any.whl[pg]"
+
+          cp scripts/ci/reporting_interop/npm/rc47/package.json \
+            scripts/ci/reporting_interop/npm/rc47/package-lock.json "${INPUT_ROOT}/ts-stable/"
+          cp scripts/ci/reporting_interop/npm/rc48/package.json \
+            scripts/ci/reporting_interop/npm/rc48/package-lock.json "${INPUT_ROOT}/ts-candidate/"
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 5 \
+            --retry-connrefused --connect-timeout 15 --max-time 180 \
+            https://registry.npmjs.org/@adcp/sdk/-/sdk-14.0.0-rc.47.tgz \
+            --output "${INPUT_ROOT}/ts-stable/sdk-14.0.0-rc.47.tgz"
+          curl --fail --silent --show-error --location --retry 4 --retry-delay 5 \
+            --retry-connrefused --connect-timeout 15 --max-time 180 \
+            https://registry.npmjs.org/@adcp/sdk/-/sdk-14.0.0-rc.48.tgz \
+            --output "${INPUT_ROOT}/ts-candidate/sdk-14.0.0-rc.48.tgz"
+          echo "1b14aeddab973809f1850e189f833ef645d061e25c82d74046c97fd92d346e49  ${INPUT_ROOT}/ts-stable/sdk-14.0.0-rc.47.tgz" | sha256sum --check
+          echo "420c1fa36128f3c3285234f58096a74c5668b74ffbf12804d6603c370083149b  ${INPUT_ROOT}/ts-candidate/sdk-14.0.0-rc.48.tgz" | sha256sum --check
+          npm ci --prefix "${INPUT_ROOT}/ts-stable" --ignore-scripts --no-audit --no-fund \
+            --fetch-retries=5 --fetch-retry-mintimeout=5000 --fetch-retry-maxtimeout=30000
+          npm ci --prefix "${INPUT_ROOT}/ts-candidate" --ignore-scripts --no-audit --no-fund \
+            --fetch-retries=5 --fetch-retry-mintimeout=5000 --fetch-retry-maxtimeout=30000
+
+      - name: Run installed Python seller x TypeScript client positive 2x2
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT_ROOT="${RUNNER_TEMP}/reporting-1199-inputs"
+          "${INPUT_ROOT}/python/candidate/bin/python" -I \
+            scripts/ci/reporting_interop/run_installed_artifact_matrix.py \
+            --python-stable-runtime "${INPUT_ROOT}/python/stable/bin/python" \
+            --python-stable-artifact "${INPUT_ROOT}/python/adcp-8.0.0b16-py3-none-any.whl" \
+            --python-candidate-runtime "${INPUT_ROOT}/python/candidate/bin/python" \
+            --python-candidate-artifact "${INPUT_ROOT}/python/adcp-8.0.0b18-py3-none-any.whl" \
+            --typescript-stable-install "${INPUT_ROOT}/ts-stable" \
+            --typescript-stable-archive "${INPUT_ROOT}/ts-stable/sdk-14.0.0-rc.47.tgz" \
+            --typescript-candidate-install "${INPUT_ROOT}/ts-candidate" \
+            --typescript-candidate-archive "${INPUT_ROOT}/ts-candidate/sdk-14.0.0-rc.48.tgz" \
+            --node-runtime "$(command -v node)" \
+            --pg-admin-url postgresql://postgres@127.0.0.1:5432/postgres \
+            --output "${RUNNER_TEMP}/reporting-installed-artifact-matrix"
+
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reporting-installed-artifact-matrix-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reporting-installed-artifact-matrix
+          if-no-files-found: warn
+
+  reporting-installed-artifact-required-gate:
+    name: Reliable reporting installed-artifact 2x2
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    needs: reporting-installed-artifact-matrix
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Require the installed artifact positive 2x2
+        run: |
+          if [ "${{ needs.reporting-installed-artifact-matrix.result }}" != "success" ]; then
+            echo "Installed artifact 2x2 result: ${{ needs.reporting-installed-artifact-matrix.result }}"
+            exit 1
+          fi
+          echo "Installed artifact positive 2x2 passed"
 
   v3-reference-seller-tests:
     name: v3 reference seller — pytest (respx-mocked upstream)

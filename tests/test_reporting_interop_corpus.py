@@ -373,29 +373,21 @@ def test_exact_candidate_pins_are_immutable_and_keep_source_separate() -> None:
     python = pins["python"]["candidate"]
     typescript = pins["typescript"]["historical_candidate_rc45"]
 
-    assert python["source_commit"] == "25e0c7278a19493345975881d1578c76fc64dc1b"
-    assert python["source_tree"] == "bcc4ad30ea4ee43d7b82f39e12f60b5a3ac2aead"
-    assert python["source_parents"] == [
-        "7af569985174235739be4007e693d10ccb604817",
-        "fe1a1cbd070bc94ec32685026ad39ec55058dc73",
-    ]
-    assert python["adoption_base"] == "1f953c40d761be71d11fde84c78359ff2074fe7c"
-    assert python["build_kind"] == "prepublication_exact_pr1208_head"
-    assert python["version_string_occupied"] is True
-    assert "local_path_plus_sha256" in python["artifact_policy"]
-    assert len(python["known_independent_builds"]) == 3
-    harness_build = next(
-        row
-        for row in python["known_independent_builds"]
-        if row["builder"] == "reporting_interop_harness"
+    assert python["version"] == "8.0.0b18"
+    assert python["source_commit"] == "4d066171cdda2a802a71d4776c1c51132d5baff7"
+    assert python["source_tree"] == "a8f75ebb71bb4df6ccee170ec847e45f0120f93f"
+    assert python["build_kind"] == "published_pypi_release"
+    assert python["registry"] == "https://pypi.org/simple/adcp/"
+    assert python["wheel_sha256"] == (
+        "3eabf30fbdae298111f3bbb4f4efb36f193dd08d7845217948ed211d7476e2c3"
     )
-    assert harness_build["all_member_manifest_sha256"] == (
-        "397b9b58ad4e72d68e1380a5ad86ff9a76852ca873c3466b78d7c9890035cfa5"
+    assert python["sdist_sha256"] == (
+        "d1bdb7e6c19e0e61432c0b300dfcd8f990d93f096964c4c8ad1401a68cc8bb50"
     )
-    assert harness_build["sdk_member_manifest_sha256"] == (
-        "0ed3b8de391a04be9aee477c6db11aa82e0edca12b1651ab9935dc83ba73b333"
+    assert python["sdk_member_count"] == 4_644
+    assert python["sdk_member_manifest_sha256"] == (
+        "6c32ffbaf5d7df2cfa153ae3ded161dd4a9e68e0df29b2445b8a91bb5647cf86"
     )
-    assert "registry" not in python
     controls = python["development_dependency_controls"]
     assert {(row["pydantic"], row["mcp"]) for row in controls} == {
         ("2.13.0", "2.0.0"),
@@ -463,9 +455,12 @@ def test_exact_candidate_pins_are_immutable_and_keep_source_separate() -> None:
         "can_substitute_for_transitive_lock": False,
     }
     assert pins["protocol"]["required_contract"] == {
-        "version": "3.2.0-rc.6",
-        "bundle_selected": False,
-        "status": "required_alignment_not_a_selected_protocol_bundle",
+        "version": "3.2.0-rc.7",
+        "source_commit": "4ca13ae5cb65dff40aa514619f677293616522cd",
+        "bundle_url": "https://adcontextprotocol.org/protocol/3.2.0-rc.7.tgz",
+        "bundle_sha256": "942b24c66500839b3db21e74f69f2fe34d6ac18f898acc1f67aa126e35547994",
+        "bundle_selected": True,
+        "status": "live_default_protocol_bundle",
     }
     assert pins["protocol"]["historical_fixture_rc4"]["version"] == "3.2.0-rc.4"
     latest = pins["typescript"]["latest_canary"]
@@ -481,17 +476,25 @@ def test_exact_candidate_pins_are_immutable_and_keep_source_separate() -> None:
 def test_previous_typescript_skew_pin_is_exact_and_locked() -> None:
     previous = load("pins.json")["typescript"]["previous_compatible"]
 
-    assert previous["version"] == "14.0.0-rc.41"
+    assert previous["version"] == "14.0.0-rc.47"
     assert previous["version"] not in {"latest", "rc", "adcp-3.1"}
-    assert previous["protocol"] == "3.2.0-rc.4"
+    assert previous["protocol"] == "3.2.0-rc.6"
     assert previous["tarball_sha256"] == (
-        "c9bb1e22b63dfedf6bc1ae9c07d1a1312465489671e9841dd5f1425b817b0a90"
+        "1b14aeddab973809f1850e189f833ef645d061e25c82d74046c97fd92d346e49"
     )
+    assert previous["installed_member_binding"] == {
+        "member_count": 6261,
+        "manifest_sha256": "81f661470397bd9d02ceb640710f728804cecd0b4d06660301540531df054593",
+    }
     lock = ROOT / previous["package_lock"]
     assert hashlib.sha256(lock.read_bytes()).hexdigest() == previous["package_lock_sha256"]
     locked_sdk = json.loads(lock.read_text())["packages"]["node_modules/@adcp/sdk"]
     assert locked_sdk["version"] == previous["version"]
     assert locked_sdk["integrity"] == previous["integrity"]
+
+    historical = load("pins.json")["typescript"]["historical_previous_rc41"]
+    assert historical["version"] == "14.0.0-rc.41"
+    assert historical["protocol"] == "3.2.0-rc.4"
 
 
 def test_runner_executes_skew_storyboards_and_receiver_contracts_fail_closed() -> None:
@@ -685,12 +688,12 @@ def test_ts_version_and_abort_helpers_fail_closed_without_sdk_execution() -> Non
     script = f"""
       const assert = require('node:assert/strict');
       const nodeCrypto = require('node:crypto');
-      const version = require({json.dumps(str(DATA / 'ts_adcp_version.cjs'))});
-      const abort = require({json.dumps(str(DATA / 'ts_probe_abort.cjs'))});
-      const controlled = require({json.dumps(str(DATA / 'ts_controlled_reporting_server.cjs'))});
-      const managed = require({json.dumps(str(DATA / 'ts_managed_reporting_server.cjs'))});
-      const core = require({json.dumps(str(DATA / 'ts_core_server.cjs'))});
-      const privateInputsModule = require({json.dumps(str(DATA / 'ts_private_inputs.cjs'))});
+      const version = require({json.dumps(str(DATA / "ts_adcp_version.cjs"))});
+      const abort = require({json.dumps(str(DATA / "ts_probe_abort.cjs"))});
+      const controlled = require({json.dumps(str(DATA / "ts_controlled_reporting_server.cjs"))});
+      const managed = require({json.dumps(str(DATA / "ts_managed_reporting_server.cjs"))});
+      const core = require({json.dumps(str(DATA / "ts_core_server.cjs"))});
+      const privateInputsModule = require({json.dumps(str(DATA / "ts_private_inputs.cjs"))});
       assert.equal(version.wireAdcpVersion('3.2.0-rc.6'), '3.2-rc.6');
       assert.equal(version.wireAdcpVersion('3.1.20'), '3.1');
       assert.equal(version.wireAdcpVersion('3.2.1'), '3.2');
@@ -1248,18 +1251,16 @@ def test_official_precedence_probe_inputs_preserve_supplied_bytes() -> None:
 
 def test_official_precedence_candidate_adapter_is_separate_and_exact() -> None:
     root = DATA / "official_precedence"
-    candidate = json.loads((root / "pins-rc45.json").read_text())
+    candidate = json.loads((DATA / "pins.json").read_text())["typescript"]["candidate_rc48"]
     adapter = (root / "repro-candidate.cjs").read_text()
 
-    assert candidate["version"] == "14.0.0-rc.45"
-    assert candidate["tarballSha256"] == (
-        "a0952ed8edaaad958bdb8f474c4f5cb68333ee272e7a8f3419d12930e9c57e6b"
+    assert candidate["version"] == "14.0.0-rc.48"
+    assert candidate["tarball_sha256"] == (
+        "420c1fa36128f3c3285234f58096a74c5668b74ffbf12804d6603c370083149b"
     )
-    assert candidate["fixtureSha256"] == (
-        "dc16c44297a315122c4450bdb4c7278b5635894f7a60fb0266456b8d083da013"
-    )
-    assert "require('./pins.json')" in adapter
-    assert "require('./pins-rc45.json')" in adapter
+    assert "../pins.json" in adapter
+    assert "candidate_rc48" in adapter
+    assert "require('./pins-rc45.json')" not in adapter
     assert "require('./repro-rc42.cjs')" in adapter
 
 
