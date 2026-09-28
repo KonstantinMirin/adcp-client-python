@@ -34,6 +34,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from adcp.types import AccountReference, CompatibilityPurchaseCoordinatorInput
 from adcp.types.core import TaskResult, TaskStatus
 from adcp.validation import (
+    ValidationOutcome,
     get_bundle_adcp_version,
     validate_request,
     validate_response,
@@ -57,6 +58,9 @@ LegacyPurchasePendingPoller: TypeAlias = Callable[
 _SOURCE_VERSION_RE = re.compile(
     r"^(?:2\.5|3\.[01])\.\d+(?:-[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)?$"
 )
+# This exact historical release was accepted while its bundle was shipped.
+# Keep continuation support after removing that bundle from distributions.
+_UNBUNDLED_SOURCE_VERSIONS = frozenset({"2.5.3"})
 _REQUIRED_LOSSES = frozenset({"feed_version_not_atomic", "pricing_version_not_atomic"})
 _MUTATION_LOSS = "mutation_idempotency_not_guaranteed"
 _ALLOWED_LOSSES = _REQUIRED_LOSSES | {_MUTATION_LOSS}
@@ -1128,7 +1132,7 @@ class LegacyPurchaseCoordinator:
 
         request = payload["legacy_create_request"]
         outcome = validate_request("create_media_buy", request, version=record.source_adcp_version)
-        if not outcome.valid or outcome.variant == "skipped":
+        if not _source_schema_valid(outcome, record.source_adcp_version):
             raise _error(
                 CompatibilityContinuationErrorCode.INVALID_LEGACY_REQUEST,
                 "legacy_create_request does not validate against its exact source version",
@@ -1285,11 +1289,23 @@ def _validate_source_version(version: str) -> None:
             "source_adcp_version must be an exact 2.5.x, 3.0.x, or 3.1.x stable/prerelease bundle"
         )
     bundled_version = get_bundle_adcp_version(version=version)
+    if bundled_version is None and version in _UNBUNDLED_SOURCE_VERSIONS:
+        return
     if bundled_version != version:
         raise _invalid(
             "source_adcp_version must exactly match the bundled source schema release "
             f"(requested {version!r}, bundled {bundled_version!r})"
         )
+
+
+def _source_schema_valid(outcome: ValidationOutcome, version: str) -> bool:
+    """Allow a missing schema only for an exact supported cross-major release.
+
+    The continuation's account, product, pricing, target, loss and idempotency
+    bindings still run when the retired 2.5 bundle is unavailable.
+    """
+
+    return outcome.valid and (outcome.variant != "skipped" or version in _UNBUNDLED_SOURCE_VERSIONS)
 
 
 def _validate_loss_set(
@@ -1488,7 +1504,7 @@ def _validate_source_discovery(
     request_outcome = validate_request("get_products", request, version=source_adcp_version)
     response_outcome = validate_response("get_products", response, version=source_adcp_version)
     for side, outcome in (("request", request_outcome), ("response", response_outcome)):
-        if not outcome.valid or outcome.variant == "skipped":
+        if not _source_schema_valid(outcome, source_adcp_version):
             raise _error(
                 CompatibilityContinuationErrorCode.INVALID_INPUT,
                 f"observed get_products {side} does not validate against its source version",
@@ -1729,7 +1745,7 @@ def _validated_result(
     except (TypeError, ValueError, CompatibilityContinuationError) as exc:
         raise _invalid_legacy_response(source_adcp_version, []) from exc
     outcome = validate_response("create_media_buy", payload, version=source_adcp_version)
-    if not outcome.valid or outcome.variant == "skipped":
+    if not _source_schema_valid(outcome, source_adcp_version):
         raise _invalid_legacy_response(
             source_adcp_version,
             [
@@ -1741,6 +1757,8 @@ def _validated_result(
                 for issue in outcome.issues
             ],
         )
+    if outcome.variant == "skipped":
+        _validate_unbundled_v25_result(payload, source_adcp_version)
     if outcome.variant in {"submitted", "working", "input-required"}:
         state = CompatibilityOperationState.PENDING
     elif "errors" in payload:
@@ -1762,6 +1780,43 @@ def _validated_result(
             raise _invalid_legacy_response(source_adcp_version, [])
     _validate_persistable_payload(payload, context="legacy result")
     return payload, state
+
+
+def _validate_unbundled_v25_result(payload: JsonObject, version: str) -> None:
+    """Retain the 2.5 success/error boundary without shipping its full schema."""
+
+    if "errors" in payload:
+        errors = payload["errors"]
+        valid_errors = (
+            isinstance(errors, list)
+            and bool(errors)
+            and all(
+                isinstance(error, Mapping)
+                and isinstance(error.get("code"), str)
+                and isinstance(error.get("message"), str)
+                for error in errors
+            )
+        )
+        if (
+            not valid_errors
+            or any(key in payload for key in ("media_buy_id", "buyer_ref", "packages"))
+            or payload.get("status") not in (None, "failed")
+        ):
+            raise _invalid_legacy_response(version, [])
+        return
+
+    packages = payload.get("packages")
+    if (
+        not isinstance(payload.get("media_buy_id"), str)
+        or not isinstance(payload.get("buyer_ref"), str)
+        or not isinstance(packages, list)
+        or not all(
+            isinstance(package, Mapping) and isinstance(package.get("package_id"), str)
+            for package in packages
+        )
+        or payload.get("status") not in (None, "completed")
+    ):
+        raise _invalid_legacy_response(version, [])
 
 
 def _aware_utc(value: datetime, *, field: str) -> datetime:

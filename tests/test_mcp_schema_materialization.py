@@ -298,19 +298,35 @@ async def test_mutation_cannot_change_mounted_discovery_registration_or_validati
     assert hashlib.sha256(canonical(repeated)).hexdigest() == (EXPECTED_PUBLIC_SHA256[version])
 
 
-def test_cached_rc6_schema_retains_all_signed_summary_and_period_controls():
-    from tests.test_rc6_adoption import patched
+def test_cached_rc7_schema_retains_all_signed_summary_and_period_controls():
+    def patched(value, operations):
+        value = deepcopy(value)
+        for operation in operations:
+            parts = [
+                part.replace("~1", "/").replace("~0", "~")
+                for part in operation["path"].split("/")[1:]
+            ]
+            parent = value
+            for part in parts[:-1]:
+                parent = parent[part]
+            if operation["op"] == "remove":
+                del parent[parts[-1]]
+            else:
+                assert operation["op"] in {"add", "replace"}
+                parent[parts[-1]] = deepcopy(operation["value"])
+        return value
 
+    version = "3.2.0-rc.7"
     fixture = json.loads(
         files("adcp")
-        .joinpath("_compliance", PINS[1], "test-vectors/reporting-summary/complete-summary.json")
+        .joinpath("_compliance", version, "test-vectors/reporting-summary/complete-summary.json")
         .read_bytes()
     )
-    cold = loader.get_mcp_schema("get_reporting_status", "sync", version=PINS[1])
+    cold = loader.get_mcp_schema("get_reporting_status", "sync", version=version)
     saved = canonical(cold)
     assert cold is not None
     cold.clear()
-    warm = loader.get_mcp_schema("get_reporting_status", "sync", version=PINS[1])
+    warm = loader.get_mcp_schema("get_reporting_status", "sync", version=version)
     assert canonical(warm) == saved
     checker = FormatChecker()
     checker.checks("date-time")(loader._is_rfc3339_date_time)
