@@ -76,25 +76,32 @@ class Product(CanonicalBoundaryModel):
 
 class CreativeAsset(CanonicalBoundaryModel):
     creative_id: str
-    format_kind: CanonicalFormatKind | str
+    format_kind: CanonicalFormatKind
     format_option_ref: Any
 
 class Creative(CanonicalBoundaryModel):
     creative_id: str
-    format_kind: CanonicalFormatKind | str
+    format_kind: CanonicalFormatKind
     format_option_ref: Any
 
 class CreativeManifest(CanonicalBoundaryModel):
-    format_kind: CanonicalFormatKind | str | None = ...
+    format_kind: CanonicalFormatKind | None = ...
     assets: dict[str, Any]
 
 class CreativeVariant(CanonicalBoundaryModel):
     manifest: CreativeManifest | None
 
+class _DeliveryCreativeManifest(CanonicalBoundaryModel):
+    format_kind: CanonicalFormatKind | str | None = ...
+    assets: dict[str, Any]
+
+class _DeliveryCreativeVariant(CanonicalBoundaryModel):
+    manifest: _DeliveryCreativeManifest | None
+
 class DeliveryCreative(CanonicalBoundaryModel):
     creative_id: str
     format_kind: CanonicalFormatKind | str | None
-    variants: list[CreativeVariant]
+    variants: list[_DeliveryCreativeVariant]
 
 class CreativeFilters(CanonicalBoundaryModel): ...
 class ProductFilters(CanonicalBoundaryModel): ...
