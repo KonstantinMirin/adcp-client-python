@@ -49,6 +49,7 @@ from adcp.reporting.source import (
     ReportingSourceSliceRequestV1,
     ReportingSourceStagedObjectReader,
     SourceBatchManifestV1,
+    _validate_metric_applicability,
     deterministic_source_publication_id_v1,
     iso_duration_milliseconds_v1,
     parse_verified_source_batch_manifest_v1,
@@ -221,11 +222,14 @@ def _validate_request_against_capabilities(
             "the selected offering does not support immutable corrections",
         )
 
-    exact_metrics = {metric.name for metric in offering.metrics if metric.support == "exact"}
+    requestable_metrics = {
+        metric.name for metric in offering.metrics if metric.support in {"exact", "partial"}
+    }
     for metric in request.requested_metrics:
-        if metric not in exact_metrics:
+        if metric not in requestable_metrics:
             raise _fail(
-                "CAPABILITY_MISMATCH", f"requested metric {metric!r} is not exact in the offering"
+                "CAPABILITY_MISMATCH",
+                f"requested metric {metric!r} is not supported in the offering",
             )
     exact_dimensions = {
         dimension.name for dimension in offering.dimensions if dimension.support == "exact"
@@ -391,6 +395,12 @@ def _validate_manifest_against_request(
     requested_metrics = set(request.requested_metrics)
     requested_constituents = {item.constituent_id for item in request.coverage.constituents}
     declared = {metric.name: metric for metric in offering.metrics}
+    try:
+        _validate_metric_applicability(offering.metrics, manifest.metric_availability)
+    except ValueError:
+        raise _fail(
+            "MANIFEST_MISMATCH", "unsupported cells require partial metric support with a reason"
+        ) from None
     published_cells = {
         (cell.constituent_id, cell.metric): cell for cell in manifest.metric_availability
     }

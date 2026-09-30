@@ -42,6 +42,7 @@ from adcp.reporting.source import (
     encode_source_batch_manifest_v1,
     parse_verified_source_batch_manifest_v1,
     publication_content_fingerprint_v1,
+    reporting_source_capabilities_sha256_v1,
     source_batch_manifest_reference_v1,
 )
 
@@ -143,6 +144,86 @@ async def test_metric_outside_the_offering_is_refused() -> None:
             object_reader=reader,
         )
     assert error.value.code == "CAPABILITY_MISMATCH"
+
+
+@pytest.mark.parametrize("support", ["partial", "unavailable"])
+async def test_conditional_metric_support_is_requestable_but_unavailable_is_not(
+    support: str,
+) -> None:
+    payload = redacted_capabilities().model_dump(mode="json")
+    for offering in payload["offerings"]:
+        for metric in offering["metrics"]:
+            metric.update(support=support, reason="inventory_dependent")
+    payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
+    capabilities = ReportingSourceCapabilitiesV1.model_validate(payload)
+    request = redacted_snapshot_request()
+    result, manifest, reader = redacted_completed_result(request)
+    if support == "unavailable":
+        with pytest.raises(ReportingSourceConformanceError) as error:
+            await validate_reporting_source_execution(
+                capabilities=capabilities, request=request, result=result, object_reader=reader
+            )
+        assert error.value.code == "CAPABILITY_MISMATCH"
+    else:
+        assert (
+            await validate_reporting_source_execution(
+                capabilities=capabilities, request=request, result=result, object_reader=reader
+            )
+            == manifest
+        )
+
+
+@pytest.mark.parametrize("support", ["exact", "partial"])
+async def test_unsupported_cell_must_bind_declared_conditional_support(support: str) -> None:
+    payload = redacted_capabilities().model_dump(mode="json")
+    for offering in payload["offerings"]:
+        for metric in offering["metrics"]:
+            if metric["name"] == "spend":
+                metric.update(
+                    support=support, reason="inventory_dependent" if support == "partial" else None
+                )
+    payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
+    capabilities = ReportingSourceCapabilitiesV1.model_validate(payload)
+    request = redacted_snapshot_request()
+    _, manifest, reader = redacted_completed_result(
+        request, page_bodies=['{"campaign_id":"campaign-redacted-1","impressions":10}\n']
+    )
+    manifest = _rebind(
+        manifest,
+        metric_availability=[
+            (
+                cell.model_copy(
+                    update={
+                        "status": "unsupported",
+                        "reason": "not_applicable",
+                        "data_through": None,
+                    }
+                )
+                if cell.metric == "spend"
+                else cell
+            )
+            for cell in manifest.metric_availability
+        ],
+    )
+    manifest_bytes = encode_source_batch_manifest_v1(manifest)
+    result = ReportingSourceExecutorResult.completed(
+        request=request,
+        manifest=source_batch_manifest_reference_v1("conditional-manifest", manifest_bytes),
+        manifest_bytes=manifest_bytes,
+    )
+    if support == "exact":
+        with pytest.raises(
+            ReportingSourceConformanceError, match="partial metric support"
+        ) as caught:
+            await validate_reporting_source_execution(
+                capabilities=capabilities, request=request, result=result, object_reader=reader
+            )
+        assert caught.value.code == "MANIFEST_MISMATCH"
+    else:
+        validated = await validate_reporting_source_execution(
+            capabilities=capabilities, request=request, result=result, object_reader=reader
+        )
+        assert validated.coverage.status == "full"
 
 
 async def test_slice_wider_than_the_offering_window_is_refused() -> None:
@@ -389,6 +470,69 @@ async def test_metric_status_cannot_contradict_its_constituent() -> None:
     ]
     with pytest.raises(ValidationError, match="contradicts constituent status"):
         _rebind(manifest, metric_availability=contradictory)
+
+
+@pytest.mark.parametrize("status", ["missing", "delayed", "stale", "partial"])
+def test_full_constituent_cannot_hide_unavailable_applicable_cells(status: str) -> None:
+    _, manifest, _ = redacted_completed_result(redacted_snapshot_request())
+    cells = [
+        manifest.metric_availability[0].model_copy(
+            update={"status": status, "reason": "not_ready", "data_through": None}
+        ),
+        *manifest.metric_availability[1:],
+    ]
+    with pytest.raises(ValidationError, match="contradicts constituent status"):
+        _rebind(manifest, metric_availability=cells)
+
+
+@pytest.mark.parametrize(
+    ("constituent_status", "coverage_status"),
+    [("present", "full"), ("explicit_zero", "full"), ("partial", "partial"), ("delayed", "none")],
+)
+async def test_zero_applicable_metrics_cannot_claim_available_or_partial_coverage(
+    constituent_status: str, coverage_status: str
+) -> None:
+    request = redacted_snapshot_request()
+    request = request.model_copy(
+        update={"coverage": request.coverage.model_copy(update={"expected": "partial"})}
+    )
+    _, manifest, reader = redacted_completed_result(request)
+    cells = [
+        cell.model_copy(
+            update={"status": "unsupported", "reason": "not_applicable", "data_through": None}
+        )
+        for cell in manifest.metric_availability
+    ]
+    coverage = manifest.coverage.model_copy(
+        update={
+            "status": coverage_status,
+            "constituents": [
+                item.model_copy(update={"status": constituent_status, "reason": "not_applicable"})
+                for item in manifest.coverage.constituents
+            ],
+        }
+    )
+    with pytest.raises(ValidationError, match="without applicable metrics must be unsupported"):
+        _rebind(manifest, metric_availability=cells, coverage=coverage)
+    # A custom executor can supply canonical, correctly hashed bytes without
+    # using the model constructor. Public conformance must reject those too.
+    forged = manifest.model_copy(update={"metric_availability": cells, "coverage": coverage})
+    forged = forged.model_copy(
+        update={"content_fingerprint": publication_content_fingerprint_v1(forged)}
+    )
+    manifest_bytes = encode_source_batch_manifest_v1(forged)
+    result = ReportingSourceExecutorResult.completed(
+        request=request,
+        manifest=source_batch_manifest_reference_v1("forged-coverage", manifest_bytes),
+        manifest_bytes=manifest_bytes,
+    )
+    with pytest.raises(ValidationError, match="without applicable metrics must be unsupported"):
+        await validate_reporting_source_execution(
+            capabilities=redacted_capabilities(),
+            request=request,
+            result=result,
+            object_reader=reader,
+        )
 
 
 # -- errors -----------------------------------------------------------------
