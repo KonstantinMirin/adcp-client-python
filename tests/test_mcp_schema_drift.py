@@ -30,6 +30,7 @@ from adcp.server.mcp_tools import (
     _generate_pydantic_schemas,
     _inline_refs,
     _model_to_json_schema,
+    _prune_to_required_fields,
 )
 
 ROOT_DISCOVERY_FORBIDDEN = {
@@ -42,6 +43,22 @@ ROOT_DISCOVERY_FORBIDDEN = {
     "then",
     "else",
     "dependentSchemas",
+}
+
+MEDIA_BUY_SELLER_TOOLS = {
+    "get_products",
+    "list_creative_formats",
+    "sync_creatives",
+    "list_creatives",
+    "create_media_buy",
+    "update_media_buy",
+    "get_media_buy_delivery",
+    "get_media_buys",
+    "get_signals",
+    "list_accounts",
+    "sync_accounts",
+    "provide_performance_feedback",
+    "get_adcp_capabilities",
 }
 
 
@@ -72,6 +89,141 @@ def test_pydantic_fallback_rejects_conditional_root() -> None:
             return {"type": "object", "properties": {}, "if": {"required": ["mode"]}}
 
     assert _model_to_json_schema(ConditionalRoot) is None
+
+
+def test_compact_pruning_keeps_root_fields_and_opens_pruned_nested_objects() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "required_root": {"type": "string"},
+            "optional_root": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "required_nested": {"type": "string"},
+                    "optional_complex": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                    },
+                },
+                "required": ["required_nested"],
+            },
+        },
+        "required": ["required_root"],
+    }
+
+    compact = _prune_to_required_fields(schema)
+
+    assert set(compact["properties"]) == {"required_root", "optional_root"}
+    nested = compact["properties"]["optional_root"]
+    assert set(nested["properties"]) == {"required_nested"}
+    assert nested["required"] == ["required_nested"]
+    assert nested["additionalProperties"] is True
+
+
+def test_compact_pruning_keeps_scalar_optional_discovery_floor() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "container": {
+                "type": "object",
+                "properties": {
+                    "optional_scalar": {"type": "integer"},
+                    "optional_nullable_scalar": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "optional_complex": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                    },
+                },
+            }
+        },
+    }
+
+    compact = _prune_to_required_fields(schema)
+    properties = compact["properties"]["container"]["properties"]
+
+    assert set(properties) == {"optional_scalar", "optional_nullable_scalar"}
+
+
+def test_compact_pruning_does_not_rewrite_literal_schema_values() -> None:
+    example = {
+        "properties": {"example_only": "value"},
+        "required": ["example_only"],
+    }
+    schema = {
+        "type": "object",
+        "properties": {"required_root": {"type": "string"}},
+        "required": ["required_root"],
+        "examples": [example],
+        "default": example,
+    }
+
+    compact = _prune_to_required_fields(schema)
+
+    assert compact["examples"] == [example]
+    assert compact["default"] == example
+
+
+def test_compact_generation_drops_unreachable_definitions() -> None:
+    class ModelWithOrphanDefinition:
+        @classmethod
+        def model_json_schema(cls):
+            return {
+                "type": "object",
+                "properties": {"item": {"$ref": "#/$defs/Reachable"}},
+                "$defs": {
+                    "Reachable": {
+                        "type": "object",
+                        "properties": {"id": {"type": "string"}},
+                        "required": ["id"],
+                    },
+                    "Orphaned": {
+                        "type": "object",
+                        "properties": {"unused": {"type": "string"}},
+                    },
+                },
+            }
+
+    compact = _model_to_json_schema(ModelWithOrphanDefinition, schema_mode="compact")
+
+    assert compact is not None
+    assert set(compact["$defs"]) == {"Reachable"}
+
+
+def test_compact_pruning_keeps_pydantic_targeting_overlay_contract() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "packages": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "product_id": {"type": "string"},
+                        "targeting_overlay": {
+                            "anyOf": [{"type": "object"}, {"type": "null"}],
+                            "default": None,
+                        },
+                        "optional_complex": {
+                            "type": "array",
+                            "items": {"type": "object"},
+                        },
+                    },
+                    "required": ["product_id"],
+                },
+            },
+        },
+    }
+
+    compact = _prune_to_required_fields(schema)
+    package = compact["properties"]["packages"]["items"]
+
+    assert set(package["properties"]) == {"product_id", "targeting_overlay"}
+    assert (
+        package["properties"]["targeting_overlay"]
+        == schema["properties"]["packages"]["items"]["properties"]["targeting_overlay"]
+    )
 
 
 def test_input_schemas_match_pydantic_generation() -> None:
@@ -137,6 +289,30 @@ def test_handler_schema_initialization_targets_advertised_tools(monkeypatch) -> 
     assert advertised == {"get_adcp_capabilities", "list_products"}
     assert input_calls == [advertised]
     assert output_calls == [advertised]
+
+
+def test_public_toolset_schema_mode_escape_hatch() -> None:
+    from adcp.server import ADCPHandler, create_mcp_tools
+
+    class SchemaModeHandler(ADCPHandler):
+        advertised_tools = {"get_products"}
+
+        async def get_products(self, params, context=None):
+            return {"products": []}
+
+    compact_tools = create_mcp_tools(SchemaModeHandler()).tool_definitions
+    inline_tools = create_mcp_tools(
+        SchemaModeHandler(),
+        schema_mode="inline",
+    ).tool_definitions
+
+    compact = next(tool["inputSchema"] for tool in compact_tools if tool["name"] == "get_products")
+    inline = next(tool["inputSchema"] for tool in inline_tools if tool["name"] == "get_products")
+
+    assert "$defs" in compact
+    assert '"$ref"' in json.dumps(compact)
+    assert '"$ref"' not in json.dumps(inline)
+    assert '"$defs"' not in json.dumps(inline)
 
 
 def test_handler_definitions_do_not_expose_memoized_schema_aliases(monkeypatch) -> None:
@@ -251,36 +427,68 @@ def test_spot_check_real_fields_reach_clients() -> None:
         ), f"create_media_buy should require {req!r}"
 
 
+def test_media_buy_seller_input_schemas_stay_within_discovery_budget() -> None:
+    """The production seller surface must fit comfortably in model context."""
+    schemas = {
+        tool["name"]: tool["inputSchema"]
+        for tool in ADCP_TOOL_DEFINITIONS
+        if tool["name"] in MEDIA_BUY_SELLER_TOOLS
+    }
+    assert set(schemas) == MEDIA_BUY_SELLER_TOOLS
+
+    sizes = {name: len(json.dumps(schema)) for name, schema in schemas.items()}
+    total = sum(sizes.values())
+    largest_name = max(sizes, key=sizes.__getitem__)
+
+    assert total < 1_000_000, f"13-tool inputSchema total is {total:,} bytes"
+    assert (
+        sizes[largest_name] < 250_000
+    ), f"largest inputSchema is {largest_name}: {sizes[largest_name]:,} bytes"
+
+    def max_depth(value) -> int:
+        if isinstance(value, dict):
+            return 1 + max((max_depth(item) for item in value.values()), default=0)
+        if isinstance(value, list):
+            return 1 + max((max_depth(item) for item in value), default=0)
+        return 0
+
+    depths = {name: max_depth(schema) for name, schema in schemas.items()}
+    deepest_name = max(depths, key=depths.__getitem__)
+    assert (
+        depths[deepest_name] <= 20
+    ), f"deepest inputSchema is {deepest_name}: {depths[deepest_name]} levels"
+
+
 # ---------------------------------------------------------------------------
 # $defs inlining invariants (closes #208)
 # ---------------------------------------------------------------------------
 
 
-def test_no_dollar_ref_in_any_advertised_schema() -> None:
-    """Every tool's inputSchema must be ``$ref``-free. MCP clients that
-    don't implement JSON Schema reference resolution (a surprisingly
-    large slice of the ecosystem) see ``{"$ref": ...}`` as an empty
-    object — which means "this tool takes no params" in their
-    interpretation. Inlining is the only way to give those clients the
-    full tool surface. Regression here silently re-breaks discovery for
-    those clients."""
-    for tool in ADCP_TOOL_DEFINITIONS:
-        serialized = json.dumps(tool["inputSchema"])
-        assert '"$ref"' not in serialized, (
-            f"tool {tool['name']!r} inputSchema contains unresolved $ref. "
-            "Check _inline_refs in adcp.server.mcp_tools."
-        )
+def test_schema_modes_keep_the_same_pydantic_root_surface() -> None:
+    schemas = {
+        mode: _generate_pydantic_schemas(
+            {"create_media_buy"},
+            schema_mode=mode,
+        )["create_media_buy"]
+        for mode in ("compact", "defs", "inline")
+    }
+
+    root_fields = {mode: set(schema["properties"]) for mode, schema in schemas.items()}
+    assert root_fields["compact"] == root_fields["defs"] == root_fields["inline"]
+    assert "$defs" in schemas["compact"]
+    assert '"$ref"' in json.dumps(schemas["compact"])
+    assert "$defs" in schemas["defs"]
+    assert '"$ref"' not in json.dumps(schemas["inline"])
+    assert '"$defs"' not in json.dumps(schemas["inline"])
+    assert len(json.dumps(schemas["compact"])) < len(json.dumps(schemas["defs"]))
+    assert len(json.dumps(schemas["defs"])) < len(json.dumps(schemas["inline"]))
 
 
-def test_no_dollar_defs_in_any_advertised_schema() -> None:
-    """After inlining, ``$defs`` serves no purpose and is noise on the
-    wire. Drop it so the advertised schema is minimal."""
-    for tool in ADCP_TOOL_DEFINITIONS:
-        serialized = json.dumps(tool["inputSchema"])
-        assert '"$defs"' not in serialized, (
-            f"tool {tool['name']!r} inputSchema retains $defs block after "
-            "inlining. Check _inline_refs drop-when-resolved path."
-        )
+def test_inline_mode_is_ref_free_for_every_input_schema() -> None:
+    for tool_name, schema in _generate_pydantic_schemas(schema_mode="inline").items():
+        serialized = json.dumps(schema)
+        assert '"$ref"' not in serialized, tool_name
+        assert '"$defs"' not in serialized, tool_name
 
 
 def test_no_dollar_refs_or_defs_in_any_advertised_output_schema() -> None:
