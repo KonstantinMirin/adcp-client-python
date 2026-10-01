@@ -1,10 +1,18 @@
 # Reliable Reporting upgrade and release notes
 
-## 8.0.0 release candidate
+## 8.0.0
 
-`adcp` 8.0.0rc1 freezes the SDK API for 8.0.0. The final 8.0.0 release
-follows AdCP 3.2.0 final. The release candidate includes AdCP 3.0, 3.1 and
-3.2.0-rc.7 schema bundles.
+`adcp` 8.0.0 is the first stable SDK 8 release. It targets AdCP 3.2.1, the
+AdCP 3.2 general-availability release (`3.2` on the wire), and ships the
+AdCP 3.0, 3.1 and 3.2.1 schema bundles. The 3.2 release-candidate bundles
+are no longer shipped. AdCP 3.2.0 was withdrawn and is not a supported
+target.
+
+Buyer receipt submission plans stored under `3.2-rc.6` or `3.2-rc.7` keep
+their exact request bytes and idempotency keys. A completed plan still
+replays for the same receipt list, and a new `3.2` reservation can follow it.
+A pending release-candidate plan remains readable, but the SDK refuses to send
+it (`INVALID_SUBMISSION_PLAN`) and never rewrites it as a `3.2` request.
 
 ## PostgreSQL worker contention
 
@@ -85,13 +93,13 @@ reauthorization and per-session destination authorization.
 
 ## Current and historical protocol versions
 
-Live reporting mounts and callers use AdCP `3.2-rc.7`, whose bundle spelling is
-`3.2.0-rc.7`. Omit an explicit pin to use the packaged default, or configure the
+Live reporting mounts and callers use AdCP `3.2`, whose bundle spelling is
+`3.2.1`. Omit an explicit pin to use the packaged default, or configure the
 current supported reporting version consistently across the composition and
 its mounts. Cross-cohort reporting requests are rejected even when optional
 request validation is disabled.
 
-Historical beta.6, rc.3 and rc.6 schema bundles support offline validation and
+Historical beta.6, rc.3, rc.6 and rc.7 schema bundles support offline validation and
 retained historical walks. Their presence does not enable a historical live
 mount or client pin. In rc.6, an exactly scoped bilateral waiver can retire
 the public mismatch and project underlying seller health while retaining the
