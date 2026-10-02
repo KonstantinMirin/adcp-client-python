@@ -25,6 +25,8 @@ import re
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
 
+from pydantic import RootModel
+
 logger = logging.getLogger(__name__)
 
 
@@ -212,7 +214,11 @@ def _product_matches(product: Any, allowed: set[str]) -> bool:
 
         if st == "by_id":
             raw_ids: list[Any] = list(getattr(pp, "property_ids", None) or [])
-            product_ids = {(pid.root if hasattr(pid, "root") else str(pid)) for pid in raw_ids}
+            # str(pid) already covers a scalar schema; only a RootModel wrapper
+            # needs unwrapping (#1277).
+            product_ids = {
+                (pid.root if isinstance(pid, RootModel) else str(pid)) for pid in raw_ids
+            }
             if permissive:
                 if product_ids & allowed:
                     logger.debug(
