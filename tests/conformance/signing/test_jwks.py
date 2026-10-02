@@ -400,6 +400,36 @@ def test_ssrf_alibaba_metadata_blocked_despite_allow_private() -> None:
             validate_jwks_uri("http://alibaba-metadata.example/jwks.json", allow_private=True)
 
 
+@pytest.mark.parametrize(
+    ("resolved_ip", "why"),
+    [
+        ("169.254.169.254", "AWS/Azure/GCP — inside the link-local special-use range"),
+        ("100.100.100.200", "Alibaba — inside the RFC 6598 special-use range"),
+        ("192.0.0.192", "Oracle — inside RFC 6890 protocol assignments"),
+        ("fd00:ec2::254", "AWS IPv6 — inside RFC 4193 unique-local"),
+    ],
+)
+def test_ssrf_metadata_blocked_under_both_relaxations(resolved_ip: str, why: str) -> None:
+    """No combination of flags reaches a cloud metadata endpoint.
+
+    Every entry in `BLOCKED_METADATA_IPS` sits inside a range one of the two
+    gates admits, so the unconditional metadata check has to run before either
+    of them. `allow_special_use` is a second way to attempt this, so it is
+    graded alongside `allow_private` rather than inferred from it.
+    """
+    for kwargs in (
+        {"allow_private": True},
+        {"allow_special_use": True},
+        {"allow_private": True, "allow_special_use": True},
+    ):
+        with patch(
+            "adcp.signing.jwks.socket.getaddrinfo",
+            return_value=[_addrinfo(resolved_ip)],
+        ):
+            with pytest.raises(SSRFValidationError, match="metadata"):
+                validate_jwks_uri("http://metadata-probe.example/jwks.json", **kwargs)
+
+
 def test_ssrf_caps_resolved_address_scan() -> None:
     # Build 100 records where the first 32 are public and the 33rd is internal.
     # With the cap at 32, the scan stops before reaching the loopback address.
