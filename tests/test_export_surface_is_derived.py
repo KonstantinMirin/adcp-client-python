@@ -154,6 +154,63 @@ def test_the_bare_name_and_the_field_type_can_differ() -> None:
 
 
 # ---------------------------------------------------------------------------
+# The generated modules re-export, they never rebuild
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "module",
+    [generated, disambiguated, error_details],
+    ids=["_generated", "disambiguated", "error_details"],
+)
+def test_generated_modules_define_and_build_no_class(module: object) -> None:
+    """A derived export module binds the generated class, never a copy of it.
+
+    Rebuilding a model with ``create_model`` and a copy of its ``model_fields``
+    carries the fields and drops everything else attached to the class — model
+    validators, field validators, custom methods. A copy like that validates
+    documents the class it stands in for rejects, with no symptom until the data
+    is wrong, so disambiguating a name by cloning is not an option here.
+    """
+    tree = ast.parse(Path(module.__file__).read_text())  # type: ignore[attr-defined]
+    assert [node.name for node in ast.walk(tree) if isinstance(node, ast.ClassDef)] == []
+    constructors = sorted(
+        {
+            node.func.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in {"create_model", "type", "ModelMetaclass", "new_class"}
+        }
+    )
+    assert constructors == []
+
+
+def test_every_exported_class_is_the_class_its_module_defines() -> None:
+    """Identity, not shape: the exported name IS the generated class object.
+
+    ``__module__`` must point into ``generated_poc`` and the class must be the
+    object that module holds under its own name. Both halves matter:
+    ``create_model`` stamps the calling module onto the class it builds, so a
+    copy would satisfy an identity check that trusted ``__module__``.
+    """
+    checked = 0
+    for module in (disambiguated, error_details):
+        for name in module.__all__:  # type: ignore[attr-defined]
+            bound = getattr(module, name)
+            if not inspect.isclass(bound):
+                continue
+            assert bound.__module__.startswith("adcp.types.generated_poc."), (
+                f"{name} resolves to {bound.__module__}.{bound.__name__}, which codegen "
+                "did not define — a derived export re-exports, it does not rebuild"
+            )
+            source = importlib.import_module(bound.__module__)
+            assert getattr(source, bound.__name__) is bound, name
+            checked += 1
+    assert checked > 1000, f"only {checked} classes checked — the surface shrank"
+
+
+# ---------------------------------------------------------------------------
 # The error-details family
 # ---------------------------------------------------------------------------
 
