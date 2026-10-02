@@ -904,11 +904,18 @@ def _bearer() -> BearerTokenAuth:
     )
 
 
-def _assert_dual_challenge(response: httpx.Response) -> None:
+#: The 401 challenge for an unsigned call to a ``required`` operation, byte
+#: for byte. security.mdx § Transport error taxonomy: "Verifiers MUST emit
+#: ``WWW-Authenticate: Signature error="<code>"`` with no ``realm`` parameter
+#: and no other parameters." Peers and conformance harnesses match the value,
+#: so the assertion is equality — a substring check passes on a header that
+#: carries parameters the verifier must not send.
+_SIGNATURE_REQUIRED_CHALLENGE = 'Signature error="request_signature_required"'
+
+
+def _assert_signature_challenge(response: httpx.Response) -> None:
     assert response.status_code == 401, response.text
-    challenge = response.headers["www-authenticate"]
-    assert challenge.startswith('Signature error="request_signature_required"')
-    assert "Bearer" in challenge
+    assert response.headers["www-authenticate"] == _SIGNATURE_REQUIRED_CHALLENGE
 
 
 @pytest.mark.asyncio
@@ -926,8 +933,8 @@ async def test_bearer_fallback_admits_unsigned_required_call_with_valid_bearer()
         )
     assert with_bearer.status_code == 200, with_bearer.text
     assert len(handler.contexts) == 1
-    _assert_dual_challenge(without)
-    _assert_dual_challenge(bad)
+    _assert_signature_challenge(without)
+    _assert_signature_challenge(bad)
 
 
 @pytest.mark.asyncio
@@ -941,7 +948,7 @@ async def test_bearer_fallback_disables_discovery_bypass_for_required_operation(
     response = await _post(
         app, "/mcp", json.dumps(_tools_call("get_adcp_capabilities")).encode(), MCP_HEADERS
     )
-    _assert_dual_challenge(response)
+    _assert_signature_challenge(response)
 
 
 @pytest.mark.asyncio
@@ -957,7 +964,7 @@ async def test_bearer_fallback_on_a2a_leg() -> None:
         )
         without = await client.post("/", content=body, headers={"content-type": "application/json"})
     assert with_bearer.status_code == 200, with_bearer.text
-    _assert_dual_challenge(without)
+    _assert_signature_challenge(without)
 
 
 def test_bearer_fallback_requires_an_authenticator() -> None:
