@@ -68,6 +68,44 @@ These prefixed aliases live in the flat `adcp.types` namespace, not in the curat
 
 The canonical names (`Creative`, `Package`, `MediaBuy`, `Deployment`) remain available from both `adcp` and the partial modules — use those when the bare name already resolves to the variant you want. The prefixed aliases exist for the cases where it doesn't.
 
+### Every variant has a name
+
+The prefixed aliases above are curated: each one is added when an adopter needs
+it. `adcp.types.disambiguated` covers the rest. It carries every variant of
+every type name that more than one generated module defines, under
+`<Type>From<DottedModulePath>`, derived from the module tree:
+
+```python
+from adcp.types.disambiguated import QuerySummaryFromCreativeListCreativesResponse
+
+summary: QuerySummaryFromCreativeListCreativesResponse = response.query_summary
+```
+
+These names are stable across a schema regen — the module path is in the name,
+and codegen numbering is not. Prefer a curated alias from `adcp.types` when one
+exists for your variant; reach for `adcp.types.disambiguated` when none does.
+
+### Structured error details
+
+`adcp.types.error_details` exports one model per `error-details/*.json` schema
+together with the field types those models reference, so an error payload is
+built from models rather than a dict:
+
+```python
+from adcp.types.error_details import SupportedVersion, VersionUnsupportedDetails
+
+details = VersionUnsupportedDetails(
+    adcp_version="3.2",
+    supported_versions=[SupportedVersion("3.1"), SupportedVersion("3.2")],
+)
+```
+
+A nested name that two error-details schemas both define carries its qualified
+name, because there is no unambiguous bare spelling for it:
+`billing-not-supported` and `rate-limited` each declare a `scope`, so the two
+enums are `ScopeFromErrorDetailsBillingNotSupported` and
+`ScopeFromErrorDetailsRateLimited`.
+
 ### Targeting mutation inputs and resolved state
 
 Subclass the exact public variant for the context where the object will be used:
@@ -181,7 +219,7 @@ class MyAudienceFilters(SomeLibraryFilters):
     excluded_countries: SchemaVariant[list[GeoCountry]]
 ```
 
-If you find a variant you need to extend that has neither a canonical nor a prefixed public alias, **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a public alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
+If a variant you need has neither a canonical nor a prefixed public alias, import it from `adcp.types.disambiguated` (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
 
 `SchemaVariant[T]` collapses to `T` at runtime — Pydantic validates against the wrapped type unchanged. At type-check time the bundled mypy plugin (`adcp.types.mypy_plugin`) rewrites the annotation to `Any` so the LSP override check passes. **Adopters must enable the plugin in their mypy config** — add this line to `pyproject.toml`:
 
