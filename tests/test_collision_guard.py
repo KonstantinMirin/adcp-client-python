@@ -1,13 +1,15 @@
-"""Tests for the consolidate-step name-collision build guard (issue #911, Step 1).
+"""Tests for the consolidate-step reachability guards (issues #911, #1080).
 
 `consolidate_exports.py` flattens every `generated_poc/` module into a single
 namespace. When the same bare type name is defined in more than one module, one
-class silently shadows the others for adopters importing from `adcp.types`.
+class wins that name in `_generated` and the others would be unreachable, so
+`disambiguated.py` names every variant and `error_details.py` names the
+error-details family with the field types its models reference.
 
-The build guard fails the consolidate step for any collision that is neither
-handled via qualified imports (`KNOWN_COLLISIONS`) nor recorded in the
-checked-in allowlist snapshot. These tests assert the guard passes on the
-current tree and raises for a synthetic new collision.
+Both export sets are derived from the module tree. These tests assert the
+derivation covers every generated class, that no two classes claim one
+qualified name, and that the guard raises when a class would be left
+unreachable.
 """
 
 from __future__ import annotations
@@ -16,84 +18,128 @@ import pytest
 
 from scripts.consolidate_exports import (
     KNOWN_COLLISIONS,
-    _enforce_collision_allowlist,
+    _enforce_every_class_is_reachable,
     _scan_name_to_modules,
-    extract_exports_from_module,
+    colliding_names,
+    disambiguated_bindings,
     exports_for_public_consolidation,
-    load_collision_allowlist,
+    extract_exports_from_module,
+    generate_consolidated_exports,
+    qualified_public_name,
 )
 
 
-def test_allowlist_snapshot_is_present_and_nonempty():
-    """The checked-in allowlist seeds the guard with today's collision set."""
-    allowlist = load_collision_allowlist()
-    assert allowlist, "collision_allowlist.json is missing or empty"
-    # Sanity: a few names called out in issue #911 must be snapshotted.
-    for name in ("Creative", "Account", "Authentication", "Sort", "Unit"):
-        assert name in allowlist, f"{name} should be in the seeded allowlist"
-
-
-def test_known_collisions_are_not_in_allowlist():
-    """Qualified-import collisions are handled separately, not via the allowlist."""
-    allowlist = load_collision_allowlist()
-    overlap = set(KNOWN_COLLISIONS) & allowlist
+def test_qualified_name_carries_the_whole_module_path():
+    """The stem alone is ambiguous: two packages can hold the same filename."""
+    assert qualified_public_name(
+        "AudienceSource", "enums.audience_source"
+    ) != qualified_public_name("AudienceSource", "core.audience_source")
     assert (
-        overlap == set()
-    ), f"KNOWN_COLLISIONS names must not also be in the allowlist: {sorted(overlap)}"
+        qualified_public_name("QuerySummary", "creative.list_creatives_response")
+        == "QuerySummaryFromCreativeListCreativesResponse"
+    )
 
 
-def test_current_tree_consolidates_cleanly():
-    """Guard passes on the current generated tree against the seeded allowlist."""
+def test_every_colliding_variant_has_a_qualified_name():
+    """One binding per (module, type) pair, for every name defined more than once."""
     name_to_modules = _scan_name_to_modules()
-    # Must not raise.
-    _enforce_collision_allowlist(name_to_modules, set(KNOWN_COLLISIONS))
+    collisions = colliding_names(name_to_modules)
+    assert collisions, "the generated tree has no colliding names — guard is vacuous"
+
+    bindings = disambiguated_bindings(name_to_modules)
+    expected = {(module, type_name) for type_name, mods in collisions.items() for module in mods}
+    assert set(bindings.values()) == expected
+    assert len(bindings) == len(expected), "a qualified name bound two classes"
 
 
-def test_allowlist_matches_current_collisions_exactly():
-    """The snapshot is neither stale nor padded with non-colliding names.
+def test_known_collisions_do_not_decide_reachability():
+    """A name in KNOWN_COLLISIONS is still carried by the derived bindings.
 
-    Every allowlisted name must still collide in the tree; every collision not
-    handled via qualified imports must be in the allowlist.
+    The table decides whether the bare slot in ``_generated`` stays unbound. It
+    must not be what makes a class importable, because a hand-maintained table
+    goes stale on the next schema addition (#911, #1080).
     """
     name_to_modules = _scan_name_to_modules()
-    collisions = {name for name, mods in name_to_modules.items() if len(mods) > 1} - set(
-        KNOWN_COLLISIONS
-    )
-    allowlist = load_collision_allowlist()
-    assert allowlist == collisions, (
-        "Allowlist drifted from the real collision set. Regenerate with "
-        "`python scripts/consolidate_exports.py --update-allowlist`.\n"
-        f"  In allowlist but no longer colliding: {sorted(allowlist - collisions)}\n"
-        f"  Colliding but missing from allowlist: {sorted(collisions - allowlist)}"
-    )
+    bindings = disambiguated_bindings(name_to_modules)
+    for name in KNOWN_COLLISIONS:
+        modules = name_to_modules.get(name, set())
+        if len(modules) < 2:
+            continue
+        for module in modules:
+            assert bindings.get(qualified_public_name(name, module)) == (module, name)
 
 
-def test_new_collision_not_in_allowlist_raises():
-    """A new bare name in two modules, absent from the allowlist, fails the build."""
+def test_current_tree_leaves_no_class_unreachable():
+    """The guard passes on the generated tree as consolidated today."""
     name_to_modules = _scan_name_to_modules()
-    # Synthetic collision: a name defined in two modules that is not in the
-    # allowlist and not a known collision.
-    synthetic = "WidgetCollisionGuardSentinel"
-    assert synthetic not in load_collision_allowlist()
-    name_to_modules[synthetic] = {"core.widget_a", "core.widget_b"}
+    consolidation = generate_consolidated_exports()
+    # Must not raise.
+    _enforce_every_class_is_reachable(
+        name_to_modules,
+        consolidation.reachable_here,
+        disambiguated_bindings(name_to_modules, consolidation.displaced),
+    )
+
+
+def test_unreachable_class_fails_the_build():
+    """A generated class bound by neither module fails the consolidate step."""
+    name_to_modules = {"WidgetGuardSentinel": {"core.widget_a", "core.widget_b"}}
+    bindings = disambiguated_bindings(name_to_modules)
+    # Drop one variant, as a derivation that skipped a class would.
+    bindings.pop(qualified_public_name("WidgetGuardSentinel", "core.widget_b"))
 
     with pytest.raises(ValueError) as excinfo:
-        _enforce_collision_allowlist(name_to_modules, set(KNOWN_COLLISIONS))
+        _enforce_every_class_is_reachable(name_to_modules, set(), bindings)
 
     message = str(excinfo.value)
-    assert synthetic in message
-    assert "not in the checked-in allowlist" in message
-    # The remediation guidance must tell a contributor what to do.
-    assert "aliases.py" in message
-    assert "--update-allowlist" in message
-    assert "KNOWN_COLLISIONS" in message
+    assert "core.widget_b.WidgetGuardSentinel" in message
+    assert "reachable under no public name" in message
+    assert "adcp.types.disambiguated" in message
 
 
-def test_single_definition_name_does_not_trip_guard():
-    """A name defined in exactly one module is not a collision."""
-    name_to_modules = {"SoloUniqueGuardSentinel": {"core.solo"}}
-    # Must not raise.
-    _enforce_collision_allowlist(name_to_modules, set(KNOWN_COLLISIONS))
+def test_a_class_the_consolidated_module_binds_is_reachable():
+    """A name defined in exactly one module needs no qualified name."""
+    name_to_modules = {"SoloGuardSentinel": {"core.solo"}}
+    # Must not raise: ``_generated`` binds the bare name.
+    _enforce_every_class_is_reachable(name_to_modules, {("core.solo", "SoloGuardSentinel")}, {})
+
+
+def test_a_displaced_class_is_reachable_through_its_qualified_name():
+    """A compatibility alias may take a bare name only if the class keeps one.
+
+    ``Transport = Transport1`` in ``_generated`` takes the bare name from the
+    class ``protocol/get-adcp-capabilities-response.json`` generates. Passing it
+    as displaced is what keeps it importable.
+    """
+    name_to_modules = {"Shadowed": {"core.shadowed"}}
+    displaced = {("core.shadowed", "Shadowed")}
+
+    with pytest.raises(ValueError):
+        _enforce_every_class_is_reachable(name_to_modules, set(), {})
+
+    # Must not raise once the displaced class carries its qualified name.
+    _enforce_every_class_is_reachable(
+        name_to_modules, set(), disambiguated_bindings(name_to_modules, displaced)
+    )
+
+
+def test_two_classes_claiming_one_qualified_name_fails_the_build():
+    """The derivation refuses to drop a binding when names clash."""
+    import scripts.consolidate_exports as ce
+
+    name_to_modules = {"Clashing": {"core.a", "core.b"}}
+    monkey = lambda type_name, module_name: f"{type_name}Fixed"  # noqa: E731, ARG005
+    original = ce.qualified_public_name
+    ce.qualified_public_name = monkey
+    try:
+        with pytest.raises(ValueError) as excinfo:
+            ce.disambiguated_bindings(name_to_modules)
+    finally:
+        ce.qualified_public_name = original
+
+    message = str(excinfo.value)
+    assert "ClashingFixed" in message
+    assert "do not drop a binding" in message
 
 
 # ---------------------------------------------------------------------------

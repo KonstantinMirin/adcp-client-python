@@ -176,6 +176,7 @@ __all__ = [
     "ActivateSignalResponse",
     "ActivateSignalResponse1",
     "AdcpProtocol",
+    "AdcpVersionEnvelope",
     "AuthorizationRequiredDetails",
     "CreativeAction",
     "AggregatedTotals",
@@ -438,6 +439,7 @@ __all__ = [
     "DoohMetrics",
     "Error",
     "ErrorCode",
+    "Issue",
     "EventType",
     "ExtensionObject",
     "FeedFormat",
@@ -1183,6 +1185,8 @@ if TYPE_CHECKING:
     # ``__all__`` entries are intentionally unbound.
     from adcp.types import _generated as generated  # noqa: F401
     from adcp.types import aliases  # noqa: F401
+    from adcp.types import disambiguated  # noqa: F401
+    from adcp.types import error_details  # noqa: F401
     from adcp.types._eager import (
         MEDIA_BUY_LEGACY_STATUS_VALUES as MEDIA_BUY_LEGACY_STATUS_VALUES,
     )
@@ -1228,6 +1232,7 @@ if TYPE_CHECKING:
         ActivateSignalResponse1,
         ActivateSignalSuccessResponse,
         AdcpProtocol,
+        AdcpVersionEnvelope,
         AdvertiserIndustry,
         AgentConfig,
         AgentDeclarations,
@@ -1570,6 +1575,7 @@ if TYPE_CHECKING:
         InlineDaastAsset,
         InlineVastAsset,
         Input,
+        Issue,
         JavascriptContent,
         JavascriptFormatAsset,
         JavascriptFormatGroupAsset,
