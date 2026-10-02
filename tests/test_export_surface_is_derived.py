@@ -2,10 +2,11 @@
 
 Three properties, each one a defect this suite caught in a shipped wheel:
 
-* every name in ``adcp.types.__all__`` resolves, and resolves to the same object
-  the ``TYPE_CHECKING`` block binds — ``_generated`` used to rebind imported
-  names with ``# type: ignore[assignment]``, which left mypy holding the
-  pre-rebind declaration while the runtime held its neighbour (#1141);
+* every name in ``adcp.types.__all__`` resolves, and no public binding in
+  ``_generated`` reassigns a name the module imports — that reassignment needs
+  ``# type: ignore[assignment]``, which left mypy holding the pre-reassignment
+  declaration while the runtime held its neighbour (#1141). The static half of
+  that contract is ``tests/type_checks/authorized_agents_variants.py``;
 * every public class in a non-bundled generated module is importable, from
   ``adcp.types`` when its bare name is unambiguous and from
   ``adcp.types.disambiguated`` when it is not (#911);
@@ -35,10 +36,6 @@ from scripts.consolidate_exports import (
     qualified_public_name,
 )
 
-TYPES_INIT = Path(adcp.types.__file__)
-GENERATED_POC = Path(adcp.types.generated_poc.__file__).parent
-
-
 # ---------------------------------------------------------------------------
 # Every exported name resolves, and means one thing
 # ---------------------------------------------------------------------------
@@ -53,38 +50,6 @@ def test_every_name_in_all_resolves(module: object) -> None:
     """``__all__`` is a promise: a name listed there must be importable."""
     unresolved = [name for name in module.__all__ if not hasattr(module, name)]  # type: ignore[attr-defined]
     assert unresolved == []
-
-
-def _type_checking_names(path: Path) -> set[str]:
-    """Names the ``TYPE_CHECKING`` block of ``path`` imports from ``_eager``."""
-    tree = ast.parse(path.read_text())
-    names: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.If):
-            continue
-        test = node.test
-        if not (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING"):
-            continue
-        for stmt in ast.walk(node):
-            if isinstance(stmt, ast.ImportFrom) and stmt.module == "adcp.types._eager":
-                names.update(alias.asname or alias.name for alias in stmt.names)
-    return names
-
-
-def test_runtime_and_static_bindings_agree() -> None:
-    """A name mypy resolves through ``_eager`` resolves to the same object at runtime.
-
-    ``_generated`` reassigning a name it also imports is what split the two: the
-    suppression on the reassignment keeps mypy on the imported declaration while
-    the module dict holds the new value.
-    """
-    eager = importlib.import_module("adcp.types._eager")
-    disagreements = {
-        name: (getattr(adcp.types, name), getattr(eager, name))
-        for name in sorted(_type_checking_names(TYPES_INIT))
-        if hasattr(eager, name) and getattr(adcp.types, name) is not getattr(eager, name)
-    }
-    assert disagreements == {}
 
 
 def test_generated_module_rebinds_no_imported_name() -> None:
@@ -117,21 +82,33 @@ def test_generated_module_rebinds_no_imported_name() -> None:
 def test_no_generated_type_is_reachable_under_zero_names() -> None:
     """A model an adopter cannot import is a model an adopter cannot construct.
 
-    A generated public name reaches an adopter under its bare spelling when only
-    one module defines it, and under ``<Type>From<DottedModulePath>`` when
-    several do. Names are the unit here, not class identity: a generated module
-    binds several names to one class (``AuthorizedAgents7`` is
-    ``AuthorizedAgents``), and each of those names is part of the surface.
+    A generated public name reaches an adopter under its bare spelling when the
+    bare name resolves to the class that module defines, and under
+    ``<Type>From<DottedModulePath>`` otherwise. The bare name alone is not
+    enough: it covers one of the modules that define the name, and the whole
+    defect is that the others silently lose it.
     """
     name_to_modules = _scan_name_to_modules()
-    bare = set(adcp.types.__all__) | set(generated.__all__)
     qualified = set(disambiguated.__all__) | set(error_details.__all__)
+
+    def bare_resolves_here(type_name: str, module: str) -> bool:
+        for surface in (adcp.types, generated):
+            if type_name not in surface.__all__:  # type: ignore[attr-defined]
+                continue
+            bound = getattr(surface, type_name)
+            if not inspect.isclass(bound):
+                # A union / TypeAlias export carries no defining module.
+                return True
+            if bound.__module__.removeprefix("adcp.types.generated_poc.") == module:
+                return True
+        return False
 
     unreachable = sorted(
         f"{module}.{type_name}"
         for type_name, modules in name_to_modules.items()
         for module in modules
-        if type_name not in bare and qualified_public_name(type_name, module) not in qualified
+        if qualified_public_name(type_name, module) not in qualified
+        and not bare_resolves_here(type_name, module)
     )
     assert unreachable == []
 

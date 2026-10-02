@@ -1184,9 +1184,11 @@ if TYPE_CHECKING:
     # submodules resolve as real submodules; the two dead back-compat
     # ``__all__`` entries are intentionally unbound.
     from adcp.types import _generated as generated  # noqa: F401
-    from adcp.types import aliases  # noqa: F401
-    from adcp.types import disambiguated  # noqa: F401
-    from adcp.types import error_details  # noqa: F401
+    from adcp.types import (
+        aliases,  # noqa: F401
+        disambiguated,  # noqa: F401
+        error_details,  # noqa: F401
+    )
     from adcp.types._eager import (
         MEDIA_BUY_LEGACY_STATUS_VALUES as MEDIA_BUY_LEGACY_STATUS_VALUES,
     )
