@@ -30,6 +30,7 @@ import pkgutil
 import re
 import subprocess
 import sys
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -154,6 +155,11 @@ def module_qualifier(module_name: str) -> str:
 def qualified_public_name(type_name: str, module_name: str) -> str:
     """The unambiguous public name for one variant of a colliding type name.
 
+    This is NOT the same spelling as the private ``_<Name>From<Stem>`` exports
+    the ``KNOWN_COLLISIONS`` loop emits below. ``aliases.py`` imports those by
+    name, so their stem-only spelling is fixed; this one carries the whole
+    module path. Do not collapse the two.
+
     The whole dotted module path goes into the name, not just the filename stem:
     module paths are unique, so the qualified name is unique by construction and
     stays stable when a schema addition introduces another module with the same
@@ -243,7 +249,7 @@ def colliding_names(name_to_modules: dict[str, set[str]]) -> dict[str, set[str]]
 
 def disambiguated_bindings(
     name_to_modules: dict[str, set[str]],
-    displaced: set[tuple[str, str]] = frozenset(),  # type: ignore[assignment]
+    displaced: Iterable[tuple[str, str]] = (),
 ) -> dict[str, tuple[str, str]]:
     """Map each qualified public name to the (module, type name) it binds.
 
