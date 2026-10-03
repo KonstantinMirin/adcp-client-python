@@ -53,11 +53,15 @@ from adcp.signing.brand_jwks import (
     BrandAgentType,
     BrandJsonJwksResolver,
     BrandJsonResolverError,
+    BrandJsonResolverErrorCode,
     _canonical_origin,
     _canonicalize_url,
 )
 from adcp.signing.canonical import canonicalize_target_uri
 from adcp.signing.errors import (
+    REQUEST_SIGNATURE_AGENT_NOT_IN_BRAND_JSON,
+    REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS,
+    REQUEST_SIGNATURE_BRAND_JSON_MALFORMED,
     REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
     REQUEST_SIGNATURE_BRAND_JSON_URL_MISSING,
     REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE,
@@ -936,16 +940,30 @@ async def verify_from_agent_url(
 # ---- helpers ----
 
 
+#: The spec code for each brand.json hop outcome. ``invalid_url`` and
+#: ``invalid_house`` describe a document whose content the resolver rejected, which
+#: the table calls malformed rather than unreachable; ``redirect_loop`` and
+#: ``redirect_depth_exceeded`` are fetch failures. ``jwks_origin_mismatch`` has no
+#: row: the document parsed and matched, and no `jwks_uri` could be derived from the
+#: matched entry, which the discovery-chain table does not describe.
+_BRAND_JSON_SPEC_CODES: dict[BrandJsonResolverErrorCode, str] = {
+    "agent_not_found": REQUEST_SIGNATURE_AGENT_NOT_IN_BRAND_JSON,
+    "agent_ambiguous": REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS,
+    "invalid_body": REQUEST_SIGNATURE_BRAND_JSON_MALFORMED,
+    "schema_invalid": REQUEST_SIGNATURE_BRAND_JSON_MALFORMED,
+    "invalid_url": REQUEST_SIGNATURE_BRAND_JSON_MALFORMED,
+    "invalid_house": REQUEST_SIGNATURE_BRAND_JSON_MALFORMED,
+    "fetch_failed": REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
+    "redirect_loop": REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
+    "redirect_depth_exceeded": REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
+}
+
+
 def _brand_resolution_error(exc: BrandJsonResolverError) -> AgentResolverError:
-    codes = {
-        "agent_not_found": "request_signature_agent_not_in_brand_json",
-        "agent_ambiguous": "request_signature_brand_json_ambiguous",
-        "invalid_body": "request_signature_brand_json_malformed",
-        "schema_invalid": "request_signature_brand_json_malformed",
-        "fetch_failed": "request_signature_brand_json_unreachable",
-    }
     return AgentResolverError(
-        "brand_json_resolution_failed", str(exc), signature_code=codes.get(exc.code)
+        "brand_json_resolution_failed",
+        str(exc),
+        signature_code=_BRAND_JSON_SPEC_CODES.get(exc.code),
     )
 
 

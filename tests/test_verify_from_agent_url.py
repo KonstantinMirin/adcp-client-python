@@ -18,6 +18,7 @@ from adcp.signing import agent_resolver
 from adcp.signing.agent_resolver import (
     AgentResolution,
     AgentResolverError,
+    AgentResolverErrorCode,
     verify_from_agent_url,
 )
 from adcp.signing.agent_resolver import request_signature_code
@@ -165,7 +166,7 @@ async def test_factory_reports_capabilities_unreachable_with_its_own_code(
 #: Every resolver failure and the ``request_signature_*`` code the discovery-chain
 #: rejection table assigns it. A default arm in the mapping collapses the rows that
 #: share a hop, so the table is asserted row by row rather than in aggregate.
-_RESOLVER_CODE_TO_SPEC_CODE = [
+_RESOLVER_CODE_TO_SPEC_CODE: list[tuple[AgentResolverErrorCode, str]] = [
     ("invalid_agent_url", REQUEST_SIGNATURE_JWKS_UNTRUSTED),
     ("capabilities_unreachable", REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE),
     ("capabilities_invalid", REQUEST_SIGNATURE_BRAND_JSON_URL_MISSING),
@@ -177,9 +178,9 @@ _RESOLVER_CODE_TO_SPEC_CODE = [
 
 @pytest.mark.parametrize(("resolver_code", "spec_code"), _RESOLVER_CODE_TO_SPEC_CODE)
 def test_request_signature_code_maps_each_resolver_failure(
-    resolver_code: str, spec_code: str
+    resolver_code: AgentResolverErrorCode, spec_code: str
 ) -> None:
-    assert request_signature_code(AgentResolverError(resolver_code, "boom")) == spec_code  # type: ignore[arg-type]
+    assert request_signature_code(AgentResolverError(resolver_code, "boom")) == spec_code
 
 
 def test_request_signature_code_covers_every_resolver_code() -> None:
@@ -196,6 +197,46 @@ def test_request_signature_code_covers_every_resolver_code() -> None:
     assert set(get_args(AgentResolverErrorCode)) == {
         row[0] for row in _RESOLVER_CODE_TO_SPEC_CODE
     }
+
+
+#: Every brand.json hop outcome and the code the table assigns it. ``jwks_origin_mismatch``
+#: is absent on purpose: the document parsed and matched, so no row describes it.
+_BRAND_CODE_TO_SPEC_CODE = [
+    ("agent_not_found", "request_signature_agent_not_in_brand_json"),
+    ("agent_ambiguous", "request_signature_brand_json_ambiguous"),
+    ("invalid_body", "request_signature_brand_json_malformed"),
+    ("schema_invalid", "request_signature_brand_json_malformed"),
+    ("invalid_url", "request_signature_brand_json_malformed"),
+    ("invalid_house", "request_signature_brand_json_malformed"),
+    ("fetch_failed", "request_signature_brand_json_unreachable"),
+    ("redirect_loop", "request_signature_brand_json_unreachable"),
+    ("redirect_depth_exceeded", "request_signature_brand_json_unreachable"),
+]
+
+
+@pytest.mark.parametrize(("brand_code", "spec_code"), _BRAND_CODE_TO_SPEC_CODE)
+def test_brand_json_hop_reports_its_own_outcome(brand_code: str, spec_code: str) -> None:
+    """A brand.json failure names what went wrong with the document.
+
+    Content the resolver rejected (an unusable URL or house object) is malformed;
+    a redirect loop or depth cap is a fetch failure. Leaving either unmapped sends
+    it to the hop's default and reports a fetch failure for a document that was
+    fetched.
+    """
+    from adcp.signing.agent_resolver import _brand_resolution_error
+
+    exc = _brand_resolution_error(_FakeBrandError(brand_code))
+    assert exc.signature_code == spec_code
+    assert request_signature_code(exc) == spec_code
+
+
+def test_jwks_origin_mismatch_has_no_assigned_code() -> None:
+    """Pins the one brand.json outcome the table does not describe, so adding a row
+    for it is a deliberate choice rather than a silent default."""
+    from adcp.signing.agent_resolver import _brand_resolution_error
+
+    exc = _brand_resolution_error(_FakeBrandError("jwks_origin_mismatch"))
+    assert exc.signature_code is None
 
 
 def test_request_signature_code_only_emits_codes_the_pinned_enum_defines() -> None:
