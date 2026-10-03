@@ -1025,7 +1025,6 @@
       "FormatCardDetailed": "core.format",
       "FormatIdParameter": "enums.format_id_parameter",
       "FormatOptionReference": "core.format_option_ref",
-      "FormatReferenceStructuredObject": "core.format_id",
       "FrequencyCap": "core.frequency_cap",
       "FrequencyCapScope": "enums.frequency_cap_scope",
       "GeneratedTaskStatus": "enums.task_status:TaskStatus",

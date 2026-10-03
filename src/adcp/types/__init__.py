@@ -452,7 +452,6 @@ __all__ = [
     "FeedFormat",
     "Fonts",
     "Format",
-    "FormatReferenceStructuredObject",
     "FormatCard",
     "FormatCardDetailed",
     # Canonical-formats v2 surface (AdCP 3.1)
@@ -1487,7 +1486,6 @@ if TYPE_CHECKING:
         FormatCardDetailed,
         FormatIdParameter,
         FormatOptionReference,
-        FormatReferenceStructuredObject,
         FrequencyCap,
         FrequencyCapScope,
         GeneratedTaskStatus,

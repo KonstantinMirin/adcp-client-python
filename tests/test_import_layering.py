@@ -17,8 +17,19 @@ This test enforces a **frozen baseline**: existing violations are listed in
 *new* file or *new* import that bypasses the public surface fails the test.
 
 To shrink the baseline:
-- Re-route the import through ``adcp.types`` or ``adcp``; if the symbol
-  isn't exported there, add it to ``aliases.py`` and ``__init__.py``.
+- Re-route the import through a public namespace. Only ``adcp.types._generated``
+  and ``adcp.types.generated_poc`` are forbidden; ``adcp``, ``adcp.types``,
+  ``adcp.types.domains.<domain>[.<schema>]``, ``adcp.types.legacy``,
+  ``adcp.types.aliases``, ``adcp.types.error_details`` and
+  ``adcp.types.capabilities`` are public and all pass.
+- Which one depends on WHY the import is deep, and the two answers differ. If
+  the name is merely absent from the public surface, the surface is incomplete:
+  every generated type is exported from the module for the schema that declares
+  it, so ``adcp.types.domains...`` serves it. If the name is QUARANTINED — the
+  legacy v1 ``format_id`` world is reachable only under explicitly named
+  ``Legacy*`` paths, which ``tests/test_canonical_creatives_rc3.py`` asserts —
+  then ``adcp.types.legacy`` is the door, and adding the name to the root
+  surface is the wrong fix.
 - Then remove the file from ``_KNOWN_VIOLATIONS``.
 """
 
