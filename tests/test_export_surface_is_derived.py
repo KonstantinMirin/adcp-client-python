@@ -33,6 +33,9 @@ import adcp.types.error_details as error_details
 from scripts.consolidate_exports import (
     _scan_name_to_modules,
     colliding_names,
+    disambiguated_bindings,
+    extract_exports_from_module,
+    generate_consolidated_exports,
     qualified_public_name,
 )
 
@@ -114,21 +117,27 @@ def test_no_generated_type_is_reachable_under_zero_names() -> None:
 
 
 def test_every_colliding_variant_is_reachable_by_its_own_name() -> None:
-    """The qualified name binds the class its module defines, not the sort winner."""
+    """Each qualified name binds the object its own module holds, and nothing is missing.
+
+    Checked in the forward direction — from the tree to the export — because the
+    name cannot be decomposed back into a module path, and because not every
+    export is a class. A schema whose root composes other schemas generates a
+    ``typing.Annotated[...]`` alias, which has no ``__module__`` and no
+    ``__name__`` to compare; skipping those would quietly stop grading them.
+    """
     name_to_modules = _scan_name_to_modules()
     collisions = colliding_names(name_to_modules)
     assert collisions, "no colliding names in the tree — this test is vacuous"
 
-    checked = 0
-    for name in disambiguated.__all__:
-        bound = getattr(disambiguated, name)
-        if not inspect.isclass(bound):
-            continue
-        module = bound.__module__.removeprefix("adcp.types.generated_poc.")
-        assert name.startswith(f"{bound.__name__}From"), name
-        assert module in name_to_modules.get(bound.__name__, {module})
-        checked += 1
-    assert checked == len(disambiguated.__all__)
+    expected = disambiguated_bindings(name_to_modules, generate_consolidated_exports().displaced)
+    assert set(disambiguated.__all__) == set(expected), (
+        "every variant of a shared name, and every class a compatibility alias "
+        "displaces, is exported under its qualified name — no more and no fewer"
+    )
+
+    for qualified, (module_name, type_name) in sorted(expected.items()):
+        source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
+        assert getattr(disambiguated, qualified) is getattr(source, type_name), qualified
 
 
 def test_the_bare_name_and_the_field_type_can_differ() -> None:
@@ -215,21 +224,22 @@ def test_every_exported_class_is_the_class_its_module_defines() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _error_details_models() -> dict[str, type]:
-    """Every top-level model generated from an ``error-details/*.json`` schema."""
+def _error_details_models() -> dict[str, object]:
+    """Every public top-level ``*Details`` name an ``error-details/*`` module declares.
+
+    Read from the AST rather than filtered on ``inspect.isclass``: a composing
+    root generates a ``typing.Annotated[...]`` alias, and an alias is a model an
+    adopter imports like any other. The ``isclass`` filter dropped two of them
+    the moment codegen started emitting that shape.
+    """
     package = importlib.import_module("adcp.types.generated_poc.error_details")
-    models: dict[str, type] = {}
+    package_dir = Path(package.__path__[0])
+    models: dict[str, object] = {}
     for info in pkgutil.iter_modules(package.__path__):
         module = importlib.import_module(f"{package.__name__}.{info.name}")
-        models.update(
-            {
-                name: obj
-                for name, obj in vars(module).items()
-                if inspect.isclass(obj)
-                and obj.__module__ == module.__name__
-                and name.endswith("Details")
-            }
-        )
+        for name in extract_exports_from_module(package_dir / f"{info.name}.py"):
+            if name.endswith("Details") and hasattr(module, name):
+                models[name] = getattr(module, name)
     return models
 
 

@@ -836,51 +836,73 @@ def generate_disambiguated_exports(displaced: set[tuple[str, str]]) -> str:
 def _error_details_closure() -> dict[str, list[str]]:
     """Map each generated module to the error-details names it must export.
 
-    The set is the ``error-details/*.json`` models plus the transitive closure of
-    their field types. Issue #1080 asked for the family to be importable and was
-    closed by listing 16 names; a model whose field types are unreachable still
-    cannot be constructed with typed values, and the list went stale on the next
-    schema addition. Walking the generated package covers both.
+    The set is every public top-level name in ``error-details/*`` plus the
+    transitive closure of the types those names reference. Issue #1080 asked for
+    the family to be importable and was closed by listing 16 names; a model whose
+    field types are unreachable still cannot be constructed with typed values,
+    and the list went stale on the next schema addition. Walking the generated
+    package covers both.
+
+    Roots come from the AST, not from ``inspect.isclass``: a schema whose root
+    composes other schemas generates a ``typing.Annotated[...]`` alias rather
+    than a class, and an alias is a top-level name an adopter has to be able to
+    import like any other. Filtering on ``isclass`` dropped two error-details
+    models the moment codegen started emitting them that way.
     """
     package = importlib.import_module("adcp.types.generated_poc.error_details")
-    roots: list[type] = []
+    package_dir = Path(package.__path__[0])
+
+    roots: list[object] = []
+    declared: dict[str, list[str]] = {}
     for module_info in sorted(pkgutil.iter_modules(package.__path__), key=lambda m: m.name):
         module = importlib.import_module(f"{package.__name__}.{module_info.name}")
-        roots.extend(
-            obj
-            for name, obj in sorted(vars(module).items())
-            if inspect.isclass(obj)
-            and obj.__module__ == module.__name__
-            and not name.startswith("_")
-        )
+        rel = f"error_details.{module_info.name}"
+        for name in sorted(extract_exports_from_module(package_dir / f"{module_info.name}.py")):
+            obj = getattr(module, name, None)
+            if obj is None:
+                continue
+            declared.setdefault(rel, []).append(name)
+            roots.append(obj)
 
+    # ``seen`` holds classes only: a class is what a nested field type is, and
+    # what has a module to be exported from. An alias contributes its members.
     seen: set[type] = set()
-    queue = list(roots)
+    queue: list[object] = list(roots)
     while queue:
-        cls = queue.pop()
-        if cls in seen:
-            continue
-        seen.add(cls)
-        model_fields = getattr(cls, "model_fields", None)
-        if not model_fields:
-            continue
-        for field in model_fields.values():
-            pending = [field.annotation]
+        obj = queue.pop()
+        if inspect.isclass(obj):
+            if obj in seen:
+                continue
+            seen.add(obj)
+            annotations = [field.annotation for field in getattr(obj, "model_fields", {}).values()]
+        else:
+            # An alias (``Annotated[...]``, a union): walk what it wraps.
+            annotations = [obj]
+        for annotation in annotations:
+            pending = [annotation]
             while pending:
-                annotation = pending.pop()
-                pending.extend(get_args(annotation))
+                candidate = pending.pop()
+                pending.extend(get_args(candidate))
                 if (
-                    inspect.isclass(annotation)
-                    and annotation not in seen
-                    and annotation.__module__.startswith("adcp.types.generated_poc.")
-                    and (hasattr(annotation, "model_fields") or issubclass(annotation, Enum))
+                    inspect.isclass(candidate)
+                    and candidate not in seen
+                    and candidate.__module__.startswith("adcp.types.generated_poc.")
+                    and (hasattr(candidate, "model_fields") or issubclass(candidate, Enum))
                 ):
-                    queue.append(annotation)
+                    queue.append(candidate)
 
-    by_module: dict[str, list[str]] = {}
+    by_module: dict[str, list[str]] = {
+        module: list(names) for module, names in sorted(declared.items())
+    }
     for cls in seen:
+        # A codegen'd alias wraps a private body class; the alias is the public
+        # handle and the body is not an export. Reaching one through a field
+        # annotation does not make its name public.
+        if cls.__name__.startswith("_"):
+            continue
         module_name = cls.__module__.removeprefix("adcp.types.generated_poc.")
-        by_module.setdefault(module_name, []).append(cls.__name__)
+        if cls.__name__ not in by_module.setdefault(module_name, []):
+            by_module[module_name].append(cls.__name__)
     return {module: sorted(names) for module, names in sorted(by_module.items())}
 
 
