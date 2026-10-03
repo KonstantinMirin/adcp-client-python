@@ -368,27 +368,28 @@ def domain_bindings(name_to_modules: dict[str, set[str]]) -> dict[str, dict[str,
     return bindings
 
 
-def _enforce_every_class_is_reachable(
-    name_to_modules: dict[str, set[str]],
-    bindings: dict[str, dict[str, tuple[str, str]]],
-) -> None:
+def _enforce_every_class_is_reachable(name_to_modules: dict[str, set[str]]) -> None:
     """Fail the build when a generated public class is reachable under no name.
 
-    Every ``(module, type)`` pair the tree declares has to be bound by its
-    domain module. That is a property of the derivation rather than a snapshot
-    of it: a schema addition satisfies it with no edit, and a change that makes
-    the derivation skip a class fails the build.
+    Every ``(module, type)`` pair the tree declares is bound by the mirror
+    module for its schema, which is a property of the mirror's construction:
+    it re-exports what its module declares, verbatim. The guard re-derives it
+    so a change that makes the mirror skip a module fails the build instead of
+    leaving an adopter with no public path.
 
-    ``_generated`` is not consulted. It binds one class per bare name and the
-    losers were exactly the problem; the domain modules are where every variant
-    is required to appear.
+    ``_generated`` and the domain roots are not consulted. ``_generated`` binds
+    one class per bare name and the losers were the problem; a domain root binds
+    only what its domain declares once.
     """
-    reachable = {pair for bound in bindings.values() for pair in bound.values()}
+    mirrored = {
+        ".".join([*rel.parts[:-1], rel.stem]): extract_exports_from_module(GENERATED_POC_DIR / rel)
+        for rel in _mirror_relative_paths()
+    }
     unreachable = [
         (module_name, type_name)
         for type_name, modules in name_to_modules.items()
         for module_name in modules
-        if (module_name, type_name) not in reachable
+        if type_name not in mirrored.get(module_name, set())
     ]
     if not unreachable:
         return
@@ -397,9 +398,10 @@ def _enforce_every_class_is_reachable(
         f"{len(unreachable)} generated public class(es) are reachable under no "
         f"public name:\n{details}\n\n"
         "Every public class in a non-bundled generated module must be importable "
-        "from its domain module under adcp.types.domains. A class that is "
-        "reachable under no name is a model an adopter cannot construct, which is "
-        "how the error-details family became unusable (#1080).\n"
+        "from adcp.types.domains.<domain>.<schema>, the mirror of the module that "
+        "declares it. A class that is reachable under no name is a model an "
+        "adopter cannot construct, which is how the error-details family became "
+        "unusable (#1080).\n"
     )
 
 
@@ -833,34 +835,187 @@ def _format_all_block(names: list[str]) -> list[str]:
     return lines
 
 
-def generate_domain_exports(
-    bindings: dict[str, dict[str, tuple[str, str]]],
+def scan_declared_names() -> dict[str, set[str]]:
+    """Map every public name to the non-bundled modules that DECLARE it.
+
+    Unlike :func:`_scan_name_to_modules` this applies no public-export filter.
+    That filter exists so an aggregate schema's inlined private copies cannot
+    shadow the canonical class they were copied from in the flat namespace, and
+    the domains layer does not need it twice over: a mirror path names the
+    defining schema and shadows nothing, and a domain root binds only the names
+    its domain declares exactly once — so a copy that duplicates a canonical
+    name is omitted from the root by that rule alone.
+
+    Using the filtered scan here is what left ``brand_discovery`` with no public
+    path at all, since that module is suppressed in full.
+    """
+    declared: dict[str, set[str]] = {}
+    for rel in _mirror_relative_paths():
+        module_name = ".".join([*rel.parts[:-1], rel.stem])
+        for name in extract_exports_from_module(GENERATED_POC_DIR / rel):
+            declared.setdefault(name, set()).add(module_name)
+    return declared
+
+
+def unambiguous_domain_bindings(
+    name_to_modules: dict[str, set[str]],
+) -> dict[str, dict[str, str]]:
+    """Per domain, the names that domain declares exactly once.
+
+    Returns ``{domain: {type_name: module}}``. A name a domain declares twice
+    has no unambiguous spelling at domain level and is reached through the
+    module that declares it — see ``generate_module_mirror``. Nothing is
+    renamed: a type either keeps the name codegen gave it or is imported from
+    its own schema's module.
+    """
+    per_domain: dict[str, dict[str, list[str]]] = {}
+    for type_name, modules in name_to_modules.items():
+        for module_name in modules:
+            per_domain.setdefault(schema_domain(module_name), {}).setdefault(type_name, []).append(
+                module_name
+            )
+    return {
+        domain: {
+            type_name: modules[0]
+            for type_name, modules in sorted(declared.items())
+            if len(modules) == 1
+        }
+        for domain, declared in sorted(per_domain.items())
+    }
+
+
+def _mirror_relative_paths() -> list[Path]:
+    """Every non-bundled generated module, as a path relative to the tree root."""
+    paths = []
+    for path in sorted(GENERATED_POC_DIR.rglob("*.py")):
+        rel = path.relative_to(GENERATED_POC_DIR)
+        if path.stem == "__init__" or rel.parts[0] == "bundled":
+            continue
+        paths.append(rel)
+    return paths
+
+
+def generate_module_mirror(
+    name_to_modules: dict[str, set[str]],
 ) -> dict[str, str]:
-    """Generate one public module per schema domain, plus the package root.
+    """Generate a public module for every schema, mirroring the generated tree.
 
-    Returns ``{"<domain>": content, "__init__": content}``.
+    Returns ``{"<domain>/<path>": content}``, including the ``__init__`` of every
+    package along the way.
 
-    ``adcp.types`` binds one class per bare type name, so an adopter who writes
-    ``from adcp.types import QuerySummary`` gets whichever generated module won
-    the sort order — a different class from the one the field it is reading is
-    typed with. Importing from the domain instead says which one:
+    A domain is still one namespace, so it resolves a type name several domains
+    declare and reproduces the collision when one domain declares it several
+    times — ``core`` declares nine different ``Unit`` classes, in
+    ``audience_evidence``, ``canvas_constraint`` and seven more. The schema
+    layout already distinguishes them, one level further down, and codegen
+    already mirrors that layout. Making it public is what gives those nine
+    classes nine public paths without renaming, inventing or mangling anything:
 
-        from adcp.types.domains.creative import QuerySummary   # the listing shape
-        from adcp.types.domains.core import QuerySummary       # the task shape
+        from adcp.types.domains.core.audience_evidence import Unit
+        from adcp.types.domains.core.canvas_constraint import Unit
 
-    The path is the schema bundle's own layout, which codegen already mirrors,
-    so no name is invented for the 3041 types their domain declares once. The
-    728 a domain declares twice or more carry the defining file in the name,
-    because at that point nothing shorter distinguishes them.
+    A mirror exports what its module declares, including names
+    ``exports_for_public_consolidation`` keeps out of the flat namespace. That
+    filter exists so an aggregate schema's inlined private copies cannot shadow
+    the canonical class they were copied from; a path that names the defining
+    schema shadows nothing, so the filter has nothing to protect here.
     """
     generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    files: dict[str, str] = {}
+    packages: set[tuple[str, ...]] = set()
+
+    for rel in _mirror_relative_paths():
+        module_name = ".".join([*rel.parts[:-1], rel.stem])
+        domain = schema_domain(module_name)
+        names = sorted(extract_exports_from_module(GENERATED_POC_DIR / rel))
+        if not names:
+            continue
+        if module_name == domain:
+            # A schema at the tree root: its module path IS the domain name, so
+            # the domain package root is already that schema's mirror and a
+            # submodule would only repeat the name. Every other schema gets one,
+            # so ``adcp.types.domains.<module path>`` is uniform.
+            continue
+        packages.update(rel.parts[:i] for i in range(1, len(rel.parts)))
+        lines = [
+            f'"""Types declared by the AdCP ``{module_name.replace(".", "/")}`` schema.',
+            "",
+            "One public module per schema, so a type name its own domain declares",
+            "more than once is still unambiguous:",
+            "",
+            f"    from adcp.types.domains.{module_name} import <Type>",
+            "",
+            "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
+            f"Generation date: {generation_date}",
+            '"""',
+            "# ruff: noqa: E501, I001",
+            "from __future__ import annotations",
+            "",
+            f"from adcp.types.generated_poc.{module_name} import {', '.join(names)}",
+        ]
+        lines.extend(_format_all_block(names))
+        files[str(rel)] = "\n".join(lines)
+
+    # ``__init__`` for every intermediate package the mirror introduces.
+    for parts in sorted(packages):
+        if len(parts) == 1 and parts[0] in {Path(r).parts[0] for r in files}:
+            continue  # the domain root is written by generate_domain_roots
+        init = "/".join([*parts, "__init__.py"])
+        if init in files or len(parts) == 1:
+            continue
+        files[init] = "\n".join(
+            [
+                f'"""Public mirror of the AdCP ``{"/".join(parts)}`` schema directory.',
+                "",
+                "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
+                f"Generation date: {generation_date}",
+                '"""',
+                "",
+                "__all__: list[str] = []",
+                "",
+            ]
+        )
+
+    schema_count = len([f for f in files if not f.endswith("__init__.py")])
+    print(f"  module mirror: {schema_count} schema modules")
+    return files
+
+
+def generate_domain_exports(
+    bindings: dict[str, dict[str, str]],
+    name_to_modules: dict[str, set[str]],
+) -> dict[str, str]:
+    """Generate each domain package root, plus the ``domains`` package root.
+
+    Returns ``{"<domain>": content, "__init__": content}``. A domain root binds
+    the names that domain declares exactly once — nothing is renamed, and a name
+    the domain declares twice is reached through its own schema's module.
+    """
+    generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    domain_modules: dict[str, set[str]] = {}
+    for module_name in {m for mods in name_to_modules.values() for m in mods}:
+        domain_modules.setdefault(schema_domain(module_name), set()).add(module_name)
+
     modules: dict[str, str] = {}
-
     for domain, rows in sorted(bindings.items()):
-        by_module: dict[str, list[tuple[str, str]]] = {}
-        for public, (module_name, type_name) in sorted(rows.items()):
-            by_module.setdefault(module_name, []).append((type_name, public))
+        # A schema at the tree root has no submodule of its own — its module
+        # path is the domain name — so the root is that schema's mirror and
+        # carries everything it declares.
+        single = domain in {m for mods in name_to_modules.values() for m in mods}
+        if single:
+            rows = dict.fromkeys(
+                sorted(extract_exports_from_module(GENERATED_POC_DIR / f"{domain}.py")),
+                domain,
+            )
+        by_module: dict[str, list[str]] = {}
+        for type_name, module_name in sorted(rows.items()):
+            by_module.setdefault(module_name, []).append(type_name)
 
+        detail = (
+            "This domain has one schema, so every type it declares is here."
+            if single
+            else "A type this domain declares in more than one schema is not here: import"
+        )
         lines = [
             f'"""Types the AdCP ``{domain}`` schemas declare.',
             "",
@@ -869,43 +1024,56 @@ def generate_domain_exports(
             "",
             f"    from adcp.types.domains.{domain} import <Type>",
             "",
-            "A type this domain declares in more than one schema carries the defining",
-            "file in its name (``CreativeFromListCreativesResponse``); everything else",
-            "keeps the name codegen gave it.",
-            "",
-            "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
-            f"Generation date: {generation_date}",
-            '"""',
-            "# ruff: noqa: E501, I001",
-            "from __future__ import annotations",
-            "",
+            detail,
         ]
-        for module_name in sorted(by_module):
-            imported = ", ".join(
-                type_name if type_name == public else f"{type_name} as {public}"
-                for type_name, public in sorted(by_module[module_name])
+        if not single:
+            lines.extend(
+                [
+                    "    it from its own schema's module,"
+                    f" ``adcp.types.domains.{domain}.<schema>``.",
+                    "Nothing here is renamed.",
+                ]
             )
-            lines.append(f"from adcp.types.generated_poc.{module_name} import {imported}")
+        lines.extend(
+            [
+                "",
+                "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
+                f"Generation date: {generation_date}",
+                '"""',
+                "# ruff: noqa: E501, I001",
+                "from __future__ import annotations",
+                "",
+            ]
+        )
+        for module_name in sorted(by_module):
+            lines.append(
+                f"from adcp.types.generated_poc.{module_name} import "
+                f"{', '.join(sorted(by_module[module_name]))}"
+            )
         lines.extend(_format_all_block(sorted(rows)))
         modules[domain] = "\n".join(lines)
 
     root = [
-        '"""Public types grouped by the AdCP schema domain that declares them.',
+        '"""Public types grouped by the AdCP schema that declares them.',
         "",
         "The AdCP bundle is organised by domain — ``core/``, ``creative/``,",
-        "``media_buy/`` and the rest — and codegen mirrors that layout. These modules",
-        "re-export each domain faithfully, so a type name several domains define is",
-        "unambiguous by module path rather than by a mangled name:",
+        "``media_buy/`` and the rest — and by schema within each. Codegen mirrors that",
+        "layout, and these modules re-export it, so a type name more than one schema",
+        "declares is unambiguous by path rather than by a mangled name:",
         "",
         "    from adcp.types.domains.creative import QuerySummary",
-        "    from adcp.types.domains.core import QuerySummary",
+        "    from adcp.types.domains.core.audience_evidence import Unit",
+        "    from adcp.types.domains.core.canvas_constraint import Unit",
+        "",
+        "A domain root carries the names that domain declares exactly once. For the",
+        "rest, import from the schema's own module, as the last two lines do.",
         "",
         "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
         f"Generation date: {generation_date}",
         '"""',
         "from __future__ import annotations",
         "",
-        "#: Every domain module in this package.",
+        "#: Every domain in this package.",
         "DOMAINS = (",
         *(f'    "{domain}",' for domain in sorted(bindings)),
         ")",
@@ -916,26 +1084,22 @@ def generate_domain_exports(
     modules["__init__"] = "\n".join(root)
 
     total = sum(len(rows) for rows in bindings.values())
-    invented = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n != t)
-    print(
-        f"  domains: {len(bindings)} modules, {total} exports "
-        f"({total - invented} under the name codegen gave them, {invented} qualified)"
-    )
+    print(f"  domain roots: {len(bindings)} packages, {total} unambiguous exports")
     return modules
 
 
-def generate_collision_report(bindings: dict[str, dict[str, tuple[str, str]]]) -> str:
+def generate_collision_report(name_to_modules: dict[str, set[str]]) -> str:
     """Generate the scannable list of type names more than one schema declares.
 
-    The flat module this replaced was greppable, which was its one real
+    A flat module of qualified names would be greppable, which was its one real
     convenience. A generated document keeps that without committing a public
     identifier per variant.
     """
-    rows: dict[str, list[str]] = {}
-    for domain, bound in bindings.items():
-        for public, (module_name, type_name) in bound.items():
-            rows.setdefault(type_name, []).append(f"`adcp.types.domains.{domain}.{public}`")
-    shared = {name: sorted(paths) for name, paths in rows.items() if len(paths) > 1}
+    shared = {
+        type_name: [f"`adcp.types.domains.{module}.{type_name}`" for module in sorted(modules)]
+        for type_name, modules in sorted(name_to_modules.items())
+        if len(modules) > 1
+    }
 
     generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines = [
@@ -1107,32 +1271,40 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def write_generated_module(path: Path, content: str) -> None:
-    """Write ``content`` to ``path``, black-format it, and keep a stable date."""
-    previous_content = path.read_text() if path.exists() else ""
-    print(f"\nWriting {path}...")
-    path.write_text(content)
+def _format_with_black(*targets: Path) -> None:
+    """Run black over ``targets`` once.
 
-    # Run black to format the generated file.
-    # Try uv run first (works in the project virtualenv), then fall back to sys.executable.
+    Once, not once per file: the module mirror is over a thousand files and a
+    subprocess each takes minutes.
+    """
     print("Formatting with black...")
-    black_commands = [
-        ["uv", "run", "black", str(path), "--quiet"],
-        [sys.executable, "-m", "black", str(path), "--quiet"],
-    ]
-    formatted = False
-    for cmd in black_commands:
+    args = [str(t) for t in targets]
+    for command in (
+        ["uv", "run", "black", *args, "--quiet"],
+        [sys.executable, "-m", "black", *args, "--quiet"],
+    ):
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-            if result.returncode == 0:
+            if subprocess.run(command, capture_output=True, text=True, check=False).returncode == 0:
                 print("✓ Formatted with black")
-                formatted = True
-                break
+                return
         except FileNotFoundError:
             continue
-    if not formatted:
-        print("⚠ Could not format with black (not installed)")
+    print("⚠ Could not format with black (not installed)")
 
+
+def write_generated_module(path: Path, content: str, *, format_now: bool = True) -> None:
+    """Write ``content`` to ``path``, black-format it, and keep a stable date.
+
+    ``format_now=False`` writes and preserves the date but leaves formatting to
+    a later batched :func:`_format_with_black`; the date is preserved against
+    the unformatted text, so a caller that defers formatting has to compare
+    against the same.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    previous_content = path.read_text() if path.exists() else ""
+    path.write_text(content)
+    if format_now:
+        _format_with_black(path)
     formatted_content = path.read_text()
     stable_content = preserve_generation_date_if_unchanged(previous_content, formatted_content)
     if stable_content != formatted_content:
@@ -1159,19 +1331,24 @@ def main(argv: list[str] | None = None):
     # has to be reachable from its domain module. Both sides are derived from the
     # module tree, and the guard fails when a class is left reachable under no
     # name (issues #911, #1080).
-    name_to_modules = _scan_name_to_modules()
-    bindings = domain_bindings(name_to_modules)
-    _enforce_every_class_is_reachable(name_to_modules, bindings)
+    declared = scan_declared_names()
+    _enforce_every_class_is_reachable(declared)
+    bindings = unambiguous_domain_bindings(declared)
 
     write_generated_module(OUTPUT_FILE, content)
-    for domain, module_content in generate_domain_exports(bindings).items():
-        write_generated_module(DOMAINS_DIR / f"{domain}.py", module_content)
+    for domain, module_content in generate_domain_exports(bindings, declared).items():
+        target = DOMAINS_DIR / ("__init__.py" if domain == "__init__" else f"{domain}/__init__.py")
+        write_generated_module(target, module_content)
+    mirror = generate_module_mirror(declared)
+    for rel, module_content in mirror.items():
+        write_generated_module(DOMAINS_DIR / rel, module_content, format_now=False)
+    _format_with_black(DOMAINS_DIR)
     write_generated_module(ERROR_DETAILS_FILE, generate_error_details_exports())
     # Not through ``write_generated_module``: black cannot format markdown. The
     # date still has to be preserved or the report churns on every regeneration.
     previous_report = COLLISION_REPORT_FILE.read_text() if COLLISION_REPORT_FILE.exists() else ""
     COLLISION_REPORT_FILE.write_text(
-        preserve_generation_date_if_unchanged(previous_report, generate_collision_report(bindings))
+        preserve_generation_date_if_unchanged(previous_report, generate_collision_report(declared))
     )
 
     print("✓ Successfully generated consolidated exports")

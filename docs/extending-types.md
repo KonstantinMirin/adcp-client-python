@@ -72,9 +72,9 @@ The canonical names (`Creative`, `Package`, `MediaBuy`, `Deployment`) remain ava
 
 The prefixed aliases above are curated: each one is added when an adopter needs
 it. The domain modules cover the rest. AdCP groups its schemas by domain —
-`core/`, `creative/`, `media_buy/` and the rest — and `adcp.types.domains.<domain>`
-re-exports what each one declares, so the module path says which variant you
-mean:
+`core/`, `creative/`, `media_buy/` and the rest — and by schema within each.
+`adcp.types.domains` mirrors that layout, so the import path says which variant
+you mean:
 
 ```python
 from adcp.types.domains.creative import QuerySummary   # the listing shape
@@ -86,22 +86,31 @@ one, which requires no fields, while the `creative` one requires `returned` and
 `total_matching` — so the flat name accepts documents the listing field rejects.
 Importing from the domain avoids the question.
 
-A type its own domain declares more than once carries the defining file in its
-name, because at that point nothing shorter tells them apart — `creative`
-declares `Creative` four times:
+A domain root carries the names its domain declares exactly once. When one
+domain declares a name several times, the schema's own module is the path —
+`core` declares nine different `Unit` classes and `creative` declares `Creative`
+four times:
 
 ```python
-from adcp.types.domains.creative import CreativeFromListCreativesResponse
+from adcp.types.domains.core.audience_evidence import Unit
+from adcp.types.domains.core.canvas_constraint import Unit
+from adcp.types.domains.creative.list_creatives_response import Creative
 ```
 
-`docs/shared-type-names.md` lists every type name more than one schema declares
-and what to import for each variant. Both the modules and that list are
-generated from the schema tree, so a new schema is covered without an edit.
+Nothing in `adcp.types.domains` is renamed: every name is the one codegen gave
+the class, and the path is the schema that declares it. `docs/shared-type-names.md`
+lists every type name more than one schema declares and the import for each
+variant. The modules and the list are generated from the schema tree, so a new
+schema is covered without an edit.
+
+Prefer the shortest path that resolves to the class you want: `adcp.types` when
+the name is unambiguous, the domain root when it is unambiguous within the
+domain, the schema module otherwise. All three are public and stable.
 
 Note that a curated partial module (`adcp.types.creative`,
 `adcp.types.protocol`, ...) is a topic bundle over the flat `adcp.types`
 namespace, so it binds whichever variant the flat namespace binds. Use a domain
-module when you need a specific one.
+or schema module when you need a specific one.
 
 ### Structured error details
 
@@ -224,7 +233,7 @@ class MyListResponse(ListCreativesResponse):
 
 A few spec shapes have no alias on the flat `adcp.types` namespace. The clearest example is the geo-exclusion element types behind `TargetingOverlay.geo_countries_exclude`, `geo_regions_exclude`, and `geo_metros_exclude`. Each exclusion list uses a distinct element class that is shape-identical to its inclusion counterpart (`GeoCountry`, `GeoRegion`, `GeoMetro`) but is not the same class.
 
-Those element classes do have a public name — `adcp.types.domains.core.GeoCountriesExcludeItem` and its siblings — so subclassing one is now possible. Where you would rather substitute the public inclusion variant than subclass the exclusion element, use the typed escape hatch `adcp.types.SchemaVariant` against the inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
+Those element classes do have a public name — `adcp.types.domains.core.targeting.GeoCountriesExcludeItem` and its siblings — so subclassing one is now possible. Where you would rather substitute the public inclusion variant than subclass the exclusion element, use the typed escape hatch `adcp.types.SchemaVariant` against the inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
 
 ```python
 from adcp.types import SchemaVariant, GeoCountry

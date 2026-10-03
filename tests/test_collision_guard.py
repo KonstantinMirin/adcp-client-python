@@ -1,142 +1,133 @@
-"""Tests for the consolidate-step reachability guards (issues #911, #1080).
+"""Tests for the consolidate-step reachability guard (issues #911, #1080).
 
 `consolidate_exports.py` flattens every `generated_poc/` module into a single
-namespace. When the same bare type name is defined in more than one module, one
-class wins that name in `_generated` and the others would be unreachable, so a
-module per schema domain re-exports what that domain declares and
-`error_details.py` carries the error-details family with the field types its
-models reference.
+namespace. When the same bare type name is declared in more than one module,
+one class wins that name in `_generated` and the others would be unreachable.
+The public mirror under `adcp.types.domains` answers that: one module per
+schema, re-exporting what that schema declares, so every variant has a path and
+nothing is renamed.
 
-Both export sets are derived from the module tree. These tests assert the
-derivation covers every generated class, that no two classes claim one public
-name inside a domain, and that the guard raises when a class would be left
-unreachable.
+These tests assert the mirror covers every generated class, that the domain
+roots bind exactly the unambiguous names, and that the guard raises when a
+class would be left unreachable.
 """
 
 from __future__ import annotations
+
+import collections
 
 import pytest
 
 from scripts.consolidate_exports import (
     _enforce_every_class_is_reachable,
-    _scan_name_to_modules,
+    _mirror_relative_paths,
     colliding_names,
-    domain_bindings,
     exports_for_public_consolidation,
     extract_exports_from_module,
-    qualified_public_name,
+    scan_declared_names,
     schema_domain,
+    unambiguous_domain_bindings,
 )
 
 
-def test_a_domain_module_cannot_split_a_name_its_own_domain_declares_twice():
-    """The measurement that chose the scheme: a domain path is not always enough."""
-    name_to_modules = _scan_name_to_modules()
-    collisions = colliding_names(name_to_modules)
+def test_a_domain_namespace_cannot_split_a_name_its_own_domain_declares_twice():
+    """The measurement that chose the depth: a domain is still one namespace."""
+    declared = scan_declared_names()
+    collisions = colliding_names(declared)
     assert collisions, "the generated tree has no colliding names — guard is vacuous"
 
     solvable, unsolvable = 0, 0
-    for mods in collisions.values():
-        per_domain = [schema_domain(m) for m in mods]
+    for modules in collisions.values():
+        per_domain = [schema_domain(m) for m in modules]
         if len(set(per_domain)) == len(per_domain):
             solvable += 1
         else:
             unsolvable += 1
-    # A domain module alone handles the names no single domain declares twice.
-    # The rest need the defining file in the name, which is what
-    # ``qualified_public_name`` adds.
+    # A domain root handles the names no single domain declares twice; the rest
+    # need the schema's own module, which is why the mirror exists.
     assert solvable > 0 and unsolvable > 0, (solvable, unsolvable)
     assert solvable + unsolvable == len(collisions)
 
 
-def test_qualified_name_suffixes_the_stem_and_is_unique_in_its_domain():
-    """The suffix only has to disambiguate within one domain, so the stem suffices."""
-    assert (
-        qualified_public_name("Creative", "creative.list_creatives_response")
-        == "CreativeFromListCreativesResponse"
-    )
-    # Two domains may share a stem; the domain module keeps them apart.
-    assert qualified_public_name("X", "core.audience_source") == qualified_public_name(
-        "X", "enums.audience_source"
-    )
-
-    bindings = domain_bindings(_scan_name_to_modules())
-    for domain, rows in bindings.items():
-        assert len(rows) == len(set(rows)), domain
+def test_core_declares_nine_units_and_no_domain_namespace_could_hold_them():
+    """The concrete case, pinned so the mirror's depth is not mistaken for noise."""
+    declared = scan_declared_names()
+    units = {m for m in declared["Unit"] if schema_domain(m) == "core"}
+    assert len(units) == 9, sorted(units)
+    assert "Unit" not in unambiguous_domain_bindings(declared)["core"]
 
 
-def test_every_declared_pair_has_exactly_one_domain_binding():
-    """One public name per (module, type) pair, for every name in the tree."""
-    name_to_modules = _scan_name_to_modules()
-    bindings = domain_bindings(name_to_modules)
+def test_the_mirror_covers_every_declared_pair_exactly_once():
+    """One public module per schema, re-exporting what that schema declares."""
+    declared = scan_declared_names()
+    mirrored = collections.Counter()
+    for rel in _mirror_relative_paths():
+        module_name = ".".join([*rel.parts[:-1], rel.stem])
+        for name in extract_exports_from_module(_mirror_path(rel)):
+            mirrored[(module_name, name)] += 1
 
     expected = {
-        (module, type_name) for type_name, modules in name_to_modules.items() for module in modules
+        (module_name, type_name)
+        for type_name, modules in declared.items()
+        for module_name in modules
     }
-    bound = [pair for rows in bindings.values() for pair in rows.values()]
-    assert sorted(bound) == sorted(expected)
-    assert len(bound) == len(set(bound)), "a pair was bound twice"
+    assert set(mirrored) == expected
+    assert all(count == 1 for count in mirrored.values())
 
 
-def test_names_a_domain_declares_once_keep_the_name_codegen_gave_them():
-    """No invented name where the domain path already disambiguates."""
-    name_to_modules = _scan_name_to_modules()
-    bindings = domain_bindings(name_to_modules)
-    plain = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n == t)
-    invented = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n != t)
-    assert plain > invented * 3, (
-        f"{invented} invented names against {plain} that keep the generated name — "
-        "the domain path is supposed to carry the common case"
-    )
+def _mirror_path(rel):
+    from scripts.consolidate_exports import GENERATED_POC_DIR
+
+    return GENERATED_POC_DIR / rel
+
+
+def test_a_domain_root_binds_the_unambiguous_names_and_renames_nothing():
+    """No invented name anywhere: a root key is the name codegen gave the class."""
+    declared = scan_declared_names()
+    bindings = unambiguous_domain_bindings(declared)
+    for domain, rows in bindings.items():
+        for type_name, module_name in rows.items():
+            assert schema_domain(module_name) == domain
+            assert declared[type_name] >= {module_name}
+            # One declaring module inside this domain — that is what makes the
+            # bare name unambiguous here.
+            assert len([m for m in declared[type_name] if schema_domain(m) == domain]) == 1
+
+
+def test_the_unfiltered_scan_is_what_reaches_brand_discovery():
+    """The filtered scan suppresses that module whole, so it had no public path.
+
+    ``exports_for_public_consolidation`` keeps an aggregate schema's inlined
+    copies out of the flat namespace. Three of the four aggregates keep their
+    own root; ``brand_discovery`` keeps nothing, so reading the domains layer
+    off the filtered scan left its own types unreachable.
+    """
+    from scripts.consolidate_exports import GENERATED_POC_DIR
+
+    path = GENERATED_POC_DIR / "brand_discovery.py"
+    assert exports_for_public_consolidation(path) == set()
+    assert "Brand" in extract_exports_from_module(path)
+    assert "brand_discovery" in scan_declared_names()["Brand"]
 
 
 def test_current_tree_leaves_no_class_unreachable():
     """Guard passes on the generated tree as consolidated today."""
-    name_to_modules = _scan_name_to_modules()
     # Must not raise.
-    _enforce_every_class_is_reachable(name_to_modules, domain_bindings(name_to_modules))
+    _enforce_every_class_is_reachable(scan_declared_names())
 
 
-def test_unreachable_class_fails_the_build():
-    """A generated class bound by no domain module fails the consolidate step."""
-    name_to_modules = {"WidgetGuardSentinel": {"core.widget_a", "enums.widget_b"}}
-    bindings = domain_bindings(name_to_modules)
-    bindings.pop("enums")
+def test_a_declared_class_the_mirror_does_not_carry_fails_the_build():
+    """A pair with no mirror export fails the consolidate step."""
+    declared = scan_declared_names()
+    declared["WidgetGuardSentinel"] = {"core.widget_a"}
 
     with pytest.raises(ValueError) as excinfo:
-        _enforce_every_class_is_reachable(name_to_modules, bindings)
+        _enforce_every_class_is_reachable(declared)
 
     message = str(excinfo.value)
-    assert "enums.widget_b.WidgetGuardSentinel" in message
+    assert "core.widget_a.WidgetGuardSentinel" in message
     assert "reachable under no public name" in message
-    assert "adcp.types.domains" in message
-
-
-def test_a_class_its_domain_binds_is_reachable():
-    """A name defined in exactly one module needs no qualified name."""
-    name_to_modules = {"SoloGuardSentinel": {"core.solo"}}
-    bindings = domain_bindings(name_to_modules)
-    assert bindings == {"core": {"SoloGuardSentinel": ("core.solo", "SoloGuardSentinel")}}
-    # Must not raise.
-    _enforce_every_class_is_reachable(name_to_modules, bindings)
-
-
-def test_two_classes_claiming_one_name_in_a_domain_fails_the_build():
-    """The derivation refuses to drop a binding when stems stop being unique."""
-    import scripts.consolidate_exports as ce
-
-    name_to_modules = {"Clashing": {"core.a", "core.b"}}
-    original = ce.qualified_public_name
-    ce.qualified_public_name = lambda type_name, module_name: f"{type_name}Fixed"
-    try:
-        with pytest.raises(ValueError) as excinfo:
-            ce.domain_bindings(name_to_modules)
-    finally:
-        ce.qualified_public_name = original
-
-    message = str(excinfo.value)
-    assert "core.ClashingFixed" in message
-    assert "do not drop a binding" in message
+    assert "adcp.types.domains.<domain>.<schema>" in message
 
 
 # ---------------------------------------------------------------------------

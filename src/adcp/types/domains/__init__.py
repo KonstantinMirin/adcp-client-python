@@ -1,26 +1,31 @@
-"""Public types grouped by the AdCP schema domain that declares them.
+"""Public types grouped by the AdCP schema that declares them.
 
 The AdCP bundle is organised by domain — ``core/``, ``creative/``,
-``media_buy/`` and the rest — and codegen mirrors that layout. These modules
-re-export each domain faithfully, so a type name several domains define is
-unambiguous by module path rather than by a mangled name:
+``media_buy/`` and the rest — and by schema within each. Codegen mirrors that
+layout, and these modules re-export it, so a type name more than one schema
+declares is unambiguous by path rather than by a mangled name:
 
     from adcp.types.domains.creative import QuerySummary
-    from adcp.types.domains.core import QuerySummary
+    from adcp.types.domains.core.audience_evidence import Unit
+    from adcp.types.domains.core.canvas_constraint import Unit
+
+A domain root carries the names that domain declares exactly once. For the
+rest, import from the schema's own module, as the last two lines do.
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 04:37:13 UTC
+Generation date: 2026-10-03 13:33:59 UTC
 """
 
 from __future__ import annotations
 
-#: Every domain module in this package.
+#: Every domain in this package.
 DOMAINS = (
     "a2ui",
     "aao",
     "account",
     "adagents",
     "brand",
+    "brand_discovery",
     "collection",
     "compliance",
     "content_standards",

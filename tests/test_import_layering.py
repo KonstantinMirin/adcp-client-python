@@ -56,7 +56,7 @@ ALLOWED_FILES = {
     # Same architectural role as ``_generated.py``, so the same direct
     # generated-layer access applies.
     SRC_ROOT / "types" / "error_details.py",
-    *(SRC_ROOT / "types" / "domains").glob("*.py"),
+    *(SRC_ROOT / "types" / "domains").rglob("*.py"),
     # ``_forward_compat.py`` patches Format.assets and Assets94.assets at
     # import time with open union types (issue #742). It must import the
     # generated classes in-place to call model_rebuild() on them, giving it

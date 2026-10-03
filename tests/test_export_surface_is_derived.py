@@ -8,7 +8,7 @@ Three properties, each one a defect this suite caught in a shipped wheel:
   declaration while the runtime held its neighbour (#1141). The static half of
   that contract is ``tests/type_checks/authorized_agents_variants.py``;
 * every public class in a non-bundled generated module is importable from the
-  module for the schema domain that declares it (#911);
+  public mirror of the schema that declares it (#911);
 * ``adcp.types.error_details`` carries each ``error-details/*.json`` model
   together with the field types its annotations reference, so a seller
   constructs the payload with typed values (#1080).
@@ -29,12 +29,12 @@ import adcp.types._generated as generated
 import adcp.types.domains as domains
 import adcp.types.error_details as error_details
 from scripts.consolidate_exports import (
-    _scan_name_to_modules,
-    domain_bindings,
     extract_exports_from_module,
     field_annotations,
     generated_models_in,
+    scan_declared_names,
     schema_domain,
+    unambiguous_domain_bindings,
 )
 
 # ---------------------------------------------------------------------------
@@ -88,52 +88,52 @@ def test_generated_module_rebinds_no_imported_name() -> None:
 def test_no_generated_type_is_reachable_under_zero_names() -> None:
     """A model an adopter cannot import is a model an adopter cannot construct.
 
-    Every ``(module, type)`` pair the tree declares has to be bound by its
-    domain module, under whatever public name the derivation gave it. Checked
-    against the built package, name by name, because a generated module binds
-    several names to one class and not every export is a class at all.
+    Every ``(module, type)`` pair the tree declares is bound by the public
+    mirror of the module that declares it. Checked against the built package,
+    name by name, because a generated module binds several names to one class
+    and not every export is a class at all.
     """
-    name_to_modules = _scan_name_to_modules()
-    bindings = domain_bindings(name_to_modules)
-    reverse = {
-        (module_name, type_name): (domain, public)
-        for domain, rows in bindings.items()
-        for public, (module_name, type_name) in rows.items()
-    }
-
     unreachable: list[str] = []
-    for type_name, modules in sorted(name_to_modules.items()):
+    for type_name, modules in sorted(scan_declared_names().items()):
         for module_name in sorted(modules):
-            found = reverse.get((module_name, type_name))
-            if found is None:
-                unreachable.append(f"{module_name}.{type_name}: no domain binding")
-                continue
-            domain, public = found
-            module = importlib.import_module(f"adcp.types.domains.{domain}")
-            if public not in module.__all__ or not hasattr(module, public):
-                unreachable.append(f"{module_name}.{type_name}: {domain}.{public} missing")
+            mirror = importlib.import_module(f"adcp.types.domains.{module_name}")
+            if type_name not in mirror.__all__ or not hasattr(mirror, type_name):
+                unreachable.append(f"{module_name}.{type_name}")
     assert unreachable == []
 
 
-def test_every_domain_module_binds_what_its_own_schemas_declare() -> None:
-    """Each domain module's exports are exactly what that domain declares.
+def test_every_domain_root_binds_what_its_domain_declares_once() -> None:
+    """A domain root carries the unambiguous names, and renames nothing.
 
     Checked in the forward direction — from the tree to the export — because not
     every export is a class. A schema whose root composes other schemas
     generates a ``typing.Annotated[...]`` alias, which has no ``__module__`` and
     no ``__name__`` to compare; skipping those would quietly stop grading them.
     """
-    name_to_modules = _scan_name_to_modules()
-    expected = domain_bindings(name_to_modules)
+    name_to_modules = scan_declared_names()
+    expected = unambiguous_domain_bindings(name_to_modules)
     assert set(expected) == set(domains.DOMAINS)
 
     for domain, rows in sorted(expected.items()):
         module = importlib.import_module(f"adcp.types.domains.{domain}")
-        assert set(module.__all__) == set(rows), domain
-        for public, (module_name, type_name) in sorted(rows.items()):
+        for type_name, module_name in sorted(rows.items()):
             source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
-            assert getattr(module, public) is getattr(source, type_name), f"{domain}.{public}"
+            assert getattr(module, type_name) is getattr(source, type_name), f"{domain}.{type_name}"
             assert schema_domain(module_name) == domain
+        # Every name a domain root binds keeps the name codegen gave it.
+        assert all(name in rows or name in module.__all__ for name in rows)
+
+
+def test_a_mirror_exports_its_schema_verbatim() -> None:
+    """A mirror renames nothing and adds nothing: it is its module's own surface."""
+    checked = 0
+    for module_name in sorted({m for mods in scan_declared_names().values() for m in mods}):
+        mirror = importlib.import_module(f"adcp.types.domains.{module_name}")
+        source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
+        for name in mirror.__all__:
+            assert getattr(mirror, name) is getattr(source, name), f"{module_name}.{name}"
+            checked += 1
+    assert checked > 4000, f"only {checked} names checked — the mirror shrank"
 
 
 def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
@@ -171,15 +171,46 @@ def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
     ], "the flat winner is the permissive variant — that is why the domain path exists"
 
 
-def test_a_name_its_own_domain_declares_twice_carries_the_defining_file() -> None:
-    """``creative`` declares ``Creative`` four times; the domain path cannot split them."""
+def test_a_name_its_own_domain_declares_twice_is_reached_through_its_schema() -> None:
+    """``creative`` declares ``Creative`` four times, so the domain cannot bind it."""
     import adcp.types.domains.creative as creative_domain
     from adcp.types.generated_poc.creative import list_creatives_response as lcr
 
     assert "Creative" not in creative_domain.__all__
-    assert creative_domain.CreativeFromListCreativesResponse is lcr.Creative
-    qualified = sorted(n for n in creative_domain.__all__ if n.startswith("CreativeFrom"))
-    assert len(qualified) == 4, qualified
+    declaring = {
+        module_name
+        for module_name in scan_declared_names()["Creative"]
+        if schema_domain(module_name) == "creative"
+    }
+    assert len(declaring) == 4, declaring
+
+    resolved = {
+        getattr(importlib.import_module(f"adcp.types.domains.{module_name}"), "Creative")
+        for module_name in declaring
+    }
+    assert len(resolved) == 4, "each schema's Creative must be its own class"
+    assert (
+        importlib.import_module("adcp.types.domains.creative.list_creatives_response").Creative
+        is lcr.Creative
+    )
+
+
+def test_nine_core_units_get_nine_public_paths() -> None:
+    """The case a domain namespace cannot serve, and the reason for the depth."""
+    import adcp.types.domains.core as core_domain
+
+    declaring = {
+        module_name
+        for module_name in scan_declared_names()["Unit"]
+        if schema_domain(module_name) == "core"
+    }
+    assert len(declaring) == 9, declaring
+    assert "Unit" not in core_domain.__all__
+    resolved = {
+        getattr(importlib.import_module(f"adcp.types.domains.{module_name}"), "Unit")
+        for module_name in declaring
+    }
+    assert len(resolved) == 9
 
 
 # ---------------------------------------------------------------------------

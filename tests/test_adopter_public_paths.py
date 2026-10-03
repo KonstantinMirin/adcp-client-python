@@ -16,8 +16,8 @@ the ``tasks_list_response`` variant, which requires nothing, while the
 — so an adopter using the bare name validates documents the real field rejects,
 with no symptom.
 
-Every pair the SDK's own public-consolidation policy admits now resolves through
-``adcp.types`` or ``adcp.types.domains.<domain>`` to the identical class.
+All 110 now resolve through ``adcp.types.domains.<domain>.<schema>`` to the
+identical class, and most also through a shorter path. No skips, no exclusions.
 """
 
 from __future__ import annotations
@@ -26,11 +26,7 @@ import importlib
 
 import pytest
 
-from scripts.consolidate_exports import (
-    GENERATED_POC_DIR,
-    exports_for_public_consolidation,
-    schema_domain,
-)
+from scripts.consolidate_exports import schema_domain
 
 #: ``(generated module, type name)``, every ``generated_poc`` import in the
 #: adopter's ``src/`` tree. Regenerate by grepping
@@ -159,21 +155,17 @@ def _public_paths(module_name: str, type_name: str) -> list[str]:
     paths = []
     if getattr(adcp.types, type_name, None) is target:
         paths.append(f"adcp.types.{type_name}")
-    domain = schema_domain(module_name)
-    if domain in adcp.types.domains.DOMAINS:
-        module = importlib.import_module(f"adcp.types.domains.{domain}")
-        paths.extend(
-            f"adcp.types.domains.{domain}.{public}"
-            for public in module.__all__
-            if getattr(module, public, None) is target
-        )
+    for candidate in (
+        f"adcp.types.domains.{schema_domain(module_name)}",
+        f"adcp.types.domains.{module_name}",
+    ):
+        try:
+            module = importlib.import_module(candidate)
+        except ModuleNotFoundError:
+            continue
+        if getattr(module, type_name, None) is target:
+            paths.append(f"{candidate}.{type_name}")
     return paths
-
-
-def _is_public(module_name: str, type_name: str) -> bool:
-    """Whether the SDK's own policy admits this name to the public surface."""
-    path = GENERATED_POC_DIR / (module_name.replace(".", "/") + ".py")
-    return type_name in exports_for_public_consolidation(path)
 
 
 def test_the_adopter_import_list_is_not_empty_and_is_unfiltered() -> None:
@@ -189,13 +181,11 @@ def test_every_adopter_import_has_a_public_path_to_the_same_class(
 ) -> None:
     """The deep import and the public path must be the same object, not the same shape.
 
-    Same shape is not enough: ``isinstance`` and every annotation compare by
-    identity, so a public name bound to a structurally identical twin still
-    fails to type-check against the field it was read from.
+    No skips and no exclusions. Same shape is not enough: ``isinstance`` and
+    every annotation compare by identity, so a public name bound to a
+    structurally identical twin still fails to type-check against the field it
+    was read from.
     """
-    if not _is_public(module_name, type_name):
-        pytest.skip(f"{module_name}.{type_name} is not admitted by the public-export policy")
-
     paths = _public_paths(module_name, type_name)
     assert paths, (
         f"{module_name}.{type_name} has no public path — an adopter has to reach into "
@@ -203,27 +193,49 @@ def test_every_adopter_import_has_a_public_path_to_the_same_class(
     )
 
 
-def test_the_only_unserved_adopter_imports_are_the_ones_policy_excludes() -> None:
-    """Name the gap rather than leave it implicit.
+def test_the_schema_module_path_serves_every_adopter_import() -> None:
+    """The mirror alone covers all of them, without help from the flatter layers.
 
-    ``exports_for_public_consolidation`` keeps the inlined private copies that
-    aggregate schemas make out of the public namespace. Three of the four
-    aggregates it covers still export their own root —
-    ``asset_union`` keeps ``AssetVariant``, ``coordinated_placements`` and
-    ``card_asset`` keep theirs. ``brand_discovery`` keeps nothing, so its own
-    root types have no public path either, and that is the one reason an adopter
-    import in this list is still unreachable.
+    The flat namespace and the domain roots are conveniences: one binds a name
+    per collision-free type, the other a name per type its domain declares once.
+    Only the path that names the defining schema is guaranteed, so that is the
+    one asserted whole.
     """
-    excluded = sorted(
-        (module_name, type_name)
+    missing = sorted(
+        f"{module_name}.{type_name}"
         for module_name, type_name in ADOPTER_IMPORTS
-        if not _is_public(module_name, type_name)
+        if f"adcp.types.domains.{module_name}.{type_name}"
+        not in _public_paths(module_name, type_name)
     )
-    assert excluded == [
-        ("brand_discovery", "Brand"),
-        ("brand_discovery", "BrandDiscovery3"),
-    ]
-    # Neither is a copy of a type that is public under another name: no other
-    # non-suppressed module declares either one.
-    for module_name, type_name in excluded:
-        assert not _public_paths(module_name, type_name)
+    assert missing == []
+
+
+def test_the_intra_domain_collisions_are_what_needed_the_extra_depth() -> None:
+    """Pin why the domain root was not enough, so the depth is not mistaken for noise.
+
+    ``core`` declares nine different ``Unit`` classes. A domain is one
+    namespace, so it cannot bind the name at all — and before the mirror those
+    nine had no public path between them.
+    """
+    import adcp.types.domains.core as core_domain
+
+    units = {
+        module_name
+        for type_name, module_name in (("Unit", m) for m in _declaring_modules("Unit"))
+        if schema_domain(module_name) == "core"
+    }
+    assert len(units) >= 9, units
+    assert "Unit" not in core_domain.__all__
+
+    resolved = {
+        getattr(importlib.import_module(f"adcp.types.domains.{module_name}"), "Unit")
+        for module_name in units
+    }
+    assert len(resolved) == len(units), "each schema's Unit must be its own class"
+
+
+def _declaring_modules(type_name: str) -> set[str]:
+    """Every generated module that declares ``type_name``."""
+    from scripts.consolidate_exports import scan_declared_names
+
+    return scan_declared_names().get(type_name, set())
