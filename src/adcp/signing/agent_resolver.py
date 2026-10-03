@@ -596,7 +596,18 @@ async def async_resolve_agent(
                 error_message=str(exc),
             )
         )
-        raise AgentResolverError("jwks_fetch_failed", f"JWKS URL failed SSRF check: {exc}") from exc
+        # A JWKS URL the SSRF gate refuses is terminal, not transient. The table
+        # row for ``jwks_fetch_failed`` names the transient code, which is right
+        # for the fetch failure below but wrong here: the gate refuses this
+        # destination on every attempt, so telling the peer to retry it is a
+        # retry loop that cannot succeed. The two codes differ in the
+        # ``enumMetadata.recovery`` classification the spec requires SDKs to
+        # consume, so this hop carries its own code explicitly.
+        raise AgentResolverError(
+            "jwks_fetch_failed",
+            f"JWKS URL failed SSRF check: {exc}",
+            signature_code=REQUEST_SIGNATURE_JWKS_UNTRUSTED,
+        ) from exc
     except (httpx.HTTPError, ValueError, OSError) as exc:
         trace.append(
             TraceEntry(
