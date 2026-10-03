@@ -5,8 +5,8 @@ AdCP names an inline object after the property that holds it, so
 each produce a class called ``QuerySummary``, with different fields and
 different required keys. ``adcp.types`` binds one of them to the bare name.
 
-``adcp.types.disambiguated`` carries both under their module-qualified names, so
-an adopter reading ``ListCreativesResponse.query_summary`` annotates the variable
+The module for each schema domain re-exports what that domain declares, so an
+adopter reading ``ListCreativesResponse.query_summary`` annotates the variable
 with the class that field actually holds. Under the bare import mypy accepts the
 assignment of either class, and the one it hands over accepts a document the
 real field rejects.
@@ -20,15 +20,13 @@ from __future__ import annotations
 
 from typing_extensions import assert_type
 
-from adcp.types.disambiguated import (
-    DomainBreakdownFromCoreTasksListResponse,
-    QuerySummaryFromCoreTasksListResponse,
-    QuerySummaryFromCreativeListCreativesResponse,
-)
+from adcp.types.domains.core import DomainBreakdown as CoreDomainBreakdown
+from adcp.types.domains.core import QuerySummary as CoreQuerySummary
+from adcp.types.domains.creative import QuerySummary as CreativeQuerySummary
 from adcp.types.error_details import (
     BillingNotSupportedDetails,
-    ScopeFromErrorDetailsBillingNotSupported,
-    ScopeFromErrorDetailsRateLimited,
+    ScopeFromBillingNotSupported,
+    ScopeFromRateLimited,
     SupportedMajor,
     SupportedVersion,
     VersionUnsupportedDetails,
@@ -36,16 +34,16 @@ from adcp.types.error_details import (
 
 # --- The two QuerySummary classes are distinct types ---
 
-listing = QuerySummaryFromCreativeListCreativesResponse(total_matching=12, returned=10)
+listing = CreativeQuerySummary(total_matching=12, returned=10)
 assert_type(listing.total_matching, int)
 assert_type(listing.returned, int)
 
-tasks = QuerySummaryFromCoreTasksListResponse()
-assert_type(tasks.domain_breakdown, DomainBreakdownFromCoreTasksListResponse | None)
+tasks = CoreQuerySummary()
+assert_type(tasks.domain_breakdown, CoreDomainBreakdown | None)
 
 # ``returned`` and ``total_matching`` are required on the listing variant and
 # optional on the tasks variant, so the two are not interchangeable.
-listings: list[QuerySummaryFromCreativeListCreativesResponse] = [listing]
+listings: list[CreativeQuerySummary] = [listing]
 
 # --- Error details construct with typed values, not a dict ---
 
@@ -59,9 +57,9 @@ assert_type(unsupported.supported_majors, list[SupportedMajor] | None)
 
 # A nested name two error-details schemas both define carries its qualified
 # name, so the two ``Scope`` enums cannot be confused for one another.
-billing = BillingNotSupportedDetails(scope=ScopeFromErrorDetailsBillingNotSupported.account)
-assert_type(billing.scope, ScopeFromErrorDetailsBillingNotSupported | None)
+billing = BillingNotSupportedDetails(scope=ScopeFromBillingNotSupported.account)
+assert_type(billing.scope, ScopeFromBillingNotSupported | None)
 
-rate_limit_scopes: list[ScopeFromErrorDetailsRateLimited] = [
-    ScopeFromErrorDetailsRateLimited.account
+rate_limit_scopes: list[ScopeFromRateLimited] = [
+    ScopeFromRateLimited.account
 ]

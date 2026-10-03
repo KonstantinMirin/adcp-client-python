@@ -1194,7 +1194,7 @@ if TYPE_CHECKING:
     from adcp.types import _generated as generated  # noqa: F401
     from adcp.types import (
         aliases,  # noqa: F401
-        disambiguated,  # noqa: F401
+        domains,  # noqa: F401
         error_details,  # noqa: F401
     )
     from adcp.types._eager import (

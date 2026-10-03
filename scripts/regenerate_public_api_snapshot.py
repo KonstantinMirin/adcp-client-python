@@ -25,13 +25,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scripts.export_resolution import SNAPSHOT_MODULES, snapshot_entry  # noqa: E402
+from scripts.export_resolution import snapshot_entry, snapshot_modules  # noqa: E402
 
 SNAPSHOT_PATH = Path(__file__).parent.parent / "tests" / "fixtures" / "public_api_snapshot.json"
 
 
 def main() -> None:
-    snapshot = {name: snapshot_entry(module) for name, module in SNAPSHOT_MODULES}
+    snapshot = {name: snapshot_entry(module) for name, module in snapshot_modules()}
     SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
     print(f"Wrote {SNAPSHOT_PATH}")
     for name, entry in snapshot.items():

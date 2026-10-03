@@ -13,11 +13,11 @@ reference — so a seller constructs the payload with typed values:
         supported_versions=[SupportedVersion("3.1"), SupportedVersion("3.2")],
     )
 
-A nested name that two error-details schemas both define carries its
-``<Type>From<DottedModulePath>`` name instead of a bare one.
+A nested name that two error-details schemas both define carries the
+defining file in its name (``ScopeFromRateLimited``) instead of a bare one.
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-02 22:58:04 UTC
+Generation date: 2026-10-03 04:47:28 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -35,10 +35,10 @@ from adcp.types.generated_poc.core.creative_revision_id import CreativeRevisionI
 from adcp.types.generated_poc.core.downstream_connection_requirement import (
     ConnectionType,
     DownstreamConnectionRequirement,
-    RequiredForItem as RequiredForItemFromCoreDownstreamConnectionRequirement,
+    RequiredForItem as RequiredForItemFromDownstreamConnectionRequirement,
     ResourceRef,
-    Scope as ScopeFromCoreDownstreamConnectionRequirement,
-    Status as StatusFromCoreDownstreamConnectionRequirement,
+    Scope as ScopeFromDownstreamConnectionRequirement,
+    Status as StatusFromDownstreamConnectionRequirement,
 )
 from adcp.types.generated_poc.core.ext import ExtensionObject
 from adcp.types.generated_poc.core.format_option_ref import (
@@ -49,7 +49,7 @@ from adcp.types.generated_poc.core.format_option_ref import (
 from adcp.types.generated_poc.core.macro_encoding import Kind, MacroEncoding
 from adcp.types.generated_poc.core.macro_resolution_result import (
     MacroResolutionResult,
-    Status as StatusFromCoreMacroResolutionResult,
+    Status as StatusFromMacroResolutionResult,
     UnavailableBehavior,
 )
 from adcp.types.generated_poc.core.media_buy_available_action import MediaBuyAvailableAction, Task
@@ -62,7 +62,7 @@ from adcp.types.generated_poc.core.product_execution_requirement import (
     ProductExecutionRequirement1,
     ProductExecutionRequirement2,
     ProductExecutionRequirement3,
-    RequiredForItem as RequiredForItemFromCoreProductExecutionRequirement,
+    RequiredForItem as RequiredForItemFromProductExecutionRequirement,
 )
 from adcp.types.generated_poc.core.representation_rejection import Code, RepresentationRejection
 from adcp.types.generated_poc.core.sla_window import SlaWindow
@@ -103,7 +103,7 @@ from adcp.types.generated_poc.error_details.billing_not_permitted_for_agent impo
 )
 from adcp.types.generated_poc.error_details.billing_not_supported import (
     BillingNotSupportedDetails,
-    Scope as ScopeFromErrorDetailsBillingNotSupported,
+    Scope as ScopeFromBillingNotSupported,
 )
 from adcp.types.generated_poc.error_details.budget_too_low import BudgetTooLowDetails
 from adcp.types.generated_poc.error_details.conflict import ConflictDetails
@@ -130,7 +130,7 @@ from adcp.types.generated_poc.error_details.macro_resolution_failed import (
 from adcp.types.generated_poc.error_details.policy_violation import Origin, PolicyViolationDetails
 from adcp.types.generated_poc.error_details.rate_limited import (
     RateLimitedDetails,
-    Scope as ScopeFromErrorDetailsRateLimited,
+    Scope as ScopeFromRateLimited,
 )
 from adcp.types.generated_poc.error_details.requote_required import (
     EnvelopeField,
@@ -254,18 +254,18 @@ __all__ = [
     "Reason",
     "Recovery",
     "RepresentationRejection",
-    "RequiredForItemFromCoreDownstreamConnectionRequirement",
-    "RequiredForItemFromCoreProductExecutionRequirement",
+    "RequiredForItemFromDownstreamConnectionRequirement",
+    "RequiredForItemFromProductExecutionRequirement",
     "RequoteRequiredDetails",
     "ResourceRef",
-    "ScopeFromCoreDownstreamConnectionRequirement",
-    "ScopeFromErrorDetailsBillingNotSupported",
-    "ScopeFromErrorDetailsRateLimited",
+    "ScopeFromBillingNotSupported",
+    "ScopeFromDownstreamConnectionRequirement",
+    "ScopeFromRateLimited",
     "SellerPolicyDeclineReason",
     "SlaWindow",
     "StaleResponseDetails",
-    "StatusFromCoreDownstreamConnectionRequirement",
-    "StatusFromCoreMacroResolutionResult",
+    "StatusFromDownstreamConnectionRequirement",
+    "StatusFromMacroResolutionResult",
     "SupportedDimension",
     "SupportedMajor",
     "SupportedVersion",

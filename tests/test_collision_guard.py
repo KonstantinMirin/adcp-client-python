@@ -2,13 +2,14 @@
 
 `consolidate_exports.py` flattens every `generated_poc/` module into a single
 namespace. When the same bare type name is defined in more than one module, one
-class wins that name in `_generated` and the others would be unreachable, so
-`disambiguated.py` names every variant and `error_details.py` names the
-error-details family with the field types its models reference.
+class wins that name in `_generated` and the others would be unreachable, so a
+module per schema domain re-exports what that domain declares and
+`error_details.py` carries the error-details family with the field types its
+models reference.
 
 Both export sets are derived from the module tree. These tests assert the
-derivation covers every generated class, that no two classes claim one
-qualified name, and that the guard raises when a class would be left
+derivation covers every generated class, that no two classes claim one public
+name inside a domain, and that the guard raises when a class would be left
 unreachable.
 """
 
@@ -17,128 +18,124 @@ from __future__ import annotations
 import pytest
 
 from scripts.consolidate_exports import (
-    KNOWN_COLLISIONS,
     _enforce_every_class_is_reachable,
     _scan_name_to_modules,
     colliding_names,
-    disambiguated_bindings,
+    domain_bindings,
     exports_for_public_consolidation,
     extract_exports_from_module,
-    generate_consolidated_exports,
     qualified_public_name,
+    schema_domain,
 )
 
 
-def test_qualified_name_carries_the_whole_module_path():
-    """The stem alone is ambiguous: two packages can hold the same filename."""
-    assert qualified_public_name(
-        "AudienceSource", "enums.audience_source"
-    ) != qualified_public_name("AudienceSource", "core.audience_source")
-    assert (
-        qualified_public_name("QuerySummary", "creative.list_creatives_response")
-        == "QuerySummaryFromCreativeListCreativesResponse"
-    )
-
-
-def test_every_colliding_variant_has_a_qualified_name():
-    """One binding per (module, type) pair, for every name defined more than once."""
+def test_a_domain_module_cannot_split_a_name_its_own_domain_declares_twice():
+    """The measurement that chose the scheme: a domain path is not always enough."""
     name_to_modules = _scan_name_to_modules()
     collisions = colliding_names(name_to_modules)
     assert collisions, "the generated tree has no colliding names — guard is vacuous"
 
-    bindings = disambiguated_bindings(name_to_modules)
-    expected = {(module, type_name) for type_name, mods in collisions.items() for module in mods}
-    assert set(bindings.values()) == expected
-    assert len(bindings) == len(expected), "a qualified name bound two classes"
+    solvable, unsolvable = 0, 0
+    for mods in collisions.values():
+        per_domain = [schema_domain(m) for m in mods]
+        if len(set(per_domain)) == len(per_domain):
+            solvable += 1
+        else:
+            unsolvable += 1
+    # A domain module alone handles the names no single domain declares twice.
+    # The rest need the defining file in the name, which is what
+    # ``qualified_public_name`` adds.
+    assert solvable > 0 and unsolvable > 0, (solvable, unsolvable)
+    assert solvable + unsolvable == len(collisions)
 
 
-def test_known_collisions_do_not_decide_reachability():
-    """A name in KNOWN_COLLISIONS is still carried by the derived bindings.
+def test_qualified_name_suffixes_the_stem_and_is_unique_in_its_domain():
+    """The suffix only has to disambiguate within one domain, so the stem suffices."""
+    assert (
+        qualified_public_name("Creative", "creative.list_creatives_response")
+        == "CreativeFromListCreativesResponse"
+    )
+    # Two domains may share a stem; the domain module keeps them apart.
+    assert qualified_public_name("X", "core.audience_source") == qualified_public_name(
+        "X", "enums.audience_source"
+    )
 
-    The table decides whether the bare slot in ``_generated`` stays unbound. It
-    must not be what makes a class importable, because a hand-maintained table
-    goes stale on the next schema addition (#911, #1080).
-    """
+    bindings = domain_bindings(_scan_name_to_modules())
+    for domain, rows in bindings.items():
+        assert len(rows) == len(set(rows)), domain
+
+
+def test_every_declared_pair_has_exactly_one_domain_binding():
+    """One public name per (module, type) pair, for every name in the tree."""
     name_to_modules = _scan_name_to_modules()
-    bindings = disambiguated_bindings(name_to_modules)
-    for name in KNOWN_COLLISIONS:
-        modules = name_to_modules.get(name, set())
-        if len(modules) < 2:
-            continue
-        for module in modules:
-            assert bindings.get(qualified_public_name(name, module)) == (module, name)
+    bindings = domain_bindings(name_to_modules)
+
+    expected = {
+        (module, type_name) for type_name, modules in name_to_modules.items() for module in modules
+    }
+    bound = [pair for rows in bindings.values() for pair in rows.values()]
+    assert sorted(bound) == sorted(expected)
+    assert len(bound) == len(set(bound)), "a pair was bound twice"
+
+
+def test_names_a_domain_declares_once_keep_the_name_codegen_gave_them():
+    """No invented name where the domain path already disambiguates."""
+    name_to_modules = _scan_name_to_modules()
+    bindings = domain_bindings(name_to_modules)
+    plain = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n == t)
+    invented = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n != t)
+    assert plain > invented * 3, (
+        f"{invented} invented names against {plain} that keep the generated name — "
+        "the domain path is supposed to carry the common case"
+    )
 
 
 def test_current_tree_leaves_no_class_unreachable():
-    """The guard passes on the generated tree as consolidated today."""
+    """Guard passes on the generated tree as consolidated today."""
     name_to_modules = _scan_name_to_modules()
-    consolidation = generate_consolidated_exports()
     # Must not raise.
-    _enforce_every_class_is_reachable(
-        name_to_modules,
-        consolidation.reachable_here,
-        disambiguated_bindings(name_to_modules, consolidation.displaced),
-    )
+    _enforce_every_class_is_reachable(name_to_modules, domain_bindings(name_to_modules))
 
 
 def test_unreachable_class_fails_the_build():
-    """A generated class bound by neither module fails the consolidate step."""
-    name_to_modules = {"WidgetGuardSentinel": {"core.widget_a", "core.widget_b"}}
-    bindings = disambiguated_bindings(name_to_modules)
-    # Drop one variant, as a derivation that skipped a class would.
-    bindings.pop(qualified_public_name("WidgetGuardSentinel", "core.widget_b"))
+    """A generated class bound by no domain module fails the consolidate step."""
+    name_to_modules = {"WidgetGuardSentinel": {"core.widget_a", "enums.widget_b"}}
+    bindings = domain_bindings(name_to_modules)
+    bindings.pop("enums")
 
     with pytest.raises(ValueError) as excinfo:
-        _enforce_every_class_is_reachable(name_to_modules, set(), bindings)
+        _enforce_every_class_is_reachable(name_to_modules, bindings)
 
     message = str(excinfo.value)
-    assert "core.widget_b.WidgetGuardSentinel" in message
+    assert "enums.widget_b.WidgetGuardSentinel" in message
     assert "reachable under no public name" in message
-    assert "adcp.types.disambiguated" in message
+    assert "adcp.types.domains" in message
 
 
-def test_a_class_the_consolidated_module_binds_is_reachable():
+def test_a_class_its_domain_binds_is_reachable():
     """A name defined in exactly one module needs no qualified name."""
     name_to_modules = {"SoloGuardSentinel": {"core.solo"}}
-    # Must not raise: ``_generated`` binds the bare name.
-    _enforce_every_class_is_reachable(name_to_modules, {("core.solo", "SoloGuardSentinel")}, {})
+    bindings = domain_bindings(name_to_modules)
+    assert bindings == {"core": {"SoloGuardSentinel": ("core.solo", "SoloGuardSentinel")}}
+    # Must not raise.
+    _enforce_every_class_is_reachable(name_to_modules, bindings)
 
 
-def test_a_displaced_class_is_reachable_through_its_qualified_name():
-    """A compatibility alias may take a bare name only if the class keeps one.
-
-    ``Transport = Transport1`` in ``_generated`` takes the bare name from the
-    class ``protocol/get-adcp-capabilities-response.json`` generates. Passing it
-    as displaced is what keeps it importable.
-    """
-    name_to_modules = {"Shadowed": {"core.shadowed"}}
-    displaced = {("core.shadowed", "Shadowed")}
-
-    with pytest.raises(ValueError):
-        _enforce_every_class_is_reachable(name_to_modules, set(), {})
-
-    # Must not raise once the displaced class carries its qualified name.
-    _enforce_every_class_is_reachable(
-        name_to_modules, set(), disambiguated_bindings(name_to_modules, displaced)
-    )
-
-
-def test_two_classes_claiming_one_qualified_name_fails_the_build():
-    """The derivation refuses to drop a binding when names clash."""
+def test_two_classes_claiming_one_name_in_a_domain_fails_the_build():
+    """The derivation refuses to drop a binding when stems stop being unique."""
     import scripts.consolidate_exports as ce
 
     name_to_modules = {"Clashing": {"core.a", "core.b"}}
-    monkey = lambda type_name, module_name: f"{type_name}Fixed"  # noqa: E731, ARG005
     original = ce.qualified_public_name
-    ce.qualified_public_name = monkey
+    ce.qualified_public_name = lambda type_name, module_name: f"{type_name}Fixed"
     try:
         with pytest.raises(ValueError) as excinfo:
-            ce.disambiguated_bindings(name_to_modules)
+            ce.domain_bindings(name_to_modules)
     finally:
         ce.qualified_public_name = original
 
     message = str(excinfo.value)
-    assert "ClashingFixed" in message
+    assert "core.ClashingFixed" in message
     assert "do not drop a binding" in message
 
 

@@ -18,23 +18,32 @@ import inspect
 import types
 import typing
 
-__all__ = ["SNAPSHOT_MODULES", "expand_key", "resolution_key", "snapshot_entry"]
+__all__ = ["expand_key", "resolution_key", "snapshot_entry", "snapshot_modules"]
 
 #: Namespaces the snapshot covers: the two public surfaces an adopter imports
-#: from, and the consolidated generated namespace behind them. Named as strings
-#: so this module imports nothing from ``adcp`` until asked.
+#: from, the consolidated generated namespace behind them, and every generated
+#: domain module. Built on first use so this module imports nothing from
+#: ``adcp`` until asked.
 #:
-#: ``disambiguated`` and ``error_details`` are deliberately absent. A
-#: disambiguated name carries its module inside the name
-#: (``QuerySummaryFromCreativeListCreativesResponse``), so it cannot repoint
-#: without changing, and ``tests/test_export_surface_is_derived.py`` already
-#: asserts the correspondence and the identity against the generated class from
-#: the tree. A snapshot of them would record what a derived test already proves.
-SNAPSHOT_MODULES: tuple[tuple[str, str], ...] = (
-    ("adcp", "adcp"),
-    ("adcp.types", "adcp.types"),
-    ("adcp.types._generated", "adcp.types._generated"),
-)
+#: ``error_details`` is deliberately absent. Every name it carries is a class
+#: its own domain module also exports, and
+#: ``tests/test_export_surface_is_derived.py`` asserts the identity against the
+#: generated class from the tree. A snapshot of it would record what a derived
+#: test already proves.
+def snapshot_modules() -> tuple[tuple[str, str], ...]:
+    """The namespaces to snapshot, in a stable order."""
+    import adcp.types.domains
+
+    return (
+        ("adcp", "adcp"),
+        ("adcp.types", "adcp.types"),
+        ("adcp.types._generated", "adcp.types._generated"),
+        *(
+            (f"adcp.types.domains.{domain}", f"adcp.types.domains.{domain}")
+            for domain in adcp.types.domains.DOMAINS
+        ),
+    )
+
 
 #: Stripped from a key for brevity. Every generated class lives under it.
 _GENERATED_PREFIX = "adcp.types.generated_poc."

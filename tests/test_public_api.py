@@ -475,13 +475,13 @@ def test_public_api_surface_matches_snapshot():
     import json
     from pathlib import Path
 
-    from scripts.export_resolution import SNAPSHOT_MODULES, expand_key, resolution_key
+    from scripts.export_resolution import expand_key, resolution_key, snapshot_modules
 
     snapshot_path = Path(__file__).parent / "fixtures" / "public_api_snapshot.json"
     snapshot = json.loads(snapshot_path.read_text())
     regen_cmd = "python scripts/regenerate_public_api_snapshot.py"
 
-    for label, module_path in SNAPSHOT_MODULES:
+    for label, module_path in snapshot_modules():
         module = importlib.import_module(module_path)
         recorded = snapshot[label]["resolves"]
         live = {}

@@ -71,19 +71,37 @@ The canonical names (`Creative`, `Package`, `MediaBuy`, `Deployment`) remain ava
 ### Every variant has a name
 
 The prefixed aliases above are curated: each one is added when an adopter needs
-it. `adcp.types.disambiguated` covers the rest. It carries every variant of
-every type name that more than one generated module defines, under
-`<Type>From<DottedModulePath>`, derived from the module tree:
+it. The domain modules cover the rest. AdCP groups its schemas by domain —
+`core/`, `creative/`, `media_buy/` and the rest — and `adcp.types.domains.<domain>`
+re-exports what each one declares, so the module path says which variant you
+mean:
 
 ```python
-from adcp.types.disambiguated import QuerySummaryFromCreativeListCreativesResponse
-
-summary: QuerySummaryFromCreativeListCreativesResponse = response.query_summary
+from adcp.types.domains.creative import QuerySummary   # the listing shape
+from adcp.types.domains.core import QuerySummary       # the task shape
 ```
 
-These names are stable across a schema regen — the module path is in the name,
-and codegen numbering is not. Prefer a curated alias from `adcp.types` when one
-exists for your variant; reach for `adcp.types.disambiguated` when none does.
+Three schemas declare `QuerySummary`. `adcp.types.QuerySummary` binds the `core`
+one, which requires no fields, while the `creative` one requires `returned` and
+`total_matching` — so the flat name accepts documents the listing field rejects.
+Importing from the domain avoids the question.
+
+A type its own domain declares more than once carries the defining file in its
+name, because at that point nothing shorter tells them apart — `creative`
+declares `Creative` four times:
+
+```python
+from adcp.types.domains.creative import CreativeFromListCreativesResponse
+```
+
+`docs/shared-type-names.md` lists every type name more than one schema declares
+and what to import for each variant. Both the modules and that list are
+generated from the schema tree, so a new schema is covered without an edit.
+
+Note that a curated partial module (`adcp.types.creative`,
+`adcp.types.protocol`, ...) is a topic bundle over the flat `adcp.types`
+namespace, so it binds whichever variant the flat namespace binds. Use a domain
+module when you need a specific one.
 
 ### Structured error details
 
@@ -103,8 +121,7 @@ details = VersionUnsupportedDetails(
 A nested name that two error-details schemas both define carries its qualified
 name, because there is no unambiguous bare spelling for it:
 `billing-not-supported` and `rate-limited` each declare a `scope`, so the two
-enums are `ScopeFromErrorDetailsBillingNotSupported` and
-`ScopeFromErrorDetailsRateLimited`.
+enums are `ScopeFromBillingNotSupported` and `ScopeFromRateLimited`.
 
 ### Targeting mutation inputs and resolved state
 
@@ -205,9 +222,9 @@ class MyListResponse(ListCreativesResponse):
 
 ### When a variant has no public alias
 
-A few spec shapes have no disambiguated public name. The clearest example is the geo-exclusion element types behind `TargetingOverlay.geo_countries_exclude`, `geo_regions_exclude`, and `geo_metros_exclude`. Each exclusion list uses a distinct element class that is shape-identical to its inclusion counterpart (`GeoCountry`, `GeoRegion`, `GeoMetro`) but is not the same class and has no public alias in `adcp.types`.
+A few spec shapes have no alias on the flat `adcp.types` namespace. The clearest example is the geo-exclusion element types behind `TargetingOverlay.geo_countries_exclude`, `geo_regions_exclude`, and `geo_metros_exclude`. Each exclusion list uses a distinct element class that is shape-identical to its inclusion counterpart (`GeoCountry`, `GeoRegion`, `GeoMetro`) but is not the same class.
 
-If you need to substitute a shape-compatible class into one of these fields, the override is genuinely cross-class, and there is no public element type to subclass. Use the typed escape hatch `adcp.types.SchemaVariant` against the public inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
+Those element classes do have a public name — `adcp.types.domains.core.GeoCountriesExcludeItem` and its siblings — so subclassing one is now possible. Where you would rather substitute the public inclusion variant than subclass the exclusion element, use the typed escape hatch `adcp.types.SchemaVariant` against the inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
 
 ```python
 from adcp.types import SchemaVariant, GeoCountry
@@ -219,7 +236,7 @@ class MyAudienceFilters(SomeLibraryFilters):
     excluded_countries: SchemaVariant[list[GeoCountry]]
 ```
 
-If a variant you need has neither a canonical nor a prefixed public alias, import it from `adcp.types.disambiguated` (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
+If a variant you need has neither a canonical nor a prefixed public alias, import it from its domain module (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
 
 `SchemaVariant[T]` collapses to `T` at runtime — Pydantic validates against the wrapped type unchanged. At type-check time the bundled mypy plugin (`adcp.types.mypy_plugin`) rewrites the annotation to `Any` so the LSP override check passes. **Adopters must enable the plugin in their mypy config** — add this line to `pyproject.toml`:
 

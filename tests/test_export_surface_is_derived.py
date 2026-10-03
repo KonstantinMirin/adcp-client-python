@@ -7,9 +7,8 @@ Three properties, each one a defect this suite caught in a shipped wheel:
   ``# type: ignore[assignment]``, which left mypy holding the pre-reassignment
   declaration while the runtime held its neighbour (#1141). The static half of
   that contract is ``tests/type_checks/authorized_agents_variants.py``;
-* every public class in a non-bundled generated module is importable, from
-  ``adcp.types`` when its bare name is unambiguous and from
-  ``adcp.types.disambiguated`` when it is not (#911);
+* every public class in a non-bundled generated module is importable from the
+  module for the schema domain that declares it (#911);
 * ``adcp.types.error_details`` carries each ``error-details/*.json`` model
   together with the field types its annotations reference, so a seller
   constructs the payload with typed values (#1080).
@@ -28,15 +27,13 @@ import pytest
 
 import adcp.types
 import adcp.types._generated as generated
-import adcp.types.disambiguated as disambiguated
+import adcp.types.domains as domains
 import adcp.types.error_details as error_details
 from scripts.consolidate_exports import (
     _scan_name_to_modules,
-    colliding_names,
-    disambiguated_bindings,
+    domain_bindings,
     extract_exports_from_module,
-    generate_consolidated_exports,
-    qualified_public_name,
+    schema_domain,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,10 +41,15 @@ from scripts.consolidate_exports import (
 # ---------------------------------------------------------------------------
 
 
+def _domain_modules() -> list[object]:
+    """Every generated domain module, imported."""
+    return [importlib.import_module(f"adcp.types.domains.{d}") for d in domains.DOMAINS]
+
+
 @pytest.mark.parametrize(
     "module",
-    [adcp.types, generated, disambiguated, error_details],
-    ids=["types", "_generated", "disambiguated", "error_details"],
+    [adcp.types, generated, error_details],
+    ids=["types", "_generated", "error_details"],
 )
 def test_every_name_in_all_resolves(module: object) -> None:
     """``__all__`` is a promise: a name listed there must be importable."""
@@ -85,81 +87,98 @@ def test_generated_module_rebinds_no_imported_name() -> None:
 def test_no_generated_type_is_reachable_under_zero_names() -> None:
     """A model an adopter cannot import is a model an adopter cannot construct.
 
-    A generated public name reaches an adopter under its bare spelling when the
-    bare name resolves to the class that module defines, and under
-    ``<Type>From<DottedModulePath>`` otherwise. The bare name alone is not
-    enough: it covers one of the modules that define the name, and the whole
-    defect is that the others silently lose it.
+    Every ``(module, type)`` pair the tree declares has to be bound by its
+    domain module, under whatever public name the derivation gave it. Checked
+    against the built package, name by name, because a generated module binds
+    several names to one class and not every export is a class at all.
     """
     name_to_modules = _scan_name_to_modules()
-    qualified = set(disambiguated.__all__) | set(error_details.__all__)
+    bindings = domain_bindings(name_to_modules)
+    reverse = {
+        (module_name, type_name): (domain, public)
+        for domain, rows in bindings.items()
+        for public, (module_name, type_name) in rows.items()
+    }
 
-    def bare_resolves_here(type_name: str, module: str) -> bool:
-        for surface in (adcp.types, generated):
-            if type_name not in surface.__all__:  # type: ignore[attr-defined]
+    unreachable: list[str] = []
+    for type_name, modules in sorted(name_to_modules.items()):
+        for module_name in sorted(modules):
+            found = reverse.get((module_name, type_name))
+            if found is None:
+                unreachable.append(f"{module_name}.{type_name}: no domain binding")
                 continue
-            bound = getattr(surface, type_name)
-            if not inspect.isclass(bound):
-                # A union / TypeAlias export carries no defining module.
-                return True
-            if bound.__module__.removeprefix("adcp.types.generated_poc.") == module:
-                return True
-        return False
-
-    unreachable = sorted(
-        f"{module}.{type_name}"
-        for type_name, modules in name_to_modules.items()
-        for module in modules
-        if qualified_public_name(type_name, module) not in qualified
-        and not bare_resolves_here(type_name, module)
-    )
+            domain, public = found
+            module = importlib.import_module(f"adcp.types.domains.{domain}")
+            if public not in module.__all__ or not hasattr(module, public):
+                unreachable.append(f"{module_name}.{type_name}: {domain}.{public} missing")
     assert unreachable == []
 
 
-def test_every_colliding_variant_is_reachable_by_its_own_name() -> None:
-    """Each qualified name binds the object its own module holds, and nothing is missing.
+def test_every_domain_module_binds_what_its_own_schemas_declare() -> None:
+    """Each domain module's exports are exactly what that domain declares.
 
-    Checked in the forward direction — from the tree to the export — because the
-    name cannot be decomposed back into a module path, and because not every
-    export is a class. A schema whose root composes other schemas generates a
-    ``typing.Annotated[...]`` alias, which has no ``__module__`` and no
-    ``__name__`` to compare; skipping those would quietly stop grading them.
+    Checked in the forward direction — from the tree to the export — because not
+    every export is a class. A schema whose root composes other schemas
+    generates a ``typing.Annotated[...]`` alias, which has no ``__module__`` and
+    no ``__name__`` to compare; skipping those would quietly stop grading them.
     """
     name_to_modules = _scan_name_to_modules()
-    collisions = colliding_names(name_to_modules)
-    assert collisions, "no colliding names in the tree — this test is vacuous"
+    expected = domain_bindings(name_to_modules)
+    assert set(expected) == set(domains.DOMAINS)
 
-    expected = disambiguated_bindings(name_to_modules, generate_consolidated_exports().displaced)
-    assert set(disambiguated.__all__) == set(expected), (
-        "every variant of a shared name, and every class a compatibility alias "
-        "displaces, is exported under its qualified name — no more and no fewer"
-    )
-
-    for qualified, (module_name, type_name) in sorted(expected.items()):
-        source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
-        assert getattr(disambiguated, qualified) is getattr(source, type_name), qualified
+    for domain, rows in sorted(expected.items()):
+        module = importlib.import_module(f"adcp.types.domains.{domain}")
+        assert set(module.__all__) == set(rows), domain
+        for public, (module_name, type_name) in sorted(rows.items()):
+            source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
+            assert getattr(module, public) is getattr(source, type_name), f"{domain}.{public}"
+            assert schema_domain(module_name) == domain
 
 
-def test_the_bare_name_and_the_field_type_can_differ() -> None:
-    """The defect the qualified names answer, pinned as the behaviour it is.
+def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
+    """The defect the domain modules answer, pinned as the behaviour it is.
 
-    ``ListCreativesResponse.query_summary`` is typed with the ``QuerySummary``
-    that ``creative/list-creatives-response.json`` generates, which requires
-    ``total_matching`` and ``returned``. The bare ``adcp.types`` name resolves to
-    a different class, and that one accepts ``{}``.
+    Three schemas declare ``QuerySummary``. The flat namespace binds one — the
+    ``core`` one, which requires nothing — so an adopter reading
+    ``ListCreativesResponse.query_summary`` and annotating with
+    ``adcp.types.QuerySummary`` gets a model that accepts ``{}`` where the real
+    field type requires two fields. Each domain module binds its own.
     """
-    from adcp.types.disambiguated import QuerySummaryFromCreativeListCreativesResponse
+    import adcp.types.domains.core as core_domain
+    import adcp.types.domains.creative as creative_domain
+    import adcp.types.domains.protocol as protocol_domain
     from adcp.types.generated_poc.creative.list_creatives_response import ListCreativesResponse
 
-    field_type = ListCreativesResponse.model_fields["query_summary"].annotation
-    assert QuerySummaryFromCreativeListCreativesResponse in typing.get_args(field_type) or (
-        field_type is QuerySummaryFromCreativeListCreativesResponse
+    assert ListCreativesResponse.model_fields["query_summary"].annotation is (
+        creative_domain.QuerySummary
     )
     assert sorted(
         name
-        for name, field in QuerySummaryFromCreativeListCreativesResponse.model_fields.items()
+        for name, field in creative_domain.QuerySummary.model_fields.items()
         if field.is_required()
     ) == ["returned", "total_matching"]
+
+    variants = {
+        creative_domain.QuerySummary,
+        core_domain.QuerySummary,
+        protocol_domain.QuerySummary,
+    }
+    assert len(variants) == 3, "the three variants must be three distinct classes"
+    assert adcp.types.QuerySummary is core_domain.QuerySummary
+    assert not [
+        name for name, field in adcp.types.QuerySummary.model_fields.items() if field.is_required()
+    ], "the flat winner is the permissive variant — that is why the domain path exists"
+
+
+def test_a_name_its_own_domain_declares_twice_carries_the_defining_file() -> None:
+    """``creative`` declares ``Creative`` four times; the domain path cannot split them."""
+    import adcp.types.domains.creative as creative_domain
+    from adcp.types.generated_poc.creative import list_creatives_response as lcr
+
+    assert "Creative" not in creative_domain.__all__
+    assert creative_domain.CreativeFromListCreativesResponse is lcr.Creative
+    qualified = sorted(n for n in creative_domain.__all__ if n.startswith("CreativeFrom"))
+    assert len(qualified) == 4, qualified
 
 
 # ---------------------------------------------------------------------------
@@ -169,8 +188,8 @@ def test_the_bare_name_and_the_field_type_can_differ() -> None:
 
 @pytest.mark.parametrize(
     "module",
-    [generated, disambiguated, error_details],
-    ids=["_generated", "disambiguated", "error_details"],
+    [generated, error_details],
+    ids=["_generated", "error_details"],
 )
 def test_generated_modules_define_and_build_no_class(module: object) -> None:
     """A derived export module binds the generated class, never a copy of it.
@@ -204,7 +223,7 @@ def test_every_exported_class_is_the_class_its_module_defines() -> None:
     copy would satisfy an identity check that trusted ``__module__``.
     """
     checked = 0
-    for module in (disambiguated, error_details):
+    for module in (*_domain_modules(), error_details):
         for name in module.__all__:  # type: ignore[attr-defined]
             bound = getattr(module, name)
             if not inspect.isclass(bound):
@@ -216,7 +235,7 @@ def test_every_exported_class_is_the_class_its_module_defines() -> None:
             source = importlib.import_module(bound.__module__)
             assert getattr(source, bound.__name__) is bound, name
             checked += 1
-    assert checked > 1000, f"only {checked} classes checked — the surface shrank"
+    assert checked > 3000, f"only {checked} classes checked — the surface shrank"
 
 
 # ---------------------------------------------------------------------------

@@ -30,15 +30,15 @@ import pkgutil
 import re
 import subprocess
 import sys
-from collections.abc import Iterable
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import NamedTuple, get_args
+from typing import get_args
 
 GENERATED_POC_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "generated_poc"
 OUTPUT_FILE = Path(__file__).parent.parent / "src" / "adcp" / "types" / "_generated.py"
-DISAMBIGUATED_FILE = Path(__file__).parent.parent / "src" / "adcp" / "types" / "disambiguated.py"
+DOMAINS_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "domains"
+COLLISION_REPORT_FILE = Path(__file__).parent.parent / "docs" / "shared-type-names.md"
 ERROR_DETAILS_FILE = Path(__file__).parent.parent / "src" / "adcp" / "types" / "error_details.py"
 
 _GENERATION_DATE_RE = re.compile(r"^Generation date: .+$", re.MULTILINE)
@@ -152,20 +152,31 @@ def module_qualifier(module_name: str) -> str:
     )
 
 
-def qualified_public_name(type_name: str, module_name: str) -> str:
-    """The unambiguous public name for one variant of a colliding type name.
+def schema_domain(module_name: str) -> str:
+    """The schema domain a generated module belongs to: its first path segment.
 
-    This is NOT the same spelling as the private ``_<Name>From<Stem>`` exports
-    the ``KNOWN_COLLISIONS`` loop emits below. ``aliases.py`` imports those by
-    name, so their stem-only spelling is fixed; this one carries the whole
-    module path. Do not collapse the two.
-
-    The whole dotted module path goes into the name, not just the filename stem:
-    module paths are unique, so the qualified name is unique by construction and
-    stays stable when a schema addition introduces another module with the same
-    stem under a different package.
+    ``creative.list_creatives_response`` -> ``creative``. The AdCP bundle is
+    organised this way and codegen mirrors it, so the domain is a name the
+    schemas already carry rather than one this script invents.
     """
-    return f"{type_name}From{module_qualifier(module_name)}"
+    return module_name.split(".")[0]
+
+
+def qualified_public_name(type_name: str, module_name: str) -> str:
+    """The unambiguous name for a type its own domain declares more than once.
+
+    A domain module binds a name plainly when the domain declares it once. When
+    several of the domain's modules declare it — ``creative`` declares
+    ``Creative`` four times — the module path has run out of discriminating
+    power and the defining file has to appear in the name.
+
+    The suffix is the module STEM, not the whole path: a stem is unique inside
+    its domain for every one of the 728 pairs that need this, so the longer form
+    buys nothing. ``generate_domain_exports`` fails the build if that stops
+    holding.
+    """
+    stem = module_name.rsplit(".", 1)[-1]
+    return f"{type_name}From{module_qualifier(stem)}"
 
 
 def extract_exports_from_module(module_path: Path) -> set[str]:
@@ -247,65 +258,70 @@ def colliding_names(name_to_modules: dict[str, set[str]]) -> dict[str, set[str]]
     return {n: mods for n, mods in name_to_modules.items() if len(mods) > 1}
 
 
-def disambiguated_bindings(
-    name_to_modules: dict[str, set[str]],
-    displaced: Iterable[tuple[str, str]] = (),
-) -> dict[str, tuple[str, str]]:
-    """Map each qualified public name to the (module, type name) it binds.
+def domain_bindings(name_to_modules: dict[str, set[str]]) -> dict[str, dict[str, tuple[str, str]]]:
+    """Per domain, the public name of every type that domain declares.
 
-    Two kinds of class land here, and both are derived rather than listed:
-    every variant of a name that several generated modules define, and every
-    class whose bare name a compatibility alias in ``_generated`` takes over
-    (``displaced``). Adding a schema that reuses a type name extends this
-    mapping instead of hiding a class.
+    Returns ``{domain: {public_name: (module, type_name)}}``. A name the domain
+    declares once binds plainly, so ``adcp.types.domains.creative.QuerySummary``
+    is the one ``creative/list-creatives-response.json`` defines and
+    ``adcp.types.domains.core.QuerySummary`` is core's. A name the domain
+    declares several times takes ``qualified_public_name``.
+
+    The whole mapping is read off the module tree, so a schema addition extends
+    it with no edit here.
     """
-    pairs = [
-        (module_name, type_name)
-        for type_name, modules in colliding_names(name_to_modules).items()
-        for module_name in modules
-    ]
-    pairs.extend(sorted(displaced))
+    by_domain: dict[str, dict[str, list[tuple[str, str]]]] = {}
+    for type_name, modules in name_to_modules.items():
+        for module_name in modules:
+            domain = schema_domain(module_name)
+            by_domain.setdefault(domain, {}).setdefault(type_name, []).append(
+                (module_name, type_name)
+            )
 
-    bindings: dict[str, tuple[str, str]] = {}
-    clashes: dict[str, list[tuple[str, str]]] = {}
-    for module_name, type_name in pairs:
-        qualified = qualified_public_name(type_name, module_name)
-        if bindings.get(qualified) == (module_name, type_name):
-            continue
-        if qualified in bindings:
-            clashes.setdefault(qualified, [bindings[qualified]]).append((module_name, type_name))
-            continue
-        bindings[qualified] = (module_name, type_name)
+    bindings: dict[str, dict[str, tuple[str, str]]] = {}
+    clashes: dict[str, list[str]] = {}
+    for domain, declared in sorted(by_domain.items()):
+        rows: dict[str, tuple[str, str]] = {}
+        for type_name, pairs in sorted(declared.items()):
+            for module_name, _ in sorted(pairs):
+                public = (
+                    type_name if len(pairs) == 1 else qualified_public_name(type_name, module_name)
+                )
+                if public in rows:
+                    clashes.setdefault(f"{domain}.{public}", [rows[public][0]]).append(module_name)
+                    continue
+                rows[public] = (module_name, type_name)
+        bindings[domain] = rows
+
     if clashes:
-        details = "\n".join(
-            f"  {qualified}: {sorted(f'{m}.{t}' for m, t in sources)}"
-            for qualified, sources in sorted(clashes.items())
-        )
+        details = "\n".join(f"  {where}: {sorted(mods)}" for where, mods in sorted(clashes.items()))
         raise ValueError(
-            f"{len(clashes)} qualified export name(s) are claimed by more than one "
-            f"generated class:\n{details}\n\n"
-            "qualified_public_name() must produce one name per (module, type) pair. "
-            "Two generated modules with the same dotted path cannot exist, so this "
-            "means the name derivation lost information — fix "
-            "qualified_public_name(), do not drop a binding.\n"
+            f"{len(clashes)} public name(s) are claimed by more than one generated "
+            f"class inside one domain:\n{details}\n\n"
+            "qualified_public_name() suffixes the module stem, which is unique "
+            "inside a domain for every pair that needs it today. A clash means two "
+            "modules in one domain now share a stem — widen the suffix to the "
+            "domain-relative path, do not drop a binding.\n"
         )
     return bindings
 
 
 def _enforce_every_class_is_reachable(
     name_to_modules: dict[str, set[str]],
-    consolidated_sources: set[tuple[str, str]],
-    disambiguated_exports: dict[str, tuple[str, str]],
+    bindings: dict[str, dict[str, tuple[str, str]]],
 ) -> None:
     """Fail the build when a generated public class is reachable under no name.
 
-    ``_generated`` binds one winner per bare name, so a colliding class reaches
-    adopters only through its qualified name in ``disambiguated``. This guard is
-    a property of the tree rather than a snapshot of it: a schema addition that
-    introduces a new collision satisfies it automatically, and a change that
-    makes the derivation skip a class fails it.
+    Every ``(module, type)`` pair the tree declares has to be bound by its
+    domain module. That is a property of the derivation rather than a snapshot
+    of it: a schema addition satisfies it with no edit, and a change that makes
+    the derivation skip a class fails the build.
+
+    ``_generated`` is not consulted. It binds one class per bare name and the
+    losers were exactly the problem; the domain modules are where every variant
+    is required to appear.
     """
-    reachable = set(disambiguated_exports.values()) | consolidated_sources
+    reachable = {pair for bound in bindings.values() for pair in bound.values()}
     unreachable = [
         (module_name, type_name)
         for type_name, modules in name_to_modules.items()
@@ -319,11 +335,9 @@ def _enforce_every_class_is_reachable(
         f"{len(unreachable)} generated public class(es) are reachable under no "
         f"public name:\n{details}\n\n"
         "Every public class in a non-bundled generated module must be importable "
-        "either from adcp.types (the bare name, when it is unambiguous) or from "
-        "adcp.types.disambiguated (the module-qualified name, when it is not). A "
-        "class that is reachable under no name is a model an adopter cannot "
-        "construct, which is how the error-details family became unusable "
-        "(#1080).\n"
+        "from its domain module under adcp.types.domains. A class that is "
+        "reachable under no name is a model an adopter cannot construct, which is "
+        "how the error-details family became unusable (#1080).\n"
     )
 
 
@@ -354,17 +368,7 @@ def _scan_name_to_modules() -> dict[str, set[str]]:
     return name_to_modules
 
 
-class Consolidation(NamedTuple):
-    """The ``_generated`` module plus what the other two generated modules need."""
-
-    content: str
-    #: (module, type name) pairs this module binds under a name in its ``__all__``.
-    reachable_here: set[tuple[str, str]]
-    #: (module, type name) pairs whose bare name a compatibility alias took over.
-    displaced: set[tuple[str, str]]
-
-
-def generate_consolidated_exports() -> Consolidation:
+def generate_consolidated_exports() -> str:
     """Generate the consolidated exports file content."""
 
     # Discover all modules recursively (including subdirectories)
@@ -399,10 +403,6 @@ def generate_consolidated_exports() -> Consolidation:
     import_lines = []
     all_exports = set()
     collisions = []
-    # Every name this module binds, mapped to the generated class behind it. The
-    # reachability guard reads it, so a binding that drops a class shows up as a
-    # build failure rather than as a missing import an adopter discovers.
-    name_source: dict[str, tuple[str, str]] = {}
 
     # Special handling for known collisions
     # We need BOTH versions of these types available, so import them with qualified names
@@ -510,7 +510,6 @@ def generate_consolidated_exports() -> Consolidation:
             )
             special_imports.append(import_str)
             all_exports.add(qualified_name)
-            name_source[qualified_name] = (module_name, type_name)
 
     if collisions:
         print("\n⚠️  Name collisions detected (duplicates skipped):")
@@ -644,10 +643,8 @@ def generate_consolidated_exports() -> Consolidation:
         for export_name in sorted(owned):
             if export_name in private_name:
                 imported.append(f"{export_name} as {private_name[export_name]}")
-                name_source[private_name[export_name]] = (module_name, export_name)
             else:
                 imported.append(export_name)
-                name_source[export_name] = (module_name, export_name)
         import_lines.append(
             f"from adcp.types.generated_poc.{module_name} import {', '.join(imported)}"
         )
@@ -663,16 +660,7 @@ def generate_consolidated_exports() -> Consolidation:
             ]
         )
         for alias, target in aliases.items():
-            source = private_name.get(target, target)
-            alias_lines.append(f"{alias} = {source}")
-            name_source[alias] = name_source[source]
-
-    # The classes whose bare name a compatibility alias took over. They reach
-    # adopters through their qualified names in ``disambiguated``.
-    displaced = {name_source[private] for private in private_name.values()}
-    reachable_here = {
-        source for name, source in name_source.items() if name in all_exports_with_aliases
-    }
+            alias_lines.append(f"{alias} = {private_name.get(target, target)}")
 
     # Generate file content
     generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -762,7 +750,7 @@ def generate_consolidated_exports() -> Consolidation:
     rebuild_lines.append("")
     lines.extend(rebuild_lines)
 
-    return Consolidation("\n".join(lines), reachable_here, displaced)
+    return "\n".join(lines)
 
 
 def _format_all_block(names: list[str]) -> list[str]:
@@ -783,53 +771,131 @@ def _format_all_block(names: list[str]) -> list[str]:
     return lines
 
 
-def generate_disambiguated_exports(displaced: set[tuple[str, str]]) -> str:
-    """Generate the module that names every variant of every colliding type.
+def generate_domain_exports(
+    bindings: dict[str, dict[str, tuple[str, str]]],
+) -> dict[str, str]:
+    """Generate one public module per schema domain, plus the package root.
 
-    ``_generated`` binds one class per bare name, so an adopter who writes
+    Returns ``{"<domain>": content, "__init__": content}``.
+
+    ``adcp.types`` binds one class per bare type name, so an adopter who writes
     ``from adcp.types import QuerySummary`` gets whichever generated module won
     the sort order — a different class from the one the field it is reading is
-    typed with. This module exports every variant of every such name under
-    ``<Name>From<DottedModulePath>``, so the adopter names the class it wants.
+    typed with. Importing from the domain instead says which one:
 
-    The export set is derived from the generated module tree. A schema addition
-    that introduces another same-named class extends it with no edit here.
+        from adcp.types.domains.creative import QuerySummary   # the listing shape
+        from adcp.types.domains.core import QuerySummary       # the task shape
+
+    The path is the schema bundle's own layout, which codegen already mirrors,
+    so no name is invented for the 3041 types their domain declares once. The
+    728 a domain declares twice or more carry the defining file in the name,
+    because at that point nothing shorter distinguishes them.
     """
-    bindings = disambiguated_bindings(_scan_name_to_modules(), displaced)
-    by_module: dict[str, list[tuple[str, str]]] = {}
-    for qualified, (module_name, type_name) in bindings.items():
-        by_module.setdefault(module_name, []).append((type_name, qualified))
-
     generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    lines = [
-        '"""Unambiguous names for generated types that share a bare type name.',
+    modules: dict[str, str] = {}
+
+    for domain, rows in sorted(bindings.items()):
+        by_module: dict[str, list[tuple[str, str]]] = {}
+        for public, (module_name, type_name) in sorted(rows.items()):
+            by_module.setdefault(module_name, []).append((type_name, public))
+
+        lines = [
+            f'"""Types the AdCP ``{domain}`` schemas declare.',
+            "",
+            "Importing from the domain says which variant you mean, where the flat",
+            "``adcp.types`` namespace can only bind one class per name:",
+            "",
+            f"    from adcp.types.domains.{domain} import <Type>",
+            "",
+            "A type this domain declares in more than one schema carries the defining",
+            "file in its name (``CreativeFromListCreativesResponse``); everything else",
+            "keeps the name codegen gave it.",
+            "",
+            "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
+            f"Generation date: {generation_date}",
+            '"""',
+            "# ruff: noqa: E501, I001",
+            "from __future__ import annotations",
+            "",
+        ]
+        for module_name in sorted(by_module):
+            imported = ", ".join(
+                type_name if type_name == public else f"{type_name} as {public}"
+                for type_name, public in sorted(by_module[module_name])
+            )
+            lines.append(f"from adcp.types.generated_poc.{module_name} import {imported}")
+        lines.extend(_format_all_block(sorted(rows)))
+        modules[domain] = "\n".join(lines)
+
+    root = [
+        '"""Public types grouped by the AdCP schema domain that declares them.',
         "",
-        "AdCP schemas name an inline object after the property that holds it, so",
-        "several generated modules legitimately define a class called ``QuerySummary``",
-        "or ``Creative``. ``adcp.types`` binds one of them per name. Import from here",
-        "to name the variant you want:",
+        "The AdCP bundle is organised by domain — ``core/``, ``creative/``,",
+        "``media_buy/`` and the rest — and codegen mirrors that layout. These modules",
+        "re-export each domain faithfully, so a type name several domains define is",
+        "unambiguous by module path rather than by a mangled name:",
         "",
-        "    from adcp.types.disambiguated import QuerySummaryFromCreativeListCreativesResponse",
-        "",
-        "The name is ``<Type>From<DottedModulePath>`` in CamelCase, derived from the",
-        "module that defines the class. Every variant of every shared name is here,",
-        "including the one ``adcp.types`` binds.",
+        "    from adcp.types.domains.creative import QuerySummary",
+        "    from adcp.types.domains.core import QuerySummary",
         "",
         "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
         f"Generation date: {generation_date}",
         '"""',
-        "# ruff: noqa: E501, I001",
         "from __future__ import annotations",
         "",
+        "#: Every domain module in this package.",
+        "DOMAINS = (",
+        *(f'    "{domain}",' for domain in sorted(bindings)),
+        ")",
+        "",
+        '__all__ = ["DOMAINS"]',
+        "",
     ]
-    for module_name in sorted(by_module):
-        imported = ", ".join(
-            f"{type_name} as {qualified}" for type_name, qualified in sorted(by_module[module_name])
-        )
-        lines.append(f"from adcp.types.generated_poc.{module_name} import {imported}")
+    modules["__init__"] = "\n".join(root)
 
-    lines.extend(_format_all_block(sorted(bindings)))
-    print(f"  disambiguated: {len(bindings)} qualified exports over {len(by_module)} modules")
+    total = sum(len(rows) for rows in bindings.values())
+    invented = sum(1 for rows in bindings.values() for n, (_, t) in rows.items() if n != t)
+    print(
+        f"  domains: {len(bindings)} modules, {total} exports "
+        f"({total - invented} under the name codegen gave them, {invented} qualified)"
+    )
+    return modules
+
+
+def generate_collision_report(bindings: dict[str, dict[str, tuple[str, str]]]) -> str:
+    """Generate the scannable list of type names more than one schema declares.
+
+    The flat module this replaced was greppable, which was its one real
+    convenience. A generated document keeps that without committing a public
+    identifier per variant.
+    """
+    rows: dict[str, list[str]] = {}
+    for domain, bound in bindings.items():
+        for public, (module_name, type_name) in bound.items():
+            rows.setdefault(type_name, []).append(f"`adcp.types.domains.{domain}.{public}`")
+    shared = {name: sorted(paths) for name, paths in rows.items() if len(paths) > 1}
+
+    generation_date = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    lines = [
+        "# Type names declared by more than one AdCP schema",
+        "",
+        "AdCP names an inline object after the property that holds it, so several",
+        "schemas legitimately declare a class called `QuerySummary` or `Creative`.",
+        "`adcp.types` binds one of them per name. Import from the domain module to",
+        "name the one you mean.",
+        "",
+        f"{len(shared)} names, {sum(len(p) for p in shared.values())} variants.",
+        "",
+        "Auto-generated by `scripts/consolidate_exports.py`. DO NOT EDIT MANUALLY.",
+        f"Generation date: {generation_date}",
+        "",
+        "| Type name | Import one of |",
+        "| --- | --- |",
+    ]
+    for name, paths in sorted(shared.items()):
+        lines.append(f"| `{name}` | {' <br> '.join(paths)} |")
+    lines.append("")
+    print(f"  collision report: {len(shared)} shared names")
     return "\n".join(lines)
 
 
@@ -947,8 +1013,8 @@ def generate_error_details_exports() -> str:
         '        supported_versions=[SupportedVersion("3.1"), SupportedVersion("3.2")],',
         "    )",
         "",
-        "A nested name that two error-details schemas both define carries its",
-        "``<Type>From<DottedModulePath>`` name instead of a bare one.",
+        "A nested name that two error-details schemas both define carries the",
+        "defining file in its name (``ScopeFromRateLimited``) instead of a bare one.",
         "",
         "Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.",
         f"Generation date: {generation_date}",
@@ -1026,7 +1092,7 @@ def write_generated_module(path: Path, content: str) -> None:
 
 
 def main(argv: list[str] | None = None):
-    """Generate the consolidated, disambiguated and error-details export modules."""
+    """Generate the consolidated namespace, the domain modules and error-details."""
     global GENERATED_POC_DIR, OUTPUT_FILE
 
     args = _parse_args(argv)
@@ -1039,34 +1105,27 @@ def main(argv: list[str] | None = None):
         print(f"Error: {GENERATED_POC_DIR} does not exist")
         return 1
 
-    consolidation = generate_consolidated_exports()
+    content = generate_consolidated_exports()
 
-    # Build guard: a bare name defined by several modules binds one winner in
-    # ``_generated``, so the others reach adopters only through their qualified
-    # names in ``disambiguated``. Both sides are derived from the module tree,
-    # and the guard fails when the two together leave a class reachable under no
+    # Build guard: ``_generated`` binds one class per bare name, so every variant
+    # has to be reachable from its domain module. Both sides are derived from the
+    # module tree, and the guard fails when a class is left reachable under no
     # name (issues #911, #1080).
     name_to_modules = _scan_name_to_modules()
-    _enforce_every_class_is_reachable(
-        name_to_modules,
-        consolidation.reachable_here,
-        disambiguated_bindings(name_to_modules, consolidation.displaced),
-    )
+    bindings = domain_bindings(name_to_modules)
+    _enforce_every_class_is_reachable(name_to_modules, bindings)
 
-    write_generated_module(OUTPUT_FILE, consolidation.content)
-    write_generated_module(
-        DISAMBIGUATED_FILE, generate_disambiguated_exports(consolidation.displaced)
-    )
+    write_generated_module(OUTPUT_FILE, content)
+    for domain, module_content in generate_domain_exports(bindings).items():
+        write_generated_module(DOMAINS_DIR / f"{domain}.py", module_content)
     write_generated_module(ERROR_DETAILS_FILE, generate_error_details_exports())
+    COLLISION_REPORT_FILE.write_text(generate_collision_report(bindings))
 
     print("✓ Successfully generated consolidated exports")
     export_count = len(
         [
             name
-            for name in consolidation.content.split("__all__ = [")[1]
-            .split("]")[0]
-            .strip("[]")
-            .split(",")
+            for name in content.split("__all__ = [")[1].split("]")[0].strip("[]").split(",")
             if name.strip()
         ]
     )
