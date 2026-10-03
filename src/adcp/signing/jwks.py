@@ -118,14 +118,19 @@ _EXTRA_BLOCKED_NETWORKS: tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ..
 # intent, not classification accident:
 #
 # * ``ipaddress.is_private`` is a far wider predicate than RFC 1918. On every
-#   supported interpreter it also reports True for RFC 5737 documentation
-#   space (``192.0.2.0/24``, ``198.51.100.0/24``, ``203.0.113.0/24``),
-#   RFC 2544 benchmarking (``198.18.0.0/15``), RFC 6890 protocol assignments
-#   (``192.0.0.0/29``), ``240.0.0.0/4``, RFC 3849 ``2001:db8::/32``,
-#   6to4 ``2002::/16`` and Teredo ``2001::/32``. None of those is a private
-#   destination an operator deploys a service to.
-# * ``is_multicast``, ``is_unspecified`` and the ``_EXTRA_BLOCKED_NETWORKS``
-#   anycast and identifier ranges are never a unicast destination at all.
+#   supported interpreter it also reports True for, among others, RFC 5737
+#   documentation space (``192.0.2.0/24``, ``198.51.100.0/24``,
+#   ``203.0.113.0/24``), RFC 2544 benchmarking (``198.18.0.0/15``),
+#   RFC 6890 IETF protocol assignments (``192.0.0.0/24``), ``240.0.0.0/4``,
+#   RFC 3849 ``2001:db8::/32``, 6to4 ``2002::/16`` and Teredo ``2001::/32``.
+#   None of those is a private destination an operator deploys a service to.
+# * ``is_multicast``, ``is_reserved``, ``is_unspecified`` and the
+#   ``_EXTRA_BLOCKED_NETWORKS`` anycast and identifier ranges are never a
+#   unicast destination at all. ``is_reserved`` alone covers unallocated IPv6
+#   space (``400::/8`` and up), which is why the special-use half is DERIVED
+#   as "blocked by the base policy, not a private destination" rather than
+#   enumerated — an enumeration cannot be complete, and a range CPython
+#   reclassifies later lands on the right side without an edit here.
 #   ``100.64.0.0/10`` in particular is a range AdCP names in the deny list a
 #   fetcher MUST apply (spec 3.1.1, "Webhook URL validation (SSRF)", step 2).
 # * Link-local (``169.254.0.0/16``, ``fe80::/10``) is autoconfiguration and
