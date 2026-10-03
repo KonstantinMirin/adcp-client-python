@@ -21,8 +21,9 @@ import typing
 __all__ = ["SNAPSHOT_MODULES", "expand_key", "resolution_key", "snapshot_entry"]
 
 #: Namespaces the snapshot covers: the two public surfaces an adopter imports
-#: from, and the three modules the consolidate step generates. Named as strings
+#: from, and the consolidated generated namespace behind them. Named as strings
 #: so this module imports nothing from ``adcp`` until asked.
+#:
 #: ``disambiguated`` and ``error_details`` are deliberately absent. A
 #: disambiguated name carries its module inside the name
 #: (``QuerySummaryFromCreativeListCreativesResponse``), so it cannot repoint
