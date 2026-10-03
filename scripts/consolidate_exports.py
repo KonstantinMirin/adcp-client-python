@@ -6,8 +6,9 @@ This script analyzes all modules in generated_poc/ and writes three modules:
 
 * ``_generated.py`` — every public generated type in one namespace. A bare type
   name defined by several generated modules resolves to one winner here.
-* ``disambiguated.py`` — every variant of every such name under a module-qualified
-  public name, derived from the module tree. No class is reachable under zero names.
+* ``domains/<domain>.py`` — one module per schema domain, re-exporting what that
+  domain declares, derived from the module tree. No class is reachable under zero
+  names.
 * ``error_details.py`` — the ``error-details/*.json`` model family plus the
   transitive closure of its field types, derived from the generated package.
 
@@ -30,6 +31,7 @@ import pkgutil
 import re
 import subprocess
 import sys
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -48,9 +50,9 @@ _GENERATION_DATE_RE = re.compile(r"^Generation date: .+$", re.MULTILINE)
 # ``_<Name>From<Stem>`` private exports these produce and gives them semantic
 # public names.
 #
-# Reachability does NOT depend on this table: ``disambiguated.py`` carries every
-# variant of every colliding name, derived from the module tree. A name belongs
-# here only when the bare slot in ``_generated`` must stay unbound.
+# Reachability does NOT depend on this table: the ``domains/`` modules carry
+# every variant of every colliding name, derived from the module tree. A name
+# belongs here only when the bare slot in ``_generated`` must stay unbound.
 KNOWN_COLLISIONS: dict[str, set[str]] = {
     "Package": {"package", "create_media_buy_response", "get_media_buys_response"},
     # DeliveryStatus appears in get_media_buy_delivery_response (5 values) and
@@ -251,6 +253,66 @@ def exports_for_public_consolidation(module_path: Path) -> set[str]:
         # own core/ modules; keep these copies private and export the root.
         return exports & {"MacroDeclaration"}
     return exports
+
+
+def referenced_classes(annotation: object) -> Iterator[type]:
+    """Yield every class reachable through ``annotation``.
+
+    Unwraps the shapes codegen emits — unions (``A | B`` and ``Union[A, B]``),
+    ``Optional``, ``Annotated``, and containers (``list[...]``, ``dict[...]``) —
+    so a caller asking "what can this field hold" does not have to know which
+    shape it got.
+
+    Three separate guards broke by assuming a generated annotation is a class:
+    once when composing roots became ``Annotated`` aliases, once when the
+    error-details closure collected roots with ``inspect.isclass``, and once
+    when a field type became a union and a ``.model_fields`` access raised
+    ``AttributeError``. Everything that walks an annotation goes through here.
+    """
+    pending = [annotation]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        pending.extend(get_args(current))
+        if inspect.isclass(current):
+            yield current
+
+
+def is_public_generated_model(cls: type) -> bool:
+    """Whether ``cls`` is a generated model or enum that belongs on the surface.
+
+    A codegen'd alias wraps a private body class. The alias is the public handle
+    and the body is an implementation detail, so a private name reached through
+    an annotation is not an export — the error-details closure and the guard
+    that checks it both have to agree on that, which is why the rule is here.
+    """
+    return (
+        cls.__module__.startswith("adcp.types.generated_poc.")
+        and not cls.__name__.startswith("_")
+        and (hasattr(cls, "model_fields") or issubclass(cls, Enum))
+    )
+
+
+def generated_models_in(annotation: object) -> Iterator[type]:
+    """The generated pydantic models and enums reachable through ``annotation``."""
+    for cls in referenced_classes(annotation):
+        if is_public_generated_model(cls):
+            yield cls
+
+
+def field_annotations(obj: object) -> list[object]:
+    """The field annotations of ``obj``, or what it wraps when it is not a model.
+
+    A generated top-level name is a model, or an alias over one. An alias has no
+    ``model_fields``; the thing to walk is the alias itself.
+    """
+    model_fields = getattr(obj, "model_fields", None)
+    if model_fields is None:
+        return [obj]
+    return [field.annotation for field in model_fields.values()]
 
 
 def colliding_names(name_to_modules: dict[str, set[str]]) -> dict[str, set[str]]:
@@ -674,8 +736,8 @@ def generate_consolidated_exports() -> str:
         "namespace for convenience. The leading underscore signals this is private API.",
         "",
         "A bare type name that several generated modules define resolves to one class",
-        "here. Every variant of such a name is exported from adcp.types.disambiguated",
-        "under its module-qualified name.",
+        "here. Every variant of such a name is exported from the module for the",
+        "schema domain that declares it, under adcp.types.domains.",
         "",
         "Auto-generated by datamodel-code-generator from JSON schemas.",
         "DO NOT EDIT MANUALLY.",
@@ -931,7 +993,7 @@ def _error_details_closure() -> dict[str, list[str]]:
             roots.append(obj)
 
     # ``seen`` holds classes only: a class is what a nested field type is, and
-    # what has a module to be exported from. An alias contributes its members.
+    # what has a module to be exported from. An alias contributes what it wraps.
     seen: set[type] = set()
     queue: list[object] = list(roots)
     while queue:
@@ -940,22 +1002,8 @@ def _error_details_closure() -> dict[str, list[str]]:
             if obj in seen:
                 continue
             seen.add(obj)
-            annotations = [field.annotation for field in getattr(obj, "model_fields", {}).values()]
-        else:
-            # An alias (``Annotated[...]``, a union): walk what it wraps.
-            annotations = [obj]
-        for annotation in annotations:
-            pending = [annotation]
-            while pending:
-                candidate = pending.pop()
-                pending.extend(get_args(candidate))
-                if (
-                    inspect.isclass(candidate)
-                    and candidate not in seen
-                    and candidate.__module__.startswith("adcp.types.generated_poc.")
-                    and (hasattr(candidate, "model_fields") or issubclass(candidate, Enum))
-                ):
-                    queue.append(candidate)
+        for annotation in field_annotations(obj):
+            queue.extend(cls for cls in generated_models_in(annotation) if cls not in seen)
 
     by_module: dict[str, list[str]] = {
         module: list(names) for module, names in sorted(declared.items())

@@ -2039,9 +2039,9 @@ Applied to Assets94.assets via _forward_compat._apply_forward_compat().
 # Several bare type names are defined in more than one generated module. When
 # adopters write ``from adcp.types import Creative`` they silently get whichever
 # module wins the consolidate sort order — which is rarely the variant they want
-# and can change shape between releases. ``adcp.types.disambiguated`` carries
-# every variant of every such name under a module-derived qualified name; these
-# aliases give the high-traffic, adopter-facing ones a semantic name instead.
+# and can change shape between releases. ``adcp.types.domains.<domain>`` carries
+# every variant of every such name, keyed by the schema domain that declares it;
+# these aliases give the high-traffic, adopter-facing ones a semantic name too.
 #
 # Naming convention: ``<Context><BaseName>`` where ``<Context>`` is derived
 # from the defining module / verb (e.g. ``SyncAccountsAccount`` from
@@ -2054,7 +2054,7 @@ Applied to Assets94.assets via _forward_compat._apply_forward_compat().
 # to the correct per-module class regardless of which one wins the bare-name
 # slot in _generated.py. These do NOT remove the underlying generated_poc
 # collisions; what keeps every variant reachable is the derived export set in
-# ``disambiguated.py`` and the reachability guard in the consolidate step.
+# the ``domains/`` modules and the reachability guard in the consolidate step.
 #
 # Stability contract: tests/test_collision_aliases.py asserts each alias
 # resolves to the class defined in its named module (by __module__), not the

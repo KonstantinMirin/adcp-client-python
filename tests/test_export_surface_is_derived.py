@@ -20,7 +20,6 @@ import ast
 import importlib
 import inspect
 import pkgutil
-import typing
 from pathlib import Path
 
 import pytest
@@ -33,6 +32,8 @@ from scripts.consolidate_exports import (
     _scan_name_to_modules,
     domain_bindings,
     extract_exports_from_module,
+    field_annotations,
+    generated_models_in,
     schema_domain,
 )
 
@@ -273,26 +274,28 @@ def test_every_error_details_model_is_exported() -> None:
 
 
 def test_every_error_details_field_type_is_exported() -> None:
-    """Exporting a model without its field types leaves it unconstructable."""
-    unreachable: list[str] = []
+    """Exporting a model without its field types leaves it unconstructable.
+
+    Both halves go through ``field_annotations`` and ``generated_models_in``: a
+    root may be an alias with no ``model_fields``, and a field type may be a
+    union rather than a class. Walking either by hand is what broke this guard
+    three times.
+    """
     exported = {
         obj
         for name in error_details.__all__
         if inspect.isclass(obj := getattr(error_details, name))
     }
-    for model_name, model in _error_details_models().items():
-        for field_name, field in model.model_fields.items():
-            pending = [field.annotation]
-            while pending:
-                annotation = pending.pop()
-                pending.extend(typing.get_args(annotation))
-                if (
-                    inspect.isclass(annotation)
-                    and annotation.__module__.startswith("adcp.types.generated_poc.")
-                    and annotation not in exported
-                ):
-                    unreachable.append(f"{model_name}.{field_name}: {annotation.__name__}")
-    assert sorted(set(unreachable)) == []
+    unreachable = sorted(
+        {
+            f"{model_name}: {cls.__name__}"
+            for model_name, model in _error_details_models().items()
+            for annotation in field_annotations(model)
+            for cls in generated_models_in(annotation)
+            if cls not in exported
+        }
+    )
+    assert unreachable == []
 
 
 def test_error_details_payload_constructs_with_typed_values() -> None:
