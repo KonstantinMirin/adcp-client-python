@@ -1119,7 +1119,12 @@ def main(argv: list[str] | None = None):
     for domain, module_content in generate_domain_exports(bindings).items():
         write_generated_module(DOMAINS_DIR / f"{domain}.py", module_content)
     write_generated_module(ERROR_DETAILS_FILE, generate_error_details_exports())
-    COLLISION_REPORT_FILE.write_text(generate_collision_report(bindings))
+    # Not through ``write_generated_module``: black cannot format markdown. The
+    # date still has to be preserved or the report churns on every regeneration.
+    previous_report = COLLISION_REPORT_FILE.read_text() if COLLISION_REPORT_FILE.exists() else ""
+    COLLISION_REPORT_FILE.write_text(
+        preserve_generation_date_if_unchanged(previous_report, generate_collision_report(bindings))
+    )
 
     print("✓ Successfully generated consolidated exports")
     export_count = len(
