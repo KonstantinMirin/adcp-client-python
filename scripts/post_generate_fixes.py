@@ -6195,9 +6195,13 @@ def _report(title: str, names: list[str], advice: str) -> None:
 
 def _check_manifest(observed: dict[str, list[str]], manifest: dict[str, bool | str]) -> int:
     """Fail when a fix's effect disagrees with the manifest."""
-    dead = [name for name, changed in observed.items() if not changed and manifest.get(name) is True]
+    dead = [
+        name for name, changed in observed.items() if not changed and manifest.get(name) is True
+    ]
     revived = [
-        name for name, changed in observed.items() if changed and isinstance(manifest.get(name), str)
+        name
+        for name, changed in observed.items()
+        if changed and isinstance(manifest.get(name), str)
     ]
     undeclared = [name for name in observed if name not in manifest]
     removed = sorted(set(manifest) - set(observed))
