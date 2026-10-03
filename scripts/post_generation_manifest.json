@@ -3,7 +3,7 @@
   "fixes": {
     "add_model_validator_to_product": "No-op since #213 added an explicit discriminator to publisher_properties: Pydantic validates the union, and the body only prints.",
     "fix_preview_render_self_reference": "datamodel-code-generator 0.64.0 emits PreviewRender1..3 unqualified in creative/preview_render.py; the module-qualified form this fix rewrites appears nowhere.",
-    "fix_brand_manifest_references": "Its target core/promoted_offerings.py is not generated — brand.json is in GENERATED_SCHEMA_EXCLUDE_FILES — and the unaliased brand_manifest.BrandManifest reference appears nowhere in the tree.",
+    "fix_brand_manifest_references": "Its target core/promoted_offerings.py is not generated \u2014 brand.json is in GENERATED_SCHEMA_EXCLUDE_FILES \u2014 and the unaliased brand_manifest.BrandManifest reference appears nowhere in the tree.",
     "fix_enum_defaults": "Its target core/brand_manifest.py is not generated, and bundled/media_buy/get_media_buys_response.py carries no matching health default and is removed by prune_unused_bundled_modules immediately after.",
     "fix_preview_creative_request_discriminator": "The literal it searches for (description='Request to generate previews) appears in no generated module, and PreviewCreativeRequest is one class rather than a union. The fix prints its success message without editing anything.",
     "add_deprecated_field_metadata": "The generator emits Field(deprecated=True) itself. Of the 363 top-level deprecated schema properties, 81 already carry it; the other 282 live under hyphenated schema directories that the schema-to-module mapping snake-cases in the basename only, so no candidate reaches the rewrite.",
@@ -42,6 +42,7 @@
     "widen_extension_point_lists_to_sequence": true,
     "fix_canceled_literal_defaults": true,
     "fix_unchanged_literal_defaults": true,
+    "fix_optional_boolean_literal_defaults": true,
     "fix_reporting_request_selectors": true,
     "fix_reporting_capability_defaults": true,
     "fix_protocol_envelope_status_default": true,
