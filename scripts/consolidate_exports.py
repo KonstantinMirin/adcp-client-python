@@ -1292,23 +1292,39 @@ def _format_with_black(*targets: Path) -> None:
     print("⚠ Could not format with black (not installed)")
 
 
-def write_generated_module(path: Path, content: str, *, format_now: bool = True) -> None:
+def write_generated_module(path: Path, content: str, *, format_now: bool = True) -> str:
     """Write ``content`` to ``path``, black-format it, and keep a stable date.
 
-    ``format_now=False`` writes and preserves the date but leaves formatting to
-    a later batched :func:`_format_with_black`; the date is preserved against
-    the unformatted text, so a caller that defers formatting has to compare
-    against the same.
+    Returns the file's previous text. With ``format_now=False`` the formatting
+    and the date-preservation are both left to the caller: the date can only be
+    preserved by comparing formatted text against formatted text, so a deferred
+    write has to run :func:`restore_generation_dates` after its batch format.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     previous_content = path.read_text() if path.exists() else ""
     path.write_text(content)
-    if format_now:
-        _format_with_black(path)
+    if not format_now:
+        return previous_content
+    _format_with_black(path)
     formatted_content = path.read_text()
     stable_content = preserve_generation_date_if_unchanged(previous_content, formatted_content)
     if stable_content != formatted_content:
         path.write_text(stable_content)
+    return previous_content
+
+
+def restore_generation_dates(previous: dict[Path, str]) -> None:
+    """Put each file's prior timestamp back where only the timestamp changed.
+
+    Run after a batched format, with the texts :func:`write_generated_module`
+    returned. Without this a thousand mirror modules carry a fresh date on every
+    regeneration and the tree is never byte-stable.
+    """
+    for path, previous_content in previous.items():
+        formatted_content = path.read_text()
+        stable_content = preserve_generation_date_if_unchanged(previous_content, formatted_content)
+        if stable_content != formatted_content:
+            path.write_text(stable_content)
 
 
 def main(argv: list[str] | None = None):
@@ -1340,9 +1356,13 @@ def main(argv: list[str] | None = None):
         target = DOMAINS_DIR / ("__init__.py" if domain == "__init__" else f"{domain}/__init__.py")
         write_generated_module(target, module_content)
     mirror = generate_module_mirror(declared)
-    for rel, module_content in mirror.items():
-        write_generated_module(DOMAINS_DIR / rel, module_content, format_now=False)
+    previous_mirror = {
+        DOMAINS_DIR
+        / rel: write_generated_module(DOMAINS_DIR / rel, module_content, format_now=False)
+        for rel, module_content in mirror.items()
+    }
     _format_with_black(DOMAINS_DIR)
+    restore_generation_dates(previous_mirror)
     write_generated_module(ERROR_DETAILS_FILE, generate_error_details_exports())
     # Not through ``write_generated_module``: black cannot format markdown. The
     # date still has to be preserved or the report churns on every regeneration.
