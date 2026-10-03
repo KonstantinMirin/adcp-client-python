@@ -82,6 +82,7 @@ from adcp.decisioning.webhook_emit import (
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
+    from typing import TypeAlias
 
     from pydantic import BaseModel, ValidationError
 
