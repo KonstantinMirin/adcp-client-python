@@ -177,6 +177,13 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     (``CreateMediaBuyResponse1`` inherits the two envelopes directly); which of
     those it picks must not decide whether the branch is graded.
 
+    ``N`` is the whole numeric run after the candidate, not one digit: a root
+    that fans out into ten or more arms emits ``Name10`` upward, and this tree
+    carries 341 classes with a multi-digit suffix (``AcceptancePolicyRequirement17``,
+    ``AdcpAgentsAuthorization213``). Matching a single trailing character would
+    drop those arms from the grading silently, which is the under-grading
+    #1136 is about.
+
     Returning ``None`` rather than guessing at the last class in the file is
     deliberate: an unresolved root is reported by
     :func:`test_every_composition_resolves_to_a_generated_type`, not silently
@@ -212,7 +219,8 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
             sorted(
                 name
                 for name in classes
-                if name[-1].isdigit() and name[:-1].lower() == candidate.lower()
+                if name[len(candidate) :].isdigit()
+                and name[: len(candidate)].lower() == candidate.lower()
             )
         )
         if root or branches:
@@ -397,9 +405,9 @@ def test_envelope_composition_is_rendered_as_a_base_class() -> None:
         if composition.target not in counted:
             continue
         for cls in composing:
-            assert issubclass(
-                cls, parent
-            ), f"{composition.schema}::{cls.__name__} does not inherit {parent.__name__}"
+            assert issubclass(cls, parent), (
+                f"{composition.schema}::{cls.__name__} does not inherit {parent.__name__}"
+            )
         counted[composition.target] += 1
 
     short = {
