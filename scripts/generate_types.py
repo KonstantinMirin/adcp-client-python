@@ -55,6 +55,7 @@ SCHEMAS_DIR = REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
 TEMP_DIR = REPO_ROOT / ".schema_temp"
 DELTAS_FILE = REPO_ROOT / "SCHEMA_DELTAS.md"
+SHARED_TYPE_NAMES_FILE = REPO_ROOT / "docs" / "shared-type-names.md"
 
 # Bundled schemas are self-contained: each message schema inlines its entire
 # ``$ref`` graph, so every bundled module re-emits its own copy of the shared
@@ -1218,6 +1219,9 @@ def main(argv: list[str] | None = None):
             staged_types = staged_source / "adcp" / "types"
             staged_consolidated = staged_types / "_generated.py"
             staged_ergonomic = staged_types / "_ergonomic.py"
+            staged_domains = staged_types / "domains"
+            staged_error_details = staged_types / "error_details.py"
+            staged_report = staging_root / "shared-type-names.md"
 
             consolidate_script = REPO_ROOT / "scripts" / "consolidate_exports.py"
             result = subprocess.run(
@@ -1228,6 +1232,10 @@ def main(argv: list[str] | None = None):
                     str(staged_output),
                     "--output-file",
                     str(staged_consolidated),
+                    "--source-root",
+                    str(staged_source),
+                    "--report-file",
+                    str(staged_report),
                 ],
                 capture_output=True,
                 text=True,
@@ -1265,11 +1273,17 @@ def main(argv: list[str] | None = None):
             current_types = REPO_ROOT / "src" / "adcp" / "types"
             restore_unchanged_file(staged_consolidated, current_types / "_generated.py")
             restore_unchanged_file(staged_ergonomic, current_types / "_ergonomic.py")
+            restore_unchanged_file(staged_error_details, current_types / "error_details.py")
+            restore_unchanged_file(staged_report, SHARED_TYPE_NAMES_FILE)
+            restore_unchanged_files(staged_domains, current_types / "domains")
 
             artifacts = [
                 (staged_output, OUTPUT_DIR),
                 (staged_consolidated, current_types / "_generated.py"),
                 (staged_ergonomic, current_types / "_ergonomic.py"),
+                (staged_domains, current_types / "domains"),
+                (staged_error_details, current_types / "error_details.py"),
+                (staged_report, SHARED_TYPE_NAMES_FILE),
             ]
             changed = [
                 target for candidate, target in artifacts if not _paths_equal(candidate, target)
