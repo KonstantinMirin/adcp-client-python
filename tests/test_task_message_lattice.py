@@ -295,8 +295,15 @@ def test_request_accessors_answer_none_for_fields_a_tool_does_not_declare() -> N
     """
     from adcp.types.generated_poc.creative.validate_input_request import ValidateInputRequest
 
+    # The manifest carries a ``format_kind``: ``core/creative-manifest.json`` declares a
+    # root required group of ``format_id | format_kind``, which
+    # ``enforce_root_required_groups`` now enforces on the generated class. The accessors
+    # under test are unaffected by which arm satisfies it.
     request = ValidateInputRequest.model_validate(
-        {"account": {"account_id": "acct-1"}, "manifest": {"assets": {}}}
+        {
+            "account": {"account_id": "acct-1"},
+            "manifest": {"assets": {}, "format_kind": "image"},
+        }
     )
     assert request.get_account() is not None
     assert request.get_adcp_version() is None
