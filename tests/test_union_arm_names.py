@@ -250,3 +250,37 @@ def test_no_derived_name_is_positional(bundle: list[ArmName]) -> None:
     """The property the whole rule exists to guarantee."""
     numbered = [item for item in bundle if item.name and item.name[-1].isdigit()]
     assert numbered == [], [item.pointer for item in numbered]
+
+
+def test_the_two_response_arms_the_rule_cannot_name_today() -> None:
+    """The exact residue the surface move has to decide about.
+
+    ``post_generate_fixes.restore_response_variant_aliases`` re-emits 22 response
+    modules and names their arms by position
+    (``class_names = [f"{self.base}{index}" for index in range(1, len(arms) + 1)]``),
+    producing 58 numbered arm classes of which 21 are publicly bound today. The
+    rule names 56 of the 58. Two it does not, for two different reasons, and both
+    are recorded here because they are the only blockers to replacing that line:
+
+    * ``get-content-standards-response.json`` oneOf[0] — rung 4. Needs the one
+      upstream title, or the class leaves the public surface as an internal
+      numbered helper reachable through the union alias.
+    * ``get-creative-features-response.json`` oneOf[0] — a bare ``$ref``. The
+      rule correctly says there is nothing to derive, because the arm already
+      names the shared class it selects. The emitter nonetheless mints a NEW
+      class for it, which is the defect: the union should reference the shared
+      class, not copy it under a positional name.
+    """
+    standards = _names("content-standards/get-content-standards-response.json")
+    assert standards[0].kind == "type"
+    assert standards[0].name is None
+
+    features = _names("creative/get-creative-features-response.json")
+    assert features[0].kind == "ref"
+    assert features[0].name is None
+    # Its siblings ARE nameable, so this is one arm's shape, not a whole schema
+    # the rule cannot handle.
+    assert [item.name for item in features[1:]] == [
+        "GetCreativeFeaturesError",
+        "GetCreativeFeaturesSubmitted",
+    ]
