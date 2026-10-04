@@ -242,6 +242,10 @@ def _resolve(rel: Path, names: tuple[str, ...]) -> tuple[type, ...]:
         if isinstance(obj, type):
             found[obj] = None
             continue
+        # A composing root is ``Annotated[A | B, Field(...)]``: the metadata
+        # carries the schema's discriminator, and the union is its first arg.
+        if typing.get_origin(obj) is typing.Annotated:
+            obj = typing.get_args(obj)[0]
         arms = typing.get_args(obj)
         assert arms, f"{_module_name(rel)}.{name} is neither a class nor a union: {obj!r}"
         for arm in arms:

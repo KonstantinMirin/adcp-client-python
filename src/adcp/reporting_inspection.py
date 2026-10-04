@@ -21,8 +21,9 @@ import httpx
 import idna
 import jsonschema
 import rfc8785
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from adcp._deferred_adapters import deferred_adapter
 from adcp.reporting import ReportingInspectionContext, ReportingObservation
 from adcp.signing._bounded_http import ResponseTooLargeError, async_read_limited_bytes
 from adcp.signing._idna_canonicalize import canonicalize_host
@@ -35,6 +36,13 @@ from adcp.types import (
     ReportingFileManifest,
     ReportingReportDefinition,
 )
+
+# ReportingControlTotal is a union, so validation goes through an adapter.
+
+
+@deferred_adapter
+def _control_total_adapter() -> TypeAdapter[ReportingControlTotal]:
+    return TypeAdapter(ReportingControlTotal)
 
 
 class ReportingInspectionCode(str, Enum):
@@ -542,7 +550,7 @@ def _default_control_totals(
         try:
             payload = target.model_dump(mode="json", exclude_none=True)
             payload["value"] = _decimal_string(value, str(target.value_type))
-            totals.append(ReportingControlTotal.model_validate(payload))
+            totals.append(_control_total_adapter().validate_python(payload))
         except (ValueError, ValidationError) as error:
             raise ReportingInspectionError(
                 ReportingInspectionCode.CONTROL_TOTAL_MISMATCH,
