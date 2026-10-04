@@ -468,6 +468,31 @@ class AsyncIpPinnedTransport2(httpx2.AsyncHTTPTransport):
         )
 
 
+def _resolve_pin(
+    uri: str,
+    *,
+    allow_private: bool,
+    allow_special_use: bool,
+    allowed_ports: frozenset[int] | None,
+) -> tuple[str, str]:
+    """Resolve ``uri`` once under the shared SSRF policy; return ``(hostname, ip)``.
+
+    The one address decision behind all four builders, so the ``httpx``
+    and ``httpx2`` generations cannot drift apart: ``allow_private``
+    admits RFC 1918, RFC 4193 unique-local and loopback destinations,
+    ``allow_special_use`` admits the IANA special-use ranges, and cloud
+    metadata addresses are refused under both. See
+    :func:`adcp.signing.jwks.validate_resolved_ip`.
+    """
+    hostname, resolved_ip, _port = resolve_and_validate_host(
+        uri,
+        allow_private=allow_private,
+        allow_special_use=allow_special_use,
+        allowed_ports=allowed_ports,
+    )
+    return hostname, resolved_ip
+
+
 def build_ip_pinned_transport(
     uri: str,
     *,
@@ -488,13 +513,19 @@ def build_ip_pinned_transport(
     :data:`adcp.signing.jwks.DEFAULT_ALLOWED_PORTS` (`{443, 8443}`)
     or a custom set.
 
+    ``allow_private`` admits RFC 1918, RFC 4193 unique-local and
+    loopback destinations; ``allow_special_use`` admits the IANA
+    special-use ranges. They are independent, both default off, and
+    neither admits a cloud metadata address. The ``httpx2`` builders
+    take the same keywords and apply the same policy.
+
     Typical use inside a fetcher::
 
         transport = build_ip_pinned_transport(uri)
         with httpx.Client(transport=transport, timeout=10.0) as client:
             response = client.get(uri)
     """
-    hostname, resolved_ip, _port = resolve_and_validate_host(
+    hostname, resolved_ip = _resolve_pin(
         uri,
         allow_private=allow_private,
         allow_special_use=allow_special_use,
@@ -521,7 +552,7 @@ def build_async_ip_pinned_transport(
     :func:`build_ip_pinned_transport` for the hardening kwarg
     semantics.
     """
-    hostname, resolved_ip, _port = resolve_and_validate_host(
+    hostname, resolved_ip = _resolve_pin(
         uri,
         allow_private=allow_private,
         allow_special_use=allow_special_use,
@@ -534,6 +565,7 @@ def build_ip_pinned_transport2(
     uri: str,
     *,
     allow_private: bool = False,
+    allow_special_use: bool = False,
     allowed_ports: frozenset[int] | None = None,
     verify: bool = True,
 ) -> IpPinnedTransport2:
@@ -543,9 +575,10 @@ def build_ip_pinned_transport2(
     :func:`build_ip_pinned_transport`; the transport plugs into
     :class:`httpx2.Client`.
     """
-    hostname, resolved_ip, _port = resolve_and_validate_host(
+    hostname, resolved_ip = _resolve_pin(
         uri,
         allow_private=allow_private,
+        allow_special_use=allow_special_use,
         allowed_ports=allowed_ports,
     )
     return IpPinnedTransport2(hostname=hostname, resolved_ip=resolved_ip, verify=verify)
@@ -555,6 +588,7 @@ def build_async_ip_pinned_transport2(
     uri: str,
     *,
     allow_private: bool = False,
+    allow_special_use: bool = False,
     allowed_ports: frozenset[int] | None = None,
     verify: bool = True,
 ) -> AsyncIpPinnedTransport2:
@@ -565,9 +599,10 @@ def build_async_ip_pinned_transport2(
     :class:`httpx2.AsyncClient`, so an MCP ``httpx_client_factory``
     pins its connection with it.
     """
-    hostname, resolved_ip, _port = resolve_and_validate_host(
+    hostname, resolved_ip = _resolve_pin(
         uri,
         allow_private=allow_private,
+        allow_special_use=allow_special_use,
         allowed_ports=allowed_ports,
     )
     return AsyncIpPinnedTransport2(hostname=hostname, resolved_ip=resolved_ip, verify=verify)

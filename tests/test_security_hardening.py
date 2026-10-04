@@ -382,6 +382,28 @@ def test_custom_mcp_factory_rejects_other_generation_transport() -> None:
         adapter._streamable_http_client_factory()()
 
 
+def test_custom_mcp_factory_rejects_other_generation_mounted_transport() -> None:
+    """The generation check covers ``mounts=`` too: an httpx transport
+    mounted for a URL pattern is refused like one passed as ``transport=``."""
+    foreign_transport = AsyncIpPinnedTransport(
+        hostname="seller.example.com", resolved_ip="203.0.113.10"
+    )
+
+    adapter = MCPAdapter(
+        AgentConfig(
+            id="mixed-generations-mounted",
+            agent_uri="https://seller.example.com/mcp",
+            protocol=Protocol.MCP,
+        ),
+        httpx_client_factory=lambda **kwargs: httpx2.AsyncClient(
+            mounts={"https://seller.example.com": foreign_transport}, **kwargs
+        ),
+    )
+
+    with pytest.raises(TypeError, match="transport mounted at"):
+        adapter._streamable_http_client_factory()()
+
+
 def test_custom_mcp_factory_accepts_httpx2_pinned_transport() -> None:
     """The httpx2 pinned transport is what the factory is for: same
     client shape, accepted."""

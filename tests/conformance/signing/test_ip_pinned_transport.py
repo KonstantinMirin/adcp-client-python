@@ -146,9 +146,9 @@ def test_resolve_normalizes_idn_hostname_to_punycode() -> None:
     # Patch getaddrinfo to short-circuit DNS for the IDN test host.
     def fake_getaddrinfo(host, _port, *_args, **_kwargs):
         # Must be called with the ASCII-encoded form.
-        assert host == "xn--mnchen-3ya.example", (
-            f"resolve_and_validate_host should IDNA-encode; got {host!r}"
-        )
+        assert (
+            host == "xn--mnchen-3ya.example"
+        ), f"resolve_and_validate_host should IDNA-encode; got {host!r}"
         return [(socket.AF_INET, 0, 0, "", ("8.8.8.8", 0))]
 
     with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
@@ -524,3 +524,365 @@ def test_builders2_refuse_a_blocked_address() -> None:
             build_ip_pinned_transport2("https://metadata.example/", allow_private=True)
         with pytest.raises(SSRFValidationError):
             build_async_ip_pinned_transport2("https://metadata.example/", allow_private=True)
+
+
+# -- one destination policy, both generations ------------------------
+#
+# The four builders share ``_resolve_pin``, so the httpx and httpx2
+# generations take the same keywords and make the same address decision.
+# These tests run every case through all four builders: a builder that
+# drops a keyword, or forwards it to the wrong gate, fails per builder.
+
+_BUILDERS = pytest.mark.parametrize(
+    "build",
+    [
+        build_ip_pinned_transport,
+        build_async_ip_pinned_transport,
+        build_ip_pinned_transport2,
+        build_async_ip_pinned_transport2,
+    ],
+    ids=["httpx-sync", "httpx-async", "httpx2-sync", "httpx2-async"],
+)
+
+_TRANSPORT_TYPES = {
+    build_ip_pinned_transport: IpPinnedTransport,
+    build_async_ip_pinned_transport: AsyncIpPinnedTransport,
+    build_ip_pinned_transport2: IpPinnedTransport2,
+    build_async_ip_pinned_transport2: AsyncIpPinnedTransport2,
+}
+
+# Representative addresses per destination class. The full range tables
+# are graded in ``test_jwks.py``; here the subject is that each builder
+# reaches the right gate.
+_PRIVATE = ["10.0.0.1", "172.16.0.1", "192.168.1.1", "127.0.0.1", "fd12:3456::1", "::1"]
+_SPECIAL_USE = [
+    "100.64.0.1",  # RFC 6598 carrier-grade NAT
+    "169.254.1.1",  # link-local
+    "192.0.2.1",  # RFC 5737 documentation
+    "198.18.0.1",  # RFC 2544 benchmarking
+    "224.0.0.1",  # multicast
+    "0.0.0.0",  # unspecified
+    "fe80::1",  # IPv6 link-local
+    "2001:db8::1",  # RFC 3849 documentation
+]
+_ALWAYS_REFUSED = ["169.254.169.254", "100.100.100.200", "192.0.0.192", "fd00:ec2::254"]
+_PUBLIC = ["8.8.8.8", "2606:4700:4700::1111"]
+
+_FLAGS = [
+    pytest.param(False, False, id="default"),
+    pytest.param(True, False, id="allow_private"),
+    pytest.param(False, True, id="allow_special_use"),
+    pytest.param(True, True, id="both"),
+]
+
+
+def _resolving_to(ip: str):
+    family = socket.AF_INET6 if ":" in ip else socket.AF_INET
+
+    def fake_getaddrinfo(_host, _port, *_args, **_kwargs):
+        return [(family, 0, 0, "", (ip, 0))]
+
+    return patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo)
+
+
+def _expected_admitted(ip: str, *, allow_private: bool, allow_special_use: bool) -> bool:
+    if ip in _ALWAYS_REFUSED:
+        return False
+    if ip in _PRIVATE:
+        return allow_private
+    if ip in _SPECIAL_USE:
+        return allow_special_use
+    assert ip in _PUBLIC
+    return True
+
+
+def test_builders_share_one_keyword_surface() -> None:
+    """The httpx2 builders take exactly the httpx builders' options."""
+    expected = inspect.signature(build_ip_pinned_transport).parameters
+    for build in (
+        build_async_ip_pinned_transport,
+        build_ip_pinned_transport2,
+        build_async_ip_pinned_transport2,
+    ):
+        assert inspect.signature(build).parameters == expected, build.__name__
+    assert list(expected) == [
+        "uri",
+        "allow_private",
+        "allow_special_use",
+        "allowed_ports",
+        "verify",
+    ]
+
+
+@_BUILDERS
+@pytest.mark.parametrize(("allow_private", "allow_special_use"), _FLAGS)
+@pytest.mark.parametrize("ip", _PRIVATE + _SPECIAL_USE + _ALWAYS_REFUSED + _PUBLIC)
+def test_builders_apply_the_destination_policy(
+    build, ip: str, allow_private: bool, allow_special_use: bool
+) -> None:
+    """Private destinations need ``allow_private``, special-use ranges need
+    ``allow_special_use``, cloud metadata is refused under every
+    combination, and public addresses need neither."""
+    admitted = _expected_admitted(
+        ip, allow_private=allow_private, allow_special_use=allow_special_use
+    )
+    with _resolving_to(ip):
+        if not admitted:
+            with pytest.raises(SSRFValidationError):
+                build(
+                    "https://dest.example/",
+                    allow_private=allow_private,
+                    allow_special_use=allow_special_use,
+                )
+            return
+        transport = build(
+            "https://dest.example/",
+            allow_private=allow_private,
+            allow_special_use=allow_special_use,
+        )
+
+    assert isinstance(transport, _TRANSPORT_TYPES[build])
+    backend = transport._pool._network_backend  # type: ignore[attr-defined]
+    assert backend._resolved_ip == ip
+    assert backend._hostname == "dest.example"
+
+
+@_BUILDERS
+def test_builders_refuse_special_use_under_allow_private_with_the_gate_named(build) -> None:
+    """The refusal names the gate that would admit the address."""
+    with _resolving_to("100.64.0.1"):
+        with pytest.raises(SSRFValidationError, match="allow_private does not admit it"):
+            build("https://dest.example/", allow_private=True)
+
+
+@_BUILDERS
+@pytest.mark.parametrize("refused", ["169.254.169.254", "100.64.0.1"])
+def test_builders_refuse_a_host_with_any_refused_answer(build, refused: str) -> None:
+    """One refused answer refuses the host, even when another answer is
+    admitted: the builder does not skip ahead and pin the admitted one."""
+
+    def fake_getaddrinfo(_host, _port, *_args, **_kwargs):
+        return [
+            (socket.AF_INET, 0, 0, "", ("10.0.0.7", 0)),
+            (socket.AF_INET, 0, 0, "", (refused, 0)),
+        ]
+
+    with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
+        with pytest.raises(SSRFValidationError):
+            build("https://dest.example/", allow_private=True)
+
+
+@_BUILDERS
+def test_builders_resolve_once_and_pin_the_first_admitted_answer(build) -> None:
+    calls = {"n": 0}
+
+    def fake_getaddrinfo(_host, _port, *_args, **_kwargs):
+        calls["n"] += 1
+        return [
+            (socket.AF_INET, 0, 0, "", ("10.0.0.7", 0)),
+            (socket.AF_INET, 0, 0, "", ("10.0.0.8", 0)),
+        ]
+
+    with patch("adcp.signing.jwks.socket.getaddrinfo", side_effect=fake_getaddrinfo):
+        transport = build("https://dest.example/", allow_private=True)
+
+    assert calls["n"] == 1
+    assert transport._pool._network_backend._resolved_ip == "10.0.0.7"  # type: ignore[attr-defined]
+
+
+@_BUILDERS
+def test_builders_enforce_the_port_allowlist(build) -> None:
+    with _resolving_to("8.8.8.8"):
+        with pytest.raises(SSRFValidationError):
+            build("https://dest.example:8080/", allowed_ports=frozenset({443}))
+        build("https://dest.example/", allowed_ports=frozenset({443}))
+
+
+# -- client behaviour over a real loopback socket, both generations --
+
+
+@contextmanager
+def _redirecting_server(location: str):
+    """Answer every GET with a 302 to ``location`` and record the paths."""
+    received: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            received.append(self.path)
+            self.send_response(302)
+            self.send_header("Location", location.format(port=self.server.server_port))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def log_message(self, *args):
+            """Keep the test output clean."""
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever)
+    thread.start()
+    try:
+        yield server.server_port, received
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+_GENERATIONS = pytest.mark.parametrize(
+    ("transport_cls", "client_cls", "is_async"),
+    [
+        (IpPinnedTransport, httpx.Client, False),
+        (AsyncIpPinnedTransport, httpx.AsyncClient, True),
+        (IpPinnedTransport2, httpx2.Client, False),
+        (AsyncIpPinnedTransport2, httpx2.AsyncClient, True),
+    ],
+    ids=["httpx-sync", "httpx-async", "httpx2-sync", "httpx2-async"],
+)
+
+
+async def _get(client_cls, is_async: bool, url: str, **client_kwargs):
+    if is_async:
+        async with client_cls(**client_kwargs) as client:
+            return await client.get(url)
+    with client_cls(**client_kwargs) as client:
+        return client.get(url)
+
+
+@_GENERATIONS
+async def test_pinned_client_connects_to_the_pinned_ip_not_the_name(
+    transport_cls, client_cls, is_async
+) -> None:
+    """The URL's hostname never resolves: ``pinned.invalid`` cannot, so a
+    served request proves the connect went to the pinned IP."""
+    with _loopback_server() as (port, received):
+        transport = transport_cls(hostname="pinned.invalid", resolved_ip="127.0.0.1")
+        response = await _get(
+            client_cls,
+            is_async,
+            f"http://pinned.invalid:{port}/pinned",
+            transport=transport,
+            timeout=10.0,
+            trust_env=False,
+        )
+    assert response.status_code == 200
+    assert received == ["/pinned"]
+
+
+@_GENERATIONS
+async def test_pinned_client_refuses_a_second_host_before_connecting(
+    transport_cls, client_cls, is_async
+) -> None:
+    with _loopback_server() as (port, received):
+        transport = transport_cls(hostname="pinned.example", resolved_ip="127.0.0.1")
+        with pytest.raises(RuntimeError, match="pinned to 'pinned.example'"):
+            await _get(
+                client_cls,
+                is_async,
+                f"http://localhost:{port}/other",
+                transport=transport,
+                timeout=10.0,
+                trust_env=False,
+            )
+    assert received == []
+
+
+@_GENERATIONS
+async def test_pinned_client_without_redirects_returns_the_redirect(
+    transport_cls, client_cls, is_async
+) -> None:
+    """``follow_redirects=False`` hands the 3xx back; nothing dials the
+    Location."""
+    with _redirecting_server("http://elsewhere.invalid:{port}/next") as (port, received):
+        transport = transport_cls(hostname="pinned.invalid", resolved_ip="127.0.0.1")
+        response = await _get(
+            client_cls,
+            is_async,
+            f"http://pinned.invalid:{port}/start",
+            transport=transport,
+            timeout=10.0,
+            trust_env=False,
+            follow_redirects=False,
+        )
+    assert response.status_code == 302
+    assert received == ["/start"]
+
+
+@_GENERATIONS
+async def test_pinned_client_refuses_a_cross_host_redirect(
+    transport_cls, client_cls, is_async
+) -> None:
+    """A client that does follow redirects still cannot leave the pin: the
+    hop to another host is refused before its connect."""
+    with _redirecting_server("http://elsewhere.invalid:{port}/next") as (port, received):
+        transport = transport_cls(hostname="pinned.invalid", resolved_ip="127.0.0.1")
+        with pytest.raises(RuntimeError, match="pinned to 'pinned.invalid'"):
+            await _get(
+                client_cls,
+                is_async,
+                f"http://pinned.invalid:{port}/start",
+                transport=transport,
+                timeout=10.0,
+                trust_env=False,
+                follow_redirects=True,
+            )
+    assert received == ["/start"]
+
+
+@_GENERATIONS
+async def test_pinned_client_with_trust_env_false_ignores_environment_proxies(
+    transport_cls, client_cls, is_async, monkeypatch
+) -> None:
+    """``trust_env=False`` keeps ``HTTP_PROXY`` from re-routing the request:
+    it reaches the pinned origin and the proxy sees nothing."""
+    with _loopback_server() as (proxy_port, proxied), _loopback_server() as (port, received):
+        for name in ("NO_PROXY", "no_proxy"):
+            monkeypatch.delenv(name, raising=False)
+        for name in ("HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+            monkeypatch.setenv(name, f"http://127.0.0.1:{proxy_port}")
+        transport = transport_cls(hostname="pinned.invalid", resolved_ip="127.0.0.1")
+        response = await _get(
+            client_cls,
+            is_async,
+            f"http://pinned.invalid:{port}/direct",
+            transport=transport,
+            timeout=10.0,
+            trust_env=False,
+        )
+    assert response.status_code == 200
+    assert received == ["/direct"]
+    assert proxied == []
+
+
+@_GENERATIONS
+async def test_environment_proxy_does_not_displace_an_explicit_pinned_transport(
+    transport_cls, client_cls, is_async, monkeypatch
+) -> None:
+    """Both generations skip environment proxies for a client built with an
+    explicit ``transport=``, even under ``trust_env=True``, so ``HTTP_PROXY``
+    cannot route around the pin. The package still sets ``trust_env=False``
+    on every pinned client; this pins the client behaviour that backs it.
+    A client given ``proxy=`` or ``mounts=`` explicitly is outside the pin.
+    """
+    with _loopback_server() as (proxy_port, proxied), _loopback_server() as (port, received):
+        for name in ("NO_PROXY", "no_proxy"):
+            monkeypatch.delenv(name, raising=False)
+        for name in ("HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+            monkeypatch.setenv(name, f"http://127.0.0.1:{proxy_port}")
+        transport = transport_cls(hostname="pinned.invalid", resolved_ip="127.0.0.1")
+        response = await _get(
+            client_cls,
+            is_async,
+            f"http://pinned.invalid:{port}/direct",
+            transport=transport,
+            timeout=10.0,
+            trust_env=True,
+        )
+        # Control: without an explicit transport the same client does use
+        # the environment proxy, so the assertion above is not vacuous.
+        control = await _get(
+            client_cls, is_async, f"http://pinned.invalid:{port}/control", timeout=10.0
+        )
+    assert response.status_code == 200
+    assert control.status_code == 200
+    assert received == ["/direct"]
+    assert proxied == [f"http://pinned.invalid:{port}/control"]

@@ -36,6 +36,17 @@ def pinned_client_factory(
 factory: McpHttpClientFactory = pinned_client_factory
 
 
+def hardened_transport() -> httpx2.AsyncBaseTransport:
+    # Same keyword surface as the httpx builder, address relaxations included.
+    return build_async_ip_pinned_transport2(
+        SELLER,
+        allow_private=False,
+        allow_special_use=False,
+        allowed_ports=frozenset({443}),
+        verify=True,
+    )
+
+
 def client() -> ADCPClient:
     return ADCPClient(
         AgentConfig(id="seller", agent_uri=SELLER, protocol=Protocol.MCP),
