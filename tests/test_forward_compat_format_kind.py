@@ -139,11 +139,30 @@ def test_creative_format_kind_remains_required_and_non_nullable(factory) -> None
 
 
 def test_manifest_format_kind_keeps_its_optional_default() -> None:
-    omitted = CreativeManifest(assets={})
+    """``format_kind`` is a declared-optional field, and omitting it entirely is refused.
+
+    This used to construct ``CreativeManifest(assets={})`` to show the field defaults
+    to ``None``. That document is schema-invalid: core/creative-manifest.json's root
+    ``oneOf`` takes one of ``format_id`` / ``format_kind``, and #1368's
+    enforce_root_required_groups now holds it at runtime. The canonical manifest cannot
+    use the ``format_id`` arm either -- it strips legacy creative identity -- so on this
+    surface ``format_kind`` is the only satisfiable arm.
+
+    The obligation the old construction stood for is that codegen must not mark the
+    field required, which is read off the declaration directly rather than inferred
+    from a construction that the document rule now forbids.
+    """
+    field = CreativeManifest.model_fields["format_kind"]
+    assert not field.is_required()
+    assert field.default is None
+
+    with pytest.raises(ValidationError):
+        CreativeManifest(assets={})
+
+    # An explicit ``None`` satisfies the document rule -- the group is keyed on the
+    # field being present, not on it being non-null -- and round-trips as null.
     explicit = CreativeManifest(assets={}, format_kind=None)
-    assert omitted.format_kind is None
     assert explicit.format_kind is None
-    assert "format_kind" not in omitted.model_dump(exclude_unset=True)
     assert explicit.model_dump(exclude_unset=True, exclude_none=False)["format_kind"] is None
 
 

@@ -669,6 +669,39 @@ class _DeliveryCreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
         return data
 
 
+def _revalidate_subclass_instances_of_strict_base(tolerant: type[AdCPBaseModel]) -> None:
+    """Stop a tolerant delivery model passing as the strict wire model it refines.
+
+    These two models are deliberately NOT subtypes of the strict creative input -- they
+    accept a ``format_kind`` the pinned enum does not know -- but they subclass the
+    generated wire model to inherit its fields and validators. Pydantic's default
+    ``revalidate_instances="never"`` skips validation for an instance of ANY subclass,
+    so ``WireCreativeManifest.model_validate(delivery_manifest)`` would hand the
+    tolerant instance straight back and the future ``format_kind`` would reach creative
+    input -- the exact weakening #1241 exists to prevent.
+
+    ``"subclass-instances"`` revalidates only a subclass instance, so an exact-class
+    instance still passes through untouched and composing a model into a field keeps
+    its identity (``tests/test_composability_invariant.py``). The base is read off
+    ``__bases__`` rather than named, so it follows the declaration above.
+
+    Graded by ``tests/test_delivery_manifest_readback.py``.
+    """
+    for base in tolerant.__bases__:
+        if base is CanonicalBoundaryModel or not issubclass(base, AdCPBaseModel):
+            continue
+        if base.model_config.get("revalidate_instances") == "subclass-instances":
+            continue
+        base.model_config = ConfigDict(
+            **{**base.model_config, "revalidate_instances": "subclass-instances"}
+        )
+        base.model_rebuild(force=True)
+
+
+for _tolerant in (_DeliveryCreativeManifest, _DeliveryCreativeVariant):
+    _revalidate_subclass_instances_of_strict_base(_tolerant)
+
+
 class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
     """Canonical served creative; variants are the tolerant delivery rows."""
 

@@ -97,7 +97,12 @@ def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_
     value = manifest if reuse_instance else manifest.model_dump(mode="json")
     with pytest.raises(ValidationError):
         input_model.model_validate(value)
-    assert not isinstance(manifest, input_model)
+    # ``assert not isinstance(manifest, input_model)`` used to stand here and is now
+    # false by construction: phase 2 (feat/no-clones-and-arm-names) made every
+    # canonical model a real subclass of the generated wire model it refines, so the
+    # tolerant delivery manifest IS an instance of the generated CreativeManifest. The
+    # ``pytest.raises`` above is the obligation this test exists for, and it is what
+    # grades the instance-revalidation bypass that the subclassing opened.
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
@@ -109,7 +114,9 @@ def test_delivery_variant_cannot_bypass_strict_input(model, input_model):
         input_model.model_validate(variant)
     with pytest.raises(ValidationError):
         input_model.model_validate(variant.model_dump(mode="json"))
-    assert not isinstance(variant, input_model)
+    # See the note in test_delivery_manifest_cannot_bypass_strict_input: phase 2 made
+    # the canonical models real subclasses, so the old ``not isinstance`` check is
+    # false by construction. The two ``pytest.raises`` above carry the obligation.
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
@@ -193,7 +200,13 @@ def test_delivery_keeps_optional_manifest_and_kind_defaults(model):
     payload = delivery_payload()
     variants = payload["creatives"][0]["variants"]
     variants[0].pop("manifest")
-    variants[1]["manifest"].pop("format_kind")
+    # Was ``variants[1]["manifest"].pop("format_kind")``. Dropping the key leaves a
+    # manifest with neither ``format_id`` nor ``format_kind``, which
+    # core/creative-manifest.json's root oneOf forbids and #1368's
+    # enforce_root_required_groups now holds at runtime. An explicit null is the
+    # schema-valid way to state the same thing: the group is keyed on the field being
+    # present, not on it being non-null.
+    variants[1]["manifest"]["format_kind"] = None
     response = model.model_validate(payload)
     assert response.creatives[0].variants[0].manifest is None
     assert response.creatives[0].variants[1].manifest.format_kind is None

@@ -36,12 +36,16 @@ if TYPE_CHECKING:
 
     # Annotation-only: resolving these at runtime would import the generated tree, which
     # imports this module. ``from __future__ import annotations`` keeps them as strings.
-    from adcp.types.generated_poc.core.account_ref import AccountReference1, AccountReference2
-    from adcp.types.generated_poc.core.canonical_account_ref import CanonicalAccountReference
-    from adcp.types.generated_poc.core.context import ContextObject
-    from adcp.types.generated_poc.core.error import Error
-    from adcp.types.generated_poc.core.push_notification_config import PushNotificationConfig
-    from adcp.types.generated_poc.enums.task_status import TaskStatus
+    # Taken by their public domain path rather than out of ``generated_poc``: the domain
+    # modules mirror the schema tree, so these names do not renumber on a regeneration
+    # the way the generated module's do. A ``TYPE_CHECKING`` block never executes, so
+    # the layering rule costs nothing here.
+    from adcp.types.domains.core.account_ref import AccountReference1, AccountReference2
+    from adcp.types.domains.core.canonical_account_ref import CanonicalAccountReference
+    from adcp.types.domains.core.context import ContextObject
+    from adcp.types.domains.core.error import Error
+    from adcp.types.domains.core.push_notification_config import PushNotificationConfig
+    from adcp.types.domains.enums.task_status import TaskStatus
 
 # Type alias to shorten long type annotations
 MessageFormatter = Callable[[Any], str]
@@ -428,14 +432,14 @@ def _version_envelope() -> type[BaseModel]:
     Deferred because every generated module imports this one: a module-level import
     of the generated tree here would be a cycle.
     """
-    from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
+    from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
 
     return AdcpVersionEnvelope
 
 
 def _protocol_envelope() -> type[BaseModel]:
     """The generated ``ProtocolEnvelope`` class, imported on first use (see above)."""
-    from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
+    from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
 
     return ProtocolEnvelope
 
