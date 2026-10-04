@@ -23,6 +23,8 @@ from pydantic import (
 )
 from pydantic_core import PydanticSerializationError
 
+from adcp.types._scalar import as_json_schema_integer
+
 # Type alias to shorten long type annotations
 MessageFormatter = Callable[[Any], str]
 
@@ -249,25 +251,12 @@ def _provide_performance_feedback_error_message(self: Any) -> str:
     )
 
 
-def _as_json_schema_integer(value: Any) -> Any:
-    """Narrow a float with no fractional part to ``int``.
-
-    JSON Schema's ``integer`` admits any number with a zero fractional part,
-    so ``1.0`` is an integer and ``1.5`` is not -- the bundled validator accepts
-    the first and rejects the second. ``StrictInt`` alone would reject both,
-    making the model stricter than the schema it was generated from.
-    """
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    return value
-
-
 #: The annotation for a schema's ``type: integer``. Accepts an ``int`` and a
 #: float with no fractional part; refuses a fractional float, a bool and a
 #: numeric string, which is exactly what the bundled validator does for the
 #: same field. The generator marks every such field and
 #: ``scripts/post_generate_fixes.py`` points the marker here.
-SchemaInt = Annotated[StrictInt, BeforeValidator(_as_json_schema_integer)]
+SchemaInt = Annotated[StrictInt, BeforeValidator(as_json_schema_integer)]
 
 
 class AdCPBaseModel(BaseModel):
