@@ -8,7 +8,8 @@ from adcp.types._str_enum import StrEnum
 from typing import Annotated, Any, Literal
 
 from adcp.types.base import AdCPBaseModel
-from pydantic import AwareDatetime, ConfigDict, Field, RootModel
+from adcp.types._scalar import ScalarStr
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from ..core import canonical_product
 from ..core import context as context_1
@@ -25,8 +26,9 @@ class Outcome(StrEnum):
     rejected = 'rejected'
 
 
-class Suggestion(RootModel[str]):
-    root: Annotated[str, Field(min_length=1)]
+class Suggestion(ScalarStr):
+    __slots__ = ()
+    _constraints = {'min_length': 1}
 
 
 class ProposalStatus(StrEnum):
@@ -384,9 +386,13 @@ class RequestProposalsResponse4(CompactTaskSubmitted):
     replayed: Literal[True] | None = None
 
 
-RequestProposalsResponse = (
+RequestProposalsResponse = Annotated[
     RequestProposalsResponse1
     | RequestProposalsResponse2
     | RequestProposalsResponse3
-    | RequestProposalsResponse4
-)
+    | RequestProposalsResponse4,
+    Field(
+        description='One or more immutable draft media-plan proposals and compact canonical products referenced by their purchases. Products always carry product_id and name and never carry legacy named-format identifiers. During the AdCP 3.x compatibility window, an SDK projecting a valid products-only get_products brief result may instead return the deprecated products_available outcome with an explicit purchase continuation. Native 3.2 sellers MUST NOT use that compatibility outcome, and adapters MUST NOT fabricate a proposal, terms digest, or feed version.',
+        title='Request Proposals Response',
+    ),
+]
