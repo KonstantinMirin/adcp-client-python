@@ -1045,6 +1045,7 @@ async def test_create_media_buy_external_push_owner_suppresses_sdk_sender(execut
             idempotency_key="idem_async_create_1",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
+            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
             push_notification_config={
                 "url": "https://buyer.example.com/wh",
                 "operation_id": "op-cmb-789",

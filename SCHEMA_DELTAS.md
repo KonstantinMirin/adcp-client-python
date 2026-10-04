@@ -1,6 +1,3 @@
 # Generated-types delta
 
-## Field changes
-
-- `core/wholesale_feed_event.py`
-  - **classes added**: Range
+_No field-shape changes detected._

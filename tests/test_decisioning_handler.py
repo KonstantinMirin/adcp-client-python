@@ -203,6 +203,7 @@ async def test_create_media_buy_sync_path_returns_typed_response(executor) -> No
             idempotency_key="idem_aaaa1234567890",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
+            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
         ),
         ToolContext(),
     )
@@ -236,6 +237,7 @@ async def test_create_media_buy_handoff_path_returns_submitted_envelope(
             idempotency_key="idem_aaaa1234567890",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
+            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
         ),
         ToolContext(),
     )
