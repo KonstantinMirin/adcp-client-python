@@ -39,11 +39,14 @@ from scripts.task_message_lattice import task_message_roots
 _REQUEST_VERSION_RESIDUE = frozenset({"creative/validate-input-request.json"})
 
 # The five compact media-buy responses compose ``media-buy/media-buy-commitment-response``
-# instead, which is itself envelope-free. The two proposals responses DO compose the
-# envelope on their completed arm after normalization, but their submitted arm is the
-# shared ``core/compact-task-submitted.json`` class, which declares no version fields --
-# so measured per ARM, not per schema, they are still residue. Upstream: adcp#7892 plus
-# the commitment/compact-task-submitted components.
+# instead, which is itself envelope-free. The two proposals responses declare the version
+# via pointer refs, and the normalization in ``generate_types`` deliberately REFUSES them:
+# their submitted arm is a bare ``$ref`` to ``core/compact-task-submitted.json``, so moving
+# the stubs into a root ``allOf`` would delete the field from that arm rather than relocate
+# it (see ``_has_bare_ref_root_arm``). Normalizing them would not have changed this residue
+# anyway -- the submitted arm gains no ancestry either way, so the all-arms answer is 70/77
+# with or without. Upstream: adcp#7892 plus the commitment / compact-task-submitted
+# components, which is upstream ask four.
 _RESPONSE_VERSION_RESIDUE = frozenset(
     {
         "media-buy/accept-proposal-response.json",
@@ -380,6 +383,65 @@ def test_version_normalization_is_idempotent() -> None:
     }
     once = _normalize(schema, "media-buy/example-request.json")
     assert _normalize(once, "media-buy/example-request.json") == once
+
+
+def test_version_normalization_refuses_a_schema_whose_arm_is_a_bare_ref() -> None:
+    """Relocating the stubs must never DELETE the field from a union arm.
+
+    datamodel-code-generator merges a root ``properties`` into every arm it builds, but a
+    root ``allOf`` ``$ref`` becomes a base only of the arm built FROM the root object. An
+    arm that is a bare ``$ref`` elsewhere is generated from the referenced schema, so the
+    composition never reaches it and dropping the stub strips the field outright.
+
+    Measured when the rewrite was applied anyway: ``RefineProposalsResponse2`` went from 10
+    fields to 9 and ``RequestProposalsResponse4`` from 16 to 15, both losing
+    ``adcp_version`` -- and both carry ``extra: forbid``, so a seller echoing the version on
+    the submitted arm would have been REJECTED where it previously validated. The two
+    schemas are refused instead, and the all-arms ancestry is 70/77 either way because that
+    submitted arm gains no ancestry from the rewrite.
+    """
+    with_ref_arm = {
+        "type": "object",
+        "anyOf": [
+            {"required": ["results"]},
+            {
+                "$ref": "https://adcontextprotocol.org/schemas/3.2.1/core/compact-task-submitted.json"
+            },
+        ],
+        "properties": {
+            "adcp_version": {"$ref": f"{_VERSION_ENVELOPE_REF}#/properties/adcp_version"}
+        },
+    }
+    assert _normalize(with_ref_arm, "media-buy/example-response.json") == with_ref_arm
+
+    # The same schema with inline arms IS normalized: nothing is generated from elsewhere,
+    # so every arm inherits the composition.
+    inline_arms = {
+        "type": "object",
+        "anyOf": [{"required": ["results"]}, {"required": ["task_id"]}],
+        "properties": {
+            "adcp_version": {"$ref": f"{_VERSION_ENVELOPE_REF}#/properties/adcp_version"}
+        },
+    }
+    assert _normalize(inline_arms, "media-buy/example-response.json") != inline_arms
+
+
+def test_the_two_pointer_ref_responses_keep_the_field_on_every_arm() -> None:
+    """The live consequence of the refusal above, on the generated tree.
+
+    Both arms of each proposals response still declare ``adcp_version``. If the refusal is
+    removed, the submitted arm loses it and this goes red.
+    """
+    from adcp.types.generated_poc.media_buy.refine_proposals_response import (
+        RefineProposalsResponse1,
+        RefineProposalsResponse2,
+    )
+    from adcp.types.generated_poc.media_buy.request_proposals_response import (
+        RequestProposalsResponse4,
+    )
+
+    for arm in (RefineProposalsResponse1, RefineProposalsResponse2, RequestProposalsResponse4):
+        assert "adcp_version" in arm.model_fields, arm.__name__
 
 
 def test_version_normalization_refuses_a_declaration_it_cannot_prove_equivalent() -> None:

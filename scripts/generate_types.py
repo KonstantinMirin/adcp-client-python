@@ -494,9 +494,10 @@ _DOCUMENTATION_KEYS = frozenset({"$comment", "deprecated", "description", "examp
 
 # How many schemas the pass is allowed to rewrite, so a bump that changes the shape of
 # the problem is a build failure rather than a silent behavior change. Measured at pin
-# 3.2.1: 10 pointer-ref declarers (8 task requests, 2 task responses) and 4
-# wire-equivalent inline declarers (1 task request, 3 para-protocol).
-_VERSION_ENVELOPE_NORMALIZED_CEILING = 14
+# 3.2.1: 8 pointer-ref task requests and 4 wire-equivalent inline declarers (1 task
+# request, 3 para-protocol). The 2 pointer-ref task RESPONSES are refused by
+# ``_has_bare_ref_root_arm`` -- rewriting them deletes a field from their submitted arm.
+_VERSION_ENVELOPE_NORMALIZED_CEILING = 12
 
 
 def _version_envelope_ref() -> str:
@@ -540,6 +541,31 @@ def _composes_version_envelope(schema: dict) -> bool:
             and "#" not in ref
             and ref.endswith(_VERSION_ENVELOPE_SCHEMA.as_posix())
         ):
+            return True
+    return False
+
+
+def _has_bare_ref_root_arm(schema: dict) -> bool:
+    """True when a root ``anyOf``/``oneOf`` arm is a bare ``$ref`` to another schema.
+
+    This is the one case where the rewrite would REMOVE a field instead of relocating it.
+    datamodel-code-generator merges the root ``properties`` into every arm it builds, but a
+    root ``allOf`` ``$ref`` becomes a base only of the arm it builds FROM the root object --
+    an arm that is a ``$ref`` elsewhere is generated from the referenced schema and the
+    root's bases never reach it. So dropping the stubs strips the field from that arm and
+    the composition does not give it back.
+
+    Measured: applying the rewrite anyway cost ``RefineProposalsResponse2`` and
+    ``RequestProposalsResponse4`` their ``adcp_version`` outright (10 fields to 9, 16 to 15),
+    and both carry ``extra: forbid``, so a buyer echoing the version on the submitted arm
+    would have been REJECTED where it previously validated. Those two arms are
+    ``core/compact-task-submitted.json``, which composes no envelope of its own.
+    """
+    for key in ("anyOf", "oneOf"):
+        arms = schema.get(key)
+        if not isinstance(arms, list):
+            continue
+        if any(isinstance(arm, dict) and "$ref" in arm for arm in arms):
             return True
     return False
 
@@ -611,6 +637,10 @@ def normalize_version_envelope_composition(schema: dict, schema_rel_path: Path) 
         if isinstance(properties.get(name), dict)
     }
     if not declared or _composes_version_envelope(schema):
+        return schema
+    if _has_bare_ref_root_arm(schema):
+        # Relocating the stubs here would DELETE the field from the ``$ref`` arm. Refuse,
+        # and let the schema surface in the hierarchy ratchet's residue by name.
         return schema
 
     required = schema.get("required")
