@@ -65,6 +65,8 @@ The core names you'll reach for (everything else is for advanced use):
   is the spec error string
 * :func:`unauthorized_response_headers` — builds the 401
   ``WWW-Authenticate: Signature error="..."`` header
+* :func:`signature_challenge` — the header *value* alone, for a seller
+  composing the 401 itself
 * :class:`InMemoryReplayStore` for single-process deployments;
   :class:`PgReplayStore` (behind ``[pg]`` extra) for multi-worker
 
@@ -217,6 +219,7 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_TAG_INVALID,
     REQUEST_SIGNATURE_WINDOW_INVALID,
     SignatureVerificationError,
+    signature_challenge,
 )
 from adcp.signing.etld import (
     BrandDomainValidationError,
@@ -515,6 +518,7 @@ __all__ = [
     "sign_signature_base",
     "signing_profile_for_adcp_version",
     "sign_standard_webhook",
+    "signature_challenge",
     "signing_operation",
     "strict_header_precheck",
     "unauthorized_response_headers",
