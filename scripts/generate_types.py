@@ -837,8 +837,10 @@ def _run_datamodel_codegen(input_path: Path, output_path: Path) -> subprocess.Co
     """
     args = [
         sys.executable,  # Use same Python as running this script
-        "-m",
-        "datamodel_code_generator",
+        # The wrapper gives the generator a total input order: its own walk
+        # sorts by basename alone, and same-basename inputs tie in filesystem
+        # order, which renumbers anonymous variant classes between machines.
+        str(REPO_ROOT / "scripts" / "run_datamodel_codegen.py"),
         "--input",
         str(input_path),
         "--input-file-type",

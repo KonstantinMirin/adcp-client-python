@@ -6,7 +6,7 @@ more than once is still unambiguous:
     from adcp.types.domains.protocol.sync_principal_response import <Type>
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:36:32 UTC
+Generation date: 2026-10-04 01:57:57 UTC
 """
 
 # ruff: noqa: E501, I001
