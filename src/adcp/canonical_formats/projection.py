@@ -39,7 +39,15 @@ except PackageNotFoundError:  # pragma: no cover - editable/source-only fallback
 def migrated_format_option_id(
     format_id: FormatReferenceStructuredObject | Mapping[str, Any],
 ) -> str:
-    """Return the normative stable option ID from the complete legacy tuple."""
+    """Return the normative stable option ID from the complete legacy tuple.
+
+    The ID hashes ``agent_url`` exactly as received. Pass the wire mapping when
+    parity with other SDKs matters: a reference taken off a validated model
+    carries a Pydantic-normalized URL (``https://host`` becomes
+    ``https://host/``), which yields a different, non-normative ID for the same
+    wire bytes. The URL is deliberately not canonicalized here, because that
+    would change IDs already derived from existing wire inputs.
+    """
 
     ref = coerce_format_id(format_id)
     duration: int | float | None = ref.duration_ms
