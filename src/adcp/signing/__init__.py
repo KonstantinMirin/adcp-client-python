@@ -119,6 +119,7 @@ from adcp.signing.agent_resolver import (
     AgentResolverErrorCode,
     TraceEntry,
     async_resolve_agent,
+    request_signature_code,
     resolve_agent,
     verify_from_agent_url,
 )
@@ -508,6 +509,7 @@ __all__ = [
     "private_key_from_jwk",
     "public_key_from_jwk",
     "registrable_domain",
+    "request_signature_code",
     "resolve_agent",
     "resolve_and_validate_host",
     "validate_resolved_ip",
