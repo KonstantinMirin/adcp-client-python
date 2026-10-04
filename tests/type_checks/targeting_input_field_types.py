@@ -28,9 +28,13 @@ overlay = TargetingOverlayInput.model_validate(
 countries = overlay.geo_countries
 if countries is not None:
     assert_type(len(countries), int)
-    assert_type(countries[0].root, str)
+    # A scalar schema root is the ``str`` its schema declares (#1277), so the
+    # element is usable as one with no ``.root`` read.
+    first_code: str = countries[0]
+    assert_type(first_code, str)
     for country in countries:
-        assert_type(country.root, str)
+        code: str = country
+        assert_type(code.upper(), str)
 
 audiences = overlay.audience_exclude
 if audiences is not None:
@@ -50,7 +54,8 @@ output = TargetingOverlay.model_validate(
 
 output_countries = output.geo_countries
 if output_countries is not None:
-    assert_type(output_countries[0].root, str)
+    output_code: str = output_countries[0]
+    assert_type(output_code, str)
 
 output_audiences = output.audience_exclude
 if output_audiences is not None:

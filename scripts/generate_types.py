@@ -239,6 +239,34 @@ def _rebase_refs_to_schema_root(obj, target: Path):
     return obj
 
 
+# Keywords whose presence makes datamodel-code-generator emit a *named class*
+# for a subschema: an object, an enumeration, or a composition of models.
+_CLASS_SHAPED_KEYWORDS = frozenset({"properties", "enum", "oneOf", "anyOf", "allOf"})
+
+
+def _names_a_class(selected: dict) -> bool:
+    """Report whether the generator already shares the class ``selected`` names.
+
+    The structural-pointer defect is specific to a selection that has *no*
+    class of its own — an array, a constrained scalar, a bare ``$ref`` — where
+    the generator mints a single-arm ``RootModel`` wrapper per referencing site.
+    A selection that is an object, an enumeration or a composition generates a
+    named class in the module that owns it, and the generator resolves a
+    pointer to it as that shared class: ``targeting.json#/properties/age_restriction``
+    is ``targeting.AgeRestriction`` on both overlays, and
+    ``product-fields.json#/items`` is the shared ``ProductResponseField`` enum.
+    Inlining one of those instead copies the class into the referencing module
+    (the copy is not structurally identical once nullability and local
+    annotations are merged in), so the two sides stop sharing a type. Leave
+    those pointers for the generator.
+    """
+    if not isinstance(selected, dict):
+        return False
+    if selected.get("type") == "object":
+        return True
+    return any(keyword in selected for keyword in _CLASS_SHAPED_KEYWORDS)
+
+
 def _select_structural_pointer(ref: str, current_schema_rel_path: Path, seen: frozenset):
     """Resolve a cross-file structural pointer to a self-contained subschema."""
     file_part, _, fragment = ref.partition("#")
@@ -254,6 +282,8 @@ def _select_structural_pointer(ref: str, current_schema_rel_path: Path, seen: fr
     with open(SCHEMAS_DIR / target) as handle:
         document = json.load(handle)
     selected = copy.deepcopy(_resolve_json_pointer(document, fragment, ref))
+    if _names_a_class(selected):
+        return None
     selected = _rebase_refs_to_schema_root(selected, target)
     # Resolve pointers nested inside the selection against the file that owns
     # it, and record this pointer so a cyclic selection terminates.

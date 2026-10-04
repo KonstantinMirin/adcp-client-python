@@ -2349,6 +2349,57 @@ def test_inline_structural_pointer_ref_selects_the_pointed_to_type(tmp_path, mon
     assert schema["properties"]["codes"]["description"] == "from the referencing site"
 
 
+def test_inline_structural_pointer_ref_leaves_a_class_shaped_selection_alone(tmp_path, monkeypatch):
+    """A pointer to an object or enum property stays a pointer.
+
+    The generator already resolves such a pointer to the one named class the
+    owning module emits (``targeting.AgeRestriction``, the shared
+    ``ProductResponseField`` enum). Inlining it copies the class into the
+    referencing module, and the two overlays stop sharing a type.
+    """
+    from scripts import generate_types
+    from scripts.generate_types import inline_structural_pointer_refs
+
+    schemas = tmp_path / "schemas"
+    (schemas / "core").mkdir(parents=True)
+    (schemas / "core" / "source.json").write_text(
+        json.dumps(
+            {
+                "type": "object",
+                "properties": {
+                    "age_restriction": {
+                        "type": "object",
+                        "properties": {"minimum_age": {"type": "integer"}},
+                    },
+                    "kind": {"type": "string", "enum": ["a", "b"]},
+                    "fields": {"type": "array", "items": {"type": "string", "enum": ["x"]}},
+                    "codes": {"type": "array", "items": {"type": "string"}},
+                },
+            }
+        )
+    )
+    monkeypatch.setattr(generate_types, "SCHEMAS_DIR", schemas)
+    schema = {
+        "properties": {
+            "age_restriction": {"$ref": "source.json#/properties/age_restriction"},
+            "kind": {"$ref": "source.json#/properties/kind"},
+            "fields": {"type": "array", "items": {"$ref": "source.json#/properties/fields/items"}},
+            "codes": {"$ref": "source.json#/properties/codes"},
+        }
+    }
+
+    inline_structural_pointer_refs(schema, Path("core/input.json"))
+
+    assert schema["properties"]["age_restriction"] == {
+        "$ref": "source.json#/properties/age_restriction"
+    }
+    assert schema["properties"]["kind"] == {"$ref": "source.json#/properties/kind"}
+    assert schema["properties"]["fields"]["items"] == {
+        "$ref": "source.json#/properties/fields/items"
+    }
+    assert schema["properties"]["codes"] == {"type": "array", "items": {"type": "string"}}
+
+
 def test_inline_structural_pointer_ref_rebases_refs_inside_the_selection(tmp_path, monkeypatch):
     """A selection's own refs resolve against the file that owns it, not the caller."""
     from scripts.generate_types import inline_structural_pointer_refs
