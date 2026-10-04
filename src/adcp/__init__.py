@@ -1648,7 +1648,6 @@ __all__ = [
     # Semantic type aliases (for better API ergonomics)
     "AccountReferenceById",
     "AccountReferenceByNaturalKey",
-    "AcquireRightsResponse1",
     "ActivateSignalResponse1",
     "ActivateSignalSuccessResponse",
     "ActivateSignalErrorResponse",

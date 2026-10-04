@@ -1,8 +1,5 @@
 {
   "adcp": {
-    "duplicate_names": [
-      "AcquireRightsResponse1"
-    ],
     "resolves": {
       "ADCPAuthenticationError": "adcp.exceptions",
       "ADCPClient": "adcp.client",
@@ -739,10 +736,6 @@
     }
   },
   "adcp.types": {
-    "duplicate_names": [
-      "WholesaleFeedEvent",
-      "WholesaleFeedWebhook"
-    ],
     "resolves": {
       "A2UiComponent": "a2ui.component",
       "A2UiSurface": "a2ui.surface",
