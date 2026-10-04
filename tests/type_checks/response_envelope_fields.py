@@ -31,6 +31,8 @@ from adcp.types import (
     SyncCreativesResponse1,
     UpdateMediaBuyResponse3,
 )
+from adcp.types.generated_poc.core.pagination_response import PaginationResponse
+from adcp.types.generated_poc.creative.list_creatives_response import QuerySummary
 
 
 def echo_envelope(response: ProtocolEnvelope) -> str | None:
@@ -99,15 +101,19 @@ assert read_envelope_status(created) == "completed"
 
 # --- ``status`` is defaulted, so construction must not demand it ---
 #
-# ``status`` has a default on every runtime response. If the stub declared it
-# without ``= ...`` the synthesized ``__init__`` would require it, and these
-# three plain constructions would fail to type-check even though the runtime
-# model defaults the field. (``ListCreativesResponse`` also has required
-# ``query_summary``/``pagination`` fields the stub does not enumerate, so only
-# the ``status`` half of its signature is asserted here; the runtime
-# construction is covered in tests/test_protocol_envelope_inheritance.py.)
+# ``status`` has a default on every runtime response, so a plain construction
+# must type-check without it. ``ListCreativesResponse`` also REQUIRES
+# ``query_summary`` and ``pagination`` at runtime — the deleted canonical stub
+# declared neither, so this construction type-checked while failing at runtime
+# (#1366's hidden-required-fields defect). Now that the canonical models are
+# real subclasses of the generated wire models, mypy reads the true required
+# set and the construction below is the one the runtime actually accepts.
 
-listed = ListCreativesResponse(creatives=[])
+listed = ListCreativesResponse(
+    creatives=[],
+    query_summary=QuerySummary(total_matching=0, returned=0),
+    pagination=PaginationResponse(has_more=False),
+)
 assert_type(listed.status, GeneratedTaskStatus)
 
 buys = GetMediaBuysResponse(media_buys=[])

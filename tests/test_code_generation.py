@@ -1562,6 +1562,27 @@ def test_generated_poc_types_can_import():
     assert generated_poc is not None
 
 
+def _unpatched_targeting_model(name: str):
+    """A model declaring the generated, PRE-widening ``targeting_overlay``.
+
+    ``_forward_compat`` widens ``targeting_overlay`` at runtime to admit beta.14
+    ``TargetingOverlay`` objects. The generated source declares only
+    ``TargetingOverlayInput | None``, so a model that carries that annotation
+    and nothing else is exactly the regression the public-surface guard exists
+    to catch.
+    """
+    from pydantic import Field, create_model
+
+    from adcp.types.canonical_creative import CanonicalBoundaryModel
+    from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
+
+    return create_model(
+        name,
+        __base__=CanonicalBoundaryModel,
+        targeting_overlay=(TargetingOverlayInput | None, Field(default=None)),
+    )
+
+
 def _public_targeting_mutation_fields():
     """Discover exported and field-reachable models without a patch-target list.
 
@@ -1716,11 +1737,14 @@ def test_targeting_public_surface_guard_rejects_new_public_clone(monkeypatch, su
 
     from pydantic import Field, create_model
 
-    from adcp.types.canonical_creative import _canonical_clone, _PackageRequestBase
-
-    # This private base still has the generated, pre-patch FieldInfo. Merely
-    # existing privately is fine; exporting a fresh copy is the regression.
-    clone = _canonical_clone("UnpatchedTargetingPackage", _PackageRequestBase)
+    # The regression is a public model that declares the generated, pre-patch
+    # annotation. It used to be reproduced by cloning the private canonical
+    # base, which held the pre-patch FieldInfo because ``_forward_compat``
+    # widened only the public clone; now that the canonical models are real
+    # subclasses there is no unpatched copy to clone, so the test declares the
+    # pre-patch annotation itself. Same subject, no dependence on a layer the
+    # SDK no longer has.
+    clone = _unpatched_targeting_model("UnpatchedTargetingPackage")
     value = clone
     if nested:
         request = create_model("FutureRequest", packages=(list[clone], ...))
@@ -1741,9 +1765,8 @@ def test_targeting_public_surface_guard_resolves_uncached_lazy_exports(monkeypat
     from types import ModuleType
 
     from adcp.types import _eager
-    from adcp.types.canonical_creative import _canonical_clone, _PackageRequestBase
 
-    clone = _canonical_clone("UnpatchedTargetingPackage", _PackageRequestBase)
+    clone = _unpatched_targeting_model("UnpatchedTargetingPackage")
     module = import_module(surface)
     name = "FutureLazyTargetingRequest"
     assert name not in vars(module)
@@ -1763,18 +1786,27 @@ def test_targeting_public_surface_guard_resolves_uncached_lazy_exports(monkeypat
         vars(module).pop(name, None)
 
 
-def test_targeting_public_surface_guard_accepts_a_compatible_new_clone(monkeypatch):
-    """Discover a seventh model by export, while leaving private bases alone."""
+def test_targeting_public_surface_guard_accepts_a_compatible_new_subclass(monkeypatch):
+    """Discover a seventh model by export, while leaving private models alone."""
     from adcp.types import canonical_creative
 
-    clone = canonical_creative._canonical_clone("FuturePackage", canonical_creative.PackageRequest)
-    monkeypatch.setattr(canonical_creative, "FuturePackage", clone, raising=False)
+    # A real subclass of the patched public model inherits the widened
+    # FieldInfo, so it is compatible — this is now literally how every
+    # canonical model is built.
+    subclass = type("FuturePackage", (canonical_creative.PackageRequest,), {})
+    monkeypatch.setattr(canonical_creative, "FuturePackage", subclass, raising=False)
+    # An unexported private model is not a composition boundary, even when it
+    # declares the pre-patch annotation. (The former subject of this assertion
+    # was ``_PackageRequestBase``, a private clone that no longer exists; the
+    # property under test is export-reachability, not that one class.)
+    private = _unpatched_targeting_model("_PrivateUnreachablePackage")
+    monkeypatch.setattr(canonical_creative, "_PrivateUnreachablePackage", private, raising=False)
     monkeypatch.setattr(
         canonical_creative, "__all__", [*canonical_creative.__all__, "FuturePackage"]
     )
     discovered = _public_targeting_mutation_fields()
-    assert clone in discovered
-    assert canonical_creative._PackageRequestBase not in discovered
+    assert subclass in discovered
+    assert private not in discovered
     test_targeting_overlay_input_is_generated_and_public()
 
 
