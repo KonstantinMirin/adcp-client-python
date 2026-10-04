@@ -132,3 +132,41 @@ def test_the_removal_rule_is_declared_once_and_derived() -> None:
 
     assert "format_ids" not in Probe.model_fields
     assert "format_ids" in _generated_ancestors(Probe)[0].model_fields
+
+
+def test_an_inherited_validator_that_reads_a_removed_field_still_works() -> None:
+    """The one interaction between inheritance and the removal rule.
+
+    ``list-creatives-response.json`` carries an injected
+    ``_validate_format_reference_xor`` that reads ``self.format_id``. Inheritance
+    is the point of this layer, so that validator now runs on the canonical
+    model — and with the field merely deleted it raised ``AttributeError``
+    instead of validating. The removal binds the name to ``None``, which is the
+    removal's own truth, and the XOR then reduces to the invariant the canonical
+    model should hold: ``format_kind`` must be set.
+
+    Both directions are graded, because a reduced invariant that accepts
+    everything is not an invariant.
+    """
+    import pytest as _pytest
+    from pydantic import ValidationError
+
+    from adcp.types import CanonicalFormatKind
+
+    row = {
+        "creative_id": "creative-1",
+        "name": "Image",
+        "format_kind": "image",
+        "status": "approved",
+        "created_date": "2026-09-01T00:00:00Z",
+        "updated_date": "2026-09-01T00:00:00Z",
+    }
+    accepted = canonical_creative.Creative.model_validate(row)
+    assert accepted.format_kind is CanonicalFormatKind.image
+    assert "format_id" not in canonical_creative.Creative.model_fields
+    assert accepted.format_id is None
+
+    with _pytest.raises(ValidationError):
+        canonical_creative.Creative.model_validate(
+            {k: v for k, v in row.items() if k != "format_kind"}
+        )

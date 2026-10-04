@@ -374,12 +374,30 @@ class CanonicalBoundaryModel(AdCPBaseModel):
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-        """Remove inherited legacy creative identity from the declared fields."""
+        """Remove inherited legacy creative identity from the declared fields.
+
+        Each removed name is then bound as a plain class attribute holding
+        ``None`` — which is the removal's own truth, and which the inherited
+        validators need. A generated model can carry an injected validator that
+        READS the removed field: ``list-creatives-response.json``'s
+        ``_validate_format_reference_xor`` evaluates
+        ``(self.format_id is None) == (self.format_kind is None)``. Inheritance
+        is the point of this layer, so that validator now runs on the canonical
+        model, and with the field merely deleted it raised ``AttributeError``.
+        With the name reading ``None`` the XOR reduces to exactly the invariant
+        the canonical model should hold — ``format_kind`` must be set — which is
+        the same thing the canonical declaration states by making it required.
+
+        Binding happens AFTER class creation, so pydantic never considers the
+        name a field candidate; ``model_fields``, the JSON schema and the wire
+        are all unaffected. Measured scope: one such validator, on one model.
+        """
 
         removed = [name for name in cls.model_fields if is_legacy_creative_identity_key(name)]
         for name in removed:
             del cls.model_fields[name]
             cls.__annotations__.pop(name, None)
+            setattr(cls, name, None)
         if removed:
             cls.model_rebuild(force=True)
 
