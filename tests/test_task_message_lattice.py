@@ -17,7 +17,6 @@ shrink; they never grow.
 
 from __future__ import annotations
 
-import ast
 import importlib
 import json
 from pathlib import Path
@@ -30,15 +29,8 @@ from adcp.types.base import AdcpRequest, AdcpResponse, _AdcpMessage
 from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
 from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
 from scripts.generate_types import normalize_version_envelope_composition
-from scripts.post_generate_fixes import (
-    OUTPUT_DIR,
-    SCHEMA_DIR,
-    _generated_module_by_schema,
-    _mangle_schema_title,
-    _root_class_names,
-    _task_registry_messages,
-    _underscored,
-)
+from scripts.post_generate_fixes import OUTPUT_DIR, SCHEMA_DIR
+from scripts.task_message_lattice import task_message_roots
 
 # ``creative/validate-input-request.json`` declares no version fields at all, so there is
 # nothing for the normalization in ``generate_types`` to lift into a composition -- the
@@ -102,14 +94,8 @@ def _task_message_classes() -> list[_TaskMessage]:
     provenance header, same root-class rule -- so this grades the generated tree rather
     than re-deriving a second answer that could agree with the pass while both are wrong.
     """
-    modules = _generated_module_by_schema()
     rows: list[_TaskMessage] = []
-    for task, kind, schema_rel in _task_registry_messages():
-        module = modules[_underscored(schema_rel)]
-        title = json.loads((SCHEMA_DIR / schema_rel).read_text())["title"]
-        names = _root_class_names(
-            schema_rel, module, ast.parse(module.read_text()), _mangle_schema_title(title)
-        )
+    for task, kind, schema_rel, module, names in task_message_roots(SCHEMA_DIR, OUTPUT_DIR):
         imported = importlib.import_module(_module_name(module))
         rows.append((task, kind, schema_rel.as_posix(), tuple(getattr(imported, n) for n in names)))
     return rows

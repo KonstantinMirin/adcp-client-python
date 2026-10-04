@@ -33,6 +33,11 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, NamedTuple
 
+try:
+    import task_message_lattice
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts import task_message_lattice
+
 REPO_ROOT = Path(__file__).parent.parent
 
 
@@ -7313,117 +7318,6 @@ _ADCP_REQUEST_MARKER = "AdcpRequest"
 _ADCP_RESPONSE_MARKER = "AdcpResponse"
 
 
-def _mangle_schema_title(title: str) -> str:
-    """The class name datamodel-code-generator derives from a schema ``title``.
-
-    Measured against all 154 task-message schemas at pin 3.2.1: this reproduces the
-    generated root class (or union alias) name for 154 of 154. The acronym collapse is
-    the part a filename-derived guess gets wrong in both directions -- "Get AdCP
-    Capabilities Request" becomes ``GetAdcpCapabilitiesRequest``, and
-    ``list-creative-formats-request.json`` does NOT become
-    ``ListCreativeFormatsRequest`` because its title names the agent variant.
-    """
-    return "".join(word.capitalize() for word in re.split(r"[^0-9a-zA-Z]+", title) if word)
-
-
-def _task_registry_messages() -> list[tuple[str, str, Path]]:
-    """Every task message in the pinned bundle: (task, "request"|"response", schema path).
-
-    The registry in ``index.json`` is the authority for what IS a task message. A
-    filename pattern is not: 10 of the 87 ``*-request.json`` files are components or
-    para-protocol schemas that no task names, and marking those would claim registry
-    membership the bundle does not grant.
-    """
-    index = json.loads((SCHEMA_DIR / "index.json").read_text())
-    messages: list[tuple[str, str, Path]] = []
-    for domain, entry in index["schemas"].items():
-        for task, refs in (entry.get("tasks") or {}).items():
-            for kind in ("request", "response"):
-                ref = refs[kind]["$ref"]
-                messages.append((f"{domain}.{task}", kind, _resolve_schema_ref(Path(domain), ref)))
-    return messages
-
-
-def _generated_module_by_schema() -> dict[Path, Path]:
-    """Map each schema to the module generated from it, by the codegen ``filename:`` header.
-
-    The header is the generator's own statement of provenance, which is why it is read
-    instead of recomputed: a path convention would have to re-derive the hyphen
-    conversion, the directory layout and the root-discovery special cases.
-    """
-    modules: dict[Path, Path] = {}
-    for path in sorted(OUTPUT_DIR.rglob("*.py")):
-        if "bundled" in path.parts:
-            continue
-        for line in path.read_text().splitlines()[:6]:
-            if line.startswith("#   filename:"):
-                modules[Path(line.split(":", 1)[1].strip())] = path
-                break
-    return modules
-
-
-def _underscored(path: Path) -> Path:
-    return Path(*(part.replace("-", "_") for part in path.parts))
-
-
-def _module_top_level(tree: ast.Module) -> tuple[dict[str, ast.ClassDef], dict[str, ast.expr]]:
-    """Top-level classes and top-level assignments (the union aliases) of one module."""
-    classes = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
-    aliases: dict[str, ast.expr] = {}
-    for node in tree.body:
-        names: list[str] = []
-        if isinstance(node, ast.Assign):
-            names = [t.id for t in node.targets if isinstance(t, ast.Name)]
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            names = [node.target.id]
-        if names and node.value is not None:
-            for name in names:
-                aliases[name] = node.value
-    return classes, aliases
-
-
-def _root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str) -> list[str]:
-    """The class(es) a task message can validate into, in the module that defines them.
-
-    A plain root is one class. A union root is a type alias, and the alias is not a
-    class -- so the marker lands on each member arm, which is what makes
-    ``isinstance(resp, AdcpResponse)`` hold for every value the task can answer with.
-    Nested aliases are followed. Fails closed: a root that resolves to neither a class
-    nor an alias, or an alias naming something this module does not define, is a build
-    error with the schema named.
-    """
-    classes, aliases = _module_top_level(tree)
-    if root in classes:
-        return [root]
-    if root not in aliases:
-        raise RuntimeError(
-            f"{schema_rel.as_posix()}: generated module {module.name} defines neither a "
-            f"class nor a type alias named {root!r}"
-        )
-    pending = [node.id for node in ast.walk(aliases[root]) if isinstance(node, ast.Name)]
-    resolved: list[str] = []
-    seen: set[str] = set()
-    while pending:
-        name = pending.pop(0)
-        if name in seen:
-            continue
-        seen.add(name)
-        if name in classes:
-            resolved.append(name)
-        elif name in aliases:
-            pending.extend(
-                node.id for node in ast.walk(aliases[name]) if isinstance(node, ast.Name)
-            )
-        else:
-            raise RuntimeError(
-                f"{schema_rel.as_posix()}: union arm {name!r} of {root} is not defined in "
-                f"{module.name}; the marker pass cannot reach it (one mechanism only)"
-            )
-    if not resolved:
-        raise RuntimeError(f"{schema_rel.as_posix()}: {root} resolved to no arm classes")
-    return resolved
-
-
 def _insert_first_base(source: str, class_name: str, marker: str) -> str:
     """Put ``marker`` first in ``class_name``'s base list.
 
@@ -7466,25 +7360,27 @@ def insert_task_message_markers() -> None:
     unresolvable root class, and a post-rewrite AST check that every marked class really
     carries the marker as its first base.
     """
-    messages = _task_registry_messages()
-    modules = _generated_module_by_schema()
+    messages = task_message_lattice.task_registry_messages(SCHEMA_DIR)
+    modules = task_message_lattice.generated_module_by_schema(OUTPUT_DIR)
 
     # (module, class) -> marker. A response arm shared by several tasks is named more
     # than once; the marker is the same, so the map de-duplicates it.
     wanted: dict[tuple[Path, str], str] = {}
     for task, kind, schema_rel in messages:
-        module = modules.get(_underscored(schema_rel))
+        module = modules.get(task_message_lattice.underscored(schema_rel))
         if module is None:
             raise RuntimeError(
                 f"{task} {kind}: no generated module declares filename "
-                f"{_underscored(schema_rel).as_posix()}"
+                f"{task_message_lattice.underscored(schema_rel).as_posix()}"
             )
         title = json.loads((SCHEMA_DIR / schema_rel).read_text()).get("title")
         if not isinstance(title, str) or not title.strip():
             raise RuntimeError(f"{schema_rel.as_posix()}: no title to derive a root class from")
         marker = _ADCP_REQUEST_MARKER if kind == "request" else _ADCP_RESPONSE_MARKER
         tree = ast.parse(module.read_text())
-        for class_name in _root_class_names(schema_rel, module, tree, _mangle_schema_title(title)):
+        for class_name in task_message_lattice.root_class_names(
+            schema_rel, module, tree, task_message_lattice.mangle_schema_title(title)
+        ):
             previous = wanted.get((module, class_name))
             if previous is not None and previous != marker:
                 raise RuntimeError(
@@ -7508,7 +7404,7 @@ def insert_task_message_markers() -> None:
             source = _insert_first_base(source, class_name, marker)
         module.write_text(source)
 
-        classes, _ = _module_top_level(ast.parse(source))
+        classes, _ = task_message_lattice.module_top_level(ast.parse(source))
         for class_name, marker in markers.items():
             bases = classes[class_name].bases
             if not bases or not isinstance(bases[0], ast.Name) or bases[0].id != marker:
