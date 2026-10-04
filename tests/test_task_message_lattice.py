@@ -21,11 +21,12 @@ import ast
 import importlib
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from pydantic import BaseModel
 
-from adcp.types.base import AdcpRequest, AdcpResponse
+from adcp.types.base import AdcpRequest, AdcpResponse, _AdcpMessage
 from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
 from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
 from scripts.generate_types import normalize_version_envelope_composition
@@ -82,16 +83,19 @@ _RESPONSE_PROTOCOL_RESIDUE = frozenset(
     }
 )
 
-_VERSION_ENVELOPE_REF = (
-    "https://adcontextprotocol.org/schemas/3.2.1/core/version-envelope.json"
-)
+#: (task, kind, schema path, the root classes the message validates into)
+_TaskMessage = tuple[str, str, str, tuple[type[BaseModel], ...]]
+
+_VERSION_ENVELOPE_REF = "https://adcontextprotocol.org/schemas/3.2.1/core/version-envelope.json"
 
 
 def _module_name(path: Path) -> str:
-    return "adcp.types.generated_poc." + ".".join(path.relative_to(OUTPUT_DIR).with_suffix("").parts)
+    return "adcp.types.generated_poc." + ".".join(
+        path.relative_to(OUTPUT_DIR).with_suffix("").parts
+    )
 
 
-def _task_message_classes() -> list[tuple[str, str, str, tuple[type[BaseModel], ...]]]:
+def _task_message_classes() -> list[_TaskMessage]:
     """(task, kind, schema path, root classes) for all 77 registered tasks, both directions.
 
     Resolved exactly the way the marker-insertion pass resolves it -- same registry, same
@@ -99,7 +103,7 @@ def _task_message_classes() -> list[tuple[str, str, str, tuple[type[BaseModel], 
     than re-deriving a second answer that could agree with the pass while both are wrong.
     """
     modules = _generated_module_by_schema()
-    rows = []
+    rows: list[_TaskMessage] = []
     for task, kind, schema_rel in _task_registry_messages():
         module = modules[_underscored(schema_rel)]
         title = json.loads((SCHEMA_DIR / schema_rel).read_text())["title"]
@@ -112,11 +116,11 @@ def _task_message_classes() -> list[tuple[str, str, str, tuple[type[BaseModel], 
 
 
 @pytest.fixture(scope="module")
-def task_messages() -> list[tuple[str, str, str, tuple[type[BaseModel], ...]]]:
+def task_messages() -> list[_TaskMessage]:
     return _task_message_classes()
 
 
-def _residue(rows: list, kind: str, ancestor: type[BaseModel]) -> frozenset[str]:
+def _residue(rows: list[_TaskMessage], kind: str, ancestor: type[BaseModel]) -> frozenset[str]:
     """The schemas whose root classes do not ALL descend from ``ancestor``.
 
     All arms, not any arm: a union whose submitted arm lacks the ancestry cannot answer
@@ -130,14 +134,14 @@ def _residue(rows: list, kind: str, ancestor: type[BaseModel]) -> frozenset[str]
     )
 
 
-def test_registry_covers_every_task_in_both_directions(task_messages: list) -> None:
+def test_registry_covers_every_task_in_both_directions(task_messages: list[_TaskMessage]) -> None:
     """77 tasks, each with one request and one response, all resolving to real classes."""
     assert len(task_messages) == 154, "the pinned bundle registers 77 tasks"
     assert sum(1 for _, kind, _, _ in task_messages if kind == "request") == 77
     assert all(classes for *_, classes in task_messages)
 
 
-def test_every_task_request_is_an_adcp_request(task_messages: list) -> None:
+def test_every_task_request_is_an_adcp_request(task_messages: list[_TaskMessage]) -> None:
     missing = sorted(
         schema
         for _, kind, schema, classes in task_messages
@@ -146,7 +150,7 @@ def test_every_task_request_is_an_adcp_request(task_messages: list) -> None:
     assert missing == [], "task requests not marked AdcpRequest: " + ", ".join(missing)
 
 
-def test_every_task_response_is_an_adcp_response(task_messages: list) -> None:
+def test_every_task_response_is_an_adcp_response(task_messages: list[_TaskMessage]) -> None:
     missing = sorted(
         schema
         for _, kind, schema, classes in task_messages
@@ -155,7 +159,7 @@ def test_every_task_response_is_an_adcp_response(task_messages: list) -> None:
     assert missing == [], "task responses not marked AdcpResponse: " + ", ".join(missing)
 
 
-def test_a_request_is_never_also_a_response(task_messages: list) -> None:
+def test_a_request_is_never_also_a_response(task_messages: list[_TaskMessage]) -> None:
     """The two markers partition the task messages; nothing carries both."""
     confused = sorted(
         {c.__name__ for *_, classes in task_messages for c in classes}
@@ -183,7 +187,7 @@ def test_markers_are_plain_classes_with_no_fields() -> None:
         assert not hasattr(marker, "__pydantic_fields__")
 
 
-def test_task_request_version_envelope_residue_is_pinned(task_messages: list) -> None:
+def test_task_request_version_envelope_residue_is_pinned(task_messages: list[_TaskMessage]) -> None:
     """76 of 77 task requests descend from AdcpVersionEnvelope; the residue is one schema."""
     residue = _residue(task_messages, "request", AdcpVersionEnvelope)
     assert residue == _REQUEST_VERSION_RESIDUE, (
@@ -194,7 +198,9 @@ def test_task_request_version_envelope_residue_is_pinned(task_messages: list) ->
     assert len(residue) == 1
 
 
-def test_task_response_version_envelope_residue_is_pinned(task_messages: list) -> None:
+def test_task_response_version_envelope_residue_is_pinned(
+    task_messages: list[_TaskMessage],
+) -> None:
     residue = _residue(task_messages, "response", AdcpVersionEnvelope)
     assert residue == _RESPONSE_VERSION_RESIDUE, (
         "version-envelope residue moved. Newly missing: "
@@ -203,7 +209,9 @@ def test_task_response_version_envelope_residue_is_pinned(task_messages: list) -
     )
 
 
-def test_task_response_protocol_envelope_residue_is_pinned(task_messages: list) -> None:
+def test_task_response_protocol_envelope_residue_is_pinned(
+    task_messages: list[_TaskMessage],
+) -> None:
     residue = _residue(task_messages, "response", ProtocolEnvelope)
     assert residue == _RESPONSE_PROTOCOL_RESIDUE, (
         "protocol-envelope residue moved. Newly missing: "
@@ -212,7 +220,9 @@ def test_task_response_protocol_envelope_residue_is_pinned(task_messages: list) 
     )
 
 
-def test_task_requests_do_not_compose_the_protocol_envelope(task_messages: list) -> None:
+def test_task_requests_do_not_compose_the_protocol_envelope(
+    task_messages: list[_TaskMessage],
+) -> None:
     """The protocol envelope wraps responses. A request carrying it would be a leak."""
     leaked = sorted(
         schema
@@ -222,7 +232,7 @@ def test_task_requests_do_not_compose_the_protocol_envelope(task_messages: list)
     assert leaked == []
 
 
-def test_field_classifiers_partition_the_declared_fields(task_messages: list) -> None:
+def test_field_classifiers_partition_the_declared_fields(task_messages: list[_TaskMessage]) -> None:
     """version / protocol / payload are disjoint and together are exactly ``model_fields``.
 
     Which is what makes "split the envelope from the payload" one expression instead of a
@@ -232,9 +242,13 @@ def test_field_classifiers_partition_the_declared_fields(task_messages: list) ->
     """
     for task, kind, schema, classes in task_messages:
         for cls in classes:
-            version = cls.version_fields()
-            protocol = cls.protocol_fields()
-            payload = cls.payload_fields()
+            # A task message is a pydantic model AND a marker. Python has no intersection
+            # type, so the cast states the half this block needs -- the same answer
+            # BuyerRequest's own validator gives to the same problem.
+            message = cast("type[_AdcpMessage]", cls)
+            version = message.version_fields()
+            protocol = message.protocol_fields()
+            payload = message.payload_fields()
             where = f"{task} {kind} ({schema}) {cls.__name__}"
             assert not version & payload, where
             assert not protocol & payload, where
@@ -318,7 +332,7 @@ def test_response_accessors_read_the_protocol_stratum() -> None:
     assert submitted.get_replayed() is False
 
 
-def _normalize(schema: dict, rel: str) -> dict:
+def _normalize(schema: dict[str, Any], rel: str) -> dict[str, Any]:
     return normalize_version_envelope_composition(json.loads(json.dumps(schema)), Path(rel))
 
 
@@ -407,3 +421,59 @@ def test_version_normalization_refuses_a_declaration_it_cannot_prove_equivalent(
         _normalize(equivalent_but_required, "media-buy/example-request.json")
         == equivalent_but_required
     )
+
+
+def test_descent_refuses_a_forged_model_that_merely_declares_the_fields() -> None:
+    """The forgeability argument the markers exist to keep true (ARCH-HIERARCHY §1).
+
+    A field-presence test accepts any hand-written model that declares ``adcp_version`` and
+    ``adcp_major_version``. That is not hypothetical: the Prebid Sales Agent once carried
+    ``CompleteTaskRequest`` and ``CompleteTaskRequestLocal``, neither a subclass of the
+    other, both parallel to the SDK -- and its registration refusal
+    (``src/core/main.py:286``) tests descent precisely because a field test would have
+    passed them both.
+
+    Both markers must refuse that model. They do, and this test is what keeps them
+    refusing: a marker that grew the two fields would make the forgery pass.
+    """
+
+    class ForgedByFields(BaseModel):
+        adcp_version: str | None = None
+        adcp_major_version: int | None = None
+
+    assert {"adcp_version", "adcp_major_version"} <= set(ForgedByFields.model_fields)
+    assert not issubclass(ForgedByFields, AdcpRequest)
+    assert not issubclass(ForgedByFields, AdcpVersionEnvelope)
+
+
+def test_the_two_descent_predicates_refuse_different_forgeries() -> None:
+    """Why a consumer's guard wants BOTH, not one in place of the other.
+
+    ``AdcpRequest`` is field-less on purpose, so inheriting it supplies nothing and a forger
+    can inherit it and invent fields -- it answers "someone put this class in the request
+    position", not "this class carries the spec's version contract".
+    ``AdcpVersionEnvelope`` answers the second and not the first: inheriting it is what
+    supplies the two fields, and a model that does so is still not any task's request.
+
+    Measured, so the asymmetry is recorded rather than assumed. Until the generated task
+    table (ARCH-HIERARCHY §7.6) exists, the conjunction is the strongest available form of
+    "is a registered task message", and a consumer swapping one predicate for the other
+    loses a refusal.
+    """
+
+    class ForgedByMarker(AdcpRequest, BaseModel):
+        adcp_version: str | None = None
+        whatever: str | None = None
+
+    class ForgedByEnvelope(AdcpVersionEnvelope):
+        whatever: str | None = None
+
+    assert issubclass(ForgedByMarker, AdcpRequest)
+    assert not issubclass(ForgedByMarker, AdcpVersionEnvelope)
+
+    assert issubclass(ForgedByEnvelope, AdcpVersionEnvelope)
+    assert not issubclass(ForgedByEnvelope, AdcpRequest)
+
+    # The conjunction refuses both; neither predicate alone does.
+    for forged in (ForgedByMarker, ForgedByEnvelope):
+        assert not (issubclass(forged, AdcpRequest) and issubclass(forged, AdcpVersionEnvelope))
