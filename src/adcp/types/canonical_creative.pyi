@@ -15,6 +15,8 @@ _T = TypeVar("_T", bound=AdCPBaseModel)
 
 class CanonicalBoundaryModel(AdCPBaseModel):
     __adcp_canonical_creative_model__: ClassVar[bool]
+    __adcp_canonical_source__: ClassVar[type[AdCPBaseModel] | None]
+    __adcp_canonical_validators_left_behind__: ClassVar[dict[str, set[str]]]
 
 class _CanonicalResponseEnvelope(AdcpVersionEnvelope, ProtocolEnvelope, CanonicalBoundaryModel):
     """Stub-only Liskov bridge for canonical responses; not a runtime class.
