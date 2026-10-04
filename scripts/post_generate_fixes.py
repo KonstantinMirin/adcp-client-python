@@ -69,6 +69,85 @@ _SCALAR_CONSTRAINT_KEYWORDS: frozenset[str] = _scalar_module.CONSTRAINT_KEYWORDS
 _SCALAR_DOCUMENTATION_KEYWORDS: frozenset[str] = _scalar_module.DOCUMENTATION_KEYWORDS
 _SCALAR_MODULE_PATH = "adcp.types._scalar"
 
+
+def _import_pattern(module: str) -> re.Pattern[str]:
+    """Match either import form the formatter produces for ``module``.
+
+    A single line, or a parenthesized block once the line grows past the
+    formatter's width.
+    """
+    return re.compile(
+        rf"^from {re.escape(module)} import (?:\((?P<paren>[^)]*)\)|(?P<flat>[^\n(]+))$",
+        re.MULTILINE,
+    )
+
+
+def _render_import(module: str, names: list[str], parenthesized: bool) -> str:
+    if parenthesized:
+        return f"from {module} import (\n" + "".join(f"    {n},\n" for n in names) + ")"
+    return f"from {module} import " + ", ".join(names)
+
+
+def add_to_import(source: str, module: str, *names: str) -> str:
+    """Add ``names`` to the first ``from <module> import`` statement.
+
+    Matching that statement by its exact spelling couples a fix to the set of
+    symbols datamodel-code-generator happens to emit for one file, so changing
+    a field annotation anywhere breaks an unrelated fix somewhere else. This
+    reads whichever names are there and keeps the statement in the form it was
+    written in.
+
+    Raises when the module has no import to extend: the generated shape then
+    changed in a way the caller's fix no longer matches, which is a
+    regeneration failure rather than something to paper over.
+    """
+    for match in _import_pattern(module).finditer(source):
+        existing = match["paren"] if match["paren"] is not None else match["flat"]
+        imported = {n.strip() for n in existing.split(",") if n.strip()}
+        if imported.issuperset(names):
+            return source
+        statement = _render_import(
+            module, sorted(imported | set(names)), match["paren"] is not None
+        )
+        return source[: match.start()] + statement + source[match.end() :]
+    raise RuntimeError(f"no 'from {module} import' statement to extend with {list(names)}")
+
+
+def drop_from_imports(source: str, module: str, name: str) -> str:
+    """Remove ``name`` from every ``from <module> import`` statement.
+
+    A generated module can carry more than one import from the same module --
+    the post-generate passes that inject a validator or serializer add their
+    own -- so a rewrite that stops at the first statement renames a symbol
+    the second one still imports.
+    """
+    while True:
+        for match in _import_pattern(module).finditer(source):
+            existing = match["paren"] if match["paren"] is not None else match["flat"]
+            imported = {n.strip() for n in existing.split(",") if n.strip()}
+            if name not in imported:
+                continue
+            remaining = imported - {name}
+            if not remaining:
+                end = (
+                    match.end() + 1
+                    if source[match.end() : match.end() + 1] == "\n"
+                    else match.end()
+                )
+                source = source[: match.start()] + source[end:]
+            else:
+                statement = _render_import(module, sorted(remaining), match["paren"] is not None)
+                source = source[: match.start()] + statement + source[match.end() :]
+            break
+        else:
+            return source
+
+
+def ensure_pydantic_import(source: str, *names: str) -> str:
+    """Add ``names`` to the module's ``from pydantic import`` statement."""
+    return add_to_import(source, "pydantic", *names)
+
+
 _VERSION_FILE = REPO_ROOT / "src" / "adcp" / "ADCP_VERSION"
 _BUNDLE_KEY = resolve_bundle_key(_VERSION_FILE.read_text().strip())
 
@@ -587,7 +666,9 @@ def _first_generated_class_name(content: str) -> str | None:
             (
                 base.id
                 if isinstance(base, ast.Name)
-                else base.attr if isinstance(base, ast.Attribute) else ""
+                else base.attr
+                if isinstance(base, ast.Attribute)
+                else ""
             )
             for base in node.bases
         }
@@ -669,21 +750,8 @@ def _set_class_extra_allow(content: str, class_name: str) -> tuple[str, str]:
 def _ensure_configdict_import(content: str) -> str:
     if "ConfigDict" not in content:
         return content
-    if re.search(r"^from pydantic import .*ConfigDict", content, re.MULTILINE):
-        return content
     if "from pydantic import" in content:
-        return re.sub(
-            r"^from pydantic import ([^\n]+)$",
-            lambda m: (
-                "from pydantic import "
-                + ", ".join(
-                    sorted({*[part.strip() for part in m.group(1).split(",")], "ConfigDict"})
-                )
-            ),
-            content,
-            count=1,
-            flags=re.MULTILINE,
-        )
+        return ensure_pydantic_import(content, "ConfigDict")
 
     future_imports = list(re.finditer(r"^from __future__ import [^\n]+$", content, re.MULTILINE))
     if future_imports:
@@ -808,6 +876,93 @@ def _remove_unused_imports(source: str, targets: Mapping[str, Sequence[str]]) ->
 def _remove_unused_pydantic_field_import(source: str) -> tuple[str, bool]:
     """Remove a generated ``Field`` import when the module never references it."""
     return _remove_unused_imports(source, {"pydantic": ("Field",)})
+
+
+def point_integer_fields_at_the_schema_integer_type() -> None:
+    """Rewrite the generator's ``StrictInt`` marker to ``SchemaInt``.
+
+    ``--strict-types int`` makes the generator annotate every ``type: integer``
+    field, which is the derivation this pass needs — but ``StrictInt`` refuses
+    a float with no fractional part, and JSON Schema's ``integer`` admits one
+    (the bundled validator accepts ``1.0`` for an integer field and rejects
+    ``1.5``). ``adcp.types.base.SchemaInt`` is ``StrictInt`` plus that
+    narrowing, so the model's accepted set matches the schema's.
+    """
+    modified = 0
+    for path in OUTPUT_DIR.rglob("*.py"):
+        source = path.read_text()
+        if not re.search(r"\bStrictInt\b", source):
+            continue
+        source = drop_from_imports(source, "pydantic", "StrictInt")
+        source = re.sub(r"\bStrictInt\b", "SchemaInt", source)
+        if re.search(r"^from adcp\.types\.base import ", source, re.MULTILINE):
+            source = add_to_import(source, "adcp.types.base", "SchemaInt")
+        else:
+            anchor = _import_pattern("pydantic").search(source)
+            assert anchor is not None, path
+            source = (
+                source[: anchor.start()]
+                + "from adcp.types.base import SchemaInt\n"
+                + source[anchor.start() :]
+            )
+        path.write_text(source)
+        modified += 1
+    print(f"  Pointed integer fields at SchemaInt in {modified} file(s)")
+
+
+def remove_imports_shadowed_by_a_local_class() -> None:
+    """Drop an import whose name a class in the same module redefines.
+
+    ``--reuse-model`` imports a structurally identical model from the module
+    that defined it first. When two schemas describe the same shape with
+    different field descriptions the reuse does not apply, and the generator
+    emits the class locally while keeping the import — leaving the name bound
+    twice. The local class wins at runtime (``from __future__ import
+    annotations`` defers every reference in the module), so the import is dead,
+    and mypy reports ``no-redef`` for it.
+    """
+    modified = 0
+    for path in OUTPUT_DIR.rglob("*.py"):
+        source = path.read_text()
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:
+            continue
+        defined = {
+            node.name for node in tree.body if isinstance(node, (ast.ClassDef, ast.FunctionDef))
+        }
+        shadowed = [
+            (node, alias)
+            for node in tree.body
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+            for alias in node.names
+            if (alias.asname or alias.name.split(".")[0]) in defined
+        ]
+        if not shadowed:
+            continue
+        lines = source.splitlines(keepends=True)
+        for node, alias in shadowed:
+            assert node.end_lineno is not None
+            block = "".join(lines[node.lineno - 1 : node.end_lineno])
+            remaining = [a for a in node.names if a is not alias]
+            if not remaining:
+                replacement = ""
+            elif isinstance(node, ast.ImportFrom):
+                names = ", ".join(a.asname or a.name for a in remaining)
+                dots = "." * (node.level or 0)
+                replacement = f"from {dots}{node.module or ''} import {names}\n"
+            else:
+                names = ", ".join(a.asname or a.name for a in remaining)
+                replacement = f"import {names}\n"
+            source = source.replace(block, replacement, 1)
+            print(
+                f"  {path.relative_to(OUTPUT_DIR)}: dropped import of {alias.name} "
+                f"shadowed by a local definition"
+            )
+        path.write_text(source)
+        modified += 1
+    if not modified:
+        print("  no imports shadowed by a local class")
 
 
 def remove_unused_pydantic_field_imports() -> None:
@@ -940,6 +1095,11 @@ _VALUE_ROOT_NAMES = frozenset(
         "Decimal",
         "EmailStr",
         "NaiveDatetime",
+        "SchemaInt",
+        "StrictBool",
+        "StrictFloat",
+        "StrictInt",
+        "StrictStr",
         "bool",
         "bytes",
         "date",
@@ -1683,7 +1843,17 @@ def rewrite_scalar_rootmodels() -> None:
         updated = _insert_scalar_import("".join(lines), {spec.base for spec in specs})
         updated, _ = _remove_unused_imports(
             updated,
-            {"pydantic": ("Field", "RootModel", "StringConstraints"), "typing": ("Annotated",)},
+            {
+                "pydantic": (
+                    "Field",
+                    "RootModel",
+                    "StringConstraints",
+                    "StrictFloat",
+                    "StrictInt",
+                    "StrictStr",
+                ),
+                "typing": ("Annotated",),
+            },
         )
 
         py_file.write_text(updated)
@@ -2429,15 +2599,7 @@ def fix_postal_country_system_pairing() -> None:
     else:
         insertion_line = first_method.lineno
 
-    if "model_validator" not in source:
-        source, count = re.subn(
-            r"from pydantic import ([^\n]+)",
-            lambda match: f"from pydantic import {match.group(1)}, model_validator",
-            source,
-            count=1,
-        )
-        if count != 1:
-            raise RuntimeError("generated postal_area.py has no pydantic import to extend")
+    source = ensure_pydantic_import(source, "model_validator")
 
     validator = f"""    @model_validator(mode='before')
     @classmethod
@@ -3805,16 +3967,7 @@ def fix_beta3_adagents_renderer_constraints() -> None:
         )
 
     if "def _validate_reference_renderer_catalog(" not in source:
-        source, import_count = re.subn(
-            r"^(from pydantic import .+)$",
-            r"\1, model_validator",
-            source,
-            count=1,
-            flags=re.MULTILINE,
-        )
-        if import_count != 1:
-            print("  adagents.py pydantic import shape not found")
-            return
+        source = ensure_pydantic_import(source, "model_validator")
         class_start = source.find(
             "class AdcpAgentsAuthorization(RootModel[AdcpAgentsAuthorization1 | AdcpAgentsAuthorization2]):"
         )
@@ -4019,17 +4172,13 @@ def fix_product_publisher_property_model_coercion() -> None:
         print("  core/product.py publisher property coercion already fixed")
         return
 
-    if (
-        "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel"
-        in source
-    ):
-        source = source.replace(
-            "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
-            "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel, model_validator",
-        )
-    else:
+    # Not an exact-literal match on the import line: strict scalar annotations
+    # and the formatter's parenthesized form change that line's spelling, and
+    # the fix went silent on it once already (caught by the effect manifest).
+    if _import_pattern("pydantic").search(source) is None:
         print("  core/product.py pydantic import shape not found")
         return
+    source = ensure_pydantic_import(source, "model_validator")
 
     # The method annotates ``Any``; the generated module imports it only when a
     # class body needs it.
@@ -4167,9 +4316,7 @@ def fix_mcp_webhook_operation_id_optional() -> None:
 def fix_signal_listing_range_subclasses() -> None:
     """Reuse SignalListing.Range for generated subclasses that redeclare range."""
     replacements = {
-        OUTPUT_DIR
-        / "signals"
-        / "get_signals_response.py": [
+        OUTPUT_DIR / "signals" / "get_signals_response.py": [
             (
                 "from ..core.signal_listing import SignalListing\n",
                 "from ..core.signal_listing import Range, SignalListing\n",
@@ -4184,9 +4331,7 @@ def fix_signal_listing_range_subclasses() -> None:
                 "",
             ),
         ],
-        OUTPUT_DIR
-        / "core"
-        / "wholesale_feed_event.py": [
+        OUTPUT_DIR / "core" / "wholesale_feed_event.py": [
             (
                 "from .signal_listing import SignalListing\n",
                 "from .signal_listing import Range, SignalListing\n",
@@ -4483,13 +4628,7 @@ def restore_flattened_contract_field_types() -> None:
         raise RuntimeError("creative_representation.py: expected model configuration not found")
 
     if "@model_validator(mode='before')" not in source:
-        if "from pydantic import ConfigDict, Field\n" not in source:
-            raise RuntimeError("creative_representation.py: missing Pydantic import")
-        source = source.replace(
-            "from pydantic import ConfigDict, Field\n",
-            "from pydantic import ConfigDict, Field, model_validator\n",
-            1,
-        )
+        source = ensure_pydantic_import(source, "model_validator")
         source = (
             source.rstrip()
             + """
@@ -4569,14 +4708,7 @@ def enforce_transformer_output_contract() -> None:
         return
     if "class Transformer(" not in source:
         raise RuntimeError("transformer.py: Transformer class not found")
-    if "from pydantic import AnyUrl, ConfigDict, Field, RootModel\n" not in source:
-        raise RuntimeError("transformer.py: missing Pydantic import")
-
-    source = source.replace(
-        "from pydantic import AnyUrl, ConfigDict, Field, RootModel\n",
-        "from pydantic import AnyUrl, ConfigDict, Field, RootModel, model_validator\n",
-        1,
-    )
+    source = ensure_pydantic_import(source, "model_validator")
     target.write_text(
         source.rstrip()
         + """
@@ -6126,11 +6258,7 @@ def fix_list_creatives_format_reference_xor() -> None:
             print("  creative/list_creatives_response.py: merged creative XOR already fixed")
             return
 
-        source = source.replace(
-            "from pydantic import AwareDatetime, ConfigDict, Field, RootModel, StringConstraints",
-            "from pydantic import AwareDatetime, ConfigDict, Field, RootModel, StringConstraints, model_validator",
-            1,
-        )
+        source = ensure_pydantic_import(source, "model_validator")
         merged_validator = """
 
     @model_validator(mode='after')
@@ -6154,11 +6282,7 @@ Creatives1 = Creative
         print("  creative/list_creatives_response.py: format reference XOR already fixed")
         return
 
-    source = source.replace(
-        "from pydantic import AwareDatetime, ConfigDict, Field, RootModel, StringConstraints",
-        "from pydantic import AwareDatetime, ConfigDict, Field, RootModel, StringConstraints, model_validator",
-        1,
-    )
+    source = ensure_pydantic_import(source, "model_validator")
 
     legacy_validator = """
 
@@ -6446,13 +6570,8 @@ def fix_legacy_purchase_accepted_losses() -> None:
         count=1,
     )
     fixed = fixed.replace("list[AcceptedLoss] | AcceptedLosses", "list[AcceptedLoss]", 1)
-    if "from pydantic import " in fixed and "field_validator" not in fixed:
-        fixed = re.sub(
-            r"from pydantic import ([^\n]+)",
-            lambda match: f"from pydantic import {match.group(1)}, field_validator",
-            fixed,
-            count=1,
-        )
+    if "from pydantic import " in fixed:
+        fixed = ensure_pydantic_import(fixed, "field_validator")
     fixed = fixed.replace(
         "description='Non-empty subset of the product IDs bound into the continuation.',\n"
         "            min_length=1,\n",
@@ -6848,6 +6967,8 @@ def main(argv: list[str] | None = None):
         rewrite_scalar_rootmodels,
         rewrite_generated_enums_to_strenum,
         annotate_registry_track_verdict,
+        point_integer_fields_at_the_schema_integer_type,
+        remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,
         strip_extra_blank_lines_at_eof,
     ]

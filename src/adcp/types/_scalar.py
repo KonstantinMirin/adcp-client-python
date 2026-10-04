@@ -168,8 +168,27 @@ class ScalarStr(_ScalarRoot, str):
         return str.__new__(cls, value)
 
 
+def as_json_schema_integer(value: Any) -> Any:
+    """Narrow a float with no fractional part to ``int``.
+
+    JSON Schema's ``integer`` admits any number with a zero fractional part, so
+    ``1.0`` is an integer and ``1.5`` is not -- the bundled validator accepts
+    the first and rejects the second. A strict ``int`` alone would reject both,
+    making the model stricter than the schema it was generated from.
+    ``adcp.types.base.SchemaInt`` applies the same narrowing to integer fields.
+    """
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
 class ScalarInt(_ScalarRoot, int):
-    """An ``int`` generated from a JSON Schema integer root."""
+    """An ``int`` generated from a JSON Schema integer root.
+
+    Validates the way ``adcp.types.base.SchemaInt`` validates an integer field:
+    strict, so ``"1"`` and ``True`` are refused, with a float carrying no
+    fractional part narrowed to ``int`` because JSON Schema counts it as one.
+    """
 
     __slots__ = ()
 
@@ -177,7 +196,10 @@ class ScalarInt(_ScalarRoot, int):
 
     @classmethod
     def _value_schema(cls) -> CoreSchema:
-        return core_schema.int_schema(**cls._constraints)
+        return core_schema.no_info_before_validator_function(
+            as_json_schema_integer,
+            core_schema.int_schema(strict=True, **cls._constraints),
+        )
 
     @classmethod
     def _coerce(cls, value: Any) -> Self:
@@ -185,7 +207,12 @@ class ScalarInt(_ScalarRoot, int):
 
 
 class ScalarFloat(_ScalarRoot, float):
-    """A ``float`` generated from a JSON Schema number root."""
+    """A ``float`` generated from a JSON Schema number root.
+
+    Strict, like the ``StrictFloat`` the generator emits for a ``type: number``
+    field: an ``int`` or ``float`` is accepted, a ``bool`` or numeric string is
+    refused, matching the bundled JSON Schema validator.
+    """
 
     __slots__ = ()
 
@@ -193,7 +220,7 @@ class ScalarFloat(_ScalarRoot, float):
 
     @classmethod
     def _value_schema(cls) -> CoreSchema:
-        return core_schema.float_schema(**cls._constraints)
+        return core_schema.float_schema(strict=True, **cls._constraints)
 
     @classmethod
     def _coerce(cls, value: Any) -> Self:
@@ -220,9 +247,18 @@ CONSTRAINT_KEYWORDS: frozenset[str] = frozenset(
 #: JSON Schema keywords the rewriter may move into ``_json_schema_extra``.
 DOCUMENTATION_KEYWORDS: frozenset[str] = frozenset({"title", "description", "examples"})
 
-#: Python scalar name -> base class the rewriter emits for it.
+#: Generated root annotation name -> base class the rewriter emits for it.
+#: ``--strict-types bool int float`` makes the generator spell an integer root
+#: ``StrictInt`` and a number root ``StrictFloat``; ``SchemaInt`` is the name
+#: ``point_integer_fields_at_the_schema_integer_type`` rewrites ``StrictInt``
+#: to. ``bool`` and ``StrictBool`` are absent: Python forbids subclassing
+#: ``bool``, so boolean roots keep their ``RootModel``.
 SCALAR_BASES: dict[str, type[_ScalarRoot]] = {
     "str": ScalarStr,
+    "StrictStr": ScalarStr,
     "int": ScalarInt,
+    "StrictInt": ScalarInt,
+    "SchemaInt": ScalarInt,
     "float": ScalarFloat,
+    "StrictFloat": ScalarFloat,
 }
