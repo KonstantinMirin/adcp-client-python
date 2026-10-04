@@ -45,6 +45,40 @@ Code written against the former wrappers should replace
 The validated wire shapes are unchanged; only the unnecessary outer public
 wrapper is removed, and validation returns the selected schema arm directly.
 
+## Scalar Schemas Are Plain Scalars
+
+Schemas whose root is a scalar — `PropertyTag`, `PropertyId`, `Gtin`,
+`PricingCurrency`, `MediaBuyChangeTermId`, `ViewThreshold`, and the rest — are
+`str`, `int`, or `float` subclasses rather than Pydantic `RootModel` wrappers.
+They carry the schema's constraints, so an invalid value is rejected at
+construction, and they otherwise behave exactly like the scalar on the wire:
+
+```python
+from adcp import PropertyTag
+
+tag = PropertyTag("sports")
+
+isinstance(tag, str)        # True
+str(tag)                    # 'sports'
+tag == "sports"             # True
+{tag} & {"sports"}          # {'sports'}
+PropertyTag("Invalid-Tag")  # raises ValidationError: pattern mismatch
+```
+
+Code written against the former wrappers keeps working: `PropertyTag(root="x")`
+and `tag.root` both still work, each with a `DeprecationWarning`. Drop the
+`root` indirection when you touch the call site — the value *is* the scalar:
+
+```python
+tags = {tag.root for tag in product.property_tags}   # deprecated
+tags = set(product.property_tags)                    # the values are strs
+```
+
+A root that composes keeps its `RootModel`, because there is no single scalar to
+collapse onto: unions, arrays, `$ref`s to objects, `AnyUrl`, and date-times are
+unchanged. `isinstance(x, RootModel)` is the reliable way to tell the two apart
+if you need to handle both.
+
 ## Picking the Right Base Class — Context-Specific Schema Variants
 
 Several entity names (`Creative`, `Package`, `MediaBuy`, etc.) appear in multiple spec slices with **genuinely different shapes**. The bare name resolves to one specific variant — typically not the one you want when extending response types. The creative inside `ListCreativesResponse.creatives` is a different class from the creative inside `GetCreativeDeliveryResponse.creatives`, even though both are spelled `Creative` in the spec. Subclassing the wrong variant produces silent type drift: construction works, but `mypy` flags `[assignment]` when you wire your subclass into the response that expects a different variant, and runtime serialization may drop fields the consuming code expects.
@@ -67,6 +101,70 @@ These prefixed aliases live in the flat `adcp.types` namespace, not in the curat
 | Extend a `Deployment` (e.g. for `Signal.deployments`) | `from adcp.types import Deployment` (a structured union over the deployment shapes) | reaching into `generated_poc` for an internal numbered class |
 
 The canonical names (`Creative`, `Package`, `MediaBuy`, `Deployment`) remain available from both `adcp` and the partial modules — use those when the bare name already resolves to the variant you want. The prefixed aliases exist for the cases where it doesn't.
+
+### Every variant has a name
+
+The prefixed aliases above are curated: each one is added when an adopter needs
+it. The domain modules cover the rest. AdCP groups its schemas by domain —
+`core/`, `creative/`, `media_buy/` and the rest — and by schema within each.
+`adcp.types.domains` mirrors that layout, so the import path says which variant
+you mean:
+
+```python
+from adcp.types.domains.creative import QuerySummary   # the listing shape
+from adcp.types.domains.core import QuerySummary       # the task shape
+```
+
+Three schemas declare `QuerySummary`. `adcp.types.QuerySummary` binds the `core`
+one, which requires no fields, while the `creative` one requires `returned` and
+`total_matching` — so the flat name accepts documents the listing field rejects.
+Importing from the domain avoids the question.
+
+A domain root carries the names its domain declares exactly once. When one
+domain declares a name several times, the schema's own module is the path —
+`core` declares nine different `Unit` classes and `creative` declares `Creative`
+four times:
+
+```python
+from adcp.types.domains.core.audience_evidence import Unit
+from adcp.types.domains.core.canvas_constraint import Unit
+from adcp.types.domains.creative.list_creatives_response import Creative
+```
+
+Nothing in `adcp.types.domains` is renamed: every name is the one codegen gave
+the class, and the path is the schema that declares it. `docs/shared-type-names.md`
+lists every type name more than one schema declares and the import for each
+variant. The modules and the list are generated from the schema tree, so a new
+schema is covered without an edit.
+
+Prefer the shortest path that resolves to the class you want: `adcp.types` when
+the name is unambiguous, the domain root when it is unambiguous within the
+domain, the schema module otherwise. All three are public and stable.
+
+Note that a curated partial module (`adcp.types.creative`,
+`adcp.types.protocol`, ...) is a topic bundle over the flat `adcp.types`
+namespace, so it binds whichever variant the flat namespace binds. Use a domain
+or schema module when you need a specific one.
+
+### Structured error details
+
+`adcp.types.error_details` exports one model per `error-details/*.json` schema
+together with the field types those models reference, so an error payload is
+built from models rather than a dict:
+
+```python
+from adcp.types.error_details import SupportedVersion, VersionUnsupportedDetails
+
+details = VersionUnsupportedDetails(
+    adcp_version="3.2",
+    supported_versions=[SupportedVersion("3.1"), SupportedVersion("3.2")],
+)
+```
+
+A nested name that two error-details schemas both define carries its qualified
+name, because there is no unambiguous bare spelling for it:
+`billing-not-supported` and `rate-limited` each declare a `scope`, so the two
+enums are `ScopeFromBillingNotSupported` and `ScopeFromRateLimited`.
 
 ### Targeting mutation inputs and resolved state
 
@@ -167,9 +265,9 @@ class MyListResponse(ListCreativesResponse):
 
 ### When a variant has no public alias
 
-A few spec shapes have no disambiguated public name. The clearest example is the geo-exclusion element types behind `TargetingOverlay.geo_countries_exclude`, `geo_regions_exclude`, and `geo_metros_exclude`. Each exclusion list uses a distinct element class that is shape-identical to its inclusion counterpart (`GeoCountry`, `GeoRegion`, `GeoMetro`) but is not the same class and has no public alias in `adcp.types`.
+A few spec shapes have no alias on the flat `adcp.types` namespace. The clearest example is the geo-exclusion element types behind `TargetingOverlay.geo_countries_exclude`, `geo_regions_exclude`, and `geo_metros_exclude`. Each exclusion list uses a distinct element class that is shape-identical to its inclusion counterpart (`GeoCountry`, `GeoRegion`, `GeoMetro`) but is not the same class.
 
-If you need to substitute a shape-compatible class into one of these fields, the override is genuinely cross-class, and there is no public element type to subclass. Use the typed escape hatch `adcp.types.SchemaVariant` against the public inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
+Those element classes do have a public name — `adcp.types.domains.core.targeting.GeoCountriesExcludeItem` and its siblings — so subclassing one is now possible. Where you would rather substitute the public inclusion variant than subclass the exclusion element, use the typed escape hatch `adcp.types.SchemaVariant` against the inclusion variant — it marks the substitution as intentional and retires the `# type: ignore[assignment]`:
 
 ```python
 from adcp.types import SchemaVariant, GeoCountry
@@ -181,7 +279,7 @@ class MyAudienceFilters(SomeLibraryFilters):
     excluded_countries: SchemaVariant[list[GeoCountry]]
 ```
 
-If you find a variant you need to extend that has neither a canonical nor a prefixed public alias, **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a public alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
+If a variant you need has neither a canonical nor a prefixed public alias, import it from its domain module (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
 
 `SchemaVariant[T]` collapses to `T` at runtime — Pydantic validates against the wrapped type unchanged. At type-check time the bundled mypy plugin (`adcp.types.mypy_plugin`) rewrites the annotation to `Any` so the LSP override check passes. **Adopters must enable the plugin in their mypy config** — add this line to `pyproject.toml`:
 
@@ -778,3 +876,49 @@ and a missing dimension to `url`, removing any remaining dimensions.
 also exported from `adcp.compat.legacy`. Coercion copies dictionaries and keeps
 unknown keys and values for normal schema validation; it does not validate or
 change strict construction defaults.
+
+### Named bases for statically typed version extensions
+
+Import a named base when subclassing a pinned protocol model. Assigning the
+result of `make_versioned_base()` to a variable remains useful at runtime, but
+mypy cannot use that variable as a statically typed class base, even with
+Literal overloads.
+
+```python
+from pydantic import Field
+from adcp.types.versioned_bases.v31 import ListCreativesRequestBase, PackageRequestBase
+
+class SellerListCreatives(ListCreativesRequestBase):
+    tenant_id: str | None = Field(default=None, exclude=True)
+
+class SellerPackage(PackageRequestBase):
+    inventory_key: str | None = Field(default=None, exclude=True)
+
+request = SellerListCreatives(include_assignments=True, tenant_id="tenant-1")
+include_assignments: bool = request.include_assignments
+wire = request.model_dump(mode="json")  # tenant_id is excluded
+```
+
+`versioned_bases.v30`, `.v31`, and `.v32` provide `<ModelName>Base` for every
+model advertised by the corresponding existing version namespace. They pin
+the same bundled contracts: 3.0, 3.1, and **3.2-beta.6**, respectively. `v32`
+does not mean the current rc.7 surface. The current `adcp.types` surface and the
+existing dict-shaped `adcp.types.v31` boundary models keep their behavior.
+
+Runtime field annotations and static declarations come from the same pinned
+portable schemas. Nested wire objects are typed dictionaries, accessed with
+keys, and dates/URLs remain their JSON string representations. Optional fields
+without defaults allow `None` to mean omission when the schema forbids null;
+protocol defaults, such as `include_assignments`, keep their concrete
+static types. Normal Pydantic coercion runs first, then the existing bundled
+validator enforces the resulting wire payload, including conditional rules.
+Unknown undeclared top-level fields are rejected; adopter fields must use
+`Field(exclude=True)` to stay outside the contract. Non-identifier JSON metadata
+(such as `$schema`) is supported through `model_validate()` and dictionary
+input rather than a Python attribute declaration.
+
+Version modules import lazily and construct only requested bases. Run
+`scripts/generate_versioned_bases.py` when bundled schemas change;
+`make validate-generated` checks both the runtime annotations and stubs for
+staleness. The generator does not read current generated-model annotations,
+so the scalar rewrite in #1286 cannot change these pinned nested types.

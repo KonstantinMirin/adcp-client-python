@@ -1,10 +1,10 @@
 """Tests for cross-module name collision aliases (#911, Step 2).
 
-Several bare type names are defined in more than one generated_poc module
-(snapshotted in scripts/collision_allowlist.json). When adopters write
-``from adcp.types import Creative`` they silently get whichever module wins
-the consolidate sort order. aliases.py provides ``<Context><BaseName>`` aliases
-so each per-module variant can be imported unambiguously.
+Several bare type names are defined in more than one generated_poc module.
+When adopters write ``from adcp.types import Creative`` they silently get
+whichever module wins the consolidate sort order. ``adcp.types.disambiguated``
+carries every variant under a module-derived qualified name; aliases.py gives
+the high-traffic ones a semantic ``<Context><BaseName>`` name as well.
 
 These tests assert that each alias resolves to the class defined in its named
 source module (by ``__module__``), NOT to the first-sorted winner, so that a
@@ -400,8 +400,18 @@ def test_list_creatives_response_enforces_format_reference_xor() -> None:
 
 
 def test_tmpx_macro_aliases_cover_distinct_shapes() -> None:
-    """TMPX macro aliases distinguish emitted values from registered names."""
+    """TMPX macro aliases distinguish emitted values from registered names.
+
+    The emitted value is an object with ``name``/``value``. The registered
+    macro name is a scalar root, so it is a constrained ``str`` rather than a
+    model with a ``root`` field — see #1277.
+    """
     from adcp.types import aliases as a
+    from adcp.types._scalar import ScalarStr
 
     assert set(a.IdentityMatchTmpxMacro.model_fields) == {"name", "value"}
-    assert set(a.ProviderRegistrationTmpxMacro.model_fields) == {"root"}
+
+    assert issubclass(a.ProviderRegistrationTmpxMacro, ScalarStr)
+    assert a.ProviderRegistrationTmpxMacro("CLICK_URL") == "CLICK_URL"
+    with pytest.raises(ValidationError):
+        a.ProviderRegistrationTmpxMacro("lowercase_is_not_a_macro_name")

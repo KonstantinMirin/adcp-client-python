@@ -373,6 +373,8 @@ def test_partial_product_is_retained_and_wholly_unmappable_product_is_omitted() 
                 {
                     "kind": "seller_inline",
                     "placement_id": "hero",
+                    # core/placement.json requires ``name`` or ``publisher_domain``.
+                    "name": "Hero",
                     "mode": "included",
                     "format_options": [{"format_kind": "image", "params": {"api_token": "unsafe"}}],
                 }

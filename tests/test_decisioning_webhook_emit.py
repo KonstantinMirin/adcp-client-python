@@ -494,6 +494,8 @@ def _make_request(*, with_url: bool = True, idem_suffix: str = "x") -> CreateMed
         "idempotency_key": f"idem_aaaa12345678{idem_suffix}",
         "start_time": "2026-05-01T00:00:00Z",
         "end_time": "2026-05-31T23:59:59Z",
+        # create-media-buy-request.json requires packages, a budget, or a proposal.
+        "packages": [{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
     }
     if with_url:
         payload["push_notification_config"] = {
