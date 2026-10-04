@@ -119,6 +119,27 @@ def module_top_level(tree: ast.Module) -> tuple[dict[str, ast.ClassDef], dict[st
     return classes, aliases
 
 
+def _alias_arms_expr(node: ast.expr) -> ast.expr:
+    """The type an alias names, with any ``Annotated[...]`` metadata dropped.
+
+    A composing root is emitted as ``Annotated[A | B, Field(...)]``, so the arms are
+    the first subscript element and nothing else. Walking the whole expression reads
+    ``Annotated`` -- and the ``Field`` call beside it -- as union arms, and then fails
+    closed on the first one because no module defines a class by that name.
+    """
+    while (
+        isinstance(node, ast.Subscript)
+        and (
+            (isinstance(node.value, ast.Name) and node.value.id == "Annotated")
+            or (isinstance(node.value, ast.Attribute) and node.value.attr == "Annotated")
+        )
+        and isinstance(node.slice, ast.Tuple)
+        and node.slice.elts
+    ):
+        node = node.slice.elts[0]
+    return node
+
+
 def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str) -> list[str]:
     """The class(es) a task message can validate into, in the module that defines them.
 
@@ -137,7 +158,9 @@ def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str
             f"{schema_rel.as_posix()}: generated module {module.name} defines neither a "
             f"class nor a type alias named {root!r}"
         )
-    pending = [node.id for node in ast.walk(aliases[root]) if isinstance(node, ast.Name)]
+    pending = [
+        node.id for node in ast.walk(_alias_arms_expr(aliases[root])) if isinstance(node, ast.Name)
+    ]
     resolved: list[str] = []
     seen: set[str] = set()
     while pending:
@@ -149,7 +172,9 @@ def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str
             resolved.append(name)
         elif name in aliases:
             pending.extend(
-                node.id for node in ast.walk(aliases[name]) if isinstance(node, ast.Name)
+                node.id
+                for node in ast.walk(_alias_arms_expr(aliases[name]))
+                if isinstance(node, ast.Name)
             )
         else:
             raise RuntimeError(
