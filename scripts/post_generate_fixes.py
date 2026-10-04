@@ -6987,20 +6987,19 @@ def _root_generated_class(content: str, schema: dict) -> str | None:
 
 
 def _ensure_model_validator_import(content: str) -> str:
-    match = re.search(r"^from pydantic import (.+)$", content, re.MULTILINE)
-    if match is None:
-        return re.sub(
-            r"^class ",
-            "from pydantic import model_validator\n\n\nclass ",
-            content,
-            count=1,
-            flags=re.MULTILINE,
-        )
-    imported = [name.strip() for name in match.group(1).split(",")]
-    if "model_validator" in imported:
-        return content
-    names = ", ".join(sorted([*imported, "model_validator"]))
-    return content[: match.start()] + f"from pydantic import {names}" + content[match.end() :]
+    # ``ensure_pydantic_import`` keeps the statement in whichever form the
+    # formatter wrote it; strict scalar annotations push many modules past the
+    # line width, and a single-line rewrite of a parenthesized import leaves
+    # the module unparseable.
+    if _import_pattern("pydantic").search(content) is not None:
+        return ensure_pydantic_import(content, "model_validator")
+    return re.sub(
+        r"^class ",
+        "from pydantic import model_validator\n\n\nclass ",
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
 
 
 def _append_to_class_block(content: str, class_name: str, block: str) -> str:
