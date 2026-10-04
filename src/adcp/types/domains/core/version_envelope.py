@@ -6,17 +6,13 @@ more than once is still unambiguous:
     from adcp.types.domains.core.version_envelope import <Type>
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:36:32 UTC
+Generation date: 2026-10-04 01:19:07 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.core.version_envelope import (
-    AdcpMajorVersion,
-    AdcpVersion,
-    AdcpVersionEnvelope,
-)
+from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
 
 # Explicit exports
-__all__ = ["AdcpMajorVersion", "AdcpVersion", "AdcpVersionEnvelope"]
+__all__ = ["AdcpVersionEnvelope"]

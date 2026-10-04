@@ -1266,7 +1266,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output-file",
         type=Path,
         default=OUTPUT_FILE,
-        help="destination for the consolidated Python module",
+        help="destination for the consolidated Python module; the derived "
+        "domains/ package and error_details.py are written beside it",
+    )
+    parser.add_argument(
+        "--source-root",
+        type=Path,
+        default=None,
+        help="source tree whose ``adcp`` package the error-details derivation imports "
+        "(defaults to the installed package)",
+    )
+    parser.add_argument(
+        "--report-file",
+        type=Path,
+        default=COLLISION_REPORT_FILE,
+        help="destination for the shared-type-names markdown report",
     )
     return parser.parse_args(argv)
 
@@ -1329,11 +1343,23 @@ def restore_generation_dates(previous: dict[Path, str]) -> None:
 
 def main(argv: list[str] | None = None):
     """Generate the consolidated namespace, the domain modules and error-details."""
-    global GENERATED_POC_DIR, OUTPUT_FILE
+    global GENERATED_POC_DIR, OUTPUT_FILE, DOMAINS_DIR, ERROR_DETAILS_FILE, COLLISION_REPORT_FILE
 
     args = _parse_args(argv)
     GENERATED_POC_DIR = args.input_dir.resolve()
     OUTPUT_FILE = args.output_file.resolve()
+    # The derived modules live beside ``_generated.py``: when ``generate_types.py``
+    # consolidates into its staging tree, every derived artifact lands there too
+    # and is installed (or, under ``--check``, compared) as one unit.
+    DOMAINS_DIR = OUTPUT_FILE.parent / "domains"
+    ERROR_DETAILS_FILE = OUTPUT_FILE.parent / "error_details.py"
+    COLLISION_REPORT_FILE = args.report_file.resolve()
+    if args.source_root is not None:
+        # ``_error_details_closure`` imports the generated package to walk its
+        # annotations. It has to see the tree being consolidated, not whichever
+        # ``adcp`` is installed in the environment — otherwise the error-details
+        # surface is derived from the previous generation and lags one run behind.
+        sys.path.insert(0, str(args.source_root.resolve()))
 
     print("Generating consolidated exports from generated_poc modules...")
 

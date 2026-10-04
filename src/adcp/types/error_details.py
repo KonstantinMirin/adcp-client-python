@@ -17,32 +17,26 @@ A nested name that two error-details schemas both define carries the
 defining file in its name (``ScopeFromRateLimited``) instead of a bare one.
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 04:47:28 UTC
+Generation date: 2026-10-04 01:19:10 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.core.applicable_package_id import ApplicablePackageId
-from adcp.types.generated_poc.core.brand_id import BrandId
-from adcp.types.generated_poc.core.brand_key import BrandKey, Country
+from adcp.types.generated_poc.core.brand_key import BrandKey
 from adcp.types.generated_poc.core.canonical_account_ref import (
-    CanonicalAccountReference,
     CanonicalAccountReference1,
     CanonicalAccountReference2,
 )
-from adcp.types.generated_poc.core.creative_revision_id import CreativeRevisionId
 from adcp.types.generated_poc.core.downstream_connection_requirement import (
     ConnectionType,
     DownstreamConnectionRequirement,
-    RequiredForItem as RequiredForItemFromDownstreamConnectionRequirement,
     ResourceRef,
     Scope as ScopeFromDownstreamConnectionRequirement,
     Status as StatusFromDownstreamConnectionRequirement,
 )
 from adcp.types.generated_poc.core.ext import ExtensionObject
 from adcp.types.generated_poc.core.format_option_ref import (
-    FormatOptionReference,
     FormatOptionReference1,
     FormatOptionReference2,
 )
@@ -53,16 +47,12 @@ from adcp.types.generated_poc.core.macro_resolution_result import (
     UnavailableBehavior,
 )
 from adcp.types.generated_poc.core.media_buy_available_action import MediaBuyAvailableAction, Task
-from adcp.types.generated_poc.core.media_buy_change_term_id import MediaBuyChangeTermId
-from adcp.types.generated_poc.core.media_buy_legacy_terms_ref import MediaBuyTermsReference
 from adcp.types.generated_poc.core.operator_unit import OperatorUnit
 from adcp.types.generated_poc.core.product_execution_requirement import (
     Connection,
-    ProductExecutionRequirement,
     ProductExecutionRequirement1,
     ProductExecutionRequirement2,
     ProductExecutionRequirement3,
-    RequiredForItem as RequiredForItemFromProductExecutionRequirement,
 )
 from adcp.types.generated_poc.core.representation_rejection import Code, RepresentationRejection
 from adcp.types.generated_poc.core.sla_window import SlaWindow
@@ -150,7 +140,6 @@ from adcp.types.generated_poc.error_details.unsupported_refinement_dimension imp
 from adcp.types.generated_poc.error_details.vast_version_mismatch import (
     DocumentRole,
     MismatchReason,
-    ObservedDocumentVastVersion,
     VastVersionMismatchDetails,
     VastVersionMismatchDetails1,
     VastVersionMismatchDetails2,
@@ -187,16 +176,13 @@ __all__ = [
     "AnyOf",
     "AnyOf1",
     "AnyOf2",
-    "ApplicablePackageId",
     "AudienceTooSmallDetails",
     "AuthorizationRequiredDetails",
     "BillingNotPermittedForAgentDetails",
     "BillingNotSupportedDetails",
     "BillingParty",
-    "BrandId",
     "BrandKey",
     "BudgetTooLowDetails",
-    "CanonicalAccountReference",
     "CanonicalAccountReference1",
     "CanonicalAccountReference2",
     "CatalogType",
@@ -205,11 +191,9 @@ __all__ = [
     "ConflictDetails",
     "Connection",
     "ConnectionType",
-    "Country",
     "CreativeRejectedDetails",
     "CreativeRepresentationUnresolvedDetails",
     "CreativeRevisionContentMismatchDetails",
-    "CreativeRevisionId",
     "DocumentRole",
     "DownstreamConnectionRequirement",
     "EnvelopeField",
@@ -220,7 +204,6 @@ __all__ = [
     "ExtensionObject",
     "FailureKind",
     "FailureKind1",
-    "FormatOptionReference",
     "FormatOptionReference1",
     "FormatOptionReference2",
     "GovernanceAgentNotAcceptedDetails",
@@ -237,16 +220,12 @@ __all__ = [
     "MacroResolutionResult",
     "MediaBuyActionMode",
     "MediaBuyAvailableAction",
-    "MediaBuyChangeTermId",
-    "MediaBuyTermsReference",
     "MediaBuyValidAction",
     "MismatchReason",
-    "ObservedDocumentVastVersion",
     "OperatorUnit",
     "Origin",
     "OriginalError",
     "PolicyViolationDetails",
-    "ProductExecutionRequirement",
     "ProductExecutionRequirement1",
     "ProductExecutionRequirement2",
     "ProductExecutionRequirement3",
@@ -254,8 +233,6 @@ __all__ = [
     "Reason",
     "Recovery",
     "RepresentationRejection",
-    "RequiredForItemFromDownstreamConnectionRequirement",
-    "RequiredForItemFromProductExecutionRequirement",
     "RequoteRequiredDetails",
     "ResourceRef",
     "ScopeFromBillingNotSupported",

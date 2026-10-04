@@ -6,55 +6,13 @@ more than once is still unambiguous:
     from adcp.types.domains.media_buy.product_purchase import <Type>
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:36:32 UTC
+Generation date: 2026-10-04 01:19:07 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.media_buy.product_purchase import (
-    AgencyEstimateNumber,
-    AudienceEvidencePins,
-    Bidding,
-    Budget,
-    CatalogId,
-    CatalogIds,
-    Context,
-    DailyBudgetCap,
-    EndTime,
-    Ext,
-    FormatOptionRefs,
-    MinSpendTarget,
-    OptimizationGoals,
-    Pacing,
-    PerformanceStandards,
-    Pricing,
-    PricingOptionId,
-    ProductId,
-    ProductPurchase,
-    StartTime,
-)
+from adcp.types.generated_poc.media_buy.product_purchase import CatalogId, ProductPurchase
 
 # Explicit exports
-__all__ = [
-    "AgencyEstimateNumber",
-    "AudienceEvidencePins",
-    "Bidding",
-    "Budget",
-    "CatalogId",
-    "CatalogIds",
-    "Context",
-    "DailyBudgetCap",
-    "EndTime",
-    "Ext",
-    "FormatOptionRefs",
-    "MinSpendTarget",
-    "OptimizationGoals",
-    "Pacing",
-    "PerformanceStandards",
-    "Pricing",
-    "PricingOptionId",
-    "ProductId",
-    "ProductPurchase",
-    "StartTime",
-]
+__all__ = ["CatalogId", "ProductPurchase"]

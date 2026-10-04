@@ -6,7 +6,7 @@ more than once is still unambiguous:
     from adcp.types.domains.core.wholesale_feed_event import <Type>
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:36:32 UTC
+Generation date: 2026-10-04 01:19:07 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -28,6 +28,7 @@ from adcp.types.generated_poc.core.wholesale_feed_event import (
     Payload23,
     Payload24,
     Payload25,
+    Range,
     RemovalReason,
     Signal,
     WholesaleFeedEvent,
@@ -59,6 +60,7 @@ __all__ = [
     "Payload23",
     "Payload24",
     "Payload25",
+    "Range",
     "RemovalReason",
     "Signal",
     "WholesaleFeedEvent",

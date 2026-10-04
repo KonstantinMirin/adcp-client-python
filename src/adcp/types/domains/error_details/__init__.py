@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Generation date: 2026-10-04 01:19:01 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -80,7 +80,6 @@ from adcp.types.generated_poc.error_details.unsupported_refinement_dimension imp
 from adcp.types.generated_poc.error_details.vast_version_mismatch import (
     DocumentRole,
     MismatchReason,
-    ObservedDocumentVastVersion,
     VastVersionMismatchDetails,
     VastVersionMismatchDetails1,
     VastVersionMismatchDetails2,
@@ -127,7 +126,6 @@ __all__ = [
     "GovernanceAgentNotAcceptedDetails2",
     "MacroResolutionFailedDetails",
     "MismatchReason",
-    "ObservedDocumentVastVersion",
     "Origin",
     "OriginalError",
     "PolicyViolationDetails",

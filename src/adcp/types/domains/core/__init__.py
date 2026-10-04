@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Generation date: 2026-10-04 01:19:01 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -534,7 +534,6 @@ from adcp.types.generated_poc.core.canonical_reporting_commitment import (
 )
 from adcp.types.generated_poc.core.canvas_constraint import CanvasConstraint, Constraint
 from adcp.types.generated_poc.core.capabilities_changed_webhook import CapabilitiesChangedWebhook
-from adcp.types.generated_poc.core.catalog import Gtins, Ids, Query, Tags
 from adcp.types.generated_poc.core.catalog_item_availability_error import (
     CatalogItemAvailabilityError,
 )
@@ -707,7 +706,7 @@ from adcp.types.generated_poc.core.evaluator_spec import (
 from adcp.types.generated_poc.core.event import Event
 from adcp.types.generated_poc.core.event_custom_data import Content, EventCustomData
 from adcp.types.generated_poc.core.event_source_health import Detail, EventSourceHealth
-from adcp.types.generated_poc.core.event_surface import EventSurface
+from adcp.types.generated_poc.core.event_surface import Category, EventSurface
 from adcp.types.generated_poc.core.experimental_feature_id import ExperimentalFeatureId
 from adcp.types.generated_poc.core.ext import ExtensionObject
 from adcp.types.generated_poc.core.feature_requirement import FeatureRequirement, IfNotCovered
@@ -1652,41 +1651,7 @@ from adcp.types.generated_poc.core.spot_reporting_capability import SpotReportin
 from adcp.types.generated_poc.core.start_timing import StartTiming
 from adcp.types.generated_poc.core.store_item import StoreItem
 from adcp.types.generated_poc.core.talent import Talent
-from adcp.types.generated_poc.core.targeting import (
-    AgeRestriction,
-    AudienceExclude,
-    AudienceInclude,
-    AxeExcludeSegment,
-    AxeIncludeSegment,
-    Browser,
-    BrowserExclude,
-    CollectionListExclude,
-    DaypartTargets,
-    DevicePlatform,
-    DevicePlatformExclude,
-    DeviceType,
-    DeviceTypeExclude,
-    GeoCountries,
-    GeoCountriesExclude,
-    GeoCountriesExcludeItem,
-    GeoCountry,
-    GeoMetrosExclude,
-    GeoMetrosExcludeItem,
-    GeoPlaces,
-    GeoPlacesExclude,
-    GeoPostalAreas,
-    GeoPostalAreasExclude,
-    GeoProximityItem2,
-    GeoRegion,
-    GeoRegions,
-    GeoRegionsExclude,
-    GeoRegionsExcludeItem,
-    Geometry3,
-    PropertyListExclude,
-    StoreCatchment,
-    StoreCatchments,
-    TargetingOverlay,
-)
+from adcp.types.generated_poc.core.targeting import AgeRestriction, TargetingOverlay
 from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
 from adcp.types.generated_poc.core.targeting_modification import (
     Path,
@@ -1841,11 +1806,7 @@ from adcp.types.generated_poc.core.verification_token_claims import (
     VerificationTokenGradingProfile,
     VerificationTokenMode,
 )
-from adcp.types.generated_poc.core.version_envelope import (
-    AdcpMajorVersion,
-    AdcpVersion,
-    AdcpVersionEnvelope,
-)
+from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
 from adcp.types.generated_poc.core.warning import Warning
 from adcp.types.generated_poc.core.warning_resource import WarningAffectedResource
 from adcp.types.generated_poc.core.webhook_activity_record import WebhookActivityRecord
@@ -1927,8 +1888,6 @@ __all__ = [
     "AdcpAssetGroupVocabularyRegistry",
     "AdcpAsyncResponseData",
     "AdcpFormatShapeVocabularyRegistry",
-    "AdcpMajorVersion",
-    "AdcpVersion",
     "AdcpVersionEnvelope",
     "AdditionalItem",
     "AdjustmentMagnitudeItem",
@@ -2041,9 +2000,7 @@ __all__ = [
     "AudienceEvidencePin",
     "AudienceEvidenceRequirements",
     "AudienceEvidenceSelection",
-    "AudienceExclude",
     "AudienceForecastDimension",
-    "AudienceInclude",
     "AudienceMember",
     "AudienceScope",
     "AudienceSelector",
@@ -2064,8 +2021,6 @@ __all__ = [
     "AuthorizationType",
     "AuthorizedAgentBaseFields",
     "AvailabilityHorizon",
-    "AxeExcludeSegment",
-    "AxeIncludeSegment",
     "Axis",
     "BadgeRole",
     "Bank",
@@ -2090,8 +2045,6 @@ __all__ = [
     "BrandResponseAuthorizationResult",
     "BrandResponseAuthorizationResult1",
     "BrandResponseAuthorizationResult2",
-    "Browser",
-    "BrowserExclude",
     "BrowserRequirement",
     "BrowserRequirement1",
     "BrowserSupport",
@@ -2209,6 +2162,7 @@ __all__ = [
     "CatalogSelection",
     "CatalogType",
     "Catchment",
+    "Category",
     "ChangedFields",
     "Classification",
     "CloseReason",
@@ -2217,7 +2171,6 @@ __all__ = [
     "CollectionDeliveryMetrics",
     "CollectionDistribution",
     "CollectionIdentifier",
-    "CollectionListExclude",
     "CollectionListReference",
     "CollectionPayload",
     "CollectionPropertyDeliveryMetrics",
@@ -2314,7 +2267,6 @@ __all__ = [
     "DaypartSupport",
     "DaypartSupport1",
     "DaypartTarget",
-    "DaypartTargets",
     "DeadlinePolicy",
     "DeclineProposalsInputRequired",
     "DeclineProposalsSubmitted",
@@ -2348,11 +2300,7 @@ __all__ = [
     "DestinationType",
     "Detail",
     "Details",
-    "DevicePlatform",
-    "DevicePlatformExclude",
     "DevicePlatformForecastDimension",
-    "DeviceType",
-    "DeviceTypeExclude",
     "DeviceTypeForecastDimension",
     "DiagnosticIssue",
     "DigitalSourceType",
@@ -2441,24 +2389,9 @@ __all__ = [
     "GenerationContext",
     "GenerationCredential",
     "Geo",
-    "GeoCountries",
-    "GeoCountriesExclude",
-    "GeoCountriesExcludeItem",
-    "GeoCountry",
     "GeoDeliveryMetrics",
     "GeoForecastDimension",
     "GeoMetro",
-    "GeoMetrosExclude",
-    "GeoMetrosExcludeItem",
-    "GeoPlaces",
-    "GeoPlacesExclude",
-    "GeoPostalAreas",
-    "GeoPostalAreasExclude",
-    "GeoProximityItem2",
-    "GeoRegion",
-    "GeoRegions",
-    "GeoRegionsExclude",
-    "GeoRegionsExcludeItem",
     "GeoTargets",
     "GeographicBreakdownSupport",
     "GeographicPlaceArea",
@@ -2475,7 +2408,6 @@ __all__ = [
     "GeographicPlaceType2",
     "GeographicRegionRequirement",
     "GeographicRegionSupport",
-    "Geometry3",
     "GetCreativeFeaturesSubmitted",
     "GetGeographicPlaceResolutionRequest",
     "GetGeographicPlaceResolutionResponse",
@@ -2489,14 +2421,12 @@ __all__ = [
     "GovernanceAgent",
     "GradingProfile",
     "GrantStatus",
-    "Gtins",
     "HistoryItem",
     "HotelItem",
     "HtmlAssetRequirements",
     "HttpMethod",
     "IanaTimezoneIdentifier",
     "IanaTimezones",
-    "Ids",
     "IfNotCovered",
     "ImageAssetRequirements",
     "ImageDecoration",
@@ -2920,7 +2850,6 @@ __all__ = [
     "Property",
     "PropertyDeliveryMetrics",
     "PropertyId",
-    "PropertyListExclude",
     "PropertyListReference",
     "PropertyPayload",
     "PropertyReference",
@@ -2962,7 +2891,6 @@ __all__ = [
     "Qualifier3",
     "QualifierModel",
     "QuartileData",
-    "Query",
     "QuerySummary",
     "RankByItem",
     "RankByItem1",
@@ -3161,8 +3089,6 @@ __all__ = [
     "Specification",
     "SpotReportingCapability",
     "StartTiming",
-    "StoreCatchment",
-    "StoreCatchments",
     "StoreItem",
     "Storyboard",
     "StoryboardStatus",
@@ -3220,7 +3146,6 @@ __all__ = [
     "System3",
     "System9",
     "Tag",
-    "Tags",
     "Talent",
     "Target1",
     "Target10",
