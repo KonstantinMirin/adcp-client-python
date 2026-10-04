@@ -110,8 +110,20 @@ schema that renders as a union of arms (`AssetVariant`,
 than an object, which is what a pure `if`/`then` constraint schema produces.
 Those compose as copied fields, and `TypeAdapter` is the way to validate them.
 
-Note that `AdcpVersionEnvelope` itself is not exported from `adcp.types`;
-`ProtocolEnvelope` is.
+Both envelope classes are exported from `adcp.types`, and `AdcpVersionEnvelope`
+is also on the curated `adcp.types.protocol` surface, so neither check needs a
+private import:
+
+```python
+from adcp.types import AdcpVersionEnvelope, ProtocolEnvelope
+```
+
+Composed ancestry is also what makes a task message identifiable before you know
+the tool. Every task request and response additionally descends from
+`AdcpRequest` or `AdcpResponse`, which carry the cross-cutting accessors and the
+envelope/payload field classifiers. See
+[the type surface](type-surface.md) for what those two guarantee and for the
+descent check to use when refusing a hand-written look-alike.
 
 ## Picking the Right Base Class — Context-Specific Schema Variants
 

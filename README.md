@@ -368,6 +368,8 @@ the SDK's supported versions in the error details.
 
 - **[API Reference](https://adcontextprotocol.github.io/adcp-client-python/)** - Complete API documentation with type signatures and examples
 - **[Protocol Spec](https://github.com/adcontextprotocol/adcp)** - Ad Context Protocol specification
+- **[The type surface](docs/type-surface.md)** - Where a generated class lives, which spelling to import it by, and what `AdcpRequest` and `AdcpResponse` guarantee
+- **[How the type tree is generated](docs/design/type-generation.md)** - The generation pipeline, name derivation, the guards, and the generator pin
 - **[Handler authoring](docs/handler-authoring.md)** - Building an AdCP-compliant agent on `adcp.server`
 - **[Production seller path](docs/production-seller.md)** - Choose the server abstraction and wire durable multi-tenant tasks and webhook delivery
 - **[Validation contract](docs/validation-contract.md)** - Canonical wire validation versus structural Pydantic models
