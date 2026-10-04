@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Features
+
+* **auth:** `BearerTokenAuth.resolve_principal` supports sync/async non-bearer
+  principal resolution on MCP and A2A using the same metadata-only `AuthRequest`.
+  Supplied credential headers always select bearer auth; invalid credentials
+  cannot obtain fallback identity. `PrincipalResolverError` provides safe typed
+  401/403 denial, resolved identities populate all existing channels, and async
+  bearer validators now work on A2A. See [migration and precedence](docs/principal-resolution.md).
+  Refs #1304.
+
+### Bug fixes
+
+* **signing:** The webhook receiver's `WWW-Authenticate` challenge now carries
+  `webhook_target_uri_malformed` instead of rewriting it to
+  `webhook_signature_invalid`. A JWKS host that fails DNS resolution in
+  `CachingJwksResolver` or `AsyncCachingJwksResolver` now reports the
+  transient `request_signature_jwks_unavailable`, not the terminal
+  `request_signature_jwks_untrusted`. Refs #1386.
+
+* **auth:** MCP's `allow_unauthenticated` path preserves principal, tenant,
+  and metadata established by outer middleware in request state or ContextVars,
+  matching A2A. Explicit request state takes precedence, including anonymous
+  state. Caller identity headers remain untrusted. Refs #1304 (outer identity).
+
+### Security fixes
+
+* **auth:** MCP and A2A reject conflicting accepted credentials (401),
+  including repeated headers; identical decoded duplicates are accepted.
+  Empty or malformed accepted headers cannot bypass auth or fall back to an
+  alias. Auth diagnostics include reason codes, never credential values or
+  validator exception text. During migration, send the same token in every
+  accepted carrier, or send only one. Refs #1305.
+
 ### Bug Fixes
 
 * **router:** Optional legacy creative and compact lifecycle tools now follow
@@ -11,6 +44,23 @@
   `LazyPlatformRouter` or `TenantRegistry.as_platform()`.
 
 ### ⚠ BREAKING CHANGES
+
+* **signing:** Webhook verification emits only the codes the AdCP 3.2.1
+  webhook error taxonomy defines. JWKS discovery failures that surfaced as
+  `webhook_signature_jwks_unavailable` or `webhook_signature_jwks_untrusted`
+  are now `webhook_signature_key_unknown`. An unsigned webhook, or one carrying
+  only `Signature` or only `Signature-Input`, is now
+  `webhook_signature_header_malformed` (was `webhook_signature_required`), as
+  is a duplicated covered component (was
+  `webhook_signature_components_unexpected`). `adcp.signing.errors` no longer
+  defines `WEBHOOK_SIGNATURE_REQUIRED`, `WEBHOOK_SIGNATURE_COMPONENTS_UNEXPECTED`,
+  `WEBHOOK_SIGNATURE_JWKS_UNAVAILABLE` or `WEBHOOK_SIGNATURE_JWKS_UNTRUSTED`;
+  match the replacement codes instead, and use the new
+  `adcp.signing.errors.WEBHOOK_ERROR_CODES` set for the full list. To keep
+  retrying a receiver-side JWKS outage locally, read the new
+  `SignatureVerificationError.transient` (or `WebhookOutcome.transient`)
+  attribute instead of the code; the precise `request_signature_*` cause stays
+  on `exc.__cause__` and in the WARNING log. Refs #1386.
 
 * **server:** Public A2A deployments must configure `allowed_hosts` before
   upgrading. A2A now enforces the same Host/Origin policy as MCP, with a

@@ -23,6 +23,14 @@ class SignatureVerificationError(Exception):
     Middleware adapters surface these as structured fields on the 401
     response or in a DLQ payload; ``str(exc)`` continues to render the
     free-form message for unstructured logs.
+
+    ``transient`` says whether the same input could succeed on a later
+    attempt -- a JWKS, capabilities or brand.json fetch that failed on DNS,
+    TCP, TLS, a timeout or a non-2xx. It defaults from ``code`` (the codes
+    whose ``enumMetadata.recovery`` is ``transient``). The webhook profile
+    puts one code, ``webhook_signature_key_unknown``, on the wire for every
+    key-discovery failure, so on that profile this attribute is the only
+    in-process signal that a retry could succeed.
     """
 
     def __init__(
@@ -32,11 +40,30 @@ class SignatureVerificationError(Exception):
         step: int | str | None = None,
         message: str | None = None,
         detail: Mapping[str, str] | None = None,
+        transient: bool | None = None,
     ) -> None:
         super().__init__(message or code)
         self.code = code
         self.step = step
         self.detail = dict(detail) if detail is not None else None
+        self.transient = code in _TRANSIENT_CODES if transient is None else transient
+
+
+def signature_challenge(code: str) -> str:
+    """``WWW-Authenticate`` value for a 401 the signing profile rejects.
+
+    security.mdx § Transport error taxonomy: "AdCP does NOT define a realm
+    value for request-signing challenges. Verifiers MUST emit
+    ``WWW-Authenticate: Signature error="<code>"`` with no ``realm``
+    parameter and no other parameters."
+
+    Every 401 the SDK emits for a signature failure formats the value here —
+    the request leg (:func:`adcp.signing.middleware.unauthorized_response_headers`),
+    the webhook leg (:mod:`adcp.webhook_receiver`), and the bearer middleware's
+    signature-fallback challenge (:mod:`adcp.server.auth`) — so the three
+    cannot drift from the byte string peers and conformance harnesses match.
+    """
+    return f'Signature error="{code}"'
 
 
 REQUEST_SIGNATURE_REQUIRED = "request_signature_required"
@@ -84,17 +111,26 @@ REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS = "request_signature_brand_json_ambiguous
 REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH = "request_signature_key_origin_mismatch"
 REQUEST_SIGNATURE_KEY_ORIGIN_MISSING = "request_signature_key_origin_missing"
 
+#: Request-family codes whose ``enumMetadata.recovery`` is ``transient`` in the
+#: pinned ``request-signing-error-code.json``: the fetch did not complete, so the
+#: same input can succeed later. Every other code is terminal or correctable.
+_TRANSIENT_CODES = frozenset(
+    {
+        REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE,
+        REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
+        REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
+    }
+)
+
 # Webhook-signing error taxonomy — adcp#2423 / webhooks.mdx + security.mdx.
 # Distinct strings from the request-signing family so receivers can route the
 # 401 response through webhook-specific observability.
-WEBHOOK_SIGNATURE_REQUIRED = "webhook_signature_required"
 WEBHOOK_SIGNATURE_HEADER_MALFORMED = "webhook_signature_header_malformed"
 WEBHOOK_SIGNATURE_PARAMS_INCOMPLETE = "webhook_signature_params_incomplete"
 WEBHOOK_SIGNATURE_TAG_INVALID = "webhook_signature_tag_invalid"
 WEBHOOK_SIGNATURE_ALG_NOT_ALLOWED = "webhook_signature_alg_not_allowed"
 WEBHOOK_SIGNATURE_WINDOW_INVALID = "webhook_signature_window_invalid"
 WEBHOOK_SIGNATURE_COMPONENTS_INCOMPLETE = "webhook_signature_components_incomplete"
-WEBHOOK_SIGNATURE_COMPONENTS_UNEXPECTED = "webhook_signature_components_unexpected"
 WEBHOOK_SIGNATURE_KEY_UNKNOWN = "webhook_signature_key_unknown"
 WEBHOOK_SIGNATURE_KEY_PURPOSE_INVALID = "webhook_signature_key_purpose_invalid"
 WEBHOOK_SIGNATURE_INVALID = "webhook_signature_invalid"
@@ -102,23 +138,23 @@ WEBHOOK_SIGNATURE_DIGEST_MISMATCH = "webhook_signature_digest_mismatch"
 WEBHOOK_SIGNATURE_REPLAYED = "webhook_signature_replayed"
 WEBHOOK_SIGNATURE_KEY_REVOKED = "webhook_signature_key_revoked"
 WEBHOOK_SIGNATURE_REVOCATION_STALE = "webhook_signature_revocation_stale"
-WEBHOOK_SIGNATURE_JWKS_UNAVAILABLE = "webhook_signature_jwks_unavailable"
-WEBHOOK_SIGNATURE_JWKS_UNTRUSTED = "webhook_signature_jwks_untrusted"
 WEBHOOK_SIGNATURE_RATE_ABUSE = "webhook_signature_rate_abuse"
 
-# brand.json discovery chain mirrors for the webhook profile. The chain
-# walks identically (capabilities → brand.json → agents[] → jwks_uri),
-# just consulting the ``webhook_signing`` purpose under
-# ``identity.key_origins`` instead of ``request_signing``.
-WEBHOOK_SIGNATURE_BRAND_JSON_URL_MISSING = "webhook_signature_brand_json_url_missing"
-WEBHOOK_SIGNATURE_CAPABILITIES_UNREACHABLE = "webhook_signature_capabilities_unreachable"
-WEBHOOK_SIGNATURE_BRAND_JSON_UNREACHABLE = "webhook_signature_brand_json_unreachable"
-WEBHOOK_SIGNATURE_BRAND_JSON_MALFORMED = "webhook_signature_brand_json_malformed"
-WEBHOOK_SIGNATURE_BRAND_ORIGIN_MISMATCH = "webhook_signature_brand_origin_mismatch"
-WEBHOOK_SIGNATURE_AGENT_NOT_IN_BRAND_JSON = "webhook_signature_agent_not_in_brand_json"
-WEBHOOK_SIGNATURE_BRAND_JSON_AMBIGUOUS = "webhook_signature_brand_json_ambiguous"
-WEBHOOK_SIGNATURE_KEY_ORIGIN_MISMATCH = "webhook_signature_key_origin_mismatch"
-WEBHOOK_SIGNATURE_KEY_ORIGIN_MISSING = "webhook_signature_key_origin_missing"
+# The webhook profile declares no per-hop code for the key-discovery chain.
+# security.mdx § "Webhook callbacks" → JWKS discovery walks four steps
+# (brand.json fetch → ``agents[]`` match → ``jwks_uri`` fetch → ``keyid``
+# resolve) and names exactly one rejection code for the whole chain,
+# ``webhook_signature_key_unknown``; webhook checklist step 7 repeats it and
+# adds "Reject if ``keyid`` cannot be resolved to a specific ``agents[]``
+# entry in the signer's brand.json". The webhook error taxonomy table carries
+# no brand.json, capabilities or key-origin row. That is the deliberate
+# asymmetry with the request profile, whose own discovery-chain
+# rejection-code table assigns a distinct code and a structured ``detail``
+# shape to every hop: a webhook sender learns that its key did not resolve
+# and nothing about the receiver's walk to reach that conclusion.
+#
+# Every ``request_signature_*`` discovery code therefore translates to
+# ``WEBHOOK_SIGNATURE_KEY_UNKNOWN`` in ``REQUEST_TO_WEBHOOK_CODE`` below.
 
 # Structural code for a malformed authority on the webhook profile. Named
 # without the ``webhook_signature_`` prefix the rest of this family carries
@@ -129,12 +165,51 @@ WEBHOOK_TARGET_URI_MALFORMED = "webhook_target_uri_malformed"
 # Webhook twin of ``request_body_malformed`` (webhook checklist step 14).
 WEBHOOK_BODY_MALFORMED = "webhook_body_malformed"
 
+#: Every code the webhook profile defines: security.mdx (AdCP 3.2.1)
+#: § "Webhook error taxonomy". A webhook verifier emits nothing else. In
+#: particular the profile has no ``required``, ``components_unexpected`` or
+#: ``jwks_*`` code: an unsigned delivery and a duplicated covered component are
+#: malformed signature headers, and every JWKS discovery failure is
+#: ``webhook_signature_key_unknown`` (checklist step 7). ``webhook_mode_mismatch``
+#: is the registration-mode check, decided outside the signature verifier.
+WEBHOOK_ERROR_CODES = frozenset(
+    {
+        WEBHOOK_SIGNATURE_HEADER_MALFORMED,
+        WEBHOOK_SIGNATURE_PARAMS_INCOMPLETE,
+        WEBHOOK_SIGNATURE_TAG_INVALID,
+        WEBHOOK_SIGNATURE_ALG_NOT_ALLOWED,
+        WEBHOOK_SIGNATURE_WINDOW_INVALID,
+        WEBHOOK_SIGNATURE_COMPONENTS_INCOMPLETE,
+        WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+        WEBHOOK_SIGNATURE_KEY_PURPOSE_INVALID,
+        WEBHOOK_SIGNATURE_KEY_REVOKED,
+        WEBHOOK_SIGNATURE_REVOCATION_STALE,
+        WEBHOOK_SIGNATURE_INVALID,
+        WEBHOOK_SIGNATURE_DIGEST_MISMATCH,
+        WEBHOOK_BODY_MALFORMED,
+        WEBHOOK_TARGET_URI_MALFORMED,
+        WEBHOOK_SIGNATURE_REPLAYED,
+        WEBHOOK_SIGNATURE_RATE_ABUSE,
+        "webhook_mode_mismatch",
+    }
+)
+
 # Code-family translation used by the webhook verifier wrapper. The verifier
 # pipeline raises request_signature_* codes; the wrapper retags them into
 # webhook_signature_* before exposing to callers. Keeps the 300-line verifier
 # unchanged and guarantees webhook routes never leak request-family codes.
+#
+# This table is the only place the webhook profile's code for a request-family
+# failure is decided. A row that mirrors the request code into the webhook
+# family keeps its suffix; a row that maps to a coarser webhook code because
+# the profile declares nothing finer changes it, and the wrapper logs the
+# precise request-family cause whenever that happens. Readers grade the webhook
+# profile's emitted taxonomy off the values in this table — so a row that no
+# input can reach is a row that lies.
 REQUEST_TO_WEBHOOK_CODE = {
-    REQUEST_SIGNATURE_REQUIRED: WEBHOOK_SIGNATURE_REQUIRED,
+    # No signature at all is the degenerate case of the profile's "header
+    # malformed or one without the other" row; it defines no ``required`` code.
+    REQUEST_SIGNATURE_REQUIRED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
     REQUEST_SIGNATURE_HEADER_MALFORMED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
     REQUEST_TARGET_URI_MALFORMED: WEBHOOK_TARGET_URI_MALFORMED,
     REQUEST_SIGNATURE_PARAMS_INCOMPLETE: WEBHOOK_SIGNATURE_PARAMS_INCOMPLETE,
@@ -142,7 +217,9 @@ REQUEST_TO_WEBHOOK_CODE = {
     REQUEST_SIGNATURE_ALG_NOT_ALLOWED: WEBHOOK_SIGNATURE_ALG_NOT_ALLOWED,
     REQUEST_SIGNATURE_WINDOW_INVALID: WEBHOOK_SIGNATURE_WINDOW_INVALID,
     REQUEST_SIGNATURE_COMPONENTS_INCOMPLETE: WEBHOOK_SIGNATURE_COMPONENTS_INCOMPLETE,
-    REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED: WEBHOOK_SIGNATURE_COMPONENTS_UNEXPECTED,
+    # Reached on this profile only by a duplicated covered component (content-digest
+    # coverage is required, never forbidden): a malformed Signature-Input.
+    REQUEST_SIGNATURE_COMPONENTS_UNEXPECTED: WEBHOOK_SIGNATURE_HEADER_MALFORMED,
     REQUEST_SIGNATURE_KEY_UNKNOWN: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
     REQUEST_SIGNATURE_KEY_PURPOSE_INVALID: WEBHOOK_SIGNATURE_KEY_PURPOSE_INVALID,
     REQUEST_SIGNATURE_INVALID: WEBHOOK_SIGNATURE_INVALID,
@@ -150,17 +227,22 @@ REQUEST_TO_WEBHOOK_CODE = {
     REQUEST_SIGNATURE_REPLAYED: WEBHOOK_SIGNATURE_REPLAYED,
     REQUEST_SIGNATURE_KEY_REVOKED: WEBHOOK_SIGNATURE_KEY_REVOKED,
     REQUEST_SIGNATURE_REVOCATION_STALE: WEBHOOK_SIGNATURE_REVOCATION_STALE,
-    REQUEST_SIGNATURE_JWKS_UNAVAILABLE: WEBHOOK_SIGNATURE_JWKS_UNAVAILABLE,
-    REQUEST_SIGNATURE_JWKS_UNTRUSTED: WEBHOOK_SIGNATURE_JWKS_UNTRUSTED,
     REQUEST_SIGNATURE_RATE_ABUSE: WEBHOOK_SIGNATURE_RATE_ABUSE,
     REQUEST_BODY_MALFORMED: WEBHOOK_BODY_MALFORMED,
-    REQUEST_SIGNATURE_BRAND_JSON_URL_MISSING: WEBHOOK_SIGNATURE_BRAND_JSON_URL_MISSING,
-    REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE: WEBHOOK_SIGNATURE_CAPABILITIES_UNREACHABLE,
-    REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE: WEBHOOK_SIGNATURE_BRAND_JSON_UNREACHABLE,
-    REQUEST_SIGNATURE_BRAND_JSON_MALFORMED: WEBHOOK_SIGNATURE_BRAND_JSON_MALFORMED,
-    REQUEST_SIGNATURE_BRAND_ORIGIN_MISMATCH: WEBHOOK_SIGNATURE_BRAND_ORIGIN_MISMATCH,
-    REQUEST_SIGNATURE_AGENT_NOT_IN_BRAND_JSON: WEBHOOK_SIGNATURE_AGENT_NOT_IN_BRAND_JSON,
-    REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS: WEBHOOK_SIGNATURE_BRAND_JSON_AMBIGUOUS,
-    REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH: WEBHOOK_SIGNATURE_KEY_ORIGIN_MISMATCH,
-    REQUEST_SIGNATURE_KEY_ORIGIN_MISSING: WEBHOOK_SIGNATURE_KEY_ORIGIN_MISSING,
+    # Key-discovery chain. The webhook profile stops at
+    # ``webhook_signature_key_unknown`` for every hop — see the comment above
+    # the WEBHOOK_* constants.
+    REQUEST_SIGNATURE_BRAND_JSON_URL_MISSING: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_BRAND_JSON_MALFORMED: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_BRAND_ORIGIN_MISMATCH: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_AGENT_NOT_IN_BRAND_JSON: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_KEY_ORIGIN_MISSING: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    # The JWKS fetch is the chain's last hop. ``transient`` on the retagged
+    # error keeps the unavailable/untrusted distinction in-process.
+    REQUEST_SIGNATURE_JWKS_UNAVAILABLE: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
+    REQUEST_SIGNATURE_JWKS_UNTRUSTED: WEBHOOK_SIGNATURE_KEY_UNKNOWN,
 }

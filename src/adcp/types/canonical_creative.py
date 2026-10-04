@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from enum import Enum
 from typing import Annotated, Any, ClassVar, Literal, TypeVar
 
@@ -46,8 +46,6 @@ from adcp.types.generated_poc.core.pricing_option import PricingOption as _Legac
 from adcp.types.generated_poc.core.product import Product as _LegacyProduct
 from adcp.types.generated_poc.core.product_filters import ProductFilters as _LegacyProductFilters
 from adcp.types.generated_poc.core.product_format_declaration import SellerPreference
-from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
-from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
 from adcp.types.generated_poc.creative.get_creative_delivery_response import (
     Creative as _LegacyDeliveryCreative,
 )
@@ -326,6 +324,12 @@ class CanonicalBoundaryModel(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow", defer_build=True)
     __adcp_canonical_creative_model__: ClassVar[bool] = True
+    #: The generated class a canonical clone stands in for; ``None`` on a model
+    #: declared directly. Set by :func:`_canonical_clone`.
+    __adcp_canonical_source__: ClassVar[type[AdCPBaseModel] | None] = None
+    #: Source validators a clone left behind, each with the dropped field names
+    #: it touches. Empty on a model declared directly.
+    __adcp_canonical_validators_left_behind__: ClassVar[dict[str, set[str]]] = {}
 
     @model_validator(mode="before")
     @classmethod
@@ -413,30 +417,122 @@ def _serialize_canonical_model(
     )
 
 
-#: Protocol envelopes a generated wire model may compose at its schema root.
-#: A canonical clone copies the envelope *fields*, but a clone built on
-#: ``CanonicalBoundaryModel`` alone would drop the envelope *ancestry* — so
-#: ``issubclass(GetProductsResponse, ProtocolEnvelope)`` would be ``False`` even
-#: though the response carries ``status``/``replayed``/``task_id``. Re-declare
-#: the envelopes as additional bases so the canonical surface keeps the same
-#: ancestry as the generated surface it replaces.
-_ENVELOPE_BASES: tuple[type[AdCPBaseModel], ...] = (AdcpVersionEnvelope, ProtocolEnvelope)
-
-
 def _canonical_clone_bases(source: type[AdCPBaseModel]) -> tuple[type[AdCPBaseModel], ...]:
-    """Return the clone bases for ``source``: its envelopes, then the boundary.
+    """Return the clone bases for ``source``: what it composes, then the boundary.
+
+    A canonical clone copies the composed *fields*, but a clone built on
+    ``CanonicalBoundaryModel`` alone would drop the composed *ancestry* — so
+    ``issubclass(GetProductsResponse, ProtocolEnvelope)`` would be ``False``
+    even though the response carries ``status``/``replayed``/``task_id``. The
+    bases ``source`` already has are what its schema composes at its root, so
+    carrying them over keeps the canonical surface's ancestry identical to the
+    generated surface it replaces. Reading them off ``source`` rather than
+    naming the envelopes is what makes that true for every composed base:
+    naming them covered ``AdcpVersionEnvelope`` and ``ProtocolEnvelope`` and
+    silently dropped ``DeliveryMetrics`` from ``CreativeVariant`` and
+    ``IndicatorBearingResourceState`` from ``MediaBuy``.
 
     ``CanonicalBoundaryModel`` comes last on purpose. Pydantic merges
     ``model_config`` across bases left to right, so the right-most base wins;
-    the envelopes inherit :class:`AdCPBaseModel`'s ``extra`` policy and would
-    otherwise override the boundary's ``extra="allow"`` and start dropping
-    caller-supplied extension keys. Method resolution is unaffected — the
-    envelopes override nothing, so ``CanonicalBoundaryModel`` still supplies
-    ``model_dump``/``model_json_schema`` ahead of :class:`AdCPBaseModel`.
+    a composed base inherits :class:`AdCPBaseModel`'s ``extra`` policy and
+    would otherwise override the boundary's ``extra="allow"`` and start
+    dropping caller-supplied extension keys. Method resolution is unaffected —
+    the composed bases override nothing, so ``CanonicalBoundaryModel`` still
+    supplies ``model_dump``/``model_json_schema`` ahead of
+    :class:`AdCPBaseModel`.
+
+    ``source`` is sometimes a clone itself — ``_DeliveryCreativeVariantBase``
+    and the guard fixtures in ``tests/test_code_generation.py`` clone one — so
+    the two bases this function supplies are dropped before it supplies them
+    again. Without that, re-cloning a clone is ``TypeError: duplicate base
+    class CanonicalBoundaryModel``.
     """
 
-    envelopes = tuple(envelope for envelope in _ENVELOPE_BASES if issubclass(source, envelope))
-    return (*envelopes, CanonicalBoundaryModel)
+    supplied = (AdCPBaseModel, CanonicalBoundaryModel)
+    composed = tuple(base for base in source.__bases__ if base not in supplied)
+    return (*composed, CanonicalBoundaryModel)
+
+
+def _validator_references(function: Any) -> set[str]:
+    """Names a validator's code touches: attributes read and string constants.
+
+    A generated validator reaches a field as ``self.<name>`` (``co_names``) or
+    names it in a literal — the root required-group validator carries its
+    groups as a tuple of field-name strings. Nested code objects (comprehensions)
+    are walked too.
+    """
+    code = getattr(function, "__func__", function).__code__
+    names: set[str] = set()
+    pending = [code]
+    while pending:
+        current = pending.pop()
+        names.update(current.co_names)
+        constants: list[Any] = list(current.co_consts)
+        while constants:
+            constant = constants.pop()
+            if isinstance(constant, str):
+                names.add(constant)
+            elif isinstance(constant, (tuple, frozenset)):
+                constants.extend(constant)
+            elif hasattr(constant, "co_code"):
+                pending.append(constant)
+    return names
+
+
+def _own_validators(
+    source: type[AdCPBaseModel], fields: Collection[str]
+) -> tuple[dict[str, Any], dict[str, set[str]]]:
+    """Return the validators ``source`` declares on itself, re-decorated for a clone.
+
+    A canonical clone is built with ``create_model`` over ``source``'s *bases*
+    (:func:`_canonical_clone_bases`) and a copy of its *fields*
+    (:func:`_field_definitions`), so ``source`` itself is not in the clone's
+    MRO and nothing declared on its class body crosses over: the validators
+    the generator writes onto a request class — the root-level required
+    groups of ``create-media-buy-request.json`` (#1361), the uniqueness checks
+    on reporting selectors, the publisher-property coercion on ``Product`` —
+    would silently stop applying to the canonical name. Inherited validators do
+    cross, through the bases, so only the ones ``source`` declares on its own
+    body are carried here.
+
+    A validator that touches a field the clone does not carry is left behind,
+    and the second mapping names which field for each: the clone drops the
+    legacy creative identity fields on purpose, so a rule written against
+    ``format_id`` — the ``format_id | format_kind`` root group on a manifest,
+    the format-reference XOR on a listed creative — has nothing to enforce on
+    the canonical boundary and would raise ``AttributeError`` on the read.
+
+    The class namespace, not ``Decorator.func``, is what gets re-decorated:
+    pydantic stores a ``before`` validator's ``classmethod`` there, and the
+    unwrapped ``func`` has already lost its ``cls`` binding.
+    """
+    own = vars(source)
+    decorators = source.__pydantic_decorators__
+    dropped = set(source.model_fields) - set(fields)
+    carried: dict[str, Any] = {}
+    left_behind: dict[str, set[str]] = {}
+    for attribute, decorator in decorators.model_validators.items():
+        if attribute not in own:
+            continue
+        touched = _validator_references(own[attribute]) & dropped
+        if touched:
+            left_behind[attribute] = touched
+            continue
+        carried[attribute] = model_validator(mode=decorator.info.mode)(own[attribute])
+    for attribute, decorator in decorators.field_validators.items():
+        if attribute not in own:
+            continue
+        info = decorator.info
+        touched = (set(info.fields) | _validator_references(own[attribute])) & dropped
+        if touched:
+            left_behind[attribute] = touched
+            continue
+        carried[attribute] = field_validator(
+            *info.fields,
+            mode=info.mode,
+            check_fields=info.check_fields,
+        )(own[attribute])
+    return carried, left_behind
 
 
 def _canonical_clone(
@@ -446,15 +542,23 @@ def _canonical_clone(
     exclude: frozenset[str] = frozenset(),
     overrides: dict[str, tuple[Any, Any]] | None = None,
 ) -> type[CanonicalBoundaryModel]:
+    fields = _field_definitions(source, exclude=exclude, overrides=overrides)
+    carried, left_behind = _own_validators(source, fields)
     model = create_model(  # type: ignore[call-overload]
         name,
         __base__=_canonical_clone_bases(source),
         __module__=__name__,
         __validators__={
-            "_serialize_canonical": model_serializer(mode="wrap")(_serialize_canonical_model)
+            **carried,
+            "_serialize_canonical": model_serializer(mode="wrap")(_serialize_canonical_model),
         },
-        **_field_definitions(source, exclude=exclude, overrides=overrides),
+        **fields,
     )
+    # The generated class a clone stands in for, and the validators it could
+    # not carry. ``tests/test_canonical_validator_parity.py`` reads both to
+    # assert the clone refuses every document its source refuses.
+    model.__adcp_canonical_source__ = source
+    model.__adcp_canonical_validators_left_behind__ = left_behind
     return model
 
 

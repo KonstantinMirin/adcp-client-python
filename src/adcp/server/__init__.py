@@ -68,10 +68,15 @@ from adcp.server.a2a_server import (
 )
 from adcp.server.auth import (
     A2ABearerAuthMiddleware,
+    AsyncPrincipalResolver,
     AsyncTokenValidator,
+    AuthRequest,
     BearerTokenAuth,
     BearerTokenAuthMiddleware,
     Principal,
+    PrincipalResolver,
+    PrincipalResolverError,
+    SyncPrincipalResolver,
     SyncTokenValidator,
     TokenValidator,
     auth_context_factory,
@@ -168,6 +173,7 @@ from adcp.server.serve import (
     ASGIMiddlewareEntry,
     ContextFactory,
     LifespanHook,
+    MCPResultText,
     RequestMetadata,
     ServeConfig,
     SkillMiddleware,
@@ -243,6 +249,7 @@ __all__ = [
     "ProposalNotSupported",
     # MCP integration
     "ContextFactory",
+    "MCPResultText",
     "DISCOVERY_METHODS",
     "DISCOVERY_TOOLS",
     "LifespanHook",
@@ -273,6 +280,11 @@ __all__ = [
     # Bearer-token auth middleware (seller-facing recipe)
     "A2ABearerAuthMiddleware",
     "AsyncTokenValidator",
+    "AuthRequest",
+    "PrincipalResolver",
+    "PrincipalResolverError",
+    "SyncPrincipalResolver",
+    "AsyncPrincipalResolver",
     "BearerTokenAuth",
     "BearerTokenAuthMiddleware",
     "Principal",

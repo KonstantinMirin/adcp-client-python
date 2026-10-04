@@ -80,6 +80,7 @@ regenerate-schemas: ## Download latest schemas and skills from bundle, then rege
 	@echo "Bundling schemas into package..."
 	$(PYTHON) scripts/bundle_schemas.py
 	$(PYTHON) scripts/generate_versioned_stubs.py
+	$(PYTHON) scripts/generate_versioned_bases.py
 	@echo "Generating Pydantic models..."
 	$(PYTHON) scripts/generate_types.py
 	@echo "Consolidating exports..."
@@ -93,6 +94,7 @@ validate-generated: ## Validate generated code (syntax, imports, and equality wi
 	@$(PYTHON) -m py_compile src/adcp/types/_generated.py
 	@$(PYTHON) scripts/generate_versioned_stubs.py --check
 	@$(PYTHON) scripts/generate_types.py --check
+	@$(PYTHON) scripts/generate_versioned_bases.py --check
 	@echo "✓ Generated code validation passed"
 
 pre-push: format lint typecheck-all test validate-generated ## Run all checks before pushing (format, lint, typecheck, test, validate)
