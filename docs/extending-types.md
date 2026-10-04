@@ -45,6 +45,40 @@ Code written against the former wrappers should replace
 The validated wire shapes are unchanged; only the unnecessary outer public
 wrapper is removed, and validation returns the selected schema arm directly.
 
+## Scalar Schemas Are Plain Scalars
+
+Schemas whose root is a scalar — `PropertyTag`, `PropertyId`, `Gtin`,
+`PricingCurrency`, `MediaBuyChangeTermId`, `ViewThreshold`, and the rest — are
+`str`, `int`, or `float` subclasses rather than Pydantic `RootModel` wrappers.
+They carry the schema's constraints, so an invalid value is rejected at
+construction, and they otherwise behave exactly like the scalar on the wire:
+
+```python
+from adcp import PropertyTag
+
+tag = PropertyTag("sports")
+
+isinstance(tag, str)        # True
+str(tag)                    # 'sports'
+tag == "sports"             # True
+{tag} & {"sports"}          # {'sports'}
+PropertyTag("Invalid-Tag")  # raises ValidationError: pattern mismatch
+```
+
+Code written against the former wrappers keeps working: `PropertyTag(root="x")`
+and `tag.root` both still work, each with a `DeprecationWarning`. Drop the
+`root` indirection when you touch the call site — the value *is* the scalar:
+
+```python
+tags = {tag.root for tag in product.property_tags}   # deprecated
+tags = set(product.property_tags)                    # the values are strs
+```
+
+A root that composes keeps its `RootModel`, because there is no single scalar to
+collapse onto: unions, arrays, `$ref`s to objects, `AnyUrl`, and date-times are
+unchanged. `isinstance(x, RootModel)` is the reliable way to tell the two apart
+if you need to handle both.
+
 ## Picking the Right Base Class — Context-Specific Schema Variants
 
 Several entity names (`Creative`, `Package`, `MediaBuy`, etc.) appear in multiple spec slices with **genuinely different shapes**. The bare name resolves to one specific variant — typically not the one you want when extending response types. The creative inside `ListCreativesResponse.creatives` is a different class from the creative inside `GetCreativeDeliveryResponse.creatives`, even though both are spelled `Creative` in the spec. Subclassing the wrong variant produces silent type drift: construction works, but `mypy` flags `[assignment]` when you wire your subclass into the response that expects a different variant, and runtime serialization may drop fields the consuming code expects.
@@ -778,3 +812,49 @@ and a missing dimension to `url`, removing any remaining dimensions.
 also exported from `adcp.compat.legacy`. Coercion copies dictionaries and keeps
 unknown keys and values for normal schema validation; it does not validate or
 change strict construction defaults.
+
+### Named bases for statically typed version extensions
+
+Import a named base when subclassing a pinned protocol model. Assigning the
+result of `make_versioned_base()` to a variable remains useful at runtime, but
+mypy cannot use that variable as a statically typed class base, even with
+Literal overloads.
+
+```python
+from pydantic import Field
+from adcp.types.versioned_bases.v31 import ListCreativesRequestBase, PackageRequestBase
+
+class SellerListCreatives(ListCreativesRequestBase):
+    tenant_id: str | None = Field(default=None, exclude=True)
+
+class SellerPackage(PackageRequestBase):
+    inventory_key: str | None = Field(default=None, exclude=True)
+
+request = SellerListCreatives(include_assignments=True, tenant_id="tenant-1")
+include_assignments: bool = request.include_assignments
+wire = request.model_dump(mode="json")  # tenant_id is excluded
+```
+
+`versioned_bases.v30`, `.v31`, and `.v32` provide `<ModelName>Base` for every
+model advertised by the corresponding existing version namespace. They pin
+the same bundled contracts: 3.0, 3.1, and **3.2-beta.6**, respectively. `v32`
+does not mean the current rc.7 surface. The current `adcp.types` surface and the
+existing dict-shaped `adcp.types.v31` boundary models keep their behavior.
+
+Runtime field annotations and static declarations come from the same pinned
+portable schemas. Nested wire objects are typed dictionaries, accessed with
+keys, and dates/URLs remain their JSON string representations. Optional fields
+without defaults allow `None` to mean omission when the schema forbids null;
+protocol defaults, such as `include_assignments`, keep their concrete
+static types. Normal Pydantic coercion runs first, then the existing bundled
+validator enforces the resulting wire payload, including conditional rules.
+Unknown undeclared top-level fields are rejected; adopter fields must use
+`Field(exclude=True)` to stay outside the contract. Non-identifier JSON metadata
+(such as `$schema`) is supported through `model_validate()` and dictionary
+input rather than a Python attribute declaration.
+
+Version modules import lazily and construct only requested bases. Run
+`scripts/generate_versioned_bases.py` when bundled schemas change;
+`make validate-generated` checks both the runtime annotations and stubs for
+staleness. The generator does not read current generated-model annotations,
+so the scalar rewrite in #1286 cannot change these pinned nested types.

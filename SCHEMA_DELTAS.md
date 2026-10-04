@@ -1,201 +1,359 @@
 # Generated-types delta
 
-## Files removed
-
-- `compliance/task_completion_data.py` — ComplianceTaskCompletionData
-- `core/async_response_data.py` — AdcpAsyncResponseData
-- `core/localized_creative_asset.py` — LocalizedCreativeAsset
-- `core/pricing_option.py` — PricingOption
-- `core/requirements/asset_requirements.py` — AssetRequirements
-- `core/start_timing.py` — StartTiming
-
 ## Field changes
 
-- `a2ui/bound_value.py`
-  - **classes removed**: A2UiBoundValue
+- `account/list_account_changes_request.py`
+  - `ResourceType`: `+__slots__`
+- `account/list_account_changes_response.py`
+  - `ResourceType`: `+__slots__`
 - `adagents.py`
-  - **classes removed**: AuthorizedAgents
+  - `Country`: `+__slots__`
+  - `SignalId`: `+__slots__`
+  - `SignalTag`: `+__slots__`
+- `brand/acquire_rights_request.py`
+  - `Country`: `+__slots__`
+- `brand/get_rights_request.py`
+  - `Country`: `+__slots__`
+- `brand/rights_terms.py`
+  - `Country`: `+__slots__`
+- `brand/search_brands_request.py`
+  - `Country`: `+__slots__`
+- `brand/search_brands_response.py`
+  - `Country`: `+__slots__`
 - `brand/verify_brand_claims_request.py`
-  - **classes removed**: ClaimEntry
+  - `Country`: `+__slots__`
 - `brand_discovery.py`
-  - **classes removed**: BrandDiscovery
+  - `Brand1`: `+__slots__`
+  - `BrandId`: `+__slots__`
+  - `BrandIdModel`: `+__slots__`
+  - `ColorValue1`: `+__slots__`
+  - `Country`: `+__slots__`
+  - `Country1`: `+__slots__`
+  - `Domain`: `+__slots__`
+  - `Fallback`: `+__slots__`
+  - `FocalPointItem`: `+__slots__`
+  - `HexColor`: `+__slots__`
+  - `LocaleTag`: `+__slots__`
+  - `LogoId`: `+__slots__`
+  - `NiceClass`: `+__slots__`
+  - `OpentypeFeature`: `+__slots__`
+  - `PreferredAspectRatio`: `+__slots__`
+  - `WeightRangeItem`: `+__slots__`
 - `bundled/protocol/get_adcp_capabilities_response.py`
-  - **classes removed**: AnyOf3, Tasks10
-- `collection/base_collection_source.py`
-  - **classes removed**: BaseCollectionSource
+  - `Country`: `+__slots__`
+  - `ExperimentalFeature`: `+__slots__`
+  - `ExtensionsSupportedItem`: `+__slots__`
+  - `FocalPointItem`: `+__slots__`
+  - `MajorVersion`: `+__slots__`
+  - `MraidVersion`: `+__slots__`
+  - `PrimaryKey`: `+__slots__`
+  - `ProtocolMethodsSupportedForItem`: `+__slots__`
+  - `PublisherDomain`: `+__slots__`
+  - `ReaderCompatibilityItem`: `+__slots__`
+  - `RequiredForItem`: `+__slots__`
+  - `ResourceType`: `+__slots__`
+  - `SupportedLanguage`: `+__slots__`
+  - `SupportedTimezone`: `+__slots__`
+  - `SupportedVersion`: `+__slots__`
+  - `Transport`: `+__slots__`
+  - `Value`: `+__slots__`
+- `compliance/comply_test_controller_request.py`
+  - `Suggestion`: `+__slots__`
 - `compliance/comply_test_controller_response.py`
-  - **classes removed**: RecordedCalls
-- `content_standards/artifact.py`
-  - **classes removed**: Assets
-- `core/account_identity_change.py`
-  - **classes removed**: AccountIdentityChange
+  - `Suggestion`: `+__slots__`
+- `core/acceptance_policy_profile_ids.py`
+  - `AcceptancePolicyProfileId`: `+__slots__`
+- `core/account_authorization.py`
+  - `AllowedTask`: `+__slots__`
+  - `ScopeName`: `+__slots__`
+- `core/account_change.py`
+  - `ChangedPath`: `+__slots__`
 - `core/account_identity_change_preview.py`
-  - **classes removed**: AccountIdentityChangePreview
-- `core/account_ref.py`
-  - **classes removed**: AccountReference
-- `core/activation_key.py`
-  - **classes removed**: ActivationKey
-- `core/agent_reporting_destination.py`
-  - **classes removed**: AgentReportingDestination
+  - `Blocker`: `+__slots__`
+- `core/account_timezone_capability.py`
+  - `SupportedTimezone`: `+__slots__`
+- `core/agent_reporting_destination_state.py`
+  - `PriorDestinationRef`: `+__slots__`
+- `core/applicable_package_id.py`
+  - `ApplicablePackageId`: `+__slots__`
 - `core/assets/asset_union.py`
-  - **classes removed**: AssetVariant, MacroBearingUrl
-- `core/attestation_issuer.py`
-  - **classes removed**: AttestationIssuer
-- `core/attestation_subject.py`
-  - **classes removed**: AttestationSubject
-- `core/audience_activation_method.py`
-  - **classes removed**: AudienceActivationMethod
-- `core/audience_selector.py`
-  - **classes removed**: AudienceSelector
-- `core/audience_source.py`
-  - **classes removed**: AudienceSource
-- `core/brand_response_authorization_result.py`
-  - **classes removed**: BrandResponseAuthorizationResult
-- `core/budget_allocation.py`
-  - **classes removed**: BudgetAllocation, OptimizationGoal
-- `core/canonical_account_ref.py`
-  - **classes removed**: CanonicalAccountReference
-- `core/canonical_budget_allocation.py`
-  - **classes removed**: CanonicalBudgetAllocation
-- `core/canonical_media_buy_action.py`
-  - **classes removed**: CanonicalMediaBuyAction
-- `core/canonical_optimization_goal.py`
-  - **classes removed**: CanonicalOptimizationGoal
-- `core/canonical_placement.py`
-  - **classes removed**: CanonicalProductPlacement
+  - `FocalPointItem`: `+__slots__`
+  - `Gtin`: `+__slots__`
+  - `Jurisdiction`: `+__slots__`
+  - `MacroBearingUrl2`: `+__slots__`
+- `core/assets/image_asset.py`
+  - `FocalPointItem`: `+__slots__`
+- `core/attestation_evaluation.py`
+  - `ReasonCode`: `+__slots__`
+- `core/brand_id.py`
+  - `BrandId`: `+__slots__`
+- `core/brand_key.py`
+  - `Country`: `+__slots__`
+- `core/brand_ref.py`
+  - `Country`: `+__slots__`
+- `core/canonical_audience_evidence.py`
+  - `AttestationDigest`: `+__slots__`
+- `core/canonical_audience_evidence_selection.py`
+  - `VerifiedAttestationDigest`: `+__slots__`
 - `core/canonical_product.py`
-  - **classes removed**: PublisherProperty
-- `core/canonical_reporting_commitment.py`
-  - **classes removed**: CanonicalReportingCommitment
-- `core/collection_selection.py`
-  - **classes removed**: CollectionSelection
-- `core/committed_metric.py`
-  - **classes removed**: CommittedMetric
-- `core/creative_item.py`
-  - **classes removed**: CreativeItem
-- `core/creative_localization_readback.py`
-  - **classes removed**: Variants
+  - `MatchedGtin`: `+__slots__`
+  - `PublisherDomain`: `+__slots__`
+- `core/capabilities_changed_webhook.py`
+  - `ChangedPath`: `+__slots__`
+- `core/catalog.py`
+  - `Category`: `+__slots__`
+  - `Gtin`: `+__slots__`
+  - `Query`: `+__slots__`
+- `core/creative_brief.py`
+  - `Jurisdiction`: `+__slots__`
+- `core/creative_revision_id.py`
+  - `CreativeRevisionId`: `+__slots__`
+- `core/daast_tracker_constraints.py`
+  - `DaastOffset`: `+__slots__`
 - `core/data_provider_signal_selector.py`
-  - **classes removed**: DataProviderSignalSelector
-- `core/delivery_metric_aggregate.py`
-  - **classes removed**: DeliveryMetricAggregate
-- `core/deployment.py`
-  - **classes removed**: Deployment
-- `core/destination.py`
-  - **classes removed**: Destination
-- `core/evaluator_spec.py`
-  - **classes removed**: EvaluatorSpec
-- `core/format.py`
-  - **classes removed**: Assets30
-- `core/format_option_ref.py`
-  - **classes removed**: FormatOptionReference
-- `core/geo_place_system.py`
-  - **classes removed**: GeographicPlaceIdentifierSystem
-- `core/geo_place_type.py`
-  - **classes removed**: GeographicPlaceType
-- `core/inventory_list_application.py`
-  - **classes removed**: InventoryListApplication
+  - `SignalId`: `+__slots__`
+  - `SignalTag`: `+__slots__`
+- `core/demographic_targeting_resolution.py`
+  - `IntervalId`: `+__slots__`
+- `core/downstream_connection_requirement.py`
+  - `RequiredForItem`: `+__slots__`
+- `core/experimental_feature_id.py`
+  - `ExperimentalFeatureId`: `+__slots__`
+- `core/frequency_cap_impression_constraints.py`
+  - `AllowedValue`: `+__slots__`
+- `core/frequency_cap_interval_constraints.py`
+  - `AllowedInterval`: `+__slots__`
+- `core/geo_place_area.py`
+  - `Value`: `+__slots__`
+- `core/geo_place_catalog_capability.py`
+  - `SupportedVersion`: `+__slots__`
+- `core/geo_place_catalog_entry.py`
+  - `ParentLabel`: `+__slots__`
+- `core/geo_place_requirement.py`
+  - `SystemVersion`: `+__slots__`
+- `core/geo_region_requirement.py`
+  - `Value`: `+__slots__`
+- `core/geo_region_support.py`
+  - `Value`: `+__slots__`
+- `core/iana_timezone.py`
+  - `IanaTimezoneIdentifier`: `+__slots__`
+- `core/locale_tag.py`
+  - `LanguageTag`: `+__slots__`
 - `core/macro_bearing_url.py`
-  - **classes removed**: MacroBearingUrl
-- `core/missing_metric.py`
-  - **classes removed**: MissingMetric
-- `core/offering_asset_group.py`
-  - **classes removed**: Items
-- `core/optimization_goal.py`
-  - **classes removed**: OptimizationGoal
-- `core/package_format_snapshot.py`
-  - **classes removed**: PackageFormatSnapshot
-- `core/package_signal_targeting.py`
-  - **classes removed**: PackageSignalTargeting
-- `core/performance_feedback_metric.py`
-  - **classes removed**: PerformanceFeedbackMetric
-- `core/placement_identity.py`
-  - **classes removed**: PlacementIdentity
-- `core/placement_selection.py`
-  - **classes removed**: PlacementSelection
-- `core/postal_country_system.py`
-  - **classes removed**: PostalCountrySystem
+  - `MacroBearingUrl4`: `+__slots__`
+- `core/media_buy_change_term_id.py`
+  - `MediaBuyChangeTermId`: `+__slots__`
+- `core/media_buy_legacy_terms_ref.py`
+  - `MediaBuyTermsReference`: `+__slots__`
+- `core/offering.py`
+  - `Country`: `+__slots__`
+  - `Region`: `+__slots__`
+- `core/placement_presentation.py`
+  - `Color`: `+__slots__`
+- `core/principal_declarations.py`
+  - `AsyncAdcpVersion`: `+__slots__`
+- `core/principal_state.py`
+  - `DestinationRef`: `+__slots__`
 - `core/product.py`
-  - **classes removed**: PublisherProperty
-- `core/product_audience_evidence_requirements.py`
-  - **classes removed**: AcceptedAttestationIssuers
+  - `Country`: `+__slots__`
+  - `MatchedGtin`: `+__slots__`
+  - `PublisherDomain`: `+__slots__`
+  - `SupportedViewDuration`: `+__slots__`
 - `core/product_execution_requirement.py`
-  - **classes removed**: ProductExecutionRequirement
+  - `RequiredForItem`: `+__slots__`
 - `core/product_filters.py`
-  - **classes removed**: SignalTargetingItem
-- `core/product_format_declaration.py`
-  - **classes removed**: ProductFormatDeclaration
+  - `Country`: `+__slots__`
+  - `PricingCurrency`: `+__slots__`
+  - `Region`: `+__slots__`
+- `core/product_offer_filters.py`
+  - `Country`: `+__slots__`
+  - `PricingCurrency`: `+__slots__`
+  - `Region`: `+__slots__`
+- `core/property_id.py`
+  - `PropertyId`: `+__slots__`
+- `core/property_tag.py`
+  - `PropertyTag`: `+__slots__`
 - `core/publisher_property_selector.py`
-  - **classes removed**: PublisherPropertySelector
+  - `PublisherDomain`: `+__slots__`
 - `core/registry_event.py`
-  - **classes removed**: RegistryEvent
-- `core/reporting_control_total.py`
-  - **classes removed**: ReportingControlTotal
-- `core/reporting_dataset_share_destination.py`
-  - **classes removed**: ReportingDatasetShareDestination
-- `core/reporting_delivery_method.py`
-  - **classes removed**: ReportingDeliveryMethod
-- `core/reporting_write_destination.py`
-  - **classes removed**: ReportingWriteDestination
-- `core/requirements/catalog_field_binding.py`
-  - **classes removed**: CatalogFieldBinding, PerItemBindings
-- `core/signal_id.py`
-  - **classes removed**: SignalId
-- `core/signal_pricing.py`
-  - **classes removed**: VendorPricing
-- `core/signal_ref.py`
-  - **classes removed**: SignalRef
-- `core/signal_targeting.py`
-  - **classes removed**: SignalTargeting
-- `core/signal_targeting_expression.py`
-  - **classes removed**: SignalTargetingExpression
+  - `Domain`: `+__slots__`
+  - `Market`: `+__slots__`
+- `core/reporting_adjustment_receipt.py`
+  - `ReportingAdjustmentRejectionCode`: `+__slots__`
+- `core/reporting_canonicalization_contract.py`
+  - `ReportingPrimaryKey`: `+__slots__`
+- `core/reporting_coverage.py`
+  - `ReportingMediaBuyId`: `+__slots__`
+  - `ReportingPackageId`: `+__slots__`
+- `core/reporting_delivery_offering_id.py`
+  - `ReportingDeliveryOfferingId`: `+__slots__`
+- `core/reporting_file_object_ref.py`
+  - `ReportingFileObjectReference`: `+__slots__`
+- `core/reporting_native_version_ref.py`
+  - `ReportingNativeVersionReference`: `+__slots__`
+- `core/reporting_receipt.py`
+  - `RejectionCode`: `+__slots__`
+- `core/reporting_report_definition.py`
+  - `Dimension`: `+__slots__`
+- `core/reporting_resource.py`
+  - `ReportingReaderCompatibilityItem`: `+__slots__`
+- `core/reporting_status_changed_webhook.py`
+  - `IssueId`: `+__slots__`
+- `core/requirements/audio_asset_requirements.py`
+  - `SampleRate`: `+__slots__`
+- `core/requirements/image_asset_requirements.py`
+  - `PixelRatio`: `+__slots__`
+- `core/requirements/video_asset_requirements.py`
+  - `AudioSampleRate`: `+__slots__`
+  - `FrameRate`: `+__slots__`
+- `core/rights_constraint.py`
+  - `Country`: `+__slots__`
+  - `Restriction`: `+__slots__`
+- `core/signal_coverage_forecast.py`
+  - `Country`: `+__slots__`
+- `core/signal_definition.py`
+  - `Country`: `+__slots__`
+  - `Tag`: `+__slots__`
+- `core/signal_definition_enrichment.py`
+  - `Country`: `+__slots__`
 - `core/targeting.py`
-  - **classes removed**: CollectionListExclude, Demographics, PropertyListExclude
-- `core/targeting_modification.py`
-  - **classes removed**: TargetingModification
-- `core/tracker_execution_selector.py`
-  - **classes removed**: TrackerExecutionSelector
+  - `AxeExcludeSegment`: `+__slots__`
+  - `AxeIncludeSegment`: `+__slots__`
+  - `GeoCountry`: `+__slots__`
+  - `GeoRegion`: `+__slots__`
+- `core/targeting_overlay_support.py`
+  - `SystemVersion`: `+__slots__`
 - `core/transformer.py`
-  - **classes removed**: InputFormat
+  - `OutputCapabilityId`: `+__slots__`
+- `core/vast_media_file_requirements.py`
+  - `Codec`: `+__slots__`
+  - `Container`: `+__slots__`
+  - `MimeType`: `+__slots__`
+- `core/vast_tracker_constraints.py`
+  - `VastOffset`: `+__slots__`
+- `core/vendor_metric_id.py`
+  - `VendorMetricId`: `+__slots__`
 - `core/vendor_pricing_option.py`
-  - **classes removed**: VendorPricingOption
-- `core/wholesale_feed_event.py`
-  - **classes removed**: AppliesTo, WholesaleFeedEvent
-- `creative/preview_render.py`
-  - **classes removed**: PreviewRender
+  - `AppliesToOutputCapabilityId`: `+__slots__`
+- `core/version_envelope.py`
+  - `AdcpMajorVersion`: `+__slots__`
+  - `AdcpVersion`: `+__slots__`
+- `creative/list_transformers_request.py`
+  - `OutputCapabilityId`: `+__slots__`
 - `creative/sync_creatives_request.py`
-  - **classes removed**: AssignmentOperations
-- `creative/validate_input_request.py`
-  - **classes removed**: Targets
-- `error_details/governance_agent_not_accepted.py`
-  - **classes removed**: GovernanceAgentNotAcceptedDetails
+  - `PlacementId`: `+__slots__`
+- `error_details/accessibility_violation.py`
+  - `FailureKind1`: `+__slots__`
+- `error_details/requote_required.py`
+  - `EnvelopeField`: `+__slots__`
+  - `EnvelopeField1Item`: `+__slots__`
+- `error_details/unsupported_refinement_dimension.py`
+  - `SupportedDimension`: `+__slots__`
 - `error_details/vast_version_mismatch.py`
-  - **classes removed**: VastVersionMismatchDetails
+  - `ObservedDocumentVastVersion`: `+__slots__`
+- `error_details/version_unsupported.py`
+  - `SupportedMajor`: `+__slots__`
+  - `SupportedVersion`: `+__slots__`
+- `formats/canonical/_base.py`
+  - `PixelRatio`: `+__slots__`
+- `formats/canonical/audio_daast.py`
+  - `DurationMsRangeItem`: `+__slots__`
+- `formats/canonical/audio_hosted.py`
+  - `AudioSampleRate`: `+__slots__`
+  - `DurationMsRange`: `+__slots__`
+- `formats/canonical/audio_vast.py`
+  - `DurationMsRangeItem`: `+__slots__`
+- `formats/canonical/coordinated_placements.py`
+  - `CompanionBannerWidth`: `+__slots__`
+  - `DurationMsRange`: `+__slots__`
+  - `PixelRatio`: `+__slots__`
+  - `SlotBinding`: `+__slots__`
+- `formats/canonical/image.py`
+  - `PixelRatio`: `+__slots__`
+- `formats/canonical/seller_rendered_stateful_display.py`
+  - `DurationMsRange`: `+__slots__`
+  - `SlotBinding`: `+__slots__`
+  - `WidthRangeItem`: `+__slots__`
+- `formats/canonical/video_hosted.py`
+  - `CompanionBannerWidth`: `+__slots__`
+  - `DurationMsRange`: `+__slots__`
+- `formats/canonical/video_vast.py`
+  - `DurationMsRangeItem`: `+__slots__`
 - `governance/reported_outcome_error.py`
-  - **classes removed**: BoundedValue, BoundedValueLevel2, BoundedValueLevel3
+  - `BoundedScalar1`: `+__slots__`
+- `manifest_schema.py`
+  - `SchemaPath`: `+__slots__`
+  - `ToolName`: `+__slots__`
+- `media_buy/acceptance_context.py`
+  - `AdvertiserJurisdiction`: `+__slots__`
+  - `SubjectFacet`: `+__slots__`
+- `media_buy/acceptance_policy_profile.py`
+  - `Jurisdiction`: `+__slots__`
+  - `JurisdictionGroup`: `+__slots__`
+  - `SubjectCategory`: `+__slots__`
 - `media_buy/acceptance_policy_requirement.py`
-  - **classes removed**: AcceptancePolicyRequirement
+  - `Criterion`: `+__slots__`
+  - `FormatId`: `+__slots__`
+- `media_buy/acceptance_policy_rule.py`
+  - `Jurisdiction`: `+__slots__`
+  - `JurisdictionGroup`: `+__slots__`
+  - `PolicyId`: `+__slots__`
+  - `SubjectFacet`: `+__slots__`
 - `media_buy/build_creative_request.py`
-  - **classes removed**: SignalCondition
-- `media_buy/change_term_constraints.py`
-  - **classes removed**: MediaBuyChangeTermConstraints
-- `media_buy/decline_proposals_response.py`
-  - **classes removed**: Results, Results3
-- `media_buy/get_products_request.py`
-  - **classes removed**: Refine
+  - `TargetCapabilityId`: `+__slots__`
+- `media_buy/change_term.py`
+  - `Condition`: `+__slots__`
+- `media_buy/control_media_buy_response.py`
+  - `AffectedPackageId`: `+__slots__`
+- `media_buy/get_products_rejected.py`
+  - `Suggestion`: `+__slots__`
 - `media_buy/get_products_response.py`
-  - **classes removed**: RefinementApplied
-- `media_buy/package_request.py`
-  - **classes removed**: CommittedMetrics
+  - `Suggestion`: `+__slots__`
+- `media_buy/get_reporting_status_request.py`
+  - `DeliveryConfigId`: `+__slots__`
+- `media_buy/legacy_purchase_continuation_input.py`
+  - `SelectedProductId`: `+__slots__`
+- `media_buy/package_control.py`
+  - `CatalogId`: `+__slots__`
+- `media_buy/product_discovery_criteria.py`
+  - `ProductId`: `+__slots__`
 - `media_buy/product_purchase.py`
-  - **classes removed**: Bidding, Context, Ext, Pricing
-- `media_buy/product_refinement.py`
-  - **classes removed**: ProductRefinementRequests1
-- `media_buy/proposal_refinement.py`
-  - **classes removed**: ProposalRefinement
+  - `AgencyEstimateNumber`: `+__slots__`
+  - `Budget`: `+__slots__`
+  - `CatalogId`: `+__slots__`
+  - `DailyBudgetCap`: `+__slots__`
+  - `MinSpendTarget`: `+__slots__`
 - `media_buy/refine_proposals_response.py`
-  - **classes removed**: Results14, Results8
-- `property/base_property_source.py`
-  - **classes removed**: BasePropertySource
+  - `UnsatisfiedConstraint`: `+__slots__`
+- `media_buy/request_proposals_response.py`
+  - `Suggestion`: `+__slots__`
+- `media_buy/sync_audiences_request.py`
+  - `Tag`: `+__slots__`
+- `media_buy/sync_event_sources_request.py`
+  - `ValueCurrency`: `+__slots__`
+- `pricing_options/cpv_option.py`
+  - `ViewThreshold`: `+__slots__`
+- `property/property_list_filters.py`
+  - `CountriesAllItem`: `+__slots__`
+- `protocol/get_adcp_capabilities_response.py`
+  - `DefaultProfileId`: `+__slots__`
+  - `ExtensionsSupportedItem`: `+__slots__`
+  - `MajorVersion`: `+__slots__`
+  - `MraidVersion`: `+__slots__`
+  - `PrimaryCountry`: `+__slots__`
+  - `ProtocolMethodsSupportedForItem`: `+__slots__`
+  - `PublisherDomain`: `+__slots__`
+  - `RequiredForItem`: `+__slots__`
+  - `ResourceType`: `+__slots__`
+  - `SupportedVersion`: `+__slots__`
+  - `Transport`: `+__slots__`
+- `signals/get_signals_request.py`
+  - `Country`: `+__slots__`
+- `signals/get_signals_response.py`
+  - `Country`: `+__slots__`
+- `trusted_match/context_match_request.py`
+  - `Keyword`: `+__slots__`
 - `trusted_match/provider_registration.py`
-  - **classes removed**: TmpProviderRegistration
+  - `Country`: `+__slots__`
+  - `TmpxMacro`: `+__slots__`
+  - `TmpxSlot`: `+__slots__`

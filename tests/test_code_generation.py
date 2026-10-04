@@ -273,7 +273,10 @@ def test_normalize_enum_descriptions_recurses_into_embedded_schemas():
 
 
 def test_post_generate_removes_only_unused_pydantic_field_imports():
-    from scripts.post_generate_fixes import _remove_unused_pydantic_import
+    from scripts.post_generate_fixes import _remove_unused_imports
+
+    def _remove_unused_pydantic_import(source: str, name: str) -> tuple[str, bool]:
+        return _remove_unused_imports(source, {"pydantic": (name,)})
 
     unused = (
         "from pydantic import ConfigDict, Field\n\n"
