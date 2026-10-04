@@ -4,7 +4,6 @@
 
 - `compliance/task_completion_data.py` — ComplianceTaskCompletionData
 - `core/async_response_data.py` — AdcpAsyncResponseData
-- `core/localized_creative_asset.py` — LocalizedCreativeAsset
 - `core/pricing_option.py` — PricingOption
 - `core/requirements/asset_requirements.py` — AssetRequirements
 - `core/start_timing.py` — StartTiming
@@ -109,8 +108,6 @@
   - **classes removed**: PackageSignalTargeting
 - `core/performance_feedback_metric.py`
   - **classes removed**: PerformanceFeedbackMetric
-- `core/placement_identity.py`
-  - **classes removed**: PlacementIdentity
 - `core/placement_selection.py`
   - **classes removed**: PlacementSelection
 - `core/postal_country_system.py`
