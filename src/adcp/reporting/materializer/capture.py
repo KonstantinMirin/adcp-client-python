@@ -14,6 +14,7 @@ from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
 
+from adcp._deferred_adapters import deferred_adapter
 from adcp.reporting.evidence import aware_utc, reporting_identifier
 from adcp.reporting.ledger._delivery_state import decode_record, payload, principal
 from adcp.reporting.ledger.delivery_models import (
@@ -28,7 +29,10 @@ from adcp.reporting.ledger.notification_models import (
 from adcp.reporting.ledger.status_projection import ReportingStatusSnapshot
 from adcp.reporting.outbox.memory import NotificationState
 
-_CORE = TypeAdapter(ReportingStatusSnapshot)
+
+@deferred_adapter
+def _core_adapter() -> TypeAdapter[ReportingStatusSnapshot]:
+    return TypeAdapter(ReportingStatusSnapshot)
 
 
 @dataclass(frozen=True)
@@ -79,7 +83,7 @@ class ReportingMaterializerBoundary:
             "account_sequence": self.account_sequence,
             "reporting_materialization_id": self.reporting_materialization_id,
             "as_of": self.as_of.isoformat(),
-            "core": _CORE.dump_python(self.core, mode="json"),
+            "core": _core_adapter().dump_python(self.core, mode="json"),
             "reconciliation": [payload(r) for r in self.reconciliation],
         }
 
@@ -94,7 +98,7 @@ def decode_materializer_boundary(value: dict[str, Any]) -> ReportingMaterializer
                 value["account_sequence"],
                 value["reporting_materialization_id"],
                 datetime.fromisoformat(value["as_of"]),
-                _CORE.validate_python(value["core"]),
+                _core_adapter().validate_python(value["core"]),
                 tuple(decode_record(r) for r in value["reconciliation"]),
             )
     except (ValueError, TypeError, KeyError, ValidationError):
@@ -129,18 +133,54 @@ def private_snapshot(
     snapshot: ReportingStatusSnapshot, caller: ReportingDeliveryPrincipal
 ) -> ReportingStatusSnapshot:
     """Internal boundaries also exclude other consumers' private statements."""
-    statuses = tuple(s for s in snapshot.statuses if s.consumer_id == caller.consumer_id)
-    status_ids = {s.reporting_status_id for s in statuses}
-    issues = tuple(i for i in snapshot.lifecycles if i.consumer_id in {None, caller.consumer_id})
+    if snapshot.account_id != caller.account_id:
+        raise ReportingNotificationError("private_snapshot_unavailable")
+    configurations = tuple(
+        c for c in snapshot.configurations if c.consumer_id == caller.consumer_id
+    )
+    keys = {c.generation_key for c in configurations}
+    obligations = tuple(o for o in snapshot.obligations if o.generation_key in keys)
+    obligation_ids = {o.reporting_obligation_id for o in obligations}
+    revisions = tuple(r for r in snapshot.revisions if r.reporting_obligation_id in obligation_ids)
+    revision_ids = {r.reporting_revision_id for r in revisions}
+    adjustments = tuple(
+        a for a in snapshot.adjustments if a.adjusts_reporting_revision_id in revision_ids
+    )
+    statuses = tuple(
+        s
+        for s in snapshot.statuses
+        if s.consumer_id == caller.consumer_id and s.generation_key in keys
+    )
+    issue_scopes = dict(snapshot.issue_scopes)
+    issues = tuple(
+        i
+        for i in snapshot.lifecycles
+        if i.consumer_id == caller.consumer_id
+        or (
+            i.consumer_id is None
+            and i.issue_id in issue_scopes
+            and issue_scopes[i.issue_id].generation_key in keys
+        )
+    )
     issue_ids = {i.issue_id for i in issues}
+    visible_ids = (
+        obligation_ids
+        | revision_ids
+        | {a.reporting_adjustment_id for a in adjustments}
+        | {s.reporting_status_id for s in statuses}
+    )
     return replace(
         snapshot,
+        configurations=configurations,
+        obligations=obligations,
+        revisions=revisions,
+        adjustments=adjustments,
         statuses=statuses,
         lifecycles=issues,
         consumer_ids=(caller.consumer_id,),
         issue_scopes=tuple((i, scope) for i, scope in snapshot.issue_scopes if i in issue_ids),
         changes=tuple(
-            c for c in snapshot.changes if c[1] != "consumer_status" or c[2] in status_ids
+            c for c in snapshot.changes if c[3] == caller.consumer_id and c[2] in visible_ids
         ),
     )
 
