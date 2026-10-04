@@ -25,6 +25,8 @@ import pytest
 from adcp.signing import agent_resolver
 from adcp.signing.agent_resolver import AgentResolverError, request_signature_code
 from adcp.signing.errors import (
+    REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
+    REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE,
     REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
     REQUEST_SIGNATURE_JWKS_UNTRUSTED,
 )
@@ -35,12 +37,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BUNDLE_KEY = resolve_bundle_key((_REPO_ROOT / "src" / "adcp" / "ADCP_VERSION").read_text().strip())
 _ENUM = json.loads(
     (
-        _REPO_ROOT
-        / "schemas"
-        / "cache"
-        / _BUNDLE_KEY
-        / "enums"
-        / "request-signing-error-code.json"
+        _REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY / "enums" / "request-signing-error-code.json"
     ).read_text()
 )
 
@@ -137,3 +134,96 @@ async def test_transient_jwks_fetch_failure_stays_unavailable(
 
     assert caught.value.code == "jwks_fetch_failed"
     assert request_signature_code(caught.value) == REQUEST_SIGNATURE_JWKS_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+async def test_unresolvable_jwks_host_stays_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    _resolver_reaching_the_jwks_hop: None,
+) -> None:
+    """The SSRF gate also raises when the host does not resolve, marked transient.
+
+    A DNS failure is the transient row's own case ("DNS, TCP, TLS, timeout"), so
+    it must not be promoted to the terminal code with the refused destinations.
+    """
+
+    async def unresolvable(*args: Any, **kwargs: Any) -> Any:
+        raise SSRFValidationError("cannot resolve host", transient=True)
+
+    monkeypatch.setattr(agent_resolver, "async_default_jwks_fetcher", unresolvable)
+
+    with pytest.raises(AgentResolverError) as caught:
+        await agent_resolver.async_resolve_agent(
+            _AGENT,
+            agent_type="sales",
+            _brand_jwks_client_factory=_brand_json_client_factory,
+        )
+
+    assert caught.value.code == "jwks_fetch_failed"
+    assert request_signature_code(caught.value) == REQUEST_SIGNATURE_JWKS_UNAVAILABLE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("transient", "spec_code"),
+    [
+        (False, REQUEST_SIGNATURE_JWKS_UNTRUSTED),
+        (True, REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE),
+    ],
+    ids=["refused", "unresolvable"],
+)
+async def test_ssrf_refused_capabilities_destination(
+    monkeypatch: pytest.MonkeyPatch, transient: bool, spec_code: str
+) -> None:
+    """``agent_url`` resolving to a refused address is terminal, like the JWKS hop.
+
+    A literal reserved address is already refused before the fetch, as
+    ``invalid_agent_url``; a hostname that resolves to one is refused when the
+    pinned transport is built, and must report the same terminal code.
+    """
+
+    def refuse(*args: Any, **kwargs: Any) -> Any:
+        raise SSRFValidationError("resolves to a private address", transient=transient)
+
+    monkeypatch.setattr(agent_resolver, "build_async_ip_pinned_transport", refuse)
+
+    with pytest.raises(AgentResolverError) as caught:
+        await agent_resolver.async_resolve_agent(_AGENT, agent_type="sales")
+
+    assert caught.value.code == "capabilities_unreachable"
+    assert request_signature_code(caught.value) == spec_code
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("transient", "spec_code"),
+    [
+        (False, REQUEST_SIGNATURE_JWKS_UNTRUSTED),
+        (True, REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE),
+    ],
+    ids=["refused", "unresolvable"],
+)
+async def test_ssrf_refused_brand_json_destination(
+    monkeypatch: pytest.MonkeyPatch,
+    _resolver_reaching_the_jwks_hop: None,
+    transient: bool,
+    spec_code: str,
+) -> None:
+    """The brand.json resolver reports an SSRF refusal as ``fetch_failed``.
+
+    That resolver code's row is the transient ``brand_json_unreachable``; a
+    refused destination is terminal on this hop too.
+    """
+    from adcp.signing import ip_pinned_transport
+
+    def refuse(*args: Any, **kwargs: Any) -> Any:
+        raise SSRFValidationError("resolves to a private address", transient=transient)
+
+    # brand_jwks imports the builder at call time, so patch its home module.
+    monkeypatch.setattr(ip_pinned_transport, "build_async_ip_pinned_transport", refuse)
+
+    with pytest.raises(AgentResolverError) as caught:
+        await agent_resolver.async_resolve_agent(_AGENT, agent_type="sales")
+
+    assert caught.value.code == "brand_json_resolution_failed"
+    assert request_signature_code(caught.value) == spec_code

@@ -171,6 +171,20 @@ def request_signature_code(exc: AgentResolverError) -> str:
     return _SPEC_CODE_BY_RESOLVER_CODE[exc.code]
 
 
+def _ssrf_signature_code(exc: SSRFValidationError) -> str | None:
+    """The spec code for a hop whose destination the SSRF gate refused.
+
+    A refused destination -- a reserved or metadata address, a disallowed scheme
+    or port -- is ``request_signature_jwks_untrusted``: "the JWKS URL or resolved
+    network destination failed SSRF and trust-boundary validation", recovery
+    terminal. The gate also raises when the host does not resolve, and marks
+    that ``transient``; a DNS failure is the hop's own transient row, so this
+    returns ``None`` and :func:`request_signature_code` falls through to the
+    table.
+    """
+    return None if exc.transient else REQUEST_SIGNATURE_JWKS_UNTRUSTED
+
+
 # ---- Trace + AgentResolution ----
 
 
@@ -279,7 +293,9 @@ async def _fetch_capabilities(
             transport = build_async_ip_pinned_transport(agent_url, allow_private=allow_private)
         except SSRFValidationError as exc:
             raise AgentResolverError(
-                "capabilities_unreachable", f"agent_url failed SSRF check: {exc}"
+                "capabilities_unreachable",
+                f"agent_url failed SSRF check: {exc}",
+                signature_code=_ssrf_signature_code(exc),
             ) from exc
         except ValueError as exc:
             raise AgentResolverError(
@@ -602,11 +618,12 @@ async def async_resolve_agent(
         # destination on every attempt, so telling the peer to retry it is a
         # retry loop that cannot succeed. The two codes differ in the
         # ``enumMetadata.recovery`` classification the spec requires SDKs to
-        # consume, so this hop carries its own code explicitly.
+        # consume, so this hop carries its own code explicitly -- except for a
+        # host that did not resolve, which the gate reports as transient.
         raise AgentResolverError(
             "jwks_fetch_failed",
             f"JWKS URL failed SSRF check: {exc}",
-            signature_code=REQUEST_SIGNATURE_JWKS_UNTRUSTED,
+            signature_code=_ssrf_signature_code(exc),
         ) from exc
     except (httpx.HTTPError, ValueError, OSError) as exc:
         trace.append(
@@ -830,9 +847,10 @@ async def verify_from_agent_url(
     distinction the spec draws between them. A capabilities fetch that
     timed out reports ``request_signature_capabilities_unreachable``
     (transient, retry once), a brand.json hop reports its
-    ``request_signature_brand_*`` outcome, and an SSRF-refused
-    ``agent_url`` reports ``request_signature_jwks_untrusted``
-    (terminal).
+    ``request_signature_brand_*`` outcome, and a destination the SSRF
+    gate refuses on any hop reports ``request_signature_jwks_untrusted``
+    (terminal) -- a host that does not resolve keeps its hop's
+    transient code.
 
     Adopters needing finer-grain dispatch on the resolver-side cause
     can read ``exc.__cause__`` and check the
@@ -971,10 +989,16 @@ _BRAND_JSON_SPEC_CODES: dict[BrandJsonResolverErrorCode, str] = {
 
 
 def _brand_resolution_error(exc: BrandJsonResolverError) -> AgentResolverError:
+    signature_code = _BRAND_JSON_SPEC_CODES.get(exc.code)
+    cause = exc.__cause__
+    if exc.code == "fetch_failed" and isinstance(cause, SSRFValidationError):
+        # The brand.json resolver reports an SSRF refusal as ``fetch_failed``;
+        # a refused destination is terminal, as on the other two hops.
+        signature_code = _ssrf_signature_code(cause) or signature_code
     return AgentResolverError(
         "brand_json_resolution_failed",
         str(exc),
-        signature_code=_BRAND_JSON_SPEC_CODES.get(exc.code),
+        signature_code=signature_code,
     )
 
 
