@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AnyUrl, ConfigDict, Field
@@ -24,7 +26,7 @@ class Disclosure(AdcpVersionEnvelope):
     text: str | None = None
 
 
-class AcquireRightsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class AcquireRightsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     rights_id: str
     rights_status: Literal['acquired'] = 'acquired'
@@ -40,7 +42,7 @@ class AcquireRightsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class AcquireRightsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class AcquireRightsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     rights_id: str
     rights_status: Literal['pending_approval'] = 'pending_approval'
@@ -51,7 +53,7 @@ class AcquireRightsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class AcquireRightsResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class AcquireRightsResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     rights_id: str
     rights_status: Literal['rejected'] = 'rejected'
@@ -62,7 +64,7 @@ class AcquireRightsResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class AcquireRightsResponse4(AdcpVersionEnvelope, ProtocolEnvelope):
+class AcquireRightsResponse4(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

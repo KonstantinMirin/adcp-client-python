@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import ConfigDict, StringConstraints
@@ -16,11 +18,11 @@ from ..core.protocol_envelope import ProtocolEnvelope
 from ..enums import task_status as task_status_1
 
 
-class GetCreativeFeaturesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetCreativeFeaturesResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
 
 
-class GetCreativeFeaturesResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetCreativeFeaturesResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     evaluation_id: Annotated[str, StringConstraints(min_length=1)] | None = None
     errors: list[error_1.Error]
@@ -28,7 +30,7 @@ class GetCreativeFeaturesResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetCreativeFeaturesResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetCreativeFeaturesResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: Annotated[str, StringConstraints(min_length=1)]

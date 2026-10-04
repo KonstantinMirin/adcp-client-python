@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AnyUrl, ConfigDict, Field, StringConstraints
@@ -106,7 +108,7 @@ class Rights(AdcpVersionEnvelope):
     content_restrictions: list[str] | None = None
 
 
-class GetBrandIdentityResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetBrandIdentityResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     brand_id: str
     house: House
@@ -128,7 +130,7 @@ class GetBrandIdentityResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetBrandIdentityResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetBrandIdentityResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

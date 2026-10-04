@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import ConfigDict, Field, StringConstraints
@@ -43,7 +45,7 @@ class EventSource(AdcpVersionEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncEventSourcesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncEventSourcesResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     event_sources: list[EventSource]
     sandbox: bool | None = None
@@ -51,7 +53,7 @@ class SyncEventSourcesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncEventSourcesResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncEventSourcesResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

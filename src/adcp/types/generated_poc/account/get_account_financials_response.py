@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from datetime import date
 
 from typing import Annotated, Literal, TypeAlias
@@ -55,7 +57,7 @@ class Invoice(AdcpVersionEnvelope):
     paid_date: date | None = None
 
 
-class GetAccountFinancialsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetAccountFinancialsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     account: account_ref_1.AccountReference
     currency: Annotated[str, StringConstraints(pattern='^[A-Z]{3}$')]
@@ -71,7 +73,7 @@ class GetAccountFinancialsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetAccountFinancialsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetAccountFinancialsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

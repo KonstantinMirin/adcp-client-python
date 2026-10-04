@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from adcp.types._str_enum import StrEnum
 from typing import Annotated, Any, Literal
 
@@ -150,7 +152,7 @@ class VerifyBrandClaimsSignedResponse(AdCPBaseModel):
     ]
 
 
-class VerifyBrandClaimsResponseBulk(AdcpVersionEnvelope, ProtocolEnvelope):
+class VerifyBrandClaimsResponseBulk(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(
         extra='allow',
     )

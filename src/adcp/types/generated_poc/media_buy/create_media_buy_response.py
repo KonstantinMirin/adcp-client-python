@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AwareDatetime, ConfigDict, Field, StringConstraints, model_validator
@@ -27,7 +29,7 @@ from ..enums import task_status as task_status_1
 from adcp.types.media_buy_status_helpers import MEDIA_BUY_LEGACY_STATUS_VALUES, unwrap_enum_value
 
 
-class CreateMediaBuyResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class CreateMediaBuyResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     status: Literal['completed'] = 'completed'
     proposal_id: Annotated[str, StringConstraints(min_length=1)] | None = None
@@ -79,14 +81,14 @@ class CreateMediaBuyResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
         return data
 
 
-class CreateMediaBuyResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class CreateMediaBuyResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class CreateMediaBuyResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class CreateMediaBuyResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

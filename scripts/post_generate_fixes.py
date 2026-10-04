@@ -7309,6 +7309,214 @@ def enforce_root_required_groups() -> None:
         print(f"  {already} class(es) already carried one")
     for note in skipped:
         print(f"  skipped {note}")
+_ADCP_REQUEST_MARKER = "AdcpRequest"
+_ADCP_RESPONSE_MARKER = "AdcpResponse"
+
+
+def _mangle_schema_title(title: str) -> str:
+    """The class name datamodel-code-generator derives from a schema ``title``.
+
+    Measured against all 154 task-message schemas at pin 3.2.1: this reproduces the
+    generated root class (or union alias) name for 154 of 154. The acronym collapse is
+    the part a filename-derived guess gets wrong in both directions -- "Get AdCP
+    Capabilities Request" becomes ``GetAdcpCapabilitiesRequest``, and
+    ``list-creative-formats-request.json`` does NOT become
+    ``ListCreativeFormatsRequest`` because its title names the agent variant.
+    """
+    return "".join(word.capitalize() for word in re.split(r"[^0-9a-zA-Z]+", title) if word)
+
+
+def _task_registry_messages() -> list[tuple[str, str, Path]]:
+    """Every task message in the pinned bundle: (task, "request"|"response", schema path).
+
+    The registry in ``index.json`` is the authority for what IS a task message. A
+    filename pattern is not: 10 of the 87 ``*-request.json`` files are components or
+    para-protocol schemas that no task names, and marking those would claim registry
+    membership the bundle does not grant.
+    """
+    index = json.loads((SCHEMA_DIR / "index.json").read_text())
+    messages: list[tuple[str, str, Path]] = []
+    for domain, entry in index["schemas"].items():
+        for task, refs in (entry.get("tasks") or {}).items():
+            for kind in ("request", "response"):
+                ref = refs[kind]["$ref"]
+                messages.append((f"{domain}.{task}", kind, _resolve_schema_ref(Path(domain), ref)))
+    return messages
+
+
+def _generated_module_by_schema() -> dict[Path, Path]:
+    """Map each schema to the module generated from it, by the codegen ``filename:`` header.
+
+    The header is the generator's own statement of provenance, which is why it is read
+    instead of recomputed: a path convention would have to re-derive the hyphen
+    conversion, the directory layout and the root-discovery special cases.
+    """
+    modules: dict[Path, Path] = {}
+    for path in sorted(OUTPUT_DIR.rglob("*.py")):
+        if "bundled" in path.parts:
+            continue
+        for line in path.read_text().splitlines()[:6]:
+            if line.startswith("#   filename:"):
+                modules[Path(line.split(":", 1)[1].strip())] = path
+                break
+    return modules
+
+
+def _underscored(path: Path) -> Path:
+    return Path(*(part.replace("-", "_") for part in path.parts))
+
+
+def _module_top_level(tree: ast.Module) -> tuple[dict[str, ast.ClassDef], dict[str, ast.expr]]:
+    """Top-level classes and top-level assignments (the union aliases) of one module."""
+    classes = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
+    aliases: dict[str, ast.expr] = {}
+    for node in tree.body:
+        names: list[str] = []
+        if isinstance(node, ast.Assign):
+            names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names = [node.target.id]
+        if names and node.value is not None:
+            for name in names:
+                aliases[name] = node.value
+    return classes, aliases
+
+
+def _root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str) -> list[str]:
+    """The class(es) a task message can validate into, in the module that defines them.
+
+    A plain root is one class. A union root is a type alias, and the alias is not a
+    class -- so the marker lands on each member arm, which is what makes
+    ``isinstance(resp, AdcpResponse)`` hold for every value the task can answer with.
+    Nested aliases are followed. Fails closed: a root that resolves to neither a class
+    nor an alias, or an alias naming something this module does not define, is a build
+    error with the schema named.
+    """
+    classes, aliases = _module_top_level(tree)
+    if root in classes:
+        return [root]
+    if root not in aliases:
+        raise RuntimeError(
+            f"{schema_rel.as_posix()}: generated module {module.name} defines neither a "
+            f"class nor a type alias named {root!r}"
+        )
+    pending = [node.id for node in ast.walk(aliases[root]) if isinstance(node, ast.Name)]
+    resolved: list[str] = []
+    seen: set[str] = set()
+    while pending:
+        name = pending.pop(0)
+        if name in seen:
+            continue
+        seen.add(name)
+        if name in classes:
+            resolved.append(name)
+        elif name in aliases:
+            pending.extend(
+                node.id for node in ast.walk(aliases[name]) if isinstance(node, ast.Name)
+            )
+        else:
+            raise RuntimeError(
+                f"{schema_rel.as_posix()}: union arm {name!r} of {root} is not defined in "
+                f"{module.name}; the marker pass cannot reach it (one mechanism only)"
+            )
+    if not resolved:
+        raise RuntimeError(f"{schema_rel.as_posix()}: {root} resolved to no arm classes")
+    return resolved
+
+
+def _insert_first_base(source: str, class_name: str, marker: str) -> str:
+    """Put ``marker`` first in ``class_name``'s base list.
+
+    A field-less plain class as first base changes no field, no validator and no
+    serialization -- pydantic's metaclass still wins metaclass resolution, because the
+    marker's own metaclass is ``type``. First, not last, so the marker's accessors are
+    what a caller sees ahead of any generated member of the same name.
+    """
+    pattern = r"^class " + re.escape(class_name) + r"\(([^\n]*)\):$"
+    source, replaced = re.subn(
+        pattern, "class " + class_name + "(" + marker + r", \1):", source, count=1, flags=re.M
+    )
+    if replaced == 1:
+        return source
+    pattern = r"^class " + re.escape(class_name) + r":$"
+    source, replaced = re.subn(
+        pattern, "class " + class_name + "(" + marker + "):", source, count=1, flags=re.M
+    )
+    if replaced != 1:
+        raise RuntimeError(f"unable to rewrite the base list of {class_name}")
+    return source
+
+
+def insert_task_message_markers() -> None:
+    """Give every registered task message its ``AdcpRequest`` / ``AdcpResponse`` marker.
+
+    The marker is what lets a caller hold "a request" or "a response" as a TYPE before
+    knowing which tool it is -- resolve the account, decide at-most-once, echo the
+    context, route on task state -- and makes ``issubclass(model, AdcpRequest)`` the
+    registration-time proof that a model is spec-derived rather than a hand-written
+    parallel. The task registry in ``index.json`` decides membership, so a new task is
+    marked with zero edits here and a task that leaves drops its marker.
+
+    Inheritance, not injection: an injected accessor set that skips one class fails
+    silently, an inherited method cannot be forgotten. And one mechanism only -- a class
+    that COPIES rather than inherits (the bundled clone layer) is out of reach by design,
+    and reaching it would mean two injection points to keep in step.
+
+    Fails closed in four places: an unresolvable schema, a schema with no title, an
+    unresolvable root class, and a post-rewrite AST check that every marked class really
+    carries the marker as its first base.
+    """
+    messages = _task_registry_messages()
+    modules = _generated_module_by_schema()
+
+    # (module, class) -> marker. A response arm shared by several tasks is named more
+    # than once; the marker is the same, so the map de-duplicates it.
+    wanted: dict[tuple[Path, str], str] = {}
+    for task, kind, schema_rel in messages:
+        module = modules.get(_underscored(schema_rel))
+        if module is None:
+            raise RuntimeError(
+                f"{task} {kind}: no generated module declares filename "
+                f"{_underscored(schema_rel).as_posix()}"
+            )
+        title = json.loads((SCHEMA_DIR / schema_rel).read_text()).get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise RuntimeError(f"{schema_rel.as_posix()}: no title to derive a root class from")
+        marker = _ADCP_REQUEST_MARKER if kind == "request" else _ADCP_RESPONSE_MARKER
+        tree = ast.parse(module.read_text())
+        for class_name in _root_class_names(schema_rel, module, tree, _mangle_schema_title(title)):
+            previous = wanted.get((module, class_name))
+            if previous is not None and previous != marker:
+                raise RuntimeError(
+                    f"{module.name}: {class_name} is both a task request and a task response"
+                )
+            wanted[(module, class_name)] = marker
+
+    by_module: dict[Path, dict[str, str]] = {}
+    for (module, class_name), marker in wanted.items():
+        by_module.setdefault(module, {})[class_name] = marker
+
+    for module, markers in sorted(by_module.items()):
+        source = module.read_text()
+        import_line = "from adcp.types.base import " + ", ".join(sorted(set(markers.values())))
+        if import_line + "\n" not in source:
+            future_import = "from __future__ import annotations\n\n"
+            if future_import not in source:
+                raise RuntimeError(f"{module.name}: missing future annotations import")
+            source = source.replace(future_import, future_import + import_line + "\n\n", 1)
+        for class_name, marker in sorted(markers.items()):
+            source = _insert_first_base(source, class_name, marker)
+        module.write_text(source)
+
+        classes, _ = _module_top_level(ast.parse(source))
+        for class_name, marker in markers.items():
+            bases = classes[class_name].bases
+            if not bases or not isinstance(bases[0], ast.Name) or bases[0].id != marker:
+                raise RuntimeError(
+                    f"{module.name}: {class_name} does not carry {marker} as its first base"
+                )
+
+    print(f"  marked {len(wanted)} task-message classes across {len(by_module)} modules")
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -7406,6 +7614,7 @@ def main(argv: list[str] | None = None) -> int:
         rewrite_generated_enums_to_strenum,
         annotate_registry_track_verdict,
         preserve_format_reference_agent_url_wire_string,
+        insert_task_message_markers,
         point_integer_fields_at_the_schema_integer_type,
         remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,

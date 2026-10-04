@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from adcp.types._str_enum import StrEnum
 from typing import Any, Annotated, Literal
 
@@ -105,7 +107,7 @@ class VerifyBrandClaimSignedResponse(AdCPBaseModel):
     ]
 
 
-class VerifyBrandClaimSuccessResponse(AdcpVersionEnvelope, ProtocolEnvelope):
+class VerifyBrandClaimSuccessResponse(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(
         extra='allow',
     )
@@ -139,7 +141,7 @@ class VerifyBrandClaimSuccessResponse(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
+class VerifyBrandClaimErrorResponse(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(
         extra='allow',
     )

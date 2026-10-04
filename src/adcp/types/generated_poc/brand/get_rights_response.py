@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, TypeAlias
 
 from pydantic import AnyUrl, ConfigDict, Field, StringConstraints
@@ -56,7 +58,7 @@ class Excluded(AdcpVersionEnvelope):
     suggestions: list[str] | None = None
 
 
-class GetRightsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetRightsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     rights: list[Right]
     excluded: list[Excluded] | None = None
@@ -64,7 +66,7 @@ class GetRightsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetRightsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetRightsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

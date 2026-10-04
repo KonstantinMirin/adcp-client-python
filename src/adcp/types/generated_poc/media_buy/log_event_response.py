@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, TypeAlias
 
 from pydantic import ConfigDict, Field
@@ -22,7 +24,7 @@ class PartialFailure(AdcpVersionEnvelope):
     message: str
 
 
-class LogEventResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class LogEventResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     events_received: Annotated[int, Field(ge=0)]
     events_processed: Annotated[int, Field(ge=0)]
@@ -34,7 +36,7 @@ class LogEventResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class LogEventResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class LogEventResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

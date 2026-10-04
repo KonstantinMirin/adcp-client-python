@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from collections.abc import Sequence
 
 from typing import Annotated, Any, Literal, TypeAlias
@@ -27,7 +29,7 @@ from ..enums import task_status as task_status_1
 from adcp.types.media_buy_status_helpers import MEDIA_BUY_LEGACY_STATUS_VALUES, unwrap_enum_value
 
 
-class UpdateMediaBuyResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class UpdateMediaBuyResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     status: Literal['completed'] = 'completed'
     media_buy_id: str
@@ -75,14 +77,14 @@ class UpdateMediaBuyResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
         return data
 
 
-class UpdateMediaBuyResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class UpdateMediaBuyResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class UpdateMediaBuyResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class UpdateMediaBuyResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

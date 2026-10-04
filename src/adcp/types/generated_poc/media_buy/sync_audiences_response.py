@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AwareDatetime, ConfigDict, Field, StringConstraints
@@ -55,7 +57,7 @@ class Audience(AdcpVersionEnvelope):
     errors: list[error_1.Error] | None = None
 
 
-class SyncAudiencesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncAudiencesResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     audiences: list[Audience]
     sandbox: bool | None = None
@@ -63,14 +65,14 @@ class SyncAudiencesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncAudiencesResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncAudiencesResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncAudiencesResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncAudiencesResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

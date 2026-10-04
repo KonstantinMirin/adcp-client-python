@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, StringConstraints
@@ -71,7 +73,7 @@ class Account(AdcpVersionEnvelope):
     authorization: account_authorization_1.AccountAuthorization | None = None
 
 
-class SyncAccountsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncAccountsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     dry_run: bool | None = None
     accounts: list[Account]
@@ -79,7 +81,7 @@ class SyncAccountsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncAccountsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncAccountsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

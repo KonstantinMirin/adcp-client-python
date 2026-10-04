@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Literal, TypeAlias
 
 from pydantic import AwareDatetime, ConfigDict
@@ -43,7 +45,7 @@ class CollectionInfo(AdcpVersionEnvelope):
     effective_rate: float | None = None
 
 
-class GetMediaBuyArtifactsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetMediaBuyArtifactsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     media_buy_id: str
     artifacts: list[Artifact]
@@ -53,7 +55,7 @@ class GetMediaBuyArtifactsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetMediaBuyArtifactsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetMediaBuyArtifactsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: list[error_1.Error]
     context: context_1.ContextObject | None = None

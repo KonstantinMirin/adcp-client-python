@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, StringConstraints
@@ -132,7 +134,7 @@ class Estimate(AdcpVersionEnvelope):
     per_leaf: list[PerLeaf] | None = None
 
 
-class BuildCreativeResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     creative_manifest: creative_manifest_1.CreativeManifest
     build_variant_id: str | None = None
@@ -149,14 +151,14 @@ class BuildCreativeResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class BuildCreativeResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class BuildCreativeResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     creative_manifests: Annotated[list[creative_manifest_1.CreativeManifest], Field(min_length=1)]
     sandbox: bool | None = None
@@ -171,7 +173,7 @@ class BuildCreativeResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class BuildCreativeResponse4(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse4(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     creatives: Annotated[list[Creative], Field(min_length=1)]
     items_total: Annotated[int, Field(ge=0)] | None = None
@@ -190,7 +192,7 @@ class BuildCreativeResponse4(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class BuildCreativeResponse5(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse5(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     mode: Literal['estimate'] = 'estimate'
     estimate: Estimate
@@ -199,7 +201,7 @@ class BuildCreativeResponse5(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class BuildCreativeResponse6(AdcpVersionEnvelope, ProtocolEnvelope):
+class BuildCreativeResponse6(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

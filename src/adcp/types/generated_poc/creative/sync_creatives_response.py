@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AnyUrl, AwareDatetime, ConfigDict, Field, StringConstraints
@@ -41,7 +43,7 @@ class Creative(AdcpVersionEnvelope):
     assignment_errors: dict[Annotated[str, StringConstraints(pattern='^[a-zA-Z0-9_-]+$')], str] | None = None
 
 
-class SyncCreativesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCreativesResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     dry_run: bool | None = None
     creatives: list[Creative]
@@ -50,14 +52,14 @@ class SyncCreativesResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncCreativesResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCreativesResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncCreativesResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCreativesResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import TypeAlias
 
 from pydantic import ConfigDict
@@ -15,13 +17,13 @@ from ..core import ext as ext_1
 from ..core.protocol_envelope import ProtocolEnvelope
 
 
-class GetContentStandardsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetContentStandardsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class GetContentStandardsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class GetContentStandardsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: list[error_1.Error]
     context: context_1.ContextObject | None = None

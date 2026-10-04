@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import AwareDatetime, ConfigDict, Field, StringConstraints
@@ -45,7 +47,7 @@ class Catalog(AdcpVersionEnvelope):
     warnings: list[str] | None = None
 
 
-class SyncCatalogsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCatalogsResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     status: Literal['completed'] | None = None
     dry_run: bool | None = None
@@ -57,14 +59,14 @@ class SyncCatalogsResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncCatalogsResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCatalogsResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[Any], Field(min_length=1)]
     context: context_1.ContextObject | None = None
     ext: ext_1.ExtensionObject | None = None
 
 
-class SyncCatalogsResponse3(AdcpVersionEnvelope, ProtocolEnvelope):
+class SyncCatalogsResponse3(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow', validate_default=True)
     status: Literal[task_status_1.TaskStatus.submitted] = task_status_1.TaskStatus.submitted
     task_id: str

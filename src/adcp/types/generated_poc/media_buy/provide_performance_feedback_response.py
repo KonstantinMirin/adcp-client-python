@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, Literal, TypeAlias
 
 from pydantic import AwareDatetime, ConfigDict, Field, StringConstraints
@@ -15,7 +17,7 @@ from ..core import ext as ext_1
 from ..core.protocol_envelope import ProtocolEnvelope
 
 
-class ProvidePerformanceFeedbackResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class ProvidePerformanceFeedbackResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     success: Literal[True]
     feedback_id: Annotated[str, StringConstraints(min_length=1)] | None = None
@@ -28,7 +30,7 @@ class ProvidePerformanceFeedbackResponse1(AdcpVersionEnvelope, ProtocolEnvelope)
     ext: ext_1.ExtensionObject | None = None
 
 
-class ProvidePerformanceFeedbackResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class ProvidePerformanceFeedbackResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: Annotated[list[error_1.Error], Field(min_length=1)]
     context: context_1.ContextObject | None = None

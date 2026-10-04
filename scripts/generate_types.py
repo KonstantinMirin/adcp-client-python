@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import functools
 import json
 import os
 import posixpath
@@ -19,6 +20,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 try:
     import diff_generated_types
@@ -482,6 +484,167 @@ def rewrite_refs(obj, current_schema_rel_path: Path):
     return obj
 
 
+_VERSION_ENVELOPE_SCHEMA = Path("core/version-envelope.json")
+_VERSION_ENVELOPE_FIELDS = ("adcp_version", "adcp_major_version")
+
+# Keys that carry documentation, not validation. Two declarations that differ only in
+# these describe the same wire contract, which is what makes lifting them into the
+# envelope's own declaration a no-change rewrite.
+_DOCUMENTATION_KEYS = frozenset({"$comment", "deprecated", "description", "examples", "title"})
+
+# How many schemas the pass is allowed to rewrite, so a bump that changes the shape of
+# the problem is a build failure rather than a silent behavior change. Measured at pin
+# 3.2.1: 10 pointer-ref declarers (8 task requests, 2 task responses) and 4
+# wire-equivalent inline declarers (1 task request, 3 para-protocol).
+_VERSION_ENVELOPE_NORMALIZED_CEILING = 14
+
+
+def _version_envelope_ref() -> str:
+    """The canonical URL the composing schemas already use for the version envelope."""
+    return (
+        f"https://adcontextprotocol.org/schemas/{_PINNED_VERSION}/"
+        f"{_VERSION_ENVELOPE_SCHEMA.as_posix()}"
+    )
+
+
+@functools.cache
+def _version_envelope_property_definitions() -> dict[str, Any]:
+    """The envelope's own declaration of each version field, read from the pinned cache."""
+    envelope = json.loads((SCHEMAS_DIR / _VERSION_ENVELOPE_SCHEMA).read_text())
+    properties = envelope["properties"]
+    return {name: properties[name] for name in _VERSION_ENVELOPE_FIELDS}
+
+
+def _without_documentation(node: Any) -> Any:
+    """``node`` with every documentation-only key removed, recursively."""
+    if isinstance(node, dict):
+        return {
+            k: _without_documentation(v) for k, v in node.items() if k not in _DOCUMENTATION_KEYS
+        }
+    if isinstance(node, list):
+        return [_without_documentation(item) for item in node]
+    return node
+
+
+def _composes_version_envelope(schema: dict) -> bool:
+    """True when the schema already pulls the envelope in through a root ``allOf``."""
+    arms = schema.get("allOf")
+    if not isinstance(arms, list):
+        return False
+    for arm in arms:
+        if not isinstance(arm, dict):
+            continue
+        ref = arm.get("$ref")
+        if (
+            isinstance(ref, str)
+            and "#" not in ref
+            and ref.endswith(_VERSION_ENVELOPE_SCHEMA.as_posix())
+        ):
+            return True
+    return False
+
+
+def _is_version_envelope_pointer(definition: dict, field: str) -> bool:
+    """Predicate A: the property IS the envelope's property, by JSON pointer.
+
+    ``{"$ref": ".../core/version-envelope.json#/properties/adcp_version"}`` makes the
+    field definitionally shared and the class an envelope orphan: a pointer into a
+    subschema confers no composition under any generator.
+    """
+    ref = definition.get("$ref")
+    return (
+        set(definition) == {"$ref"}
+        and isinstance(ref, str)
+        and ref.endswith(f"{_VERSION_ENVELOPE_SCHEMA.as_posix()}#/properties/{field}")
+    )
+
+
+def normalize_version_envelope_composition(schema: dict, schema_rel_path: Path) -> dict:
+    """Give schemas that declare the version fields real ``AdcpVersionEnvelope`` ancestry.
+
+    Two authored conventions keep a task message out of the envelope's subtree while
+    still carrying its fields: a property-level pointer ``$ref`` into
+    ``version-envelope.json#/properties/...`` (predicate A, 10 schemas at pin 3.2.1), and
+    an inline copy that is wire-equivalent to the envelope's own declaration modulo
+    documentation (predicate B, 4 schemas). Both are the original authoring, not drift --
+    the pointer form has been there since the first commit that cached these files --
+    and adcontextprotocol/adcp#7892 to convert them is still open. So the SDK normalizes
+    them here, on the generation copy only: the cached bundle and every direct-from-schema
+    validation path are untouched.
+
+    The rewrite drops the property stubs and appends the envelope ``$ref`` to the root
+    ``allOf``, which datamodel-code-generator 0.64 renders as a base class -- the same
+    path 67 request roots already take. Validation does not move: the fields come back by
+    inheritance with the same type, pattern and bounds, and the extra-field policy is
+    pydantic-side on ``AdCPBaseModel``, so draft-07 ``additionalProperties`` semantics
+    never enter the generated artifact.
+
+    Idempotent in both directions. A schema upstream has already converted matches
+    neither predicate and is returned untouched, so the day #7892 lands -- as a clean
+    root ``allOf`` or in the stub-retaining form its draft-07 constraint may force -- this
+    pass becomes a no-op rather than a conflict. That shape is not hypothetical:
+    ``media-buy/sync-reporting-receipts-request.json`` ships it today (root ``allOf``
+    plus retained pointer stubs) and already renders as
+    ``SyncReportingReceiptsRequest(AdcpVersionEnvelope)``.
+
+    Fails closed. A third convention -- a declaration that is neither a pointer nor
+    wire-equivalent -- is refused and left exactly as authored, so it surfaces as the
+    hierarchy ratchet's residue with the schema named instead of being papered over here.
+    Two such schemas exist today and are correctly refused:
+    ``core/verification-token-claims.json`` and ``manifest.schema.json``.
+    """
+    if schema_rel_path == _VERSION_ENVELOPE_SCHEMA:
+        return schema
+    if schema_rel_path.parts[0] == BUNDLED_DIR_NAME:
+        # A bundled schema inlines its whole ``$ref`` graph on purpose, so it has no
+        # version-envelope reference to restore and appending one would put an external
+        # reference back into a self-contained document. The bundled copies of these 11
+        # schemas are measured separately and are not task-message types: all but
+        # ``protocol/get_adcp_capabilities_response`` are pruned after generation.
+        return schema
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return schema
+    declared = {
+        name: properties[name]
+        for name in _VERSION_ENVELOPE_FIELDS
+        if isinstance(properties.get(name), dict)
+    }
+    if not declared or _composes_version_envelope(schema):
+        return schema
+
+    required = schema.get("required")
+    if isinstance(required, list) and any(name in required for name in declared):
+        # The envelope declares both fields optional. Lifting a root-required field into
+        # it would relax the contract, so refuse rather than normalize.
+        return schema
+
+    envelope_definitions = _version_envelope_property_definitions()
+    for name, definition in declared.items():
+        if _is_version_envelope_pointer(definition, name):
+            continue
+        if _without_documentation(definition) == _without_documentation(envelope_definitions[name]):
+            continue
+        return schema
+
+    for name in declared:
+        del properties[name]
+    if not properties:
+        del schema["properties"]
+    arms = schema.setdefault("allOf", [])
+    if not isinstance(arms, list):
+        raise ValueError(f"{schema_rel_path.as_posix()}: root allOf is not a list")
+    arms.append({"$ref": _version_envelope_ref()})
+
+    global _VERSION_ENVELOPE_NORMALIZED
+    _VERSION_ENVELOPE_NORMALIZED += 1
+    print(f"    composed version envelope into {schema_rel_path.as_posix()}")
+    return schema
+
+
+_VERSION_ENVELOPE_NORMALIZED = 0
+
+
 def stabilize_inlined_core_refs(schema: dict, current_schema_rel_path: Path) -> dict:
     """Keep inlined core schemas from rebasing sibling refs.
 
@@ -757,11 +920,16 @@ def flatten_schemas(temp_dir: Path):
                     # generated convenience model omits this field.
                     properties.pop("formats", None)
 
-        # Normalize generator-specific extensions, resolve structural pointer
-        # refs into the type they select, then rewrite $ref paths.
+        # Normalize generator-specific extensions, resolve structural pointer refs into
+        # the type they select, compose the version envelope, then rewrite $ref paths. The
+        # envelope is composed before the rewrite so the appended reference takes exactly
+        # the same canonical-URL path through it as the schemas that already compose, and
+        # after the pointer inlining so that reference is never itself inlined back into
+        # copied fields -- which would turn inheritance into flattened fields.
         schema = normalize_enum_descriptions(schema)
         schema = inline_structural_pointer_refs(schema, rel_path)
         schema = collapse_nullable_unions(schema)
+        schema = normalize_version_envelope_composition(schema, rel_path)
         schema = rewrite_refs(schema, rel_path)
         schema = stabilize_inlined_core_refs(schema, rel_path)
         schema = stabilize_nested_discriminators(schema, rel_path)
@@ -776,7 +944,17 @@ def flatten_schemas(temp_dir: Path):
         print(f"  {rel_path}")
 
     count = len(schema_files)
-    print(f"\n  Prepared {count} schema files\n")
+    if _VERSION_ENVELOPE_NORMALIZED > _VERSION_ENVELOPE_NORMALIZED_CEILING:
+        raise ValueError(
+            f"version-envelope normalization rewrote {_VERSION_ENVELOPE_NORMALIZED} schemas, "
+            f"above the measured ceiling of {_VERSION_ENVELOPE_NORMALIZED_CEILING}. "
+            "A bump changed the shape of the problem: re-measure which schemas declare the "
+            "version fields without composing the envelope before raising the ceiling."
+        )
+    print(
+        f"\n  Prepared {count} schema files "
+        f"({_VERSION_ENVELOPE_NORMALIZED} version-envelope compositions)\n"
+    )
     return temp_dir
 
 

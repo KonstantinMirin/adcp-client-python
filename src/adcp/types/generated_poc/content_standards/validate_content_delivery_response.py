@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, TypeAlias
 
 from pydantic import ConfigDict, Field
@@ -40,7 +42,7 @@ class Result(AdcpVersionEnvelope):
     features: list[Feature] | None = None
 
 
-class ValidateContentDeliveryResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class ValidateContentDeliveryResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     summary: Summary
     results: list[Result]
@@ -48,7 +50,7 @@ class ValidateContentDeliveryResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class ValidateContentDeliveryResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class ValidateContentDeliveryResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: list[error_1.Error]
     context: context_1.ContextObject | None = None

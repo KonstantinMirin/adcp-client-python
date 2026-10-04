@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from adcp.types.base import AdcpResponse
+
 from typing import Annotated, TypeAlias
 
 from pydantic import ConfigDict, Field
@@ -26,7 +28,7 @@ class Feature(AdcpVersionEnvelope):
     confidence: Annotated[float, Field(ge=0, le=1)] | None = None
 
 
-class CalibrateContentResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
+class CalibrateContentResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     verdict: binary_verdict_1.BinaryVerdict
     confidence: Annotated[float, Field(ge=0, le=1)] | None = None
@@ -36,7 +38,7 @@ class CalibrateContentResponse1(AdcpVersionEnvelope, ProtocolEnvelope):
     ext: ext_1.ExtensionObject | None = None
 
 
-class CalibrateContentResponse2(AdcpVersionEnvelope, ProtocolEnvelope):
+class CalibrateContentResponse2(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope):
     model_config = ConfigDict(extra='allow')
     errors: list[error_1.Error]
     context: context_1.ContextObject | None = None
