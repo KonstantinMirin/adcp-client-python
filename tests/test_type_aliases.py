@@ -286,8 +286,13 @@ def test_stable_package_export_is_full_package():
     """Test that types/__init__.py exports the Package as Package."""
     from adcp.types import Package as StablePackage
 
-    # Stable Package should be the full package
-    stable_fields = set(StablePackage.__annotations__.keys())
+    # Stable Package should be the full package. Read ``model_fields``, not
+    # ``__annotations__``: a class's ``__annotations__`` holds only its OWN
+    # annotations, so it answered this question only while the canonical
+    # Package was a copy that re-declared every inherited field. It is a real
+    # subclass of the generated wire model now, declares nothing of its own,
+    # and ``model_fields`` is the pydantic truth that includes what it inherits.
+    stable_fields = set(StablePackage.model_fields)
     assert (
         len(stable_fields) >= 13
     ), f"Stable Package should have at least 13 fields, got {len(stable_fields)}"

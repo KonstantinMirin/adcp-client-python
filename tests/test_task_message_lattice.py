@@ -494,6 +494,35 @@ def test_descent_refuses_a_forged_model_that_merely_declares_the_fields() -> Non
     assert not issubclass(ForgedByFields, AdcpVersionEnvelope)
 
 
+def test_the_version_envelope_has_a_public_name() -> None:
+    """The adoption gate's guard conjunction must be spellable without `generated_poc`.
+
+    ``ProtocolEnvelope`` was already public and ``AdcpVersionEnvelope`` was not, so a
+    consumer writing
+    ``issubclass(model, AdcpRequest) and issubclass(model, AdcpVersionEnvelope)``
+    had to reach into ``adcp.types.generated_poc.core.version_envelope`` — which is
+    exactly the import the one-surface work exists to retire, and which the Prebid Sales
+    Agent carries today at ``src/core/main.py:230``. Re-export, never a copy: the public
+    name must be the SAME object, or the conjunction would refuse every real request.
+    """
+    import adcp.types
+    import adcp.types.protocol
+
+    assert "AdcpVersionEnvelope" in adcp.types.__all__
+    assert "AdcpVersionEnvelope" in adcp.types.protocol.__all__
+    assert adcp.types.AdcpVersionEnvelope is AdcpVersionEnvelope
+    assert adcp.types.protocol.AdcpVersionEnvelope is AdcpVersionEnvelope
+    # Its already-public sibling, as the parity this mirrors.
+    assert "ProtocolEnvelope" in adcp.types.__all__
+
+    # The conjunction, written in the public spelling only, on a real task request.
+    from adcp.types import GetProductsRequest
+    from adcp.types.base import AdcpRequest as PublicAdcpRequest
+
+    assert issubclass(GetProductsRequest, PublicAdcpRequest)
+    assert issubclass(GetProductsRequest, adcp.types.AdcpVersionEnvelope)
+
+
 def test_the_two_descent_predicates_refuse_different_forgeries() -> None:
     """Why a consumer's guard wants BOTH, not one in place of the other.
 
