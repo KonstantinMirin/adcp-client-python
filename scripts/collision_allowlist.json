@@ -95,7 +95,6 @@
     "DiscoveryMode",
     "Domain",
     "DomainBreakdown",
-    "DoohMetrics",
     "DurationMsRange",
     "DurationMsRangeItem",
     "Effect",
@@ -297,11 +296,8 @@
     "VariantDimension",
     "VendorMetric",
     "VendorMetricOptimization",
-    "VenueBreakdownItem",
     "VerifyAgent",
     "Viewability",
-    "ViewedSecondsHistogramItem",
-    "ViewedSecondsPercentiles",
     "Violation",
     "Warning"
   ]
