@@ -666,9 +666,7 @@ def _first_generated_class_name(content: str) -> str | None:
             (
                 base.id
                 if isinstance(base, ast.Name)
-                else base.attr
-                if isinstance(base, ast.Attribute)
-                else ""
+                else base.attr if isinstance(base, ast.Attribute) else ""
             )
             for base in node.bases
         }
@@ -4316,7 +4314,9 @@ def fix_mcp_webhook_operation_id_optional() -> None:
 def fix_signal_listing_range_subclasses() -> None:
     """Reuse SignalListing.Range for generated subclasses that redeclare range."""
     replacements = {
-        OUTPUT_DIR / "signals" / "get_signals_response.py": [
+        OUTPUT_DIR
+        / "signals"
+        / "get_signals_response.py": [
             (
                 "from ..core.signal_listing import SignalListing\n",
                 "from ..core.signal_listing import Range, SignalListing\n",
@@ -4331,7 +4331,9 @@ def fix_signal_listing_range_subclasses() -> None:
                 "",
             ),
         ],
-        OUTPUT_DIR / "core" / "wholesale_feed_event.py": [
+        OUTPUT_DIR
+        / "core"
+        / "wholesale_feed_event.py": [
             (
                 "from .signal_listing import SignalListing\n",
                 "from .signal_listing import Range, SignalListing\n",
@@ -6342,11 +6344,10 @@ def fix_creative_manifest_standalone_asset_coercion() -> None:
     if "_coerce_standalone_assets" in source:
         target.write_text(source)
         return
-    source = source.replace(
-        "from pydantic import ConfigDict, Field, RootModel, StringConstraints",
-        "from pydantic import ConfigDict, Field, RootModel, StringConstraints, model_validator",
-        1,
-    )
+    # Idempotent: an earlier pass (``enforce_root_required_groups``) may already
+    # have put ``model_validator`` on this line, and a literal prefix replace
+    # appended it a second time on every regeneration.
+    source = ensure_pydantic_import(source, "model_validator")
     helper = """
 
 def _normalize_asset_models(value: Any) -> Any:
