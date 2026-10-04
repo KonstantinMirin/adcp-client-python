@@ -37,8 +37,8 @@ import logging
 from collections.abc import Sequence
 
 from adcp.types import GetProductsField, GetProductsResponse, Product
-from adcp.types.generated_poc.media_buy.get_products_request import Fields as _RequestOnlyField
-from adcp.types.generated_poc.media_buy.product_fields import ProductResponseField
+from adcp.types.domains.media_buy.get_products_request import Fields as _RequestOnlyField
+from adcp.types.domains.media_buy.product_fields import ProductResponseField
 
 logger = logging.getLogger(__name__)
 
