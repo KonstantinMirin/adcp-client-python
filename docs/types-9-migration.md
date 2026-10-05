@@ -119,6 +119,26 @@ caller never sent does not.
 * `adcp.types.domains.<domain>[.<schema>]` and `adcp.types.error_details`
   (#1367) give every generated class a public path, and the public API
   snapshot records what each name resolves to.
+
+  The generator writes there directly now, so the private
+  `adcp.types.generated_poc` tree is gone. Every module stem moved unchanged,
+  which makes the migration a prefix rename:
+
+  ```python
+  -from adcp.types.generated_poc.media_buy.package_request import PackageRequest
+  +from adcp.types.domains.media_buy.package_request import PackageRequest
+  ```
+
+  `adcp migrate v3-to-v4` rewrites those lines. The old path also still
+  resolves through the whole 9.x line, emitting a `DeprecationWarning` that
+  names the new one — #1360 measured 110 such imports in a single production
+  seller, and 9.0 does not break all of them at once. **It is removed in
+  v10.** What the old path returns is the *same module object*, so
+  `adcp.types.generated_poc.core.format_id.FormatReferenceStructuredObject is
+  adcp.types.domains.core.format_id.FormatReferenceStructuredObject` — an
+  `isinstance` check cannot start failing because a class was reached by its
+  old name. Prefer the flat `adcp.types` surface where the name you need is
+  bound there, as `docs/type-surface.md` describes.
 * `scripts/generate_types.py --check` runs in CI, grades every post-generation
   fix against `scripts/post_generation_manifest.json`, and the generator's
   input order is total, so a regeneration is byte-identical on every
