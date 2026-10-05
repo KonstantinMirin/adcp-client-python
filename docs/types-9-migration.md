@@ -101,9 +101,9 @@ The bundled schema validator additionally checks `format: uri` and
 42 models enforce the root-level `anyOf`/`oneOf` their schema declares.
 `CreateMediaBuyRequest` needs packages, a budget, or a proposal; a document
 with none raises `ValidationError` naming the groups. The rule reaches the
-canonical names in `adcp.types` too: `_canonical_clone` carries every validator
-a generated class declares on itself, so `adcp.CreateMediaBuyRequest` and the
-generated class agree.
+canonical names in `adcp.types` too: a canonical model is a subclass of the
+generated class, so it inherits every validator that class declares and
+`adcp.CreateMediaBuyRequest` and the generated class agree.
 
 ```python
 CreateMediaBuyRequest.model_validate({**unconditional_fields})
@@ -123,13 +123,30 @@ caller never sent does not.
   fix against `scripts/post_generation_manifest.json`, and the generator's
   input order is total, so a regeneration is byte-identical on every
   filesystem (#1374).
-* `canonical_creative.pyi` is derived from the runtime models (#1366): every
-  field the canonical models carry is declared, and the synthesized
-  constructors demand exactly the fields the runtime demands. A program that
-  type-checked against the old stub while constructing `CreateMediaBuyRequest`
-  without `brand`, `start_time`, `end_time` or `idempotency_key` now fails
-  mypy, as it always failed at runtime. Enum-typed parameters keep accepting
-  the wire string.
+* `canonical_creative.pyi` is gone (#1366). Every canonical model is now a real
+  subclass of the generated wire model it refines, so there is nothing left to
+  declare by hand: mypy reads `canonical_creative.py` and sees the actual
+  inherited fields. The stub is not regenerated — it was deleted, because the
+  thing it was transcribing is ordinary source. A program that type-checked
+  against the old stub while constructing `CreateMediaBuyRequest` without
+  `brand`, `start_time`, `end_time` or `idempotency_key` now fails mypy, as it
+  always failed at runtime.
+
+  One static-typing consequence comes with that. The runtime still coerces the
+  wire string for an enum-typed parameter — `PackageRequest(product_id="p1",
+  pricing_option_id="po1", pacing="even")` returns `Pacing.even` — but mypy and
+  pyright now read the generated `Pacing | None` and reject the `str`. An
+  adopter constructing a canonical model directly passes the enum member
+  (`pacing=Pacing.even`) or goes through `model_validate`, which takes the wire
+  document unchanged. This is not a regression against the hand-written stub:
+  that stub did not declare `pacing` at all, so the same call was refused there
+  too, as an unexpected keyword rather than a wrong type.
+
+  The legacy-identity fields the canonical models remove — `format_id`,
+  `format_ids`, `format_ids_pending`, `format_ids_to_provide` — are declared in
+  a `TYPE_CHECKING` block with `init=False`, so a type checker refuses the
+  keyword the runtime refuses instead of offering a constructor argument that
+  raises `ValidationError`. Read them and you get `None`.
 * A format reference's `agent_url` is carried as the wire string, validated
   as a URL (#1384). `ref.agent_url` is a `str`, not an `AnyUrl`, so
   `migrated_…` option IDs derived from a model match those derived from the

@@ -13,7 +13,7 @@ import copy
 import json
 import re
 from collections.abc import Callable, Sequence
-from typing import Annotated, Any, ClassVar, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
 
 from pydantic import (
     ConfigDict,
@@ -132,6 +132,23 @@ _CREDENTIAL_SHAPED_KEY_SUFFIXES = (
     "password",
     "bearer",
 )
+
+if TYPE_CHECKING:
+    from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
+
+    # The three shapes the generated parents give legacy creative identity.
+    # Each canonical model that inherits one of those fields redeclares it in a
+    # ``TYPE_CHECKING`` block, so a type checker's synthesized ``__init__``
+    # agrees with the runtime: ``__pydantic_init_subclass__`` removes the field
+    # and ``_reject_legacy_creative_identity`` refuses the key, and ``init=False``
+    # is what makes the keyword unavailable statically as well. The annotations
+    # mirror the generated declaration exactly — a drift in either direction
+    # makes the redeclaration an incompatible override, which mypy and pyright
+    # refuse by name. ``test_canonical_removed_fields.py`` pins that every
+    # removed field has such a redeclaration.
+    _RemovedFormatId = FormatReferenceStructuredObject | None
+    _RemovedFormatIds = list[FormatReferenceStructuredObject] | None
+    _RemovedFormatIdSequence = Sequence[FormatReferenceStructuredObject] | None
 
 
 def _walk_for_credential_keys(value: Any, *, path: str = "") -> str | None:
@@ -579,11 +596,17 @@ ProductFormatDeclaration = Format
 class Placement(_LegacyPlacement, CanonicalBoundaryModel):
     """Canonical placement; ``format_options`` are canonical declarations."""
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIdSequence = Field(default=None, init=False)
+
     format_options: SchemaVariant[list[Format] | None] = Field(default=None, min_length=1)
 
 
 class Product(_LegacyProduct, CanonicalBoundaryModel):
     """Canonical product; formats, placements and pricing are canonical."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
 
     format_options: SchemaVariant[list[Format]] = Field(
         min_length=1, description="Canonical creative formats accepted by this product."
@@ -595,11 +618,17 @@ class Product(_LegacyProduct, CanonicalBoundaryModel):
 class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
     """Canonical creative asset; the format kind is required, not optional."""
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
+
     format_kind: CanonicalFormatKind
 
 
 class Creative(_CanonicalListedCreative, CanonicalBoundaryModel):
     """Canonical listed creative; the format kind is required, not optional."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
 
     format_kind: CanonicalFormatKind
 
@@ -613,6 +642,9 @@ class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
     validates them. This keeps the public constructors composable without
     relaxing the on-wire discriminator checks.
     """
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
 
     @model_validator(mode="before")
     @classmethod
@@ -705,6 +737,9 @@ for _tolerant in (_DeliveryCreativeManifest, _DeliveryCreativeVariant):
 class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
     """Canonical served creative; variants are the tolerant delivery rows."""
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
+
     format_kind: _OpenCanonicalFormatKind | None = None
     variants: SchemaVariant[list[_DeliveryCreativeVariant]] = _inherit(
         _LegacyDeliveryCreative, "variants"
@@ -714,13 +749,22 @@ class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
 class CreativeFilters(_LegacyCreativeFilters, CanonicalBoundaryModel):
     """Canonical creative filters; legacy identity selection is unavailable."""
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
 
 class ProductFilters(_LegacyProductFilters, CanonicalBoundaryModel):
     """Canonical product filters; legacy identity selection is unavailable."""
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
 
 class PackageRequest(_LegacyPackageRequest, CanonicalBoundaryModel):
     """Canonical package request preserving beta.3 selector constraints."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
 
     creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)
 
@@ -742,6 +786,11 @@ class PackageUpdate(_LegacyPackageUpdate, CanonicalBoundaryModel):
 
 class Package(_LegacyPackage, CanonicalBoundaryModel):
     """Canonical package; legacy format identity is absent."""
+
+    if TYPE_CHECKING:  # the removed fields, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_pending: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_to_provide: _RemovedFormatIds = Field(default=None, init=False)
 
 
 class GetProductsRequest(_LegacyGetProductsRequest, CanonicalBoundaryModel):
@@ -875,6 +924,11 @@ class ListCreativesResponse(_LegacyListCreativesResponse, CanonicalBoundaryModel
 
 class MediaBuyPackage(_LegacyMediaBuyPackage, CanonicalBoundaryModel):
     """Canonical media-buy package row; legacy format identity is absent."""
+
+    if TYPE_CHECKING:  # the removed fields, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_pending: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_to_provide: _RemovedFormatIds = Field(default=None, init=False)
 
 
 class MediaBuy(_LegacyMediaBuy, CanonicalBoundaryModel):
