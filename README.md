@@ -282,7 +282,7 @@ Pre-configured agents (all include `.simple` accessor):
 
 See [examples/simple_api_demo.py](examples/simple_api_demo.py) for a complete comparison.
 
-> **Tip**: Import types from the main `adcp` package (e.g., `from adcp import GetProductsRequest`), from `adcp.types`, or from a curated partial module (`adcp.types.media_buy`, `.creative`, `.signals`, `.protocol`, `.buyer`, `.seller`) — never from the internal `adcp.types.generated_poc.*` layer. `import adcp` is lightweight; the generated type graph is built only when you import a type.
+> **Tip**: Import types from the main `adcp` package (e.g., `from adcp import GetProductsRequest`), from `adcp.types`, or from a curated partial module (`adcp.types.media_buy`, `.creative`, `.signals`, `.protocol`, `.buyer`, `.seller`); `adcp.types.domains.*` is public too, and is where a name several schemas declare is unambiguous. `import adcp` is lightweight; the generated type graph is built only when you import a type.
 
 ## Quick Start: Distributed Operations
 
@@ -517,7 +517,7 @@ from adcp.types.buyer import GetProductsRequest, CpmPricingOption
 from adcp.types.seller import Offering, PropertyList, ContentStandards
 ```
 
-If a type you need isn't in `adcp.types`, open an issue — we'll add an alias. The `adcp.types.generated_poc.*` modules are internal; class names and module paths shift on every schema regeneration and are not a supported API.
+If a type you need isn't in `adcp.types`, open an issue — we'll add an alias. The `adcp.types.domains.*` modules are public and are where codegen defines every class, so they always have it; the caveat is the class NAMES, which codegen derives and renumbers (`Assets162`) — an alias is the stable spelling.
 
 The six partial modules (`media_buy`, `creative`, `signals`, `protocol`, `buyer`, `seller`) are for curation and discoverability — they group types by domain and give you a smaller import surface. They are **not** a per-domain performance tier: the first AdCP type you touch through any of them builds the same single Pydantic graph.
 
@@ -561,7 +561,7 @@ See `examples/type_aliases_demo.py` for more examples.
 **Import guidelines:**
 - ✅ **DO**: Import from main package: `from adcp import GetProductsRequest`
 - ✅ **DO**: Use semantic aliases: `from adcp import CreateMediaBuySuccessResponse`
-- ⚠️ **AVOID**: Import from `adcp.types.generated_poc.*` — paths and class names (including numbered `Assets*` variants) change on every schema regeneration.
+- ⚠️ **AVOID**: Import a numbered generated class (`Assets5`, `Type11`) by any path — codegen renumbers them on every schema regeneration. `adcp.types.domains.<domain>.<schema>` itself is a supported import.
 
 The main package exports provide a stable API while internal generated types may change.
 

@@ -934,12 +934,12 @@ locked.
 | `AuthInfo` | `adcp.decisioning.context` | locked |
 | `WorkflowStep` | NEW in `adcp.decisioning.state` (framework-internal, not on the wire) | locked in foundation as a frozen `@dataclass` |
 | `WorkflowObjectType` | NEW in `adcp.decisioning.state` (framework-internal `Literal`) | locked in foundation |
-| `Proposal` | `adcp.types.generated_poc.core.proposal` (already exists from spec codegen) | locked (generated) |
+| `Proposal` | `adcp.types.domains.core.proposal` (already exists from spec codegen) | locked (generated) |
 | `GovernanceContextJWS` | NEW in `adcp.decisioning.state` (`NewType('GovernanceContextJWS', str)`) | locked in foundation |
-| `PropertyList` | `adcp.types.generated_poc.core.property_list_ref` (re-export `PropertyListReference` + the resolved-list type) | locked (generated) |
-| `CollectionList` | `adcp.types.generated_poc.collection.collection_list` (already exists) | locked (generated) |
-| `Format` | `adcp.types.generated_poc.core.format` (already exists) | locked (generated) |
-| `FormatReferenceStructuredObject` | `adcp.types.generated_poc.core.format_id` (already exists) | locked (generated) |
+| `PropertyList` | `adcp.types.domains.core.property_list_ref` (re-export `PropertyListReference` + the resolved-list type) | locked (generated) |
+| `CollectionList` | `adcp.types.domains.collection.collection_list` (already exists) | locked (generated) |
+| `Format` | `adcp.types.domains.core.format` (already exists) | locked (generated) |
+| `FormatReferenceStructuredObject` | `adcp.types.domains.core.format_id` (already exists) | locked (generated) |
 
 The framework-internal types (`WorkflowStep`, `WorkflowObjectType`,
 `GovernanceContextJWS`) ship as foundation-stable dataclasses /
@@ -1530,7 +1530,7 @@ above for the full Protocol definitions and rationale.
   includes a per-type table: `Account`, `AuthInfo`, `Proposal`,
   `PropertyList`, `CollectionList`, `Format`,
   `FormatReferenceStructuredObject` are all already in
-  `adcp.types.generated_poc/`; `WorkflowStep`, `WorkflowObjectType`,
+  `adcp.types.domains/`; `WorkflowStep`, `WorkflowObjectType`,
   `GovernanceContextJWS` are framework-internal types defined fresh
   in `adcp.decisioning.state` and shipped foundation-stable. Adopter
   code that pattern-matches on these types doesn't refactor when v6.1

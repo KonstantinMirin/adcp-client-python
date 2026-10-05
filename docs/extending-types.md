@@ -129,7 +129,7 @@ descent check to use when refusing a hand-written look-alike.
 
 Several entity names (`Creative`, `Package`, `MediaBuy`, etc.) appear in multiple spec slices with **genuinely different shapes**. The bare name resolves to one specific variant — typically not the one you want when extending response types. The creative inside `ListCreativesResponse.creatives` is a different class from the creative inside `GetCreativeDeliveryResponse.creatives`, even though both are spelled `Creative` in the spec. Subclassing the wrong variant produces silent type drift: construction works, but `mypy` flags `[assignment]` when you wire your subclass into the response that expects a different variant, and runtime serialization may drop fields the consuming code expects.
 
-**The fix is to import the variant-specific alias.** For every name that collides across slices, `adcp.types` exports a disambiguated alias whose prefix names the slice it belongs to — `ListCreativesCreative`, `SyncCreativesCreative`, `DeliveryCreative`, `CapabilitiesCreative`, and so on. Import these from the public `adcp.types` namespace. Do **not** reach into `adcp.types.generated_poc.*` or `adcp.types._generated` — those are internal modules whose class names renumber on every schema regen, so an import that resolves today can silently move tomorrow.
+**The fix is to import the variant-specific alias.** For every name that collides across slices, `adcp.types` exports a disambiguated alias whose prefix names the slice it belongs to — `ListCreativesCreative`, `SyncCreativesCreative`, `DeliveryCreative`, `CapabilitiesCreative`, and so on. Import these from the public `adcp.types` namespace. Do **not** reach into `adcp.types._generated` — it resolves a bare name that several schemas declare to one sort-order winner, so an import that resolves today can silently name a different class tomorrow. A domain path (`adcp.types.domains.creative.list_creatives_response`) is public and names the declaring schema, so it cannot move that way; what it does not protect you from is a NUMBERED class name, which codegen renumbers.
 
 These prefixed aliases live in the flat `adcp.types` namespace, not in the curated partial modules (`adcp.types.creative`, `adcp.types.media_buy`, …). The partials export only the canonical, single-variant names (`Creative`, `Package`, `MediaBuy`). When you need a specific variant, import it from `adcp.types`.
 
@@ -144,7 +144,7 @@ These prefixed aliases live in the flat `adcp.types` namespace, not in the curat
 | Extend the package element of `CreateMediaBuyRequest.packages` | `from adcp.types import PackageRequest` (also in `adcp.types.media_buy`) | `from adcp import Package` |
 | Extend the media-buy element of `GetMediaBuysResponse.media_buys` | `from adcp.types import GetMediaBuysMediaBuy` | `from adcp import MediaBuy` (resolves to the core variant; the list slice has a narrower shape) |
 | Extend the media-buy reported in `GetAdcpCapabilitiesResponse` | `from adcp.types import CapabilitiesMediaBuy` | `from adcp import MediaBuy` |
-| Extend a `Deployment` (e.g. for `Signal.deployments`) | `from adcp.types import Deployment` (a structured union over the deployment shapes) | reaching into `generated_poc` for an internal numbered class |
+| Extend a `Deployment` (e.g. for `Signal.deployments`) | `from adcp.types import Deployment` (a structured union over the deployment shapes) | reaching for an internal numbered class on a domain path |
 
 The canonical names (`Creative`, `Package`, `MediaBuy`, `Deployment`) remain available from both `adcp` and the partial modules — use those when the bare name already resolves to the variant you want. The prefixed aliases exist for the cases where it doesn't.
 
@@ -325,7 +325,7 @@ class MyAudienceFilters(SomeLibraryFilters):
     excluded_countries: SchemaVariant[list[GeoCountry]]
 ```
 
-If a variant you need has neither a canonical nor a prefixed public alias, import it from its domain module (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not import the class from `adcp.types.generated_poc.*` as a workaround — those names renumber on schema regen, so the import is not stable.
+If a variant you need has neither a canonical nor a prefixed public alias, import it from its domain module (see [Every variant has a name](#every-variant-has-a-name)) and **open an issue** at [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues) asking for a semantic alias. Do not pin a numbered class name (`Assets162`) as a workaround — codegen renumbers those on schema regen, so the import is not stable.
 
 `SchemaVariant[T]` collapses to `T` at runtime — Pydantic validates against the wrapped type unchanged. At type-check time the bundled mypy plugin (`adcp.types.mypy_plugin`) rewrites the annotation to `Any` so the LSP override check passes. **Adopters must enable the plugin in their mypy config** — add this line to `pyproject.toml`:
 
@@ -338,7 +338,7 @@ Tradeoff: inside the override site, mypy sees the field as `Any`. If precise inf
 
 ### Tracking the spec-level fix
 
-The cross-slice name collisions (the geo exclusion mirrors of the inclusion items, the capability-vs-response variants) are tracked upstream as a spec rename request: [adcontextprotocol/adcp#4347](https://github.com/adcontextprotocol/adcp/issues/4347). When the rename ships, some of these variants may merge — but the core principle (import the public alias that matches your intended response context, never the internal `generated_poc` class) is durable.
+The cross-slice name collisions (the geo exclusion mirrors of the inclusion items, the capability-vs-response variants) are tracked upstream as a spec rename request: [adcontextprotocol/adcp#4347](https://github.com/adcontextprotocol/adcp/issues/4347). When the rename ships, some of these variants may merge — but the core principle (import the public alias that matches your intended response context, never an internal numbered class) is durable.
 
 ## Field-Level Exclusion with `Field(exclude=True)` — Recommended
 
@@ -461,7 +461,7 @@ If your parent extends plain `pydantic.BaseModel` (not `AdCPBaseModel`), you mus
 > `@model_serializer` only when you need transformation logic, and file an issue at
 > [adcontextprotocol/adcp-client-python](https://github.com/adcontextprotocol/adcp-client-python/issues)
 > if the `MockValSer` error blocks you — this is an SDK-side build-ordering bug, not
-> something to work around by importing from `generated_poc`.
+> something to work around by importing an internal numbered class.
 
 ## Migrating from Manual `model_dump()` Dispatch Overrides
 

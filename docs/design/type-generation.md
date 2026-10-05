@@ -47,8 +47,8 @@ regenerate-schemas: ## Download latest schemas and skills from bundle, then rege
 | `bundle_schemas.py` | the cache | `src/adcp/_schemas/**`, the schemas the wheel ships | no |
 | `generate_versioned_stubs.py` | the cache | `src/adcp/types/v30.pyi`, `v31.pyi`, `v32.pyi` | no |
 | `generate_versioned_bases.py` | the cache | `src/adcp/types/versioned_bases/**` | no |
-| `generate_types.py` | the cache | `generated_poc/**`, `_generated.py`, `_ergonomic.py` | no |
-| `consolidate_exports.py` | the generated tree | `_generated.py`, `domains/**`, `error_details.py`, `docs/shared-type-names.md` | no |
+| `generate_types.py` | the cache | `domains/**`, `_generated.py`, `_ergonomic.py` | no |
+| `consolidate_exports.py` | the generated tree | `_generated.py`, each `domains/<domain>/__init__.py`, `domains/__init__.py`, `error_details.py`, `docs/shared-type-names.md` | no |
 | `generate_ergonomic_coercion.py` | the generated tree | `_ergonomic.py` | no |
 
 `sync_schemas.py` is the only step that touches the network, and skipping it regenerates
@@ -64,6 +64,22 @@ Note that `generate_types.py` already runs `consolidate_exports.py` and
 their output, so the Makefile target runs both of them a second time. Harmless, but do not
 read the Makefile as the statement of what depends on what.
 
+### One tree
+
+`OUTPUT_DIR` is `src/adcp/types/domains` — the address adopters import from. The generator
+defines every class at its public path, so there is no private tree behind the public one
+and no re-export tree in front of it: nothing is copied, and nothing can drift. What
+`consolidate_exports.py` writes into that tree are the namespaces DERIVED from it — each
+domain root, the `DOMAINS` roster, `_generated.py` and `error_details.py` — never a second
+copy of a module.
+
+Four domains have no package root to write: `adagents`, `brand_discovery`, `manifest` and
+`manifest_schema` are single schemas at the bundle root, so the generator emits
+`domains/<domain>.py` and that module IS the domain root. A post-generation pass
+(`declare_root_schema_module_exports`) gives each of the four an `__all__`, because a
+domain root is a public namespace and `scripts/export_resolution.py` reads `__all__` to
+record what one promises.
+
 ### Inside `generate_types.py`
 
 `main()` stages everything in a `TemporaryDirectory(dir=REPO_ROOT, prefix=".typegen-")` and
@@ -76,20 +92,25 @@ In order:
 1. Snapshot the committed tree, for the delta report.
 2. `flatten_schemas` — copy the bundle into the staging tree with hyphens converted to
    underscores in every path part, applying the pre-generation transforms below.
-3. Run `datamodel-codegen` over the staged schema tree.
-4. `generate_root_discovery_types` — generate `brand.json` a second time, standalone, as
+3. `_staged_source_tree` — copy `src/adcp` into the staging tree, minus the committed
+   generated tree. Generation targets `types/domains` inside that copy, so consolidation
+   can import what was just generated and write the derived namespaces beside it.
+4. Run `datamodel-codegen` over the staged schema tree.
+5. `generate_root_discovery_types` — generate `brand.json` a second time, standalone, as
    `brand_discovery.py`. The generator is therefore invoked twice per run.
-5. `fix_forward_references` — repair aliased imports.
-6. `apply_post_generation_fixes` — a subprocess running `post_generate_fixes.py` against
+6. `fix_forward_references` — repair aliased imports.
+7. `apply_post_generation_fixes` — a subprocess running `post_generate_fixes.py` against
    the staged tree.
-7. `prune_unused_bundled_modules` — keep only the three paths in `BUNDLED_KEEP`.
-8. `restore_unchanged_files` — restore byte-for-byte any file whose only change is a
-   timestamp header, so a no-op regeneration produces no diff.
+8. `prune_unused_bundled_modules` — keep only the three paths in `BUNDLED_KEEP`.
 9. Run `consolidate_exports.py`, then `generate_ergonomic_coercion.py`, against the staging
-   tree.
-10. Compare three artifacts against the checkout — `generated_poc/`, `_generated.py`,
-    `_ergonomic.py`. Under `--check`, print the drift and return 1 without writing.
-    Otherwise install and write `SCHEMA_DELTAS.md`.
+   tree. The first writes the domain roots into the tree generated in step 4.
+10. `restore_unchanged_files` — restore byte-for-byte any file whose only change is a
+    timestamp header, so a no-op regeneration produces no diff. Once, over the whole tree,
+    after the roots are in it.
+11. Compare the artifacts against the checkout — `domains/`, `_generated.py`,
+    `_ergonomic.py`, `error_details.py`, `docs/shared-type-names.md`. Under `--check`,
+    print the drift and return 1 without writing. Otherwise install and write
+    `SCHEMA_DELTAS.md`.
 
 ### The pre-generation transforms
 
@@ -380,7 +401,7 @@ numeric-suffixed public names become a breaking rename that needs a deprecation 
 migration table. Both are surface-policy calls, not implementation.
 
 Note also that `test_no_derived_name_is_positional` grades the rule's output over the JSON
-schemas. It never reads `generated_poc`, so it passes while the shipped classes stay
+schemas. It never reads the generated tree, so it passes while the shipped classes stay
 numbered. It is a correct test of the rule and not a test of the tree.
 
 ## What keeps a name's meaning stable, and where it does not
@@ -425,7 +446,7 @@ The one authority on whether the committed tree matches the pipeline is:
 python scripts/generate_types.py --check     # "✓ Generated types are up to date"
 ```
 
-It stages a complete regeneration, compares `generated_poc/`, `_generated.py` and
+It stages a complete regeneration, compares `domains/`, `_generated.py` and
 `_ergonomic.py` byte-for-byte against the checkout, and writes nothing. **Run it yourself
 after any pipeline change: `make validate-generated` does not.** That target checks syntax
 and the two versioned-stub generators only; PR #1374 is what wires the staleness check into

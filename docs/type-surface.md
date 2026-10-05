@@ -20,12 +20,12 @@ from adcp.types import CreateMediaBuyRequest, GetProductsResponse, ProtocolEnvel
 `adcp.types.__all__` carries 925 entries binding 923 distinct names. This is the spelling
 to use, and it resolves for every name exactly one schema declares.
 
-### The domain mirror, for names several schemas declare
+### The domain tree, for names several schemas declare
 
 AdCP names an inline object after the property that holds it, so several schemas
 legitimately declare a class called `Creative` or `QuerySummary`. The flat namespace binds
-one of them per name; `adcp.types.domains` mirrors the bundle's own layout — 27 domain
-packages, 1084 modules, one per schema file — so the import path says which one you mean:
+one of them per name; `adcp.types.domains` follows the bundle's own layout — 26 domain
+roots, one module per schema file — so the import path says which one you mean:
 
 ```python
 from adcp.types.domains.creative.list_creatives_response import Creative
@@ -50,20 +50,28 @@ from adcp.types.legacy import LegacyCreative
 ```
 
 `adcp.types.core`, `creative`, `media_buy`, `signals`, `protocol` and `legacy` are
-hand-picked partial views. They are stable, but they are narrower than the domain mirror
+hand-picked partial views. They are stable, but they are narrower than the domain tree
 and are not derived from the bundle, so a new schema does not appear in one until someone
 adds it.
 
-### Same object, never a copy
+### One tree: the definition site IS the public address
 
-The spellings resolve to the same class object. A public name is a re-export of the class
-its generated module defines, not a second class built from the first:
+`adcp.types.domains` is not a mirror of a private tree. It is where
+`datamodel-code-generator` writes, so the module that DEFINES a class is the module an
+adopter imports it from. There is no second tree, no copying step, and nothing that can
+drift between them — `scripts/generate_types.py` points `--output` straight at
+`src/adcp/types/domains/`, and the consolidation step writes only the namespaces derived
+from it (`_generated.py`, each `<domain>/__init__.py`, `error_details.py`).
+
+Every other spelling resolves to the same class object. A public name is a re-export of
+the class its generated module defines, never a second class built from the first:
 
 ```python
 from adcp.types import Product
-from adcp.types.domains.core.product import Product as Mirrored
+from adcp.types.domains.core.product import Product as Defined
 
-assert Product is Mirrored
+assert Product is Defined
+assert Product.__module__ == "adcp.types.domains.core.product"
 ```
 
 `tests/test_export_surface_is_derived.py` holds this across the surface: every public name
@@ -73,9 +81,15 @@ identity check, because `create_model` stamps the calling module onto what it bu
 
 ## What is deliberately not public
 
-`adcp.types.generated_poc` and `adcp.types._generated` are internal. Class names inside
-them renumber when the schema bundle moves, so an import that resolves today can name a
-different class after the next regeneration.
+`adcp.types._generated` is internal. It binds a bare type name that several generated
+modules define to a single winner, chosen by module sort order — so a schema addition can
+repoint a name an adopter already imports, and the only trace is a line in a regenerated
+file. A domain path cannot move that way: it names the declaring schema.
+
+What a domain path does not protect you from is a NUMBERED class name. Codegen numbers
+anonymous variant classes by traversal order, so `Assets162` can name a different shape
+after the next regeneration whatever path you reach it by. `aliases.py` exists to give
+those a stable spelling, and `adcp.types` is where you import it from.
 
 That is not hypothetical. `_generated` rebinds the whole `AuthorizedAgents*` window at
 runtime — `AuthorizedAgents = AuthorizedAgents1`, `AuthorizedAgents1 = AuthorizedAgents2`,
@@ -87,17 +101,15 @@ variants to keep the runtime object and the static type identical, and records t
 episode at the import.
 
 The ban is mechanical. `tests/test_import_layering.py` walks the AST of every non-facade
-module and fails on an import whose module starts with either prefix:
+module and fails on an import whose module starts with the one forbidden prefix:
 
 ```python
-_FORBIDDEN_PREFIXES = (
-    "adcp.types._generated",
-    "adcp.types.generated_poc",
-)
+_FORBIDDEN_PREFIXES = ("adcp.types._generated",)
 ```
 
 `ast.walk` sees `if TYPE_CHECKING:` blocks and function-local imports too, so no spelling
-slips past it.
+slips past it. `test_generated_tree_is_not_forbidden` in the same file asserts the tuple
+stays that short: re-adding `adcp.types.domains` would forbid the definition site.
 
 ## `AdcpRequest` and `AdcpResponse`: what a message is, before you know the tool
 
