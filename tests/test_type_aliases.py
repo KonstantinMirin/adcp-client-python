@@ -227,7 +227,7 @@ def test_discriminated_union_aliases_point_to_correct_types():
         PreviewRender2,
         PreviewRender3,
     )
-    from adcp.types.generated_poc.core.assets.asset_union import (
+    from adcp.types.domains.core.assets.asset_union import (
         DaastAsset1,
         DaastAsset2,
         VastAsset1,
@@ -446,8 +446,8 @@ def test_property_id_and_tag_are_constrained_strings():
     from pydantic import RootModel, ValidationError
 
     # Import directly from the core modules to avoid collision
-    from adcp.types.generated_poc.core.property_id import PropertyId as CorePropertyId
-    from adcp.types.generated_poc.core.property_tag import PropertyTag
+    from adcp.types.domains.core.property_id import PropertyId as CorePropertyId
+    from adcp.types.domains.core.property_tag import PropertyTag
 
     # Create valid PropertyId and PropertyTag
     prop_id = CorePropertyId("my_property_id")

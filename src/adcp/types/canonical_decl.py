@@ -44,22 +44,22 @@ from typing import TYPE_CHECKING, Annotated, Any, TypeVar
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from adcp.types.base import AdCPBaseModel
-from adcp.types.generated_poc.core.canonical_format_kind import (
+from adcp.types.domains.core.canonical_format_kind import (
     CanonicalFormatKind,
 )
-from adcp.types.generated_poc.core.format_id import (
+from adcp.types.domains.core.format_id import (
     FormatReferenceStructuredObject,
 )
-from adcp.types.generated_poc.core.platform_extension_ref import (
+from adcp.types.domains.core.platform_extension_ref import (
     PlatformExtensionReference,
 )
-from adcp.types.generated_poc.core.product_format_declaration import (
+from adcp.types.domains.core.product_format_declaration import (
     ProductFormatDeclaration as _GeneratedProductFormatDeclaration,
 )
-from adcp.types.generated_poc.core.product_format_declaration import (
+from adcp.types.domains.core.product_format_declaration import (
     SellerPreference,
 )
-from adcp.types.generated_poc.enums.channels import MediaChannel
+from adcp.types.domains.enums.channels import MediaChannel
 
 if TYPE_CHECKING:
     from typing_extensions import Self

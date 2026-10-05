@@ -27,7 +27,7 @@ from adcp.canonical_formats import (
 from adcp.decisioning.account_projection import strip_credentials_from_wire_result
 from adcp.server.responses import list_creatives_response
 from adcp.types.canonical_creative import PRIMARY_CANONICAL_MODELS
-from adcp.types.generated_poc.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.utils import get_format_assets
 
 _GOLDEN = Path(__file__).parent / "fixtures/canonical/typescript-13.0.0-rc.3-option-ids.json"

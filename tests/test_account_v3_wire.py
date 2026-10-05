@@ -72,15 +72,15 @@ from adcp.types import (
 # `GovernanceAgent`) and the response-side variant (no authentication
 # field). Importing the response-side type explicitly so the
 # schema-shape regression test can assert the input/output split.
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     GovernanceAgent as ResponseGovernanceAgent,
 )
 
 # Address and Bank are sub-models of BusinessEntity. The codegen places
-# them on the BusinessEntity-owning module; pulling from generated_poc
+# them on the BusinessEntity-owning module; pulling from a domain module
 # is acceptable in tests (the type-import layering rule applies to
 # src/, not tests/).
-from adcp.types.generated_poc.core.business_entity import Address, Bank
+from adcp.types.domains.core.business_entity import Address, Bank
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -939,7 +939,7 @@ def test_sync_governance_typed_request_agent_has_authentication() -> None:
     The publicly-exported ``GovernanceAgent`` from ``adcp.types`` is
     the request-side variant (carries ``authentication``); the
     response-side variant lives at
-    ``adcp.types.generated_poc.core.account.GovernanceAgent`` and has
+    ``adcp.types.domains.core.account.GovernanceAgent`` and has
     no ``authentication`` field. The framework's wire-emit projection
     strips ``authentication`` regardless of which shape the adopter
     constructs."""

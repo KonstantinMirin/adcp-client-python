@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
     # Annotation-only: resolving these at runtime would import the generated tree, which
     # imports this module. ``from __future__ import annotations`` keeps them as strings.
-    # Taken by their public domain path rather than out of ``generated_poc``: the domain
+    # Taken by their public domain path rather than out of ``_generated``: the domain
     # modules mirror the schema tree, so these names do not renumber on a regeneration
     # the way the generated module's do. A ``TYPE_CHECKING`` block never executes, so
     # the layering rule costs nothing here.

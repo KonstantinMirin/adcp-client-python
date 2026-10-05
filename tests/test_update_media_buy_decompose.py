@@ -294,7 +294,7 @@ def test_disallowed_update_media_buy_mutations_match_candidate_actions() -> None
 
 
 def test_allowed_action_helpers_accept_wire_available_actions() -> None:
-    from adcp.types.generated_poc.core.media_buy_available_action import (
+    from adcp.types.domains.core.media_buy_available_action import (
         MediaBuyAvailableAction,
     )
 

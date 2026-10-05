@@ -30,83 +30,83 @@ from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
 from adcp.types.base import AdCPBaseModel
-from adcp.types.generated_poc.core.canonical_format_kind import CanonicalFormatKind
-from adcp.types.generated_poc.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
-from adcp.types.generated_poc.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
-from adcp.types.generated_poc.core.creative_manifest import (
+from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
+from adcp.types.domains.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
+from adcp.types.domains.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
+from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as _CanonicalCreativeManifestWire,
 )
-from adcp.types.generated_poc.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
-from adcp.types.generated_poc.core.package import Package as _LegacyPackage
-from adcp.types.generated_poc.core.placement import Placement as _LegacyPlacement
-from adcp.types.generated_poc.core.platform_extension_ref import PlatformExtensionReference
-from adcp.types.generated_poc.core.pricing_option import PricingOption as _LegacyPricingOption
-from adcp.types.generated_poc.core.product import Product as _LegacyProduct
-from adcp.types.generated_poc.core.product_filters import ProductFilters as _LegacyProductFilters
-from adcp.types.generated_poc.core.product_format_declaration import SellerPreference
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
+from adcp.types.domains.core.package import Package as _LegacyPackage
+from adcp.types.domains.core.placement import Placement as _LegacyPlacement
+from adcp.types.domains.core.platform_extension_ref import PlatformExtensionReference
+from adcp.types.domains.core.pricing_option import PricingOption as _LegacyPricingOption
+from adcp.types.domains.core.product import Product as _LegacyProduct
+from adcp.types.domains.core.product_filters import ProductFilters as _LegacyProductFilters
+from adcp.types.domains.core.product_format_declaration import SellerPreference
+from adcp.types.domains.creative.get_creative_delivery_response import (
     Creative as _LegacyDeliveryCreative,
 )
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.creative.get_creative_delivery_response import (
     GetCreativeDeliveryResponse as _LegacyGetCreativeDeliveryResponse,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import (
+from adcp.types.domains.creative.list_creatives_request import (
     ListCreativesRequest as _LegacyListCreativesRequest,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     Creatives1 as _CanonicalListedCreative,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     ListCreativesResponse as _LegacyListCreativesResponse,
 )
-from adcp.types.generated_poc.creative.sync_creatives_request import (
+from adcp.types.domains.creative.sync_creatives_request import (
     SyncCreativesRequest as _LegacySyncCreativesRequest,
 )
-from adcp.types.generated_poc.enums.channels import MediaChannel
-from adcp.types.generated_poc.media_buy.create_media_buy_request import (
+from adcp.types.domains.enums.channels import MediaChannel
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequest as _LegacyCreateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1 as _LegacyCreateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse2 as _LegacyCreateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse3 as _LegacyCreateMediaBuyResponse3,
 )
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
     GetMediaBuyDeliveryResponse as _LegacyGetMediaBuyDeliveryResponse,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     GetMediaBuysResponse as _LegacyGetMediaBuysResponse,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     MediaBuy as _LegacyMediaBuy,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     Package as _LegacyMediaBuyPackage,
 )
-from adcp.types.generated_poc.media_buy.get_products_request import (
+from adcp.types.domains.media_buy.get_products_request import (
     GetProductsRequest as _LegacyGetProductsRequest,
 )
-from adcp.types.generated_poc.media_buy.get_products_response import (
+from adcp.types.domains.media_buy.get_products_response import (
     GetProductsResponse as _LegacyGetProductsResponse,
 )
-from adcp.types.generated_poc.media_buy.package_request import (
+from adcp.types.domains.media_buy.package_request import (
     PackageRequest as _LegacyPackageRequest,
 )
-from adcp.types.generated_poc.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
-from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+from adcp.types.domains.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
+from adcp.types.domains.media_buy.update_media_buy_request import (
     UpdateMediaBuyRequest as _LegacyUpdateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse1 as _LegacyUpdateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse2 as _LegacyUpdateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse3 as _LegacyUpdateMediaBuyResponse3,
 )
 from adcp.types.legacy import LegacyFormatId

@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from adcp import PackageRequest, PlacementPresentationReference, PublisherDesignatedPreviewProvider
 from adcp.types import ReferenceRendererProvenance
-from adcp.types.generated_poc.core.placement_presentation import ImageRef
+from adcp.types.domains.core.placement_presentation import ImageRef
 
 _DIGEST = "sha256:" + "a" * 64
 

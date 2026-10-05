@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 import pytest
 
 from adcp.types import GeneratedTaskStatus
-from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
+from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
 from adcp.webhooks import (
     create_a2a_webhook_payload,
     create_mcp_webhook_payload,

@@ -705,14 +705,14 @@ class TestPropertyTagSharedSchema:
         from adcp import PropertyTag
 
         # Should come from the shared schema in core/, not embedded in another schema
-        assert PropertyTag.__module__ == "adcp.types.generated_poc.core.property_tag"
+        assert PropertyTag.__module__ == "adcp.types.domains.core.property_tag"
 
     def test_property_id_is_from_shared_schema(self):
         """Public PropertyId should be from the shared property_id schema."""
         from adcp import PropertyId
 
         # Should come from the shared schema in core/
-        assert PropertyId.__module__ == "adcp.types.generated_poc.core.property_id"
+        assert PropertyId.__module__ == "adcp.types.domains.core.property_id"
 
     def test_property_tag_works_with_publisher_properties_by_tag(self):
         """PropertyTag should work correctly with PublisherPropertiesByTag."""
@@ -732,7 +732,7 @@ class TestPropertyTagSharedSchema:
     def test_shared_schema_prevents_collision(self):
         """Verify that both adagents and publisher_property_selector import from shared schema."""
         from adcp import PropertyTag
-        from adcp.types.generated_poc.core import property_tag
+        from adcp.types.domains.core import property_tag
 
         # The shared schema is the canonical definition in core/
         assert PropertyTag is property_tag.PropertyTag
@@ -741,8 +741,8 @@ class TestPropertyTagSharedSchema:
         # core.property_tag module (not define their own)
         import inspect
 
-        import adcp.types.generated_poc.adagents as adagents_module
-        import adcp.types.generated_poc.core.publisher_property_selector as selector_module
+        import adcp.types.domains.adagents as adagents_module
+        import adcp.types.domains.core.publisher_property_selector as selector_module
 
         # Check that they import from property_tag, not define their own
         adagents_source = inspect.getsource(adagents_module)

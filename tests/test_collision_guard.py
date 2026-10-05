@@ -1,26 +1,25 @@
 """Tests for the consolidate-step reachability guard (issues #911, #1080).
 
-`consolidate_exports.py` flattens every `generated_poc/` module into a single
+`consolidate_exports.py` flattens every generated domain module into a single
 namespace. When the same bare type name is declared in more than one module,
 one class wins that name in `_generated` and the others would be unreachable.
-The public mirror under `adcp.types.domains` answers that: one module per
-schema, re-exporting what that schema declares, so every variant has a path and
-nothing is renamed.
+The generated tree itself answers that: `adcp.types.domains` is where codegen
+DEFINES each class, one module per schema, so every variant already has a
+public path and nothing is renamed.
 
-These tests assert the mirror covers every generated class, that the domain
-roots bind exactly the unambiguous names, and that the guard raises when a
-class would be left unreachable.
+These tests assert the domain roots bind exactly the unambiguous names and
+that the guard raises when a class would be left unreachable. That every
+generated class really is importable at its own definition path is graded
+against the live import graph in ``tests/test_export_surface_is_derived.py``,
+which is where the reachability charter lives.
 """
 
 from __future__ import annotations
-
-import collections
 
 import pytest
 
 from scripts.consolidate_exports import (
     _enforce_every_class_is_reachable,
-    _mirror_relative_paths,
     colliding_names,
     exports_for_public_consolidation,
     extract_exports_from_module,
@@ -44,41 +43,17 @@ def test_a_domain_namespace_cannot_split_a_name_its_own_domain_declares_twice():
         else:
             unsolvable += 1
     # A domain root handles the names no single domain declares twice; the rest
-    # need the schema's own module, which is why the mirror exists.
+    # need the schema's own module, which is why the tree is public to that depth.
     assert solvable > 0 and unsolvable > 0, (solvable, unsolvable)
     assert solvable + unsolvable == len(collisions)
 
 
 def test_core_declares_nine_units_and_no_domain_namespace_could_hold_them():
-    """The concrete case, pinned so the mirror's depth is not mistaken for noise."""
+    """The concrete case, pinned so the tree's depth is not mistaken for noise."""
     declared = scan_declared_names()
     units = {m for m in declared["Unit"] if schema_domain(m) == "core"}
     assert len(units) == 9, sorted(units)
     assert "Unit" not in unambiguous_domain_bindings(declared)["core"]
-
-
-def test_the_mirror_covers_every_declared_pair_exactly_once():
-    """One public module per schema, re-exporting what that schema declares."""
-    declared = scan_declared_names()
-    mirrored = collections.Counter()
-    for rel in _mirror_relative_paths():
-        module_name = ".".join([*rel.parts[:-1], rel.stem])
-        for name in extract_exports_from_module(_mirror_path(rel)):
-            mirrored[(module_name, name)] += 1
-
-    expected = {
-        (module_name, type_name)
-        for type_name, modules in declared.items()
-        for module_name in modules
-    }
-    assert set(mirrored) == expected
-    assert all(count == 1 for count in mirrored.values())
-
-
-def _mirror_path(rel):
-    from scripts.consolidate_exports import GENERATED_POC_DIR
-
-    return GENERATED_POC_DIR / rel
 
 
 def test_a_domain_root_binds_the_unambiguous_names_and_renames_nothing():
@@ -102,9 +77,9 @@ def test_the_unfiltered_scan_is_what_reaches_brand_discovery():
     own root; ``brand_discovery`` keeps nothing, so reading the domains layer
     off the filtered scan left its own types unreachable.
     """
-    from scripts.consolidate_exports import GENERATED_POC_DIR
+    from scripts.consolidate_exports import DOMAINS_DIR
 
-    path = GENERATED_POC_DIR / "brand_discovery.py"
+    path = DOMAINS_DIR / "brand_discovery.py"
     assert exports_for_public_consolidation(path) == set()
     assert "Brand" in extract_exports_from_module(path)
     assert "brand_discovery" in scan_declared_names()["Brand"]
@@ -116,8 +91,8 @@ def test_current_tree_leaves_no_class_unreachable():
     _enforce_every_class_is_reachable(scan_declared_names())
 
 
-def test_a_declared_class_the_mirror_does_not_carry_fails_the_build():
-    """A pair with no mirror export fails the consolidate step."""
+def test_a_declared_class_with_no_public_path_fails_the_build():
+    """A pair the tree cannot serve fails the consolidate step."""
     declared = scan_declared_names()
     declared["WidgetGuardSentinel"] = {"core.widget_a"}
 
@@ -270,7 +245,7 @@ def test_aggregate_modules_export_only_their_root(
     module_path = tmp_path / relative_path
     module_path.parent.mkdir(parents=True, exist_ok=True)
     module_path.write_text(source)
-    monkeypatch.setattr("scripts.consolidate_exports.GENERATED_POC_DIR", tmp_path)
+    monkeypatch.setattr("scripts.consolidate_exports.DOMAINS_DIR", tmp_path)
 
     exports = exports_for_public_consolidation(module_path)
 

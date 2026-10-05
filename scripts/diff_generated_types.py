@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diff Pydantic-model field shape between two generated_poc/ trees.
+"""Diff Pydantic-model field shape between two generated type trees.
 
 Codegen lands as ``chore(schemas): sync …`` with hundreds of file changes, so
 downstream consumers (salesagent, ad servers) can't tell from release notes
@@ -11,11 +11,11 @@ shrink their schema-mismatch allowlists.
 Usage:
     # Capture a snapshot of the current tree to JSON
     python scripts/diff_generated_types.py snapshot \\
-        src/adcp/types/generated_poc/ /tmp/before.json
+        src/adcp/types/domains/ /tmp/before.json
 
     # After regen, write a markdown delta against the snapshot
     python scripts/diff_generated_types.py diff \\
-        /tmp/before.json src/adcp/types/generated_poc/ \\
+        /tmp/before.json src/adcp/types/domains/ \\
         --output SCHEMA_DELTAS.md
 
 The library API (``snapshot``, ``format_diff``) is what ``generate_types.py``
@@ -226,12 +226,12 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if len(drifted) > 50:
         sys.stderr.write(f"  ... {len(drifted) - 50} more\n")
     sys.stderr.write(
-        "\nThe committed src/adcp/types/generated_poc/ does not match what\n"
+        "\nThe committed src/adcp/types/domains/ does not match what\n"
         "scripts/generate_types.py produces from schemas/cache/. Either:\n"
         "  - re-run sync + regen and commit the result:\n"
         "      python scripts/sync_schemas.py && python scripts/generate_types.py\n"
         "  - or, if upstream changed, bump src/adcp/ADCP_VERSION and regen\n"
-        "  - and never hand-edit generated_poc/ — see scripts/post_generate_fixes.py\n"
+        "  - and never hand-edit the generated tree — see scripts/post_generate_fixes.py\n"
         "    for the sanctioned post-regen patch path.\n"
     )
     return 1
@@ -242,13 +242,13 @@ def main() -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_snap = sub.add_parser("snapshot", help="Capture per-class field snapshot to JSON.")
-    p_snap.add_argument("root", help="generated_poc/ directory to walk")
+    p_snap.add_argument("root", help="generated type tree to walk")
     p_snap.add_argument("output", help="JSON file to write")
     p_snap.set_defaults(func=_cmd_snapshot)
 
     p_diff = sub.add_parser("diff", help="Diff a JSON snapshot against a current tree.")
     p_diff.add_argument("before", help="JSON snapshot from `snapshot` command")
-    p_diff.add_argument("after_root", help="generated_poc/ directory to walk")
+    p_diff.add_argument("after_root", help="generated type tree to walk")
     p_diff.add_argument("--output", help="Write markdown report to this path (default: stdout)")
     p_diff.set_defaults(func=_cmd_diff)
 
@@ -260,7 +260,7 @@ def main() -> int:
         ),
     )
     p_check.add_argument("before", help="JSON snapshot from `snapshot` command")
-    p_check.add_argument("after_root", help="generated_poc/ directory to walk")
+    p_check.add_argument("after_root", help="generated type tree to walk")
     p_check.set_defaults(func=_cmd_check)
 
     args = parser.parse_args()

@@ -16,121 +16,121 @@ from adcp.types._legacy_assets import (
     coerce_legacy_assets,
     infer_asset_type,
 )
-from adcp.types.generated_poc.core.creative_asset import CreativeAsset as LegacyCreativeAsset
-from adcp.types.generated_poc.core.creative_filters import CreativeFilters as LegacyCreativeFilters
-from adcp.types.generated_poc.core.format import Format as LegacyFormat
-from adcp.types.generated_poc.core.format_id import FormatReferenceStructuredObject
-from adcp.types.generated_poc.core.package import Package as LegacyPackage
-from adcp.types.generated_poc.core.placement import Placement as LegacyPlacement
-from adcp.types.generated_poc.core.product import Product as LegacyProduct
-from adcp.types.generated_poc.core.product_filters import ProductFilters as LegacyProductFilters
-from adcp.types.generated_poc.core.product_format_declaration import (
+from adcp.types.domains.core.creative_asset import CreativeAsset as LegacyCreativeAsset
+from adcp.types.domains.core.creative_filters import CreativeFilters as LegacyCreativeFilters
+from adcp.types.domains.core.format import Format as LegacyFormat
+from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
+from adcp.types.domains.core.package import Package as LegacyPackage
+from adcp.types.domains.core.placement import Placement as LegacyPlacement
+from adcp.types.domains.core.product import Product as LegacyProduct
+from adcp.types.domains.core.product_filters import ProductFilters as LegacyProductFilters
+from adcp.types.domains.core.product_format_declaration import (
     ProductFormatDeclaration as LegacyGeneratedProductFormatDeclaration,
 )
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.creative.get_creative_delivery_response import (
     GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import (
+from adcp.types.domains.creative.list_creatives_request import (
     ListCreativesRequest as LegacyListCreativesRequest,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     ListCreativesResponse as LegacyListCreativesResponse,
 )
-from adcp.types.generated_poc.creative.preview_creative_request import (
+from adcp.types.domains.creative.preview_creative_request import (
     PreviewCreativeRequest as LegacyPreviewCreativeRequest,
 )
-from adcp.types.generated_poc.creative.preview_creative_response import (
+from adcp.types.domains.creative.preview_creative_response import (
     PreviewCreativeResponse as LegacyPreviewCreativeResponse,
 )
-from adcp.types.generated_poc.creative.preview_creative_response import (
+from adcp.types.domains.creative.preview_creative_response import (
     PreviewCreativeResponse1 as LegacyPreviewCreativeResponse1,
 )
-from adcp.types.generated_poc.creative.preview_creative_response import (
+from adcp.types.domains.creative.preview_creative_response import (
     PreviewCreativeResponse2 as LegacyPreviewCreativeResponse2,
 )
-from adcp.types.generated_poc.creative.preview_creative_response import (
+from adcp.types.domains.creative.preview_creative_response import (
     PreviewCreativeResponse3 as LegacyPreviewCreativeResponse3,
 )
-from adcp.types.generated_poc.creative.sync_creatives_request import (
+from adcp.types.domains.creative.sync_creatives_request import (
     SyncCreativesRequest as LegacySyncCreativesRequest,
 )
-from adcp.types.generated_poc.creative.sync_creatives_response import (
+from adcp.types.domains.creative.sync_creatives_response import (
     SyncCreativesResponse as LegacySyncCreativesResponse,
 )
-from adcp.types.generated_poc.media_buy.build_creative_request import (
+from adcp.types.domains.media_buy.build_creative_request import (
     BuildCreativeRequest as LegacyBuildCreativeRequest,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse as LegacyBuildCreativeResponse,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse1 as LegacyBuildCreativeResponse1,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse2 as LegacyBuildCreativeResponse2,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse3 as LegacyBuildCreativeResponse3,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse4 as LegacyBuildCreativeResponse4,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse5 as LegacyBuildCreativeResponse5,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     BuildCreativeResponse6 as LegacyBuildCreativeResponse6,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_request import (
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequest as LegacyCreateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse as LegacyCreateMediaBuyResponse,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1 as LegacyCreateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse2 as LegacyCreateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse3 as LegacyCreateMediaBuyResponse3,
 )
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
     GetMediaBuyDeliveryResponse as LegacyGetMediaBuyDeliveryResponse,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     GetMediaBuysResponse as LegacyGetMediaBuysResponse,
 )
-from adcp.types.generated_poc.media_buy.get_products_request import (
+from adcp.types.domains.media_buy.get_products_request import (
     GetProductsRequest as LegacyGetProductsRequest,
 )
-from adcp.types.generated_poc.media_buy.get_products_response import (
+from adcp.types.domains.media_buy.get_products_response import (
     GetProductsResponse as LegacyGetProductsResponse,
 )
-from adcp.types.generated_poc.media_buy.list_creative_formats_request import (
+from adcp.types.domains.media_buy.list_creative_formats_request import (
     ListCreativeFormatsRequest as LegacyListCreativeFormatsRequest,
 )
-from adcp.types.generated_poc.media_buy.list_creative_formats_response import (
+from adcp.types.domains.media_buy.list_creative_formats_response import (
     ListCreativeFormatsResponse as LegacyListCreativeFormatsResponse,
 )
-from adcp.types.generated_poc.media_buy.package_request import (
+from adcp.types.domains.media_buy.package_request import (
     PackageRequest as LegacyPackageRequest,
 )
-from adcp.types.generated_poc.media_buy.package_update import PackageUpdate as LegacyPackageUpdate
-from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+from adcp.types.domains.media_buy.package_update import PackageUpdate as LegacyPackageUpdate
+from adcp.types.domains.media_buy.update_media_buy_request import (
     UpdateMediaBuyRequest as LegacyUpdateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse as LegacyUpdateMediaBuyResponse,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse1 as LegacyUpdateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse2 as LegacyUpdateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse3 as LegacyUpdateMediaBuyResponse3,
 )
 

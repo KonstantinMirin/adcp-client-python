@@ -54,7 +54,12 @@ _PINNED_VERSION = _VERSION_FILE.read_text().strip()
 _BUNDLE_KEY = resolve_bundle_key(_PINNED_VERSION)
 
 SCHEMAS_DIR = REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
-OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
+# The generated tree IS the public tree. datamodel-code-generator writes one
+# package per schema domain and one module per schema file, at the address
+# adopters import from — ``adcp.types.domains.<domain>.<schema>``. There is no
+# private tree behind it and no re-export tree in front of it, so there is
+# nothing to copy and nothing to drift.
+OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "domains"
 TEMP_DIR = REPO_ROOT / ".schema_temp"
 DELTAS_FILE = REPO_ROOT / "SCHEMA_DELTAS.md"
 SHARED_TYPE_NAMES_FILE = REPO_ROOT / "docs" / "shared-type-names.md"
@@ -93,7 +98,7 @@ GENERATED_SCHEMA_EXCLUDE_FILES = {Path("brand.json")}
 # ``brand.json`` is both a discovery document and the basename of the
 # ``brand/`` task-schema directory. Generate it as a standalone compatibility
 # module after directory-mode generation so its public models remain
-# available without turning ``generated_poc.brand`` into a synthetic package
+# available without turning ``domains.brand`` into a synthetic package
 # full of colliding models.
 ROOT_DISCOVERY_SCHEMAS = {Path("brand.json"): Path("brand_discovery.py")}
 
@@ -1317,8 +1322,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _copy_package_for_introspection(staging_root: Path, generated_dir: Path) -> Path:
-    """Build an isolated source tree whose imports use the staged models."""
+def _staged_source_tree(staging_root: Path) -> Path:
+    """Build an isolated source tree to generate into and introspect from.
+
+    The generated tree is the public tree, so it is generated *inside* this
+    copy rather than copied in afterwards: ``consolidate_exports`` then writes
+    the domain roots into the same directory the models were generated into,
+    and the whole thing installs as one artifact. The committed tree is
+    dropped first so a module a schema no longer declares cannot survive a
+    regeneration.
+    """
     staged_source = staging_root / "source"
     staged_package = staged_source / "adcp"
     shutil.copytree(
@@ -1326,10 +1339,9 @@ def _copy_package_for_introspection(staging_root: Path, generated_dir: Path) -> 
         staged_package,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "_schemas"),
     )
-    staged_generated = staged_package / "types" / "generated_poc"
+    staged_generated = staged_package / "types" / OUTPUT_DIR.name
     if staged_generated.exists():
         shutil.rmtree(staged_generated)
-    shutil.copytree(generated_dir, staged_generated)
 
     # The committed ergonomic module can import generated names that no longer
     # exist. The isolated import graph uses this inert stub until a fresh module
@@ -1421,10 +1433,19 @@ def main(argv: list[str] | None = None):
 
         with tempfile.TemporaryDirectory(dir=REPO_ROOT, prefix=".typegen-") as temp_root:
             staging_root = Path(temp_root)
-            staged_output = staging_root / "generated_poc"
-            # Keep the historical basename stable: datamodel-code-generator
-            # embeds it in every package ``__init__.py`` header.
             temp_schemas = flatten_schemas(staging_root / ".schema_temp")
+
+            # Generate straight into the staged copy of the package, at the
+            # path the tree occupies in the checkout. Consolidation writes the
+            # domain roots into this same directory, so the tree installs as
+            # one artifact with one address.
+            staged_source = _staged_source_tree(staging_root)
+            staged_types = staged_source / "adcp" / "types"
+            staged_output = staged_types / OUTPUT_DIR.name
+            staged_consolidated = staged_types / "_generated.py"
+            staged_ergonomic = staged_types / "_ergonomic.py"
+            staged_error_details = staged_types / "error_details.py"
+            staged_report = staging_root / "shared-type-names.md"
 
             if not generate_types(temp_schemas, staged_output):
                 return 1
@@ -1435,15 +1456,6 @@ def main(argv: list[str] | None = None):
             if not apply_post_generation_fixes(staged_output, args.update_fix_manifest):
                 return 1
             prune_unused_bundled_modules(staged_output)
-            restore_unchanged_files(staged_output)
-
-            staged_source = _copy_package_for_introspection(staging_root, staged_output)
-            staged_types = staged_source / "adcp" / "types"
-            staged_consolidated = staged_types / "_generated.py"
-            staged_ergonomic = staged_types / "_ergonomic.py"
-            staged_domains = staged_types / "domains"
-            staged_error_details = staged_types / "error_details.py"
-            staged_report = staging_root / "shared-type-names.md"
 
             consolidate_script = REPO_ROOT / "scripts" / "consolidate_exports.py"
             result = subprocess.run(
@@ -1497,13 +1509,12 @@ def main(argv: list[str] | None = None):
             restore_unchanged_file(staged_ergonomic, current_types / "_ergonomic.py")
             restore_unchanged_file(staged_error_details, current_types / "error_details.py")
             restore_unchanged_file(staged_report, SHARED_TYPE_NAMES_FILE)
-            restore_unchanged_files(staged_domains, current_types / "domains")
+            restore_unchanged_files(staged_output)
 
             artifacts = [
                 (staged_output, OUTPUT_DIR),
                 (staged_consolidated, current_types / "_generated.py"),
                 (staged_ergonomic, current_types / "_ergonomic.py"),
-                (staged_domains, current_types / "domains"),
                 (staged_error_details, current_types / "error_details.py"),
                 (staged_report, SHARED_TYPE_NAMES_FILE),
             ]

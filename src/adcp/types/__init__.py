@@ -21,7 +21,7 @@ For a narrower, curated surface, import a partial module instead:
     from adcp.types.buyer import GetProductsRequest
     from adcp.types.seller import Offering, PropertyList
 
-IMPORTANT: Never import directly from adcp.types.generated_poc or
+IMPORTANT: Never import directly from adcp.types.domains or
 adcp.types._generated. These are internal modules regenerated from
 upstream schemas. Only import from adcp.types (this module), one of the
 partial modules above, or adcp.

@@ -175,231 +175,231 @@ from adcp.types.core import (
 )
 
 # V3 Governance (Sync Governance) types
-from adcp.types.generated_poc.account.sync_governance_request import (
+from adcp.types.domains.account.sync_governance_request import (
     SyncGovernanceRequest,
 )
-from adcp.types.generated_poc.account.sync_governance_response import (
+from adcp.types.domains.account.sync_governance_response import (
     SyncGovernanceResponse,
 )
-from adcp.types.generated_poc.brand.acquire_rights_request import AcquireRightsRequest
-from adcp.types.generated_poc.brand.acquire_rights_response import (
+from adcp.types.domains.brand.acquire_rights_request import AcquireRightsRequest
+from adcp.types.domains.brand.acquire_rights_response import (
     AcquireRightsResponse,
 )
-from adcp.types.generated_poc.brand.get_brand_identity_request import (
+from adcp.types.domains.brand.get_brand_identity_request import (
     GetBrandIdentityRequest,
 )
-from adcp.types.generated_poc.brand.get_brand_identity_response import (
+from adcp.types.domains.brand.get_brand_identity_response import (
     GetBrandIdentityResponse,
 )
-from adcp.types.generated_poc.brand.get_rights_request import GetRightsRequest
-from adcp.types.generated_poc.brand.get_rights_response import GetRightsResponse
-from adcp.types.generated_poc.brand.update_rights_request import UpdateRightsRequest
-from adcp.types.generated_poc.brand.update_rights_response import (
+from adcp.types.domains.brand.get_rights_request import GetRightsRequest
+from adcp.types.domains.brand.get_rights_response import GetRightsResponse
+from adcp.types.domains.brand.update_rights_request import UpdateRightsRequest
+from adcp.types.domains.brand.update_rights_response import (
     UpdateRightsResponse,
 )
 
 # V3 Governance (Collection Lists) types
-from adcp.types.generated_poc.collection.create_collection_list_request import (
+from adcp.types.domains.collection.create_collection_list_request import (
     CreateCollectionListRequest,
 )
-from adcp.types.generated_poc.collection.create_collection_list_response import (
+from adcp.types.domains.collection.create_collection_list_response import (
     CreateCollectionListResponse,
 )
-from adcp.types.generated_poc.collection.delete_collection_list_request import (
+from adcp.types.domains.collection.delete_collection_list_request import (
     DeleteCollectionListRequest,
 )
-from adcp.types.generated_poc.collection.delete_collection_list_response import (
+from adcp.types.domains.collection.delete_collection_list_response import (
     DeleteCollectionListResponse,
 )
-from adcp.types.generated_poc.collection.get_collection_list_request import (
+from adcp.types.domains.collection.get_collection_list_request import (
     GetCollectionListRequest,
 )
-from adcp.types.generated_poc.collection.get_collection_list_response import (
+from adcp.types.domains.collection.get_collection_list_response import (
     GetCollectionListResponse,
 )
-from adcp.types.generated_poc.collection.list_collection_lists_request import (
+from adcp.types.domains.collection.list_collection_lists_request import (
     ListCollectionListsRequest,
 )
-from adcp.types.generated_poc.collection.list_collection_lists_response import (
+from adcp.types.domains.collection.list_collection_lists_response import (
     ListCollectionListsResponse,
 )
-from adcp.types.generated_poc.collection.update_collection_list_request import (
+from adcp.types.domains.collection.update_collection_list_request import (
     UpdateCollectionListRequest,
 )
-from adcp.types.generated_poc.collection.update_collection_list_response import (
+from adcp.types.domains.collection.update_collection_list_response import (
     UpdateCollectionListResponse,
 )
-from adcp.types.generated_poc.compliance.comply_test_controller_request import (
+from adcp.types.domains.compliance.comply_test_controller_request import (
     ComplyTestControllerRequest,
 )
-from adcp.types.generated_poc.compliance.comply_test_controller_response import (
+from adcp.types.domains.compliance.comply_test_controller_response import (
     ComplyTestControllerResponse,
 )
-from adcp.types.generated_poc.content_standards.calibrate_content_request import (
+from adcp.types.domains.content_standards.calibrate_content_request import (
     CalibrateContentRequest,
 )
-from adcp.types.generated_poc.content_standards.calibrate_content_response import (
+from adcp.types.domains.content_standards.calibrate_content_response import (
     CalibrateContentResponse,
 )
 
 # V3 Content Standards types
-from adcp.types.generated_poc.content_standards.create_content_standards_request import (
+from adcp.types.domains.content_standards.create_content_standards_request import (
     CreateContentStandardsRequest,
 )
-from adcp.types.generated_poc.content_standards.create_content_standards_response import (
+from adcp.types.domains.content_standards.create_content_standards_response import (
     CreateContentStandardsResponse,
 )
-from adcp.types.generated_poc.content_standards.get_content_standards_request import (
+from adcp.types.domains.content_standards.get_content_standards_request import (
     GetContentStandardsRequest,
 )
-from adcp.types.generated_poc.content_standards.get_content_standards_response import (
+from adcp.types.domains.content_standards.get_content_standards_response import (
     GetContentStandardsResponse,
 )
-from adcp.types.generated_poc.content_standards.get_media_buy_artifacts_request import (
+from adcp.types.domains.content_standards.get_media_buy_artifacts_request import (
     GetMediaBuyArtifactsRequest,
 )
-from adcp.types.generated_poc.content_standards.get_media_buy_artifacts_response import (
+from adcp.types.domains.content_standards.get_media_buy_artifacts_response import (
     GetMediaBuyArtifactsResponse,
 )
-from adcp.types.generated_poc.content_standards.list_content_standards_request import (
+from adcp.types.domains.content_standards.list_content_standards_request import (
     ListContentStandardsRequest,
 )
-from adcp.types.generated_poc.content_standards.list_content_standards_response import (
+from adcp.types.domains.content_standards.list_content_standards_response import (
     ListContentStandardsResponse,
 )
-from adcp.types.generated_poc.content_standards.update_content_standards_request import (
+from adcp.types.domains.content_standards.update_content_standards_request import (
     UpdateContentStandardsRequest,
 )
-from adcp.types.generated_poc.content_standards.update_content_standards_response import (
+from adcp.types.domains.content_standards.update_content_standards_response import (
     UpdateContentStandardsResponse,
 )
-from adcp.types.generated_poc.content_standards.validate_content_delivery_request import (
+from adcp.types.domains.content_standards.validate_content_delivery_request import (
     ValidateContentDeliveryRequest,
 )
-from adcp.types.generated_poc.content_standards.validate_content_delivery_response import (
+from adcp.types.domains.content_standards.validate_content_delivery_response import (
     ValidateContentDeliveryResponse,
 )
-from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
-from adcp.types.generated_poc.creative.get_creative_features_request import (
+from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.domains.creative.get_creative_features_request import (
     GetCreativeFeaturesRequest,
 )
-from adcp.types.generated_poc.creative.get_creative_features_response import (
+from adcp.types.domains.creative.get_creative_features_response import (
     GetCreativeFeaturesResponse,
 )
-from adcp.types.generated_poc.creative.list_transformers_request import (
+from adcp.types.domains.creative.list_transformers_request import (
     ListTransformersRequestCreativeAgent as ListTransformersRequest,
 )
-from adcp.types.generated_poc.creative.list_transformers_response import (
+from adcp.types.domains.creative.list_transformers_response import (
     ListTransformersResponseCreativeAgent as ListTransformersResponse,
 )
 
 # V3 Governance (Property Lists) types
-from adcp.types.generated_poc.governance.check_governance_request import (
+from adcp.types.domains.governance.check_governance_request import (
     CheckGovernanceRequest,
 )
-from adcp.types.generated_poc.governance.check_governance_response import (
+from adcp.types.domains.governance.check_governance_response import (
     CheckGovernanceResponse,
 )
-from adcp.types.generated_poc.governance.get_plan_audit_logs_request import (
+from adcp.types.domains.governance.get_plan_audit_logs_request import (
     GetPlanAuditLogsRequest,
 )
-from adcp.types.generated_poc.governance.get_plan_audit_logs_response import (
+from adcp.types.domains.governance.get_plan_audit_logs_response import (
     GetPlanAuditLogsResponse,
 )
-from adcp.types.generated_poc.governance.report_plan_adjustment_request import (
+from adcp.types.domains.governance.report_plan_adjustment_request import (
     ReportPlanAdjustmentRequest,
 )
-from adcp.types.generated_poc.governance.report_plan_adjustment_response import (
+from adcp.types.domains.governance.report_plan_adjustment_response import (
     ReportPlanAdjustmentResponse,
 )
-from adcp.types.generated_poc.governance.report_plan_outcome_request import (
+from adcp.types.domains.governance.report_plan_outcome_request import (
     ReportPlanOutcomeRequest,
 )
-from adcp.types.generated_poc.governance.report_plan_outcome_response import (
+from adcp.types.domains.governance.report_plan_outcome_response import (
     ReportPlanOutcomeResponse,
 )
-from adcp.types.generated_poc.governance.sync_plans_request import SyncPlansRequest
-from adcp.types.generated_poc.governance.sync_plans_response import SyncPlansResponse
-from adcp.types.generated_poc.property.create_property_list_request import (
+from adcp.types.domains.governance.sync_plans_request import SyncPlansRequest
+from adcp.types.domains.governance.sync_plans_response import SyncPlansResponse
+from adcp.types.domains.property.create_property_list_request import (
     CreatePropertyListRequest,
 )
-from adcp.types.generated_poc.property.create_property_list_response import (
+from adcp.types.domains.property.create_property_list_response import (
     CreatePropertyListResponse,
 )
-from adcp.types.generated_poc.property.delete_property_list_request import (
+from adcp.types.domains.property.delete_property_list_request import (
     DeletePropertyListRequest,
 )
-from adcp.types.generated_poc.property.delete_property_list_response import (
+from adcp.types.domains.property.delete_property_list_response import (
     DeletePropertyListResponse,
 )
-from adcp.types.generated_poc.property.get_property_list_request import (
+from adcp.types.domains.property.get_property_list_request import (
     GetPropertyListRequest,
 )
-from adcp.types.generated_poc.property.get_property_list_response import (
+from adcp.types.domains.property.get_property_list_response import (
     GetPropertyListResponse,
 )
-from adcp.types.generated_poc.property.list_property_lists_request import (
+from adcp.types.domains.property.list_property_lists_request import (
     ListPropertyListsRequest,
 )
-from adcp.types.generated_poc.property.list_property_lists_response import (
+from adcp.types.domains.property.list_property_lists_response import (
     ListPropertyListsResponse,
 )
-from adcp.types.generated_poc.property.update_property_list_request import (
+from adcp.types.domains.property.update_property_list_request import (
     UpdatePropertyListRequest,
 )
-from adcp.types.generated_poc.property.update_property_list_response import (
+from adcp.types.domains.property.update_property_list_response import (
     UpdatePropertyListResponse,
 )
 
 # V3 Protocol Discovery types
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_request import (
+from adcp.types.domains.protocol.get_adcp_capabilities_request import (
     GetAdcpCapabilitiesRequest,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     GetAdcpCapabilitiesResponse,
 )
-from adcp.types.generated_poc.protocol.get_task_status_request import GetTaskStatusRequest
-from adcp.types.generated_poc.protocol.get_task_status_response import GetTaskStatusResponse
-from adcp.types.generated_poc.protocol.list_tasks_request import ListTasksRequest
-from adcp.types.generated_poc.protocol.list_tasks_response import ListTasksResponse
-from adcp.types.generated_poc.protocol.sync_agent_notification_configs_request import (
+from adcp.types.domains.protocol.get_task_status_request import GetTaskStatusRequest
+from adcp.types.domains.protocol.get_task_status_response import GetTaskStatusResponse
+from adcp.types.domains.protocol.list_tasks_request import ListTasksRequest
+from adcp.types.domains.protocol.list_tasks_response import ListTasksResponse
+from adcp.types.domains.protocol.sync_agent_notification_configs_request import (
     SyncAgentNotificationConfigsRequest,
 )
-from adcp.types.generated_poc.protocol.sync_agent_notification_configs_response import (
+from adcp.types.domains.protocol.sync_agent_notification_configs_response import (
     SyncAgentNotificationConfigsResponse,
 )
 
 # V3 Sponsored Intelligence types
-from adcp.types.generated_poc.sponsored_intelligence.si_get_offering_request import (
+from adcp.types.domains.sponsored_intelligence.si_get_offering_request import (
     SiGetOfferingRequest,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_get_offering_response import (
+from adcp.types.domains.sponsored_intelligence.si_get_offering_response import (
     SiGetOfferingResponse,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_initiate_session_request import (
+from adcp.types.domains.sponsored_intelligence.si_initiate_session_request import (
     SiInitiateSessionRequest,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_initiate_session_response import (
+from adcp.types.domains.sponsored_intelligence.si_initiate_session_response import (
     SiInitiateSessionResponse,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_send_message_request import (
+from adcp.types.domains.sponsored_intelligence.si_send_message_request import (
     SiSendMessageRequest,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_send_message_response import (
+from adcp.types.domains.sponsored_intelligence.si_send_message_response import (
     SiSendMessageResponse,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_terminate_session_request import (
+from adcp.types.domains.sponsored_intelligence.si_terminate_session_request import (
     SiTerminateSessionRequest,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_terminate_session_response import (
+from adcp.types.domains.sponsored_intelligence.si_terminate_session_response import (
     SiTerminateSessionResponse,
 )
-from adcp.types.generated_poc.trusted_match.context_match_request import ContextMatchRequest
-from adcp.types.generated_poc.trusted_match.context_match_response import (
+from adcp.types.domains.trusted_match.context_match_request import ContextMatchRequest
+from adcp.types.domains.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisher as ContextMatchResponse,
 )
-from adcp.types.generated_poc.trusted_match.identity_match_request import IdentityMatchRequest
-from adcp.types.generated_poc.trusted_match.identity_match_response import IdentityMatchResponse
+from adcp.types.domains.trusted_match.identity_match_request import IdentityMatchRequest
+from adcp.types.domains.trusted_match.identity_match_response import IdentityMatchResponse
 from adcp.types.legacy import (
     LegacyBuildCreativeRequest,
     LegacyBuildCreativeResponse,
@@ -6192,7 +6192,7 @@ class ADCPClient:
             ADCPWebhookSignatureError: If signature verification fails
             ValidationError: If payload doesn't match McpWebhookPayload schema
         """
-        from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
+        from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
 
         # Signed MCP webhooks are the secure default. Receiving without a
         # verifier requires an explicit compatibility opt-in so a missing

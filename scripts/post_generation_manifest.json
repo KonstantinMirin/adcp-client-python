@@ -69,9 +69,11 @@
     "rewrite_generated_enums_to_strenum": true,
     "annotate_registry_track_verdict": true,
     "preserve_format_reference_agent_url_wire_string": true,
+    "insert_task_message_markers": true,
     "point_integer_fields_at_the_schema_integer_type": true,
     "remove_imports_shadowed_by_a_local_class": true,
     "remove_unused_pydantic_field_imports": true,
+    "declare_root_schema_module_exports": true,
     "strip_extra_blank_lines_at_eof": true
   }
 }

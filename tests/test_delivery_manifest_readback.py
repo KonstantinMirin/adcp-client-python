@@ -18,10 +18,10 @@ from adcp.types import (
     LegacyGetCreativeDeliveryResponse,
 )
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
-from adcp.types.generated_poc.core.creative_manifest import (
+from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as WireCreativeManifest,
 )
-from adcp.types.generated_poc.core.creative_variant import (
+from adcp.types.domains.core.creative_variant import (
     CreativeVariant as WireCreativeVariant,
 )
 

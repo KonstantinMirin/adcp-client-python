@@ -41,7 +41,7 @@ from scripts import generate_types as codegen
 from scripts.post_generate_fixes import _resolve_schema_ref, _schema_title_to_class_name
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_GENERATED_DIR = _REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
+_GENERATED_DIR = _REPO_ROOT / "src" / "adcp" / "types" / "domains"
 _BUNDLE_KEY = resolve_bundle_key((_REPO_ROOT / "src" / "adcp" / "ADCP_VERSION").read_text().strip())
 _SCHEMA_DIR = _REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
@@ -143,7 +143,7 @@ def _module_path(rel: Path) -> Path:
 
 def _module_name(rel: Path) -> str:
     relative = _module_path(rel).relative_to(_GENERATED_DIR).with_suffix("")
-    return "adcp.types.generated_poc." + ".".join(relative.parts)
+    return "adcp.types.domains." + ".".join(relative.parts)
 
 
 @functools.cache
@@ -429,7 +429,7 @@ def test_envelope_composition_is_rendered_as_a_base_class() -> None:
 def test_public_surface_keeps_the_composed_ancestry() -> None:
     """A name exported from ``adcp.types`` keeps the ancestry its schema declares.
 
-    Inheritance inside ``generated_poc`` is worth nothing to a consumer if the
+    Inheritance inside the generated tree is worth nothing to a consumer if the
     layer that re-exports the name drops the base. ``canonical_creative``
     rebuilds some boundary models with ``create_model``, which is exactly where
     a base can go missing without any schema changing.
@@ -474,7 +474,7 @@ def test_response_arm_aliases_keep_the_protocol_envelope() -> None:
     for every arm of every task response, so naming it once is auditable.
     """
     from adcp.types import aliases
-    from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
+    from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
 
     arms = sorted(
         name for name in aliases.__all__ if name.endswith(("SuccessResponse", "ErrorResponse"))

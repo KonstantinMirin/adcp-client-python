@@ -47,7 +47,7 @@ def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> Non
     from typing import get_args
 
     from adcp import ProductSignalTargetingOption
-    from adcp.types.generated_poc.core.signal_ref import SignalRef
+    from adcp.types.domains.core.signal_ref import SignalRef
 
     # SignalRef is Annotated[SignalRef1 | SignalRef2 | SignalRef3, Field(...)];
     # Pydantic lifts the metadata into FieldInfo and keeps the union.
@@ -77,7 +77,7 @@ def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> Non
 def test_creative_representation_keeps_canonical_format_contract() -> None:
     from adcp import LegacyBuildCreativeRequest
     from adcp.types import CanonicalFormatKind
-    from adcp.types.generated_poc.core.creative_representation import CreativeRepresentation
+    from adcp.types.domains.core.creative_representation import CreativeRepresentation
 
     assert CreativeRepresentation.model_fields["format_kind"].annotation is CanonicalFormatKind
     schema = CreativeRepresentation.model_json_schema()
@@ -125,7 +125,7 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
 
 def test_transformer_requires_a_canonical_or_legacy_output_declaration() -> None:
     from adcp.types import ListTransformersResponse
-    from adcp.types.generated_poc.core.transformer import Transformer
+    from adcp.types.domains.core.transformer import Transformer
 
     base_transformer = {"transformer_id": "transformer_1", "name": "Test transformer"}
     with pytest.raises(ValidationError):
@@ -162,17 +162,17 @@ def test_public_response_bases_remain_constructible_and_arms_remain_specific() -
         ListContentStandardsSuccessResponse,
         UpdateContentStandardsSuccessResponse,
     )
-    from adcp.types.generated_poc.account.sync_governance_response import SyncGovernanceResponse1
-    from adcp.types.generated_poc.compliance.comply_test_controller_response import (
+    from adcp.types.domains.account.sync_governance_response import SyncGovernanceResponse1
+    from adcp.types.domains.compliance.comply_test_controller_response import (
         ComplyTestControllerResponse1,
     )
-    from adcp.types.generated_poc.content_standards.create_content_standards_response import (
+    from adcp.types.domains.content_standards.create_content_standards_response import (
         CreateContentStandardsResponse1,
     )
-    from adcp.types.generated_poc.content_standards.list_content_standards_response import (
+    from adcp.types.domains.content_standards.list_content_standards_response import (
         ListContentStandardsResponse1,
     )
-    from adcp.types.generated_poc.content_standards.update_content_standards_response import (
+    from adcp.types.domains.content_standards.update_content_standards_response import (
         UpdateContentStandardsResponse1,
     )
     from adcp.utils.response_parser import parse_json_or_text
@@ -275,7 +275,7 @@ def test_create_media_buy_request_requires_one_root_anyof_group() -> None:
     the five and none of the three is a media buy with no packages, no budget and
     no proposal.
     """
-    from adcp.types.generated_poc.media_buy.create_media_buy_request import CreateMediaBuyRequest
+    from adcp.types.domains.media_buy.create_media_buy_request import CreateMediaBuyRequest
 
     with pytest.raises(ValidationError, match="at least one of these field groups"):
         CreateMediaBuyRequest.model_validate(dict(_MEDIA_BUY_UNCONDITIONAL_FIELDS))
@@ -298,7 +298,7 @@ def test_sync_creatives_request_takes_assignment_operations_without_creatives() 
     ``assignments`` and ``assignment_operations``, so a request that traffics
     existing creative IDs carries no ``creatives`` at all.
     """
-    from adcp.types.generated_poc.creative.sync_creatives_request import SyncCreativesRequest
+    from adcp.types.domains.creative.sync_creatives_request import SyncCreativesRequest
 
     base = {"idempotency_key": "idem-key-0123456789", "account": {"account_id": "acct_1"}}
 

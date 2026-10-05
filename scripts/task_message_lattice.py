@@ -234,8 +234,8 @@ def measure(schema_dir: Path, output_dir: Path, package_root: Path) -> int:
     cannot answer the envelope question for every value the task returns, so counting it as
     composed overstates what a caller may rely on.
     """
-    from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
-    from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
+    from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
+    from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
 
     try:
         from adcp.types.base import AdcpRequest, AdcpResponse
@@ -294,7 +294,7 @@ def _package_roots() -> tuple[Path, Path, Path]:
 
     package = Path(adcp.__file__).parent
     bundle = resolve_bundle_key((package / "ADCP_VERSION").read_text().strip())
-    return package / "_schemas" / bundle, package / "types" / "generated_poc", package.parent
+    return package / "_schemas" / bundle, package / "types" / "domains", package.parent
 
 
 def _repo_roots() -> tuple[Path, Path, Path]:
@@ -305,7 +305,7 @@ def _repo_roots() -> tuple[Path, Path, Path]:
     bundle = resolve_bundle_key((repo / "src" / "adcp" / "ADCP_VERSION").read_text().strip())
     return (
         repo / "schemas" / "cache" / bundle,
-        repo / "src" / "adcp" / "types" / "generated_poc",
+        repo / "src" / "adcp" / "types" / "domains",
         repo / "src",
     )
 

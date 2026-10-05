@@ -4036,7 +4036,7 @@ class TestValidateAdagentsStructure:
         assert parsed == data
 
     def test_generated_publisher_catalog_does_not_invent_registry_role(self):
-        from adcp.types.generated_poc.adagents import AdcpAgentsAuthorization
+        from adcp.types.domains.adagents import AdcpAgentsAuthorization
 
         model = TypeAdapter(AdcpAgentsAuthorization).validate_python(
             {
@@ -4054,7 +4054,7 @@ class TestValidateAdagentsStructure:
         assert "catalog_role" not in model.model_dump(mode="json", exclude_none=True)
 
     def test_generated_catalog_validates_nested_reference_renderer(self):
-        from adcp.types.generated_poc.adagents import AdcpAgentsAuthorization
+        from adcp.types.domains.adagents import AdcpAgentsAuthorization
 
         with pytest.raises(ValueError, match="Field required"):
             TypeAdapter(AdcpAgentsAuthorization).validate_python(
@@ -4308,7 +4308,7 @@ class TestPublisherDomainsCompactForm:
         # model now requires `publisher_domain`. The dict-layer helper still
         # implements the SDK-side compact-form / XOR contract (PR #750, #759)
         # for adopters consuming raw adagents.json bytes.
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
         from adcp.validation import (

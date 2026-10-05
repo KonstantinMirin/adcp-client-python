@@ -512,7 +512,7 @@ def test_nested_format_discriminator_drops_only_codegen_ambiguous_outer_hint():
 
 def test_audience_evidence_attestation_subject_uses_narrowed_resource_arm():
     """The allOf-constrained evidence subject must build a valid Pydantic schema."""
-    from adcp.types.generated_poc.core.audience_evidence import AttestationRef
+    from adcp.types.domains.core.audience_evidence import AttestationRef
 
     schema = AttestationRef.model_json_schema()
 
@@ -526,7 +526,7 @@ def test_post_generate_legacy_purchase_losses_are_always_an_array(tmp_path, monk
     """The schema's negated empty array must not become an empty object arm."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "media_buy" / "legacy_purchase_continuation_input.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -549,7 +549,7 @@ def test_post_generate_legacy_purchase_losses_restore_array_constraints(tmp_path
     """Runtime and emitted schemas retain constraints codegen drops."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "media_buy" / "legacy_purchase_continuation_input.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -589,7 +589,7 @@ def test_post_generate_change_term_constraint_import_is_idempotent(tmp_path, mon
     """Repeated post-generation fixes never duplicate model_validator imports."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "media_buy" / "change_term_constraints.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -617,7 +617,7 @@ def test_post_generate_preserves_request_signing_operation_strings(tmp_path, mon
     """Constrained operation names remain plain strings after validation."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     targets = (
         generated_dir / "protocol" / "get_adcp_capabilities_response.py",
         generated_dir / "bundled" / "protocol" / "get_adcp_capabilities_response.py",
@@ -651,7 +651,7 @@ def test_post_generate_preserves_request_signing_operation_strings(tmp_path, mon
 def test_allof_merge_selects_literal_base_independent_of_order(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "postal_area.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -681,7 +681,7 @@ def test_allof_merge_selects_literal_base_independent_of_order(tmp_path, monkeyp
 def test_allof_merge_leaves_named_disjoint_bases_untouched(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "disjoint.py"
     target.parent.mkdir(parents=True)
     source = (
@@ -709,7 +709,7 @@ def test_allof_merge_leaves_named_disjoint_bases_untouched(tmp_path, monkeypatch
 def test_allof_merge_preserves_non_type_literal_discriminator_branch(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "budget_allocation.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -737,7 +737,7 @@ def test_allof_merge_fails_when_narrow_base_is_ambiguous(tmp_path, monkeypatch):
 
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "ambiguous.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -757,7 +757,7 @@ def test_allof_merge_fails_when_narrow_base_is_ambiguous(tmp_path, monkeypatch):
 def test_list_creatives_merged_model_restores_xor_and_legacy_aliases(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "creative" / "list_creatives_response.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -791,7 +791,7 @@ def test_allof_merge_preserves_concrete_type_constraints_and_requiredness(tmp_pa
 
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "concrete.py"
     generated_dir.mkdir(parents=True)
     target.write_text(
@@ -830,7 +830,7 @@ def test_generated_adagents_requires_authorization_or_non_empty_catalog():
     import pytest
     from pydantic import TypeAdapter, ValidationError
 
-    from adcp.types.generated_poc.adagents import AdcpAgentsAuthorization
+    from adcp.types.domains.adagents import AdcpAgentsAuthorization
 
     adapter = TypeAdapter(AdcpAgentsAuthorization)
     with pytest.raises(ValidationError):
@@ -845,7 +845,7 @@ def test_generated_adagents_requires_authorization_or_non_empty_catalog():
 def test_post_generate_restores_product_fields_item_reference(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "media_buy" / "get_products_request.py"
     target.parent.mkdir(parents=True)
     target.write_text("fields: list[product_fields.Items] | None = None\n")
@@ -863,7 +863,7 @@ def test_post_generate_restores_combined_get_products_field_enum(tmp_path, monke
     """The public projection enum remains the union after beta.9's schema split."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     media_buy_dir = generated_dir / "media_buy"
     media_buy_dir.mkdir(parents=True)
     target = media_buy_dir / "get_products_request.py"
@@ -892,7 +892,7 @@ def test_post_generate_restores_combined_get_products_field_enum(tmp_path, monke
 def test_generated_adagents_rejects_null_required_catalog_arm(catalog_field):
     from pydantic import TypeAdapter, ValidationError
 
-    from adcp.types.generated_poc.adagents import AdcpAgentsAuthorization
+    from adcp.types.domains.adagents import AdcpAgentsAuthorization
 
     with pytest.raises(ValidationError):
         TypeAdapter(AdcpAgentsAuthorization).validate_python(
@@ -903,7 +903,7 @@ def test_generated_adagents_rejects_null_required_catalog_arm(catalog_field):
 def test_post_generate_injects_postal_pairing_validator_idempotently(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "postal_area.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -928,7 +928,7 @@ def test_post_generate_injects_postal_pairing_validator_idempotently(tmp_path, m
 def test_post_generate_prefers_legacy_postal_union_arm_idempotently(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "core" / "postal_area.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -951,7 +951,7 @@ def test_unwrap_rootmodel_unions_keeps_field_metadata_and_discriminator(tmp_path
     """A union root becomes an annotated alias; the Field survives verbatim."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     generated_dir.mkdir()
     target = generated_dir / "deployment.py"
     target.write_text(
@@ -991,7 +991,7 @@ def test_unwrap_rootmodel_unions_keeps_value_roots_wrapped(tmp_path, monkeypatch
     """A value root carries its constraints on the wrapper, so it stays one."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     generated_dir.mkdir()
     target = generated_dir / "values.py"
     source = (
@@ -1020,7 +1020,7 @@ def test_unwrap_rootmodel_unions_keeps_arms_of_a_discriminated_union(tmp_path, m
     """
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     generated_dir.mkdir()
     target = generated_dir / "asset_union.py"
     target.write_text(
@@ -1059,7 +1059,7 @@ def test_unwrap_rootmodel_unions_keeps_an_arm_of_another_modules_field_union(tmp
     """
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     (generated_dir / "core").mkdir(parents=True)
     (generated_dir / "core" / "localized_creative_asset.py").write_text(
         "from typing import Annotated\n\n"
@@ -1108,7 +1108,7 @@ def test_unwrap_rootmodel_unions_subclasses_a_single_model_root(tmp_path, monkey
     """A root naming one model becomes a subclass carrying its description."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     generated_dir.mkdir()
     target = generated_dir / "check_governance_request.py"
     target.write_text(
@@ -1136,7 +1136,7 @@ def test_unwrap_rootmodel_unions_keeps_a_root_with_a_validator(tmp_path, monkeyp
     """The wrapper is the only place a cross-arm validator can live."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     generated_dir.mkdir()
     target = generated_dir / "postal_area.py"
     source = (
@@ -1167,7 +1167,7 @@ def test_discriminated_union_roots_report_one_tag_error():
     from pydantic import TypeAdapter, ValidationError
 
     from adcp.types import ListProductsResponse
-    from adcp.types.generated_poc.core.deployment import Deployment
+    from adcp.types.domains.core.deployment import Deployment
 
     for union_type, payload in (
         (Deployment, {"type": "nope", "is_live": True}),
@@ -1191,7 +1191,7 @@ def test_account_reference_arms_are_reachable_through_the_alias():
 
 def test_product_change_map_uses_valid_constrained_string_key_type():
     """Constrained mapping keys must be valid for Pydantic and static type checkers."""
-    from adcp.types.generated_poc.core.product_change_map import ProductChangeMap
+    from adcp.types.domains.core.product_change_map import ProductChangeMap
 
     schema = ProductChangeMap.model_json_schema()
 
@@ -1249,11 +1249,11 @@ def test_consolidated_exports_include_annotated_type_aliases(tmp_path):
 
 def test_consolidation_filters_aggregate_schema_helpers():
     """Aggregate/reference modules do not shadow canonical public models."""
-    from scripts.consolidate_exports import GENERATED_POC_DIR, exports_for_public_consolidation
+    from scripts.consolidate_exports import DOMAINS_DIR, exports_for_public_consolidation
 
-    asset_union = GENERATED_POC_DIR / "core/assets/asset_union.py"
+    asset_union = DOMAINS_DIR / "core/assets/asset_union.py"
     async_ref = (
-        GENERATED_POC_DIR
+        DOMAINS_DIR
         / "core/async_response_refs/media_buy/accept_proposal_async_response_submitted.py"
     )
 
@@ -1283,32 +1283,32 @@ def test_semantic_response_aliases_resolve_to_concrete_generated_arms():
     expected_aliases = [
         (
             "ActivateSignalSuccessResponse",
-            "adcp.types.generated_poc.signals.activate_signal_response",
+            "adcp.types.domains.signals.activate_signal_response",
             "ActivateSignalResponse1",
         ),
         (
             "AcquireRightsAcquiredResponse",
-            "adcp.types.generated_poc.brand.acquire_rights_response",
+            "adcp.types.domains.brand.acquire_rights_response",
             "AcquireRightsResponse1",
         ),
         (
             "GetBrandIdentitySuccessResponse",
-            "adcp.types.generated_poc.brand.get_brand_identity_response",
+            "adcp.types.domains.brand.get_brand_identity_response",
             "GetBrandIdentityResponse1",
         ),
         (
             "GetContentStandardsSuccessResponse",
-            "adcp.types.generated_poc.content_standards.get_content_standards_response",
+            "adcp.types.domains.content_standards.get_content_standards_response",
             "GetContentStandardsResponse1",
         ),
         (
             "GetCreativeFeaturesSuccessResponse",
-            "adcp.types.generated_poc.creative.get_creative_features_response",
+            "adcp.types.domains.creative.get_creative_features_response",
             "GetCreativeFeaturesResponse1",
         ),
         (
             "GetMediaBuyArtifactsSuccessResponse",
-            "adcp.types.generated_poc.content_standards.get_media_buy_artifacts_response",
+            "adcp.types.domains.content_standards.get_media_buy_artifacts_response",
             "GetMediaBuyArtifactsResponse1",
         ),
         (
@@ -1335,7 +1335,7 @@ def test_sync_creatives_response_arm_matches_schema_creative_fields():
     from pydantic import ValidationError
 
     from adcp._version import _read_packaged_version
-    from adcp.types.generated_poc.creative.sync_creatives_response import Creative
+    from adcp.types.domains.creative.sync_creatives_response import Creative
     from adcp.validation.version import resolve_bundle_key
 
     bundle_key = resolve_bundle_key(_read_packaged_version())
@@ -1366,7 +1366,7 @@ def test_sync_creatives_response_arm_accepts_submitted_response():
     """sync_creatives schema includes a submitted async response branch."""
     from pydantic import TypeAdapter
 
-    from adcp.types.generated_poc.creative.sync_creatives_response import (
+    from adcp.types.domains.creative.sync_creatives_response import (
         SyncCreativesResponse,
         SyncCreativesResponse3,
     )
@@ -1391,16 +1391,16 @@ def test_schema_derived_response_arms_preserve_nested_validation():
     import pytest
     from pydantic import ValidationError
 
-    from adcp.types.generated_poc.account.get_account_financials_response import Invoice
-    from adcp.types.generated_poc.brand.get_brand_identity_response import (
+    from adcp.types.domains.account.get_account_financials_response import Invoice
+    from adcp.types.domains.brand.get_brand_identity_response import (
         File,
         Fonts,
         GetBrandIdentityResponse1,
     )
-    from adcp.types.generated_poc.content_standards.validate_content_delivery_response import (
+    from adcp.types.domains.content_standards.validate_content_delivery_response import (
         ValidateContentDeliveryResponse1,
     )
-    from adcp.types.generated_poc.creative.preview_creative_response import Input
+    from adcp.types.domains.creative.preview_creative_response import Input
 
     with pytest.raises(ValidationError):
         GetBrandIdentityResponse1.model_validate(
@@ -1453,7 +1453,7 @@ def test_post_generate_preserves_open_delivery_format_kind(tmp_path, monkeypatch
     """The public delivery alias must stay open after clean code generation."""
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "creative" / "get_creative_delivery_response.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -1490,7 +1490,7 @@ def test_post_generate_sync_creatives_response_arms_match_schema_creative_fields
     from adcp.validation.version import resolve_bundle_key
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "creative" / "sync_creatives_response.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -1554,14 +1554,6 @@ def test_generated_types_can_import():
     assert hasattr(generated, "Property")
 
 
-def test_generated_poc_types_can_import():
-    """Test that generated_poc types can be imported."""
-    from adcp.types import _generated as generated_poc
-
-    # The generated_poc package should exist
-    assert generated_poc is not None
-
-
 def _unpatched_targeting_model(name: str):
     """A model declaring the generated, PRE-widening ``targeting_overlay``.
 
@@ -1574,7 +1566,7 @@ def _unpatched_targeting_model(name: str):
     from pydantic import Field, create_model
 
     from adcp.types.canonical_creative import CanonicalBoundaryModel
-    from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
+    from adcp.types.domains.core.targeting_input import TargetingOverlayInput
 
     return create_model(
         name,
@@ -1677,10 +1669,10 @@ def test_targeting_overlay_input_is_generated_and_public():
     from pydantic import BaseModel, RootModel, TypeAdapter, ValidationError
 
     from adcp.types import TargetingOverlay, _generated
-    from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
+    from adcp.types.domains.core.targeting_input import TargetingOverlayInput
     from scripts.consolidate_exports import exports_for_public_consolidation
 
-    source = Path(__file__).parent.parent / "src/adcp/types/generated_poc/core/targeting_input.py"
+    source = Path(__file__).parent.parent / "src/adcp/types/domains/core/targeting_input.py"
     assert "TargetingOverlayInput" in exports_for_public_consolidation(source)
     assert _generated.TargetingOverlayInput is TargetingOverlayInput
     assert issubclass(TargetingOverlayInput, BaseModel)
@@ -1854,7 +1846,7 @@ def test_current_targeting_input_has_exactly_four_generated_request_sites():
         (f"media-buy/{stem}.json", ("properties", "targeting_overlay")) for stem in expected
     }
 
-    generated_root = root / "src/adcp/types/generated_poc"
+    generated_root = root / "src/adcp/types/domains"
     generated_sites = set()
     for source in generated_root.rglob("*.py"):
         text = source.read_text()
@@ -2133,7 +2125,7 @@ def test_post_generate_required_nullable_field_stays_required_and_nullable(tmp_p
     from adcp.validation.version import resolve_bundle_key
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "media_buy" / "create_media_buy_response.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -2195,7 +2187,7 @@ def test_generated_create_media_buy_success_matches_schema_nullability():
     import ast
     from pathlib import Path
 
-    source = Path("src/adcp/types/generated_poc/media_buy/create_media_buy_response.py").read_text()
+    source = Path("src/adcp/types/domains/media_buy/create_media_buy_response.py").read_text()
     module = ast.parse(source)
     success_class = next(
         node
@@ -2229,7 +2221,7 @@ def _write_response_arm_fixture(
 
     from scripts import post_generate_fixes
 
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     target = generated_dir / "account" / "sync_accounts_response.py"
     target.parent.mkdir(parents=True)
     target.write_text(
@@ -2651,7 +2643,7 @@ def _write_required_group_fixture(tmp_path, monkeypatch, schema, module_source):
     from scripts import post_generate_fixes
 
     schema_dir = tmp_path / "schemas"
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     (schema_dir / "media-buy").mkdir(parents=True)
     (schema_dir / "media-buy" / "budget-plan.json").write_text(json.dumps(schema))
     (generated_dir / "media_buy").mkdir(parents=True)
@@ -2754,7 +2746,7 @@ def test_root_required_group_resolves_the_generator_acronym_casing(tmp_path, mon
     )
 
     schema_dir = tmp_path / "schemas"
-    generated_dir = tmp_path / "generated_poc"
+    generated_dir = tmp_path / "domains"
     (schema_dir / "sponsored-intelligence").mkdir(parents=True)
     (schema_dir / "sponsored-intelligence" / "si-send-message-request.json").write_text(
         json.dumps(schema)

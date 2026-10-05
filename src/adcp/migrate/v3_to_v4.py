@@ -231,11 +231,20 @@ def _proposed_generated_symbol_replacement(module: str, symbol: str) -> str | No
 
 
 def _replacement_is_identical(module: str, symbol: str, replacement: str) -> bool:
-    """Verify that a private class and its proposed public target are identical."""
+    """Verify that a private class and its proposed public target are identical.
+
+    The spelling this codemod DETECTS is the v3 one,
+    ``adcp.types.generated_poc.<module>``. The module it IMPORTS is where those
+    classes live now: the generated tree moved to ``adcp.types.domains`` and
+    every module stem came with it unchanged, so the same ``<module>`` resolves.
+    Importing the v3 path here would raise ``ModuleNotFoundError``, the except
+    clause would swallow it, and every per-symbol rewrite would silently
+    degrade to a flag.
+    """
     if not module or not replacement.startswith("adcp.types."):
         return False
     try:
-        source_module = importlib.import_module(f"adcp.types.generated_poc.{module}")
+        source_module = importlib.import_module(f"adcp.types.domains.{module}")
         public_module = importlib.import_module("adcp.types")
         source = getattr(source_module, symbol)
         public = getattr(public_module, replacement.removeprefix("adcp.types."))

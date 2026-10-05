@@ -4,7 +4,7 @@ Scans all ``.py`` files under ``src/adcp/`` for ``AdcpError(...)`` raise
 sites and asserts every string-literal first-positional code is either:
 
 * in the canonical AdCP error-code enum (bundled at
-  :file:`src/adcp/types/generated_poc/enums/error_code.py`, generated
+  :file:`src/adcp/types/domains/enums/error_code.py`, generated
   from :file:`schemas/cache/enums/error-code.json`);
 * prefixed with ``X_`` per the AdCP vendor-extension convention; or
 * explicitly listed in :data:`KNOWN_NON_SPEC_CODES` below — a small,
@@ -44,7 +44,7 @@ from pathlib import Path
 
 import pytest
 
-from adcp.types.generated_poc.enums.error_code import ErrorCode
+from adcp.types.domains.enums.error_code import ErrorCode
 
 # ---------------------------------------------------------------------------
 # Allowlist — codes used intentionally by the SDK that are not in the

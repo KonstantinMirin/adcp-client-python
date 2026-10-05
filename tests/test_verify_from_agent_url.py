@@ -244,7 +244,7 @@ def test_request_signature_code_only_emits_codes_the_pinned_enum_defines() -> No
     ``request-signing-error-code`` enum, including the explicit
     ``signature_code`` values the brand.json hop attaches."""
     from adcp.signing.agent_resolver import _brand_resolution_error
-    from adcp.types.generated_poc.enums.request_signing_error_code import (
+    from adcp.types.domains.enums.request_signing_error_code import (
         RequestSigningErrorCode,
     )
 

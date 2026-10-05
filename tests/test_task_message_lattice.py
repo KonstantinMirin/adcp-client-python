@@ -26,8 +26,8 @@ import pytest
 from pydantic import BaseModel
 
 from adcp.types.base import AdcpRequest, AdcpResponse, _AdcpMessage
-from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
-from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
+from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
+from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
 from scripts.generate_types import normalize_version_envelope_composition
 from scripts.post_generate_fixes import OUTPUT_DIR, SCHEMA_DIR
 from scripts.task_message_lattice import task_message_roots
@@ -85,9 +85,7 @@ _VERSION_ENVELOPE_REF = "https://adcontextprotocol.org/schemas/3.2.1/core/versio
 
 
 def _module_name(path: Path) -> str:
-    return "adcp.types.generated_poc." + ".".join(
-        path.relative_to(OUTPUT_DIR).with_suffix("").parts
-    )
+    return "adcp.types.domains." + ".".join(path.relative_to(OUTPUT_DIR).with_suffix("").parts)
 
 
 def _task_message_classes() -> list[_TaskMessage]:
@@ -253,7 +251,7 @@ def test_a_class_that_inlines_the_version_fields_reports_no_version_stratum() ->
     report a composition that is not there -- while ``get_adcp_version()`` still answers,
     because it reads the instance dict rather than the MRO.
     """
-    from adcp.types.generated_poc.creative.validate_input_request import ValidateInputRequest
+    from adcp.types.domains.creative.validate_input_request import ValidateInputRequest
 
     assert issubclass(ValidateInputRequest, AdcpRequest)
     assert not issubclass(ValidateInputRequest, AdcpVersionEnvelope)
@@ -262,7 +260,7 @@ def test_a_class_that_inlines_the_version_fields_reports_no_version_stratum() ->
 
 
 def test_request_accessors_answer_for_a_tool_that_declares_the_fields() -> None:
-    from adcp.types.generated_poc.media_buy.buy_products_request import BuyProductsRequest
+    from adcp.types.domains.media_buy.buy_products_request import BuyProductsRequest
 
     request = BuyProductsRequest.model_validate(
         {
@@ -293,7 +291,7 @@ def test_request_accessors_answer_none_for_fields_a_tool_does_not_declare() -> N
     no webhook config. A marker carrying fields would have given it all four; the accessors
     answer from what the schema actually declared.
     """
-    from adcp.types.generated_poc.creative.validate_input_request import ValidateInputRequest
+    from adcp.types.domains.creative.validate_input_request import ValidateInputRequest
 
     # The manifest carries a ``format_kind``: ``core/creative-manifest.json`` declares a
     # root required group of ``format_id | format_kind``, which
@@ -314,7 +312,7 @@ def test_request_accessors_answer_none_for_fields_a_tool_does_not_declare() -> N
 
 
 def test_response_accessors_read_the_protocol_stratum() -> None:
-    from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+    from adcp.types.domains.media_buy.create_media_buy_response import (
         CreateMediaBuyResponse3,
     )
 
@@ -373,7 +371,7 @@ def test_version_normalization_is_a_no_op_once_upstream_composes() -> None:
     }
     assert _normalize(stub_retaining, "media-buy/example-request.json") == stub_retaining
 
-    from adcp.types.generated_poc.media_buy.sync_reporting_receipts_request import (
+    from adcp.types.domains.media_buy.sync_reporting_receipts_request import (
         SyncReportingReceiptsRequest,
     )
 
@@ -439,11 +437,11 @@ def test_the_two_pointer_ref_responses_keep_the_field_on_every_arm() -> None:
     Both arms of each proposals response still declare ``adcp_version``. If the refusal is
     removed, the submitted arm loses it and this goes red.
     """
-    from adcp.types.generated_poc.media_buy.refine_proposals_response import (
+    from adcp.types.domains.media_buy.refine_proposals_response import (
         RefineProposalsResponse1,
         RefineProposalsResponse2,
     )
-    from adcp.types.generated_poc.media_buy.request_proposals_response import (
+    from adcp.types.domains.media_buy.request_proposals_response import (
         RequestProposalsResponse4,
     )
 
@@ -502,12 +500,12 @@ def test_descent_refuses_a_forged_model_that_merely_declares_the_fields() -> Non
 
 
 def test_the_version_envelope_has_a_public_name() -> None:
-    """The adoption gate's guard conjunction must be spellable without `generated_poc`.
+    """The adoption gate's guard conjunction must be spellable without a deep import.
 
     ``ProtocolEnvelope`` was already public and ``AdcpVersionEnvelope`` was not, so a
     consumer writing
     ``issubclass(model, AdcpRequest) and issubclass(model, AdcpVersionEnvelope)``
-    had to reach into ``adcp.types.generated_poc.core.version_envelope`` — which is
+    had to reach into ``adcp.types.domains.core.version_envelope`` — which is
     exactly the import the one-surface work exists to retire, and which the Prebid Sales
     Agent carries today at ``src/core/main.py:230``. Re-export, never a copy: the public
     name must be the SAME object, or the conjunction would refuse every real request.

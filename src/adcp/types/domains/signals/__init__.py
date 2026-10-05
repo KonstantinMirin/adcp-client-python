@@ -9,29 +9,23 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.signals.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.signals.activate_signal_request import Action, ActivateSignalRequest
-from adcp.types.generated_poc.signals.activate_signal_response import (
+from adcp.types.domains.signals.activate_signal_request import Action, ActivateSignalRequest
+from adcp.types.domains.signals.activate_signal_response import (
     ActivateSignalResponse,
     ActivateSignalResponse1,
     ActivateSignalResponse2,
 )
-from adcp.types.generated_poc.signals.get_signals_async_response_submitted import (
-    GetSignalsSubmitted,
-)
-from adcp.types.generated_poc.signals.get_signals_async_response_working import GetSignalsWorking
-from adcp.types.generated_poc.signals.get_signals_request import (
-    DiscoveryMode,
-    Field1,
-    GetSignalsRequest,
-)
-from adcp.types.generated_poc.signals.get_signals_response import (
+from adcp.types.domains.signals.get_signals_async_response_submitted import GetSignalsSubmitted
+from adcp.types.domains.signals.get_signals_async_response_working import GetSignalsWorking
+from adcp.types.domains.signals.get_signals_request import DiscoveryMode, Field1, GetSignalsRequest
+from adcp.types.domains.signals.get_signals_response import (
     AiActRiskClass,
     Art9Basis,
     CacheScope,

@@ -38,7 +38,7 @@ def _generated_ancestors(model: type[BaseModel]) -> list[type[BaseModel]]:
         for base in model.__mro__[1:]
         if isinstance(base, type)
         and issubclass(base, BaseModel)
-        and base.__module__.startswith("adcp.types.generated_poc")
+        and base.__module__.startswith("adcp.types.domains")
     ]
 
 
@@ -144,7 +144,7 @@ def test_before_validators_keep_their_classmethod_binding() -> None:
     such hazard, and this holds that the binding survives on both classes.
     """
     from adcp.types import Product
-    from adcp.types.generated_poc.core.product import Product as Generated
+    from adcp.types.domains.core.product import Product as Generated
 
     assert "_coerce_publisher_property_models" in Product.__pydantic_decorators__.model_validators
     assert "_coerce_publisher_property_models" in Generated.__pydantic_decorators__.model_validators

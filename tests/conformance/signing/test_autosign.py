@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from adcp.signing import SigningConfig, operation_needs_signing
 from adcp.signing.autosign import signing_profile_for_adcp_version
 from adcp.signing.crypto import ALG_ED25519, ALG_ES256
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     CoversContentDigest,
     RequestSigning,
 )

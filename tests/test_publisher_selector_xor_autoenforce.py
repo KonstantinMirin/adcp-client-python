@@ -39,7 +39,7 @@ class TestSelectorXorAutoEnforce:
     @_COMPACT_FORM_DROPPED
     def test_selector1_rejects_bare_construct(self):
         # selection_type='all' with neither publisher_domain nor publisher_domains
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 
@@ -47,7 +47,7 @@ class TestSelectorXorAutoEnforce:
             PublisherPropertySelector1(selection_type="all")
 
     def test_selector1_rejects_both_publisher_fields(self):
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 
@@ -59,7 +59,7 @@ class TestSelectorXorAutoEnforce:
             )
 
     def test_selector1_accepts_singular_form(self):
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 
@@ -68,7 +68,7 @@ class TestSelectorXorAutoEnforce:
 
     @_COMPACT_FORM_DROPPED
     def test_selector1_accepts_compact_form(self):
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 
@@ -80,7 +80,7 @@ class TestSelectorXorAutoEnforce:
 
     @_COMPACT_FORM_DROPPED
     def test_selector3_rejects_bare_construct(self):
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector3,
         )
 
@@ -89,7 +89,7 @@ class TestSelectorXorAutoEnforce:
 
     @_COMPACT_FORM_DROPPED
     def test_selector3_accepts_compact_form_with_required_tags(self):
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector3,
         )
 
@@ -105,7 +105,7 @@ class TestSelectorXorAutoEnforce:
         # by_id selector has no XOR — only publisher_domain is allowed,
         # publisher_domains is rejected at the JSON-schema level. The
         # auto-enforce patch correctly leaves this class alone.
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector2,
         )
 
@@ -136,7 +136,7 @@ class TestPydanticInternalApiDriftSentinel:
     def test_selector1_has_registered_validator(self):
         # The patch lands at module-import time. If the registration
         # shape changes and the patch silently no-ops, this catches it.
-        from adcp.types.generated_poc.core.publisher_property_selector import (
+        from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 

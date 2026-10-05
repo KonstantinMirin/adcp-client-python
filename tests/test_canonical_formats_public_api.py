@@ -1,7 +1,7 @@
 """Public-API surface for canonical-formats types (AdCP 3.1).
 
 Guards that the canonical-formats types are reachable from
-:mod:`adcp.types` (rather than only from ``generated_poc``). Failures
+:mod:`adcp.types` (rather than only from a domain path). Failures
 here mean adopter code that does ``from adcp.types import …`` will
 break — the public surface is part of the contract.
 """

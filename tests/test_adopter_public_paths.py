@@ -1,6 +1,6 @@
 """Every generated type a production adopter imports has a public path.
 
-The names below are the complete set of ``adcp.types.generated_poc`` imports in
+The names below are the complete set of ``adcp.types.domains`` imports in
 one production AdCP seller — 110 ``(module, type)`` pairs over 105 distinct
 names across 39 files. They are in this suite because they are evidence rather
 than a hypothesis: a real application reached into a private namespace 110 times
@@ -28,9 +28,9 @@ import pytest
 
 from scripts.consolidate_exports import schema_domain
 
-#: ``(generated module, type name)``, every ``generated_poc`` import in the
+#: ``(generated module, type name)``, every deep generated import in the
 #: adopter's ``src/`` tree. Regenerate by grepping
-#: ``from adcp.types.generated_poc`` there; do not curate it, the point is that
+#: ``from adcp.types.domains`` there; do not curate it, the point is that
 #: it is unfiltered.
 ADOPTER_IMPORTS: tuple[tuple[str, str], ...] = (
     ("account.sync_accounts_request", "Accounts"),
@@ -151,7 +151,7 @@ def _public_paths(module_name: str, type_name: str) -> list[str]:
     import adcp.types
     import adcp.types.domains
 
-    target = getattr(importlib.import_module(f"adcp.types.generated_poc.{module_name}"), type_name)
+    target = getattr(importlib.import_module(f"adcp.types.domains.{module_name}"), type_name)
     paths = []
     if getattr(adcp.types, type_name, None) is target:
         paths.append(f"adcp.types.{type_name}")
@@ -189,7 +189,7 @@ def test_every_adopter_import_has_a_public_path_to_the_same_class(
     paths = _public_paths(module_name, type_name)
     assert paths, (
         f"{module_name}.{type_name} has no public path — an adopter has to reach into "
-        "adcp.types.generated_poc for it, which the migration guide forbids"
+        "adcp.types.domains for it, which the migration guide forbids"
     )
 
 

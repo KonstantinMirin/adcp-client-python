@@ -9,44 +9,37 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.core.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-04 01:19:01 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.core.acceptance_policy_profile_ids import (
+from adcp.types.domains.core.acceptance_policy_profile_ids import (
     AcceptancePolicyProfileId,
     AcceptancePolicyProfileIds,
 )
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     Account,
     Compression,
     CreditLimit,
     GovernanceAgent,
     ReportingBucket,
 )
-from adcp.types.generated_poc.core.account_authorization import (
+from adcp.types.domains.core.account_authorization import (
     AccountAuthorization,
     AllowedTask,
     ScopeName,
 )
-from adcp.types.generated_poc.core.account_change import (
-    AccountChange,
-    Actor,
-    Repair,
-    UnavailableReason,
-)
-from adcp.types.generated_poc.core.account_change_recorded_webhook import (
-    AccountChangeRecordedWebhook,
-)
-from adcp.types.generated_poc.core.account_identity_change import (
+from adcp.types.domains.core.account_change import AccountChange, Actor, Repair, UnavailableReason
+from adcp.types.domains.core.account_change_recorded_webhook import AccountChangeRecordedWebhook
+from adcp.types.domains.core.account_identity_change import (
     AccountIdentityChange,
     AccountIdentityChange1,
     AccountIdentityChange2,
 )
-from adcp.types.generated_poc.core.account_identity_change_preview import (
+from adcp.types.domains.core.account_identity_change_preview import (
     AccountIdentityChangePreview,
     AccountIdentityChangePreview1,
     AccountIdentityChangePreview2,
@@ -58,46 +51,40 @@ from adcp.types.generated_poc.core.account_identity_change_preview import (
     NonblockingImpact,
     NonblockingImpacts,
 )
-from adcp.types.generated_poc.core.account_ref import (
+from adcp.types.domains.core.account_ref import (
     AccountReference,
     AccountReference1,
     AccountReference2,
 )
-from adcp.types.generated_poc.core.account_status_changed_webhook import AccountStatusChangedWebhook
-from adcp.types.generated_poc.core.account_timezone_capability import (
+from adcp.types.domains.core.account_status_changed_webhook import AccountStatusChangedWebhook
+from adcp.types.domains.core.account_timezone_capability import (
     AccountSelection,
     AccountTimezoneCapability,
     SupportedTimezone,
 )
-from adcp.types.generated_poc.core.account_with_authorization import AccountWithAuthorization
-from adcp.types.generated_poc.core.activation_key import (
-    ActivationKey,
-    ActivationKey1,
-    ActivationKey2,
-)
-from adcp.types.generated_poc.core.ad_inventory_config import AdInventoryConfiguration
-from adcp.types.generated_poc.core.agent_encryption_key import AgentEncryptionKey
-from adcp.types.generated_poc.core.agent_notification_config import AgentNotificationConfig
-from adcp.types.generated_poc.core.agent_notification_config_state import (
-    AgentNotificationConfigState,
-)
-from adcp.types.generated_poc.core.agent_reporting_destination import (
+from adcp.types.domains.core.account_with_authorization import AccountWithAuthorization
+from adcp.types.domains.core.activation_key import ActivationKey, ActivationKey1, ActivationKey2
+from adcp.types.domains.core.ad_inventory_config import AdInventoryConfiguration
+from adcp.types.domains.core.agent_encryption_key import AgentEncryptionKey
+from adcp.types.domains.core.agent_notification_config import AgentNotificationConfig
+from adcp.types.domains.core.agent_notification_config_state import AgentNotificationConfigState
+from adcp.types.domains.core.agent_reporting_destination import (
     AcceptedFormat,
     AgentReportingDestination,
     AgentReportingDestination1,
     AgentReportingDestination2,
     AgentReportingDestination3,
 )
-from adcp.types.generated_poc.core.agent_reporting_destination_state import (
+from adcp.types.domains.core.agent_reporting_destination_state import (
     AgentReportingDestinationState,
     PriorDestinationRef,
 )
-from adcp.types.generated_poc.core.agent_signing_key import AgentSigningKey
-from adcp.types.generated_poc.core.agent_webhook_challenge import AgentWebhookChallenge
-from adcp.types.generated_poc.core.app_item import AppItem, Platform
-from adcp.types.generated_poc.core.applicable_package_id import ApplicablePackageId
-from adcp.types.generated_poc.core.asset_group_vocabulary import AdcpAssetGroupVocabularyRegistry
-from adcp.types.generated_poc.core.assets.asset_union import (
+from adcp.types.domains.core.agent_signing_key import AgentSigningKey
+from adcp.types.domains.core.agent_webhook_challenge import AgentWebhookChallenge
+from adcp.types.domains.core.app_item import AppItem, Platform
+from adcp.types.domains.core.applicable_package_id import ApplicablePackageId
+from adcp.types.domains.core.asset_group_vocabulary import AdcpAssetGroupVocabularyRegistry
+from adcp.types.domains.core.assets.asset_union import (
     AssetVariant,
     AudioChannelLayout,
     C2paWatermarkAction,
@@ -169,14 +156,14 @@ from adcp.types.generated_poc.core.assets.asset_union import (
     WebhookResponseType,
     WebhookSecurityMethod,
 )
-from adcp.types.generated_poc.core.assets.audio_asset import BitDepth
-from adcp.types.generated_poc.core.assets.daast_asset import (
+from adcp.types.domains.core.assets.audio_asset import BitDepth
+from adcp.types.domains.core.assets.daast_asset import (
     DaastAsset3,
     DaastAsset4,
     Location13,
     MacroDeclaration12,
 )
-from adcp.types.generated_poc.core.assets.display_tag_asset import (
+from adcp.types.domains.core.assets.display_tag_asset import (
     DisplayTagAsset4,
     DisplayTagAsset5,
     DisplayTagAsset6,
@@ -185,159 +172,159 @@ from adcp.types.generated_poc.core.assets.display_tag_asset import (
     MacroDeclaration15,
     MacroDeclaration16,
 )
-from adcp.types.generated_poc.core.assets.vast_asset import (
+from adcp.types.domains.core.assets.vast_asset import (
     Location26,
     MacroDeclaration20,
     VastAsset3,
     VastAsset4,
 )
-from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
-from adcp.types.generated_poc.core.async_response_refs.creative.get_creative_features_async_response_submitted import (
+from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.domains.core.async_response_refs.creative.get_creative_features_async_response_submitted import (
     GetCreativeFeaturesSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.creative.sync_creatives_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.creative.sync_creatives_async_response_input_required import (
     SyncCreativesInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.creative.sync_creatives_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.creative.sync_creatives_async_response_submitted import (
     SyncCreativesSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.creative.sync_creatives_async_response_working import (
+from adcp.types.domains.core.async_response_refs.creative.sync_creatives_async_response_working import (
     SyncCreativesWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.accept_proposal_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.accept_proposal_async_response_input_required import (
     AcceptProposalInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.accept_proposal_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.accept_proposal_async_response_submitted import (
     AcceptProposalSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.accept_proposal_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.accept_proposal_async_response_working import (
     AcceptProposalWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.build_creative_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.build_creative_async_response_input_required import (
     BuildCreativeInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.build_creative_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.build_creative_async_response_submitted import (
     BuildCreativeSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.build_creative_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.build_creative_async_response_working import (
     BuildCreativeWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.buy_products_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.buy_products_async_response_input_required import (
     BuyProductsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.buy_products_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.buy_products_async_response_submitted import (
     BuyProductsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.buy_products_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.buy_products_async_response_working import (
     BuyProductsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.control_media_buy_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.control_media_buy_async_response_input_required import (
     ControlMediaBuyInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.control_media_buy_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.control_media_buy_async_response_submitted import (
     ControlMediaBuySubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.control_media_buy_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.control_media_buy_async_response_working import (
     ControlMediaBuyWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.create_media_buy_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.create_media_buy_async_response_input_required import (
     CreateMediaBuyInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.create_media_buy_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.create_media_buy_async_response_submitted import (
     CreateMediaBuySubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.create_media_buy_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.create_media_buy_async_response_working import (
     CreateMediaBuyWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.decline_proposals_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.decline_proposals_async_response_input_required import (
     DeclineProposalsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.decline_proposals_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.decline_proposals_async_response_submitted import (
     DeclineProposalsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.decline_proposals_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.decline_proposals_async_response_working import (
     DeclineProposalsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_input_required import (
     GetProductsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_submitted import (
     GetProductsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_working import (
     GetProductsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.refine_proposals_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.refine_proposals_async_response_input_required import (
     RefineProposalsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.refine_proposals_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.refine_proposals_async_response_submitted import (
     RefineProposalsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.refine_proposals_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.refine_proposals_async_response_working import (
     RefineProposalsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.request_proposals_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.request_proposals_async_response_input_required import (
     RequestProposalsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.request_proposals_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.request_proposals_async_response_submitted import (
     RequestProposalsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.request_proposals_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.request_proposals_async_response_working import (
     RequestProposalsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.sync_catalogs_async_response_input_required import (
     SyncCatalogsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.sync_catalogs_async_response_submitted import (
     SyncCatalogsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.sync_catalogs_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.sync_catalogs_async_response_working import (
     SyncCatalogsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.update_media_buy_async_response_input_required import (
+from adcp.types.domains.core.async_response_refs.media_buy.update_media_buy_async_response_input_required import (
     UpdateMediaBuyInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.update_media_buy_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.media_buy.update_media_buy_async_response_submitted import (
     UpdateMediaBuySubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.update_media_buy_async_response_working import (
+from adcp.types.domains.core.async_response_refs.media_buy.update_media_buy_async_response_working import (
     UpdateMediaBuyWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.signals.get_signals_async_response_submitted import (
+from adcp.types.domains.core.async_response_refs.signals.get_signals_async_response_submitted import (
     GetSignalsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.signals.get_signals_async_response_working import (
+from adcp.types.domains.core.async_response_refs.signals.get_signals_async_response_working import (
     GetSignalsWorking,
 )
-from adcp.types.generated_poc.core.attestation_capabilities import (
+from adcp.types.domains.core.attestation_capabilities import (
     AcceptedIssuer,
     AttestationCapabilities,
     CredentialOrigin,
     Resolver,
     SupportedDeliveryMethod,
 )
-from adcp.types.generated_poc.core.attestation_evaluation import Outcome
-from adcp.types.generated_poc.core.attestation_issuer import (
+from adcp.types.domains.core.attestation_evaluation import Outcome
+from adcp.types.domains.core.attestation_issuer import (
     AttestationIssuer,
     AttestationIssuer1,
     AttestationIssuer2,
     AttestationIssuer3,
 )
-from adcp.types.generated_poc.core.attestation_reference import (
+from adcp.types.domains.core.attestation_reference import (
     AttestationReference,
     EmbeddedCredential,
     Locator,
     Locator1,
     ValidityHint,
 )
-from adcp.types.generated_poc.core.attestation_subject import (
+from adcp.types.domains.core.attestation_subject import (
     AttestationSubject,
     AttestationSubject1,
     AttestationSubject2,
     AttestationSubject3,
 )
-from adcp.types.generated_poc.core.attribution_window import AttributionWindow
-from adcp.types.generated_poc.core.audience_activation_method import (
+from adcp.types.domains.core.attribution_window import AttributionWindow
+from adcp.types.domains.core.audience_activation_method import (
     AudienceActivationMethod,
     AudienceActivationMethod1,
     AudienceActivationMethod2,
@@ -348,8 +335,8 @@ from adcp.types.generated_poc.core.audience_activation_method import (
     Cloud,
     ConsumerIdentity,
 )
-from adcp.types.generated_poc.core.audience_characteristic import AudienceCharacteristic
-from adcp.types.generated_poc.core.audience_evidence import (
+from adcp.types.domains.core.audience_characteristic import AudienceCharacteristic
+from adcp.types.domains.core.audience_evidence import (
     AudienceEvidence,
     Subject11,
     Subject12,
@@ -375,33 +362,21 @@ from adcp.types.generated_poc.core.audience_evidence import (
     Subject36,
     Subject37,
 )
-from adcp.types.generated_poc.core.audience_evidence_pin import AudienceEvidencePin
-from adcp.types.generated_poc.core.audience_evidence_requirements import (
-    AudienceEvidenceRequirements,
-)
-from adcp.types.generated_poc.core.audience_evidence_selection import AudienceEvidenceSelection
-from adcp.types.generated_poc.core.audience_member import AudienceMember
-from adcp.types.generated_poc.core.audience_selector import (
+from adcp.types.domains.core.audience_evidence_pin import AudienceEvidencePin
+from adcp.types.domains.core.audience_evidence_requirements import AudienceEvidenceRequirements
+from adcp.types.domains.core.audience_evidence_selection import AudienceEvidenceSelection
+from adcp.types.domains.core.audience_member import AudienceMember
+from adcp.types.domains.core.audience_selector import (
     AudienceSelector,
     AudienceSelector1,
     AudienceSelector2,
     AudienceSelector3,
     AudienceSelector4,
 )
-from adcp.types.generated_poc.core.audience_source import (
-    AudienceSource,
-    AudienceSource1,
-    AudienceSource2,
-)
-from adcp.types.generated_poc.core.authorized_agent_base import AuthorizedAgentBaseFields
-from adcp.types.generated_poc.core.bidding_policy import (
-    BiddingPolicy,
-    CostPer,
-    Roas,
-    Strength,
-    Strength1,
-)
-from adcp.types.generated_poc.core.bidding_policy_capability import (
+from adcp.types.domains.core.audience_source import AudienceSource, AudienceSource1, AudienceSource2
+from adcp.types.domains.core.authorized_agent_base import AuthorizedAgentBaseFields
+from adcp.types.domains.core.bidding_policy import BiddingPolicy, CostPer, Roas, Strength, Strength1
+from adcp.types.domains.core.bidding_policy_capability import (
     BiddingPolicyCapability,
     CostPerStrength,
     MaxBidWithCostPer,
@@ -410,21 +385,21 @@ from adcp.types.generated_poc.core.bidding_policy_capability import (
     RoasStrength,
     ScopeCapability,
 )
-from adcp.types.generated_poc.core.brand_id import BrandId
-from adcp.types.generated_poc.core.brand_key import BrandKey
-from adcp.types.generated_poc.core.brand_ref import (
+from adcp.types.domains.core.brand_id import BrandId
+from adcp.types.domains.core.brand_key import BrandKey
+from adcp.types.domains.core.brand_ref import (
     BrandKitOverride,
     BrandReference,
     Colors,
     DataSubjectContestation,
 )
-from adcp.types.generated_poc.core.brand_response_authorization_result import (
+from adcp.types.domains.core.brand_response_authorization_result import (
     BrandResponseAuthorizationResult,
     BrandResponseAuthorizationResult1,
     BrandResponseAuthorizationResult2,
     Trust,
 )
-from adcp.types.generated_poc.core.budget_allocation import (
+from adcp.types.domains.core.budget_allocation import (
     BudgetAllocation,
     BudgetAllocation1,
     BudgetAllocation2,
@@ -442,35 +417,35 @@ from adcp.types.generated_poc.core.budget_allocation import (
     Target7,
     Target8,
 )
-from adcp.types.generated_poc.core.business_entity import Bank, BusinessEntity, Contact
-from adcp.types.generated_poc.core.cancellation_policy import CancellationFee, CancellationPolicy
-from adcp.types.generated_poc.core.canonical_account_ref import (
+from adcp.types.domains.core.business_entity import Bank, BusinessEntity, Contact
+from adcp.types.domains.core.cancellation_policy import CancellationFee, CancellationPolicy
+from adcp.types.domains.core.canonical_account_ref import (
     CanonicalAccountReference,
     CanonicalAccountReference1,
     CanonicalAccountReference2,
 )
-from adcp.types.generated_poc.core.canonical_audience_evidence import (
+from adcp.types.domains.core.canonical_audience_evidence import (
     AttestationDigest,
     CanonicalAudienceEvidence,
 )
-from adcp.types.generated_poc.core.canonical_audience_evidence_selection import (
+from adcp.types.domains.core.canonical_audience_evidence_selection import (
     CanonicalAudienceEvidenceSelection,
     VerifiedAttestationDigest,
 )
-from adcp.types.generated_poc.core.canonical_budget_allocation import (
+from adcp.types.domains.core.canonical_budget_allocation import (
     CanonicalBudgetAllocation,
     CanonicalBudgetAllocation1,
     CanonicalBudgetAllocation2,
 )
-from adcp.types.generated_poc.core.canonical_delivery_forecast import CanonicalDeliveryForecast
-from adcp.types.generated_poc.core.canonical_forecast_point import CanonicalForecastPoint
-from adcp.types.generated_poc.core.canonical_forecast_vendor_metric_value import (
+from adcp.types.domains.core.canonical_delivery_forecast import CanonicalDeliveryForecast
+from adcp.types.domains.core.canonical_forecast_point import CanonicalForecastPoint
+from adcp.types.domains.core.canonical_forecast_vendor_metric_value import (
     CanonicalForecastVendorMetricValue,
 )
-from adcp.types.generated_poc.core.canonical_format_kind import CanonicalFormatKind
-from adcp.types.generated_poc.core.canonical_format_option import CanonicalFormatOption, FormatKind
-from adcp.types.generated_poc.core.canonical_measurement_terms import CanonicalMeasurementTerms
-from adcp.types.generated_poc.core.canonical_media_buy_action import (
+from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
+from adcp.types.domains.core.canonical_format_option import CanonicalFormatOption, FormatKind
+from adcp.types.domains.core.canonical_measurement_terms import CanonicalMeasurementTerms
+from adcp.types.domains.core.canonical_media_buy_action import (
     Action3,
     Action4,
     CanonicalMediaBuyAction,
@@ -478,12 +453,10 @@ from adcp.types.generated_poc.core.canonical_media_buy_action import (
     CanonicalMediaBuyAction2,
     CanonicalMediaBuyAction3,
 )
-from adcp.types.generated_poc.core.canonical_media_buy_action_fields import (
-    CanonicalMediaBuyActionFields,
-)
-from adcp.types.generated_poc.core.canonical_media_buy_features import CanonicalMediaBuyFeatures
-from adcp.types.generated_poc.core.canonical_metric_qualifier import CanonicalMetricQualifier
-from adcp.types.generated_poc.core.canonical_optimization_goal import (
+from adcp.types.domains.core.canonical_media_buy_action_fields import CanonicalMediaBuyActionFields
+from adcp.types.domains.core.canonical_media_buy_features import CanonicalMediaBuyFeatures
+from adcp.types.domains.core.canonical_metric_qualifier import CanonicalMetricQualifier
+from adcp.types.domains.core.canonical_optimization_goal import (
     CanonicalOptimizationGoal,
     CanonicalOptimizationGoal1,
     CanonicalOptimizationGoal2,
@@ -491,21 +464,16 @@ from adcp.types.generated_poc.core.canonical_optimization_goal import (
     Target10,
     Target11,
 )
-from adcp.types.generated_poc.core.canonical_performance_standard import (
-    CanonicalPerformanceStandard,
-)
-from adcp.types.generated_poc.core.canonical_placement import (
+from adcp.types.domains.core.canonical_performance_standard import CanonicalPerformanceStandard
+from adcp.types.domains.core.canonical_placement import (
     CanonicalDoohPlacementAttributes,
     CanonicalDoohScreenResolution,
     CanonicalProductPlacement,
     CanonicalProductPlacement1,
     CanonicalProductPlacement2,
 )
-from adcp.types.generated_poc.core.canonical_pricing_option import (
-    CanonicalPricingOption,
-    PricingModel,
-)
-from adcp.types.generated_poc.core.canonical_product import (
+from adcp.types.domains.core.canonical_pricing_option import CanonicalPricingOption, PricingModel
+from adcp.types.domains.core.canonical_product import (
     CanonicalProduct,
     PublisherProperty1,
     PublisherProperty2,
@@ -515,83 +483,73 @@ from adcp.types.generated_poc.core.canonical_product import (
     PublisherProperty6,
     PublisherProperty7,
 )
-from adcp.types.generated_poc.core.canonical_product_action import CanonicalProductAction
-from adcp.types.generated_poc.core.canonical_projection_ref import (
+from adcp.types.domains.core.canonical_product_action import CanonicalProductAction
+from adcp.types.domains.core.canonical_projection_ref import (
     AssetSource,
     CanonicalProjectionReference,
 )
-from adcp.types.generated_poc.core.canonical_projection_slot_override import (
+from adcp.types.domains.core.canonical_projection_slot_override import (
     CanonicalProjectionSlotOverride,
 )
-from adcp.types.generated_poc.core.canonical_proposal import CanonicalProposal, ProposalKind
-from adcp.types.generated_poc.core.canonical_reporting_capabilities import (
-    CanonicalReportingCapabilities,
-)
-from adcp.types.generated_poc.core.canonical_reporting_commitment import (
+from adcp.types.domains.core.canonical_proposal import CanonicalProposal, ProposalKind
+from adcp.types.domains.core.canonical_reporting_capabilities import CanonicalReportingCapabilities
+from adcp.types.domains.core.canonical_reporting_commitment import (
     CanonicalReportingCommitment,
     CanonicalReportingCommitment1,
     CanonicalReportingCommitment2,
 )
-from adcp.types.generated_poc.core.canvas_constraint import CanvasConstraint, Constraint
-from adcp.types.generated_poc.core.capabilities_changed_webhook import CapabilitiesChangedWebhook
-from adcp.types.generated_poc.core.catalog_item_availability_error import (
-    CatalogItemAvailabilityError,
-)
-from adcp.types.generated_poc.core.catalog_item_availability_ref import (
-    CatalogItemAvailabilityReference,
-)
-from adcp.types.generated_poc.core.catalog_item_availability_state import (
-    CatalogItemAvailabilityState,
-)
-from adcp.types.generated_poc.core.catalog_item_availability_update import (
-    CatalogItemAvailabilityUpdate,
-)
-from adcp.types.generated_poc.core.catalog_item_availability_update_result import (
+from adcp.types.domains.core.canvas_constraint import CanvasConstraint, Constraint
+from adcp.types.domains.core.capabilities_changed_webhook import CapabilitiesChangedWebhook
+from adcp.types.domains.core.catalog_item_availability_error import CatalogItemAvailabilityError
+from adcp.types.domains.core.catalog_item_availability_ref import CatalogItemAvailabilityReference
+from adcp.types.domains.core.catalog_item_availability_state import CatalogItemAvailabilityState
+from adcp.types.domains.core.catalog_item_availability_update import CatalogItemAvailabilityUpdate
+from adcp.types.domains.core.catalog_item_availability_update_result import (
     CatalogItemAvailabilityUpdateResult,
 )
-from adcp.types.generated_poc.core.catalog_item_delivery_metrics import CatalogItemDeliveryMetrics
-from adcp.types.generated_poc.core.catalog_item_reference_not_found_error import (
+from adcp.types.domains.core.catalog_item_delivery_metrics import CatalogItemDeliveryMetrics
+from adcp.types.domains.core.catalog_item_reference_not_found_error import (
     CatalogItemReferenceNotFoundError,
 )
-from adcp.types.generated_poc.core.catalog_selection import CatalogSelection
-from adcp.types.generated_poc.core.catchment import Catchment
-from adcp.types.generated_poc.core.collection import Collection, RelatedCollection
-from adcp.types.generated_poc.core.collection_delivery_metrics import CollectionDeliveryMetrics
-from adcp.types.generated_poc.core.collection_distribution import CollectionDistribution
-from adcp.types.generated_poc.core.collection_list_ref import CollectionListReference
-from adcp.types.generated_poc.core.collection_property_delivery_metrics import (
+from adcp.types.domains.core.catalog_selection import CatalogSelection
+from adcp.types.domains.core.catchment import Catchment
+from adcp.types.domains.core.collection import Collection, RelatedCollection
+from adcp.types.domains.core.collection_delivery_metrics import CollectionDeliveryMetrics
+from adcp.types.domains.core.collection_distribution import CollectionDistribution
+from adcp.types.domains.core.collection_list_ref import CollectionListReference
+from adcp.types.domains.core.collection_property_delivery_metrics import (
     CollectionPropertyDeliveryMetrics,
 )
-from adcp.types.generated_poc.core.collection_ref import CollectionReference
-from adcp.types.generated_poc.core.collection_selection import (
+from adcp.types.domains.core.collection_ref import CollectionReference
+from adcp.types.domains.core.collection_selection import (
     CollectionSelection,
     CollectionSelection1,
     CollectionSelection2,
 )
-from adcp.types.generated_poc.core.collection_selector import CollectionSelector
-from adcp.types.generated_poc.core.committed_metric import (
+from adcp.types.domains.core.collection_selector import CollectionSelector
+from adcp.types.domains.core.committed_metric import (
     CommittedMetric,
     CommittedMetric1,
     CommittedMetric2,
     Qualifier1,
     QualifierModel,
 )
-from adcp.types.generated_poc.core.compact_task_input_required import CompactTaskInputRequired
-from adcp.types.generated_poc.core.compact_task_submitted import CompactTaskSubmitted
-from adcp.types.generated_poc.core.compact_task_working import CompactTaskWorking
-from adcp.types.generated_poc.core.content_rating import ContentRating
-from adcp.types.generated_poc.core.context import ContextObject
-from adcp.types.generated_poc.core.creative_approval_scope import ScopedCreativeApproval
-from adcp.types.generated_poc.core.creative_asset import CreativeAsset, Input
-from adcp.types.generated_poc.core.creative_assets import CreativeAssets, CreativeAssets1
-from adcp.types.generated_poc.core.creative_assignment import CreativeAssignment, RotationMode
-from adcp.types.generated_poc.core.creative_consumption import CreativeConsumption
-from adcp.types.generated_poc.core.creative_delivery_metrics import CreativeDeliveryMetrics
-from adcp.types.generated_poc.core.creative_filters import CreativeFilters
-from adcp.types.generated_poc.core.creative_item import CreativeItem, CreativeItem1, CreativeItem2
-from adcp.types.generated_poc.core.creative_locale_policy import CreativeLocalePolicy
-from adcp.types.generated_poc.core.creative_localization import CreativeLocalization, TargetVariant
-from adcp.types.generated_poc.core.creative_localization_readback import (
+from adcp.types.domains.core.compact_task_input_required import CompactTaskInputRequired
+from adcp.types.domains.core.compact_task_submitted import CompactTaskSubmitted
+from adcp.types.domains.core.compact_task_working import CompactTaskWorking
+from adcp.types.domains.core.content_rating import ContentRating
+from adcp.types.domains.core.context import ContextObject
+from adcp.types.domains.core.creative_approval_scope import ScopedCreativeApproval
+from adcp.types.domains.core.creative_asset import CreativeAsset, Input
+from adcp.types.domains.core.creative_assets import CreativeAssets, CreativeAssets1
+from adcp.types.domains.core.creative_assignment import CreativeAssignment, RotationMode
+from adcp.types.domains.core.creative_consumption import CreativeConsumption
+from adcp.types.domains.core.creative_delivery_metrics import CreativeDeliveryMetrics
+from adcp.types.domains.core.creative_filters import CreativeFilters
+from adcp.types.domains.core.creative_item import CreativeItem, CreativeItem1, CreativeItem2
+from adcp.types.domains.core.creative_locale_policy import CreativeLocalePolicy
+from adcp.types.domains.core.creative_localization import CreativeLocalization, TargetVariant
+from adcp.types.domains.core.creative_localization_readback import (
     CreativeLocalizationReadback,
     ResolvedAssets,
     ResolvedAssets1,
@@ -599,48 +557,44 @@ from adcp.types.generated_poc.core.creative_localization_readback import (
     Variants1,
     Variants2,
 )
-from adcp.types.generated_poc.core.creative_manifest import CreativeManifest
-from adcp.types.generated_poc.core.creative_operation_format_declaration import (
+from adcp.types.domains.core.creative_manifest import CreativeManifest
+from adcp.types.domains.core.creative_operation_format_declaration import (
     CreativeOperationFormatDeclaration,
 )
-from adcp.types.generated_poc.core.creative_policy import CreativePolicy, ProvenanceRequirements
-from adcp.types.generated_poc.core.creative_representation import CreativeRepresentation
-from adcp.types.generated_poc.core.creative_representation_set import CreativeRepresentationSet
-from adcp.types.generated_poc.core.creative_revision_id import CreativeRevisionId
-from adcp.types.generated_poc.core.creative_variable import CreativeVariable, VariableType
-from adcp.types.generated_poc.core.creative_variant import (
-    Artifact,
-    CreativeVariant,
-    GenerationContext,
-)
-from adcp.types.generated_poc.core.daast_tracker_constraints import (
+from adcp.types.domains.core.creative_policy import CreativePolicy, ProvenanceRequirements
+from adcp.types.domains.core.creative_representation import CreativeRepresentation
+from adcp.types.domains.core.creative_representation_set import CreativeRepresentationSet
+from adcp.types.domains.core.creative_revision_id import CreativeRevisionId
+from adcp.types.domains.core.creative_variable import CreativeVariable, VariableType
+from adcp.types.domains.core.creative_variant import Artifact, CreativeVariant, GenerationContext
+from adcp.types.domains.core.daast_tracker_constraints import (
     DaastEvent,
     DaastOffset,
     DaastTarget,
     DaastTrackerConstraints,
     DaastVersions,
 )
-from adcp.types.generated_poc.core.data_provider_signal_selector import (
+from adcp.types.domains.core.data_provider_signal_selector import (
     DataProviderSignalSelector,
     DataProviderSignalSelector1,
     DataProviderSignalSelector2,
     DataProviderSignalSelector3,
     SignalTag,
 )
-from adcp.types.generated_poc.core.date_range import DateRange
-from adcp.types.generated_poc.core.datetime_range import DatetimeRange
-from adcp.types.generated_poc.core.daypart_target import DaypartTarget
-from adcp.types.generated_poc.core.deadline_policy import DeadlinePolicy, MaterialStage
-from adcp.types.generated_poc.core.delivery_breakdown_controls import DeliveryBreakdownControls
-from adcp.types.generated_poc.core.delivery_forecast import DeliveryForecast
-from adcp.types.generated_poc.core.delivery_metric_aggregate import (
+from adcp.types.domains.core.date_range import DateRange
+from adcp.types.domains.core.datetime_range import DatetimeRange
+from adcp.types.domains.core.daypart_target import DaypartTarget
+from adcp.types.domains.core.deadline_policy import DeadlinePolicy, MaterialStage
+from adcp.types.domains.core.delivery_breakdown_controls import DeliveryBreakdownControls
+from adcp.types.domains.core.delivery_forecast import DeliveryForecast
+from adcp.types.domains.core.delivery_metric_aggregate import (
     DeliveryMetricAggregate,
     DeliveryMetricAggregate1,
     DeliveryMetricAggregate2,
     Field0,
     Qualifier3,
 )
-from adcp.types.generated_poc.core.delivery_metrics import (
+from adcp.types.domains.core.delivery_metrics import (
     ByActionSourceItem,
     ByEventTypeItem,
     DeliveryMetrics,
@@ -658,40 +612,40 @@ from adcp.types.generated_poc.core.delivery_metrics import (
     ViewedSecondsHistogramItem,
     ViewedSecondsPercentiles,
 )
-from adcp.types.generated_poc.core.delivery_provider import DeliveryProvider
-from adcp.types.generated_poc.core.delivery_recipient import DeliveryRecipient
-from adcp.types.generated_poc.core.demographic_age_range import DemographicAgeRange
-from adcp.types.generated_poc.core.demographic_predicate import DemographicPredicate
-from adcp.types.generated_poc.core.demographic_reporting_capability import (
+from adcp.types.domains.core.delivery_provider import DeliveryProvider
+from adcp.types.domains.core.delivery_recipient import DeliveryRecipient
+from adcp.types.domains.core.demographic_age_range import DemographicAgeRange
+from adcp.types.domains.core.demographic_predicate import DemographicPredicate
+from adcp.types.domains.core.demographic_reporting_capability import (
     DemographicReportingCapability,
     ReportingMode,
 )
-from adcp.types.generated_poc.core.demographic_targeting_capability import (
+from adcp.types.domains.core.demographic_targeting_capability import (
     DemographicTargetingCapability,
     ExecutionMode,
     UnknownHandling,
 )
-from adcp.types.generated_poc.core.demographic_targeting_intent import DemographicTargetingIntent
-from adcp.types.generated_poc.core.demographic_targeting_resolution import (
+from adcp.types.domains.core.demographic_targeting_intent import DemographicTargetingIntent
+from adcp.types.domains.core.demographic_targeting_resolution import (
     DemographicTargetingResolution,
     Execution,
     Execution1,
     Execution2,
     IntervalId,
 )
-from adcp.types.generated_poc.core.deployment import Deployment, Deployment1, Deployment2
-from adcp.types.generated_poc.core.destination import Destination1, Destination2
-from adcp.types.generated_poc.core.destination_item import DestinationItem, DestinationType
-from adcp.types.generated_poc.core.diagnostic_issue import DiagnosticIssue, Severity
-from adcp.types.generated_poc.core.downstream_connection_requirement import (
+from adcp.types.domains.core.deployment import Deployment, Deployment1, Deployment2
+from adcp.types.domains.core.destination import Destination1, Destination2
+from adcp.types.domains.core.destination_item import DestinationItem, DestinationType
+from adcp.types.domains.core.diagnostic_issue import DiagnosticIssue, Severity
+from adcp.types.domains.core.downstream_connection_requirement import (
     ConnectionType,
     DownstreamConnectionRequirement,
     ResourceRef,
 )
-from adcp.types.generated_poc.core.duration import Duration
-from adcp.types.generated_poc.core.education_item import DegreeType, EducationItem, Level, Modality
-from adcp.types.generated_poc.core.error import BuyerReason, DiscriminatorItem, Issue, Recovery
-from adcp.types.generated_poc.core.evaluator_spec import (
+from adcp.types.domains.core.duration import Duration
+from adcp.types.domains.core.education_item import DegreeType, EducationItem, Level, Modality
+from adcp.types.domains.core.error import BuyerReason, DiscriminatorItem, Issue, Recovery
+from adcp.types.domains.core.evaluator_spec import (
     EvalBudget,
     EvaluatorSpec,
     EvaluatorSpec1,
@@ -703,32 +657,29 @@ from adcp.types.generated_poc.core.evaluator_spec import (
     RankByItem1,
     RankByItem2,
 )
-from adcp.types.generated_poc.core.event import Event
-from adcp.types.generated_poc.core.event_custom_data import Content, EventCustomData
-from adcp.types.generated_poc.core.event_source_health import Detail, EventSourceHealth
-from adcp.types.generated_poc.core.event_surface import Category, EventSurface
-from adcp.types.generated_poc.core.experimental_feature_id import ExperimentalFeatureId
-from adcp.types.generated_poc.core.ext import ExtensionObject
-from adcp.types.generated_poc.core.feature_requirement import FeatureRequirement, IfNotCovered
-from adcp.types.generated_poc.core.flight_item import FlightItem
-from adcp.types.generated_poc.core.forecast_dimension_audience import AudienceForecastDimension
-from adcp.types.generated_poc.core.forecast_dimension_device_platform import (
+from adcp.types.domains.core.event import Event
+from adcp.types.domains.core.event_custom_data import Content, EventCustomData
+from adcp.types.domains.core.event_source_health import Detail, EventSourceHealth
+from adcp.types.domains.core.event_surface import Category, EventSurface
+from adcp.types.domains.core.experimental_feature_id import ExperimentalFeatureId
+from adcp.types.domains.core.ext import ExtensionObject
+from adcp.types.domains.core.feature_requirement import FeatureRequirement, IfNotCovered
+from adcp.types.domains.core.flight_item import FlightItem
+from adcp.types.domains.core.forecast_dimension_audience import AudienceForecastDimension
+from adcp.types.domains.core.forecast_dimension_device_platform import (
     DevicePlatformForecastDimension,
 )
-from adcp.types.generated_poc.core.forecast_dimension_device_type import DeviceTypeForecastDimension
-from adcp.types.generated_poc.core.forecast_dimension_geo import GeoForecastDimension
-from adcp.types.generated_poc.core.forecast_dimension_placement import PlacementForecastDimension
-from adcp.types.generated_poc.core.forecast_dimension_signal import (
-    Presence,
-    SignalForecastDimension,
-)
-from adcp.types.generated_poc.core.forecast_dimension_time import TimeForecastDimension
-from adcp.types.generated_poc.core.forecast_point import ForecastPoint, ViewableRate
-from adcp.types.generated_poc.core.forecast_point_dimensions import ForecastPointDimensions
-from adcp.types.generated_poc.core.forecast_range import ForecastRange
-from adcp.types.generated_poc.core.forecast_rate_range import ForecastRateRange
-from adcp.types.generated_poc.core.forecast_vendor_metric_value import ForecastVendorMetricValue
-from adcp.types.generated_poc.core.format import (
+from adcp.types.domains.core.forecast_dimension_device_type import DeviceTypeForecastDimension
+from adcp.types.domains.core.forecast_dimension_geo import GeoForecastDimension
+from adcp.types.domains.core.forecast_dimension_placement import PlacementForecastDimension
+from adcp.types.domains.core.forecast_dimension_signal import Presence, SignalForecastDimension
+from adcp.types.domains.core.forecast_dimension_time import TimeForecastDimension
+from adcp.types.domains.core.forecast_point import ForecastPoint, ViewableRate
+from adcp.types.domains.core.forecast_point_dimensions import ForecastPointDimensions
+from adcp.types.domains.core.forecast_range import ForecastRange
+from adcp.types.domains.core.forecast_rate_range import ForecastRateRange
+from adcp.types.domains.core.forecast_vendor_metric_value import ForecastVendorMetricValue
+from adcp.types.domains.core.format import (
     Assets10,
     Assets11,
     Assets12,
@@ -818,102 +769,94 @@ from adcp.types.generated_poc.core.format import (
     Renders1,
     Responsive,
 )
-from adcp.types.generated_poc.core.format_id import FormatReferenceStructuredObject
-from adcp.types.generated_poc.core.format_option_ref import (
+from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
+from adcp.types.domains.core.format_option_ref import (
     FormatOptionReference,
     FormatOptionReference1,
     FormatOptionReference2,
 )
-from adcp.types.generated_poc.core.format_shape_vocabulary import AdcpFormatShapeVocabularyRegistry
-from adcp.types.generated_poc.core.frequency_cap import FrequencyCap
-from adcp.types.generated_poc.core.frequency_cap_constraints import FrequencyCapConstraints
-from adcp.types.generated_poc.core.frequency_cap_duration_unit import FrequencyCapDurationUnit
-from adcp.types.generated_poc.core.frequency_cap_impression_constraints import (
+from adcp.types.domains.core.format_shape_vocabulary import AdcpFormatShapeVocabularyRegistry
+from adcp.types.domains.core.frequency_cap import FrequencyCap
+from adcp.types.domains.core.frequency_cap_constraints import FrequencyCapConstraints
+from adcp.types.domains.core.frequency_cap_duration_unit import FrequencyCapDurationUnit
+from adcp.types.domains.core.frequency_cap_impression_constraints import (
     AllowedValue,
     FrequencyCapImpressionConstraints,
 )
-from adcp.types.generated_poc.core.frequency_cap_interval_constraints import (
+from adcp.types.domains.core.frequency_cap_interval_constraints import (
     AllowedInterval,
     FrequencyCapIntervalConstraints,
 )
-from adcp.types.generated_poc.core.frequency_cap_requirements import FrequencyCapRequirements
-from adcp.types.generated_poc.core.generation_credential import GenerationCredential
-from adcp.types.generated_poc.core.geo_breakdown_support import GeographicBreakdownSupport
-from adcp.types.generated_poc.core.geo_delivery_metrics import GeoDeliveryMetrics
-from adcp.types.generated_poc.core.geo_metro import GeoMetro
-from adcp.types.generated_poc.core.geo_place_area import GeographicPlaceArea
-from adcp.types.generated_poc.core.geo_place_catalog_capability import (
+from adcp.types.domains.core.frequency_cap_requirements import FrequencyCapRequirements
+from adcp.types.domains.core.generation_credential import GenerationCredential
+from adcp.types.domains.core.geo_breakdown_support import GeographicBreakdownSupport
+from adcp.types.domains.core.geo_delivery_metrics import GeoDeliveryMetrics
+from adcp.types.domains.core.geo_metro import GeoMetro
+from adcp.types.domains.core.geo_place_area import GeographicPlaceArea
+from adcp.types.domains.core.geo_place_catalog_capability import (
     GeographicPlaceCatalogCapability,
     SupportedVersion,
 )
-from adcp.types.generated_poc.core.geo_place_catalog_entry import (
+from adcp.types.domains.core.geo_place_catalog_entry import (
     GeographicPlaceCatalogEntry,
     ParentLabel,
     ReplacedByValue,
 )
-from adcp.types.generated_poc.core.geo_place_requirement import (
+from adcp.types.domains.core.geo_place_requirement import (
     CatalogRequirement,
     GeographicPlaceRequirement,
 )
-from adcp.types.generated_poc.core.geo_place_resolver import Auth, GeographicPlaceResolver
-from adcp.types.generated_poc.core.geo_place_support import GeographicPlaceSystemSupport
-from adcp.types.generated_poc.core.geo_place_system import (
+from adcp.types.domains.core.geo_place_resolver import Auth, GeographicPlaceResolver
+from adcp.types.domains.core.geo_place_support import GeographicPlaceSystemSupport
+from adcp.types.domains.core.geo_place_system import (
     GeographicPlaceIdentifierSystem,
     GeographicPlaceIdentifierSystem1,
     GeographicPlaceIdentifierSystem2,
 )
-from adcp.types.generated_poc.core.geo_place_type import (
+from adcp.types.domains.core.geo_place_type import (
     GeographicPlaceType,
     GeographicPlaceType1,
     GeographicPlaceType2,
 )
-from adcp.types.generated_poc.core.geo_region_requirement import (
-    Countries1,
-    GeographicRegionRequirement,
-)
-from adcp.types.generated_poc.core.geo_region_support import Countries3, GeographicRegionSupport
-from adcp.types.generated_poc.core.get_geo_place_resolution_request import (
+from adcp.types.domains.core.geo_region_requirement import Countries1, GeographicRegionRequirement
+from adcp.types.domains.core.geo_region_support import Countries3, GeographicRegionSupport
+from adcp.types.domains.core.get_geo_place_resolution_request import (
     GetGeographicPlaceResolutionRequest,
 )
-from adcp.types.generated_poc.core.get_geo_place_resolution_response import (
+from adcp.types.domains.core.get_geo_place_resolution_response import (
     GetGeographicPlaceResolutionResponse,
 )
-from adcp.types.generated_poc.core.hotel_item import HotelItem
-from adcp.types.generated_poc.core.iana_timezone import IanaTimezoneIdentifier
-from adcp.types.generated_poc.core.impairment import Impairment, Transition
-from adcp.types.generated_poc.core.indicator import Indicator
-from adcp.types.generated_poc.core.indicator_bearing import IndicatorBearingResourceState
-from adcp.types.generated_poc.core.indicator_scope import IndicatorScope
-from adcp.types.generated_poc.core.indicators_changed_webhook import (
+from adcp.types.domains.core.hotel_item import HotelItem
+from adcp.types.domains.core.iana_timezone import IanaTimezoneIdentifier
+from adcp.types.domains.core.impairment import Impairment, Transition
+from adcp.types.domains.core.indicator import Indicator
+from adcp.types.domains.core.indicator_bearing import IndicatorBearingResourceState
+from adcp.types.domains.core.indicator_scope import IndicatorScope
+from adcp.types.domains.core.indicators_changed_webhook import (
     IndicatorsChangedWebhook,
     RelationshipKind,
 )
-from adcp.types.generated_poc.core.industry_identifier import IndustryIdentifier
-from adcp.types.generated_poc.core.insertion_order import (
-    InsertionOrder,
-    PaymentTerms,
-    Terms,
-    TotalBudget,
-)
-from adcp.types.generated_poc.core.installment import DerivativeOf, Installment
-from adcp.types.generated_poc.core.installment_deadlines import InstallmentDeadlines
-from adcp.types.generated_poc.core.installment_delivery_metrics import InstallmentDeliveryMetrics
-from adcp.types.generated_poc.core.installment_property_delivery_metrics import (
+from adcp.types.domains.core.industry_identifier import IndustryIdentifier
+from adcp.types.domains.core.insertion_order import InsertionOrder, PaymentTerms, Terms, TotalBudget
+from adcp.types.domains.core.installment import DerivativeOf, Installment
+from adcp.types.domains.core.installment_deadlines import InstallmentDeadlines
+from adcp.types.domains.core.installment_delivery_metrics import InstallmentDeliveryMetrics
+from adcp.types.domains.core.installment_property_delivery_metrics import (
     InstallmentPropertyDeliveryMetrics,
 )
-from adcp.types.generated_poc.core.installment_ref import InstallmentReference
-from adcp.types.generated_poc.core.inventory_list_application import (
+from adcp.types.domains.core.installment_ref import InstallmentReference
+from adcp.types.domains.core.inventory_list_application import (
     InventoryListApplication,
     InventoryListApplication1,
     InventoryListApplication2,
     Summary,
     Summary2,
 )
-from adcp.types.generated_poc.core.job_item import EmploymentType, ExperienceLevel, JobItem, Salary
-from adcp.types.generated_poc.core.keyword_delivery_metrics import KeywordDeliveryMetrics
-from adcp.types.generated_poc.core.limited_series import LimitedSeries
-from adcp.types.generated_poc.core.locale_tag import LanguageTag
-from adcp.types.generated_poc.core.localized_creative_asset import (
+from adcp.types.domains.core.job_item import EmploymentType, ExperienceLevel, JobItem, Salary
+from adcp.types.domains.core.keyword_delivery_metrics import KeywordDeliveryMetrics
+from adcp.types.domains.core.limited_series import LimitedSeries
+from adcp.types.domains.core.locale_tag import LanguageTag
+from adcp.types.domains.core.localized_creative_asset import (
     LocalizedCreativeAsset,
     LocalizedCreativeAsset1,
     LocalizedCreativeAsset10,
@@ -937,56 +880,50 @@ from adcp.types.generated_poc.core.localized_creative_asset import (
     LocalizedCreativeAsset8,
     LocalizedCreativeAsset9,
 )
-from adcp.types.generated_poc.core.macro_bearing_url import MacroBearingUrl3, MacroBearingUrl4
-from adcp.types.generated_poc.core.macro_resolution_capability import (
+from adcp.types.domains.core.macro_bearing_url import MacroBearingUrl3, MacroBearingUrl4
+from adcp.types.domains.core.macro_resolution_capability import (
     MacroProcessingCapability,
     MappingStatus,
     Operation,
 )
-from adcp.types.generated_poc.core.macro_resolution_result import MacroResolutionResult
-from adcp.types.generated_poc.core.material_deadline import MaterialDeadline
-from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
-from adcp.types.generated_poc.core.measurement_readiness import MeasurementReadiness
-from adcp.types.generated_poc.core.measurement_terms import MeasurementTerms
-from adcp.types.generated_poc.core.measurement_window import MeasurementWindow
-from adcp.types.generated_poc.core.media_buy import MediaBuy
-from adcp.types.generated_poc.core.media_buy_available_action import MediaBuyAvailableAction
-from adcp.types.generated_poc.core.media_buy_available_action_id import MediaBuyAvailableActionId
-from adcp.types.generated_poc.core.media_buy_change_term_id import MediaBuyChangeTermId
-from adcp.types.generated_poc.core.media_buy_features import MediaBuyFeatures
-from adcp.types.generated_poc.core.media_buy_frequency_cap import MediaBuyFrequencyCap
-from adcp.types.generated_poc.core.media_buy_frequency_cap_capability import (
+from adcp.types.domains.core.macro_resolution_result import MacroResolutionResult
+from adcp.types.domains.core.material_deadline import MaterialDeadline
+from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
+from adcp.types.domains.core.measurement_readiness import MeasurementReadiness
+from adcp.types.domains.core.measurement_terms import MeasurementTerms
+from adcp.types.domains.core.measurement_window import MeasurementWindow
+from adcp.types.domains.core.media_buy import MediaBuy
+from adcp.types.domains.core.media_buy_available_action import MediaBuyAvailableAction
+from adcp.types.domains.core.media_buy_available_action_id import MediaBuyAvailableActionId
+from adcp.types.domains.core.media_buy_change_term_id import MediaBuyChangeTermId
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.core.media_buy_frequency_cap import MediaBuyFrequencyCap
+from adcp.types.domains.core.media_buy_frequency_cap_capability import (
     MediaBuyFrequencyCapCapability,
 )
-from adcp.types.generated_poc.core.media_buy_frequency_cap_requirement import (
+from adcp.types.domains.core.media_buy_frequency_cap_requirement import (
     MediaBuyFrequencyCapRequirement,
 )
-from adcp.types.generated_poc.core.media_buy_frequency_cap_support import (
-    MediaBuyFrequencyCapSupport,
-)
-from adcp.types.generated_poc.core.media_buy_legacy_terms_ref import MediaBuyTermsReference
-from adcp.types.generated_poc.core.media_buy_support import ProductMediaBuySupport
-from adcp.types.generated_poc.core.media_buy_support_requirements import (
+from adcp.types.domains.core.media_buy_frequency_cap_support import MediaBuyFrequencyCapSupport
+from adcp.types.domains.core.media_buy_legacy_terms_ref import MediaBuyTermsReference
+from adcp.types.domains.core.media_buy_support import ProductMediaBuySupport
+from adcp.types.domains.core.media_buy_support_requirements import (
     ProductMediaBuySupportRequirements,
 )
-from adcp.types.generated_poc.core.missing_metric import (
-    MissingMetric,
-    MissingMetric1,
-    MissingMetric2,
-)
-from adcp.types.generated_poc.core.negative_keyword import NegativeKeyword
-from adcp.types.generated_poc.core.notification_config import NotificationConfig
-from adcp.types.generated_poc.core.offering import GeoTargets, Offering
-from adcp.types.generated_poc.core.offering_asset_group import Items, OfferingAssetGroup
-from adcp.types.generated_poc.core.operator_identity import OperatorIdentity
-from adcp.types.generated_poc.core.operator_unit import OperatorUnit
-from adcp.types.generated_poc.core.opportunity_context import (
+from adcp.types.domains.core.missing_metric import MissingMetric, MissingMetric1, MissingMetric2
+from adcp.types.domains.core.negative_keyword import NegativeKeyword
+from adcp.types.domains.core.notification_config import NotificationConfig
+from adcp.types.domains.core.offering import GeoTargets, Offering
+from adcp.types.domains.core.offering_asset_group import Items, OfferingAssetGroup
+from adcp.types.domains.core.operator_identity import OperatorIdentity
+from adcp.types.domains.core.operator_unit import OperatorUnit
+from adcp.types.domains.core.opportunity_context import (
     CloseReason,
     Intent,
     OpportunityContext,
     Phase,
 )
-from adcp.types.generated_poc.core.optimization_goal import (
+from adcp.types.domains.core.optimization_goal import (
     OptimizationGoal10,
     OptimizationGoal8,
     OptimizationGoal9,
@@ -997,12 +934,12 @@ from adcp.types.generated_poc.core.optimization_goal import (
     Target18,
     Target19,
 )
-from adcp.types.generated_poc.core.outcome_measurement import OutcomeMeasurement
-from adcp.types.generated_poc.core.outcome_target_cost_per import OutcomeTargetCostPer
-from adcp.types.generated_poc.core.overlay import Bounds, Overlay, Visual
-from adcp.types.generated_poc.core.package import Package
-from adcp.types.generated_poc.core.package_delivery_metric_value import PackageDeliveryMetricValue
-from adcp.types.generated_poc.core.package_format_snapshot import (
+from adcp.types.domains.core.outcome_measurement import OutcomeMeasurement
+from adcp.types.domains.core.outcome_target_cost_per import OutcomeTargetCostPer
+from adcp.types.domains.core.overlay import Bounds, Overlay, Visual
+from adcp.types.domains.core.package import Package
+from adcp.types.domains.core.package_delivery_metric_value import PackageDeliveryMetricValue
+from adcp.types.domains.core.package_format_snapshot import (
     PackageFormatSnapshot,
     PackageFormatSnapshot1,
     PackageFormatSnapshot10,
@@ -1038,7 +975,7 @@ from adcp.types.generated_poc.core.package_format_snapshot import (
     PackageFormatSnapshot8,
     PackageFormatSnapshot9,
 )
-from adcp.types.generated_poc.core.package_signal_targeting import (
+from adcp.types.domains.core.package_signal_targeting import (
     PackageSignalTargeting,
     PackageSignalTargeting1,
     PackageSignalTargeting2,
@@ -1048,50 +985,48 @@ from adcp.types.generated_poc.core.package_signal_targeting import (
     PackageSignalTargeting6,
     PackageSignalTargeting7,
 )
-from adcp.types.generated_poc.core.package_signal_targeting_group import (
+from adcp.types.domains.core.package_signal_targeting_group import (
     Operator,
     PackageSignalTargetingGroup,
 )
-from adcp.types.generated_poc.core.package_signal_targeting_groups import (
-    PackageSignalTargetingGroups,
-)
-from adcp.types.generated_poc.core.package_targeting_resolution import PackageTargetingResolution
-from adcp.types.generated_poc.core.pagination_request import PaginationRequest
-from adcp.types.generated_poc.core.pagination_response import PaginationResponse
-from adcp.types.generated_poc.core.performance_feedback import (
+from adcp.types.domains.core.package_signal_targeting_groups import PackageSignalTargetingGroups
+from adcp.types.domains.core.package_targeting_resolution import PackageTargetingResolution
+from adcp.types.domains.core.pagination_request import PaginationRequest
+from adcp.types.domains.core.pagination_response import PaginationResponse
+from adcp.types.domains.core.performance_feedback import (
     MeasurementPeriod,
     Metric7,
     PerformanceFeedback,
 )
-from adcp.types.generated_poc.core.performance_feedback_assertion import (
+from adcp.types.domains.core.performance_feedback_assertion import (
     ConfidenceInterval,
     PerformanceFeedbackAssertion,
 )
-from adcp.types.generated_poc.core.performance_feedback_metric import (
+from adcp.types.domains.core.performance_feedback_metric import (
     PerformanceFeedbackMetric,
     PerformanceFeedbackMetric1,
     PerformanceFeedbackMetric2,
 )
-from adcp.types.generated_poc.core.performance_standard import PerformanceStandard
-from adcp.types.generated_poc.core.placement import (
+from adcp.types.domains.core.performance_standard import PerformanceStandard
+from adcp.types.domains.core.placement import (
     Placement,
     ProductDoohPlacementAttributes,
     ProductDoohScreenResolution,
 )
-from adcp.types.generated_poc.core.placement_definition import (
+from adcp.types.domains.core.placement_definition import (
     FormatOptions,
     PlacementDefinition,
     PublisherDoohPlacementAttributes,
     PublisherDoohScreenResolution,
 )
-from adcp.types.generated_poc.core.placement_delivery_metrics import PlacementDeliveryMetrics
-from adcp.types.generated_poc.core.placement_evidence import PlacementEvidence
-from adcp.types.generated_poc.core.placement_identity import (
+from adcp.types.domains.core.placement_delivery_metrics import PlacementDeliveryMetrics
+from adcp.types.domains.core.placement_evidence import PlacementEvidence
+from adcp.types.domains.core.placement_identity import (
     PlacementIdentity,
     PlacementIdentity1,
     PlacementIdentity2,
 )
-from adcp.types.generated_poc.core.placement_presentation import (
+from adcp.types.domains.core.placement_presentation import (
     BoxDecoration,
     Canvas,
     Color,
@@ -1104,18 +1039,15 @@ from adcp.types.generated_poc.core.placement_presentation import (
     Rectangle,
     TextDecoration,
 )
-from adcp.types.generated_poc.core.placement_property_delivery_metrics import (
+from adcp.types.domains.core.placement_property_delivery_metrics import (
     PlacementPropertyDeliveryMetrics,
 )
-from adcp.types.generated_poc.core.placement_ref import PlacementReference
-from adcp.types.generated_poc.core.placement_selection import (
-    PlacementSelection1,
-    PlacementSelection2,
-)
-from adcp.types.generated_poc.core.planned_delivery import Geo, PlannedDelivery
-from adcp.types.generated_poc.core.platform_extension_ref import PlatformExtensionReference
-from adcp.types.generated_poc.core.positive_postal_area_support import PositivePostalAreaSupport
-from adcp.types.generated_poc.core.postal_area import (
+from adcp.types.domains.core.placement_ref import PlacementReference
+from adcp.types.domains.core.placement_selection import PlacementSelection1, PlacementSelection2
+from adcp.types.domains.core.planned_delivery import Geo, PlannedDelivery
+from adcp.types.domains.core.platform_extension_ref import PlatformExtensionReference
+from adcp.types.domains.core.positive_postal_area_support import PositivePostalAreaSupport
+from adcp.types.domains.core.postal_area import (
     PostalArea,
     PostalArea1,
     PostalArea11,
@@ -1145,14 +1077,14 @@ from adcp.types.generated_poc.core.postal_area import (
     System3,
     System9,
 )
-from adcp.types.generated_poc.core.postal_area_support import (
+from adcp.types.domains.core.postal_area_support import (
     CAEnum,
     GBEnum,
     ME,
     PostalAreaSupport,
     PostalAreaSupportAdditionalPropertyEnum,
 )
-from adcp.types.generated_poc.core.postal_country_system import (
+from adcp.types.domains.core.postal_country_system import (
     PostalCountrySystem,
     PostalCountrySystem1,
     PostalCountrySystem10,
@@ -1169,31 +1101,31 @@ from adcp.types.generated_poc.core.postal_country_system import (
     System13,
     System19,
 )
-from adcp.types.generated_poc.core.presentation_ref import PlacementPresentationReference
-from adcp.types.generated_poc.core.preview_provider import PublisherDesignatedPreviewProvider, Route
-from adcp.types.generated_poc.core.preview_renderer_metadata import (
+from adcp.types.domains.core.presentation_ref import PlacementPresentationReference
+from adcp.types.domains.core.preview_provider import PublisherDesignatedPreviewProvider, Route
+from adcp.types.domains.core.preview_renderer_metadata import (
     PreviewRendererMetadata,
     RenderingOrigin,
 )
-from adcp.types.generated_poc.core.price import Price
-from adcp.types.generated_poc.core.pricing_option import PricingOption
-from adcp.types.generated_poc.core.principal_changed_webhook import PrincipalChangedWebhook
-from adcp.types.generated_poc.core.principal_declarations import (
+from adcp.types.domains.core.price import Price
+from adcp.types.domains.core.pricing_option import PricingOption
+from adcp.types.domains.core.principal_changed_webhook import PrincipalChangedWebhook
+from adcp.types.domains.core.principal_declarations import (
     AgentDeclarations,
     AsyncAdcpVersion,
     WebhookSigningAlgorithm,
 )
-from adcp.types.generated_poc.core.principal_declarations_state import (
+from adcp.types.domains.core.principal_declarations_state import (
     Axis,
     Exclusion,
     PrincipalDeclarationsState,
 )
-from adcp.types.generated_poc.core.principal_state import (
+from adcp.types.domains.core.principal_state import (
     DestinationRef,
     PrincipalState,
     RetiredDestination,
 )
-from adcp.types.generated_poc.core.product import (
+from adcp.types.domains.core.product import (
     AudienceActivation,
     ConversionTracking,
     DeliveryMeasurement,
@@ -1214,25 +1146,25 @@ from adcp.types.generated_poc.core.product import (
     SupportedTarget5,
     SupportedViewDuration,
 )
-from adcp.types.generated_poc.core.product_allocation import ProductAllocation
-from adcp.types.generated_poc.core.product_allowed_action import ProductAllowedAction
-from adcp.types.generated_poc.core.product_audience_evidence_requirements import (
+from adcp.types.domains.core.product_allocation import ProductAllocation
+from adcp.types.domains.core.product_allowed_action import ProductAllowedAction
+from adcp.types.domains.core.product_audience_evidence_requirements import (
     AcceptedAttestationIssuers,
     AcceptedAttestationIssuers1,
     AcceptedAttestationIssuers2,
     AcceptedAttestationIssuers3,
     ProductAudienceEvidenceRequirements,
 )
-from adcp.types.generated_poc.core.product_card_reference_asset import ProductCardReferenceAsset
-from adcp.types.generated_poc.core.product_change_map import ProductChangeMap, ProductChangeMap1
-from adcp.types.generated_poc.core.product_execution_requirement import (
+from adcp.types.domains.core.product_card_reference_asset import ProductCardReferenceAsset
+from adcp.types.domains.core.product_change_map import ProductChangeMap, ProductChangeMap1
+from adcp.types.domains.core.product_execution_requirement import (
     Connection,
     ProductExecutionRequirement,
     ProductExecutionRequirement1,
     ProductExecutionRequirement2,
     ProductExecutionRequirement3,
 )
-from adcp.types.generated_poc.core.product_filters import (
+from adcp.types.domains.core.product_filters import (
     AudienceActivationMethods,
     AudienceActivationMethods1,
     AudienceActivationMethods2,
@@ -1251,7 +1183,7 @@ from adcp.types.generated_poc.core.product_filters import (
     SignalTargetingItem6,
     SignalTargetingItem7,
 )
-from adcp.types.generated_poc.core.product_format_declaration import (
+from adcp.types.domains.core.product_format_declaration import (
     ProductFormatDeclaration,
     ProductFormatDeclaration1,
     ProductFormatDeclaration10,
@@ -1270,37 +1202,37 @@ from adcp.types.generated_poc.core.product_format_declaration import (
     ProductFormatDeclaration8,
     ProductFormatDeclaration9,
 )
-from adcp.types.generated_poc.core.product_identity import ProductIdentity
-from adcp.types.generated_poc.core.product_offer_filters import (
+from adcp.types.domains.core.product_identity import ProductIdentity
+from adcp.types.domains.core.product_offer_filters import (
     AvailabilityHorizon,
     ProductOfferFilters,
     RequiredPerformanceStandard,
 )
-from adcp.types.generated_poc.core.product_signal_targeting_option import (
+from adcp.types.domains.core.product_signal_targeting_option import (
     ActivationStatus,
     AllowedTargetingMode,
     ProductSignalTargetingOption,
 )
-from adcp.types.generated_poc.core.product_targeting_resolution import ProductTargetingResolution
-from adcp.types.generated_poc.core.property import Property
-from adcp.types.generated_poc.core.property_delivery_metrics import PropertyDeliveryMetrics
-from adcp.types.generated_poc.core.property_id import PropertyId
-from adcp.types.generated_poc.core.property_list_ref import PropertyListReference
-from adcp.types.generated_poc.core.property_ref import PropertyReference
-from adcp.types.generated_poc.core.property_tag import PropertyTag
-from adcp.types.generated_poc.core.proposal import Proposal
-from adcp.types.generated_poc.core.protocol_envelope import ProtocolEnvelope
-from adcp.types.generated_poc.core.provenance import VerifyAgent18
-from adcp.types.generated_poc.core.publisher_property_selector import (
+from adcp.types.domains.core.product_targeting_resolution import ProductTargetingResolution
+from adcp.types.domains.core.property import Property
+from adcp.types.domains.core.property_delivery_metrics import PropertyDeliveryMetrics
+from adcp.types.domains.core.property_id import PropertyId
+from adcp.types.domains.core.property_list_ref import PropertyListReference
+from adcp.types.domains.core.property_ref import PropertyReference
+from adcp.types.domains.core.property_tag import PropertyTag
+from adcp.types.domains.core.proposal import Proposal
+from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
+from adcp.types.domains.core.provenance import VerifyAgent18
+from adcp.types.domains.core.publisher_property_selector import (
     PublisherPropertySelector,
     PublisherPropertySelector1,
     PublisherPropertySelector2,
     PublisherPropertySelector3,
 )
-from adcp.types.generated_poc.core.push_notification_config import PushNotificationConfig
-from adcp.types.generated_poc.core.real_estate_item import ListingType, PropertyType, RealEstateItem
-from adcp.types.generated_poc.core.reference_renderer import ReferenceRenderer
-from adcp.types.generated_poc.core.registry_event import (
+from adcp.types.domains.core.push_notification_config import PushNotificationConfig
+from adcp.types.domains.core.real_estate_item import ListingType, PropertyType, RealEstateItem
+from adcp.types.domains.core.reference_renderer import ReferenceRenderer
+from adcp.types.domains.core.registry_event import (
     AgentProfilePayload,
     AuthorizationPayload,
     AuthorizationType,
@@ -1357,16 +1289,16 @@ from adcp.types.generated_poc.core.registry_event import (
     StringArray,
     Tracks,
 )
-from adcp.types.generated_poc.core.registry_feed_response import Freshness, RegistryFeedResponse
-from adcp.types.generated_poc.core.reporting_adjustment import AccountingPeriod, ReportingAdjustment
-from adcp.types.generated_poc.core.reporting_adjustment_receipt import (
+from adcp.types.domains.core.registry_feed_response import Freshness, RegistryFeedResponse
+from adcp.types.domains.core.reporting_adjustment import AccountingPeriod, ReportingAdjustment
+from adcp.types.domains.core.reporting_adjustment_receipt import (
     ReportingAdjustmentReceipt,
     ReportingAdjustmentRejectionCode,
 )
-from adcp.types.generated_poc.core.reporting_canonical_content_digest import (
+from adcp.types.domains.core.reporting_canonical_content_digest import (
     ReportingCanonicalContentDigest,
 )
-from adcp.types.generated_poc.core.reporting_canonicalization_contract import (
+from adcp.types.domains.core.reporting_canonicalization_contract import (
     AdditionalItem,
     EmptyReport,
     GoldenVectors,
@@ -1374,52 +1306,52 @@ from adcp.types.generated_poc.core.reporting_canonicalization_contract import (
     ReportingCanonicalizationContract,
     ReportingPrimaryKey,
 )
-from adcp.types.generated_poc.core.reporting_capabilities import ReportingCapabilities
-from adcp.types.generated_poc.core.reporting_consumer_status import (
+from adcp.types.domains.core.reporting_capabilities import ReportingCapabilities
+from adcp.types.domains.core.reporting_consumer_status import (
     ConsumerStatus,
     FailureCode,
     MismatchCode,
     ReportingConsumerStatus,
 )
-from adcp.types.generated_poc.core.reporting_control_total import (
+from adcp.types.domains.core.reporting_control_total import (
     ReportingControlTotal,
     ReportingControlTotal1,
     ReportingControlTotal2,
 )
-from adcp.types.generated_poc.core.reporting_coverage import (
+from adcp.types.domains.core.reporting_coverage import (
     Limitation,
     ReportingCoverage,
     ReportingMediaBuyId,
     ReportingPackageId,
 )
-from adcp.types.generated_poc.core.reporting_dataset_share_destination import (
+from adcp.types.domains.core.reporting_dataset_share_destination import (
     Recipient,
     ReportingCloud,
     ReportingDatasetShareDestination,
     ReportingDatasetShareDestination1,
     ReportingDatasetShareDestination2,
 )
-from adcp.types.generated_poc.core.reporting_delivery_capabilities import (
+from adcp.types.domains.core.reporting_delivery_capabilities import (
     OperationsContact,
     ReportingDeliveryCapabilities,
 )
-from adcp.types.generated_poc.core.reporting_delivery_config import (
+from adcp.types.domains.core.reporting_delivery_config import (
     AuthoritativeParty,
     CoverageRequirement,
     ReportingDeliveryConfiguration,
 )
-from adcp.types.generated_poc.core.reporting_delivery_config_state import (
+from adcp.types.domains.core.reporting_delivery_config_state import (
     ReportingDeliveryConfigLifecycleState,
     ReportingDeliveryConfigurationState,
 )
-from adcp.types.generated_poc.core.reporting_delivery_method import (
+from adcp.types.domains.core.reporting_delivery_method import (
     ReportingDeliveryMethod,
     ReportingDeliveryMethod1,
     ReportingDeliveryMethod2,
     ReportingDeliveryMethod3,
     ReportingOrchestration,
 )
-from adcp.types.generated_poc.core.reporting_delivery_offering import (
+from adcp.types.domains.core.reporting_delivery_offering import (
     DestinationMode,
     ProducerIdentity,
     ReportingDeliveryOffering,
@@ -1427,37 +1359,33 @@ from adcp.types.generated_poc.core.reporting_delivery_offering import (
     ReportingFeedPurpose,
     ReportingProfile,
 )
-from adcp.types.generated_poc.core.reporting_delivery_offering_id import ReportingDeliveryOfferingId
-from adcp.types.generated_poc.core.reporting_delivery_ready_webhook import (
+from adcp.types.domains.core.reporting_delivery_offering_id import ReportingDeliveryOfferingId
+from adcp.types.domains.core.reporting_delivery_ready_webhook import (
     Readiness,
     ReportingDeliveryReadyWebhook,
 )
-from adcp.types.generated_poc.core.reporting_file_compression import ReportingFileCompression
-from adcp.types.generated_poc.core.reporting_file_entry import ReportingFileEntry
-from adcp.types.generated_poc.core.reporting_file_manifest import ReportingFileManifest
-from adcp.types.generated_poc.core.reporting_file_object_ref import ReportingFileObjectReference
-from adcp.types.generated_poc.core.reporting_ledger_changed_webhook import (
-    ReportingLedgerChangedWebhook,
-)
-from adcp.types.generated_poc.core.reporting_materialization import ReportingMaterialization
-from adcp.types.generated_poc.core.reporting_native_version_ref import (
-    ReportingNativeVersionReference,
-)
-from adcp.types.generated_poc.core.reporting_obligation import (
+from adcp.types.domains.core.reporting_file_compression import ReportingFileCompression
+from adcp.types.domains.core.reporting_file_entry import ReportingFileEntry
+from adcp.types.domains.core.reporting_file_manifest import ReportingFileManifest
+from adcp.types.domains.core.reporting_file_object_ref import ReportingFileObjectReference
+from adcp.types.domains.core.reporting_ledger_changed_webhook import ReportingLedgerChangedWebhook
+from adcp.types.domains.core.reporting_materialization import ReportingMaterialization
+from adcp.types.domains.core.reporting_native_version_ref import ReportingNativeVersionReference
+from adcp.types.domains.core.reporting_obligation import (
     ProductionStatus,
     ReconciliationStatus,
     ReportingObligation,
 )
-from adcp.types.generated_poc.core.reporting_receipt import RejectionCode, ReportingReceipt
-from adcp.types.generated_poc.core.reporting_reconciliation_mode import ReportingReconciliationMode
-from adcp.types.generated_poc.core.reporting_reliability_statistics import (
+from adcp.types.domains.core.reporting_receipt import RejectionCode, ReportingReceipt
+from adcp.types.domains.core.reporting_reconciliation_mode import ReportingReconciliationMode
+from adcp.types.domains.core.reporting_reliability_statistics import (
     AdjustmentMagnitudeItem,
     Basis,
     LatencyPercentiles,
     ReportingReliabilityMeasurementPeriod,
     ReportingReliabilityStatistics,
 )
-from adcp.types.generated_poc.core.reporting_report_definition import (
+from adcp.types.domains.core.reporting_report_definition import (
     Aggregation,
     Calendar,
     ContractVersion,
@@ -1468,37 +1396,34 @@ from adcp.types.generated_poc.core.reporting_report_definition import (
     ReportingReportDefinition,
     RestatementPolicy,
 )
-from adcp.types.generated_poc.core.reporting_resource import (
+from adcp.types.domains.core.reporting_resource import (
     Immutability,
     ReportingReaderCompatibilityItem,
     ReportingResource,
 )
-from adcp.types.generated_poc.core.reporting_revision import (
+from adcp.types.domains.core.reporting_revision import (
     DataThroughPrecision,
     FinalityBasis,
     ReportingRevision,
 )
-from adcp.types.generated_poc.core.reporting_schedule import (
-    ReportingSchedule,
-    ReportingScheduleAlignment,
-)
-from adcp.types.generated_poc.core.reporting_schedule_offering import (
+from adcp.types.domains.core.reporting_schedule import ReportingSchedule, ReportingScheduleAlignment
+from adcp.types.domains.core.reporting_schedule_offering import (
     PeriodAnchorPolicy,
     PeriodTimezonePolicy,
     ReportingScheduleOffering,
 )
-from adcp.types.generated_poc.core.reporting_status_changed_webhook import (
+from adcp.types.domains.core.reporting_status_changed_webhook import (
     IssueId,
     ReportingStatusChangedWebhook,
 )
-from adcp.types.generated_poc.core.reporting_status_issue import (
+from adcp.types.domains.core.reporting_status_issue import (
     IssueState,
     RecommendedAction,
     ReportingStatusIssue,
     ReportingStatusSeverity,
     ResponsibleParty,
 )
-from adcp.types.generated_poc.core.reporting_verification import (
+from adcp.types.domains.core.reporting_verification import (
     NativeCommitEvidence,
     ObservedThrough,
     PhysicalChecksums,
@@ -1506,83 +1431,72 @@ from adcp.types.generated_poc.core.reporting_verification import (
     ReportingVerification,
     VerificationPath,
 )
-from adcp.types.generated_poc.core.reporting_verification_profile import (
-    ReportingVerificationProfile,
-)
-from adcp.types.generated_poc.core.reporting_verification_profile_set import (
+from adcp.types.domains.core.reporting_verification_profile import ReportingVerificationProfile
+from adcp.types.domains.core.reporting_verification_profile_set import (
     ReportingVerificationProfileSet,
     ReportingVerificationProfileSetEnum,
 )
-from adcp.types.generated_poc.core.reporting_webhook import ReportingFrequency, ReportingWebhook
-from adcp.types.generated_poc.core.reporting_write_destination import (
+from adcp.types.domains.core.reporting_webhook import ReportingFrequency, ReportingWebhook
+from adcp.types.domains.core.reporting_write_destination import (
     ReportingWriteDestination,
     ReportingWriteDestination1,
     ReportingWriteDestination2,
 )
-from adcp.types.generated_poc.core.representation_destination import RepresentationDestination
-from adcp.types.generated_poc.core.representation_rejection import RepresentationRejection
-from adcp.types.generated_poc.core.representation_selection import (
-    RepresentationSelection,
-    ResolvedBy,
-)
-from adcp.types.generated_poc.core.requirements.asset_requirements import AssetRequirements
-from adcp.types.generated_poc.core.requirements.audio_asset_requirements import (
+from adcp.types.domains.core.representation_destination import RepresentationDestination
+from adcp.types.domains.core.representation_rejection import RepresentationRejection
+from adcp.types.domains.core.representation_selection import RepresentationSelection, ResolvedBy
+from adcp.types.domains.core.requirements.asset_requirements import AssetRequirements
+from adcp.types.domains.core.requirements.audio_asset_requirements import (
     AudioAssetRequirements,
     SampleRate,
 )
-from adcp.types.generated_poc.core.requirements.catalog_field_binding import (
+from adcp.types.domains.core.requirements.catalog_field_binding import (
     AssetPoolBinding,
     CatalogFieldBinding,
     CatalogFieldBinding1,
     PerItemBindings,
     ScalarBinding,
 )
-from adcp.types.generated_poc.core.requirements.catalog_requirements import CatalogRequirements
-from adcp.types.generated_poc.core.requirements.css_asset_requirements import CssAssetRequirements
-from adcp.types.generated_poc.core.requirements.daast_asset_requirements import (
-    DaastAssetRequirements,
-)
-from adcp.types.generated_poc.core.requirements.html_asset_requirements import (
+from adcp.types.domains.core.requirements.catalog_requirements import CatalogRequirements
+from adcp.types.domains.core.requirements.css_asset_requirements import CssAssetRequirements
+from adcp.types.domains.core.requirements.daast_asset_requirements import DaastAssetRequirements
+from adcp.types.domains.core.requirements.html_asset_requirements import (
     HtmlAssetRequirements,
     Sandbox,
 )
-from adcp.types.generated_poc.core.requirements.image_asset_requirements import (
+from adcp.types.domains.core.requirements.image_asset_requirements import (
     Bleed,
     Bleed1,
     ImageAssetRequirements,
     PixelRatio,
 )
-from adcp.types.generated_poc.core.requirements.javascript_asset_requirements import (
+from adcp.types.domains.core.requirements.javascript_asset_requirements import (
     JavascriptAssetRequirements,
     ModuleType,
 )
-from adcp.types.generated_poc.core.requirements.markdown_asset_requirements import (
+from adcp.types.domains.core.requirements.markdown_asset_requirements import (
     MarkdownAssetRequirements,
 )
-from adcp.types.generated_poc.core.requirements.offering_asset_constraint import (
-    OfferingAssetConstraint,
-)
-from adcp.types.generated_poc.core.requirements.text_asset_requirements import TextAssetRequirements
-from adcp.types.generated_poc.core.requirements.url_asset_requirements import (
+from adcp.types.domains.core.requirements.offering_asset_constraint import OfferingAssetConstraint
+from adcp.types.domains.core.requirements.text_asset_requirements import TextAssetRequirements
+from adcp.types.domains.core.requirements.url_asset_requirements import (
     Protocol,
     UrlAssetRequirements,
 )
-from adcp.types.generated_poc.core.requirements.vast_asset_requirements import VastAssetRequirements
-from adcp.types.generated_poc.core.requirements.video_asset_requirements import (
+from adcp.types.domains.core.requirements.vast_asset_requirements import VastAssetRequirements
+from adcp.types.domains.core.requirements.video_asset_requirements import (
     AudioCodec,
     AudioSampleRate,
     FrameRate,
     VideoAssetRequirements,
 )
-from adcp.types.generated_poc.core.requirements.webhook_asset_requirements import (
-    WebhookAssetRequirements,
-)
-from adcp.types.generated_poc.core.response import ProtocolResponse
-from adcp.types.generated_poc.core.response_payload_jws_envelope import (
+from adcp.types.domains.core.requirements.webhook_asset_requirements import WebhookAssetRequirements
+from adcp.types.domains.core.response import ProtocolResponse
+from adcp.types.domains.core.response_payload_jws_envelope import (
     ResponsePayload,
     ResponsePayloadJwsEnvelope,
 )
-from adcp.types.generated_poc.core.rights_attestation_evaluation import (
+from adcp.types.domains.core.rights_attestation_evaluation import (
     Issuer5,
     Issuer6,
     Reference,
@@ -1590,7 +1504,7 @@ from adcp.types.generated_poc.core.rights_attestation_evaluation import (
     Subject10,
     Subject19,
 )
-from adcp.types.generated_poc.core.rights_constraint import (
+from adcp.types.domains.core.rights_constraint import (
     ApprovalStatus,
     ExcludedCountry,
     GrantStatus,
@@ -1602,23 +1516,20 @@ from adcp.types.generated_poc.core.rights_constraint import (
     Subject20,
     Subject29,
 )
-from adcp.types.generated_poc.core.seller_agent_ref import SellerAgentReference
-from adcp.types.generated_poc.core.signal_coverage_forecast import (
+from adcp.types.domains.core.seller_agent_ref import SellerAgentReference
+from adcp.types.domains.core.signal_coverage_forecast import (
     BucketCompleteness,
     BucketSemantics,
     Point,
     SignalCoverageForecast,
 )
-from adcp.types.generated_poc.core.signal_definition import AudienceScope, SignalDefinition, Tag
-from adcp.types.generated_poc.core.signal_definition_enrichment import SignalDefinitionEnrichment
-from adcp.types.generated_poc.core.signal_filters import SignalFilters
-from adcp.types.generated_poc.core.signal_id import SignalId8, SignalId9
-from adcp.types.generated_poc.core.signal_listing import SignalListing
-from adcp.types.generated_poc.core.signal_modeling_disclosure import (
-    Audience,
-    SignalModelingDisclosure,
-)
-from adcp.types.generated_poc.core.signal_pricing import (
+from adcp.types.domains.core.signal_definition import AudienceScope, SignalDefinition, Tag
+from adcp.types.domains.core.signal_definition_enrichment import SignalDefinitionEnrichment
+from adcp.types.domains.core.signal_filters import SignalFilters
+from adcp.types.domains.core.signal_id import SignalId8, SignalId9
+from adcp.types.domains.core.signal_listing import SignalListing
+from adcp.types.domains.core.signal_modeling_disclosure import Audience, SignalModelingDisclosure
+from adcp.types.domains.core.signal_pricing import (
     VendorPricing,
     VendorPricing1,
     VendorPricing2,
@@ -1626,41 +1537,38 @@ from adcp.types.generated_poc.core.signal_pricing import (
     VendorPricing4,
     VendorPricing5,
 )
-from adcp.types.generated_poc.core.signal_pricing_option import SignalPricingOption
-from adcp.types.generated_poc.core.signal_ref import SignalRef, SignalRef1, SignalRef2, SignalRef3
-from adcp.types.generated_poc.core.signal_selection_group_rule import SignalSelectionGroupRule
-from adcp.types.generated_poc.core.signal_targeting import (
+from adcp.types.domains.core.signal_pricing_option import SignalPricingOption
+from adcp.types.domains.core.signal_ref import SignalRef, SignalRef1, SignalRef2, SignalRef3
+from adcp.types.domains.core.signal_selection_group_rule import SignalSelectionGroupRule
+from adcp.types.domains.core.signal_targeting import (
     SignalTargeting,
     SignalTargeting1,
     SignalTargeting2,
     SignalTargeting3,
 )
-from adcp.types.generated_poc.core.signal_targeting_expression import (
+from adcp.types.domains.core.signal_targeting_expression import (
     SignalTargetingExpression,
     SignalTargetingExpression1,
     SignalTargetingExpression2,
     SignalTargetingExpression3,
 )
-from adcp.types.generated_poc.core.signal_targeting_rules import (
-    ResolutionModel,
-    SignalTargetingRules,
-)
-from adcp.types.generated_poc.core.sla_window import SlaWindow
-from adcp.types.generated_poc.core.special import Special
-from adcp.types.generated_poc.core.spot_reporting_capability import SpotReportingCapability
-from adcp.types.generated_poc.core.start_timing import StartTiming
-from adcp.types.generated_poc.core.store_item import StoreItem
-from adcp.types.generated_poc.core.talent import Talent
-from adcp.types.generated_poc.core.targeting import AgeRestriction, TargetingOverlay
-from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
-from adcp.types.generated_poc.core.targeting_modification import (
+from adcp.types.domains.core.signal_targeting_rules import ResolutionModel, SignalTargetingRules
+from adcp.types.domains.core.sla_window import SlaWindow
+from adcp.types.domains.core.special import Special
+from adcp.types.domains.core.spot_reporting_capability import SpotReportingCapability
+from adcp.types.domains.core.start_timing import StartTiming
+from adcp.types.domains.core.store_item import StoreItem
+from adcp.types.domains.core.talent import Talent
+from adcp.types.domains.core.targeting import AgeRestriction, TargetingOverlay
+from adcp.types.domains.core.targeting_input import TargetingOverlayInput
+from adcp.types.domains.core.targeting_modification import (
     Path,
     Selector,
     TargetingModification,
     TargetingModification1,
     TargetingModification2,
 )
-from adcp.types.generated_poc.core.targeting_overlay_requirements import (
+from adcp.types.domains.core.targeting_overlay_requirements import (
     BrowserRequirement,
     BrowserRequirement1,
     DaypartRequirement,
@@ -1672,7 +1580,7 @@ from adcp.types.generated_poc.core.targeting_overlay_requirements import (
     Required,
     TargetingOverlayRequirements,
 )
-from adcp.types.generated_poc.core.targeting_overlay_support import (
+from adcp.types.domains.core.targeting_overlay_support import (
     BrowserSupport,
     BrowserSupport1,
     CountrySupport,
@@ -1689,34 +1597,34 @@ from adcp.types.generated_poc.core.targeting_overlay_support import (
     Supported,
     TargetingOverlaySupport,
 )
-from adcp.types.generated_poc.core.targeting_unknown_age_eligibility_constraint import (
+from adcp.types.domains.core.targeting_unknown_age_eligibility_constraint import (
     TargetingUnknownAgeEligibilityConstraint,
 )
-from adcp.types.generated_poc.core.targeting_verified_age_basis_constraint import (
+from adcp.types.domains.core.targeting_verified_age_basis_constraint import (
     TargetingVerifiedAgeBasisConstraint,
 )
-from adcp.types.generated_poc.core.tasks_get_request import TasksGetRequest
-from adcp.types.generated_poc.core.tasks_get_response import (
+from adcp.types.domains.core.tasks_get_request import TasksGetRequest
+from adcp.types.domains.core.tasks_get_response import (
     Details,
     HistoryItem,
     Progress,
     TasksGetResponse,
 )
-from adcp.types.generated_poc.core.tasks_list_request import Filters, Sort, TasksListRequest
-from adcp.types.generated_poc.core.tasks_list_response import (
+from adcp.types.domains.core.tasks_list_request import Filters, Sort, TasksListRequest
+from adcp.types.domains.core.tasks_list_response import (
     DomainBreakdown,
     QuerySummary,
     SortApplied,
     TasksListResponse,
 )
-from adcp.types.generated_poc.core.tracker_execution_contract import TrackerExecutionContract
-from adcp.types.generated_poc.core.tracker_execution_selector import (
+from adcp.types.domains.core.tracker_execution_contract import TrackerExecutionContract
+from adcp.types.domains.core.tracker_execution_selector import (
     TrackerExecutionSelector,
     TrackerExecutionSelector1,
     TrackerExecutionSelector2,
     TrackerExecutionSelector3,
 )
-from adcp.types.generated_poc.core.transformer import (
+from adcp.types.domains.core.transformer import (
     BrandAgent,
     InputFormat,
     InputFormat1,
@@ -1758,21 +1666,18 @@ from adcp.types.generated_poc.core.transformer import (
     VariantDimension,
     VoiceSynthesisRefItem,
 )
-from adcp.types.generated_poc.core.transformer_param import Option, TransformerParam, ValueSource
-from adcp.types.generated_poc.core.truncation_sentinel import FieldTruncation, TruncationSentinel
-from adcp.types.generated_poc.core.user_match import UserMatch
-from adcp.types.generated_poc.core.vast_media_file_requirements import (
-    MimeType,
-    VastMediafileRequirements,
-)
-from adcp.types.generated_poc.core.vast_tracker_constraints import (
+from adcp.types.domains.core.transformer_param import Option, TransformerParam, ValueSource
+from adcp.types.domains.core.truncation_sentinel import FieldTruncation, TruncationSentinel
+from adcp.types.domains.core.user_match import UserMatch
+from adcp.types.domains.core.vast_media_file_requirements import MimeType, VastMediafileRequirements
+from adcp.types.domains.core.vast_tracker_constraints import (
     VastEvent,
     VastOffset,
     VastTarget,
     VastTrackerConstraints,
     VastVersions,
 )
-from adcp.types.generated_poc.core.vehicle_item import (
+from adcp.types.domains.core.vehicle_item import (
     BodyStyle,
     Condition,
     FuelType,
@@ -1780,13 +1685,13 @@ from adcp.types.generated_poc.core.vehicle_item import (
     Transmission,
     VehicleItem,
 )
-from adcp.types.generated_poc.core.vendor_metric_id import VendorMetricId
-from adcp.types.generated_poc.core.vendor_metric_optimization import VendorMetricOptimization
-from adcp.types.generated_poc.core.vendor_metric_optimization_supported_metric import (
+from adcp.types.domains.core.vendor_metric_id import VendorMetricId
+from adcp.types.domains.core.vendor_metric_optimization import VendorMetricOptimization
+from adcp.types.domains.core.vendor_metric_optimization_supported_metric import (
     VendorMetricOptimizationSupportedMetric,
 )
-from adcp.types.generated_poc.core.vendor_metric_value import VendorMetricValue
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_metric_value import VendorMetricValue
+from adcp.types.domains.core.vendor_pricing_option import (
     AppliesToOutputCapabilityId,
     VendorPricingOption,
     VendorPricingOption1,
@@ -1801,18 +1706,18 @@ from adcp.types.generated_poc.core.vendor_pricing_option import (
     VendorPricingOption8,
     VendorPricingOption9,
 )
-from adcp.types.generated_poc.core.verification_token_claims import (
+from adcp.types.domains.core.verification_token_claims import (
     AgenticadvertisingOrgVerificationTokenClaims,
     VerificationTokenGradingProfile,
     VerificationTokenMode,
 )
-from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
-from adcp.types.generated_poc.core.warning import Warning
-from adcp.types.generated_poc.core.warning_resource import WarningAffectedResource
-from adcp.types.generated_poc.core.webhook_activity_record import WebhookActivityRecord
-from adcp.types.generated_poc.core.webhook_challenge import WebhookChallenge
-from adcp.types.generated_poc.core.webhook_challenge_response import WebhookChallengeResponse
-from adcp.types.generated_poc.core.wholesale_feed_event import (
+from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
+from adcp.types.domains.core.warning import Warning
+from adcp.types.domains.core.warning_resource import WarningAffectedResource
+from adcp.types.domains.core.webhook_activity_record import WebhookActivityRecord
+from adcp.types.domains.core.webhook_challenge import WebhookChallenge
+from adcp.types.domains.core.webhook_challenge_response import WebhookChallengeResponse
+from adcp.types.domains.core.wholesale_feed_event import (
     AffectedEntityType,
     AppliesTo,
     AppliesTo1,
@@ -1838,12 +1743,12 @@ from adcp.types.generated_poc.core.wholesale_feed_event import (
     WholesaleFeedEvent8,
     WholesaleFeedEvent9,
 )
-from adcp.types.generated_poc.core.wholesale_feed_webhook import (
+from adcp.types.domains.core.wholesale_feed_webhook import (
     CacheScope,
     NotificationType,
     WholesaleFeedWebhook,
 )
-from adcp.types.generated_poc.core.x_entity_types import XEntityTypes
+from adcp.types.domains.core.x_entity_types import XEntityTypes
 
 # Explicit exports
 __all__ = [

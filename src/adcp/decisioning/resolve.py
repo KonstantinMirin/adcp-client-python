@@ -14,7 +14,7 @@ Defines:
   paper over. See ``docs/proposals/decisioning-platform-dispatch-design.md#d15``.
 
 The :class:`Format` and :class:`PropertyListReference` types are
-re-exported from :mod:`adcp.types.generated_poc` so adopters import
+re-exported from :mod:`adcp.types.domains` so adopters import
 once from :mod:`adcp.decisioning`. :class:`PropertyList` and
 :class:`CollectionList` use the spec-defined wire shapes; the
 resolver returns the same Pydantic models adopters would construct
@@ -28,7 +28,7 @@ from typing import Protocol, runtime_checkable
 # Wire types — already exported from adcp.types. Re-export for
 # one-stop import from adcp.decisioning. Per CLAUDE.md import
 # architecture rules, only adcp.types/{stable,aliases,_ergonomic} may
-# import from generated_poc/; everywhere else uses the public
+# import from the generated tree; everywhere else uses the public
 # adcp.types surface.
 from adcp.types import (
     CollectionList,

@@ -34,7 +34,7 @@ from adcp.types.canonical_creative import (
     is_legacy_creative_identity_key,
 )
 
-_GENERATED_PREFIX = "adcp.types.generated_poc."
+_GENERATED_PREFIX = "adcp.types.domains."
 
 #: ``Format`` is the one canonical model with no generated counterpart: it is
 #: hand-written from the canonical format declaration and declares its own

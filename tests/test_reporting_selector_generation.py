@@ -12,13 +12,13 @@ from pydantic import ValidationError
 
 from scripts import post_generate_fixes
 
-ROOT = Path(__file__).parents[1] / "src/adcp/types/generated_poc"
+ROOT = Path(__file__).parents[1] / "src/adcp/types/domains"
 SOURCES = (
-    ("core/reporting_delivery_config.py", "Scope", "adcp.types.generated_poc.core"),
+    ("core/reporting_delivery_config.py", "Scope", "adcp.types.domains.core"),
     (
         "media_buy/get_media_buy_delivery_request.py",
         "GetMediaBuyDeliveryRequest",
-        "adcp.types.generated_poc.media_buy",
+        "adcp.types.domains.media_buy",
     ),
 )
 METHODS = {

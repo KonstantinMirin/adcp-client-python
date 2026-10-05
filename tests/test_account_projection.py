@@ -23,7 +23,7 @@ from adcp.types import (
     Account,
     BusinessEntity,
 )
-from adcp.types.generated_poc.core.business_entity import Address, Bank
+from adcp.types.domains.core.business_entity import Address, Bank
 
 
 def _bank_fixture() -> Bank:

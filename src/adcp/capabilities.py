@@ -7,7 +7,7 @@ Used by both the client (buyer-side validation) and server (seller-side validati
 from __future__ import annotations
 
 # GetAdcpCapabilitiesResponse is under TYPE_CHECKING to avoid a circular import
-# (adcp.types imports from generated_poc which imports from adcp.types.base).
+# (adcp.types imports from adcp.types.domains which imports from adcp.types.base).
 # This is safe because `from __future__ import annotations` makes all annotations
 # strings that are never evaluated at runtime.
 from typing import TYPE_CHECKING, Any
@@ -17,7 +17,7 @@ from pydantic import RootModel
 from adcp.exceptions import ADCPFeatureUnsupportedError
 
 if TYPE_CHECKING:
-    from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+    from adcp.types.domains.protocol.get_adcp_capabilities_response import (
         GetAdcpCapabilitiesResponse,
     )
 
@@ -204,7 +204,7 @@ class FeatureResolver:
 
         # Pre-compute the set of valid protocol names so supports() doesn't
         # need a runtime import on every call.
-        from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+        from adcp.types.domains.protocol.get_adcp_capabilities_response import (
             SupportedProtocol,
         )
 

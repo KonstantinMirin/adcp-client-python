@@ -87,7 +87,7 @@ from adcp.types._generated import (
     UpdateMediaBuyRequest,
     VcpmPricingOption,
 )
-from adcp.types.generated_poc.core.assets.asset_union import (
+from adcp.types.domains.core.assets.asset_union import (
     DaastAsset1,
     DaastAsset2,
     VastAsset1,
@@ -114,80 +114,80 @@ from adcp.types.legacy import (
     LegacyPreviewCreativeSingleResponse,
     LegacyPreviewCreativeVariantResponse,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_input_required import (  # noqa: E501
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_input_required import (  # noqa: E501
     GetProductsInputRequired,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_submitted import (  # noqa: E501
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_submitted import (  # noqa: E501
     GetProductsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.media_buy.get_products_async_response_working import (  # noqa: E501
+from adcp.types.domains.core.async_response_refs.media_buy.get_products_async_response_working import (  # noqa: E501
     GetProductsWorking,
 )
-from adcp.types.generated_poc.core.async_response_refs.signals.get_signals_async_response_submitted import (  # noqa: E501
+from adcp.types.domains.core.async_response_refs.signals.get_signals_async_response_submitted import (  # noqa: E501
     GetSignalsSubmitted,
 )
-from adcp.types.generated_poc.core.async_response_refs.signals.get_signals_async_response_working import (  # noqa: E501
+from adcp.types.domains.core.async_response_refs.signals.get_signals_async_response_working import (  # noqa: E501
     GetSignalsWorking,
 )
-from adcp.types.generated_poc.core.error import (
+from adcp.types.domains.core.error import (
     Recovery,
     Source,
 )
-from adcp.types.generated_poc.core.missing_metric import MissingMetric
-from adcp.types.generated_poc.core.product import TrustedMatch
-from adcp.types.generated_poc.core.product_allocation import ProductAllocation
-from adcp.types.generated_poc.core.signal_coverage_forecast import SignalCoverageForecast
-from adcp.types.generated_poc.protocol.get_principal_response import (
+from adcp.types.domains.core.missing_metric import MissingMetric
+from adcp.types.domains.core.product import TrustedMatch
+from adcp.types.domains.core.product_allocation import ProductAllocation
+from adcp.types.domains.core.signal_coverage_forecast import SignalCoverageForecast
+from adcp.types.domains.protocol.get_principal_response import (
     PrincipalCurrentResult,
     PrincipalReadFailedResult,
     PrincipalRecognizedResult,
     PrincipalUnconfiguredResult,
 )
-from adcp.types.generated_poc.protocol.sync_principal_request import (
+from adcp.types.domains.protocol.sync_principal_request import (
     Configuration as PrincipalConfiguration,
 )
-from adcp.types.generated_poc.protocol.sync_principal_response import (
+from adcp.types.domains.protocol.sync_principal_response import (
     PrincipalAppliedResult,
     PrincipalSyncFailedResult,
     PrincipalValidatedResult,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption as VendorPricingOptionUnion,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption1 as CpmVendorPricingOption,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption2 as PercentOfMediaVendorPricingOption,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption3 as FlatFeeVendorPricingOption,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption4 as PerUnitVendorPricingOption,
 )
-from adcp.types.generated_poc.core.vendor_pricing_option import (
+from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption5 as CustomVendorPricingOption,
 )
-from adcp.types.generated_poc.signals.get_signals_response import (
+from adcp.types.domains.signals.get_signals_response import (
     Range as SignalCoverageRange,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1,
     CreateMediaBuyResponse2,
     CreateMediaBuyResponse3,
 )
-from adcp.types.generated_poc.media_buy.get_products_response import (
+from adcp.types.domains.media_buy.get_products_response import (
     GetProductsResponse as _GetProductsSuccessResponse,
 )
-from adcp.types.generated_poc.signals.get_signals_response import (
+from adcp.types.domains.signals.get_signals_response import (
     GetSignalsResponse as _GetSignalsSuccessResponse,
 )
-from adcp.types.generated_poc.brand_discovery import Brand as BrandIdentity
+from adcp.types.domains.brand_discovery import Brand as BrandIdentity
 
 """Semantic public model for a brand entry in ``brand.json``.
 
-This replaces the removed private ``adcp.types.generated_poc.brand.Brand``
+This replaces the removed private ``adcp.types.domains.brand.Brand``
 import without colliding with the unrelated capabilities ``Brand`` model.
 """
 
@@ -400,13 +400,13 @@ AssetInstanceType: TypeAlias = Literal[
 ]
 
 # ``ProductFormatDeclaration`` comes from ``adcp.types.canonical_decl``
-# (a hand-rolled class) rather than ``generated_poc`` because the codegen
+# (a hand-rolled class) rather than the generated tree because the codegen
 # can't represent the discriminated oneOf — see canonical_decl.py.
 from adcp.types.canonical_decl import ProductFormatDeclaration
-from adcp.types.generated_poc.core.assets.pixel_tracker_asset import (
+from adcp.types.domains.core.assets.pixel_tracker_asset import (
     Method as PixelTrackerMethod,
 )
-from adcp.types.generated_poc.enums.pixel_tracking_event import (
+from adcp.types.domains.enums.pixel_tracking_event import (
     PixelTrackingEvent as PixelTrackerEvent,
 )
 
@@ -414,9 +414,9 @@ from adcp.types.generated_poc.enums.pixel_tracking_event import (
 # Canonical-formats public surface (AdCP 3.1)
 # ----------------------------------------------------------------------------
 # The v2 catalog-side canonical-formats vocabulary lives across several
-# generated_poc paths. Re-export the public-facing classes under clean names
+# generated module paths. Re-export the public-facing classes under clean names
 # so adopters import them from ``adcp.types`` without having to reach into
-# ``generated_poc/``. Two renames clean up codegen-derived class names that
+# the generated tree. Two renames clean up codegen-derived class names that
 # include the schema title's parenthetical descriptor:
 #
 # * ``CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement`` →
@@ -427,88 +427,88 @@ from adcp.types.generated_poc.enums.pixel_tracking_event import (
 # All other canonical format classes keep their generated names. Registry
 # types are renamed from the generic codegen forms (``Mapping``, ``V1Pattern``,
 # ``V2``) to scoped names that make sense once imported into ``adcp.types``.
-from adcp.types.generated_poc.core.canonical_format_kind import (
+from adcp.types.domains.core.canonical_format_kind import (
     CanonicalFormatKind,
 )
-from adcp.types.generated_poc.core.canonical_projection_ref import (
+from adcp.types.domains.core.canonical_projection_ref import (
     AssetSource as CanonicalAssetSource,
 )
-from adcp.types.generated_poc.core.canonical_projection_ref import (
+from adcp.types.domains.core.canonical_projection_ref import (
     CanonicalProjectionReference,
 )
-from adcp.types.generated_poc.core.canonical_projection_slot_override import (
+from adcp.types.domains.core.canonical_projection_slot_override import (
     CanonicalProjectionSlotOverride as CanonicalSlotOverride,
 )
 
-from adcp.types.generated_poc.core.product_format_declaration import (
+from adcp.types.domains.core.product_format_declaration import (
     SellerPreference as ProductFormatSellerPreference,
 )
-from adcp.types.generated_poc.formats.canonical._base import (
+from adcp.types.domains.formats.canonical._base import (
     CanonicalFormatBase,
 )
-from adcp.types.generated_poc.formats.canonical._base import (
+from adcp.types.domains.formats.canonical._base import (
     CompositionModel as CanonicalCompositionModel,
 )
-from adcp.types.generated_poc.formats.canonical.agent_placement import (
+from adcp.types.domains.formats.canonical.agent_placement import (
     CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement as CanonicalFormatAgentPlacement,
 )
-from adcp.types.generated_poc.formats.canonical.audio_daast import (
+from adcp.types.domains.formats.canonical.audio_daast import (
     CanonicalFormatDaastAudio,
 )
-from adcp.types.generated_poc.formats.canonical.audio_hosted import (
+from adcp.types.domains.formats.canonical.audio_hosted import (
     CanonicalFormatHostedAudio,
 )
-from adcp.types.generated_poc.formats.canonical.display_tag import (
+from adcp.types.domains.formats.canonical.display_tag import (
     CanonicalFormatDisplayTag,
 )
-from adcp.types.generated_poc.formats.canonical.html5 import (
+from adcp.types.domains.formats.canonical.html5 import (
     CanonicalFormatHtml5Banner,
 )
-from adcp.types.generated_poc.formats.canonical.image import (
+from adcp.types.domains.formats.canonical.image import (
     CanonicalFormatImage,
 )
-from adcp.types.generated_poc.formats.canonical.image_carousel import (
+from adcp.types.domains.formats.canonical.image_carousel import (
     CanonicalFormatImageCarousel,
 )
-from adcp.types.generated_poc.formats.canonical.native_in_feed import (
+from adcp.types.domains.formats.canonical.native_in_feed import (
     CanonicalFormatNativeInFeed,
 )
-from adcp.types.generated_poc.formats.canonical.responsive_creative import (
+from adcp.types.domains.formats.canonical.responsive_creative import (
     CanonicalFormatResponsiveCreative,
 )
-from adcp.types.generated_poc.formats.canonical.sponsored_placement import (
+from adcp.types.domains.formats.canonical.sponsored_placement import (
     CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven as CanonicalFormatSponsoredPlacement,
 )
-from adcp.types.generated_poc.formats.canonical.video_hosted import (
+from adcp.types.domains.formats.canonical.video_hosted import (
     CanonicalFormatHostedVideo,
 )
-from adcp.types.generated_poc.formats.canonical.video_vast import (
+from adcp.types.domains.formats.canonical.video_vast import (
     CanonicalFormatVastVideo,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     V2 as V1CanonicalV2Projection,  # noqa: N811 — codegen class ``V2``; rename here
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     Dimensions as V1CanonicalDimensions,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     Mapping as V1CanonicalMapping,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     Structural as V1CanonicalStructural,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     V1Pattern as V1CanonicalGlobPattern,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     V1Pattern1 as V1CanonicalStructuralPattern,
 )
-from adcp.types.generated_poc.registries.v1_canonical_mapping import (
+from adcp.types.domains.registries.v1_canonical_mapping import (
     V1V2CanonicalFormatMappingRegistry,
 )
 
 try:
-    from adcp.types.generated_poc.creative.sync_creatives_response import (
+    from adcp.types.domains.creative.sync_creatives_response import (
         Creative as SyncCreativeResultInternal,
     )
 except ImportError:
@@ -516,18 +516,18 @@ except ImportError:
 
 # Status name collides across many modules. Preserve backward compat by importing
 # the specific variant that was exported on main (media buy delivery status).
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
     Status as MediaBuyDeliveryStatus,
 )
 
 # Audience name collides in _generated (delivery breakdown wins over sync request)
-from adcp.types.generated_poc.media_buy.sync_audiences_request import (
+from adcp.types.domains.media_buy.sync_audiences_request import (
     Audience as SyncAudiencesAudienceInternal,
 )
 
 # Import nested types that aren't exported by _generated but are useful for type hints
 try:
-    from adcp.types.generated_poc.media_buy.sync_catalogs_response import (
+    from adcp.types.domains.media_buy.sync_catalogs_response import (
         Catalog as SyncCatalogResultInternal,
     )
 except ImportError:
@@ -1265,22 +1265,22 @@ Example:
 # static type of its neighbour — an off-by-one that made every documented
 # constructor call fail ``mypy --strict``. Binding the raw variants keeps the
 # runtime object and the static type identical.
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents1 as _AuthorizedAgentsPropertyIds,
 )
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents2 as _AuthorizedAgentsPropertyTags,
 )
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents3 as _AuthorizedAgentsInlineProperties,
 )
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents4 as _AuthorizedAgentsPublisherProperties,
 )
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents5 as _AuthorizedAgentsSignalIds,
 )
-from adcp.types.generated_poc.adagents import (
+from adcp.types.domains.adagents import (
     AuthorizedAgents6 as _AuthorizedAgentsSignalTags,
 )
 
@@ -1546,7 +1546,7 @@ Example:
 # (alphabetical wins), so the get_products version is not reachable via
 # _generated at all. Import it directly from its source module.
 
-from adcp.types.generated_poc.media_buy.get_products_request import (
+from adcp.types.domains.media_buy.get_products_request import (
     Field1 as GetProductsFieldInternal,
 )
 
@@ -1556,7 +1556,7 @@ GetProductsField = GetProductsFieldInternal
 Values include product_id, name, description, pricing_options, placements, etc.
 """
 
-from adcp.types.generated_poc.brand.get_brand_identity_request import (
+from adcp.types.domains.brand.get_brand_identity_request import (
     Field1 as GetBrandIdentityFieldInternal,
 )
 
@@ -1670,9 +1670,9 @@ Example:
 # to a class whose ``asset_type`` literal default matches the expected
 # value. Generator renumbering is caught there, not in downstream code.
 
-from adcp.types.generated_poc.core import format as _format_module
-from adcp.types.generated_poc.core.format import BaseGroupAsset as _BaseGroupAsset
-from adcp.types.generated_poc.core.format import BaseIndividualAsset as _BaseIndividualAsset
+from adcp.types.domains.core import format as _format_module
+from adcp.types.domains.core.format import BaseGroupAsset as _BaseGroupAsset
+from adcp.types.domains.core.format import BaseIndividualAsset as _BaseIndividualAsset
 
 
 def _format_asset_class(asset_type: str, *, group: bool = False) -> type:
@@ -1877,7 +1877,7 @@ WebhookFormatGroupAsset = _WebhookFormatGroupAssetInternal
 # OPEN UNION TYPES — forward-compat fallback arms for Format.assets
 # ============================================================================
 # AdCP enums grow additively by design. When a new asset_type arrives before
-# the SDK is updated, the closed discriminated union in generated_poc raises a
+# the SDK is updated, the closed discriminated union in the generated tree raises a
 # cascade of ValidationErrors (one per arm per slot) and zeroes out the entire
 # list_creative_formats catalog. These open union types add an unknown fallback
 # arm so callers receive unrecognized assets as typed-unknown rather than
@@ -2052,7 +2052,7 @@ Applied to Assets94.assets via _forward_compat._apply_forward_compat().
 #
 # Each alias imports the variant directly from its source module, so it resolves
 # to the correct per-module class regardless of which one wins the bare-name
-# slot in _generated.py. These do NOT remove the underlying generated_poc
+# slot in _generated.py. These do NOT remove the underlying generated
 # collisions; what keeps every variant reachable is the derived export set in
 # the ``domains/`` modules and the reachability guard in the consolidate step.
 #
@@ -2073,208 +2073,208 @@ Applied to Assets94.assets via _forward_compat._apply_forward_compat().
 #     enums measure different dimensions. ``DurationUnit`` keeps its public
 #     identity when the schema moves the duration vocabulary to a shared enum.
 #     ``adcp.types.DimensionUnit`` is a separate, already-unambiguous enum.
-from adcp.types.generated_poc.account.sync_accounts_response import (
+from adcp.types.domains.account.sync_accounts_response import (
     Account as SyncAccountsAccount,
 )
-from adcp.types.generated_poc.account.sync_accounts_response import (
+from adcp.types.domains.account.sync_accounts_response import (
     CreditLimit as SyncAccountsCreditLimit,
 )
-from adcp.types.generated_poc.account.sync_accounts_response import (
+from adcp.types.domains.account.sync_accounts_response import (
     Setup as SyncAccountsSetup,
 )
-from adcp.types.generated_poc.account.sync_governance_request import (
+from adcp.types.domains.account.sync_governance_request import (
     Account as SyncGovernanceAccount,
 )
-from adcp.types.generated_poc.account.sync_governance_request import (
+from adcp.types.domains.account.sync_governance_request import (
     Authentication as GovernanceAuthentication,
 )
-from adcp.types.generated_poc.account.sync_governance_request import (
+from adcp.types.domains.account.sync_governance_request import (
     GovernanceAgent as SyncGovernanceGovernanceAgent,
 )
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     Account as CoreAccount,
 )
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     CreditLimit as CoreCreditLimit,
 )
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     GovernanceAgent as CoreGovernanceAgent,
 )
-from adcp.types.generated_poc.core.account import (
+from adcp.types.domains.core.account import (
     Setup as CoreSetup,
 )
-from adcp.types.generated_poc.core.canonical_proposal import (
+from adcp.types.domains.core.canonical_proposal import (
     TotalBudgetGuidance as CanonicalProposalTotalBudgetGuidance,
 )
 
 try:
-    from adcp.types.generated_poc.enums.duration_unit import DurationUnit  # type: ignore[import-not-found,unused-ignore]
+    from adcp.types.domains.enums.duration_unit import DurationUnit  # type: ignore[import-not-found,unused-ignore]
 except ModuleNotFoundError as exc:
-    if exc.name != "adcp.types.generated_poc.enums.duration_unit":
+    if exc.name != "adcp.types.domains.enums.duration_unit":
         raise
-    from adcp.types.generated_poc.core.duration import (
+    from adcp.types.domains.core.duration import (
         Unit as DurationUnit,
     )
-from adcp.types.generated_poc.media_buy.change_term_constraints import (
+from adcp.types.domains.media_buy.change_term_constraints import (
     MediaBuyChangeTermConstraints1 as BudgetChangeConstraints,
 )
-from adcp.types.generated_poc.media_buy.change_term_constraints import (
+from adcp.types.domains.media_buy.change_term_constraints import (
     MediaBuyChangeTermConstraints2 as FlightChangeConstraints,
 )
-from adcp.types.generated_poc.media_buy.change_term_constraints import (
+from adcp.types.domains.media_buy.change_term_constraints import (
     MediaBuyChangeTermConstraints3 as PackageCountChangeConstraints,
 )
-from adcp.types.generated_poc.media_buy.change_term_constraints import (
+from adcp.types.domains.media_buy.change_term_constraints import (
     MediaBuyChangeTermConstraints4 as EffectiveTimingChangeConstraints,
 )
-from adcp.types.generated_poc.core.media_buy import (
+from adcp.types.domains.core.media_buy import (
     MediaBuy as CoreMediaBuy,
 )
-from adcp.types.generated_poc.core.notification_config import (
+from adcp.types.domains.core.notification_config import (
     Authentication as NotificationAuthentication,
 )
-from adcp.types.generated_poc.core.overlay import (
+from adcp.types.domains.core.overlay import (
     Unit as OverlayUnit,
 )
-from adcp.types.generated_poc.core.product_filters import (
+from adcp.types.domains.core.product_filters import (
     Country as ProductFilterCountry,
 )
-from adcp.types.generated_poc.core.property import (
+from adcp.types.domains.core.property import (
     Identifier as PropertyIdentifier,
 )
-from adcp.types.generated_poc.core.proposal import (
+from adcp.types.domains.core.proposal import (
     TotalBudgetGuidance as LegacyProposalTotalBudgetGuidance,
 )
-from adcp.types.generated_poc.media_buy.product_discovery_criteria import (
+from adcp.types.domains.media_buy.product_discovery_criteria import (
     ProductId as ProductDiscoveryProductId,
 )
-from adcp.types.generated_poc.media_buy.request_proposals_response import (
+from adcp.types.domains.media_buy.request_proposals_response import (
     ProductId as RequestProposalsProductId,
 )
-from adcp.types.generated_poc.media_buy.refine_proposals_response import (
+from adcp.types.domains.media_buy.refine_proposals_response import (
     TotalBudgetGuidance as RefineProposalsTotalBudgetGuidance,
 )
-from adcp.types.generated_poc.core.provenance import (
+from adcp.types.domains.core.provenance import (
     DeclaredBy as ProvenanceDeclaredBy,
 )
-from adcp.types.generated_poc.core.provenance import (
+from adcp.types.domains.core.provenance import (
     Provenance,
 )
-from adcp.types.generated_poc.core.downstream_connection_requirement import (
+from adcp.types.domains.core.downstream_connection_requirement import (
     RequiredForItem as DownstreamConnectionRequiredForItem,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     RequiredForItem as RequestSigningRequiredForItem,
 )
-from adcp.types.generated_poc.core.preview_provider import (
+from adcp.types.domains.core.preview_provider import (
     Route as PublisherPreviewRoute,
 )
-from adcp.types.generated_poc.core.preview_renderer_metadata import (
+from adcp.types.domains.core.preview_renderer_metadata import (
     RenderingOrigin as PreviewRenderingOrigin,
 )
-from adcp.types.generated_poc.core.push_notification_config import (
+from adcp.types.domains.core.push_notification_config import (
     Authentication as PushNotificationAuthentication,
 )
-from adcp.types.generated_poc.core.reference_renderer import (
+from adcp.types.domains.core.reference_renderer import (
     Provenance as ReferenceRendererProvenance,
 )
-from adcp.types.generated_poc.core.real_estate_item import (
+from adcp.types.domains.core.real_estate_item import (
     Unit as RealEstateUnit,
 )
-from adcp.types.generated_poc.core.reporting_consumer_status import (
+from adcp.types.domains.core.reporting_consumer_status import (
     ConsumerStatus as ReportingConsumerStatusValue,
 )
-from adcp.types.generated_poc.core.reporting_consumer_status import (
+from adcp.types.domains.core.reporting_consumer_status import (
     FailureCode as ReportingConsumerFailureCode,
 )
-from adcp.types.generated_poc.core.reporting_consumer_status import (
+from adcp.types.domains.core.reporting_consumer_status import (
     MismatchCode as ReportingConsumerMismatchCode,
 )
-from adcp.types.generated_poc.core.reporting_delivery_capabilities import (
+from adcp.types.domains.core.reporting_delivery_capabilities import (
     OperationsContact as ReportingOperationsContact,
 )
-from adcp.types.generated_poc.core.reporting_delivery_config import (
+from adcp.types.domains.core.reporting_delivery_config import (
     AuthoritativeParty as ReportingAuthoritativeParty,
 )
-from adcp.types.generated_poc.core.reporting_status_issue import (
+from adcp.types.domains.core.reporting_status_issue import (
     IssueState as ReportingIssueState,
 )
-from adcp.types.generated_poc.core.reporting_status_issue import (
+from adcp.types.domains.core.reporting_status_issue import (
     RecommendedAction as ReportingIssueRecommendedAction,
 )
-from adcp.types.generated_poc.core.reporting_webhook import (
+from adcp.types.domains.core.reporting_webhook import (
     Authentication as ReportingWebhookAuthentication,
 )
-from adcp.types.generated_poc.core.tasks_list_request import (
+from adcp.types.domains.core.tasks_list_request import (
     Sort as TasksListSort,
 )
-from adcp.types.generated_poc.core.vehicle_item import (
+from adcp.types.domains.core.vehicle_item import (
     Unit as VehicleUnit,
 )
-from adcp.types.generated_poc.core.wholesale_feed_event import (
+from adcp.types.domains.core.wholesale_feed_event import (
     Signal as WholesaleFeedSignal,
 )
-from adcp.types.generated_poc.media_buy.get_reporting_status_response import (
+from adcp.types.domains.media_buy.get_reporting_status_response import (
     ObligationCounts as ReportingObligationCounts,
 )
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.creative.get_creative_delivery_response import (
     Creative as DeliveryCreative,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import (
+from adcp.types.domains.creative.list_creatives_request import (
     Sort as ListCreativesSort,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     Creatives as ListCreativesLegacyCreative,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     Creatives1 as ListCreativesCanonicalCreative,
 )
-from adcp.types.generated_poc.creative.sync_creatives_response import (
+from adcp.types.domains.creative.sync_creatives_response import (
     Creative as SyncCreativesCreative,
 )
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.media_buy.build_creative_response import (
     Creative as BuildCreativeCreative,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_request import (
+from adcp.types.domains.media_buy.create_media_buy_request import (
     Authentication as CreateMediaBuyAuthentication,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     MediaBuy as GetMediaBuysMediaBuy,
 )
-from adcp.types.generated_poc.media_buy.sync_event_sources_response import (
+from adcp.types.domains.media_buy.sync_event_sources_response import (
     Setup as SyncEventSourcesSetup,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse1 as LegacyUpdateMediaBuySuccessResponse,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Account as CapabilitiesAccount,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Creative as CapabilitiesCreative,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     MediaBuy as CapabilitiesMediaBuy,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     RenderingOrigin as CapabilitiesPreviewRenderingOrigin,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Route as CapabilitiesPreviewRoute,
 )
-from adcp.types.generated_poc.protocol.list_tasks_request import (
+from adcp.types.domains.protocol.list_tasks_request import (
     Sort as ListTasksSort,
 )
-from adcp.types.generated_poc.signals.get_signals_response import (
+from adcp.types.domains.signals.get_signals_response import (
     Signal as GetSignalsSignal,
 )
-from adcp.types.generated_poc.sponsored_intelligence.si_sponsored_context import (
+from adcp.types.domains.sponsored_intelligence.si_sponsored_context import (
     DeclaredBy as SiSponsoredContextDeclaredBy,
 )
-from adcp.types.generated_poc.trusted_match.identity_match_response import (
+from adcp.types.domains.trusted_match.identity_match_response import (
     TmpxMacro as IdentityMatchTmpxMacro,
 )
-from adcp.types.generated_poc.trusted_match.provider_registration import (
+from adcp.types.domains.trusted_match.provider_registration import (
     TmpxMacro as ProviderRegistrationTmpxMacro,
 )
 

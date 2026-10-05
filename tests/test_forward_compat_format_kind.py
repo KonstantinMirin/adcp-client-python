@@ -24,10 +24,10 @@ from adcp.types.aliases import DeliveryCreative as AliasDeliveryCreative
 from adcp.types.creative import Creative as PartialCreative
 from adcp.types.creative import CreativeAsset as PartialCreativeAsset
 from adcp.types.creative import CreativeManifest as PartialCreativeManifest
-from adcp.types.generated_poc.core.creative_manifest import (
+from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as GeneratedCreativeManifest,
 )
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.creative.get_creative_delivery_response import (
     GetCreativeDeliveryResponse as GeneratedGetCreativeDeliveryResponse,
 )
 

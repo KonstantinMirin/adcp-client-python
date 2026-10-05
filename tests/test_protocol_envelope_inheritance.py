@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from adcp._version import _read_packaged_version
 from adcp.types import ProtocolEnvelope, canonical_creative
 from adcp.types import aliases as aliases_module
-from adcp.types.generated_poc.enums.task_status import TaskStatus
+from adcp.types.domains.enums.task_status import TaskStatus
 from adcp.validation.version import resolve_bundle_key
 
 _ENVELOPE_FIELDS = frozenset(ProtocolEnvelope.model_fields)
@@ -98,7 +98,7 @@ def test_generated_arms_match_their_root_schema_composition(relative: str) -> No
     import importlib
     import re
 
-    module_name = "adcp.types.generated_poc." + relative.removesuffix(".py").replace("/", ".")
+    module_name = "adcp.types.domains." + relative.removesuffix(".py").replace("/", ".")
     module = importlib.import_module(module_name)
 
     schema_path = _schema_dir() / Path(relative).with_suffix(".json").as_posix().replace("_", "-")
@@ -296,7 +296,7 @@ def test_canonical_response_status_is_the_generated_one() -> None:
             for base in model.__bases__
             if base is not canonical_creative.CanonicalBoundaryModel
         )
-        assert generated.__module__.startswith("adcp.types.generated_poc."), (
+        assert generated.__module__.startswith("adcp.types.domains."), (
             f"{name} does not refine a generated wire model (base {generated!r}); "
             f"a canonical response must be a subclass, never a copy"
         )

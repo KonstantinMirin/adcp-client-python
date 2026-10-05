@@ -31,8 +31,8 @@ from adcp.types import (
     SyncCreativesResponse1,
     UpdateMediaBuyResponse3,
 )
-from adcp.types.generated_poc.core.pagination_response import PaginationResponse
-from adcp.types.generated_poc.creative.list_creatives_response import QuerySummary
+from adcp.types.domains.core.pagination_response import PaginationResponse
+from adcp.types.domains.creative.list_creatives_response import QuerySummary
 
 
 def echo_envelope(response: ProtocolEnvelope) -> str | None:

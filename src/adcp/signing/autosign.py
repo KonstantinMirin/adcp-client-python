@@ -23,7 +23,7 @@ from adcp.signing.constants import DEFAULT_TAG
 from adcp.signing.crypto import ALG_ED25519, ALLOWED_ALGS, PrivateKey
 
 if TYPE_CHECKING:
-    from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+    from adcp.types.domains.protocol.get_adcp_capabilities_response import (
         RequestSigning,
     )
 

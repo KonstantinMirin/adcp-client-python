@@ -1162,7 +1162,7 @@ jobs:
           # The deep submodule path (some older import sites reach this far)
           # must also surface the migration pointer, not a bare ModuleNotFoundError.
           try:
-              from adcp.types.generated_poc.enums.format_category import FormatCategory  # noqa: F401
+              from adcp.types.domains.enums.format_category import FormatCategory  # noqa: F401
           except ImportError as exc:
               assert "MIGRATION_v3_to_v4" in str(exc), exc
           else:
@@ -1208,7 +1208,7 @@ jobs:
 
       # Blocking. Grades the COMMITTED generated tree against a regeneration
       # from the COMMITTED schemas, so it runs before the sync steps below
-      # replace `schemas/cache/`. A hand edit to `src/adcp/types/generated_poc/**`,
+      # replace `schemas/cache/`. A hand edit to `src/adcp/types/domains/**`,
       # `_generated.py` or `_ergonomic.py` fails here; without this step the
       # "Generate models" step overwrites the edit before anything inspects it.
       # `generate_types.py --check` stages the regeneration in a temp tree and

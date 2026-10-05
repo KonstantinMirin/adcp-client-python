@@ -34,6 +34,11 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 try:
+    import consolidate_exports
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts import consolidate_exports
+
+try:
     import task_message_lattice
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
     from scripts import task_message_lattice
@@ -43,7 +48,7 @@ REPO_ROOT = Path(__file__).parent.parent
 
 # Load ``resolve_bundle_key`` from its source file rather than via the
 # ``adcp`` package — this script runs after datamodel-codegen produces a
-# fresh ``generated_poc/`` tree, before the post-fixes that make it
+# fresh generated tree, before the post-fixes that make it
 # importable. ``adcp/__init__.py`` would crash on the unfixed models.
 def _load_resolve_bundle_key():
     src = REPO_ROOT / "src" / "adcp" / "validation" / "version.py"
@@ -59,7 +64,7 @@ resolve_bundle_key = _load_resolve_bundle_key()
 
 # Same reason as above: load ``adcp.types._scalar`` by path so the keyword sets
 # the rewriter and the runtime bases share live in exactly one place. The module
-# itself depends only on pydantic, so it is importable while ``generated_poc/``
+# itself depends only on pydantic, so it is importable while the generated tree
 # is still unfixed.
 def _load_scalar_module():
     src = REPO_ROOT / "src" / "adcp" / "types" / "_scalar.py"
@@ -160,7 +165,7 @@ def ensure_pydantic_import(source: str, *names: str) -> str:
 _VERSION_FILE = REPO_ROOT / "src" / "adcp" / "ADCP_VERSION"
 _BUNDLE_KEY = resolve_bundle_key(_VERSION_FILE.read_text().strip())
 
-OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
+OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "domains"
 SCHEMA_DIR = REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
 _PROTOCOL_ENVELOPE_IMPORT = "from ..core.protocol_envelope import ProtocolEnvelope\n"
@@ -2724,10 +2729,10 @@ def fix_adagents_duplicate_aliases() -> None:
 def restore_format_category_deprecation_shim():
     """Restore the removed-type ``format_category`` module after codegen.
 
-    ``scripts/generate_types.py`` wipes ``generated_poc/`` before
+    ``scripts/generate_types.py`` wipes the generated tree before
     regenerating. The deprecation shim file for the removed
     ``format_category`` submodule lives inside that tree so downstream
-    imports of ``adcp.types.generated_poc.enums.format_category`` hit an
+    imports of ``adcp.types.domains.enums.format_category`` hit an
     ``ImportError`` with a migration pointer instead of
     ``ModuleNotFoundError``. This function re-writes the shim after each
     regen. Keep the message in sync with ``_REMOVED_IN_V4`` in
@@ -2744,17 +2749,17 @@ def restore_format_category_deprecation_shim():
         "Importing this module raises :class:`ImportError` with a pointer to the\n"
         "migration guide — so downstream import sites like::\n"
         "\n"
-        "    from adcp.types.generated_poc.enums.format_category import FormatCategory\n"
+        "    from adcp.types.domains.enums.format_category import FormatCategory\n"
         "\n"
         "get the same pointer as the top-level ``from adcp import FormatCategory``,\n"
         "instead of a bare ``ModuleNotFoundError``.\n"
         "\n"
         "This file is restored after every codegen run by\n"
-        "``scripts/post_generate_fixes.py`` (which wipes ``generated_poc/``).\n"
+        "``scripts/post_generate_fixes.py`` (which wipes the generated tree).\n"
         '"""\n'
         "\n"
         "raise ImportError(\n"
-        '    "adcp.types.generated_poc.enums.format_category was removed in AdCP 3.0. "\n'
+        '    "adcp.types.domains.enums.format_category was removed in AdCP 3.0. "\n'
         "    \"Use free-form format-id strings (e.g. 'goog:video_responsive_ad') via \"\n"
         '    "adcp.types.FormatId. See MIGRATION_v3_to_v4.md#creative-format-asset-slots-formataasset-aliases "\n'
         '    "for details."\n'
@@ -2763,6 +2768,38 @@ def restore_format_category_deprecation_shim():
     target.write_text(content)
     rel = target.relative_to(REPO_ROOT)
     print(f"  ✓ Restored format_category deprecation shim at {rel}")
+
+
+def declare_root_schema_module_exports() -> None:
+    """Give each root-level schema module an ``__all__``.
+
+    A domain whose only schema sits at the bundle root (``adagents.json``,
+    ``manifest.json``, ``manifest-schema.json``, and the relocated
+    ``brand_discovery``) generates as ``domains/<domain>.py``, so that module
+    IS the domain root. Every other domain root is a package ``__init__`` that
+    ``consolidate_exports.py`` writes with an explicit ``__all__``, and
+    ``scripts/export_resolution.py`` reads ``__all__`` to record what a public
+    namespace promises — so without this these four would be the only public
+    namespaces in the tree that promise nothing.
+
+    The names are the module's own public classes and aliases, read with the
+    same helper the consolidation step uses, so a domain root and a schema
+    module cannot disagree about what the module declares.
+    """
+    declared = 0
+    for module in sorted(OUTPUT_DIR.glob("*.py")):
+        if module.name == "__init__.py":
+            continue
+        names = sorted(consolidate_exports.extract_exports_from_module(module))
+        if not names:
+            continue
+        source = module.read_text()
+        if "\n__all__" in source:
+            raise RuntimeError(f"{module.name}: already declares __all__")
+        body = "".join(f'    "{name}",\n' for name in names)
+        module.write_text(f"{source}\n\n__all__ = [\n{body}]\n")
+        declared += 1
+    print(f"  ✓ Declared __all__ on {declared} root-level schema module(s)")
 
 
 def inject_literal_discriminator_defaults() -> None:
@@ -7421,7 +7458,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=OUTPUT_DIR,
-        help="generated_poc tree to modify",
+        help="generated domain tree to modify",
     )
     parser.add_argument(
         "--update-manifest",
@@ -7514,6 +7551,9 @@ def main(argv: list[str] | None = None) -> int:
         point_integer_fields_at_the_schema_integer_type,
         remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,
+        # After every pass that can add, rename or remove a class: the
+        # ``__all__`` it writes has to name the final set.
+        declare_root_schema_module_exports,
         strip_extra_blank_lines_at_eof,
     ]
     observed: dict[str, list[str]] = {}

@@ -25,15 +25,15 @@ from adcp.types import (
     TmpOffer,
 )
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
-from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
-from adcp.types.generated_poc.core.creative_manifest import (
+from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as InputManifest,
 )
-from adcp.types.generated_poc.core.version_envelope import AdcpVersionEnvelope
-from adcp.types.generated_poc.media_buy.build_creative_response import (
+from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
+from adcp.types.domains.media_buy.build_creative_response import (
     Creative as InputBuildCreative,
 )
-from adcp.types.generated_poc.trusted_match.provider_context_match_response import (
+from adcp.types.domains.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter,
 )
 

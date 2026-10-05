@@ -22,7 +22,7 @@ import importlib
 # Imported via ``import_module`` — a call, not a name binding — so they read as
 # the intentional side-effect imports they are rather than tripping
 # unused-import analysers. (The removed ``format_category`` submodule has a real
-# shim at ``generated_poc/enums/format_category.py``, restored after codegen by
+# shim at ``domains/enums/format_category.py``, restored after codegen by
 # ``scripts/post_generate_fixes.py``.)
 importlib.import_module("adcp.types._ergonomic")
 importlib.import_module("adcp.types._forward_compat")
@@ -974,21 +974,21 @@ from adcp.types.core import (
 # type of the obsolete aggregate ``RootModel`` — documented constructor kwargs
 # get rejected. Importing the variant class by its generated name keeps the
 # runtime object and the static type identical.
-from adcp.types.generated_poc.adagents import AuthorizedAgents1 as AuthorizedAgents
+from adcp.types.domains.adagents import AuthorizedAgents1 as AuthorizedAgents
 
 # Deprecated compatibility types from the root brand discovery document. The
 # document collides with the ``brand/`` task-schema package, so codegen emits
 # it into a dedicated module.
-from adcp.types.generated_poc.brand_discovery import Asset, Disclaimer, Fonts, ProductCatalog
-from adcp.types.generated_poc.core.catalog_item_delivery_metrics import (
+from adcp.types.domains.brand_discovery import Asset, Disclaimer, Fonts, ProductCatalog
+from adcp.types.domains.core.catalog_item_delivery_metrics import (
     CatalogItemDeliveryMetrics as ByCatalogItemItem,
 )
-from adcp.types.generated_poc.core.outcome_measurement import OutcomeMeasurement
-from adcp.types.generated_poc.enums.metric_type import MetricType
+from adcp.types.domains.core.outcome_measurement import OutcomeMeasurement
+from adcp.types.domains.enums.metric_type import MetricType
 
 # Status: _generated picks invoice status (get_account_financials_response) due to
 # alphabetical module sort. Import the delivery status variant directly for backward compat.
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (  # noqa: E501
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (  # noqa: E501
     Status,
 )
 
