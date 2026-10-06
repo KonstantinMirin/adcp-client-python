@@ -310,67 +310,9 @@ declared as a pointer-or-null union, which otherwise produces
 `targeting.AudienceExclude = RootModel[list[str]]` and becomes `list[str] | None` once
 resolved.
 
-### Union arm names: the rule, and the one that ships
+### Union arm names: positional today
 
-`scripts/union_arm_names.py` answers one question — what is this arm called — and does
-nothing else. **It is not wired into the pipeline.** Its only importer is its own test
-module and its own `main()`, which is a reporting CLI. Read this section as the designed
-rule plus an accurate statement of what currently names arms instead.
-
-**Step zero: classify before naming.** An arm that introduces no new property is a
-validation constraint, not a type, and must mint no class — a public class for it would
-name something no buyer sends.
-
-```python
-def classify(arm: dict[str, Any], base_properties: dict[str, Any]) -> ArmKind:
-    """Classify one root-level union arm. See the module docstring's step zero.
-
-    Order matters, and the bundle proves it: ``create-media-buy-request.json``
-    anyOf[2] declares only ``required`` and ``not`` -- no ``type``, no
-    ``properties`` -- so a "nothing structural, therefore a scalar" fallback
-    claims it, when it is the purest validation arm in the tree. A scalar is
-    recognized by what it POSITIVELY declares; a constraining arm is recognized
-    by its constraint keywords; only a genuinely empty arm falls through.
-    """
-    if _is_bare_ref(arm):
-        return "ref"
-    if _declares_a_scalar_value(arm):
-        return "scalar"
-    if _introduced_properties(arm, base_properties):
-        return "type"
-    if set(arm) & (_CONSTRAINING | _STRUCTURAL):
-        return "validation"
-    return "scalar"
-```
-
-Only a `"type"` arm is named. A `"ref"` arm already names the class it selects; `"scalar"`
-and `"validation"` arms mint nothing.
-
-**Then four rungs, first one that holds:** the arm's own `title`; the parent name plus the
-PascalCased discriminator `const`; the parent name plus the arm's full sorted `required`
-set; then `UnnameableArmError`.
-
-A rung holds only when its candidate is unique among the arm's siblings *at that same
-rung*. That is a property of every rung, not a check bolted onto the last one, and it is
-what makes every rung position-free: `core/audience-selector.json` has three arms all
-pinning `type: "signal"`, so the const rung names them identically, falls through, and the
-required-set rung separates them.
-
-The third rung uses the full required set rather than the set-difference against siblings,
-because the difference fails where one arm is the conjunction of two others and the bundle
-contains that case: `a2ui/bound-value.json` has five arms requiring `{literalString}`,
-`{literalNumber}`, `{literalBoolean}`, `{path}` and `{literalString, path}`, so arm 4's
-difference is empty while all five full sets are distinct.
-
-There is no interim counter and no ledger of tolerated numbers. Over the 557 root-level
-non-null union arms in the pinned bundle — run `python scripts/union_arm_names.py` to
-reproduce — 169 are named by title, 82 by const, 27 by required set, 1 is refused, and 278
-mint no class (96 ref, 10 scalar, 172 validation). The one refusal is
-`content-standards/get-content-standards-response.json` oneOf[0], which carries a
-description and no title while its sibling pattern titles all three arms — a one-line
-upstream metadata change.
-
-**What actually names arms today is positional.** `restore_response_variant_aliases` mints
+Root-level union arms are named by position. `restore_response_variant_aliases` mints
 them off a hand-written 22-row table of `(module path, base class name)` pairs:
 
 ```python
@@ -390,19 +332,10 @@ if self.base == "BuildCreativeResponse" and len(arms) == 6:
 That permutation is the drift channel made visible: a positional name's meaning changed,
 and a hand-written reorder was the only way to hold it still.
 
-Wiring the rule is a one-line substitution at `class_names` plus its fallout. The rename
-table covers 58 arm classes across those 22 response modules, 21 of them publicly bound.
-The prerequisite that used to block it — hand-editing three name lists — is gone now that
-the export surface is derived, so what remains is two decisions rather than a mechanism.
-One of the 21 cannot be named at all until the upstream title lands, so the fail-closed
-rule puts the build red the moment the substitution goes in unless that class is
-deliberately dropped from the flat surface and left reachable by domain path; and the 38
-numeric-suffixed public names become a breaking rename that needs a deprecation shim and a
-migration table. Both are surface-policy calls, not implementation.
-
-Note also that `test_no_derived_name_is_positional` grades the rule's output over the JSON
-schemas. It never reads the generated tree, so it passes while the shipped classes stay
-numbered. It is a correct test of the rule and not a test of the tree.
+A rule that names an arm from its schema node (`title`, then discriminator `const`,
+then full `required` set, failing closed instead of numbering) is designed and measured
+against the pinned bundle but not wired in; it is tracked, with the two surface-policy
+decisions wiring it needs, in #1409.
 
 ## What keeps a name's meaning stable, and where it does not
 
@@ -418,9 +351,6 @@ The property wanted is: a name refers to the same schema node until the schema c
 3. **The staleness check makes instability visible.** `generate_types.py --check` re-runs
    the whole pipeline into a staging tree and compares all three artifacts byte-for-byte.
    Any input-order sensitivity shows up as a dirty regeneration.
-4. **The arm-naming derivation is position-free** where it is applied. Every input is a
-   property of the schema node or its sibling set; inserting an arm upstream changes which
-   arms exist and cannot renumber ones already named. It is not applied yet (above).
 
 **The hole.** The generator walks its input by basename rather than by full path, and
 basenames are not unique here: of the 1169 prepared inputs, 1009 basenames are distinct and
@@ -472,7 +402,6 @@ stale generated tree.
 | `test_task_message_lattice.py` | the marker pass failing: a task message unmarked, a marker gaining fields, the envelope residues moving |
 | `test_canonical_models_are_subclasses.py` | a canonical model built as a copy rather than a subclass, or a generated validator not reaching the public model |
 | `test_canonical_validator_parity.py` | a document the generated class refuses that the public canonical name accepts |
-| `test_union_arm_names.py` | the arm-naming rule drifting from the bundle, or numbering instead of failing closed |
 | `test_rootmodel_proxy.py` | a retained `RootModel` union needing `.root` for attribute access |
 | `test_import_layering.py` | a non-facade module importing from the generated layer |
 | `test_adopter_public_paths.py` | a real downstream seller's generated imports losing their public path |
