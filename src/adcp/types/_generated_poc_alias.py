@@ -5,7 +5,8 @@ public surface re-exported them. It now writes them to ``adcp.types.domains``
 directly: the module that defines a class is the module adopters import it
 from, so there is no private tree left to re-export.
 
-Every module stem moved unchanged, so the migration is a prefix rename::
+Almost every module stem moved unchanged, so the migration is mostly a prefix
+rename::
 
     -from adcp.types.generated_poc.media_buy.package_request import PackageRequest
     +from adcp.types.domains.media_buy.package_request import PackageRequest
@@ -13,6 +14,24 @@ Every module stem moved unchanged, so the migration is a prefix rename::
 ``adcp migrate v3-to-v4`` rewrites those lines; ``adcp.types`` remains the
 first choice, and a domain path is for a name the flat namespace cannot bind,
 as ``docs/type-surface.md`` describes.
+
+**A root discovery schema is the exception, and a prefix rename loses it.**
+``scripts/generate_types.py``'s ``ROOT_DISCOVERY_SCHEMAS`` names every schema
+whose basename collides with a task-schema DIRECTORY: ``brand.json`` against
+``brand/*.json``. Pre-9.0 the generator wrote such a schema's models into the
+colliding package's ``__init__`` — ``generated_poc/brand/__init__.py`` WAS
+``brand.json``, 140 classes including ``Brand`` — and 9.0 writes them to
+``domains/<stem>_discovery.py`` instead, leaving ``domains/<stem>/__init__.py``
+to the generated domain aggregator. So one deprecated name has two canonical
+halves, and ``generated_poc.brand`` resolving to ``domains.brand`` alone raises
+``ImportError: cannot import name 'Brand'`` — an error naming a module the
+adopter never wrote. ``_SplitAliasModule`` below serves both halves under the
+one deprecated name, discovery half first because that is the surface the
+pre-9.0 module had. The ``_discovery`` suffix is the generator's own naming
+(``ROOT_DISCOVERY_SCHEMAS``' value for ``brand.json`` is ``brand_discovery.py``)
+rather than a second list here, and
+``tests/test_generated_poc_alias.py::test_a_root_discovery_module_is_named_the_way_the_alias_derives_it``
+fails the build if the generator ever names one some other way.
 
 #1360 measured 110 such imports in ONE production seller, so 9.0 keeps the old
 path working for the 9.x line and warns, instead of breaking every one of them
@@ -30,13 +49,24 @@ tree: ``sys.modules`` holds ONE module object under both names.
     >>> old.FormatReferenceStructuredObject is new.FormatReferenceStructuredObject
     True
 
+A split module is the one place that cannot hold: two canonical modules cannot
+be one object. The property that MATTERS is the second one, and the shim keeps
+it — it binds no class of its own, it reads the two canonical modules.
+
+    >>> from adcp.types.generated_poc.brand import Brand
+    >>> from adcp.types.domains.brand_discovery import Brand as Canonical
+    >>> Brand is Canonical
+    True
+
 Redirecting a package's ``__path__`` instead would make the import machinery
 LOAD each module a second time under the old name, giving two module objects
 and two class objects per class — and `isinstance` against the wrong one fails
 for no visible reason. ``tests/test_export_surface_is_derived.py`` exists to
 refuse exactly that, by asserting every generated class is DEFINED at the
 address it is imported from. So the loader here never executes anything: it
-imports the canonical module and hands that object back.
+imports the canonical module and hands that object back. A split name gets a
+shim instead of one of its two halves, and the shim executes nothing either —
+it binds no class, it reads the halves.
 
 The one write the import machinery makes to a module handed back from
 ``create_module`` is ``__spec__`` (``importlib._bootstrap._init_module_attrs``
@@ -68,7 +98,8 @@ if TYPE_CHECKING:
     from importlib.abc import Loader
 
 #: The pre-9.0 path, and the path it moved to. Every name under the first is
-#: served by the identically-stemmed module under the second.
+#: served by the identically-stemmed module under the second, plus — for a
+#: root discovery schema — that module's ``_discovery`` sibling.
 DEPRECATED_ROOT = "adcp.types.generated_poc"
 CANONICAL_ROOT = "adcp.types.domains"
 
@@ -76,11 +107,82 @@ CANONICAL_ROOT = "adcp.types.domains"
 #: deprecation with no expiry is a permanent second surface.
 REMOVED_IN_MAJOR = 10
 
+#: The suffix ``scripts/generate_types.py`` gives a root discovery schema's
+#: module when its basename collides with a task-schema directory. Derived from
+#: there rather than restated as a list of stems, so a schema added to
+#: ``ROOT_DISCOVERY_SCHEMAS`` tomorrow is served without touching this file.
+ROOT_DISCOVERY_SUFFIX = "_discovery"
+
 
 def canonical_name(deprecated: str) -> str:
     """``adcp.types.generated_poc.core.x`` -> ``adcp.types.domains.core.x``."""
 
     return CANONICAL_ROOT + deprecated[len(DEPRECATED_ROOT) :]
+
+
+def discovery_half(canonical: str) -> str | None:
+    """The second canonical module a split deprecated name also has to serve.
+
+    ``adcp.types.domains.brand`` -> ``adcp.types.domains.brand_discovery``, and
+    ``None`` for every name that did not split. A root discovery schema sits at
+    the schema root, so only a DOMAIN-level package can be the colliding half;
+    anything deeper, and any domain with no ``<stem>_discovery`` sibling, is an
+    ordinary prefix rename.
+    """
+
+    stem = canonical[len(CANONICAL_ROOT) + 1 :]
+    if not stem or "." in stem:
+        return None
+    candidate = f"{canonical}{ROOT_DISCOVERY_SUFFIX}"
+    try:
+        if importlib.util.find_spec(candidate) is None:
+            return None
+    except (ImportError, AttributeError, ValueError):
+        return None
+    return candidate
+
+
+class _SplitAliasModule(ModuleType):
+    """One deprecated name over the two canonical halves of a split module.
+
+    Reads both; defines nothing. ``__getattr__`` fires only after normal
+    instance lookup misses, so the two halves live in the instance dict and the
+    attributes the import system writes (``__name__``, ``__spec__``, ``__path__``
+    and friends) resolve without reaching it.
+
+    ``__path__`` is the aggregator package's, which is what keeps
+    ``generated_poc.brand.acquire_rights_request`` resolving: ``_find_and_load``
+    reads the parent's ``__path__`` before any meta-path finder is consulted, so
+    a shim that could not answer for it would raise
+    "'adcp.types.generated_poc.brand' is not a package" for all 20 of that
+    domain's leaf modules. Bound here rather than left to ``__getattr__``, which
+    would reach the same object by the same fallback: a package attribute the
+    import system reads on every submodule import is not a compatibility
+    lookup, and ``_init_module_attrs`` skips it only because it is already set.
+
+    The discovery half is tried first because it is the surface the pre-9.0
+    module HAD — ``generated_poc/brand/__init__.py`` was ``brand.json`` and
+    nothing else. The two halves share 12 names (``Logo``, ``Colors``,
+    ``Fonts``, ...), and for those the pre-9.0 import got the discovery class.
+    """
+
+    def __init__(self, name: str, discovery: ModuleType, aggregator: ModuleType) -> None:
+        super().__init__(name)
+        self.__path__ = aggregator.__path__
+        # Set through ``__dict__`` so ``__getattr__`` can read it without the
+        # risk of recursing through a half-initialized instance.
+        self.__dict__["_halves"] = (discovery, aggregator)
+
+    def __getattr__(self, attr: str) -> object:
+        for half in self.__dict__["_halves"]:
+            try:
+                return getattr(half, attr)
+            except AttributeError:
+                continue
+        halves = ", ".join(half.__name__ for half in self.__dict__["_halves"])
+        raise AttributeError(
+            f"module {self.__name__!r} has no attribute {attr!r} (served from {halves})"
+        )
 
 
 class _AliasLoader:
@@ -92,11 +194,21 @@ class _AliasLoader:
 
     def create_module(self, spec: ModuleSpec) -> ModuleType:
         module = importlib.import_module(self._canonical)
+        discovery = discovery_half(self._canonical)
+        if discovery is not None:
+            # A split name is the one case that gets its own module object: two
+            # canonical modules cannot be one. It binds no class, so every class
+            # reached through it is still the canonical class.
+            return _SplitAliasModule(spec.name, importlib.import_module(discovery), module)
         # Captured before ``_init_module_attrs`` overwrites it with *spec*.
         self._canonical_spec = module.__spec__
         return module
 
     def exec_module(self, module: ModuleType) -> None:
+        if isinstance(module, _SplitAliasModule):
+            # The shim IS its own module; it keeps the spec naming itself, so a
+            # reload re-runs this loader rather than one canonical half.
+            return
         module.__spec__ = self._canonical_spec
 
 

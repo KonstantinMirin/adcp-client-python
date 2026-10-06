@@ -25,6 +25,17 @@ The module list is derived — the root, every entry in
 ``adcp.types.domains.DOMAINS``, and the first few leaf modules each domain
 package actually contains — rather than hand-listed, because a hand-listed
 sample stops covering the tree the moment the tree changes.
+
+**A root discovery schema is the one name for which (2) cannot hold, and #1402
+is what happens when nothing says so.** ``generated_poc.brand`` resolved to
+``domains.brand`` and ``from ... import Brand`` raised, because ``brand.json``
+now generates to ``domains/brand_discovery.py`` and ``domains/brand/__init__.py``
+is the domain aggregator. The suite above could not see it: it asserted over the
+names the CANONICAL module binds, never over the names the PRE-9.0 module
+exported. The split family below asserts the second direction, over every public
+name of both halves, and takes its split set from the generator's own
+``ROOT_DISCOVERY_SCHEMAS`` so the next split is graded without anyone extending
+a list here.
 """
 
 from __future__ import annotations
@@ -47,11 +58,15 @@ from adcp.types._generated_poc_alias import (
     CANONICAL_ROOT,
     DEPRECATED_ROOT,
     REMOVED_IN_MAJOR,
+    ROOT_DISCOVERY_SUFFIX,
     _AliasFinder,
     _AliasLoader,
+    _SplitAliasModule,
     canonical_name,
+    discovery_half,
     install,
 )
+from scripts.generate_types import ROOT_DISCOVERY_SCHEMAS
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -83,6 +98,29 @@ DEPRECATED_MODULES = [DEPRECATED_ROOT + name[len(CANONICAL_ROOT) :] for name in 
 PAIRS = list(zip(DEPRECATED_MODULES, CANONICAL_MODULES, strict=True))
 PAIR_IDS = [deprecated[len(DEPRECATED_ROOT) + 1 :] or "<root>" for deprecated, _ in PAIRS]
 
+#: The schemas whose pre-9.0 module and 9.0 module are not the same address,
+#: read from the generator's own declaration rather than named here. Each entry
+#: is ``(deprecated module, discovery half, aggregator half)``: ``brand.json``
+#: generated into ``generated_poc/brand/__init__.py`` and now generates into
+#: ``domains/brand_discovery.py``, leaving ``domains/brand/__init__.py`` to the
+#: domain aggregator, so one deprecated name has two canonical halves.
+SPLITS = [
+    (
+        f"{DEPRECATED_ROOT}.{schema.stem}",
+        f"{CANONICAL_ROOT}.{output.stem}",
+        f"{CANONICAL_ROOT}.{schema.stem}",
+    )
+    for schema, output in sorted(ROOT_DISCOVERY_SCHEMAS.items())
+]
+SPLIT_IDS = [schema.stem for schema in sorted(ROOT_DISCOVERY_SCHEMAS)]
+SPLIT_DEPRECATED = frozenset(deprecated for deprecated, _, _ in SPLITS)
+
+#: The pairs for which one deprecated name has exactly one canonical module.
+UNSPLIT_PAIRS = [pair for pair in PAIRS if pair[0] not in SPLIT_DEPRECATED]
+UNSPLIT_PAIR_IDS = [
+    deprecated[len(DEPRECATED_ROOT) + 1 :] or "<root>" for deprecated, _ in UNSPLIT_PAIRS
+]
+
 
 def _import_deprecated(name: str) -> ModuleType:
     """Import a deprecated path with the warning suppressed.
@@ -108,9 +146,16 @@ def test_the_graded_module_list_is_not_empty() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("deprecated", "canonical"), PAIRS, ids=PAIR_IDS)
+@pytest.mark.parametrize(("deprecated", "canonical"), UNSPLIT_PAIRS, ids=UNSPLIT_PAIR_IDS)
 def test_sys_modules_holds_one_object_under_both_keys(deprecated: str, canonical: str) -> None:
-    """The property a ``__path__`` redirect cannot keep."""
+    """The property a ``__path__`` redirect cannot keep.
+
+    Stated over every name that did not split. A split name has two canonical
+    halves and so cannot be one object with either; what it keeps instead —
+    the shim defines no class, so every class reached through it is still the
+    canonical class, which is the property this one exists to protect — is
+    graded by ``test_a_split_name_defines_nothing_and_serves_canonical_classes``.
+    """
     old = _import_deprecated(deprecated)
     new = importlib.import_module(canonical)
 
@@ -119,7 +164,7 @@ def test_sys_modules_holds_one_object_under_both_keys(deprecated: str, canonical
     assert len({id(sys.modules[deprecated]), id(sys.modules[canonical])}) == 1
 
 
-@pytest.mark.parametrize(("deprecated", "canonical"), PAIRS, ids=PAIR_IDS)
+@pytest.mark.parametrize(("deprecated", "canonical"), UNSPLIT_PAIRS, ids=UNSPLIT_PAIR_IDS)
 def test_every_class_reached_through_the_old_path_is_the_canonical_class(
     deprecated: str, canonical: str
 ) -> None:
@@ -128,6 +173,12 @@ def test_every_class_reached_through_the_old_path_is_the_canonical_class(
     ``is`` rather than ``==``: two pydantic models built from one schema compare
     unequal as classes but would both satisfy a structural check, and it is
     object identity that makes ``isinstance`` work.
+
+    A split name is graded by the split tests instead. Not because the identity
+    is weaker there — it is not, the shim defines no class — but because the
+    canonical module this compares against is only HALF of what the pre-9.0
+    module bound, and the two halves share 12 names (``Logo``, ``Colors``,
+    ``Fonts``, ...) that the pre-9.0 import resolved to the discovery class.
     """
     old = _import_deprecated(deprecated)
     new = importlib.import_module(canonical)
@@ -195,11 +246,151 @@ def test_every_spelling_an_adopter_may_have_written_resolves() -> None:
 
 
 # ---------------------------------------------------------------------------
+# A root discovery schema — the one case a prefix rename gets wrong (#1402)
+# ---------------------------------------------------------------------------
+
+
+def test_the_split_set_is_read_from_the_generator_not_named_here() -> None:
+    """A split this suite does not know about is a hole it cannot see.
+
+    ``ROOT_DISCOVERY_SCHEMAS`` is the generator's own declaration of which
+    schema's module is not at its own stem, so a schema added there is graded
+    by the tests below without anyone remembering to extend a list. This
+    asserts the derivation is wired and non-empty — a renamed or emptied
+    declaration would otherwise leave every test below vacuously green.
+    """
+    assert SPLITS, "ROOT_DISCOVERY_SCHEMAS is empty — the split tests grade nothing"
+    assert (
+        f"{DEPRECATED_ROOT}.brand",
+        f"{CANONICAL_ROOT}.brand_discovery",
+        f"{CANONICAL_ROOT}.brand",
+    ) in SPLITS
+
+
+@pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
+def test_a_root_discovery_module_is_named_the_way_the_alias_derives_it(
+    deprecated: str, discovery: str, aggregator: str
+) -> None:
+    """The alias derives the second half by suffix; the generator must spell it so.
+
+    ``discovery_half`` appends ``ROOT_DISCOVERY_SUFFIX`` to the domain package's
+    name rather than carrying a second copy of ``ROOT_DISCOVERY_SCHEMAS``. That
+    is a derivation, not a guess, only while the generator keeps naming these
+    modules ``<stem>_discovery`` — so this is the assertion that a differently
+    named entry fails the build instead of silently reopening #1402.
+    """
+    assert discovery == aggregator + ROOT_DISCOVERY_SUFFIX
+    assert discovery_half(aggregator) == discovery
+    # And the derivation fires for nothing else: a leaf module, and a domain
+    # with no discovery sibling, are ordinary prefix renames.
+    assert discovery_half(f"{CANONICAL_ROOT}.core.format_id") is None
+    assert discovery_half(f"{CANONICAL_ROOT}.media_buy") is None
+
+
+@pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
+def test_every_name_a_split_pre_9_0_module_exported_resolves_through_the_alias(
+    deprecated: str, discovery: str, aggregator: str
+) -> None:
+    """#1402: the module resolved and its contents did not.
+
+    ``generated_poc/brand/__init__.py`` WAS ``brand.json`` — 140 classes, among
+    them ``Brand``, ``BrandDiscovery3`` and ``LocalizedName``. Those classes are
+    now in ``domains/brand_discovery.py``, and a prefix rename sent the
+    deprecated name to ``domains/brand``, where they are not. An adopter got
+    ``ImportError: cannot import name 'Brand' from 'adcp.types.domains.brand'``
+    — an error naming a module they never wrote, which is worse than no alias
+    at all.
+
+    Stated over every public name of the discovery half, not a sample, and over
+    the aggregator half too: a deprecated name has to serve everything both of
+    its canonical halves bind.
+    """
+    old = _import_deprecated(deprecated)
+    discovery_module = importlib.import_module(discovery)
+    aggregator_module = importlib.import_module(aggregator)
+
+    graded = 0
+    for half in (discovery_module, aggregator_module):
+        public = [name for name in dir(half) if not name.startswith("_")]
+        assert public, f"{half.__name__} binds nothing public"
+        for name in public:
+            expected = getattr(half, name)
+            if half is aggregator_module and hasattr(discovery_module, name):
+                # A name both halves bind resolved to the discovery class
+                # pre-9.0, because the pre-9.0 module was the discovery schema
+                # and nothing else. That ordering is the fidelity claim.
+                expected = getattr(discovery_module, name)
+            assert getattr(old, name) is expected, f"{deprecated}.{name}"
+            graded += 1
+    assert graded > 250, f"only {graded} names graded — the sweep collapsed"
+
+
+@pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
+def test_a_split_name_defines_nothing_and_serves_canonical_classes(
+    deprecated: str, discovery: str, aggregator: str
+) -> None:
+    """The property the one-module-object rule was protecting, kept without it.
+
+    Two canonical modules cannot be one object, so a split name gets its own.
+    What must not follow is a second LOAD of either half: that is what makes two
+    class objects per class and an ``isinstance`` fail for no visible reason.
+    The shim executes nothing and binds no class — every class it hands back
+    reports a canonical ``__module__``.
+    """
+    old = _import_deprecated(deprecated)
+
+    assert isinstance(old, _SplitAliasModule)
+    assert sys.modules[deprecated] is old
+    assert old is not importlib.import_module(discovery)
+    assert old is not importlib.import_module(aggregator)
+
+    discovery_module = importlib.import_module(discovery)
+    classes = [
+        getattr(old, name)
+        for name in dir(discovery_module)
+        if not name.startswith("_") and isinstance(getattr(old, name), type)
+    ]
+    assert len(classes) > 150, f"only {len(classes)} classes reached — the sweep collapsed"
+    # Every class the discovery half DEFINES reports that half, never the
+    # deprecated name. The handful it merely imports (``AdCPBaseModel``,
+    # ``Annotated``, the pydantic bases) report where they are defined, which is
+    # the same answer: a second load under the deprecated name is what would
+    # show up here, and it would show up on all of them.
+    defined_here = [cls for cls in classes if cls.__module__ == discovery]
+    assert len(defined_here) > 150, f"only {len(defined_here)} classes defined in {discovery}"
+    for cls in classes:
+        assert DEPRECATED_ROOT not in cls.__module__, cls
+
+
+@pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
+def test_a_split_deprecated_package_still_resolves_its_leaf_modules(
+    deprecated: str, discovery: str, aggregator: str
+) -> None:
+    """``_find_and_load`` reads the parent's ``__path__`` before any finder runs.
+
+    So a shim without one answers "is not a package" for every leaf under it —
+    20 modules in ``brand``'s case, broken to serve 193 names. It borrows the
+    aggregator package's own ``__path__``, and the finder ahead of
+    ``PathFinder`` still serves each leaf as the canonical module object.
+    """
+    old = _import_deprecated(deprecated)
+    aggregator_module = importlib.import_module(aggregator)
+
+    assert old.__path__ is aggregator_module.__path__
+
+    leaves = sorted(info.name for info in pkgutil.iter_modules(aggregator_module.__path__))
+    assert len(leaves) > 5, leaves
+    for leaf in leaves:
+        through_alias = _import_deprecated(f"{deprecated}.{leaf}")
+        assert through_alias is importlib.import_module(f"{aggregator}.{leaf}")
+
+
+# ---------------------------------------------------------------------------
 # Property 4 — the shared object carries no trace of the old name
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("deprecated", "canonical"), PAIRS, ids=PAIR_IDS)
+@pytest.mark.parametrize(("deprecated", "canonical"), UNSPLIT_PAIRS, ids=UNSPLIT_PAIR_IDS)
 def test_the_shared_module_carries_no_trace_of_the_deprecated_name(
     deprecated: str, canonical: str
 ) -> None:
@@ -209,6 +400,11 @@ def test_the_shared_module_carries_no_trace_of_the_deprecated_name(
     existing module: ``_init_module_attrs`` always replaces ``__spec__``, and
     sets the rest only when absent. ``exec_module`` puts the canonical spec
     back; this is the assertion that says so.
+
+    A split name is its own module and says so, which is the honest answer when
+    there are two canonical halves — what
+    ``test_export_surface_is_derived`` actually reads is each CLASS's
+    ``__module__``, and the shim creates no class to stamp.
     """
     module = _import_deprecated(deprecated)
 
