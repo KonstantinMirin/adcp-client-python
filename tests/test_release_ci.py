@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -12,13 +13,17 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.ci import ci_scope
+from scripts.ci import check_release_artifacts, ci_scope
 from scripts.ci.check_release_artifacts import check_artifacts
 from tests.test_ci_scope import commit
 
 
-@pytest.fixture
-def release_repository(tmp_path: Path) -> tuple[Path, str]:
+@pytest.fixture(params=[("9.0.0", "9.0.0"), ("9.0.0b1", "9.0.0-beta.1")])
+def release_repository(tmp_path: Path, request: pytest.FixtureRequest) -> tuple[Path, str]:
+    return make_release_repository(tmp_path, request.param)
+
+
+def make_release_repository(tmp_path: Path, release: tuple[str, str]) -> tuple[Path, str]:
     root = tmp_path
     for args in (
         ("init", "-q"),
@@ -35,9 +40,10 @@ def release_repository(tmp_path: Path) -> tuple[Path, str]:
     (root / ".release-please-manifest.json").write_text('{".": "8.0.0"}\n')
     (root / "CHANGELOG.md").write_text("# Changelog\n")
     base = commit((root, ""))["pull_request"]["head"]["sha"]
-    (root / "pyproject.toml").write_text('[project]\nname = "adcp"\nversion = "9.0.0"\n')
-    (root / ".release-please-manifest.json").write_text('{".": "9.0.0"}\n')
-    (root / "CHANGELOG.md").write_text("# Changelog\n\n## 9.0.0\n")
+    version, manifest_version = release
+    (root / "pyproject.toml").write_text(f'[project]\nname = "adcp"\nversion = "{version}"\n')
+    (root / ".release-please-manifest.json").write_text(json.dumps({".": manifest_version}))
+    (root / "CHANGELOG.md").write_text(f"# Changelog\n\n## {manifest_version}\n")
     return root, base
 
 
@@ -59,6 +65,39 @@ def test_only_release_metadata_gets_targeted_checks(release_repository: tuple[Pa
     )
     for name in ("push", "workflow_dispatch", "merge_group"):
         assert ci_scope.select_scope(name, event, cwd=root) == ci_scope.Scope.full()
+
+
+@pytest.mark.parametrize(
+    "before,after,expected",
+    [
+        (("9.0.0b1", "9.0.0-beta.1"), ("9.0.0b2", "9.0.0-beta.2"), True),
+        (("9.0.0b2", "9.0.0-beta.2"), ("9.0.0", "9.0.0"), True),
+        (("9.0.0a0", "9.0.0-alpha.0"), ("9.0.0b0", "9.0.0-beta.0"), True),
+        (("9.0.0b10", "9.0.0-beta.10"), ("9.0.0rc1", "9.0.0-rc.1"), True),
+        (("9.0.0rc1", "9.0.0-rc.1"), ("9.0.0", "9.0.0"), True),
+        (("9.0.0b2", "9.0.0-beta.2"), ("9.0.0b1", "9.0.0-beta.1"), False),
+        (("9.0.0", "9.0.0"), ("9.0.0b3", "9.0.0-beta.3"), False),
+        (("8.0.0", "8.0.0"), ("9.0.0b1", "9.0.0b1"), False),
+        (("8.0.0", "8.0.0"), ("9.0.0b1", "9.0.0-beta.2"), False),
+        (("8.0.0", "8.0.0"), ("9.0.0-beta.1", "9.0.0-beta.1"), False),
+        (("8.0.0", "8.0.0"), ("9.0.0b01", "9.0.0-beta.1"), False),
+        (("8.0.0", "8.0.0"), ("9.0.0.post1", "9.0.0.post1"), False),
+    ],
+)
+def test_release_transition_requires_increasing_normalized_versions(
+    tmp_path: Path, before: tuple[str, str], after: tuple[str, str], expected: bool
+) -> None:
+    root, _ = make_release_repository(tmp_path, before)
+    base = commit((root, ""))["pull_request"]["head"]["sha"]
+    version, manifest_version = after
+    (root / "pyproject.toml").write_text(f'[project]\nname = "adcp"\nversion = "{version}"\n')
+    (root / ".release-please-manifest.json").write_text(json.dumps({".": manifest_version}))
+    (root / "CHANGELOG.md").write_text(f"# Changelog\n\n## {manifest_version}\n\nChange\n")
+    event = release_event((root, base))
+    scope = ci_scope.select_scope("pull_request", event, cwd=root)
+    assert scope == (
+        ci_scope.Scope(run_tests=True, release_metadata=True) if expected else ci_scope.Scope.full()
+    )
 
 
 @pytest.mark.parametrize(
@@ -173,14 +212,15 @@ def test_metadata_scope_reads_blobs_in_sparse_checkout(
     assert ci_scope.select_scope("pull_request", event, cwd=clone).release_metadata
 
 
-def test_version_line_inside_toml_string_is_not_project_metadata() -> None:
-    text = """[project]
+@pytest.mark.parametrize("fake_version", ["9.0.0", "9.0.0b1"])
+def test_version_line_inside_toml_string_is_not_project_metadata(fake_version: str) -> None:
+    text = f"""[project]
 name = "adcp"
 version = '8.0.0'
 [tool.notes]
 text = '''
 [project]
-version = "9.0.0"
+version = "{fake_version}"
 '''
 """
     assert ci_scope.project_version(text) is None
@@ -237,6 +277,25 @@ def artifacts(directory: Path, version: str, *, name: str = "adcp") -> None:
         member = tarfile.TarInfo("adcp-9.0.0/PKG-INFO")
         member.size = len(data)
         archive.addfile(member, io.BytesIO(data))
+
+
+@pytest.mark.parametrize("manifest,version", [("9.0.0", "9.0.0"), ("9.0.0-beta.1", "9.0.0b1")])
+def test_artifact_cli_uses_the_python_package_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    manifest: str,
+    version: str,
+) -> None:
+    artifacts(tmp_path, version)
+    (tmp_path / ".release-please-manifest.json").write_text(json.dumps({".": manifest}))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["check_release_artifacts", str(tmp_path)])
+    # Metadata validation uses real wheel/sdist records. The external uv and
+    # installed-interpreter commands have separate end-to-end release coverage.
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: None)
+    check_release_artifacts.main()
+    assert f"all report {version}" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(
