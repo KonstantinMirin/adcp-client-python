@@ -218,8 +218,8 @@ deleted and the generated models go back to agreeing with their schema.
   snapshot records what each name resolves to.
 
   The generator writes there directly now, so the private
-  `adcp.types.generated_poc` tree is gone. Every module stem moved unchanged,
-  which makes the migration a prefix rename:
+  `adcp.types.generated_poc` tree is gone. Almost every module stem moved
+  unchanged, which makes the migration a prefix rename:
 
   ```python
   -from adcp.types.generated_poc.media_buy.package_request import PackageRequest
@@ -236,6 +236,27 @@ deleted and the generated models go back to agreeing with their schema.
   `isinstance` check cannot start failing because a class was reached by its
   old name. Prefer the flat `adcp.types` surface where the name you need is
   bound there, as `docs/type-surface.md` describes.
+
+  **One stem split in two, and it is the one exception to the prefix rename.**
+  `brand.json` shares its basename with the `brand/*.json` task schemas, so the
+  old `generated_poc.brand` was that discovery schema — `Brand`,
+  `BrandDiscovery*`, `LocalizedName` and 137 more — while the new
+  `domains.brand` is the generated domain aggregator over
+  `domains/brand/<schema>.py`. The discovery schema's classes are at
+  `adcp.types.domains.brand_discovery`:
+
+  ```python
+  -from adcp.types.generated_poc.brand import Brand, LocalizedName
+  +from adcp.types.domains.brand_discovery import Brand, LocalizedName
+  ```
+
+  The deprecated name keeps serving both halves for the 9.x line, so an
+  unmigrated `from adcp.types.generated_poc.brand import Brand` still works and
+  still returns the canonical class. It is the one deprecated name that is a
+  compatibility module rather than the canonical module itself, so `is` against
+  `adcp.types.domains.brand` is False for it where every other deprecated name
+  compares True. Class identity is unaffected, which is what `isinstance`
+  reads.
 * `scripts/generate_types.py --check` runs in CI, grades every post-generation
   fix against `scripts/post_generation_manifest.json`, and the generator's
   input order is total, so a regeneration is byte-identical on every
