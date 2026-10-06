@@ -132,8 +132,8 @@ def analyze_model(model_class) -> list[dict]:
     coercions = []
 
     # Import the specific types we check for
-    from adcp.types.generated_poc.core.context import ContextObject
-    from adcp.types.generated_poc.core.ext import ExtensionObject
+    from adcp.types.domains.core.context import ContextObject
+    from adcp.types.domains.core.ext import ExtensionObject
 
     for field_name, field_info in model_class.model_fields.items():
         annotation = field_info.annotation
@@ -211,13 +211,14 @@ def analyze_model(model_class) -> list[dict]:
     return coercions
 
 
+_GENERATED_PREFIX = "adcp.types.domains."
+
+
 def get_import_path(cls) -> str:
-    """Get the import path for a class relative to generated_poc."""
+    """The class's module path relative to the generated domain tree."""
     module = cls.__module__
-    # Convert adcp.types.generated_poc.x.y to x.y
-    if "generated_poc" in module:
-        return module.split("generated_poc.")[1]
-    return module
+    # Convert adcp.types.domains.x.y to x.y
+    return module.removeprefix(_GENERATED_PREFIX)
 
 
 def get_symbol_name(cls) -> str:
@@ -241,36 +242,36 @@ def generate_code() -> str:
     # Import all the types we need to analyze
     from pydantic import BaseModel as _PydBaseModel
 
-    from adcp.types.generated_poc.creative.list_creative_formats_request import (
+    from adcp.types.domains.creative.list_creative_formats_request import (
         ListCreativeFormatsRequestCreativeAgent,
     )
-    from adcp.types.generated_poc.creative.list_creatives_request import (
+    from adcp.types.domains.creative.list_creatives_request import (
         ListCreativesRequest,
         Sort,
     )
-    from adcp.types.generated_poc.creative.list_creatives_response import ListCreativesResponse
-    from adcp.types.generated_poc.media_buy import (
+    from adcp.types.domains.creative.list_creatives_response import ListCreativesResponse
+    from adcp.types.domains.media_buy import (
         create_media_buy_response as _cmbr_module,
     )
-    from adcp.types.generated_poc.media_buy import (
+    from adcp.types.domains.media_buy import (
         update_media_buy_response as _umbr_module,
     )
-    from adcp.types.generated_poc.media_buy.create_media_buy_request import CreateMediaBuyRequest
-    from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+    from adcp.types.domains.media_buy.create_media_buy_request import CreateMediaBuyRequest
+    from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
         GetMediaBuyDeliveryResponse,
     )
-    from adcp.types.generated_poc.media_buy.get_products_request import (
+    from adcp.types.domains.media_buy.get_products_request import (
         GetProductsRequest,
     )
-    from adcp.types.generated_poc.media_buy.get_products_response import GetProductsResponse
-    from adcp.types.generated_poc.media_buy.list_creative_formats_request import (
+    from adcp.types.domains.media_buy.get_products_response import GetProductsResponse
+    from adcp.types.domains.media_buy.list_creative_formats_request import (
         ListCreativeFormatsRequest,
     )
-    from adcp.types.generated_poc.media_buy.list_creative_formats_response import (
+    from adcp.types.domains.media_buy.list_creative_formats_response import (
         ListCreativeFormatsResponse,
     )
-    from adcp.types.generated_poc.media_buy.package_request import PackageRequest
-    from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
+    from adcp.types.domains.media_buy.package_request import PackageRequest
+    from adcp.types.domains.media_buy.package_update import PackageUpdate
 
     # Resolve success variants. Different
     # datamodel-codegen versions emit the variants under shifting names:
@@ -412,40 +413,40 @@ def generate_code() -> str:
 
     # Add core imports
     for name, path in core_imports:
-        lines.append(f"from adcp.types.generated_poc.{path} import {name}")
+        lines.append(f"from adcp.types.domains.{path} import {name}")
 
     # Add enum imports
     for name, path in enum_imports:
-        lines.append(f"from adcp.types.generated_poc.{path} import {name}")
+        lines.append(f"from adcp.types.domains.{path} import {name}")
 
     # Add request type imports
     if "CreateMediaBuyRequest" in all_coercions:
-        lines.append("from adcp.types.generated_poc.media_buy.create_media_buy_request import (")
+        lines.append("from adcp.types.domains.media_buy.create_media_buy_request import (")
         lines.append("    CreateMediaBuyRequest,")
         lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.get_products_request import (")
+    lines.append("from adcp.types.domains.media_buy.get_products_request import (")
     lines.append("    GetProductsRequest,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.list_creative_formats_request import (")
+    lines.append("from adcp.types.domains.media_buy.list_creative_formats_request import (")
     lines.append("    ListCreativeFormatsRequest,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.creative.list_creative_formats_request import (")
+    lines.append("from adcp.types.domains.creative.list_creative_formats_request import (")
     lines.append("    ListCreativeFormatsRequestCreativeAgent,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.creative.list_creatives_request import (")
+    lines.append("from adcp.types.domains.creative.list_creatives_request import (")
     lines.append("    Field1 as ListCreativesField,")
     lines.append("    ListCreativesRequest,")
     lines.append("    Sort,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.package_request import PackageRequest")
-    lines.append("from adcp.types.generated_poc.media_buy.package_update import PackageUpdate")
+    lines.append("from adcp.types.domains.media_buy.package_request import PackageRequest")
+    lines.append("from adcp.types.domains.media_buy.package_update import PackageUpdate")
 
     # Add response type imports. CreateMediaBuyResponse1's numeric suffix can
     # shift between codegen versions; in schema versions that collapse the
     # response envelope, there may be no success-specific response variant.
     if create_media_buy_response1 is not None:
         cmbr_name = create_media_buy_response1.__name__
-        lines.append("from adcp.types.generated_poc.media_buy.create_media_buy_response import (")
+        lines.append("from adcp.types.domains.media_buy.create_media_buy_response import (")
         if cmbr_name == "CreateMediaBuyResponse1":
             lines.append("    CreateMediaBuyResponse1,")
         else:
@@ -453,25 +454,25 @@ def generate_code() -> str:
         lines.append(")")
     if update_media_buy_response1 is not None:
         umbr_name = update_media_buy_response1.__name__
-        lines.append("from adcp.types.generated_poc.media_buy.update_media_buy_response import (")
+        lines.append("from adcp.types.domains.media_buy.update_media_buy_response import (")
         if umbr_name == "UpdateMediaBuyResponse1":
             lines.append("    UpdateMediaBuyResponse1,")
         else:
             lines.append(f"    {umbr_name} as UpdateMediaBuyResponse1,")
         lines.append(")")
-    lines.append("from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (")
+    lines.append("from adcp.types.domains.media_buy.get_media_buy_delivery_response import (")
     lines.append("    GetMediaBuyDeliveryResponse,")
     lines.append("    MediaBuyDelivery,")
     lines.append("    NotificationType,")
     lines.append(")")
     lines.append(
-        "from adcp.types.generated_poc.media_buy.get_products_response import GetProductsResponse"
+        "from adcp.types.domains.media_buy.get_products_response import GetProductsResponse"
     )
-    lines.append("from adcp.types.generated_poc.media_buy.list_creative_formats_response import (")
+    lines.append("from adcp.types.domains.media_buy.list_creative_formats_response import (")
     lines.append("    CreativeAgent,")
     lines.append("    ListCreativeFormatsResponse,")
     lines.append(")")
-    lines.append("from adcp.types.generated_poc.creative.list_creatives_response import (")
+    lines.append("from adcp.types.domains.creative.list_creatives_response import (")
     lines.append("    ListCreativesResponse,")
     lines.append(")")
 
@@ -502,7 +503,7 @@ def generate_code() -> str:
     for name, symbol_name, path in request_imports_sorted:
         if name not in already_imported:
             imported_name = name if name == symbol_name else f"{name} as {symbol_name}"
-            lines.append(f"from adcp.types.generated_poc.{path} import {imported_name}")
+            lines.append(f"from adcp.types.domains.{path} import {imported_name}")
 
     lines.append("")
     lines.append("")

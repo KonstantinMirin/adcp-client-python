@@ -35,6 +35,7 @@ from adcp.canonical_formats import (
 )
 from adcp.types import (
     CanonicalFormatKind,
+    is_canonical_format_kind,
     ProductFormatDeclaration,
 )
 from adcp.types.legacy import LegacyFormatId as FormatId
@@ -161,7 +162,7 @@ def test_v2_product_declarations_are_constructable(fixture_name: str) -> None:
     assert declarations
     # Every declaration carries a valid kind from the canonical enum.
     for d in declarations:
-        assert isinstance(d.format_kind, CanonicalFormatKind)
+        assert is_canonical_format_kind(d.format_kind)
 
 
 # ---------------------------------------------------------------------------

@@ -127,7 +127,7 @@ def test_retained_rootmodel_unions_have_getattr():
     shapes carry ``asset_type='vast'``, so the wrapper is the one choice that
     tag maps to.
     """
-    from adcp.types.generated_poc.core.assets.asset_union import VastAsset, VastAsset1
+    from adcp.types.domains.core.assets.asset_union import VastAsset, VastAsset1
 
     inner = VastAsset1(
         asset_type="vast", delivery_type="url", asset_id="a-1", url="https://cdn.test/v.xml"

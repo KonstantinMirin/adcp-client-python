@@ -234,9 +234,10 @@ For a narrower surface, six curated partial modules group types by domain:
 `adcp.types.media_buy`, `adcp.types.creative`, `adcp.types.signals`,
 `adcp.types.protocol`, `adcp.types.buyer`, and `adcp.types.seller`
 (e.g. `from adcp.types.buyer import GetProductsRequest`). Never import
-from `adcp.types.generated_poc.*` or `adcp.types._generated` — those are
-internal and their module paths and class names change on every schema
-regeneration.
+from `adcp.types._generated` — it binds a bare name several schemas
+declare to one sort-order winner. `adcp.types.domains.<domain>.<schema>`
+is public (it is where codegen defines the class); what still changes on
+regeneration is a numbered class NAME, which `adcp.types` aliases.
 
 **Validation errors surface as `INVALID_REQUEST`.** A Pydantic
 `ValidationError` at the boundary is converted to a structured AdCP
@@ -1890,9 +1891,10 @@ Sellers typically need both.
   handler methods you override.
 - Don't reinvent `IdempotencyStore`, response builders, or error
   classification. Use the shipped helpers.
-- Don't import from `adcp.types.generated_poc.*`. Everything public
-  lives at `adcp.types` or `adcp` — and the internal paths renumber
-  between releases (see `MIGRATION_v3_to_v4.md`).
+- Reach for `adcp.types` or `adcp` first; `adcp.types.domains.*` is
+  public but is the address for a name the flat surface cannot bind.
+  Never import a numbered class name — those renumber between releases
+  (see `MIGRATION_v3_to_v4.md`).
 
 ## Troubleshooting
 

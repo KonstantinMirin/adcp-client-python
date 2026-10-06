@@ -77,7 +77,7 @@ ASSET_CONTENT_RENAMES: dict[str, str] = {
 # jump straight to the replacement pattern.
 REMOVED_TYPES: dict[str, tuple[str, str]] = {
     "BrandManifest": (
-        "use BrandReference(domain=...) on requests; " "read ResolvedBrand.brand from the registry",
+        "use BrandReference(domain=...) on requests; read ResolvedBrand.brand from the registry",
         "brandmanifest--brandreference",
     ),
     "FormatCategory": (
@@ -97,7 +97,7 @@ REMOVED_TYPES: dict[str, tuple[str, str]] = {
         "promotedproducts--promotedofferings--offerings",
     ),
     "Pricing": (
-        "use the discriminated *PricingOption classes " "(e.g. CpmFixedRatePricingOption)",
+        "use the discriminated *PricingOption classes (e.g. CpmFixedRatePricingOption)",
         "pricing--discriminated-pricingoption",
     ),
     "PackageStatus": (
@@ -231,11 +231,28 @@ def _proposed_generated_symbol_replacement(module: str, symbol: str) -> str | No
 
 
 def _replacement_is_identical(module: str, symbol: str, replacement: str) -> bool:
-    """Verify that a private class and its proposed public target are identical."""
+    """Verify that a private class and its proposed public target are identical.
+
+    The spelling this codemod DETECTS is the v3 one,
+    ``adcp.types.generated_poc.<module>``. The module it IMPORTS is where those
+    classes live now: the generated tree moved to ``adcp.types.domains`` and
+    almost every module stem came with it unchanged, so the same ``<module>``
+    resolves. Importing the v3 path here would raise ``ModuleNotFoundError``,
+    the except clause would swallow it, and every per-symbol rewrite would
+    silently degrade to a flag.
+
+    The one stem that split is ``brand``: ``brand.json``'s classes are at
+    ``adcp.types.domains.brand_discovery`` while ``adcp.types.domains.brand``
+    is the domain aggregator. Neither symbol map holds one of those classes
+    today, so nothing degrades — but a symbol added from that schema would
+    take the ``AttributeError`` branch and be flagged rather than rewritten,
+    and the fix is to resolve it against the discovery half, not to widen the
+    except clause.
+    """
     if not module or not replacement.startswith("adcp.types."):
         return False
     try:
-        source_module = importlib.import_module(f"adcp.types.generated_poc.{module}")
+        source_module = importlib.import_module(f"adcp.types.domains.{module}")
         public_module = importlib.import_module("adcp.types")
         source = getattr(source_module, symbol)
         public = getattr(public_module, replacement.removeprefix("adcp.types."))
@@ -253,7 +270,7 @@ def _generated_symbol_replacement(module: str, symbol: str) -> str | None:
 
 def _unsafe_replacement_hint(module: str, symbol: str, replacement: str) -> str:
     source = f"adcp.types.generated_poc.{module}.{symbol}"
-    return f"SKIP: source {source} is not identical to {replacement} — " "manual rewrite required"
+    return f"SKIP: source {source} is not identical to {replacement} — manual rewrite required"
 
 
 # Regex for numbered Assets direct imports (``Assets5``, ``Assets14``, etc).

@@ -98,9 +98,9 @@ def test_advertised_targeting_fields_carry_the_description_the_schema_declares()
     overlay = next(iter(dict(_targeting_nodes(_inline_refs(advertised))).values()))
     fields = next(arm for arm in overlay["anyOf"] if "properties" in arm)["properties"]
 
-    assert set(fields) == set(TargetingOverlayInput.model_json_schema()["properties"]), (
-        "advertised fields drifted from the model"
-    )
+    assert set(fields) == set(
+        TargetingOverlayInput.model_json_schema()["properties"]
+    ), "advertised fields drifted from the model"
     assert sorted(name for name, field in fields.items() if "description" not in field) == [
         "age_restriction",
         "collection_list",

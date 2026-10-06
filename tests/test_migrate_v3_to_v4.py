@@ -259,7 +259,10 @@ def test_generated_poc_symbol_map_covers_publicly_exported_names() -> None:
         assert hasattr(
             types_module, public_name
         ), f"source-scoped migration target {replacement!r} is not public"
-        source_module = importlib.import_module(f"adcp.types.generated_poc.{_module}")
+        # The map's keys are the v3 spelling the codemod detects; the classes
+        # live at adcp.types.domains now, same module stems. Same asymmetry as
+        # v3_to_v4._replacement_is_identical, for the same reason.
+        source_module = importlib.import_module(f"adcp.types.domains.{_module}")
         assert getattr(types_module, public_name) is getattr(source_module, _symbol)
 
 

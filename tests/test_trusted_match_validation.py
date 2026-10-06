@@ -1,16 +1,16 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from adcp.types.generated_poc.trusted_match.identity_match_response import (
+from adcp.types.domains.trusted_match.identity_match_response import (
     IdentityMatchResponse,
 )
-from adcp.types.generated_poc.trusted_match.provider_identity_match_response import (
+from adcp.types.domains.trusted_match.provider_identity_match_response import (
     IdentityMatchResponseProviderRouter,
 )
-from adcp.types.generated_poc.trusted_match.provider_registration import (
+from adcp.types.domains.trusted_match.provider_registration import (
     TmpProviderRegistration,
 )
-from adcp.types.generated_poc.trusted_match.publisher_tmpx_config import (
+from adcp.types.domains.trusted_match.publisher_tmpx_config import (
     PublisherTmpxMacroMapping,
 )
 

@@ -33,12 +33,22 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, NamedTuple
 
+try:
+    import consolidate_exports
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts import consolidate_exports
+
+try:
+    import task_message_lattice
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts import task_message_lattice
+
 REPO_ROOT = Path(__file__).parent.parent
 
 
 # Load ``resolve_bundle_key`` from its source file rather than via the
 # ``adcp`` package — this script runs after datamodel-codegen produces a
-# fresh ``generated_poc/`` tree, before the post-fixes that make it
+# fresh generated tree, before the post-fixes that make it
 # importable. ``adcp/__init__.py`` would crash on the unfixed models.
 def _load_resolve_bundle_key():
     src = REPO_ROOT / "src" / "adcp" / "validation" / "version.py"
@@ -54,7 +64,7 @@ resolve_bundle_key = _load_resolve_bundle_key()
 
 # Same reason as above: load ``adcp.types._scalar`` by path so the keyword sets
 # the rewriter and the runtime bases share live in exactly one place. The module
-# itself depends only on pydantic, so it is importable while ``generated_poc/``
+# itself depends only on pydantic, so it is importable while the generated tree
 # is still unfixed.
 def _load_scalar_module():
     src = REPO_ROOT / "src" / "adcp" / "types" / "_scalar.py"
@@ -155,7 +165,7 @@ def ensure_pydantic_import(source: str, *names: str) -> str:
 _VERSION_FILE = REPO_ROOT / "src" / "adcp" / "ADCP_VERSION"
 _BUNDLE_KEY = resolve_bundle_key(_VERSION_FILE.read_text().strip())
 
-OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
+OUTPUT_DIR = REPO_ROOT / "src" / "adcp" / "types" / "domains"
 SCHEMA_DIR = REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
 _PROTOCOL_ENVELOPE_IMPORT = "from ..core.protocol_envelope import ProtocolEnvelope\n"
@@ -670,9 +680,7 @@ def _first_generated_class_name(content: str) -> str | None:
             (
                 base.id
                 if isinstance(base, ast.Name)
-                else base.attr
-                if isinstance(base, ast.Attribute)
-                else ""
+                else base.attr if isinstance(base, ast.Attribute) else ""
             )
             for base in node.bases
         }
@@ -2719,10 +2727,10 @@ def fix_adagents_duplicate_aliases() -> None:
 def restore_format_category_deprecation_shim():
     """Restore the removed-type ``format_category`` module after codegen.
 
-    ``scripts/generate_types.py`` wipes ``generated_poc/`` before
+    ``scripts/generate_types.py`` wipes the generated tree before
     regenerating. The deprecation shim file for the removed
     ``format_category`` submodule lives inside that tree so downstream
-    imports of ``adcp.types.generated_poc.enums.format_category`` hit an
+    imports of ``adcp.types.domains.enums.format_category`` hit an
     ``ImportError`` with a migration pointer instead of
     ``ModuleNotFoundError``. This function re-writes the shim after each
     regen. Keep the message in sync with ``_REMOVED_IN_V4`` in
@@ -2739,17 +2747,17 @@ def restore_format_category_deprecation_shim():
         "Importing this module raises :class:`ImportError` with a pointer to the\n"
         "migration guide — so downstream import sites like::\n"
         "\n"
-        "    from adcp.types.generated_poc.enums.format_category import FormatCategory\n"
+        "    from adcp.types.domains.enums.format_category import FormatCategory\n"
         "\n"
         "get the same pointer as the top-level ``from adcp import FormatCategory``,\n"
         "instead of a bare ``ModuleNotFoundError``.\n"
         "\n"
         "This file is restored after every codegen run by\n"
-        "``scripts/post_generate_fixes.py`` (which wipes ``generated_poc/``).\n"
+        "``scripts/post_generate_fixes.py`` (which wipes the generated tree).\n"
         '"""\n'
         "\n"
         "raise ImportError(\n"
-        '    "adcp.types.generated_poc.enums.format_category was removed in AdCP 3.0. "\n'
+        '    "adcp.types.domains.enums.format_category was removed in AdCP 3.0. "\n'
         "    \"Use free-form format-id strings (e.g. 'goog:video_responsive_ad') via \"\n"
         '    "adcp.types.FormatId. See MIGRATION_v3_to_v4.md#creative-format-asset-slots-formataasset-aliases "\n'
         '    "for details."\n'
@@ -2758,6 +2766,38 @@ def restore_format_category_deprecation_shim():
     target.write_text(content)
     rel = target.relative_to(REPO_ROOT)
     print(f"  ✓ Restored format_category deprecation shim at {rel}")
+
+
+def declare_root_schema_module_exports() -> None:
+    """Give each root-level schema module an ``__all__``.
+
+    A domain whose only schema sits at the bundle root (``adagents.json``,
+    ``manifest.json``, ``manifest-schema.json``, and the relocated
+    ``brand_discovery``) generates as ``domains/<domain>.py``, so that module
+    IS the domain root. Every other domain root is a package ``__init__`` that
+    ``consolidate_exports.py`` writes with an explicit ``__all__``, and
+    ``scripts/export_resolution.py`` reads ``__all__`` to record what a public
+    namespace promises — so without this these four would be the only public
+    namespaces in the tree that promise nothing.
+
+    The names are the module's own public classes and aliases, read with the
+    same helper the consolidation step uses, so a domain root and a schema
+    module cannot disagree about what the module declares.
+    """
+    declared = 0
+    for module in sorted(OUTPUT_DIR.glob("*.py")):
+        if module.name == "__init__.py":
+            continue
+        names = sorted(consolidate_exports.extract_exports_from_module(module))
+        if not names:
+            continue
+        source = module.read_text()
+        if "\n__all__" in source:
+            raise RuntimeError(f"{module.name}: already declares __all__")
+        body = "".join(f'    "{name}",\n' for name in names)
+        module.write_text(f"{source}\n\n__all__ = [\n{body}]\n")
+        declared += 1
+    print(f"  ✓ Declared __all__ on {declared} root-level schema module(s)")
 
 
 def inject_literal_discriminator_defaults() -> None:
@@ -3822,9 +3862,7 @@ def fix_trusted_match_runtime_validators() -> None:
         print("  trusted_match/identity_match_response.py response class not found")
         return
     response_class = response_class_match.group(1)
-    source = (
-        source.rstrip()
-        + f"""
+    source = source.rstrip() + f"""
 
     @model_validator(mode='after')
     def _validate_tmpx_provider_ids(self) -> {response_class}:
@@ -3839,7 +3877,6 @@ def fix_trusted_match_runtime_validators() -> None:
             raise ValueError('tmpx_providers keys must be valid provider_id values')
         return self
 """
-    )
     identity_match_response.write_text(source.rstrip() + "\n")
     print("  trusted_match/identity_match_response.py: added runtime validators")
 
@@ -4359,7 +4396,9 @@ def fix_mcp_webhook_operation_id_optional() -> None:
 def fix_signal_listing_range_subclasses() -> None:
     """Reuse SignalListing.Range for generated subclasses that redeclare range."""
     replacements = {
-        OUTPUT_DIR / "signals" / "get_signals_response.py": [
+        OUTPUT_DIR
+        / "signals"
+        / "get_signals_response.py": [
             (
                 "from ..core.signal_listing import SignalListing\n",
                 "from ..core.signal_listing import Range, SignalListing\n",
@@ -4374,7 +4413,9 @@ def fix_signal_listing_range_subclasses() -> None:
                 "",
             ),
         ],
-        OUTPUT_DIR / "core" / "wholesale_feed_event.py": [
+        OUTPUT_DIR
+        / "core"
+        / "wholesale_feed_event.py": [
             (
                 "from .signal_listing import SignalListing\n",
                 "from .signal_listing import Range, SignalListing\n",
@@ -4628,20 +4669,18 @@ def restore_flattened_contract_field_types() -> None:
 
     source = representation_target.read_text()
     expected = "    format_kind: Any"
+    # ``str`` rather than ``CanonicalFormatKind``: the vocabulary is open at
+    # every reference (``OPEN_VOCABULARY_SCHEMAS`` in scripts/generate_types.py),
+    # and restoring the enum here would re-close it at the one site flattening
+    # happens to pass through. The flattening artifact being repaired is the
+    # ``Any``, not the openness.
     replacement = """    format_kind: Annotated[
-        CanonicalFormatKind,
+        str,
         Field(
             description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`."
         ),
     ]"""
     if expected in source:
-        if "from .canonical_format_kind import CanonicalFormatKind\n" not in source:
-            anchor = "from .creative_manifest import CreativeManifest\n"
-            if anchor not in source:
-                raise RuntimeError("creative_representation.py: missing CreativeManifest import")
-            source = source.replace(
-                anchor, "from .canonical_format_kind import CanonicalFormatKind\n" + anchor, 1
-            )
         source = source.replace(expected, replacement, 1)
     elif replacement not in source:
         raise RuntimeError("creative_representation.py: expected format_kind override not found")
@@ -4672,9 +4711,7 @@ def restore_flattened_contract_field_types() -> None:
 
     if "@model_validator(mode='before')" not in source:
         source = ensure_pydantic_import(source, "model_validator")
-        source = (
-            source.rstrip()
-            + """
+        source = source.rstrip() + """
 
     @model_validator(mode='before')
     @classmethod
@@ -4689,39 +4726,8 @@ def restore_flattened_contract_field_types() -> None:
                 )
         return data
 """
-        )
     representation_target.write_text(source)
     print("  core/creative_representation.py: restored canonical format contract")
-
-
-def preserve_open_delivery_format_kind() -> None:
-    """Keep the public delivery-creative consumer boundary forward-compatible."""
-    target = OUTPUT_DIR / "creative" / "get_creative_delivery_response.py"
-    if not target.exists():
-        print("  creative/get_creative_delivery_response.py not found (skipping open enum)")
-        return
-
-    source = target.read_text()
-    generated = """    format_kind: Annotated[
-        canonical_format_kind.CanonicalFormatKind | None,
-        Field(description='Canonical format kind delivered for this creative.'),
-    ] = None"""
-    replacement = """    format_kind: Annotated[
-        canonical_format_kind.CanonicalFormatKind | str | None,
-        Field(
-            description='Canonical format kind delivered for this creative.',
-            union_mode='left_to_right',
-        ),
-    ] = None"""
-    if generated in source:
-        target.write_text(source.replace(generated, replacement, 1))
-        print("  creative/get_creative_delivery_response.py: opened format_kind enum")
-    elif replacement in source:
-        print("  creative/get_creative_delivery_response.py: format_kind already open")
-    else:
-        raise RuntimeError(
-            "get_creative_delivery_response.py: expected format_kind field not found"
-        )
 
 
 def enforce_transformer_output_contract() -> None:
@@ -4752,9 +4758,7 @@ def enforce_transformer_output_contract() -> None:
     if "class Transformer(" not in source:
         raise RuntimeError("transformer.py: Transformer class not found")
     source = ensure_pydantic_import(source, "model_validator")
-    target.write_text(
-        source.rstrip()
-        + """
+    target.write_text(source.rstrip() + """
 
     @model_validator(mode='after')
     def _require_output_format_declaration(self) -> Transformer:
@@ -4769,8 +4773,7 @@ def enforce_transformer_output_contract() -> None:
                 'one of output_capability_ids or deprecated output_format_ids is required'
             )
         return self
-"""
-    )
+""")
     print("  core/transformer.py: enforced output declaration requirement")
 
 
@@ -5692,8 +5695,7 @@ def fix_verify_brand_claim_models() -> None:
     bulk_response = OUTPUT_DIR / "brand" / "verify_brand_claims_response.py"
 
     if request.exists() and "claim_type:" not in request.read_text():
-        request.write_text(
-            """# generated by datamodel-codegen:
+        request.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_request.json
 
 from __future__ import annotations
@@ -5725,13 +5727,11 @@ class VerifyBrandClaimRequest(AdcpVersionEnvelope):
         dict[str, Any],
         Field(description='Claim payload. Shape varies by claim_type.'),
     ]
-"""
-        )
+""")
         print("  brand/verify_brand_claim_request.py: restored claim fields")
 
     if response.exists() and "VerifyBrandClaimSuccessResponse" not in response.read_text():
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -5790,8 +5790,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored response arms")
 
     response_schema = SCHEMA_DIR / "brand" / "verify-brand-claim-response.json"
@@ -5800,8 +5799,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and response_schema.exists()
         and '"signed_response"' in response_schema.read_text()
     ):
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -5952,8 +5950,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored signed response fields")
 
     bulk_response_schema = SCHEMA_DIR / "brand" / "verify-brand-claims-response.json"
@@ -5962,8 +5959,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and bulk_response_schema.exists()
         and '"signed_response"' in bulk_response_schema.read_text()
     ):
-        bulk_response.write_text(
-            """# generated by datamodel-codegen:
+        bulk_response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claims_response.json
 
 from __future__ import annotations
@@ -6146,8 +6142,7 @@ class VerifyBrandClaimsErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimsResponse = VerifyBrandClaimsResponseBulk | VerifyBrandClaimsErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claims_response.py: restored signed response fields")
 
     if bulk_response.exists():
@@ -6665,9 +6660,7 @@ def fix_legacy_purchase_accepted_losses() -> None:
     )
     validator_marker = "    def _accepted_losses_match_schema("
     if validator_marker not in fixed and "field_validator" in fixed:
-        fixed = (
-            fixed.rstrip()
-            + """
+        fixed = fixed.rstrip() + """
 
 
     @field_validator('selected_product_ids')
@@ -6695,7 +6688,6 @@ def fix_legacy_purchase_accepted_losses() -> None:
             raise ValueError('accepted_losses must include the required compatibility losses')
         return values
 """
-        )
     if fixed != source:
         target.write_text(fixed)
         print("  media_buy/legacy_purchase_continuation_input.py: narrowed accepted_losses")
@@ -6826,9 +6818,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class MediaBuyChangeTerm(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_constraint_action" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_constraint_action(self) -> MediaBuyChangeTerm:
@@ -6848,9 +6838,7 @@ def enforce_change_term_runtime_constraints() -> None:
         if action not in allowed.get(kind, set()):
             raise ValueError('constraint kind is incompatible with action')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             term_path.write_text(source)
             print("  media_buy/change_term.py: restored constraint/action compatibility")
 
@@ -6863,9 +6851,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class CommercialTerms(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_change_term_set" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_change_term_set(self) -> CommercialTerms:
@@ -6914,9 +6900,7 @@ def enforce_change_term_runtime_constraints() -> None:
             ):
                 raise ValueError('change-term earliest effective time exceeds latest time')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             terms_path.write_text(source)
             print("  media_buy/commercial_terms.py: restored change-term set invariants")
 
@@ -7032,6 +7016,8 @@ def _write_manifest(observed: dict[str, list[str]], previous: dict[str, bool | s
         )
         return 1
     return 0
+
+
 _REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
 
 # Bases that declare no schema fields of their own. Any other base the
@@ -7311,13 +7297,114 @@ def enforce_root_required_groups() -> None:
         print(f"  skipped {note}")
 
 
+_ADCP_REQUEST_MARKER = "AdcpRequest"
+_ADCP_RESPONSE_MARKER = "AdcpResponse"
+
+
+def _insert_first_base(source: str, class_name: str, marker: str) -> str:
+    """Put ``marker`` first in ``class_name``'s base list.
+
+    A field-less plain class as first base changes no field, no validator and no
+    serialization -- pydantic's metaclass still wins metaclass resolution, because the
+    marker's own metaclass is ``type``. First, not last, so the marker's accessors are
+    what a caller sees ahead of any generated member of the same name.
+    """
+    pattern = r"^class " + re.escape(class_name) + r"\(([^\n]*)\):$"
+    source, replaced = re.subn(
+        pattern, "class " + class_name + "(" + marker + r", \1):", source, count=1, flags=re.M
+    )
+    if replaced == 1:
+        return source
+    pattern = r"^class " + re.escape(class_name) + r":$"
+    source, replaced = re.subn(
+        pattern, "class " + class_name + "(" + marker + "):", source, count=1, flags=re.M
+    )
+    if replaced != 1:
+        raise RuntimeError(f"unable to rewrite the base list of {class_name}")
+    return source
+
+
+def insert_task_message_markers() -> None:
+    """Give every registered task message its ``AdcpRequest`` / ``AdcpResponse`` marker.
+
+    The marker is what lets a caller hold "a request" or "a response" as a TYPE before
+    knowing which tool it is -- resolve the account, decide at-most-once, echo the
+    context, route on task state -- and makes ``issubclass(model, AdcpRequest)`` the
+    registration-time proof that a model is spec-derived rather than a hand-written
+    parallel. The task registry in ``index.json`` decides membership, so a new task is
+    marked with zero edits here and a task that leaves drops its marker.
+
+    Inheritance, not injection: an injected accessor set that skips one class fails
+    silently, an inherited method cannot be forgotten. And one mechanism only -- a class
+    that COPIES rather than inherits (the bundled clone layer) is out of reach by design,
+    and reaching it would mean two injection points to keep in step.
+
+    Fails closed in four places: an unresolvable schema, a schema with no title, an
+    unresolvable root class, and a post-rewrite AST check that every marked class really
+    carries the marker as its first base.
+    """
+    messages = task_message_lattice.task_registry_messages(SCHEMA_DIR)
+    modules = task_message_lattice.generated_module_by_schema(OUTPUT_DIR)
+
+    # (module, class) -> marker. A response arm shared by several tasks is named more
+    # than once; the marker is the same, so the map de-duplicates it.
+    wanted: dict[tuple[Path, str], str] = {}
+    for task, kind, schema_rel in messages:
+        module = modules.get(task_message_lattice.underscored(schema_rel))
+        if module is None:
+            raise RuntimeError(
+                f"{task} {kind}: no generated module declares filename "
+                f"{task_message_lattice.underscored(schema_rel).as_posix()}"
+            )
+        title = json.loads((SCHEMA_DIR / schema_rel).read_text()).get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise RuntimeError(f"{schema_rel.as_posix()}: no title to derive a root class from")
+        marker = _ADCP_REQUEST_MARKER if kind == "request" else _ADCP_RESPONSE_MARKER
+        tree = ast.parse(module.read_text())
+        for class_name in task_message_lattice.root_class_names(
+            schema_rel, module, tree, task_message_lattice.mangle_schema_title(title)
+        ):
+            previous = wanted.get((module, class_name))
+            if previous is not None and previous != marker:
+                raise RuntimeError(
+                    f"{module.name}: {class_name} is both a task request and a task response"
+                )
+            wanted[(module, class_name)] = marker
+
+    by_module: dict[Path, dict[str, str]] = {}
+    for (module, class_name), marker in wanted.items():
+        by_module.setdefault(module, {})[class_name] = marker
+
+    for module, markers in sorted(by_module.items()):
+        source = module.read_text()
+        import_line = "from adcp.types.base import " + ", ".join(sorted(set(markers.values())))
+        if import_line + "\n" not in source:
+            future_import = "from __future__ import annotations\n\n"
+            if future_import not in source:
+                raise RuntimeError(f"{module.name}: missing future annotations import")
+            source = source.replace(future_import, future_import + import_line + "\n\n", 1)
+        for class_name, marker in sorted(markers.items()):
+            source = _insert_first_base(source, class_name, marker)
+        module.write_text(source)
+
+        classes, _ = task_message_lattice.module_top_level(ast.parse(source))
+        for class_name, marker in markers.items():
+            bases = classes[class_name].bases
+            if not bases or not isinstance(bases[0], ast.Name) or bases[0].id != marker:
+                raise RuntimeError(
+                    f"{module.name}: {class_name} does not carry {marker} as its first base"
+                )
+
+    print(f"  marked {len(wanted)} task-message classes across {len(by_module)} modules")
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=OUTPUT_DIR,
-        help="generated_poc tree to modify",
+        help="generated domain tree to modify",
     )
     parser.add_argument(
         "--update-manifest",
@@ -7362,7 +7449,6 @@ def main(argv: list[str] | None = None) -> int:
         restore_principal_result_aliases,
         disambiguate_comply_response_arm,
         restore_flattened_contract_field_types,
-        preserve_open_delivery_format_kind,
         enforce_transformer_output_contract,
         restore_constructible_response_bases,
         restore_response_variant_aliases,
@@ -7406,9 +7492,13 @@ def main(argv: list[str] | None = None) -> int:
         rewrite_generated_enums_to_strenum,
         annotate_registry_track_verdict,
         preserve_format_reference_agent_url_wire_string,
+        insert_task_message_markers,
         point_integer_fields_at_the_schema_integer_type,
         remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,
+        # After every pass that can add, rename or remove a class: the
+        # ``__all__`` it writes has to name the final set.
+        declare_root_schema_module_exports,
         strip_extra_blank_lines_at_eof,
     ]
     observed: dict[str, list[str]] = {}

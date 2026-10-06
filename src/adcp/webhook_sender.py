@@ -61,7 +61,7 @@ from adcp.types import (
     WholesaleFeedEvent,
     WholesaleFeedWebhook,
 )
-from adcp.types.generated_poc.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
 from adcp.webhook_auth import (
     AdcpLegacyHmacStrategy,
     BearerTokenStrategy,

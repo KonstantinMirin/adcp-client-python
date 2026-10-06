@@ -315,7 +315,7 @@ def test_partial_modules_never_import_generated_layer(mod_name: str) -> None:
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
             assert not node.module.startswith(
-                ("adcp.types._generated", "adcp.types.generated_poc")
+                ("adcp.types._generated", "adcp.types.domains")
             ), f"{mod_name}.py imports the internal generated layer: {node.module}"
 
 

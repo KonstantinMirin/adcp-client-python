@@ -395,7 +395,7 @@ def test_signals_features_and_content_standards_re_exported() -> None:
     collides with the unrelated wire ``adcp.types.ContentStandards``) are
     surfaced through :mod:`adcp.decisioning.capabilities` so adopters
     declaring deep Signals / MediaBuy blocks don't have to dig into
-    ``generated_poc``.
+    the generated tree.
     """
     from adcp.decisioning.capabilities import (
         ContentStandards,
@@ -800,7 +800,7 @@ async def test_projection_si_block_constructs_with_submodule_imports(make_handle
     ``SiCapabilities`` blocks. Adopters constructing SI declarations
     pull these from :mod:`adcp.decisioning.capabilities` — the
     re-export coverage test for the submodule's ``__all__`` is the
-    only thing keeping deeply-nested SI declarations off ``generated_poc``
+    only thing keeping deeply-nested SI declarations off the generated tree
     direct imports.
     """
     from adcp.decisioning import DecisioningCapabilities

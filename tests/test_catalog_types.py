@@ -286,7 +286,7 @@ def test_signal_catalog_type_unaffected():
 
 def test_signal_catalog_type_deep_import_alias():
     """The historical generated-module import remains available."""
-    from adcp.types.generated_poc.enums.signal_catalog_type import (
+    from adcp.types.domains.enums.signal_catalog_type import (
         SignalAvailabilityType,
         SignalCatalogType,
     )

@@ -58,7 +58,6 @@ from adcp.canonical_formats.registry import (
     structural_match,
 )
 from adcp.types import (
-    CanonicalFormatKind,
     CanonicalProjectionReference,
     Error,
     ProductFormatDeclaration,
@@ -207,7 +206,7 @@ def _v1_version_constraints(
 
 def _build_declaration(
     *,
-    kind: CanonicalFormatKind,
+    kind: str,
     v1_format_id: FormatId,
     params: dict[str, Any] | None = None,
     canonical_ref: CanonicalProjectionReference | None = None,
@@ -280,7 +279,7 @@ def project_v1_format_to_declaration(
     # declarations must not inherit registry slot or pixel-density
     # contracts.
     registry_params: dict[str, Any] = {}
-    registry_kind: CanonicalFormatKind | None = None
+    registry_kind: str | None = None
     for mapping in registry.mappings:
         pattern = mapping.v1_pattern
         glob = getattr(pattern, "format_id_glob", None)
@@ -356,7 +355,7 @@ def project_v1_format_to_declaration(
             code="FORMAT_DECLARATION_V1_AMBIGUOUS",
             message=(
                 f"v1 format {fid.id!r} structurally matched the "
-                f"{first.v2.canonical.value!r} family but the registry "
+                f"{first.v2.canonical!r} family but the registry "
                 f"entry is pure-structural — the projection is a "
                 f"family-level guess. Seller SHOULD add an explicit "
                 f"``canonical`` annotation on the v1 format."
@@ -364,7 +363,7 @@ def project_v1_format_to_declaration(
             field=field_path,
             details={
                 "v1_format_id": _echo_identifier(fid.id),
-                "matched_canonical": first.v2.canonical.value,
+                "matched_canonical": first.v2.canonical,
                 "match_kind": "structural_family",
                 "candidate_count": len(structural_hits),
             },

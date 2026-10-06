@@ -11,7 +11,7 @@ every JSON Schema conditional or ``x-adcp-validation`` behavioral rule.
 
 import os
 from collections.abc import Callable
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
 
 from pydantic import (
     AfterValidator,
@@ -30,6 +30,22 @@ from pydantic_core import PydanticSerializationError
 
 from adcp._deferred_adapters import deferred_adapter
 from adcp.types._scalar import as_json_schema_integer
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
+
+    # Annotation-only: resolving these at runtime would import the generated tree, which
+    # imports this module. ``from __future__ import annotations`` keeps them as strings.
+    # Taken by their public domain path rather than out of ``_generated``: the domain
+    # modules mirror the schema tree, so these names do not renumber on a regeneration
+    # the way the generated module's do. A ``TYPE_CHECKING`` block never executes, so
+    # the layering rule costs nothing here.
+    from adcp.types.domains.core.account_ref import AccountReference1, AccountReference2
+    from adcp.types.domains.core.canonical_account_ref import CanonicalAccountReference
+    from adcp.types.domains.core.context import ContextObject
+    from adcp.types.domains.core.error import Error
+    from adcp.types.domains.core.push_notification_config import PushNotificationConfig
+    from adcp.types.domains.enums.task_status import TaskStatus
 
 # Type alias to shorten long type annotations
 MessageFormatter = Callable[[Any], str]
@@ -408,3 +424,208 @@ class RegistryBaseModel(BaseModel):
     """
 
     model_config = ConfigDict(extra="allow")
+
+
+def _version_envelope() -> type[BaseModel]:
+    """The generated ``AdcpVersionEnvelope`` class, imported on first use.
+
+    Deferred because every generated module imports this one: a module-level import
+    of the generated tree here would be a cycle.
+    """
+    from adcp.types.domains.core.version_envelope import AdcpVersionEnvelope
+
+    return AdcpVersionEnvelope
+
+
+def _protocol_envelope() -> type[BaseModel]:
+    """The generated ``ProtocolEnvelope`` class, imported on first use (see above)."""
+    from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
+
+    return ProtocolEnvelope
+
+
+class _AdcpMessage:
+    """What an AdCP task request and an AdCP task response have in common.
+
+    A MARKER: it declares no fields and is not a ``BaseModel``. A field here would land
+    on every task message's wire type -- ``adcp_version`` would appear on
+    ``ValidateInputRequest``, whose schema declares no version fields at all, inventing
+    a spec field. So the version pins are read through accessors, which answer from the
+    instance dict and return ``None`` for a tool that declares nothing.
+
+    METHODS, not properties: pydantic does not let a model field shadow a property of
+    the same name. The value is stored and ``model_dump`` shows it, but attribute access
+    returns the property -- so every tool that declares a ``context`` would read ``None``,
+    silently. The production precedent for the whole shape is the Prebid Sales Agent's
+    ``BuyerRequest`` mixin (``src/core/schemas/_base.py``).
+
+    The three field classifiers answer "which stratum does this field belong to" from
+    the MRO rather than a per-class table: fields stay flat, exactly as on the wire, and
+    provenance is which ancestor declared them. A class with no envelope ancestry
+    answers the empty set -- degraded, but it cannot be wrong, and the answer changes by
+    itself when the schema starts composing the envelope.
+    """
+
+    if TYPE_CHECKING:
+        # DECLARED, not inherited. Every concrete AdCP message class is a pydantic model
+        # by construction of the marker-insertion pass, so these members always exist --
+        # and declaring them is what makes ``type[AdcpRequest]`` usable in a typed
+        # registry without a cast. Inheriting ``BaseModel`` to say the same thing would
+        # make the marker a model in its own right, which is exactly what it must not be.
+        @classmethod
+        def model_validate(cls, obj: Any, **kwargs: Any) -> Self: ...
+
+        def model_dump(self, **kwargs: Any) -> dict[str, Any]: ...
+
+        def model_dump_json(self, **kwargs: Any) -> str: ...
+
+    @classmethod
+    def _stratum_fields(cls, ancestor: type[BaseModel]) -> frozenset[str]:
+        """The fields this class declares that ``ancestor`` also declares.
+
+        Empty unless this class actually descends from ``ancestor``: a schema that
+        inlines ``adcp_version`` rather than composing the envelope shares the name but
+        not the stratum, and the intersection alone would read it as composed.
+        """
+        if not issubclass(cls, ancestor):
+            return frozenset()
+        own = cast("type[BaseModel]", cls)
+        return frozenset(own.model_fields) & frozenset(ancestor.model_fields)
+
+    @classmethod
+    def version_fields(cls) -> frozenset[str]:
+        """The version-envelope fields on this message (empty without the ancestry)."""
+        return cls._stratum_fields(_version_envelope())
+
+    @classmethod
+    def protocol_fields(cls) -> frozenset[str]:
+        """The protocol-envelope fields on this message (empty without the ancestry).
+
+        A ``status`` an arm narrows to a ``Literal`` is still the envelope's ``status``,
+        and a body-level ``context`` is still the envelope's ``context`` -- the spec says
+        the envelope declaration is authoritative -- so matching by name is the tie-break,
+        not an approximation of one. ``errors[]`` is a different field from ``adcp_error``
+        by design and stays payload.
+        """
+        return cls._stratum_fields(_protocol_envelope())
+
+    @classmethod
+    def payload_fields(cls) -> frozenset[str]:
+        """The tool's own fields: everything neither envelope declared.
+
+        Excludes the version pins, which ARE payload on the wire ("this envelope is part
+        of the payload itself"), because a caller composing a DataPart or an audit record
+        wants tool arguments only. A caller who wants both unions the two sets.
+        """
+        own = cast("type[BaseModel]", cls)
+        return frozenset(own.model_fields) - cls.version_fields() - cls.protocol_fields()
+
+
+class AdcpRequest(_AdcpMessage):
+    """The request message of a task in the pinned bundle's task registry.
+
+    A consumer holding one can resolve its account, decide at-most-once, echo its
+    context and negotiate version -- the whole transport-boundary job -- before knowing
+    which tool it is. ``issubclass(model, AdcpRequest)`` is the registration-time proof
+    that a model is spec-derived rather than a hand-written parallel: a field test passes
+    for a forged model, descent does not.
+
+    Each accessor returns the field's value, or ``None`` when this tool's schema declares
+    no such field. Only 49 of the 87 request schemas declare an ``account`` and only 43 an
+    ``idempotency_key``, so asking the request is what replaces
+    ``getattr(req, "account", None)`` against ``Any`` at the boundary.
+    """
+
+    def get_account(
+        self,
+    ) -> AccountReference1 | AccountReference2 | CanonicalAccountReference | None:
+        """The account this request names, or None when its schema declares none.
+
+        The union is what the generated ``account`` fields actually hold, measured: 44
+        request classes type it as the two ``core/account-ref.json`` arms directly (the
+        ``AccountReference`` RootModel is unwrapped at the field by
+        ``expose_account_reference_union_fields``, so naming the wrapper here would be a
+        type no value ever has), and 8 as the ``CanonicalAccountReference`` root. The one
+        inline declarer, ``compliance/comply-test-controller-request.json``, answers with
+        its own generated ``Account`` through the same instance-dict read.
+        """
+        return self.__dict__.get("account")
+
+    def get_idempotency_key(self) -> str | None:
+        """The at-most-once key this request carries, or None when its schema declares none.
+
+        Presence is the honest structural signal for write-versus-read: a read is
+        idempotent by construction and takes no key. ``x-mutates-state`` is not a
+        substitute -- it covers 44 of 87 schemas and contradicts the key in both
+        directions on 2 schemas each way.
+        """
+        return self.__dict__.get("idempotency_key")
+
+    def get_context(self) -> ContextObject | None:
+        """The buyer's opaque ``context``, echoed unchanged onto whatever leaves."""
+        return self.__dict__.get("context")
+
+    def get_push_notification_config(self) -> PushNotificationConfig | None:
+        """The webhook configuration this request asks for, or None (19 of 87 declare it)."""
+        return self.__dict__.get("push_notification_config")
+
+    def get_adcp_version(self) -> str | None:
+        """The release this buyer pins, or None when it pinned none.
+
+        Answers from the instance dict, so it still answers for a schema that inlines the
+        field without composing the envelope -- the one case ``version_fields()`` reports
+        empty.
+        """
+        return self.__dict__.get("adcp_version")
+
+    def get_adcp_major_version(self) -> int | None:
+        """The major this buyer pins (deprecated through 3.x), or None."""
+        return self.__dict__.get("adcp_major_version")
+
+
+class AdcpResponse(_AdcpMessage):
+    """The response message of a task in the pinned bundle's task registry.
+
+    A consumer holding one can route on task state, pick up an async ``task_id``, split
+    envelope from payload and log uniformly, before knowing which tool answered. Which
+    makes one generic poll-to-terminal loop possible for all 77 tasks, where today each
+    arm has no common type at all.
+    """
+
+    def get_status(self) -> TaskStatus | None:
+        """The AdCP task state the seller asserted, or None.
+
+        None only for the 10 task responses whose schemas do not compose
+        ``core/protocol-envelope.json``, against the envelope's own "REQUIRED on every
+        task response envelope" -- a residue this SDK cannot invent its way out of.
+        """
+        return self.__dict__.get("status")
+
+    def get_task_id(self) -> str | None:
+        """The async operation identifier, present when the task needs polling."""
+        return self.__dict__.get("task_id")
+
+    def get_context(self) -> ContextObject | None:
+        """The caller's ``context``, echoed back byte-for-byte."""
+        return self.__dict__.get("context")
+
+    def get_adcp_error(self) -> Error | None:
+        """The envelope-level typed error for a fatal task failure, or None.
+
+        The payload's ``errors[]`` array is a different field by design and is read from
+        the concrete arm; the two MUST be treated as distinct by name.
+        """
+        return self.__dict__.get("adcp_error")
+
+    def get_message(self) -> str | None:
+        """The human-readable summary of the result, or None."""
+        return self.__dict__.get("message")
+
+    def get_replayed(self) -> bool | None:
+        """True when this answer came from the idempotency cache.
+
+        ``False`` when the response declares the field and was executed fresh, ``None``
+        when the tool's schema does not declare it -- absence stays distinguishable from
+        a negative answer.
+        """
+        return self.__dict__.get("replayed")

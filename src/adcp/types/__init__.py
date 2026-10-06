@@ -21,7 +21,7 @@ For a narrower, curated surface, import a partial module instead:
     from adcp.types.buyer import GetProductsRequest
     from adcp.types.seller import Offering, PropertyList
 
-IMPORTANT: Never import directly from adcp.types.generated_poc or
+IMPORTANT: Never import directly from adcp.types.domains or
 adcp.types._generated. These are internal modules regenerated from
 upstream schemas. Only import from adcp.types (this module), one of the
 partial modules above, or adcp.
@@ -47,10 +47,19 @@ import importlib
 import importlib.util
 from typing import TYPE_CHECKING
 
+from adcp.types import _generated_poc_alias
+
+# Serves the pre-9.0 ``adcp.types.generated_poc.*`` paths from the modules they
+# moved to, as the SAME module objects, with a ``DeprecationWarning``. Removed
+# in v10. Installing a finder imports no generated module, so this costs the
+# lazy surface nothing.
+_generated_poc_alias.install()
+
 __pdoc__ = {
     "generated_poc": False,
     "mypy_plugin": False,
     "_eager": False,
+    "_generated_poc_alias": False,
 }
 
 __all__ = [
@@ -183,7 +192,6 @@ __all__ = [
     "ActivateSignalResponse",
     "ActivateSignalResponse1",
     "AdcpProtocol",
-    "AdcpVersionEnvelope",
     "AuthorizationRequiredDetails",
     "CreativeAction",
     "AggregatedTotals",
@@ -204,6 +212,8 @@ __all__ = [
     "ListCreativesRequest",
     "ListCreativesResponse",
     "MediaBuyDelivery",
+    "AdcpVersionEnvelope",
+    "is_canonical_format_kind",
     "ProtocolEnvelope",
     "ProtocolResponse",
     "ProvidePerformanceFeedbackRequest",
@@ -506,7 +516,10 @@ __all__ = [
     "Input",
     "KellerType",
     "LandingPageRequirement",
+    "LegacyCreateMediaBuyErrorResponse",
     "LegacyCreateMediaBuyRequest",
+    "LegacyCreateMediaBuySubmittedResponse",
+    "LegacyCreateMediaBuySuccessResponse",
     "LegacyBuildCreativeErrorResponse",
     "LegacyBuildCreativeRequest",
     "LegacyBuildCreativeResponse",
@@ -542,7 +555,9 @@ __all__ = [
     "LegacyPreviewCreativeResponse1",
     "LegacyPreviewCreativeResponse2",
     "LegacyPreviewCreativeResponse3",
+    "LegacyPreviewCreativeResponse4",
     "LegacyPreviewCreativeSingleResponse",
+    "LegacyPreviewCreativeSubmittedResponse",
     "LegacyPreviewCreativeVariantResponse",
     "LegacyProduct",
     "LegacyProductFormatDeclaration",
@@ -834,6 +849,7 @@ __all__ = [
     "UpdateContentStandardsSuccessResponse",
     "UpdateMediaBuyErrorResponse",
     "LegacyUpdateMediaBuyErrorResponse",
+    "LegacyUpdateMediaBuySubmittedResponse",
     "LegacyUpdateMediaBuySuccessResponse",
     "UpdateMediaBuyResponse1",
     "UpdateMediaBuyResponse3",
@@ -1606,7 +1622,10 @@ if TYPE_CHECKING:
         LegacyBuildCreativeResponse6,
         LegacyBuildCreativeSubmittedResponse,
         LegacyBuildCreativeSuccessResponse,
+        LegacyCreateMediaBuyErrorResponse,
         LegacyCreateMediaBuyRequest,
+        LegacyCreateMediaBuySubmittedResponse,
+        LegacyCreateMediaBuySuccessResponse,
         LegacyCreativeAsset,
         LegacyCreativeFilters,
         LegacyFormat,
@@ -1631,7 +1650,9 @@ if TYPE_CHECKING:
         LegacyPreviewCreativeResponse1,
         LegacyPreviewCreativeResponse2,
         LegacyPreviewCreativeResponse3,
+        LegacyPreviewCreativeResponse4,
         LegacyPreviewCreativeSingleResponse,
+        LegacyPreviewCreativeSubmittedResponse,
         LegacyPreviewCreativeVariantResponse,
         LegacyProduct,
         LegacyProductFilters,
@@ -1640,6 +1661,7 @@ if TYPE_CHECKING:
         LegacySyncCreativesRequest,
         LegacyUpdateMediaBuyErrorResponse,
         LegacyUpdateMediaBuyRequest,
+        LegacyUpdateMediaBuySubmittedResponse,
         LegacyUpdateMediaBuySuccessResponse,
         ListAccountChangesRequest,
         ListAccountChangesResponse,
@@ -2111,6 +2133,7 @@ if TYPE_CHECKING:
         WholesaleFeedSignal,
         WholesaleFeedWebhook,
         ZipAsset,
+        is_canonical_format_kind,
         project_geo_postal_areas,
         to_account_response,
     )

@@ -18,7 +18,7 @@ from adcp.types import (
     UnknownFormatAsset,
     UnknownGroupAsset,
 )
-from adcp.types.generated_poc.core.format import Assets94, Format
+from adcp.types.domains.core.format import Assets94, Format
 
 
 def _make_format_id(name: str) -> dict:

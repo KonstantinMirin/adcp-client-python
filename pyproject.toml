@@ -258,13 +258,13 @@ adcp = [
 [tool.black]
 line-length = 100
 target-version = ["py310", "py311", "py312"]
-# Skip auto-generated files. Running black on generated_poc/ during
+# Skip auto-generated files. Running black on types/domains/ during
 # pre-commit after `make regenerate-schemas` causes a stash conflict
 # (hook reformats, tries to re-apply over seller's already-modified
 # files, rolls back). The regen script already runs black on the
-# consolidated _generated.py; individual generated_poc/ files don't
+# consolidated _generated.py; individual generated files don't
 # need formatting at commit time. Mirrors the ruff extend-exclude.
-extend-exclude = "/(tasks|_generated|registry)\\.py$|/types/generated_poc/|/types/v3[012]\\.pyi$|/types/versioned_bases/_?v3[012]\\.(py|pyi)$|/reporting/_preview/_generated_models/"
+extend-exclude = "/(tasks|_generated|registry)\\.py$|/types/domains/|/types/v3[012]\\.pyi$|/types/versioned_bases/_?v3[012]\\.(py|pyi)$|/reporting/_preview/_generated_models/"
 
 [tool.ruff]
 line-length = 100
@@ -276,7 +276,7 @@ extend-exclude = [
     "src/adcp/reporting/_preview/_generated_models/",
     "src/adcp/types/registry.py",
     "src/adcp/types/tasks.py",
-    "src/adcp/types/generated_poc/",
+    "src/adcp/types/domains/",
     "src/adcp/types/v30.pyi",
     "src/adcp/types/v31.pyi",
     "src/adcp/types/v32.pyi",
@@ -312,13 +312,13 @@ module = "tests.*"
 disable_error_code = ["import-not-found", "no-untyped-def", "var-annotated", "operator"]
 
 # Generated preview models for the unreleased sync_reporting_status schemas.
-# Same rationale as generated_poc: codegen output, replaced wholesale at rc.2.
+# Same rationale as types/domains: codegen output, replaced wholesale at rc.2.
 [[tool.mypy.overrides]]
 module = "adcp.reporting._preview._generated_models.*"
 disable_error_code = ["valid-type", "assignment", "unused-ignore"]
 
 [[tool.mypy.overrides]]
-module = "adcp.types.generated_poc.*"
+module = "adcp.types.domains.*"
 # JSON Schema allOf/const intersections intentionally narrow inherited Pydantic
 # fields in generated models. Mypy treats those schema-valid refinements as
 # mutable Python attribute overrides; keep assignment checking enabled for the
@@ -366,8 +366,8 @@ omit = [
     "*/tests/*",
     "*/test_*.py",
     "src/adcp/types/_generated.py",
-    "src/adcp/types/generated_poc/*",
-    "src/adcp/types/generated_poc/**/*",
+    "src/adcp/types/domains/*",
+    "src/adcp/types/domains/**/*",
 ]
 branch = true
 

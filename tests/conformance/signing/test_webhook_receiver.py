@@ -16,7 +16,7 @@ import pytest
 
 from adcp.server.idempotency import MemoryBackend, WebhookDedupStore
 from adcp.signing import StaticJwksResolver, private_key_from_jwk
-from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
+from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
 from adcp.webhooks import (
     LegacyHmacFallback,
     LegacyWebhookHmacOptions,

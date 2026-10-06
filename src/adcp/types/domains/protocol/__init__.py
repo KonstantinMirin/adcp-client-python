@@ -9,18 +9,18 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.protocol.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-04 01:57:50 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_request import (
+from adcp.types.domains.protocol.get_adcp_capabilities_request import (
     GetAdcpCapabilitiesRequest,
     Protocol,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     AcceptancePolicyDiscovery,
     AccessMode,
     Account,
@@ -157,8 +157,8 @@ from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
     WholesaleFeedVersioning,
     WholesaleFeedWebhooks,
 )
-from adcp.types.generated_poc.protocol.get_principal_request import GetPrincipalRequest
-from adcp.types.generated_poc.protocol.get_principal_response import (
+from adcp.types.domains.protocol.get_principal_request import GetPrincipalRequest
+from adcp.types.domains.protocol.get_principal_response import (
     GetPrincipalResponse,
     PrincipalCurrentResult,
     PrincipalReadFailedResult,
@@ -168,21 +168,16 @@ from adcp.types.generated_poc.protocol.get_principal_response import (
     Result7,
     Result9,
 )
-from adcp.types.generated_poc.protocol.get_task_status_request import GetTaskStatusRequest
-from adcp.types.generated_poc.protocol.get_task_status_response import (
+from adcp.types.domains.protocol.get_task_status_request import GetTaskStatusRequest
+from adcp.types.domains.protocol.get_task_status_response import (
     Details,
     Error,
     GetTaskStatusResponse,
     HistoryItem,
     Progress,
 )
-from adcp.types.generated_poc.protocol.list_tasks_request import (
-    Field1,
-    Filters,
-    ListTasksRequest,
-    Sort,
-)
-from adcp.types.generated_poc.protocol.list_tasks_response import (
+from adcp.types.domains.protocol.list_tasks_request import Field1, Filters, ListTasksRequest, Sort
+from adcp.types.domains.protocol.list_tasks_response import (
     Direction,
     Domain,
     DomainBreakdown,
@@ -191,17 +186,14 @@ from adcp.types.generated_poc.protocol.list_tasks_response import (
     SortApplied,
     Task,
 )
-from adcp.types.generated_poc.protocol.sync_agent_notification_configs_request import (
+from adcp.types.domains.protocol.sync_agent_notification_configs_request import (
     SyncAgentNotificationConfigsRequest,
 )
-from adcp.types.generated_poc.protocol.sync_agent_notification_configs_response import (
+from adcp.types.domains.protocol.sync_agent_notification_configs_response import (
     SyncAgentNotificationConfigsResponse,
 )
-from adcp.types.generated_poc.protocol.sync_principal_request import (
-    Configuration,
-    SyncPrincipalRequest,
-)
-from adcp.types.generated_poc.protocol.sync_principal_response import (
+from adcp.types.domains.protocol.sync_principal_request import Configuration, SyncPrincipalRequest
+from adcp.types.domains.protocol.sync_principal_response import (
     Action33,
     PrincipalAppliedResult,
     PrincipalSyncFailedResult,

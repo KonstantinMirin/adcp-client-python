@@ -15,7 +15,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from adcp.canonical_formats.projection import migrated_format_option_id
 from adcp.types.base import WireUrl
-from adcp.types.generated_poc.core.format_id import FormatReferenceStructuredObject
+from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
 from adcp.types.legacy import LegacyFormatId
 
 _WIRE = {"agent_url": "https://creative.adcontextprotocol.org", "id": "display_300x250_image"}

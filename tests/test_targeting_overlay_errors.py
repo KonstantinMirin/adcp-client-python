@@ -24,8 +24,8 @@ from adcp.types import (
     CreateMediaBuyRequest,
     UpdateMediaBuyRequest,
 )
+from adcp.types.domains.core.targeting_input import TargetingOverlayInput
 from adcp.types.error_narrowing import narrow_union_errors
-from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput
 
 _SECRET = "never-echo-this-buyer-value"
 _PATHS = [

@@ -12,11 +12,13 @@ pass. The pull requests are linked for the full rationale and measurements.
 | Structural pointer refs resolve to the type they select | #1371 | 47 per-position `RootModel` wrapper names under `adcp.types._generated` |
 | Generated models validate `boolean`/`integer`/`number` strictly | #1375 | Payloads that relied on `"yes"`, `"1"`, `1` coercion |
 | Root-level `anyOf`/`oneOf` required groups are enforced | #1368 | Documents that omit every required group of 42 request/response models, on generated and canonical names alike |
+| `format_kind` is a `str`, not the closed enum, and no model refuses a value | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; any model refusing a kind this SDK version does not know |
 
 Nothing is removed from `adcp` or `adcp.types`: every name importable before
-is importable after, and the ten additions (`Issue`, `AdcpVersionEnvelope`,
-seven `*Details` error models and `FormatReferenceStructuredObject` under
-`adcp.types.legacy`) come with #1367. Identity changes on the public surface
+is importable after. The additions are `Issue`, `AdcpVersionEnvelope`, seven
+`*Details` error models and `FormatReferenceStructuredObject` under
+`adcp.types.legacy` with #1367, plus `is_canonical_format_kind` with the
+`format_kind` override below. Identity changes on the public surface
 are of exactly the kinds the table names and are pinned by
 `tests/fixtures/public_api_snapshot.json`.
 
@@ -101,9 +103,9 @@ The bundled schema validator additionally checks `format: uri` and
 42 models enforce the root-level `anyOf`/`oneOf` their schema declares.
 `CreateMediaBuyRequest` needs packages, a budget, or a proposal; a document
 with none raises `ValidationError` naming the groups. The rule reaches the
-canonical names in `adcp.types` too: `_canonical_clone` carries every validator
-a generated class declares on itself, so `adcp.CreateMediaBuyRequest` and the
-generated class agree.
+canonical names in `adcp.types` too: a canonical model is a subclass of the
+generated class, so it inherits every validator that class declares and
+`adcp.CreateMediaBuyRequest` and the generated class agree.
 
 ```python
 CreateMediaBuyRequest.model_validate({**unconditional_fields})
@@ -114,22 +116,175 @@ CreateMediaBuyRequest.model_validate({**unconditional_fields})
 Presence is what counts: an explicit `null` satisfies a group, a default the
 caller never sent does not.
 
+## 6. `format_kind` is a `str`, not an enum — a deliberate override (#7929)
+
+`core/canonical-format-kind.json` declares a **closed** 16-member `enum` and,
+in the same file, states as normative:
+
+> Consumer SDKs MUST treat this enum as **open** at parse time: an unknown
+> `format_kind` value MUST be retained as-is on the in-memory object (not
+> silently dropped or rewritten to `"custom"`) and MUST NOT cause the
+> surrounding payload to fail validation. ... The producer-side enum stays
+> closed ...; the consumer-side enum stays open for forward compatibility.
+
+The schema knows the rule is directional and then encodes it as one closed
+enum, which cannot carry that. A generated model that reproduces an incoherent
+schema faithfully does not inherit correctness from it — it propagates the
+incoherence into every consumer. So 9.0 does not reproduce it.
+
+**What changed.** Every reference to that schema generates a bare `str`:
+
+```python
+# before
+CreativeManifest.model_fields["format_kind"].annotation  # CanonicalFormatKind | None
+# after
+CreativeManifest.model_fields["format_kind"].annotation  # str | None
+```
+
+`adcp.types.CanonicalFormatKind` is unchanged and still has its sixteen
+members — it is the vocabulary, and nothing was removed from the public
+surface. What changed is that it no longer types a field, so a value read off
+a model is the string the seller sent rather than an enum member:
+
+```python
+manifest.format_kind == CanonicalFormatKind.image   # True, as before
+manifest.format_kind is CanonicalFormatKind.image   # now False
+```
+
+If you compared with `is`, compare with `==`. `CanonicalFormatKind` is a
+`StrEnum`, so `==` holds against the member and against the plain string.
+
+**No model refuses a value, in either direction.** There is one type, one
+field and one behaviour: `format_kind: str`, retained as sent, on
+`CreativeManifest` and `CreativeAsset` as much as on `Creative` and
+`DeliveryCreative`. If you were relying on a request model raising
+`ValidationError` for a kind outside the sixteen, it no longer does.
+
+That is deliberate. A seller supports some set of format kinds, and that set
+is the seller's — not this library's and not the pinned enum's. It can be
+larger than the sixteen (a kind promoted in a spec newer than your pin) or
+smaller (four of them). A pinned SDK cannot tell "a kind the seller invented"
+from "a kind defined after my pin", so refusing the second to prevent the
+first would make the SDK's version a ceiling on what the protocol permits.
+"I accept your request and then tell you I cannot process this creative" is a
+seller's answer, not a type error. The producer-side `MUST NOT mint ad-hoc
+values` is a seller's obligation, and this library gives it the vocabulary and
+the helper to meet it.
+
+**Checking the vocabulary yourself** is therefore the sanctioned way to be
+strict, and the SDK never does it for you:
+
+```python
+from adcp.types import CanonicalFormatKind, is_canonical_format_kind
+
+if not is_canonical_format_kind(creative.format_kind):
+    route_as_declared_but_unsupported(creative)
+
+# the vocabulary is a parameter, because only you know which version your
+# counterpart speaks, and your support list may be larger or smaller
+if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
+    reject_with_unsupported_format(manifest)
+```
+
+**What this replaced.** Five pieces of scaffolding existed only to reconcile
+the closed enum with the open requirement, and all five are gone: the
+`_OpenCanonicalFormatKind` alias in `adcp.types.canonical_creative`, a second
+one in `adcp.types._forward_compat`, the `preserve_open_delivery_format_kind`
+post-generation fix that hand-patched one generated field,
+`_revalidate_subclass_instances_of_strict_base`, which flipped the wire bases
+to `revalidate_instances="subclass-instances"` so a subclass instance could
+not pass as validated output, and `_StrictFormatKind`, the per-direction base
+that refused a non-canonical kind on a request. With one open type everywhere,
+none of them has anything to do.
+
+**The cost, stated.** The generated models no longer agree with the bundled
+schema for this one field, and #1375 established that they should. That is
+declared as a single named entry with its reason in
+`tests/conformance/_schema_parity.py` —
+`format_kind_is_an_open_vocabulary_by_decision` — and the parity rule itself is
+not relaxed: the entry is deleted automatically by
+`test_every_declared_divergence_still_occurs` once it stops matching.
+
+The upstream ask is
+[adcontextprotocol/adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929):
+govern `format_kind` with a versioned registry, the way its siblings
+`format_shape` and `asset_group_id` already are. If it lands, the override is
+deleted and the generated models go back to agreeing with their schema.
+
 ## Also in this batch (not breaking)
 
 * `adcp.types.domains.<domain>[.<schema>]` and `adcp.types.error_details`
   (#1367) give every generated class a public path, and the public API
   snapshot records what each name resolves to.
+
+  The generator writes there directly now, so the private
+  `adcp.types.generated_poc` tree is gone. Almost every module stem moved
+  unchanged, which makes the migration a prefix rename:
+
+  ```python
+  -from adcp.types.generated_poc.media_buy.package_request import PackageRequest
+  +from adcp.types.domains.media_buy.package_request import PackageRequest
+  ```
+
+  `adcp migrate v3-to-v4` rewrites those lines. The old path also still
+  resolves through the whole 9.x line, emitting a `DeprecationWarning` that
+  names the new one — #1360 measured 110 such imports in a single production
+  seller, and 9.0 does not break all of them at once. **It is removed in
+  v10.** What the old path returns is the *same module object*, so
+  `adcp.types.generated_poc.core.format_id.FormatReferenceStructuredObject is
+  adcp.types.domains.core.format_id.FormatReferenceStructuredObject` — an
+  `isinstance` check cannot start failing because a class was reached by its
+  old name. Prefer the flat `adcp.types` surface where the name you need is
+  bound there, as `docs/type-surface.md` describes.
+
+  **One stem split in two, and it is the one exception to the prefix rename.**
+  `brand.json` shares its basename with the `brand/*.json` task schemas, so the
+  old `generated_poc.brand` was that discovery schema — `Brand`,
+  `BrandDiscovery*`, `LocalizedName` and 137 more — while the new
+  `domains.brand` is the generated domain aggregator over
+  `domains/brand/<schema>.py`. The discovery schema's classes are at
+  `adcp.types.domains.brand_discovery`:
+
+  ```python
+  -from adcp.types.generated_poc.brand import Brand, LocalizedName
+  +from adcp.types.domains.brand_discovery import Brand, LocalizedName
+  ```
+
+  The deprecated name keeps serving both halves for the 9.x line, so an
+  unmigrated `from adcp.types.generated_poc.brand import Brand` still works and
+  still returns the canonical class. It is the one deprecated name that is a
+  compatibility module rather than the canonical module itself, so `is` against
+  `adcp.types.domains.brand` is False for it where every other deprecated name
+  compares True. Class identity is unaffected, which is what `isinstance`
+  reads.
 * `scripts/generate_types.py --check` runs in CI, grades every post-generation
   fix against `scripts/post_generation_manifest.json`, and the generator's
   input order is total, so a regeneration is byte-identical on every
   filesystem (#1374).
-* `canonical_creative.pyi` is derived from the runtime models (#1366): every
-  field the canonical models carry is declared, and the synthesized
-  constructors demand exactly the fields the runtime demands. A program that
-  type-checked against the old stub while constructing `CreateMediaBuyRequest`
-  without `brand`, `start_time`, `end_time` or `idempotency_key` now fails
-  mypy, as it always failed at runtime. Enum-typed parameters keep accepting
-  the wire string.
+* `canonical_creative.pyi` is gone (#1366). Every canonical model is now a real
+  subclass of the generated wire model it refines, so there is nothing left to
+  declare by hand: mypy reads `canonical_creative.py` and sees the actual
+  inherited fields. The stub is not regenerated — it was deleted, because the
+  thing it was transcribing is ordinary source. A program that type-checked
+  against the old stub while constructing `CreateMediaBuyRequest` without
+  `brand`, `start_time`, `end_time` or `idempotency_key` now fails mypy, as it
+  always failed at runtime.
+
+  One static-typing consequence comes with that. The runtime still coerces the
+  wire string for an enum-typed parameter — `PackageRequest(product_id="p1",
+  pricing_option_id="po1", pacing="even")` returns `Pacing.even` — but mypy and
+  pyright now read the generated `Pacing | None` and reject the `str`. An
+  adopter constructing a canonical model directly passes the enum member
+  (`pacing=Pacing.even`) or goes through `model_validate`, which takes the wire
+  document unchanged. This is not a regression against the hand-written stub:
+  that stub did not declare `pacing` at all, so the same call was refused there
+  too, as an unexpected keyword rather than a wrong type.
+
+  The legacy-identity fields the canonical models remove — `format_id`,
+  `format_ids`, `format_ids_pending`, `format_ids_to_provide` — are declared in
+  a `TYPE_CHECKING` block with `init=False`, so a type checker refuses the
+  keyword the runtime refuses instead of offering a constructor argument that
+  raises `ValidationError`. Read them and you get `None`.
 * A format reference's `agent_url` is carried as the wire string, validated
   as a URL (#1384). `ref.agent_url` is a `str`, not an `AnyUrl`, so
   `migrated_…` option IDs derived from a model match those derived from the

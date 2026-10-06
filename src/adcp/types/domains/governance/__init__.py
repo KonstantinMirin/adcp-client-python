@@ -9,26 +9,23 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.governance.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.governance.accepted_governance_agents import (
+from adcp.types.domains.governance.accepted_governance_agents import (
     AcceptedGovernanceAgents,
     AnyOf,
     AnyOf1,
     AnyOf2,
     VerificationMode,
 )
-from adcp.types.generated_poc.governance.attribute_definition import (
-    AttributeDefinition,
-    RegulatoryBasi,
-)
-from adcp.types.generated_poc.governance.audience_constraints import AudienceConstraints
-from adcp.types.generated_poc.governance.check_governance_request import (
+from adcp.types.domains.governance.attribute_definition import AttributeDefinition, RegulatoryBasi
+from adcp.types.domains.governance.audience_constraints import AudienceConstraints
+from adcp.types.domains.governance.check_governance_request import (
     AudienceDistribution,
     AudienceDistribution1,
     Baseline,
@@ -48,14 +45,14 @@ from adcp.types.generated_poc.governance.check_governance_request import (
     Subject8,
     Subject9,
 )
-from adcp.types.generated_poc.governance.check_governance_response import (
+from adcp.types.domains.governance.check_governance_response import (
     ActionBinding,
     CheckGovernanceResponse,
     Condition,
     RuntimeAttestationEvaluation,
 )
-from adcp.types.generated_poc.governance.get_plan_audit_logs_request import GetPlanAuditLogsRequest
-from adcp.types.generated_poc.governance.get_plan_audit_logs_response import (
+from adcp.types.domains.governance.get_plan_audit_logs_request import GetPlanAuditLogsRequest
+from adcp.types.domains.governance.get_plan_audit_logs_response import (
     ChannelAllocation,
     DeliveryReportingPeriod,
     DriftMetrics,
@@ -69,36 +66,31 @@ from adcp.types.generated_poc.governance.get_plan_audit_logs_response import (
     Thresholds,
     Type,
 )
-from adcp.types.generated_poc.governance.policy_category_definition import (
+from adcp.types.domains.governance.policy_category_definition import (
     Facet,
     PolicyCategoryDefinition,
     RegulatoryFramework,
 )
-from adcp.types.generated_poc.governance.policy_entry import (
-    Exemplar,
-    Exemplars,
-    Issuer,
-    PolicyEntry,
-)
-from adcp.types.generated_poc.governance.policy_ref import PolicyReference
-from adcp.types.generated_poc.governance.report_plan_adjustment_request import (
+from adcp.types.domains.governance.policy_entry import Exemplar, Exemplars, Issuer, PolicyEntry
+from adcp.types.domains.governance.policy_ref import PolicyReference
+from adcp.types.domains.governance.report_plan_adjustment_request import (
     Action,
     Decision,
     ReportPlanAdjustmentRequest,
 )
-from adcp.types.generated_poc.governance.report_plan_adjustment_response import (
+from adcp.types.domains.governance.report_plan_adjustment_response import (
     ReportPlanAdjustmentResponse,
 )
-from adcp.types.generated_poc.governance.report_plan_outcome_request import (
+from adcp.types.domains.governance.report_plan_outcome_request import (
     Package,
     ReportPlanOutcomeRequest,
     SellerResponse,
 )
-from adcp.types.generated_poc.governance.report_plan_outcome_response import (
+from adcp.types.domains.governance.report_plan_outcome_response import (
     OutcomeState,
     ReportPlanOutcomeResponse,
 )
-from adcp.types.generated_poc.governance.reported_outcome_error import (
+from adcp.types.domains.governance.reported_outcome_error import (
     BoundedObject,
     BoundedScalar,
     BoundedScalar1,
@@ -112,7 +104,7 @@ from adcp.types.generated_poc.governance.reported_outcome_error import (
     Recovery,
     ReportedOutcomeError,
 )
-from adcp.types.generated_poc.governance.sync_plans_request import (
+from adcp.types.domains.governance.sync_plans_request import (
     Allocations,
     Budget2,
     BudgetLimit,
@@ -124,7 +116,7 @@ from adcp.types.generated_poc.governance.sync_plans_request import (
     SyncPlansRequest,
     TotalBudgetCap,
 )
-from adcp.types.generated_poc.governance.sync_plans_response import (
+from adcp.types.domains.governance.sync_plans_response import (
     Category,
     ResolvedPolicy,
     Status51,

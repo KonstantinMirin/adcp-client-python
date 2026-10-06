@@ -38,7 +38,7 @@ def test_explicit_canonical_annotation_wins() -> None:
     }
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.image
+    assert result.declaration.format_kind == CanonicalFormatKind.image
     assert result.advisories == []
     # asset_source from canonical threads into params:
     assert result.declaration.params.get("asset_source") == "buyer_uploaded"
@@ -58,7 +58,7 @@ def test_explicit_canonical_bypasses_registry_with_no_advisory() -> None:
     }
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.html5
+    assert result.declaration.format_kind == CanonicalFormatKind.html5
     assert result.advisories == []
 
 
@@ -128,7 +128,7 @@ def test_seller_kind_does_not_inherit_registry_retina_contract() -> None:
     result = project_v1_format_to_declaration(v1)
 
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.html5
+    assert result.declaration.format_kind == CanonicalFormatKind.html5
     assert result.declaration.params == {"width": 300, "height": 250}
     assert result.advisories == []
 
@@ -166,7 +166,7 @@ def test_registry_literal_mappings_project_canonical_params(
     )
 
     assert result.declaration is not None
-    assert result.declaration.format_kind is kind
+    assert result.declaration.format_kind == kind
     assert result.declaration.params == params
     assert result.declaration.legacy_format_refs[0].id == format_id
     assert result.advisories == []
@@ -197,7 +197,7 @@ def test_retina_only_registry_mappings_preserve_pixel_ratio(
     )
 
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.image
+    assert result.declaration.format_kind == CanonicalFormatKind.image
     assert result.declaration.params == {
         "width": width,
         "height": height,
@@ -220,7 +220,7 @@ def test_retina_rendition_set_registry_mapping_preserves_slot_contract(
     )
 
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.image
+    assert result.declaration.format_kind == CanonicalFormatKind.image
     assert result.declaration.params == {
         "width": width,
         "height": height,
@@ -253,7 +253,7 @@ def test_structural_match_emits_ambiguous_advisory() -> None:
     }
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.video_vast
+    assert result.declaration.format_kind == CanonicalFormatKind.video_vast
     # Step 4: family-level match always emits AMBIGUOUS
     assert len(result.advisories) == 1
     a = result.advisories[0]
@@ -356,7 +356,7 @@ def test_step1_threads_registry_params_when_seller_annotates_kind_only() -> None
     }
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
-    assert result.declaration.format_kind is CanonicalFormatKind.video_vast
+    assert result.declaration.format_kind == CanonicalFormatKind.video_vast
     # No registry glob → no params, no advisory (step 1 stops here).
     assert result.advisories == []
 
@@ -413,8 +413,8 @@ def test_group_declarations_by_product_buckets_by_first_v1_ref() -> None:
         },
     )
     assert set(grouped) == {"product_alpha", "product_beta"}
-    assert {d.format_kind.value for d in grouped["product_alpha"]} == {"image", "html5"}
-    assert {d.format_kind.value for d in grouped["product_beta"]} == {"display_tag"}
+    assert {d.format_kind for d in grouped["product_alpha"]} == {"image", "html5"}
+    assert {d.format_kind for d in grouped["product_beta"]} == {"display_tag"}
 
 
 def test_group_declarations_by_product_omits_unmapped_declarations() -> None:
@@ -464,7 +464,7 @@ def test_group_declarations_by_product_preserves_order_within_a_product() -> Non
         mapping={"product_alpha": ["fmt_second", "fmt_first"]},
     )
     # Declaration order from the projection wins, not mapping order.
-    assert [d.format_kind.value for d in grouped["product_alpha"]] == ["image", "html5"]
+    assert [d.format_kind for d in grouped["product_alpha"]] == ["image", "html5"]
 
 
 def test_full_v1_reference_catalog_projects_via_seller_canonical() -> None:

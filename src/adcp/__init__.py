@@ -935,7 +935,7 @@ def get_adcp_spec_version() -> str:
 
     Pinned at build time from the ``ADCP_VERSION`` file packaged with
     the SDK. The version determines which AdCP schemas
-    (``adcp.types.generated_poc``) ship with this release.
+    (``adcp.types.domains``) ship with this release.
 
     Use this when you need to surface spec version to clients (agent
     cards, capability responses, debug endpoints) or validate
