@@ -57,6 +57,9 @@ def _capabilities(
             "restatement_window": restatement_window,
             "restatement_cadence": restatement_cadence,
             "official_close_lag": official_close_lag,
+            # These tests exercise restatement policy with already-ready data.
+            "expected_availability_lag": "PT0S",
+            "worst_case_availability_lag": "PT0S",
         }
     )
     payload = base.model_dump(mode="json")

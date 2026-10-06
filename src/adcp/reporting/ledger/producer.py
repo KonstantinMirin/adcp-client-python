@@ -37,6 +37,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, TypeAlias
+from zoneinfo import ZoneInfo
 
 from adcp.reporting._settlement import cancel_and_settle
 from adcp.reporting._source_authorization import (
@@ -77,6 +78,7 @@ from adcp.reporting.ledger.store import (
 )
 from adcp.reporting.revision_selection import select_reporting_revision
 from adcp.reporting.source import (
+    AuthoritativeOfferingV1,
     MediaBuyConstituentV1,
     ProvisionalSnapshotOfferingV1,
     ReportingConstituent,
@@ -642,6 +644,8 @@ class ReportingProducer:
             )
             if obligation is None:
                 continue
+            if _utc(now) < self._source_available_at(obligation):
+                continue
             try:
                 policy = self._settling_policy(configuration, obligation)
                 if policy is None:
@@ -685,6 +689,10 @@ class ReportingProducer:
             )
             if obligation is None or obligation.generation_key != configuration.generation_key:
                 raise LedgerConflictError("HISTORY_UNAVAILABLE", "producer history is unavailable")
+            if _utc(now) < self._source_available_at(obligation):
+                # Waiting for the declared source window is not completion.
+                # Leave the durable work item available to a later turn.
+                continue
             policy = self._settling_policy(configuration, obligation)
             finished = policy is None
             try:
@@ -712,6 +720,37 @@ class ReportingProducer:
                 await progress.finish_producer_acquisition(
                     configuration, reporting_obligation_id=identifier
                 )
+
+    def _source_available_at(
+        self, obligation: ReportingObligationRecord, *, worst_case: bool = False
+    ) -> datetime:
+        end = _utc(obligation.period.end)
+        offering_id = self._offerings.offering_for(obligation.required_finality)
+        if offering_id is None:
+            # The acquisition path reports the existing missing-offering error.
+            return end
+        offering = self._source.capabilities.offering(offering_id)
+        lag = (
+            offering.worst_case_availability_lag
+            if worst_case
+            else offering.expected_availability_lag
+        )
+        ready_at = end + timedelta(milliseconds=iso_duration_milliseconds_v1(lag))
+        if isinstance(offering, AuthoritativeOfferingV1):
+            zone = ZoneInfo(offering.source_timezone or obligation.period.source_timezone)
+            local_day = end.astimezone(zone).date() + timedelta(days=offering.days_after_period_end)
+            hour, minute = (int(part) for part in offering.source_local_ready_time.split(":"))
+            local_ready = datetime.combine(local_day, datetime.min.time()).replace(
+                hour=hour, minute=minute, tzinfo=zone
+            )
+            # Pick the later instant across a clock fold or gap. Ambiguous
+            # local readiness must not make the scheduler read the source early.
+            ready_at = max(
+                ready_at,
+                _utc(local_ready.replace(fold=0)),
+                _utc(local_ready.replace(fold=1)),
+            )
+        return ready_at
 
     def _settling_policy(
         self,
@@ -894,7 +933,11 @@ class ReportingProducer:
         turn = turn or WorkerTurn()
         now = now or self._clock()
         if not manual_replay and await self._retry_not_before(obligation, turn, now=now):
-            self._note_escalation(obligation, turn, now=now)
+            keys = turn._retry_keys_by_obligation[obligation.reporting_obligation_id]
+            retryable = not any(
+                turn._retry_entries[key].blocked for key in keys if key in turn._retry_entries
+            )
+            self._note_escalation(obligation, turn, now=now, availability_retry=retryable)
             return None
         revisions = await self._store.list_revisions(
             account_id=obligation.account_id,
@@ -1006,7 +1049,7 @@ class ReportingProducer:
             await cancel_and_settle(execution)
             turn.slices_failed.append(obligation.reporting_obligation_id)
             await self._schedule_retry(obligation, turn, now=now, replayed=manual_replay)
-            self._note_escalation(obligation, turn, now=now)
+            self._note_escalation(obligation, turn, now=now, availability_retry=True)
             return None
 
         if isinstance(result, _InlineStorageFailure):
@@ -1035,7 +1078,9 @@ class ReportingProducer:
                 blocked=error.retry == "terminal",
                 replayed=manual_replay,
             )
-            self._note_escalation(obligation, turn, now=now)
+            self._note_escalation(
+                obligation, turn, now=now, availability_retry=error.retry == "retryable"
+            )
             return None
 
         manifest = self._verified_manifest(result)
@@ -1363,7 +1408,12 @@ class ReportingProducer:
         return self._store
 
     def _note_escalation(
-        self, obligation: ReportingObligationRecord, turn: WorkerTurn, *, now: datetime
+        self,
+        obligation: ReportingObligationRecord,
+        turn: WorkerTurn,
+        *,
+        now: datetime,
+        availability_retry: bool = False,
     ) -> None:
         """Record that this obligation has run out of automated recovery.
 
@@ -1372,6 +1422,10 @@ class ReportingProducer:
         that the boundary has passed so a supervisor can alert instead of
         letting a dead feed idle inside a retry loop forever.
         """
+        if availability_retry and _utc(now) < self._source_available_at(
+            obligation, worst_case=True
+        ):
+            return
         if _utc(now) >= _utc(obligation.automated_recovery_deadline_at):
             turn.escalated.append(obligation.reporting_obligation_id)
 

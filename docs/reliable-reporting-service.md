@@ -209,6 +209,16 @@ registrations can still start for retained reads only. Older custom stores witho
 the enumeration operation can keep explicit `configure()` startup. Enumeration
 is for service recovery and is never exposed as a buyer task.
 
+Scheduled source reads wait until the selected offering's
+`expected_availability_lag` has elapsed after the period end. Authoritative
+offerings also wait for `days_after_period_end` and `source_local_ready_time` in
+the offering's `source_timezone`, falling back to the stored period's timezone
+when it is omitted. Obligations still close at the period boundary;
+waiting does not change `expected_at` or the advertised recovery deadline.
+Retryable source failures do not escalate before the worst-case availability
+window ends. Terminal failures still follow the existing recovery deadline.
+Direct acquisition and manual replay keep their explicit-call behavior.
+
 Pass `ReportingProductionOptions` to compose the managed materializer, status
 projection, exact reads, consumer/receipt handlers, and optional signed
 notification workers. Adopters supply domain declarations and their actual
