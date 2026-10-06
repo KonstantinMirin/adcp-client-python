@@ -846,11 +846,21 @@ UpdateMediaBuySuccessResponse: TypeAlias = UpdateMediaBuyResponse1
 UpdateMediaBuyErrorResponse: TypeAlias = UpdateMediaBuyResponse2
 """Error response - media buy update failed, no changes applied."""
 
+UpdateMediaBuySubmittedResponse: TypeAlias = UpdateMediaBuyResponse3
+"""Submitted (async) envelope - media buy update accepted for async processing."""
+
+# One Legacy name per arm of this union, not two of the three (#1399). The
+# generated arm is what a seller holds after reading a response off the wire;
+# the bare names above are the canonical SUBCLASSES, so without these the only
+# public spelling for the arm itself was an ``adcp.types.domains`` path.
+LegacyUpdateMediaBuySuccessResponse: TypeAlias = UpdateMediaBuyResponse1
+"""Exact legacy-generated update success shape for private-import migration."""
+
 LegacyUpdateMediaBuyErrorResponse: TypeAlias = UpdateMediaBuyResponse2
 """Exact legacy-generated update error shape for private-import migration."""
 
-UpdateMediaBuySubmittedResponse: TypeAlias = UpdateMediaBuyResponse3
-"""Submitted (async) envelope - media buy update accepted for async processing."""
+LegacyUpdateMediaBuySubmittedResponse: TypeAlias = UpdateMediaBuyResponse3
+"""Exact legacy-generated update submitted shape for private-import migration."""
 
 # Get Account Financials Response Variants
 GetAccountFinancialsSuccessResponse: TypeAlias = GetAccountFinancialsResponse1
@@ -2244,9 +2254,6 @@ from adcp.types.domains.media_buy.get_media_buys_response import (
 from adcp.types.domains.media_buy.sync_event_sources_response import (
     Setup as SyncEventSourcesSetup,
 )
-from adcp.types.domains.media_buy.update_media_buy_response import (
-    UpdateMediaBuyResponse1 as LegacyUpdateMediaBuySuccessResponse,
-)
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Account as CapabilitiesAccount,
 )
@@ -2599,6 +2606,7 @@ __all__ = [
     "UpdateMediaBuySuccessResponse",
     "UpdateMediaBuyErrorResponse",
     "LegacyUpdateMediaBuyErrorResponse",
+    "LegacyUpdateMediaBuySubmittedResponse",
     "LegacyUpdateMediaBuySuccessResponse",
     "UpdateMediaBuyResponse3",
     "UpdateMediaBuySubmittedResponse",

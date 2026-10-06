@@ -6,11 +6,6 @@ Application code should import canonical models from :mod:`adcp` or
 and AdCP 3.0/3.1 wire adapters.
 """
 
-from typing import Annotated, Any
-
-from pydantic import AnyUrl, ConfigDict, Field, StrictFloat, StrictInt, TypeAdapter, field_validator
-
-from adcp._deferred_adapters import deferred_adapter
 from adcp.types._legacy_assets import (
     coerce_legacy_asset,
     coerce_legacy_assets,
@@ -50,6 +45,9 @@ from adcp.types.domains.creative.preview_creative_response import (
 )
 from adcp.types.domains.creative.preview_creative_response import (
     PreviewCreativeResponse3 as LegacyPreviewCreativeResponse3,
+)
+from adcp.types.domains.creative.preview_creative_response import (
+    PreviewCreativeResponse4 as LegacyPreviewCreativeResponse4,
 )
 from adcp.types.domains.creative.sync_creatives_request import (
     SyncCreativesRequest as LegacySyncCreativesRequest,
@@ -134,54 +132,60 @@ from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse3 as LegacyUpdateMediaBuyResponse3,
 )
 
-
-@deferred_adapter
-def _url_adapter() -> TypeAdapter[AnyUrl]:
-    return TypeAdapter(AnyUrl)
-
-
-class LegacyFormatId(FormatReferenceStructuredObject):
-    """Legacy tuple that validates a URL without rewriting its wire spelling."""
-
-    model_config = ConfigDict(extra="allow")
-
-    # The generated parent already carries ``agent_url`` as a URL-validated
-    # wire string (``WireUrl``, #1384); the override keeps this model's own
-    # validator and the plain ``str`` spelling the legacy tuple documents.
-    agent_url: str
-    id: Annotated[str, Field(pattern=r"^[a-zA-Z0-9_-]+$")]
-    width: Annotated[StrictInt | None, Field(ge=1)] = None
-    height: Annotated[StrictInt | None, Field(ge=1)] = None
-    duration_ms: Annotated[StrictInt | StrictFloat | None, Field(ge=1)] = None
-
-    @field_validator("agent_url")
-    @classmethod
-    def _validate_agent_url(cls, value: str) -> str:
-        _url_adapter().validate_python(value)
-        return value
-
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        """Preserve the original agent_url bytes in explicit legacy output."""
-
-        return super().model_dump(**kwargs)
-
-
-LegacyFormatReferenceStructuredObject = LegacyFormatId
+# The generated class itself, under the ``Legacy*`` spelling every other name
+# in this module uses. It was a SUBCLASS until #1398, written when the generated
+# ``agent_url`` was an ``AnyUrl`` that normalized the wire bytes — it carried a
+# plain ``str`` annotation, its own ``TypeAdapter(AnyUrl)`` validator, and
+# ``StrictInt`` dimensions. #1384 moved ``agent_url`` to ``WireUrl``
+# (``StrictStr`` + ``_require_absolute_url`` + ``WithJsonSchema``), which is
+# that subclass's whole purpose, and left every redeclaration a WEAKENING of
+# the parent it narrowed: ``agent_url: str`` dropped the strictness, the
+# absolute-URL validator and the ``format: uri`` schema; ``StrictInt``
+# dimensions dropped ``SchemaInt``'s JSON-schema-integer coercion, so
+# ``width: 300.0`` validated against the generated class the SDK's own model
+# fields declare and was REFUSED by the public name for it; and
+# ``duration_ms: StrictInt | StrictFloat`` widened a ``StrictFloat``. The
+# ``model_dump`` override was a bare ``super()`` call. The parent already
+# carries ``extra='allow'`` and the same ``id`` pattern, so there is nothing
+# left for a subclass to hold.
+LegacyFormatId = FormatReferenceStructuredObject
+LegacyFormatReferenceStructuredObject = FormatReferenceStructuredObject
 LegacyProductFormatDeclaration = LegacyGeneratedProductFormatDeclaration
+
+# One semantic name per ARM of every response union whose tool reaches this
+# surface. Not a curated subset of them (#1399): where the bare public name for
+# an arm is the canonical SUBCLASS, the generated arm itself has no public
+# spelling at all without one of these, and a seller reading an off-the-wire
+# response can then only name it through ``adcp.types.domains.<domain>.*`` —
+# which is the private tree this release exists to retire.
+#
+# The set used to be curated, and it had five holes at once:
+# ``LegacyUpdateMediaBuySubmittedResponse`` and all three
+# ``LegacyCreateMediaBuy*Response`` arms were absent while
+# ``LegacyUpdateMediaBuy{Success,Error}Response`` shipped, and the generator had
+# already opened a fifth by adding a fourth ``preview_creative`` arm that nobody
+# named. ``tests/test_legacy_surface_names_every_arm.py`` derives the required
+# set from the generated response unions, so a sixth fails the build instead of
+# reaching an adopter.
 LegacyBuildCreativeSuccessResponse = LegacyBuildCreativeResponse1
 LegacyBuildCreativeErrorResponse = LegacyBuildCreativeResponse2
 LegacyBuildCreativeSubmittedResponse = LegacyBuildCreativeResponse6
+LegacyCreateMediaBuySuccessResponse = LegacyCreateMediaBuyResponse1
+LegacyCreateMediaBuyErrorResponse = LegacyCreateMediaBuyResponse2
+LegacyCreateMediaBuySubmittedResponse = LegacyCreateMediaBuyResponse3
 LegacyPreviewCreativeSingleResponse = LegacyPreviewCreativeResponse1
 LegacyPreviewCreativeBatchResponse = LegacyPreviewCreativeResponse2
 LegacyPreviewCreativeVariantResponse = LegacyPreviewCreativeResponse3
+LegacyPreviewCreativeSubmittedResponse = LegacyPreviewCreativeResponse4
 
 __all__ = [
     "infer_asset_type",
     "coerce_legacy_asset",
     "coerce_legacy_assets",
-    # The class generated model fields are typed with, and the parent
-    # ``LegacyFormatId`` narrows. Exported here and deliberately not on
-    # ``adcp.types``, which carries the canonical format model instead.
+    # The class generated model fields are typed with, under its own name as
+    # well as under ``LegacyFormatId``. ``adcp.types`` reaches it through the
+    # two ``Legacy*`` spellings below and carries the canonical format model
+    # under the bare ``Format`` / ``FormatId`` names instead.
     "FormatReferenceStructuredObject",
     "LegacyBuildCreativeRequest",
     "LegacyBuildCreativeResponse",
@@ -199,6 +203,9 @@ __all__ = [
     "LegacyCreateMediaBuyResponse1",
     "LegacyCreateMediaBuyResponse2",
     "LegacyCreateMediaBuyResponse3",
+    "LegacyCreateMediaBuyErrorResponse",
+    "LegacyCreateMediaBuySubmittedResponse",
+    "LegacyCreateMediaBuySuccessResponse",
     "LegacyCreativeAsset",
     "LegacyCreativeFilters",
     "LegacyFormat",
@@ -222,8 +229,10 @@ __all__ = [
     "LegacyPreviewCreativeResponse1",
     "LegacyPreviewCreativeResponse2",
     "LegacyPreviewCreativeResponse3",
+    "LegacyPreviewCreativeResponse4",
     "LegacyPreviewCreativeBatchResponse",
     "LegacyPreviewCreativeSingleResponse",
+    "LegacyPreviewCreativeSubmittedResponse",
     "LegacyPreviewCreativeVariantResponse",
     "LegacyProduct",
     "LegacyProductFilters",

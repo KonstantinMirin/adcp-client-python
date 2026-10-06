@@ -68,7 +68,12 @@ def test_root_surface_is_canonical_and_legacy_is_explicit() -> None:
     assert not hasattr(adcp, "FormatId")
     assert not hasattr(adcp.types.aliases, "FormatId")
     assert adcp.Format is adcp.ProductFormatDeclaration
-    assert adcp.LegacyFormatId.__name__ == "LegacyFormatId"
+    # #1398: the explicit legacy name IS the generated format reference. It used
+    # to be a subclass of it, asserted here BY NAME — and the subclass had drifted
+    # into weakening three of its parent's validators, so the public name and the
+    # class the SDK's own model fields declare disagreed about the same payload.
+    assert adcp.LegacyFormatId is adcp.types.legacy.FormatReferenceStructuredObject
+    assert adcp.LegacyFormatId.__module__ == "adcp.types.domains.core.format_id"
     assert "format_kind" in adcp.Format.model_fields
     assert "format_id" not in adcp.Format.model_fields
     assert "format_ids" not in adcp.Product.model_fields
