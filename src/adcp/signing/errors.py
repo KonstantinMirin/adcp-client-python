@@ -8,8 +8,16 @@ with `WWW-Authenticate: Signature error="<code>"` (no realm).
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
+from typing import Any
 
 from adcp.signing.canonical import REQUEST_TARGET_URI_MALFORMED
+
+# The same class ``adcp.types.Recovery`` resolves to, reached through the
+# per-schema public module: the flat surface materializes the whole generated
+# graph on first attribute access, and ``import adcp.signing`` has no business
+# paying for the types an adopter has not asked for.
+from adcp.types.domains.core.error import Recovery
 
 
 class SignatureVerificationError(Exception):
@@ -111,15 +119,85 @@ REQUEST_SIGNATURE_BRAND_JSON_AMBIGUOUS = "request_signature_brand_json_ambiguous
 REQUEST_SIGNATURE_KEY_ORIGIN_MISMATCH = "request_signature_key_origin_mismatch"
 REQUEST_SIGNATURE_KEY_ORIGIN_MISSING = "request_signature_key_origin_missing"
 
-#: Request-family codes whose ``enumMetadata.recovery`` is ``transient`` in the
-#: pinned ``request-signing-error-code.json``: the fetch did not complete, so the
-#: same input can succeed later. Every other code is terminal or correctable.
+_SIGNING_ERROR_CODE_ENUM = "enums/request-signing-error-code.json"
+
+
+def _build_signing_recovery() -> dict[str, Recovery]:
+    """Read the recovery classification for every request-signing code.
+
+    ``enums/request-signing-error-code.json`` carries it in an ``enumMetadata``
+    block whose own ``$comment`` is addressed at SDKs: "SDKs MUST consume this
+    block instead of parsing enumDescriptions or inferring from code names."
+    The block ships in the same wheel as this module, so it is read rather than
+    transcribed — a hand-written copy is a second source of truth, and the one
+    thing it cannot do is disagree loudly.
+
+    A code the enum declares and the metadata leaves unclassified raises here.
+    Defaulting it would publish an invented classification under the name of a
+    normative one, which is the failure this function exists to prevent.
+    """
+    from adcp.validation.schema_loader import get_named_schema_document
+
+    document = get_named_schema_document(_SIGNING_ERROR_CODE_ENUM)
+    if document is None:
+        raise RuntimeError(
+            f"installed adcp package is inconsistent: {_SIGNING_ERROR_CODE_ENUM} is absent "
+            "from the bundled schemas, so the normative recovery classification for "
+            "request-signing errors cannot be read"
+        )
+    codes = document.get("enum")
+    metadata = document.get("enumMetadata")
+    if not isinstance(codes, list) or not isinstance(metadata, Mapping):
+        raise RuntimeError(
+            f"installed adcp package is inconsistent: {_SIGNING_ERROR_CODE_ENUM} carries no "
+            "enum/enumMetadata pair to read the recovery classification from"
+        )
+
+    table: dict[str, Recovery] = {}
+    for code in codes:
+        entry: Any = metadata.get(code)
+        value = entry.get("recovery") if isinstance(entry, Mapping) else None
+        try:
+            table[str(code)] = Recovery(value)
+        except ValueError:
+            raise RuntimeError(
+                f"installed adcp package is inconsistent: {_SIGNING_ERROR_CODE_ENUM} declares "
+                f"{code!r} with no valid enumMetadata.recovery (found {value!r})"
+            ) from None
+    return table
+
+
+#: Normative recovery classification for every code the request-signing error
+#: taxonomy defines, derived from the pinned
+#: ``enums/request-signing-error-code.json``. ``correctable`` means the signer
+#: can change the request or credential before retrying, ``transient`` means
+#: bounded automatic retry with backoff, and ``terminal`` means stop autonomous
+#: retries and surface to an operator.
+#:
+#: The webhook profile has no counterpart to read: it declares no enum document
+#: and no ``enumMetadata`` block, which is why a ``webhook_signature_*`` code is
+#: absent here. Classify one through the request-family cause it was retagged
+#: from, or read :attr:`SignatureVerificationError.transient`, which survives
+#: the retag.
+SIGNING_RECOVERY: Mapping[str, Recovery] = MappingProxyType(_build_signing_recovery())
+
+
+def recovery_for(code: str) -> Recovery:
+    """Return the normative recovery classification for one request-signing code.
+
+    Raises :class:`KeyError` for anything the request-signing taxonomy does not
+    define — including a ``webhook_signature_*`` code, which the webhook profile
+    never classified. A default would answer for a code no spec block speaks for.
+    """
+    return SIGNING_RECOVERY[code]
+
+
+#: Request-family codes the schema classifies ``transient``: the fetch did not
+#: complete, so the same input can succeed later. A view over
+#: :data:`SIGNING_RECOVERY`, never a second table — the two cannot disagree
+#: because there is only one of them.
 _TRANSIENT_CODES = frozenset(
-    {
-        REQUEST_SIGNATURE_CAPABILITIES_UNREACHABLE,
-        REQUEST_SIGNATURE_BRAND_JSON_UNREACHABLE,
-        REQUEST_SIGNATURE_JWKS_UNAVAILABLE,
-    }
+    code for code, recovery in SIGNING_RECOVERY.items() if recovery is Recovery.transient
 )
 
 # Webhook-signing error taxonomy — adcp#2423 / webhooks.mdx + security.mdx.
