@@ -680,9 +680,7 @@ def _first_generated_class_name(content: str) -> str | None:
             (
                 base.id
                 if isinstance(base, ast.Name)
-                else base.attr
-                if isinstance(base, ast.Attribute)
-                else ""
+                else base.attr if isinstance(base, ast.Attribute) else ""
             )
             for base in node.bases
         }
@@ -3864,9 +3862,7 @@ def fix_trusted_match_runtime_validators() -> None:
         print("  trusted_match/identity_match_response.py response class not found")
         return
     response_class = response_class_match.group(1)
-    source = (
-        source.rstrip()
-        + f"""
+    source = source.rstrip() + f"""
 
     @model_validator(mode='after')
     def _validate_tmpx_provider_ids(self) -> {response_class}:
@@ -3881,7 +3877,6 @@ def fix_trusted_match_runtime_validators() -> None:
             raise ValueError('tmpx_providers keys must be valid provider_id values')
         return self
 """
-    )
     identity_match_response.write_text(source.rstrip() + "\n")
     print("  trusted_match/identity_match_response.py: added runtime validators")
 
@@ -4401,7 +4396,9 @@ def fix_mcp_webhook_operation_id_optional() -> None:
 def fix_signal_listing_range_subclasses() -> None:
     """Reuse SignalListing.Range for generated subclasses that redeclare range."""
     replacements = {
-        OUTPUT_DIR / "signals" / "get_signals_response.py": [
+        OUTPUT_DIR
+        / "signals"
+        / "get_signals_response.py": [
             (
                 "from ..core.signal_listing import SignalListing\n",
                 "from ..core.signal_listing import Range, SignalListing\n",
@@ -4416,7 +4413,9 @@ def fix_signal_listing_range_subclasses() -> None:
                 "",
             ),
         ],
-        OUTPUT_DIR / "core" / "wholesale_feed_event.py": [
+        OUTPUT_DIR
+        / "core"
+        / "wholesale_feed_event.py": [
             (
                 "from .signal_listing import SignalListing\n",
                 "from .signal_listing import Range, SignalListing\n",
@@ -4670,20 +4669,18 @@ def restore_flattened_contract_field_types() -> None:
 
     source = representation_target.read_text()
     expected = "    format_kind: Any"
+    # ``str`` rather than ``CanonicalFormatKind``: the vocabulary is open at
+    # every reference (``OPEN_VOCABULARY_SCHEMAS`` in scripts/generate_types.py),
+    # and restoring the enum here would re-close it at the one site flattening
+    # happens to pass through. The flattening artifact being repaired is the
+    # ``Any``, not the openness.
     replacement = """    format_kind: Annotated[
-        CanonicalFormatKind,
+        str,
         Field(
             description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`."
         ),
     ]"""
     if expected in source:
-        if "from .canonical_format_kind import CanonicalFormatKind\n" not in source:
-            anchor = "from .creative_manifest import CreativeManifest\n"
-            if anchor not in source:
-                raise RuntimeError("creative_representation.py: missing CreativeManifest import")
-            source = source.replace(
-                anchor, "from .canonical_format_kind import CanonicalFormatKind\n" + anchor, 1
-            )
         source = source.replace(expected, replacement, 1)
     elif replacement not in source:
         raise RuntimeError("creative_representation.py: expected format_kind override not found")
@@ -4714,9 +4711,7 @@ def restore_flattened_contract_field_types() -> None:
 
     if "@model_validator(mode='before')" not in source:
         source = ensure_pydantic_import(source, "model_validator")
-        source = (
-            source.rstrip()
-            + """
+        source = source.rstrip() + """
 
     @model_validator(mode='before')
     @classmethod
@@ -4731,39 +4726,8 @@ def restore_flattened_contract_field_types() -> None:
                 )
         return data
 """
-        )
     representation_target.write_text(source)
     print("  core/creative_representation.py: restored canonical format contract")
-
-
-def preserve_open_delivery_format_kind() -> None:
-    """Keep the public delivery-creative consumer boundary forward-compatible."""
-    target = OUTPUT_DIR / "creative" / "get_creative_delivery_response.py"
-    if not target.exists():
-        print("  creative/get_creative_delivery_response.py not found (skipping open enum)")
-        return
-
-    source = target.read_text()
-    generated = """    format_kind: Annotated[
-        canonical_format_kind.CanonicalFormatKind | None,
-        Field(description='Canonical format kind delivered for this creative.'),
-    ] = None"""
-    replacement = """    format_kind: Annotated[
-        canonical_format_kind.CanonicalFormatKind | str | None,
-        Field(
-            description='Canonical format kind delivered for this creative.',
-            union_mode='left_to_right',
-        ),
-    ] = None"""
-    if generated in source:
-        target.write_text(source.replace(generated, replacement, 1))
-        print("  creative/get_creative_delivery_response.py: opened format_kind enum")
-    elif replacement in source:
-        print("  creative/get_creative_delivery_response.py: format_kind already open")
-    else:
-        raise RuntimeError(
-            "get_creative_delivery_response.py: expected format_kind field not found"
-        )
 
 
 def enforce_transformer_output_contract() -> None:
@@ -4794,9 +4758,7 @@ def enforce_transformer_output_contract() -> None:
     if "class Transformer(" not in source:
         raise RuntimeError("transformer.py: Transformer class not found")
     source = ensure_pydantic_import(source, "model_validator")
-    target.write_text(
-        source.rstrip()
-        + """
+    target.write_text(source.rstrip() + """
 
     @model_validator(mode='after')
     def _require_output_format_declaration(self) -> Transformer:
@@ -4811,8 +4773,7 @@ def enforce_transformer_output_contract() -> None:
                 'one of output_capability_ids or deprecated output_format_ids is required'
             )
         return self
-"""
-    )
+""")
     print("  core/transformer.py: enforced output declaration requirement")
 
 
@@ -5734,8 +5695,7 @@ def fix_verify_brand_claim_models() -> None:
     bulk_response = OUTPUT_DIR / "brand" / "verify_brand_claims_response.py"
 
     if request.exists() and "claim_type:" not in request.read_text():
-        request.write_text(
-            """# generated by datamodel-codegen:
+        request.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_request.json
 
 from __future__ import annotations
@@ -5767,13 +5727,11 @@ class VerifyBrandClaimRequest(AdcpVersionEnvelope):
         dict[str, Any],
         Field(description='Claim payload. Shape varies by claim_type.'),
     ]
-"""
-        )
+""")
         print("  brand/verify_brand_claim_request.py: restored claim fields")
 
     if response.exists() and "VerifyBrandClaimSuccessResponse" not in response.read_text():
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -5832,8 +5790,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored response arms")
 
     response_schema = SCHEMA_DIR / "brand" / "verify-brand-claim-response.json"
@@ -5842,8 +5799,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and response_schema.exists()
         and '"signed_response"' in response_schema.read_text()
     ):
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -5994,8 +5950,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored signed response fields")
 
     bulk_response_schema = SCHEMA_DIR / "brand" / "verify-brand-claims-response.json"
@@ -6004,8 +5959,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and bulk_response_schema.exists()
         and '"signed_response"' in bulk_response_schema.read_text()
     ):
-        bulk_response.write_text(
-            """# generated by datamodel-codegen:
+        bulk_response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claims_response.json
 
 from __future__ import annotations
@@ -6188,8 +6142,7 @@ class VerifyBrandClaimsErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimsResponse = VerifyBrandClaimsResponseBulk | VerifyBrandClaimsErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claims_response.py: restored signed response fields")
 
     if bulk_response.exists():
@@ -6707,9 +6660,7 @@ def fix_legacy_purchase_accepted_losses() -> None:
     )
     validator_marker = "    def _accepted_losses_match_schema("
     if validator_marker not in fixed and "field_validator" in fixed:
-        fixed = (
-            fixed.rstrip()
-            + """
+        fixed = fixed.rstrip() + """
 
 
     @field_validator('selected_product_ids')
@@ -6737,7 +6688,6 @@ def fix_legacy_purchase_accepted_losses() -> None:
             raise ValueError('accepted_losses must include the required compatibility losses')
         return values
 """
-        )
     if fixed != source:
         target.write_text(fixed)
         print("  media_buy/legacy_purchase_continuation_input.py: narrowed accepted_losses")
@@ -6868,9 +6818,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class MediaBuyChangeTerm(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_constraint_action" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_constraint_action(self) -> MediaBuyChangeTerm:
@@ -6890,9 +6838,7 @@ def enforce_change_term_runtime_constraints() -> None:
         if action not in allowed.get(kind, set()):
             raise ValueError('constraint kind is incompatible with action')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             term_path.write_text(source)
             print("  media_buy/change_term.py: restored constraint/action compatibility")
 
@@ -6905,9 +6851,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class CommercialTerms(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_change_term_set" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_change_term_set(self) -> CommercialTerms:
@@ -6956,9 +6900,7 @@ def enforce_change_term_runtime_constraints() -> None:
             ):
                 raise ValueError('change-term earliest effective time exceeds latest time')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             terms_path.write_text(source)
             print("  media_buy/commercial_terms.py: restored change-term set invariants")
 
@@ -7074,6 +7016,8 @@ def _write_manifest(observed: dict[str, list[str]], previous: dict[str, bool | s
         )
         return 1
     return 0
+
+
 _REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
 
 # Bases that declare no schema fields of their own. Any other base the
@@ -7351,6 +7295,8 @@ def enforce_root_required_groups() -> None:
         print(f"  {already} class(es) already carried one")
     for note in skipped:
         print(f"  skipped {note}")
+
+
 _ADCP_REQUEST_MARKER = "AdcpRequest"
 _ADCP_RESPONSE_MARKER = "AdcpResponse"
 
@@ -7503,7 +7449,6 @@ def main(argv: list[str] | None = None) -> int:
         restore_principal_result_aliases,
         disambiguate_comply_response_arm,
         restore_flattened_contract_field_types,
-        preserve_open_delivery_format_kind,
         enforce_transformer_output_contract,
         restore_constructible_response_bases,
         restore_response_variant_aliases,

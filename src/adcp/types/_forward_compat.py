@@ -73,7 +73,6 @@ from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
 from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     PublisherDomain as BundledPublisherDomain,
 )
-from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
 from adcp.types.domains.core.canonical_product import PublisherDomain
 from adcp.types.domains.core.creative_manifest import CreativeManifest
 from adcp.types.domains.core.creative_variant import CreativeVariant
@@ -134,12 +133,6 @@ from adcp.types.domains.trusted_match.offer import Offer
 from adcp.types.domains.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter,
 )
-
-_OpenCanonicalFormatKind = Annotated[
-    CanonicalFormatKind | str,
-    Field(union_mode="left_to_right"),
-]
-
 
 _ReportingOperationId = Annotated[
     str | None,
@@ -240,10 +233,15 @@ def _normalize_readback_manifest(data: Any) -> Any:
 _ReadbackCreativeManifest = _manifest_readback_clone(
     "_ReadbackCreativeManifest",
     CreativeManifest,
-    {"format_kind": _OpenCanonicalFormatKind | None},
+    # No field override: ``format_kind`` is generated as ``str`` (see
+    # OPEN_VOCABULARY_SCHEMAS in scripts/generate_types.py), so there is nothing
+    # left to widen. What this clone still carries is instance normalization —
+    # a readback node accepts a manifest INSTANCE of a sibling class, which a
+    # plain pydantic model field does not.
+    {},
     validators={
         # Preserve the generated manifest's standalone-asset normalization,
-        # without widening that input model or inheriting from it.
+        # without inheriting from the input model.
         "_coerce_standalone_assets": model_validator(mode="before")(_normalize_readback_manifest),
     },
 )
@@ -467,15 +465,15 @@ def _apply_forward_compat() -> None:
         ):
             request.model_rebuild(force=True)
 
-    # All response manifests retain unknown future kinds. Patch the generated
-    # response classes themselves so public aliases and indirect wrappers agree;
-    # public/generated input manifests and direct Creative/CreativeAsset fields
-    # stay strict. Private readback nodes cannot bypass strict input validation.
-    _patch_model_field(
-        DeliveryCreative,
-        "format_kind",
-        _OpenCanonicalFormatKind | None,
-    )
+    # Response manifests retain unknown future kinds because the field is
+    # ``str`` everywhere. These patches thread the readback NODES through the
+    # generated response classes, which is what lets a response accept a
+    # manifest instance of a sibling class. Nothing here is about strictness:
+    # no model refuses a format kind in either direction, and checking the
+    # vocabulary is the caller's through ``adcp.types.is_canonical_format_kind``
+    # (see adcp.types.canonical_creative).
+    # ``format_kind`` needs no patch: it is generated as ``str``, so a response
+    # retains an unknown kind without one.
     _patch_model_field(DeliveryCreative, "variants", GenericAlias(list, _DeliveryVariant))
     DeliveryCreative.model_rebuild(force=True)
     GetCreativeDeliveryResponse.model_rebuild(force=True)

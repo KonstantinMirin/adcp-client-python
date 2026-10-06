@@ -252,7 +252,7 @@ def test_exact_owner_and_id_wins_and_bare_id_collision_fails_closed() -> None:
         catalog=catalog,
     )
     assert exact.declaration is not None
-    assert exact.declaration.format_kind.value == "image"
+    assert exact.declaration.format_kind == "image"
 
     ambiguous = project_legacy_format_id(
         {"agent_url": "https://seller.example/formats", "id": "shared"},
@@ -278,7 +278,7 @@ def test_converter_overrides_unique_bare_id_compatibility_inference() -> None:
         },
     )
     assert result.declaration is not None
-    assert result.declaration.format_kind.value == "display_tag"
+    assert result.declaration.format_kind == "display_tag"
     assert [ref.model_dump(mode="json") for ref in result.declaration.legacy_format_refs] == [
         source
     ]

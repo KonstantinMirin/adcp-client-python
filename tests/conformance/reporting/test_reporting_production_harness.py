@@ -39,9 +39,7 @@ def test_installed_progress_preserves_json_protocol_and_real_pytest_phase_timing
         "@pytest.mark.parametrize('value', ['private-parameter-canary'])\n"
         "def test_example(value):\n    assert value\n"
     )
-    body = (
-        BOOT
-        + """
+    body = BOOT + """
 import contextlib, io, pytest
 progress.start('collection')
 with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -53,7 +51,6 @@ progress.start('complete')
 progress.close()
 print(json.dumps({'pytest_exit': int(code)}))
 """
-    )
     value = settings(tmp_path)
     result = run_step(
         [sys.executable, "-I", "-c", body],
@@ -113,9 +110,7 @@ def test_installed_phase_deadline_reports_active_case_and_kills_descendant(
     tmp_path, monkeypatch, capsys, new_session
 ):
     monkeypatch.delenv("ADCP_PG_TEST_URL", raising=False)
-    body = (
-        BOOT
-        + """
+    body = BOOT + """
 import subprocess, threading
 child_code = (
     'import signal,time;'
@@ -129,7 +124,6 @@ progress.start('call', nodeid='tests/test_stall.py::test_stall[private-parameter
 print('private-provider-canary', file=sys.stderr, flush=True)
 threading.Event().wait()
 """
-    )
     value = {**settings(tmp_path), "new_session": new_session}
     with pytest.raises(AssertionError, match="deadline_kind=phase phase=call"):
         run_step(
@@ -158,15 +152,12 @@ threading.Event().wait()
 def test_installed_aggregate_deadline_is_not_reset_by_continued_progress(tmp_path, monkeypatch):
     monkeypatch.delenv("ADCP_PG_TEST_URL", raising=False)
     value = settings(tmp_path)
-    body = (
-        BOOT
-        + """
+    body = BOOT + """
 import time
 while True:
     progress.start('call', nodeid='tests/test_busy.py::test_busy')
     time.sleep(0.02)
 """
-    )
     with pytest.raises(AssertionError, match="deadline_kind=aggregate"):
         run_step(
             [sys.executable, "-I", "-c", body],
@@ -206,9 +197,7 @@ def test_installed_cleanup_owns_escaped_descendant_after_parent_exits(
 ):
     monkeypatch.delenv("ADCP_PG_TEST_URL", raising=False)
     value = {**settings(tmp_path), "inherit_pipes": inherit_pipes}
-    body = (
-        BOOT
-        + """
+    body = BOOT + """
 import os, subprocess, time
 code = (
     'import json,os,signal,time;from pathlib import Path;'
@@ -228,7 +217,6 @@ progress.start('call', nodeid='tests/test_orphan.py::test_orphan')
 progress.close()
 os._exit(0)
 """
-    )
     # A different session must remain alive while the owned orphan is killed.
     unrelated = subprocess.Popen(
         [sys.executable, "-I", "-c", "import time;time.sleep(60)"], start_new_session=True
@@ -312,9 +300,7 @@ def test_installed_phase_deadline_captures_database_wait_and_cleans_owned_sessio
         pytest.skip("ADCP_PG_TEST_URL supplies the isolated test database")
     key = secrets.randbits(63)
     value = {**settings(tmp_path), "lock_key": key, "sessions": 4}
-    body = (
-        BOOT
-        + """
+    body = BOOT + """
 import os, psycopg, threading, time
 connections = [psycopg.connect(os.environ['ADCP_PG_TEST_URL'], autocommit=True)
                for _ in range(settings['sessions'])]
@@ -335,7 +321,6 @@ with psycopg.connect(os.environ['ADCP_PG_TEST_URL'], autocommit=True) as observe
         raise AssertionError('database wait barrier')
 threading.Event().wait()
 """
-    )
     with psycopg.connect(url, autocommit=True) as holder:
         holder.execute("SELECT pg_advisory_lock(%s)", (key,))
         with pytest.raises(AssertionError, match="deadline_kind=phase phase=call"):

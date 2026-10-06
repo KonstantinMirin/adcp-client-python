@@ -1,12 +1,22 @@
-"""Public canonical model identity and closed format-kind types (#1141/#1241)."""
+"""Public canonical model identity and the open ``format_kind`` type (#1141/#1241).
+
+``format_kind`` is a ``str`` at every reference and no model refuses a value,
+because the schema requires a consumer to retain an unknown one and a pinned
+SDK cannot tell a kind a seller invented from a kind defined after its pin.
+Checking the vocabulary is the caller's, through
+``adcp.types.is_canonical_format_kind``. See
+:mod:`adcp.types.canonical_creative`'s module docstring and adcp#7929.
+
+One consequence is visible below: a field that had to be asserted ``Any``
+because no annotation could express a widening union now has a real static
+type, since there is no widening left.
+"""
 
 from collections.abc import Sequence
-from typing import Any
 
 from typing_extensions import assert_type
 
 from adcp.types import (
-    CanonicalFormatKind,
     Creative,
     CreativeAsset,
     CreativeManifest,
@@ -30,23 +40,23 @@ asset = CreativeAsset.model_validate(
         "assets": {},
     }
 )
-assert_type(asset.format_kind, CanonicalFormatKind)
+assert_type(asset.format_kind, str)
 
 
-def listed_kind(creative: Creative) -> CanonicalFormatKind:
-    assert_type(creative.format_kind, CanonicalFormatKind)
+def listed_kind(creative: Creative) -> str:
+    assert_type(creative.format_kind, str)
     return creative.format_kind
 
 
 manifest = CreativeManifest(assets={})
-assert_type(manifest.format_kind, CanonicalFormatKind | None)
+assert_type(manifest.format_kind, str | None)
 
 delivery = DeliveryCreative(
     creative_id="creative-1",
     format_kind="future_canonical_format",
     variants=[],
 )
-assert_type(delivery.format_kind, CanonicalFormatKind | str | None)
+assert_type(delivery.format_kind, str | None)
 
 
 def check_served_manifest(response: GetCreativeDeliveryResponse) -> None:
@@ -61,11 +71,10 @@ def check_served_manifest(response: GetCreativeDeliveryResponse) -> None:
         variants: Sequence[_DeliveryCreativeVariant] = creative.variants
         for variant in variants:
             if variant.manifest is not None:
-                # The tolerant manifest widens the generated
-                # ``CanonicalFormatKind | None`` to admit an unknown future
-                # kind. A widening override is not expressible either, so this
-                # field is ``SchemaVariant`` too and reads as ``Any``. The
-                # runtime union is graded by
-                # ``test_creative_asset_regression.py``; the deleted stub was
-                # the only place the static union was ever stated.
-                assert_type(variant.manifest.format_kind, Any)
+                # This used to read ``Any``: the tolerant manifest widened the
+                # generated ``CanonicalFormatKind | None`` to admit an unknown
+                # kind, no annotation expresses a widening override, so the
+                # field had to be ``SchemaVariant``. With one open type there is
+                # no widening, the readback manifest redeclares nothing, and the
+                # inherited annotation is visible and assertable.
+                assert_type(variant.manifest.format_kind, str | None)

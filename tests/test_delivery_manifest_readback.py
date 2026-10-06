@@ -73,7 +73,7 @@ def test_delivery_response_round_trips_unknown_nested_manifest(model, json_input
     )
     creative = response.creatives[0]
     assert creative.format_kind == FUTURE_KIND
-    assert creative.variants[0].manifest.format_kind is CanonicalFormatKind.image
+    assert creative.variants[0].manifest.format_kind == CanonicalFormatKind.image
     variant = creative.variants[1]
     assert variant.manifest.format_kind == FUTURE_KIND
     assert variant.impressions == 7
@@ -91,12 +91,41 @@ def test_delivery_response_round_trips_unknown_nested_manifest(model, json_input
 @pytest.mark.parametrize("input_model", [CreativeManifest, WireCreativeManifest])
 @pytest.mark.parametrize("reuse_instance", [False, True], ids=["dump", "instance"])
 def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_instance):
+    """What a read-back manifest does when handed to an input model.
+
+    #1241 asked that delivery tolerance not weaken creative INPUT validation.
+    That question had an answer while the vocabulary was a type: delivery was
+    tolerant, input was strict, and the two had to stay apart. The
+    open-vocabulary decision removes the premise — ``format_kind`` is ``str``
+    on every model and NO model refuses a value, because a pinned SDK cannot
+    tell a kind invented by a seller from a kind defined after its pin (see
+    :mod:`adcp.types.canonical_creative`). So there is no longer a strict side
+    to weaken, and what this test grades is what remains true:
+
+    * a dump round-trips into either input model and RETAINS the unknown kind;
+    * an instance is accepted or refused by ordinary pydantic class rules, not
+      by anything about the vocabulary — the canonical response nests a
+      subclass of the generated manifest, so the instance revalidates and
+      passes; the legacy response nests a ``_forward_compat`` clone that
+      inherits from nothing, so it is refused as ``model_type``.
+
+    Deciding which kinds to accept is the caller's, through
+    ``adcp.types.is_canonical_format_kind``, and
+    ``tests/test_open_format_kind_vocabulary.py`` grades that.
+    """
     response = model.model_validate(delivery_payload())
     manifest = response.creatives[0].variants[1].manifest
-    # A tolerant subclass could bypass Pydantic's default instance revalidation.
     value = manifest if reuse_instance else manifest.model_dump(mode="json")
-    with pytest.raises(ValidationError):
-        input_model.model_validate(value)
+
+    if not reuse_instance:
+        assert input_model.model_validate(value).format_kind == FUTURE_KIND
+    elif input_model is CreativeManifest or model is not GetCreativeDeliveryResponse:
+        # Not an instance of the field's class: refused structurally.
+        with pytest.raises(ValidationError) as error:
+            input_model.model_validate(value)
+        assert error.value.errors()[0]["type"] == "model_type"
+    else:
+        assert input_model.model_validate(value).format_kind == FUTURE_KIND
     # ``assert not isinstance(manifest, input_model)`` used to stand here and is now
     # false by construction: phase 2 (feat/no-clones-and-arm-names) made every
     # canonical model a real subclass of the generated wire model it refines, so the
@@ -108,12 +137,25 @@ def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
 @pytest.mark.parametrize("input_model", [CreativeVariant, WireCreativeVariant])
 def test_delivery_variant_cannot_bypass_strict_input(model, input_model):
+    """The variant level of the same obligation, split the same way.
+
+    The variant level of the same thing. See
+    ``test_delivery_manifest_cannot_bypass_strict_input``: no model refuses the
+    kind, a dump retains it through either variant class, and an instance is
+    accepted or refused by ordinary class rules.
+    """
     response = model.model_validate(delivery_payload())
     variant = response.creatives[0].variants[1]
-    with pytest.raises(ValidationError):
-        input_model.model_validate(variant)
-    with pytest.raises(ValidationError):
-        input_model.model_validate(variant.model_dump(mode="json"))
+    dumped = variant.model_dump(mode="json")
+
+    assert input_model.model_validate(dumped).manifest.format_kind == FUTURE_KIND
+
+    if input_model is not CreativeVariant and model is GetCreativeDeliveryResponse:
+        assert input_model.model_validate(variant).manifest.format_kind == FUTURE_KIND
+    else:
+        with pytest.raises(ValidationError) as error:
+            input_model.model_validate(variant)
+        assert error.value.errors()[0]["type"] == "model_type"
     # See the note in test_delivery_manifest_cannot_bypass_strict_input: phase 2 made
     # the canonical models real subclasses, so the old ``not isinstance`` check is
     # false by construction. The two ``pytest.raises`` above carry the obligation.
@@ -169,7 +211,7 @@ def test_delivery_accepts_known_input_models(model, input_model, as_variant):
     payload["creatives"][0]["variants"][0] = variant
     response = model.model_validate(payload)
     served = response.creatives[0].variants[0]
-    assert served.manifest.format_kind is CanonicalFormatKind.image
+    assert served.manifest.format_kind == CanonicalFormatKind.image
     assert served.impressions == 3
 
 

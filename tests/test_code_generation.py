@@ -206,8 +206,12 @@ def test_post_generation_restores_codegen_contract_compatibility(tmp_path, monke
     assert "Canonical signal reference." in product_source
 
     representation_source = (core_dir / "creative_representation.py").read_text()
-    assert "from .canonical_format_kind import CanonicalFormatKind" in representation_source
-    assert "format_kind: Annotated[\n        CanonicalFormatKind," in representation_source
+    # ``str``, not the enum. The fix repairs a flattening artifact (the
+    # generator emits ``format_kind: Any``); it must not re-close the
+    # vocabulary, which is open at every reference by decision — see
+    # ``OPEN_VOCABULARY_SCHEMAS`` in ``scripts/generate_types.py``.
+    assert "from .canonical_format_kind import CanonicalFormatKind" not in representation_source
+    assert "format_kind: Annotated[\n        str," in representation_source
     assert "Canonical 3.2 path." in representation_source
     assert "'representation_selection'" in representation_source
     assert "@model_validator(mode='before')" in representation_source
@@ -1449,33 +1453,22 @@ def test_schema_derived_response_arms_preserve_nested_validation():
         )
 
 
-def test_post_generate_preserves_open_delivery_format_kind(tmp_path, monkeypatch) -> None:
-    """The public delivery alias must stay open after clean code generation."""
-    from scripts import post_generate_fixes
-
-    generated_dir = tmp_path / "domains"
-    target = generated_dir / "creative" / "get_creative_delivery_response.py"
-    target.parent.mkdir(parents=True)
-    target.write_text(
-        "from typing import Annotated\n"
-        "from pydantic import Field\n"
-        "from ..core import canonical_format_kind\n\n"
-        "class Creative:\n"
-        "    format_kind: Annotated[\n"
-        "        canonical_format_kind.CanonicalFormatKind | None,\n"
-        "        Field(description='Canonical format kind delivered for this creative.'),\n"
-        "    ] = None\n"
-    )
-    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", generated_dir)
-
-    post_generate_fixes.preserve_open_delivery_format_kind()
-    generated_source = target.read_text()
-    post_generate_fixes.preserve_open_delivery_format_kind()
-
-    assert target.read_text() == generated_source
-    assert "CanonicalFormatKind | str | None" in generated_source
-    assert "union_mode='left_to_right'" in generated_source
-    compile(generated_source, str(target), "exec")
+# ``test_post_generate_preserves_open_delivery_format_kind`` stood here. It
+# graded ``preserve_open_delivery_format_kind``, a post-generation fix that
+# hand-patched ONE generated field to ``CanonicalFormatKind | str | None`` so a
+# delivery response could retain an unknown kind. The fix is deleted: every
+# reference to ``core/canonical-format-kind.json`` now generates ``str``
+# (``OPEN_VOCABULARY_SCHEMAS`` in ``scripts/generate_types.py``), so there is
+# nothing to patch and no per-site widening to keep in step.
+#
+# Its obligation — a delivery response retains a kind this SDK does not know —
+# is graded by
+# ``tests/test_open_format_kind_vocabulary.py``'s
+# ``test_every_kind_bearing_model_types_the_kind_as_a_string``
+# and
+# ``tests/test_forward_compat_format_kind.py``'s
+# ``test_unknown_format_kind_is_retained_on_a_response``,
+# both of which read the public model rather than a string in a generated file.
 
 
 def test_post_generate_sync_creatives_response_arms_match_schema_creative_fields(

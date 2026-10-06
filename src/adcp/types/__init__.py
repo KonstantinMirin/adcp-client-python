@@ -213,6 +213,7 @@ __all__ = [
     "ListCreativesResponse",
     "MediaBuyDelivery",
     "AdcpVersionEnvelope",
+    "is_canonical_format_kind",
     "ProtocolEnvelope",
     "ProtocolResponse",
     "ProvidePerformanceFeedbackRequest",
@@ -2120,6 +2121,7 @@ if TYPE_CHECKING:
         WholesaleFeedSignal,
         WholesaleFeedWebhook,
         ZipAsset,
+        is_canonical_format_kind,
         project_geo_postal_areas,
         to_account_response,
     )

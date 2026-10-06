@@ -24,6 +24,7 @@ import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 from typing import Any
 
 from adcp.validation.schema_loader import _ensure_state, _make_ref_resolver
@@ -476,6 +477,75 @@ class Divergence:
         return f"{self.tool}{where} = {self.mutation!r}: {self.direction} ({reason})"
 
 
+# ---------------------------------------------------------------------------
+# The one schema this SDK deliberately does not reproduce.
+# ---------------------------------------------------------------------------
+
+#: ``core/canonical-format-kind.json`` declares a closed 16-member ``enum`` and,
+#: in the same file, requires a consumer to retain an unknown value and not fail
+#: the payload. A closed enum cannot do both, so every reference to it generates
+#: ``str`` and the vocabulary is governed by a validator instead — strict on a
+#: request model, absent on a read-back. See
+#: :mod:`adcp.types.canonical_creative`'s module docstring and
+#: ``OPEN_VOCABULARY_SCHEMAS`` in ``scripts/generate_types.py``.
+_OPEN_VOCABULARY_SCHEMA = "core/canonical-format-kind.json"
+
+
+@cache
+def open_vocabulary_properties() -> frozenset[str]:
+    """Property names whose declaration references the open-vocabulary schema.
+
+    Derived by walking the whole pinned bundle, not listed: a schema that
+    starts referencing the same enum under a further name is then covered
+    without an edit, which is what keeps the exemption below one entry rather
+    than a growing list of field names. The WHOLE bundle and not only the tool
+    roots, because the declaration is often a file away — ``calibrate_content``
+    reaches ``format_kind`` through ``$ref`` to
+    ``content-standards/artifact.json``. At pin 3.2.1 this finds
+    ``format_kind``, ``format_kinds`` and ``input_format_kinds``.
+    """
+    state = _ensure_state(None)
+    names: set[str] = set()
+
+    def walk(node: Any, enclosing: str | None) -> None:
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str) and ref.endswith(_OPEN_VOCABULARY_SCHEMA) and enclosing:
+                names.add(enclosing)
+            for key, value in node.items():
+                if key == "properties" and isinstance(value, dict):
+                    for prop, declaration in value.items():
+                        walk(declaration, prop)
+                else:
+                    walk(value, enclosing)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, enclosing)
+
+    for file in sorted(state.root.root.rglob("*.json")):
+        if file.name == "index.json":
+            continue
+        walk(json.loads(file.read_text()), None)
+    assert names, f"no property references {_OPEN_VOCABULARY_SCHEMA} — the schema moved"
+    return frozenset(names)
+
+
+def refused_property(schema_path: str) -> str:
+    """The property name whose keyword refused, read off a schema pointer.
+
+    ``#/properties/artifact/properties/format_kind/enum`` and
+    ``#/properties/campaign/properties/format_kinds/items/enum`` both name the
+    property two or three segments up, so the trailing keyword and ``items``
+    are dropped before reading it.
+    """
+    parts = [part for part in schema_path.split("/") if part not in ("", "#")]
+    if parts and parts[-1] == "enum":
+        parts.pop()
+    if parts and parts[-1] == "items":
+        parts.pop()
+    return parts[-1] if parts else ""
+
+
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
@@ -546,6 +616,28 @@ DECLARED: dict[str, Callable[[Divergence], bool]] = {
     # schemas stop retaining it.
     "canonical_model_refuses_legacy_creative_identity": lambda d: (
         d.direction == SCHEMA_ACCEPTS and d.error_types == frozenset({"value_error"})
+    ),
+    # ``core/canonical-format-kind.json`` is the one schema this SDK
+    # deliberately does not reproduce. It declares a closed 16-member ``enum``
+    # and, in the same file, requires a consumer to retain an unknown
+    # ``format_kind`` and not fail the payload — "the producer-side enum stays
+    # closed; the consumer-side enum stays open". The schema knows the rule is
+    # directional and then encodes it as one closed enum, which cannot carry
+    # that, so every reference generates ``str`` and no model refuses a value:
+    # a pinned SDK cannot tell a kind a seller invented from a kind defined
+    # after its pin, and refusing the second to prevent the first would make
+    # this library's version a ceiling on what the protocol permits. Checking
+    # the vocabulary is the caller's, through
+    # ``adcp.types.is_canonical_format_kind``, whose vocabulary is a parameter
+    # because only the caller knows which spec version its counterpart speaks.
+    # Every model therefore accepts a value the bundled enum refuses. The
+    # property names are derived from the bundle (``open_vocabulary_properties``)
+    # so this stays ONE entry covering ONE schema rather than a list of fields.
+    # Closing it needs the upstream fix: adcontextprotocol/adcp#7929.
+    "format_kind_is_an_open_vocabulary_by_decision": lambda d: (
+        d.direction == MODEL_ACCEPTS
+        and d.keyword == "enum"
+        and refused_property(d.schema_path) in open_vocabulary_properties()
     ),
     # The model marks a field required that the schema leaves optional.
     "model_requires_a_field_the_schema_does_not": lambda d: (

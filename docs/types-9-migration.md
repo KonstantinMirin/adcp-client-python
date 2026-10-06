@@ -12,11 +12,13 @@ pass. The pull requests are linked for the full rationale and measurements.
 | Structural pointer refs resolve to the type they select | #1371 | 47 per-position `RootModel` wrapper names under `adcp.types._generated` |
 | Generated models validate `boolean`/`integer`/`number` strictly | #1375 | Payloads that relied on `"yes"`, `"1"`, `1` coercion |
 | Root-level `anyOf`/`oneOf` required groups are enforced | #1368 | Documents that omit every required group of 42 request/response models, on generated and canonical names alike |
+| `format_kind` is a `str`, not the closed enum, and no model refuses a value | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; any model refusing a kind this SDK version does not know |
 
 Nothing is removed from `adcp` or `adcp.types`: every name importable before
-is importable after, and the ten additions (`Issue`, `AdcpVersionEnvelope`,
-seven `*Details` error models and `FormatReferenceStructuredObject` under
-`adcp.types.legacy`) come with #1367. Identity changes on the public surface
+is importable after. The additions are `Issue`, `AdcpVersionEnvelope`, seven
+`*Details` error models and `FormatReferenceStructuredObject` under
+`adcp.types.legacy` with #1367, plus `is_canonical_format_kind` with the
+`format_kind` override below. Identity changes on the public surface
 are of exactly the kinds the table names and are pinned by
 `tests/fixtures/public_api_snapshot.json`.
 
@@ -113,6 +115,101 @@ CreateMediaBuyRequest.model_validate({**unconditional_fields})
 
 Presence is what counts: an explicit `null` satisfies a group, a default the
 caller never sent does not.
+
+## 6. `format_kind` is a `str`, not an enum — a deliberate override (#7929)
+
+`core/canonical-format-kind.json` declares a **closed** 16-member `enum` and,
+in the same file, states as normative:
+
+> Consumer SDKs MUST treat this enum as **open** at parse time: an unknown
+> `format_kind` value MUST be retained as-is on the in-memory object (not
+> silently dropped or rewritten to `"custom"`) and MUST NOT cause the
+> surrounding payload to fail validation. ... The producer-side enum stays
+> closed ...; the consumer-side enum stays open for forward compatibility.
+
+The schema knows the rule is directional and then encodes it as one closed
+enum, which cannot carry that. A generated model that reproduces an incoherent
+schema faithfully does not inherit correctness from it — it propagates the
+incoherence into every consumer. So 9.0 does not reproduce it.
+
+**What changed.** Every reference to that schema generates a bare `str`:
+
+```python
+# before
+CreativeManifest.model_fields["format_kind"].annotation  # CanonicalFormatKind | None
+# after
+CreativeManifest.model_fields["format_kind"].annotation  # str | None
+```
+
+`adcp.types.CanonicalFormatKind` is unchanged and still has its sixteen
+members — it is the vocabulary, and nothing was removed from the public
+surface. What changed is that it no longer types a field, so a value read off
+a model is the string the seller sent rather than an enum member:
+
+```python
+manifest.format_kind == CanonicalFormatKind.image   # True, as before
+manifest.format_kind is CanonicalFormatKind.image   # now False
+```
+
+If you compared with `is`, compare with `==`. `CanonicalFormatKind` is a
+`StrEnum`, so `==` holds against the member and against the plain string.
+
+**No model refuses a value, in either direction.** There is one type, one
+field and one behaviour: `format_kind: str`, retained as sent, on
+`CreativeManifest` and `CreativeAsset` as much as on `Creative` and
+`DeliveryCreative`. If you were relying on a request model raising
+`ValidationError` for a kind outside the sixteen, it no longer does.
+
+That is deliberate. A seller supports some set of format kinds, and that set
+is the seller's — not this library's and not the pinned enum's. It can be
+larger than the sixteen (a kind promoted in a spec newer than your pin) or
+smaller (four of them). A pinned SDK cannot tell "a kind the seller invented"
+from "a kind defined after my pin", so refusing the second to prevent the
+first would make the SDK's version a ceiling on what the protocol permits.
+"I accept your request and then tell you I cannot process this creative" is a
+seller's answer, not a type error. The producer-side `MUST NOT mint ad-hoc
+values` is a seller's obligation, and this library gives it the vocabulary and
+the helper to meet it.
+
+**Checking the vocabulary yourself** is therefore the sanctioned way to be
+strict, and the SDK never does it for you:
+
+```python
+from adcp.types import CanonicalFormatKind, is_canonical_format_kind
+
+if not is_canonical_format_kind(creative.format_kind):
+    route_as_declared_but_unsupported(creative)
+
+# the vocabulary is a parameter, because only you know which version your
+# counterpart speaks, and your support list may be larger or smaller
+if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
+    reject_with_unsupported_format(manifest)
+```
+
+**What this replaced.** Five pieces of scaffolding existed only to reconcile
+the closed enum with the open requirement, and all five are gone: the
+`_OpenCanonicalFormatKind` alias in `adcp.types.canonical_creative`, a second
+one in `adcp.types._forward_compat`, the `preserve_open_delivery_format_kind`
+post-generation fix that hand-patched one generated field,
+`_revalidate_subclass_instances_of_strict_base`, which flipped the wire bases
+to `revalidate_instances="subclass-instances"` so a subclass instance could
+not pass as validated output, and `_StrictFormatKind`, the per-direction base
+that refused a non-canonical kind on a request. With one open type everywhere,
+none of them has anything to do.
+
+**The cost, stated.** The generated models no longer agree with the bundled
+schema for this one field, and #1375 established that they should. That is
+declared as a single named entry with its reason in
+`tests/conformance/_schema_parity.py` —
+`format_kind_is_an_open_vocabulary_by_decision` — and the parity rule itself is
+not relaxed: the entry is deleted automatically by
+`test_every_declared_divergence_still_occurs` once it stops matching.
+
+The upstream ask is
+[adcontextprotocol/adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929):
+govern `format_kind` with a versioned registry, the way its siblings
+`format_shape` and `asset_group_id` already are. If it lands, the override is
+deleted and the generated models go back to agreeing with their schema.
 
 ## Also in this batch (not breaking)
 

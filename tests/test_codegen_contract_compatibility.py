@@ -79,7 +79,11 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
     from adcp.types import CanonicalFormatKind
     from adcp.types.domains.core.creative_representation import CreativeRepresentation
 
-    assert CreativeRepresentation.model_fields["format_kind"].annotation is CanonicalFormatKind
+    # ``str``, not the enum: the vocabulary is open at every reference and
+    # governed by a validator on the request models. Asserting membership of
+    # the generated enum here keeps the vocabulary itself in the test.
+    assert CreativeRepresentation.model_fields["format_kind"].annotation is str
+    assert "image" in {kind.value for kind in CanonicalFormatKind}
     schema = CreativeRepresentation.model_json_schema()
     assert schema["properties"]["format_kind"]["description"].startswith("Canonical 3.2 path.")
     assert schema["not"] == {
@@ -97,10 +101,14 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
         "assets": {},
     }
     parsed_representation = CreativeRepresentation.model_validate(representation)
-    assert parsed_representation.format_kind is CanonicalFormatKind.image
+    assert parsed_representation.format_kind == CanonicalFormatKind.image
 
-    with pytest.raises(ValidationError):
-        CreativeRepresentation.model_validate({**representation, "format_kind": "unknown"})
+    # ``CreativeRepresentation`` carries the open vocabulary, like every other
+    # model in this SDK: an unknown kind is retained rather than refused, in
+    # either direction. Checking the vocabulary is the caller's, through
+    # ``adcp.types.is_canonical_format_kind``.
+    unknown = CreativeRepresentation.model_validate({**representation, "format_kind": "unknown"})
+    assert unknown.format_kind == "unknown"
 
     for seller_bound_field in ("format_id", "format_option_ref", "representation_selection"):
         with pytest.raises(ValidationError):
@@ -114,13 +122,22 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
         "name": "Test creative",
         "representations": [{**representation, "format_kind": "unknown"}],
     }
-    with pytest.raises(ValidationError):
-        LegacyBuildCreativeRequest.model_validate(
-            {
-                "idempotency_key": "idem-123456789012",
-                "creative_representation_set": representation_set,
-            }
-        )
+    # ``LegacyBuildCreativeRequest`` is a request model and it too retains the
+    # unknown kind rather than refusing it: no model in this SDK refuses a
+    # format kind, because a pinned library cannot tell a kind a seller
+    # invented from a kind defined after its pin. That is the one cost of the
+    # open vocabulary, and it is declared
+    # by name in ``tests/conformance/_schema_parity.py``'s
+    # ``format_kind_is_an_open_vocabulary_by_decision`` — the bundled schema
+    # still refuses this document, and the model no longer agrees. Retention is
+    # asserted at the nested position so the claim is graded rather than implied.
+    built = LegacyBuildCreativeRequest.model_validate(
+        {
+            "idempotency_key": "idem-123456789012",
+            "creative_representation_set": representation_set,
+        }
+    )
+    assert built.creative_representation_set.representations[0].format_kind == "unknown"
 
 
 def test_transformer_requires_a_canonical_or_legacy_output_declaration() -> None:

@@ -1654,6 +1654,7 @@
       "buyer": "module:adcp.types.buyer",
       "creative": "module:adcp.types.creative",
       "generated": "module:adcp.types._generated",
+      "is_canonical_format_kind": "adcp.types.canonical_creative",
       "media_buy": "module:adcp.types.media_buy",
       "project_geo_postal_areas": "adcp.types.projections",
       "protocol": "module:adcp.types.protocol",

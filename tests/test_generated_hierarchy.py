@@ -409,9 +409,9 @@ def test_envelope_composition_is_rendered_as_a_base_class() -> None:
         if composition.target not in counted:
             continue
         for cls in composing:
-            assert issubclass(cls, parent), (
-                f"{composition.schema}::{cls.__name__} does not inherit {parent.__name__}"
-            )
+            assert issubclass(
+                cls, parent
+            ), f"{composition.schema}::{cls.__name__} does not inherit {parent.__name__}"
         counted[composition.target] += 1
 
     short = {

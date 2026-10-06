@@ -162,7 +162,7 @@ def test_an_inherited_validator_that_reads_a_removed_field_still_works() -> None
         "updated_date": "2026-09-01T00:00:00Z",
     }
     accepted = canonical_creative.Creative.model_validate(row)
-    assert accepted.format_kind is CanonicalFormatKind.image
+    assert accepted.format_kind == CanonicalFormatKind.image
     assert "format_id" not in canonical_creative.Creative.model_fields
     assert accepted.format_id is None
 

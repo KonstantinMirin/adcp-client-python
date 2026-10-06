@@ -27,7 +27,6 @@
     "restore_principal_result_aliases": true,
     "disambiguate_comply_response_arm": true,
     "restore_flattened_contract_field_types": true,
-    "preserve_open_delivery_format_kind": true,
     "enforce_transformer_output_contract": true,
     "restore_constructible_response_bases": true,
     "restore_response_variant_aliases": true,

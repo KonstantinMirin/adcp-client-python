@@ -174,8 +174,8 @@ def test_non_translatable_canonicals_are_silent_with_no_ref(kind: CanonicalForma
     decl = ProductFormatDeclaration(
         format_kind=kind,
         params={},
-        format_shape="test_custom" if kind is CanonicalFormatKind.custom else None,
-        format_schema=_format_schema() if kind is CanonicalFormatKind.custom else None,
+        format_shape="test_custom" if kind == CanonicalFormatKind.custom else None,
+        format_schema=_format_schema() if kind == CanonicalFormatKind.custom else None,
     )
 
     result = project_declaration_to_v1(decl)
@@ -223,7 +223,7 @@ def test_translatable_canonical_without_v1_ref_emits_ambiguous(
     assert advisory.code == "FORMAT_DECLARATION_V1_AMBIGUOUS"
     assert advisory.source.value == "sdk"
     assert advisory.sdk_id == SDK_ID
-    assert advisory.details["format_kind"] == kind.value
+    assert advisory.details["format_kind"] == kind
     assert advisory.details["product_id"] == "prod_xyz"
     assert advisory.details["reason"] == "no_v1_format_ref"
 

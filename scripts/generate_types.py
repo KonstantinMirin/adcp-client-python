@@ -143,6 +143,70 @@ def _normalize_schema_ref_target(
     return source_kind, Path(normalized)
 
 
+#: Schemas this SDK deliberately does NOT reproduce as a closed enum.
+#:
+#: ``core/canonical-format-kind.json`` declares a 16-member ``enum`` and, in the
+#: same file, states as normative that "Consumer SDKs MUST treat this enum as
+#: **open** at parse time: an unknown ``format_kind`` value MUST be retained
+#: as-is on the in-memory object ... and MUST NOT cause the surrounding payload
+#: to fail validation." A closed enum cannot retain a value it does not know,
+#: so the two requirements are incompatible and the schema is wrong. Faithfully
+#: generating the closed enum propagates that into every consumer, so every
+#: reference to it generates a bare ``str`` instead and no model refuses a
+#: value, the way its sibling vocabularies (``format_shape``,
+#: ``asset_group_id``) already work. The producer-side half of the rule is a
+#: seller's obligation, and a pinned SDK cannot tell a kind a seller invented
+#: from a kind defined after its pin.
+#:
+#: The enum CLASS is still generated from this file, as the vocabulary:
+#: ``adcp.types.CanonicalFormatKind`` keeps its 16 members and is the default
+#: vocabulary of ``adcp.types.is_canonical_format_kind``, which is how a caller
+#: checks a value. Only the REFERENCES are opened.
+#:
+#: Upstream ask: adcontextprotocol/adcp#7929. If it lands, delete this set,
+#: delete the transform below, and the generated models go back to agreeing
+#: with their schema.
+OPEN_VOCABULARY_SCHEMAS = {Path("core/canonical-format-kind.json")}
+
+#: Keys worth keeping when a reference is opened: they document the field and
+#: carry no validation, so keeping them leaves the generated annotation's
+#: description intact.
+_OPENED_REF_KEPT_KEYS = frozenset({"description", "title", "$comment", "examples", "deprecated"})
+
+
+def open_vocabulary_refs(obj, current_schema_rel_path: Path):
+    """Replace every ``$ref`` to an open-vocabulary schema with ``type: string``.
+
+    One pass, one place: the reference target is resolved by
+    :func:`_normalize_schema_ref_target`, which is the single owner of the
+    canonical-URL / root-relative / file-relative spellings, so this cannot
+    miss a spelling that resolution understands. A ref carrying a fragment is
+    left alone — it names a node inside the schema rather than the schema's own
+    type, and no such reference exists at pin 3.2.1.
+    """
+    if isinstance(obj, dict):
+        ref = obj.get("$ref")
+        if isinstance(ref, str):
+            file_part, separator, _fragment = ref.partition("#")
+            normalized = _normalize_schema_ref_target(file_part, current_schema_rel_path)
+            if (
+                normalized is not None
+                and not separator
+                and normalized[1] in OPEN_VOCABULARY_SCHEMAS
+            ):
+                kept = {key: value for key, value in obj.items() if key in _OPENED_REF_KEPT_KEYS}
+                obj.clear()
+                obj.update({"type": "string", **kept})
+                return obj
+        for value in obj.values():
+            open_vocabulary_refs(value, current_schema_rel_path)
+    elif isinstance(obj, list):
+        for item in obj:
+            open_vocabulary_refs(item, current_schema_rel_path)
+
+    return obj
+
+
 def _underscored_schema_path(path: Path) -> Path:
     return Path(*(part.replace("-", "_") for part in path.parts))
 
@@ -965,6 +1029,10 @@ def flatten_schemas(temp_dir: Path):
         schema = inline_structural_pointer_refs(schema, rel_path)
         schema = collapse_nullable_unions(schema)
         schema = normalize_version_envelope_composition(schema, rel_path)
+        # Before the rewrite, while refs are still in the spellings
+        # ``_normalize_schema_ref_target`` resolves. See OPEN_VOCABULARY_SCHEMAS
+        # for why one enum is deliberately not reproduced.
+        schema = open_vocabulary_refs(schema, rel_path)
         schema = rewrite_refs(schema, rel_path)
         schema = stabilize_inlined_core_refs(schema, rel_path)
         schema = stabilize_nested_discriminators(schema, rel_path)

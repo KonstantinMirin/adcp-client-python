@@ -758,7 +758,7 @@ def normalize_legacy_creative_request(
                 )
             declaration = projected.declaration
             retain_routes([declaration], result.get("product_id"))
-            result["format_kind"] = declaration.format_kind.value
+            result["format_kind"] = declaration.format_kind
             if declaration.format_option_id:
                 result["format_option_ref"] = {
                     "scope": "product",
@@ -1243,7 +1243,7 @@ def canonical_format_legacy_resolver_from_catalog_snapshots(
             (
                 _normalized_publisher_domain(declaration.publisher_domain) or None,
                 declaration.format_option_id,
-                declaration.format_kind.value,
+                declaration.format_kind,
             )
         )
         if ranked is not None and ranked[1] is None:

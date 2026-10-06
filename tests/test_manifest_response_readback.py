@@ -119,7 +119,7 @@ def test_manifest_response_round_trip(case, kind, json_input):
     )
     manifest = read_manifest(response, case)
     if kind == "image":
-        assert manifest.format_kind is CanonicalFormatKind.image
+        assert manifest.format_kind == CanonicalFormatKind.image
     else:
         assert manifest.format_kind == kind
     assert manifest.model_dump()["vendor_annotation"] == {"notes": ["preserved"]}
@@ -218,11 +218,31 @@ async def test_public_completed_task_parser_keeps_manifest_readback(case):
 @pytest.mark.parametrize("input_model", [CreativeManifest, InputManifest])
 @pytest.mark.parametrize("reuse_instance", [False, True], ids=["dump", "instance"])
 def test_manifest_readback_cannot_bypass_input_validation(case, input_model, reuse_instance):
+    """What a read-back manifest does when handed to an input model.
+
+    The vocabulary half of this test is gone with the open-vocabulary decision:
+    ``format_kind`` is ``str`` on every model and none of them refuses a value,
+    because a pinned SDK cannot tell a kind a seller invented from a kind
+    defined after its pin (see :mod:`adcp.types.canonical_creative`). Choosing
+    which kinds to accept is the caller's, through
+    ``adcp.types.is_canonical_format_kind``.
+
+    What remains, and is graded here, is the STRUCTURAL half, which never
+    depended on the vocabulary: a readback node is an instance of neither
+    input model, so an instance is refused as ``model_type``, while its dump
+    round-trips and retains the unknown kind.
+    """
     model, payload = response_case(case)
     manifest = read_manifest(model.model_validate(payload), case)
     value = manifest if reuse_instance else manifest.model_dump(mode="json")
-    with pytest.raises(ValidationError):
-        input_model.model_validate(value)
+
+    if reuse_instance:
+        with pytest.raises(ValidationError) as error:
+            input_model.model_validate(value)
+        assert error.value.errors()[0]["type"] == "model_type"
+    else:
+        assert input_model.model_validate(value).format_kind == FUTURE_KIND
+
     assert not isinstance(manifest, input_model)
 
 
@@ -233,7 +253,7 @@ def test_nested_readback_accepts_known_source_models(case):
     source = InputBuildCreative if case == "build-variants" else TmpOffer
     payload[collection][0] = source.model_validate(payload[collection][0])
     response = model.model_validate(payload)
-    assert read_manifest(response, case).format_kind is CanonicalFormatKind.image
+    assert read_manifest(response, case).format_kind == CanonicalFormatKind.image
     node = getattr(response, collection)[0]
     assert type(node).__name__ not in public_types.__all__
     assert not hasattr(public_types, type(node).__name__)
@@ -284,7 +304,21 @@ def test_build_readback_preserves_empty_and_error_branch_rules():
     assert response.creatives[0].errors[0].code == "BUILD_FAILED"
 
 
-def test_direct_listed_creative_kind_stays_strict():
+def test_a_directly_listed_creative_retains_an_unknown_kind():
+    """A listed creative retains the ``format_kind`` the seller sent.
+
+    This test used to assert the opposite — that a listed creative's
+    ``format_kind`` stays inside the closed enum — because the enum was the
+    type. ``format_kind`` is now ``str`` on every model and none of them
+    refuses a value (see :mod:`adcp.types.canonical_creative`), so retaining is
+    the required behaviour and refusing would be the defect: a buyer on an
+    older SDK would fail the whole page because one row named a kind promoted
+    after their release.
+
+    There is no strict counterpart to pair this with. Deciding which kinds to
+    accept is the caller's, through ``adcp.types.is_canonical_format_kind``,
+    graded by ``tests/test_open_format_kind_vocabulary.py``.
+    """
     payload = {
         "query_summary": {"total_matching": 1, "returned": 1},
         "pagination": {"has_more": False},
@@ -299,11 +333,11 @@ def test_direct_listed_creative_kind_stays_strict():
             }
         ],
     }
-    assert ListCreativesResponse.model_validate(payload).creatives[0].format_kind is (
+    assert ListCreativesResponse.model_validate(payload).creatives[0].format_kind == (
         CanonicalFormatKind.image
     )
     payload["creatives"][0]["format_kind"] = FUTURE_KIND
-    with pytest.raises(ValidationError) as error:
-        ListCreativesResponse.model_validate(payload)
-    assert error.value.errors()[0]["loc"] == ("creatives", 0, "format_kind")
-    assert error.value.errors()[0]["type"] == "enum"
+    listed = ListCreativesResponse.model_validate(payload).creatives[0]
+    assert listed.format_kind == FUTURE_KIND
+    # Retained on the wire too, so a buyer can route it and hand it back.
+    assert listed.model_dump(mode="json")["format_kind"] == FUTURE_KIND

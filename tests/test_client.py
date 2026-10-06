@@ -282,7 +282,7 @@ def test_get_products_preserves_canonical_format_options():
     assert result.data.products is not None
     assert len(result.data.products) == 1
     declaration = result.data.products[0].format_options[0]
-    assert declaration.format_kind.value == "image"
+    assert declaration.format_kind == "image"
     assert declaration.params == {"width": 300, "height": 250}
     assert result.metadata == {"projection": {"diagnostics": []}}
 
@@ -322,7 +322,7 @@ def test_get_products_still_projects_legacy_format_ids():
     assert isinstance(result.data, GetProductsResponse)
     assert result.data.products is not None
     assert len(result.data.products) == 1
-    assert result.data.products[0].format_options[0].format_kind.value == "image"
+    assert result.data.products[0].format_options[0].format_kind == "image"
 
 
 @pytest.mark.asyncio

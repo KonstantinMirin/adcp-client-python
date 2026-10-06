@@ -46,7 +46,6 @@ from adcp.types.coercion import (
     coerce_to_model,
 )
 
-from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
 from adcp.types.domains.core.context import ContextObject
 from adcp.types.domains.core.creative_asset import CreativeAsset
 from adcp.types.domains.core.creative_assignment import CreativeAssignment
@@ -287,17 +286,11 @@ def _apply_coercion() -> None:
     GetProductsRequest.model_rebuild(force=True)
 
     # Apply coercion to PackageRequest
-    # - format_kind: CanonicalFormatKind | str | None
     # - pacing: Pacing | str | None
     # - creative_assignments: list[CreativeAssignment] (accepts subclass instances)
     # - creatives: Sequence[CreativeAsset] (accepts subclass instances)
     # - context: ContextObject | dict | None
     # - ext: ExtensionObject | dict | None
-    _patch_field_annotation(
-        PackageRequest,
-        "format_kind",
-        Annotated[CanonicalFormatKind | None, BeforeValidator(coerce_to_enum(CanonicalFormatKind))],
-    )
     _patch_field_annotation(
         PackageRequest,
         "pacing",

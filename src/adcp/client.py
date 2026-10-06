@@ -2091,7 +2091,7 @@ class ADCPClient:
                     legacy_format_converter=self.legacy_format_converter,
                 )
                 if projection.declaration is not None:
-                    item["format_kind"] = projection.declaration.format_kind.value
+                    item["format_kind"] = projection.declaration.format_kind
                 elif projection.diagnostic is not None:
                     diagnostic = projection.diagnostic.model_dump()
                     diagnostics.append(diagnostic)

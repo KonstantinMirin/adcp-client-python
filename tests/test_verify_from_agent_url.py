@@ -194,9 +194,7 @@ def test_request_signature_code_covers_every_resolver_code() -> None:
 
     from adcp.signing.agent_resolver import AgentResolverErrorCode
 
-    assert set(get_args(AgentResolverErrorCode)) == {
-        row[0] for row in _RESOLVER_CODE_TO_SPEC_CODE
-    }
+    assert set(get_args(AgentResolverErrorCode)) == {row[0] for row in _RESOLVER_CODE_TO_SPEC_CODE}
 
 
 #: Every brand.json hop outcome and the code the table assigns it. ``jwks_origin_mismatch``

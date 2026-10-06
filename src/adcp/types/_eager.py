@@ -907,6 +907,7 @@ from adcp.types.legacy import (
     LegacyUpdateMediaBuyRequest,
 )
 
+is_canonical_format_kind = _canonical_creative.is_canonical_format_kind
 CreateMediaBuyResponse = _canonical_creative.CreateMediaBuyResponse
 CreateMediaBuyResponse1 = _canonical_creative.CreateMediaBuyResponse1
 CreateMediaBuySuccessResponse = _canonical_creative.CreateMediaBuyResponse1
@@ -2073,6 +2074,7 @@ __all__ = [
     "is_sync_creatives_success",
     "is_update_media_buy_error",
     "is_update_media_buy_success",
+    "is_canonical_format_kind",
     "is_validate_content_delivery_success",
     "project_geo_postal_areas",
     "to_account_response",

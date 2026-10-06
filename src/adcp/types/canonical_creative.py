@@ -5,6 +5,61 @@ AdCP 3.x transition and therefore contain legacy named-format identity.  They
 are exposed from :mod:`adcp.types.legacy`.  This module provides the primary
 application-facing models: legacy identity is absent from their declared
 fields, JSON Schema, and serialized output at every nesting depth.
+
+``format_kind`` is a ``str``, not the generated enum — a deliberate override
+-------------------------------------------------------------------------
+
+``core/canonical-format-kind.json`` declares a **closed** 16-member ``enum``
+and, in the same file, states as normative:
+
+    Consumer SDKs MUST treat this enum as **open** at parse time: an unknown
+    ``format_kind`` value MUST be retained as-is on the in-memory object (not
+    silently dropped or rewritten to ``"custom"``) and MUST NOT cause the
+    surrounding payload to fail validation. ... The producer-side enum stays
+    closed (sellers MUST NOT mint ad-hoc ``format_kind`` values ...); the
+    consumer-side enum stays open for forward compatibility.
+
+**The schema already knows the rule is directional, and then encodes it as a
+single closed enum, which cannot carry that.** So this override implements what
+the schema says rather than contradicting it: every reference to that schema
+generates a bare ``str`` — ``OPEN_VOCABULARY_SCHEMAS`` in
+``scripts/generate_types.py``, one schema-level transform rather than a
+widening at each call site.
+
+**The SDK refuses nothing, in either direction, and that is deliberate.** A
+seller supports some set of format kinds; that set is the seller's, not this
+library's and not the pinned enum's. It can be larger — the seller handles a
+kind promoted in a spec newer than the pin — or smaller, four of the sixteen.
+A pinned SDK cannot tell "a kind the seller invented" from "a kind defined
+after my pin": both are simply "not in my 16". Refusing the second to prevent
+the first would make this SDK's version a ceiling on what the protocol permits,
+which is the same defect as the closed enum with the enforcement moved into a
+validator. The producer-side MUST is a seller's obligation; this library gives
+it the vocabulary and :func:`is_canonical_format_kind` to meet it, and leaves
+the decision where the knowledge is.
+
+So the vocabulary is not discarded, it is **relocated**:
+:class:`CanonicalFormatKind` stays a first-class export, used for comparison
+(``creative.format_kind == CanonicalFormatKind.image`` — it is a ``StrEnum``,
+so that holds against a plain string field and no adopter writes a literal) and
+for membership through :func:`is_canonical_format_kind`, whose vocabulary is a
+parameter. What changed is only that the field no longer refuses the
+seventeenth value a newer server sends. That is the registry pattern the
+sibling fields already use: ``format_shape`` and ``asset_group_id`` are plain
+strings governed by versioned registries whose own governance says
+non-canonical values stay valid and validators may warn.
+
+The one cost is that the generated models no longer agree with the bundled
+schema for this one field. That is declared, by name and with this reason, as a
+single entry in ``tests/conformance/_schema_parity.py``'s ``DECLARED`` —
+``format_kind_is_an_open_vocabulary_by_decision``. The parity rule itself is
+not relaxed.
+
+Upstream ask: `adcontextprotocol/adcp#7929
+<https://github.com/adcontextprotocol/adcp/issues/7929>`_. If it lands — the
+schema stating the directional rule in a form that can carry it, the way
+``format_shape`` is governed — delete the transform, delete this section, and
+the generated models go back to agreeing with their schema.
 """
 
 from __future__ import annotations
@@ -12,7 +67,7 @@ from __future__ import annotations
 import copy
 import json
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
 
 from pydantic import (
@@ -116,10 +171,45 @@ from adcp.types.media_buy_status_helpers import (
 )
 from adcp.types.variants import SchemaVariant
 
-_OpenCanonicalFormatKind = Annotated[
-    CanonicalFormatKind | str,
-    Field(union_mode="left_to_right"),
-]
+
+def is_canonical_format_kind(
+    value: object,
+    vocabulary: Iterable[str] = CanonicalFormatKind,
+) -> bool:
+    """Is *value* one of *vocabulary*'s format kinds?
+
+    The vocabulary defaults to :class:`CanonicalFormatKind`, the sixteen kinds
+    the pinned AdCP bundle declares — but it is a PARAMETER, because the set
+    that matters is the seller's, not this SDK's. A seller may support a kind
+    promoted in a spec newer than the pin, or only four of the sixteen, and
+    neither is expressible by anything this library knows.
+
+    **The SDK never calls this for you.** ``format_kind`` is a ``str``
+    everywhere, on the way out and on the way back, and no model refuses a
+    value. That is deliberate: a pinned library cannot tell "a kind the seller
+    invented" from "a kind defined after my pin", so refusing the second to
+    prevent the first would make this SDK's version a ceiling on what the
+    protocol permits. "I accept the request and then tell you I cannot process
+    this creative" is a seller's answer, not a type error.
+
+    This function is the sanctioned way to be strict, where the caller knows
+    which spec version its counterpart speaks::
+
+        from adcp.types import is_canonical_format_kind
+
+        if not is_canonical_format_kind(creative.format_kind):
+            route_as_declared_but_unsupported(creative)
+
+        if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
+            reject_with_unsupported_format(manifest)
+
+    Comparison needs no helper: ``CanonicalFormatKind`` is a ``StrEnum``, so
+    ``creative.format_kind == CanonicalFormatKind.image`` holds against a plain
+    string field and an adopter never writes a literal.
+    """
+
+    return isinstance(value, str) and any(value == kind for kind in vocabulary)
+
 
 _LEGACY_IDENTITY_KEY = re.compile(r"(^|_)(?:format_ids?|v1_format_ref)($|_)")
 _CREDENTIAL_SHAPED_KEY_SUFFIXES = (
@@ -522,7 +612,7 @@ class Format(CanonicalBoundaryModel):
     experimental: bool | None = None
     format_shape: str | None = None
     format_schema: PlatformExtensionReference | None = None
-    format_kind: CanonicalFormatKind
+    format_kind: str
     params: dict[str, Any]
 
     _legacy_format_refs: list[LegacyFormatId] = PrivateAttr(default_factory=list)
@@ -580,7 +670,7 @@ class Format(CanonicalBoundaryModel):
 
     @model_validator(mode="after")
     def _validate_custom_shape(self) -> Format:
-        if self.format_kind is CanonicalFormatKind.custom:
+        if self.format_kind == CanonicalFormatKind.custom.value:
             if not self.format_shape:
                 raise ValueError("custom formats require format_shape")
             if self.format_schema is None:
@@ -616,21 +706,33 @@ class Product(_LegacyProduct, CanonicalBoundaryModel):
 
 
 class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
-    """Canonical creative asset; the format kind is required, not optional."""
+    """Canonical creative asset; the format kind is required, not optional.
+
+    The kind is narrowed to required and nothing else: it stays ``str`` and the
+    model refuses no value. A buyer SENDS a creative asset, and the
+    producer-side "sellers MUST NOT mint ad-hoc kinds" rule is the sender's
+    obligation, not something a pinned library can tell from a kind defined
+    after its pin — :func:`is_canonical_format_kind` is how a caller meets it.
+    """
 
     if TYPE_CHECKING:  # the removed field, hidden from the constructor too
         format_id: _RemovedFormatId = Field(default=None, init=False)
 
-    format_kind: CanonicalFormatKind
+    format_kind: str
 
 
 class Creative(_CanonicalListedCreative, CanonicalBoundaryModel):
-    """Canonical listed creative; the format kind is required, not optional."""
+    """Canonical listed creative; the format kind is required, not optional.
+
+    A listed creative is a row a seller RETURNS, so the kind is required but
+    never confined: a kind a newer seller emits is retained as-is, which is
+    what ``core/canonical-format-kind.json`` requires of a consumer.
+    """
 
     if TYPE_CHECKING:  # the removed field, hidden from the constructor too
         format_id: _RemovedFormatId = Field(default=None, init=False)
 
-    format_kind: CanonicalFormatKind
+    format_kind: str
 
 
 class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
@@ -672,11 +774,37 @@ class CreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
 
 
 class _DeliveryCreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
-    """Tolerant served output, deliberately not a subtype of the strict input."""
+    """The buyer's manifest, read back off a delivery row.
 
-    format_kind: SchemaVariant[_OpenCanonicalFormatKind | None] = _inherit(
-        _CanonicalCreativeManifestWire, "format_kind"
-    )
+    It redeclares nothing about the format-kind vocabulary. ``format_kind`` is
+    ``str`` here and on :class:`CreativeManifest`, neither refuses a value, and
+    the ``_StrictFormatKind`` mixin that used to be the only difference between
+    the two is deleted. **This class is not a tolerant variant of anything.**
+
+    **The one reason it survives** is ``_normalize_readback`` below, and
+    specifically its first line: the canonical models are real SUBCLASSES of
+    the generated wire models they refine, so a delivery row carrying a
+    manifest INSTANCE of the generated wire class is a PARENT instance, which
+    pydantic refuses for a field typed as the subclass. Dumping it first is
+    what lets a caller compose a delivery response out of the models it already
+    holds.
+
+    Measured, not reasoned: deleting both delivery classes and typing
+    ``DeliveryCreative.variants`` as ``list[CreativeVariant]`` turns the
+    readback suites 6 red, of which exactly ONE is lost behavior —
+
+        Input should be a valid dictionary or instance of CreativeManifest
+        [type=model_type, input_type=CreativeManifest]
+
+    on ``test_delivery_accepts_known_input_models[manifest-CreativeManifest1-canonical]``
+    and its ``variant`` twin. The other four grade the two-class split itself
+    (``test_delivery_manifest_cannot_bypass_strict_input[instance-...]``, its
+    variant twin, ``test_delivery_only_types_are_not_top_level_exports`` and
+    ``test_unknown_nested_manifest_kind_round_trips_in_delivery_readback``) and
+    would be restated, not lost. Keeping one type here therefore costs
+    parent-instance acceptance at the delivery boundary, which is a readback
+    concern and has nothing to do with the vocabulary.
+    """
 
     @model_validator(mode="before")
     @classmethod
@@ -689,7 +817,14 @@ class _DeliveryCreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundar
 
 
 class _DeliveryCreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
-    """A delivery row whose rendered manifest may use a future format kind."""
+    """A delivery row carrying the read-back manifest.
+
+    Survives for the same measured reason as
+    :class:`_DeliveryCreativeManifest`: ``_normalize_readback`` accepts a
+    PARENT instance — a variant of the generated wire class — which a field
+    typed as the canonical subclass refuses. Nothing here is about the
+    format-kind vocabulary.
+    """
 
     manifest: _DeliveryCreativeManifest | None = _inherit(_LegacyCreativeVariant, "manifest")
 
@@ -701,46 +836,12 @@ class _DeliveryCreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
         return data
 
 
-def _revalidate_subclass_instances_of_strict_base(tolerant: type[AdCPBaseModel]) -> None:
-    """Stop a tolerant delivery model passing as the strict wire model it refines.
-
-    These two models are deliberately NOT subtypes of the strict creative input -- they
-    accept a ``format_kind`` the pinned enum does not know -- but they subclass the
-    generated wire model to inherit its fields and validators. Pydantic's default
-    ``revalidate_instances="never"`` skips validation for an instance of ANY subclass,
-    so ``WireCreativeManifest.model_validate(delivery_manifest)`` would hand the
-    tolerant instance straight back and the future ``format_kind`` would reach creative
-    input -- the exact weakening #1241 exists to prevent.
-
-    ``"subclass-instances"`` revalidates only a subclass instance, so an exact-class
-    instance still passes through untouched and composing a model into a field keeps
-    its identity (``tests/test_composability_invariant.py``). The base is read off
-    ``__bases__`` rather than named, so it follows the declaration above.
-
-    Graded by ``tests/test_delivery_manifest_readback.py``.
-    """
-    for base in tolerant.__bases__:
-        if base is CanonicalBoundaryModel or not issubclass(base, AdCPBaseModel):
-            continue
-        if base.model_config.get("revalidate_instances") == "subclass-instances":
-            continue
-        base.model_config = ConfigDict(
-            **{**base.model_config, "revalidate_instances": "subclass-instances"}
-        )
-        base.model_rebuild(force=True)
-
-
-for _tolerant in (_DeliveryCreativeManifest, _DeliveryCreativeVariant):
-    _revalidate_subclass_instances_of_strict_base(_tolerant)
-
-
 class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
-    """Canonical served creative; variants are the tolerant delivery rows."""
+    """Canonical served creative; variants are the read-back delivery rows."""
 
     if TYPE_CHECKING:  # the removed field, hidden from the constructor too
         format_id: _RemovedFormatId = Field(default=None, init=False)
 
-    format_kind: _OpenCanonicalFormatKind | None = None
     variants: SchemaVariant[list[_DeliveryCreativeVariant]] = _inherit(
         _LegacyDeliveryCreative, "variants"
     )
@@ -948,7 +1049,7 @@ class GetMediaBuyDeliveryResponse(_LegacyGetMediaBuyDeliveryResponse, CanonicalB
 
 
 class GetCreativeDeliveryResponse(_LegacyGetCreativeDeliveryResponse, CanonicalBoundaryModel):
-    """Canonical creative delivery response; rows are tolerant delivery creatives."""
+    """Canonical creative delivery response; rows are the read-back delivery creatives."""
 
     creatives: Sequence[DeliveryCreative]
 
@@ -1025,6 +1126,7 @@ __all__ = [
     "UpdateMediaBuyResponse1",
     "UpdateMediaBuyResponse2",
     "UpdateMediaBuyResponse3",
+    "is_canonical_format_kind",
     "is_legacy_creative_identity_key",
     "sanitize_canonical_schema",
     "strip_legacy_creative_identity",
