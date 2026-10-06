@@ -363,6 +363,33 @@ def test_a_split_name_defines_nothing_and_serves_canonical_classes(
 
 
 @pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
+def test_a_split_name_warns_about_both_halves_not_the_prefix_rename(
+    deprecated: str, discovery: str, aggregator: str
+) -> None:
+    """The advice an adopter reads has to be the advice that works for them.
+
+    "import adcp.types.domains.brand instead" is the prefix rename, and for this
+    one name it sends the reader to a module that does not bind what they
+    imported — the same wrong answer #1402 was about, delivered as guidance
+    rather than as an ``ImportError``. Graded on a fresh finder, because the
+    installed one has already warned for this name.
+    """
+    finder = _AliasFinder()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert finder.find_spec(deprecated) is not None
+
+    assert len(caught) == 1, [str(entry.message) for entry in caught]
+    message = str(caught[0].message)
+    assert discovery in message, message
+    assert aggregator in message, message
+    assert "split in two" in message, message
+    assert "prefix rename" in message and "not a prefix rename" in message, message
+    assert f"v{REMOVED_IN_MAJOR}" in message, message
+
+
+@pytest.mark.parametrize(("deprecated", "discovery", "aggregator"), SPLITS, ids=SPLIT_IDS)
 def test_a_split_deprecated_package_still_resolves_its_leaf_modules(
     deprecated: str, discovery: str, aggregator: str
 ) -> None:

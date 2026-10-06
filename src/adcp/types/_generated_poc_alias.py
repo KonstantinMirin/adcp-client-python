@@ -249,11 +249,27 @@ class _AliasFinder:
             return None
         if fullname not in self._warned:
             self._warned.add(fullname)
+            # A split name's advice is not the prefix rename, because the
+            # classes this module used to hold are under the other half. Saying
+            # "import adcp.types.domains.brand instead" and nothing more sends
+            # the reader to a module that does not bind what they imported.
+            discovery = discovery_half(canonical)
+            if discovery is None:
+                advice = (
+                    f"import {canonical} instead. The module stems are "
+                    f"unchanged, so this is a prefix rename, and "
+                    f"`adcp migrate v3-to-v4` rewrites it."
+                )
+            else:
+                advice = (
+                    f"import {discovery} for the classes this module declared "
+                    f"and {canonical} for the ones its domain aggregates — this "
+                    f"stem split in two, so it is the one case that is not a "
+                    f"prefix rename. See docs/types-9-migration.md."
+                )
             warnings.warn(
                 f"{fullname} is deprecated since adcp 9.0 and is removed in "
-                f"v{REMOVED_IN_MAJOR}; import {canonical} instead. The module "
-                f"stems are unchanged, so this is a prefix rename, and "
-                f"`adcp migrate v3-to-v4` rewrites it.",
+                f"v{REMOVED_IN_MAJOR}; {advice}",
                 DeprecationWarning,
                 stacklevel=2,
             )
