@@ -211,9 +211,14 @@ each Core worker turn includes unresolved failures in `configuration_errors`.
 Temporary resolver failures are retried on later turns. A resolver that raises
 `ReliableReportingConfigurationError` is not retried automatically; fix the
 account and call `configure()` explicitly to recover it. Schema, connectivity
-and source-registration failures still prevent startup. A service with no source
-registrations can still start for retained reads only. Older custom stores without
-the enumeration operation can keep explicit `configure()` startup. Enumeration
+and source-registration failures still prevent startup. If a queued retry resolves
+to an invalid context (including a wrong account, timezone, adapter route or
+offering), that generation remains observable as a permanent error while healthy
+accounts continue. Fix its resolved facts and call `configure()` explicitly;
+initial invalid context validation and producer-construction failures remain fatal.
+A service with no source registrations can still start for retained reads only.
+Older custom stores without the enumeration operation can keep explicit
+`configure()` startup. Enumeration
 is for service recovery and is never exposed as a buyer task.
 
 Pass `ReportingProductionOptions` to compose the managed materializer, status
