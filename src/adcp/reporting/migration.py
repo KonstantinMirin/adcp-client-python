@@ -22,6 +22,7 @@ __all__ = [
     "backfill_legacy_reporting",
     "legacy_generation_digest",
     "migrate_legacy_reporting",
+    "replace_empty_legacy_reporting",
 ]
 
 
@@ -74,8 +75,157 @@ async def require_owned_schema_or_empty(connection: Any) -> None:
     ).fetchone()
     if row[0] and not row[1]:
         raise ReportingOwnershipMigrationError(
-            "Stop reporting workers and run migrate_legacy_reporting before create_schema"
+            "If all legacy tables are empty, call replace_empty_legacy_reporting. "
+            "Otherwise: Stop reporting workers and run migrate_legacy_reporting "
+            "before create_schema"
         )
+
+
+async def replace_empty_legacy_reporting(connection: Any) -> None:
+    """Remove an entirely empty pre-ownership ledger without creating an archive.
+
+    Call this explicitly on an operator connection, then call ``create_schema``.
+    The transaction locks every retained reporting table before checking rows.
+    Populated ledgers and dependencies outside the reporting surface are refused;
+    failure rolls back every drop. Reporting admission must remain disabled
+    until all processes use the caller-owned API.
+    """
+    from psycopg import errors, sql
+
+    try:
+        async with connection.transaction():
+            isolation = (await (await connection.execute("SHOW transaction_isolation")).fetchone())[
+                0
+            ]
+            if isolation != "read committed":
+                raise ReportingOwnershipMigrationError(
+                    "empty legacy replacement requires READ COMMITTED isolation"
+                )
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtext('adcp.reporting.schema'),"
+                "hashtext(current_schema()))"
+            )
+            current = (await (await connection.execute("SELECT current_schema()")).fetchone())[0]
+            columns = await (
+                await connection.execute(
+                    "SELECT column_name FROM information_schema.columns WHERE table_schema=%s"
+                    " AND table_name='reporting_configurations'",
+                    (current,),
+                )
+            ).fetchall()
+            if not columns or ("consumer_id",) in columns:
+                raise ReportingOwnershipMigrationError(
+                    "expected an unmigrated legacy reporting schema"
+                )
+            tables = await (
+                await connection.execute(
+                    "SELECT c.oid, c.relname, c.relkind FROM pg_class c JOIN pg_namespace n"
+                    " ON n.oid=c.relnamespace WHERE n.nspname=%s AND c.relkind IN ('r','p','f')"
+                    " AND (c.relname LIKE 'reporting\\_%%' ESCAPE '\\'"
+                    " OR c.relname LIKE 'adcp\\_reporting\\_%%' ESCAPE '\\') ORDER BY c.relname",
+                    (current,),
+                )
+            ).fetchall()
+            if any(kind == "f" for _, _, kind in tables):
+                raise ReportingOwnershipMigrationError(
+                    "foreign reporting tables cannot be verified"
+                )
+            for _, table, _ in tables:
+                await connection.execute(
+                    sql.SQL("LOCK TABLE {}.{} IN ACCESS EXCLUSIVE MODE").format(
+                        sql.Identifier(current), sql.Identifier(table)
+                    )
+                )
+            hidden_rows = await (
+                await connection.execute(
+                    "SELECT 1 FROM pg_class WHERE oid=ANY(%s) AND row_security_active(oid) LIMIT 1",
+                    ([oid for oid, _, _ in tables],),
+                )
+            ).fetchone()
+            if hidden_rows:
+                raise ReportingOwnershipMigrationError(
+                    "row security prevents verifying all legacy reporting rows"
+                )
+            # Dropping a partitioned table can implicitly remove children. Only
+            # children in the same verified reporting surface may be removed.
+            outside_children = await (
+                await connection.execute(
+                    "SELECT 1 FROM pg_inherits WHERE inhparent=ANY(%s)"
+                    " AND NOT inhrelid=ANY(%s) LIMIT 1",
+                    ([oid for oid, _, _ in tables], [oid for oid, _, _ in tables]),
+                )
+            ).fetchone()
+            if outside_children:
+                raise ReportingOwnershipMigrationError("reporting tables have external children")
+            for _, table, _ in tables:
+                populated = await (
+                    await connection.execute(
+                        sql.SQL("SELECT 1 FROM {}.{} LIMIT 1").format(
+                            sql.Identifier(current), sql.Identifier(table)
+                        )
+                    )
+                ).fetchone()
+                if populated:
+                    raise ReportingOwnershipMigrationError(
+                        "legacy reporting contains rows; use migrate_legacy_reporting"
+                    )
+            triggers = await (
+                await connection.execute(
+                    "SELECT t.tgname, c.relname FROM pg_trigger t JOIN pg_class c"
+                    " ON c.oid=t.tgrelid"
+                    " WHERE t.tgrelid=ANY(%s) AND NOT t.tgisinternal",
+                    ([oid for oid, _, _ in tables],),
+                )
+            ).fetchall()
+            # Trigger functions can accept a reporting table's composite type.
+            # Remove only triggers on the locked, verified empty tables, then
+            # drop functions before their argument types disappear with tables.
+            for trigger, table in triggers:
+                await connection.execute(
+                    sql.SQL("DROP TRIGGER {} ON {}.{} RESTRICT").format(
+                        sql.Identifier(trigger), sql.Identifier(current), sql.Identifier(table)
+                    )
+                )
+            functions = await (
+                await connection.execute(
+                    "SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n"
+                    " ON n.oid=p.pronamespace WHERE n.nspname=%s"
+                    " AND (p.proname LIKE 'reporting\\_%%' ESCAPE '\\'"
+                    " OR p.proname LIKE 'adcp\\_reporting\\_%%' ESCAPE '\\')",
+                    (current,),
+                )
+            ).fetchall()
+            if functions:
+                # regprocedure is emitted by PostgreSQL, never caller-supplied SQL.
+                await connection.execute(
+                    sql.SQL("DROP FUNCTION {} RESTRICT").format(
+                        sql.SQL(", ").join(sql.SQL(name) for (name,) in functions)
+                    )
+                )
+            await connection.execute(
+                sql.SQL("DROP TABLE {} RESTRICT").format(
+                    sql.SQL(", ").join(sql.Identifier(current, table) for _, table, _ in tables)
+                )
+            )
+            sequences = await (
+                await connection.execute(
+                    "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace"
+                    " WHERE n.nspname=%s AND c.relkind='S'"
+                    " AND (c.relname LIKE 'reporting\\_%%' ESCAPE '\\'"
+                    " OR c.relname LIKE 'adcp\\_reporting\\_%%' ESCAPE '\\')",
+                    (current,),
+                )
+            ).fetchall()
+            if sequences:
+                await connection.execute(
+                    sql.SQL("DROP SEQUENCE {} RESTRICT").format(
+                        sql.SQL(", ").join(sql.Identifier(current, name) for (name,) in sequences)
+                    )
+                )
+    except errors.DependentObjectsStillExist as exc:
+        raise ReportingOwnershipMigrationError(
+            "legacy reporting has external dependencies; nothing was replaced"
+        ) from exc
 
 
 async def migrate_legacy_reporting(

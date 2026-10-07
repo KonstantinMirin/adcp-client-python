@@ -332,3 +332,36 @@ def test_discovery_endpoint_post_falls_through_on_unified() -> None:
             "POST should not return the discovery manifest — wrapper "
             "leaked GET response on POST."
         )
+
+
+@pytest.mark.parametrize("protection", [True, False])
+def test_public_discovery_supports_configured_cors_without_widening_protocol_access(
+    protection: bool,
+) -> None:
+    from starlette.middleware.cors import CORSMiddleware
+
+    app = _build_mcp_and_a2a_app(
+        _DiscoveryTestHandler(),
+        name="public-discovery",
+        port=3001,
+        host="127.0.0.1",
+        instructions=None,
+        test_controller=None,
+        allowed_hosts=["seller.example"],
+        allowed_origins=["https://buyer.example"],
+        enable_dns_rebinding_protection=protection,
+    )
+    app = CORSMiddleware(app, allow_origins=["*"])
+    with TestClient(app, base_url="https://seller.example") as client:
+        headers = {"origin": "https://directory.example"}
+        for path in [DISCOVERY_PATH, "/.well-known/agent-card.json", "/.well-known/agent.json"]:
+            response = client.get(path, headers=headers)
+            assert response.status_code == 200
+            assert response.headers["access-control-allow-origin"] == "*"
+            assert client.post(path, headers=headers).status_code == 403
+            assert client.get(path, headers={**headers, "host": "evil.example"}).status_code == (
+                421 if protection else 200
+            )
+        assert client.post("/mcp", headers=headers, json={}).status_code == 403
+        assert client.post("/", headers=headers, json={}).status_code == 403
+        assert client.get("/healthz", headers=headers).status_code == 403

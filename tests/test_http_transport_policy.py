@@ -110,12 +110,15 @@ def test_policy_matrix(transport, protection):
                 ).status_code
                 == 200
             )
-        # Policy applies to GET/discovery/unknown operational paths as well.
+        # Discovery reads remain public; every path retains Host protection.
         for path in ["/.well-known/agent.json", "/.well-known/agent-card.json", "/healthz"]:
             assert client.get(path, headers={"host": "evil.example"}).status_code == (
                 421 if protection else (404 if transport == "mcp" or path == "/healthz" else 200)
             )
-            assert client.get(path, headers={"origin": "https://evil.example"}).status_code == 403
+            assert client.get(path, headers={"origin": "https://evil.example"}).status_code == (
+                403 if path == "/healthz" else (404 if transport == "mcp" else 200)
+            )
+            assert client.post(path, headers={"origin": "https://evil.example"}).status_code == 403
         if transport != "mcp":
             assert seller.calls > 0
             assert client.get("/.well-known/agent-card.json").status_code == 200
@@ -132,7 +135,9 @@ def test_default_policy_loopback_native_requests(transport):
         )
         assert response.status_code == 200
         assert client.get(path, headers={"host": "evil.example"}).status_code == 421
-        assert client.get(path, headers={"origin": "https://evil.example"}).status_code == 403
+        assert client.get(path, headers={"origin": "https://evil.example"}).status_code == (
+            403 if transport == "mcp" else 200
+        )
 
 
 @pytest.mark.parametrize(
@@ -153,11 +158,30 @@ def test_port_wildcard_and_bare_host_semantics(host, origin, status):
     )
     with TestClient(app, base_url="http://localhost:3001") as client:
         assert (
-            client.get(
-                "/.well-known/agent-card.json", headers={"host": host, "origin": origin}
-            ).status_code
+            client.post("/", json=SEND, headers={"host": host, "origin": origin}).status_code
             == status
         )
+
+
+@pytest.mark.parametrize("transport", ["a2a", "both", "direct-a2a"])
+def test_dynamic_agent_card_is_public_with_foreign_origin(transport):
+    app = build(
+        transport,
+        Seller(),
+        public_url=lambda request: "https://seller.example",
+        allowed_hosts=["seller.example"],
+        allowed_origins=["https://buyer.example"],
+    )
+    with TestClient(app, base_url="https://seller.example") as client:
+        for path in ["/.well-known/agent-card.json", "/.well-known/agent.json"]:
+            response = client.get(path, headers={"origin": "https://directory.example"})
+            assert response.status_code == 200
+            assert response.json()["supportedInterfaces"][0]["url"] == "https://seller.example/"
+            assert (
+                client.head(path, headers={"origin": "https://directory.example"}).status_code
+                != 403
+            )
+            assert client.get(path, headers={"host": "evil.example"}).status_code == 421
 
 
 def test_config_exposes_shared_policy():

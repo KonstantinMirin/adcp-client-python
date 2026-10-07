@@ -1,19 +1,13 @@
-"""Wire-faithful ``ProductFormatDeclaration`` for the v2 catalog surface.
+"""Compatibility model for callers using the former declaration module.
 
-The upstream schema ``core/product-format-declaration.json`` is a
-discriminated ``oneOf`` over 13 ``format_kind`` values, each binding
-``params`` to a canonical-specific schema. ``datamodel-code-generator``
-collapses this shape to a single class carrying only the shared
-properties — ``format_kind`` and ``params`` disappear entirely because
-they live on the per-variant branches.
+Older code generators lost ``format_kind`` and ``params`` from the schema's
+discriminated branches. This standalone model supplied them to those SDK
+releases. The generator now defines all sixteen branches, and the public
+``adcp.types.ProductFormatDeclaration`` names their union with schema-derived
+cross-field checks. ``adcp.types.Format`` remains the open consumer declaration
+and the canonical projection helpers' model.
 
-That generated stub is unusable for canonical-formats: it can't carry
-the discriminator the projection layer routes on, and it silently drops
-``params`` (``extra='ignore'``) so adopters who construct a declaration
-with a typed canonical body lose it on serialization.
-
-This module replaces the public ``ProductFormatDeclaration`` symbol
-with a hand-rolled class that:
+This module's existing class is retained for direct imports. It:
 
 * Carries all 9 shared properties the generator emits.
 * Adds ``format_kind: CanonicalFormatKind`` (the discriminator).
@@ -31,10 +25,9 @@ with a hand-rolled class that:
   ``canonical_formats_only=True`` and ``v1_format_ref[]`` are mutually
   exclusive (``product-format-declaration.json`` ``allOf.not`` clause).
 
-The generated class is preserved as ``_GeneratedProductFormatDeclaration``
-for callers that need the original codegen output (validation hooks,
-schema-loader cross-references). New code SHOULD import the
-hand-rolled class via :mod:`adcp.types`.
+The generated union is also available as ``_GeneratedProductFormatDeclaration``
+for compatibility. New authoring code uses the public union; code requiring
+the open parameter bag and ``params_as`` uses :class:`adcp.types.Format`.
 """
 
 from __future__ import annotations
@@ -122,9 +115,8 @@ _TypedParams = TypeVar("_TypedParams", bound=BaseModel)
 class ProductFormatDeclaration(AdCPBaseModel):
     """v2 catalog-side format declaration carrying the canonical discriminator.
 
-    Wire-faithful Python representation of
-    ``core/product-format-declaration.json``. See the module docstring for
-    why this class replaces the codegen output.
+    Compatibility model retained for this module's pre-9.0 direct imports.
+    See the module docstring for the current public authoring and consumer types.
     """
 
     model_config = ConfigDict(extra="allow")

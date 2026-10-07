@@ -43,6 +43,7 @@ import logging
 import os
 import typing
 import warnings
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
@@ -506,7 +507,9 @@ def _strict_validate_platform() -> bool:
     return os.environ.get("ADCP_DECISIONING_STRICT_VALIDATE_PLATFORM", "") == "1"
 
 
-def _requires_legacy_format_discovery(capabilities: DecisioningCapabilities) -> bool:
+def _requires_legacy_format_discovery(
+    capabilities: DecisioningCapabilities, supported_versions: Sequence[str] | None = None
+) -> bool:
     """Legacy format discovery is recommended only for pre-3.2 service.
 
     An omitted version declaration inherits the SDK's advertised releases,
@@ -520,9 +523,13 @@ def _requires_legacy_format_discovery(capabilities: DecisioningCapabilities) -> 
     )
 
     versions = (
-        capabilities.adcp.model_dump(mode="json", exclude_none=True).get("supported_versions")
-        if capabilities.adcp is not None
-        else None
+        supported_versions
+        if supported_versions is not None
+        else (
+            capabilities.adcp.model_dump(mode="json", exclude_none=True).get("supported_versions")
+            if capabilities.adcp is not None
+            else None
+        )
     )
     for version in versions if versions is not None else get_supported_adcp_versions():
         try:
@@ -815,7 +822,9 @@ def _validation_error_to_invalid_request(method_name: str, exc: ValidationError)
 # ---------------------------------------------------------------------------
 
 
-def validate_platform(platform: DecisioningPlatform) -> None:
+def validate_platform(
+    platform: DecisioningPlatform, *, supported_versions: Sequence[str] | None = None
+) -> None:
     """Server-boot validator — fail-fast before the first request.
 
     Checks (in order):
@@ -1021,7 +1030,9 @@ def validate_platform(platform: DecisioningPlatform) -> None:
     # diagnostic.
     recommended_missing: list[tuple[str, str]] = []
     seen_methods: set[str] = set()
-    requires_legacy_formats = _requires_legacy_format_discovery(platform.capabilities)
+    requires_legacy_formats = _requires_legacy_format_discovery(
+        platform.capabilities, supported_versions
+    )
     for entry in platform.capabilities.specialisms:
         specialism = entry.value if hasattr(entry, "value") else entry
         recommended = RECOMMENDED_METHODS_PER_SPECIALISM.get(specialism)

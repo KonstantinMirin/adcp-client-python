@@ -118,7 +118,7 @@ class TestRequestsStrict:
         monkeypatch.setattr(
             envelope,
             "detect_wire_version",
-            lambda payload: detect(payload, supported=("3.9", "3.2")),
+            lambda payload, **kwargs: detect(payload, supported=("3.9", "3.2")),
         )
         handler = _StubHandler({"products": []})
         caller = create_tool_caller(

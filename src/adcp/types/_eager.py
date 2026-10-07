@@ -854,6 +854,7 @@ from adcp.types.aliases import (
     VastFormatGroupAsset,
     VastTrackerAsset,
     VehicleUnit,
+    VendorPricingOption,
     VendorPricingOptionUnion,
     VideoFormatAsset,
     VideoFormatGroupAsset,
@@ -912,8 +913,11 @@ from adcp.types.legacy import (
     LegacySyncCreativesRequest,
     LegacyUpdateMediaBuyRequest,
 )
+from adcp.types.validation import validate_union
 
 is_canonical_format_kind = _canonical_creative.is_canonical_format_kind
+CanonicalFormatKindStr = _canonical_creative.CanonicalFormatKindStr
+require_canonical_format_kind = _canonical_creative.require_canonical_format_kind
 CreateMediaBuyResponse = _canonical_creative.CreateMediaBuyResponse
 CreateMediaBuyResponse1 = _canonical_creative.CreateMediaBuyResponse1
 CreateMediaBuySuccessResponse = _canonical_creative.CreateMediaBuyResponse1
@@ -2056,6 +2060,7 @@ __all__ = [
     "SignalCoverageForecast",
     "SignalCoverageRange",
     "TrustedMatch",
+    "VendorPricingOption",
     "VendorPricingOptionUnion",
     "aliases",
     "generated",
@@ -2087,6 +2092,9 @@ __all__ = [
     "is_update_media_buy_error",
     "is_update_media_buy_success",
     "is_canonical_format_kind",
+    "CanonicalFormatKindStr",
+    "require_canonical_format_kind",
+    "validate_union",
     "is_validate_content_delivery_success",
     "project_geo_postal_areas",
     "to_account_response",

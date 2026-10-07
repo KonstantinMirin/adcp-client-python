@@ -9,7 +9,7 @@ Resolution order per ``registries/v1-canonical-mapping.json`` (the
 
 1. ``canonical_formats_only=True`` — no v1 emit and no advisory. The
    seller has explicitly opted out of v1 projection. Note that
-   ``ProductFormatDeclaration`` enforces this is mutually exclusive
+   ``Format`` enforces this is mutually exclusive
    with ``v1_format_ref[]`` at construction.
 2. ``v1_format_ref[]`` set — emit those refs into ``format_ids[]``.
    Applies to every ``format_kind`` including ``custom`` (a custom
@@ -43,7 +43,7 @@ from adcp.canonical_formats.advisory import _echo_identifier, make_sdk_advisory
 from adcp.types import (
     CanonicalFormatKind,
     Error,
-    ProductFormatDeclaration,
+    Format,
 )
 from adcp.types.legacy import LegacyFormatId
 
@@ -83,7 +83,7 @@ V1_TRANSLATABLE: dict[str, bool] = {
 
 @dataclass
 class V2ToV1Projection:
-    """Result of projecting one or more ``ProductFormatDeclaration``s to v1.
+    """Result of projecting one or more ``Format``s to v1.
 
     Attributes:
         format_ids: v1 ``format_ids[]`` entries to dual-emit alongside the
@@ -98,7 +98,7 @@ class V2ToV1Projection:
     advisories: list[Error] = field(default_factory=list)
 
 
-def _params_sizes_count(declaration: ProductFormatDeclaration) -> int:
+def _params_sizes_count(declaration: Format) -> int:
     """Return the number of distinct sizes declared in ``params.sizes[]``.
 
     ``params`` is an open ``dict[str, Any]`` on the declaration (the
@@ -122,7 +122,7 @@ def _params_sizes_count(declaration: ProductFormatDeclaration) -> int:
 
 
 def project_declaration_to_v1(
-    declaration: ProductFormatDeclaration,
+    declaration: Format,
     *,
     field_path: str = "format_options[]",
     product_id: str | None = None,
@@ -131,7 +131,7 @@ def project_declaration_to_v1(
     resolution order documented at module level.
 
     Args:
-        declaration: The v2 ``ProductFormatDeclaration`` to project.
+        declaration: The v2 ``Format`` to project.
         field_path: JSONPath-lite pointer surfaced on emitted advisories
             (e.g., ``products[0].format_options[2]``). The default points
             at the seller-published declaration without product context;
@@ -147,7 +147,7 @@ def project_declaration_to_v1(
     refs = list(declaration.legacy_format_refs)
 
     # Step 1: seller has explicitly opted out of v1 projection.
-    # ``ProductFormatDeclaration`` enforces this is mutually exclusive
+    # ``Format`` enforces this is mutually exclusive
     # with ``v1_format_ref[]``, so we can't reach step 2 from here.
     if declaration.canonical_formats_only:
         return V2ToV1Projection()

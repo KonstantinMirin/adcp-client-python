@@ -35,8 +35,8 @@ from adcp.canonical_formats import (
 )
 from adcp.types import (
     CanonicalFormatKind,
+    Format,
     is_canonical_format_kind,
-    ProductFormatDeclaration,
 )
 from adcp.types.legacy import LegacyFormatId as FormatId
 
@@ -75,18 +75,17 @@ def _load_product(name: str) -> dict[str, Any]:
     return json.loads((_FIXTURES / name).read_text())
 
 
-def _load_declarations(raw_product: dict[str, Any]) -> list[ProductFormatDeclaration]:
+def _load_declarations(raw_product: dict[str, Any]) -> list[Format]:
     """Pull the typed ``format_options[]`` out of a raw-dict product."""
     return [
-        TypeAdapter(ProductFormatDeclaration).validate_python(opt)
-        for opt in raw_product.get("format_options", [])
+        TypeAdapter(Format).validate_python(opt) for opt in raw_product.get("format_options", [])
     ]
 
 
 class _DuckProduct:
     """Duck-typed product wrapper for :func:`project_product_to_v1`."""
 
-    def __init__(self, raw: dict[str, Any], declarations: list[ProductFormatDeclaration]) -> None:
+    def __init__(self, raw: dict[str, Any], declarations: list[Format]) -> None:
         self.product_id = raw.get("product_id")
         self.format_options = declarations
 
@@ -150,7 +149,7 @@ def test_v2_product_v1_outbound_round_trip(fixture_name: str) -> None:
 @pytest.mark.parametrize("fixture_name", _PRODUCT_FIXTURES)
 def test_v2_product_declarations_are_constructable(fixture_name: str) -> None:
     """Every v2 product fixture's ``format_options[]`` MUST be parseable as
-    typed :class:`ProductFormatDeclaration` instances.
+    typed :class:`Format` instances.
 
     A regression on the hand-rolled declaration model (e.g., a new
     required field, a tightening of the credential-shaped key guard)

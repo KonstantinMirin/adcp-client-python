@@ -1503,13 +1503,20 @@ def register_test_controller(
 
     from adcp.server.base import ToolContext as _ToolContext
     from adcp.server.serve import RequestMetadata as _RequestMetadata
+    from adcp.server.version_policy import enforce_selected_version, resolve_supported_versions
+    from adcp.validation.envelope import DEFAULT_UNNEGOTIATED_ADCP_VERSION
     from adcp.validation.schema_loader import get_mcp_schema
 
+    selected_versions = resolve_supported_versions(getattr(mcp, "_adcp_supported_versions", None))
+    default_version = getattr(mcp, "_adcp_default_version", DEFAULT_UNNEGOTIATED_ADCP_VERSION)
     controller_schema = get_mcp_schema("comply_test_controller", "request")
     if controller_schema is None:
         raise RuntimeError("bundled comply_test_controller request schema is unavailable")
 
     async def comply_test_controller(**kwargs: Any) -> dict[str, Any]:
+        version = enforce_selected_version(
+            "comply_test_controller", kwargs, selected_versions, default=default_version
+        )
         context: _ToolContext | None = None
         if context_factory is not None:
             meta = _RequestMetadata(tool_name="comply_test_controller", transport="mcp")
@@ -1519,6 +1526,8 @@ def register_test_controller(
                     "context_factory for comply_test_controller returned "
                     f"{type(context).__name__}, not a ToolContext instance"
                 )
+        if context is not None and version is not None:
+            context.resolved_adcp_version = version
         return await _handle_test_controller(
             store,
             kwargs,

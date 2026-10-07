@@ -222,6 +222,9 @@ __all__ = [
     "MediaBuyDelivery",
     "AdcpVersionEnvelope",
     "is_canonical_format_kind",
+    "CanonicalFormatKindStr",
+    "require_canonical_format_kind",
+    "validate_union",
     "ProtocolEnvelope",
     "ProtocolResponse",
     "ProvidePerformanceFeedbackRequest",
@@ -977,6 +980,7 @@ __all__ = [
     # Collision-safe migration aliases (#911 remaining inventory)
     "AccountIdReference",
     "InlineAccountReference",
+    "VendorPricingOption",
     "VendorPricingOptionUnion",
     "CpmVendorPricingOption",
     "PercentOfMediaVendorPricingOption",
@@ -1340,6 +1344,7 @@ if TYPE_CHECKING:
         CanonicalFormatImage,
         CanonicalFormatImageCarousel,
         CanonicalFormatKind,
+        CanonicalFormatKindStr,
         CanonicalFormatNativeInFeed,
         CanonicalFormatResponsiveCreative,
         CanonicalFormatSponsoredPlacement,
@@ -2109,6 +2114,7 @@ if TYPE_CHECKING:
         VcpmPricingOption,
         VehicleUnit,
         VendorErrorCodeRegistry,
+        VendorPricingOption,
         VendorPricingOptionUnion,
         VenueBreakdownItem,
         VerifyBrandClaimPayload,
@@ -2143,7 +2149,9 @@ if TYPE_CHECKING:
         ZipAsset,
         is_canonical_format_kind,
         project_geo_postal_areas,
+        require_canonical_format_kind,
         to_account_response,
+        validate_union,
     )
     from adcp.types._eager import (
         Field1 as Field1,

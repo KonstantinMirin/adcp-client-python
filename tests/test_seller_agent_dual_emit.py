@@ -30,7 +30,7 @@ from adcp.canonical_formats import (
     find_declaration_by_v1_format_id,
     project_product_to_v1,
 )
-from adcp.types import ProductFormatDeclaration
+from adcp.types import Format
 
 _SELLER_AGENT_PATH = Path(__file__).parent.parent / "examples" / "seller_agent.py"
 
@@ -88,10 +88,7 @@ def test_v2_to_v1_projection_round_trips_each_product(
     MUST NOT raise any unexpected advisories.
     """
     for p in seller_agent_products:
-        declarations = [
-            TypeAdapter(ProductFormatDeclaration).validate_python(opt)
-            for opt in p["format_options"]
-        ]
+        declarations = [TypeAdapter(Format).validate_python(opt) for opt in p["format_options"]]
 
         class _Product:
             product_id = p["product_id"]

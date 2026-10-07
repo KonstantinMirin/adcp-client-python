@@ -1,4 +1,4 @@
-"""Canonical-first creative models for the Python 7 public API.
+"""Canonical-first creative models for the Python SDK public API.
 
 The generated protocol models intentionally remain wire-faithful through the
 AdCP 3.x transition and therefore contain legacy named-format identity.  They
@@ -26,7 +26,7 @@ generates a bare ``str`` — ``OPEN_VOCABULARY_SCHEMAS`` in
 ``scripts/generate_types.py``, one schema-level transform rather than a
 widening at each call site.
 
-**The SDK refuses nothing, in either direction, and that is deliberate.** A
+**Consumer models retain unknown format kinds, and that is deliberate.** A
 seller supports some set of format kinds; that set is the seller's, not this
 library's and not the pinned enum's. It can be larger — the seller handles a
 kind promoted in a spec newer than the pin — or smaller, four of the sixteen.
@@ -37,6 +37,11 @@ which is the same defect as the closed enum with the enforcement moved into a
 validator. The producer-side MUST is a seller's obligation; this library gives
 it the vocabulary and :func:`is_canonical_format_kind` to meet it, and leaves
 the decision where the knowledge is.
+
+The explicit ``ProductFormatDeclaration`` authoring union selects one of the
+sixteen generated branches and enforces the schema's root cross-field rules.
+Use ``Format`` to parse consumer declarations with future kinds, and the
+opt-in ``CanonicalFormatKindStr`` annotation to restrict an adopter boundary.
 
 So the vocabulary is not discarded, it is **relocated**:
 :class:`CanonicalFormatKind` stays a first-class export, used for comparison
@@ -71,6 +76,7 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
 
 from pydantic import (
+    AfterValidator,
     ConfigDict,
     Field,
     GetJsonSchemaHandler,
@@ -84,6 +90,7 @@ from pydantic import (
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
+from adcp.types._product_format_declaration import ProductFormatDeclaration
 from adcp.types.base import AdCPBaseModel
 from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
 from adcp.types.domains.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
@@ -183,9 +190,9 @@ def is_canonical_format_kind(
     promoted in a spec newer than the pin, or only four of the sixteen, and
     neither is expressible by anything this library knows.
 
-    **The SDK never calls this for you.** ``format_kind`` is a ``str``
-    everywhere, on the way out and on the way back, and no model refuses a
-    value. That is deliberate: a pinned library cannot tell "a kind the seller
+    **Consumer models never call this for you.** Their ``format_kind`` is a
+    ``str`` on the way out and on the way back, and they retain future values.
+    That is deliberate: a pinned library cannot tell "a kind the seller
     invented" from "a kind defined after my pin", so refusing the second to
     prevent the first would make this SDK's version a ceiling on what the
     protocol permits. "I accept the request and then tell you I cannot process
@@ -208,6 +215,39 @@ def is_canonical_format_kind(
     """
 
     return isinstance(value, str) and any(value == kind for kind in vocabulary)
+
+
+def require_canonical_format_kind(
+    vocabulary: Iterable[str] = CanonicalFormatKind,
+) -> Callable[[str], str]:
+    """Build an opt-in string validator for an adopter's format vocabulary.
+
+    Use it with ``AfterValidator`` or ``field_validator`` on your own boundary
+    models. The vocabulary is captured once, so generators and mutable inputs
+    cannot change the validator after construction. SDK model fields remain
+    open strings; this helper does not change their validation.
+
+    For nullable or plural fields, compose the annotated string with ``None``
+    or ``list``. Values outside the vocabulary raise ``ValueError``; valid
+    values are returned unchanged.
+    """
+    kinds = tuple(vocabulary)
+
+    def validate(value: str) -> str:
+        if not is_canonical_format_kind(value, kinds):
+            raise ValueError(f"Unknown canonical format kind: {value!r}")
+        return value
+
+    return validate
+
+
+CanonicalFormatKindStr = Annotated[str, AfterValidator(require_canonical_format_kind())]
+"""Opt-in string annotation restricted to the pinned canonical vocabulary.
+
+Use ``CanonicalFormatKindStr | None`` or ``list[CanonicalFormatKindStr]`` for
+optional and plural adopter fields. Use ``require_canonical_format_kind`` to
+select a different seller vocabulary.
+"""
 
 
 _LEGACY_IDENTITY_KEY = re.compile(r"(^|_)(?:format_ids?|v1_format_ref)($|_)")
@@ -679,9 +719,6 @@ class Format(CanonicalBoundaryModel):
         return self
 
 
-ProductFormatDeclaration = Format
-
-
 class Placement(_LegacyPlacement, CanonicalBoundaryModel):
     """Canonical placement; ``format_options`` are canonical declarations."""
 
@@ -1128,6 +1165,8 @@ __all__ = [
     "UpdateMediaBuyResponse2",
     "UpdateMediaBuyResponse3",
     "is_canonical_format_kind",
+    "CanonicalFormatKindStr",
+    "require_canonical_format_kind",
     "is_legacy_creative_identity_key",
     "sanitize_canonical_schema",
     "strip_legacy_creative_identity",

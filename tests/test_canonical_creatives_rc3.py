@@ -67,7 +67,7 @@ def _legacy_value_paths(value: Any, path: str = "$") -> list[str]:
 def test_root_surface_is_canonical_and_legacy_is_explicit() -> None:
     assert not hasattr(adcp, "FormatId")
     assert not hasattr(adcp.types.aliases, "FormatId")
-    assert adcp.Format is adcp.ProductFormatDeclaration
+    assert adcp.Format is not adcp.ProductFormatDeclaration
     # #1398: the explicit legacy name IS the generated format reference. It used
     # to be a subclass of it, asserted here BY NAME — and the subclass had drifted
     # into weakening three of its parent's validators, so the public name and the

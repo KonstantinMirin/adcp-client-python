@@ -1956,6 +1956,27 @@ client can handle programmatically.
 - `tests/test_mcp_middleware_composition.py` — the integration test
   that protects this contract.
 
+### Select served protocol versions
+
+Pass `supported_versions=["3.2"]` to `serve`, `ServeConfig`, the MCP/A2A factories,
+or the Decisioning server factory to serve only that installed wire contract.
+The testing helpers accept the same option. The selection is frozen per server,
+validated before allocation, and reflected in `get_adcp_capabilities`.
+
+Explicit version claims, pre-validation hook results, legacy shape probes and
+unversioned defaults must all fit the selection. Excluded versions return
+`VERSION_UNSUPPORTED` before handler dispatch, even with schema validation off.
+Compatibility aliases must be listed explicitly to accept their wire claim;
+`["3.2"]` does not implicitly accept `"3.2-rc.7"`.
+
+This option preserves each handler's existing default pin. Decisioning handlers
+use their resolved pin, and trusted alias/patch pins resolve to the corresponding
+wire contract. A bare MCP handler still defaults omitted requests to 3.0, which
+is rejected if excluded; send an explicit envelope or use a pinned handler.
+Independent servers can select different subsets without mutating their shared
+handler. A custom external A2A `request_handler` owns dispatch, so its factory
+rejects an explicit SDK selection rather than advertising unenforced versions.
+
 ### HTTP Host and Origin policy
 
 `serve`, `ServeConfig`, `create_mcp_server`, `create_a2a_server` and
@@ -1978,8 +1999,16 @@ A bare Host entry accepts that host with or without a port. An explicit port
 accepts only that value; `:*` accepts a port suffix. Origins use exact matching
 or an explicit `:*` port suffix. Domain wildcards such as `*.example` are not
 expanded. Missing Origin is valid for native clients. A supplied Origin is
-checked on every method, including discovery GETs; Host checks also apply to
-GETs. Disallowed Hosts return 421 and disallowed Origins return 403.
+checked on protocol and operational requests. Public GET/HEAD reads of
+`/.well-known/agent-card.json`, `/.well-known/agent.json` and
+`/.well-known/adcp-agents.json` accept any Origin. Host checks still apply to
+every path. Disallowed Hosts return 421 and disallowed Origins return 403.
+
+Origin policy does not install CORS response headers. If browser clients need
+to read public discovery, configure `CORSMiddleware` separately, for example
+`asgi_middleware=[(CORSMiddleware, {"allow_origins": ["*"]})]`. Choose your
+protocol CORS policy independently; public discovery does not grant permission
+to send protocol requests from an unlisted Origin.
 
 When `SubdomainTenantMiddleware` owns Host validation, set
 `enable_dns_rebinding_protection=False` and configure `allowed_origins`.

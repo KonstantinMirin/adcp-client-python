@@ -1,7 +1,7 @@
 """v1 → v2 canonical-format projection.
 
 Projects a v1 named-format declaration (``core/format.json`` shape)
-into a v2 :class:`ProductFormatDeclaration`. Mirror image of
+into a v2 :class:`Format`. Mirror image of
 :mod:`adcp.canonical_formats.v2_to_v1` (v2 → v1).
 
 Resolution order — applies the *inbound* (v1→v2) portion of the
@@ -60,7 +60,7 @@ from adcp.canonical_formats.registry import (
 from adcp.types import (
     CanonicalProjectionReference,
     Error,
-    ProductFormatDeclaration,
+    Format,
 )
 from adcp.types.legacy import LegacyFormatId
 
@@ -78,7 +78,7 @@ class V1ToV2Projection:
     """Result of projecting one v1 named format to a v2 declaration.
 
     Attributes:
-        declaration: The projected ``ProductFormatDeclaration``, or
+        declaration: The projected ``Format``, or
             ``None`` when projection failed closed (see step 5 above).
             When non-``None`` the declaration carries ``v1_format_ref``
             pointing back at the source v1 format.
@@ -88,7 +88,7 @@ class V1ToV2Projection:
             match) or ``FORMAT_PROJECTION_FAILED`` (no match).
     """
 
-    declaration: ProductFormatDeclaration | None = None
+    declaration: Format | None = None
     advisories: list[Error] = field(default_factory=list)
 
 
@@ -210,7 +210,7 @@ def _build_declaration(
     v1_format_id: FormatId,
     params: dict[str, Any] | None = None,
     canonical_ref: CanonicalProjectionReference | None = None,
-) -> ProductFormatDeclaration:
+) -> Format:
     """Assemble the v2 declaration from resolved kind + source v1 ref.
 
     Threads ``asset_source`` and ``slots_override`` from the v1
@@ -225,7 +225,7 @@ def _build_declaration(
             body["slots"] = [
                 slot.model_dump(exclude_none=True) for slot in canonical_ref.slots_override
             ]
-    return ProductFormatDeclaration(
+    return Format(
         format_kind=kind,
         params=body,
         v1_format_ref=[v1_format_id],
@@ -237,7 +237,7 @@ def project_v1_format_to_declaration(
     *,
     field_path: str = "formats[]",
 ) -> V1ToV2Projection:
-    """Project a single v1 named format to a v2 ``ProductFormatDeclaration``.
+    """Project a single v1 named format to a v2 ``Format``.
 
     Walks the resolution order documented at module level. Tolerates
     both raw dicts (the common case when reading a v1 catalog from
@@ -406,7 +406,7 @@ def project_v1_format_to_declaration(
 class V1CatalogProjection:
     """Aggregate result of projecting a list of v1 formats to v2 declarations."""
 
-    declarations: list[ProductFormatDeclaration] = field(default_factory=list)
+    declarations: list[Format] = field(default_factory=list)
     advisories: list[Error] = field(default_factory=list)
 
 
@@ -434,9 +434,9 @@ def project_v1_catalog_to_v2(
 
 
 def group_declarations_by_product(
-    declarations: list[ProductFormatDeclaration],
+    declarations: list[Format],
     mapping: dict[str, list[str]],
-) -> dict[str, list[ProductFormatDeclaration]]:
+) -> dict[str, list[Format]]:
     """Group projected v2 declarations into products by ``v1_format_ref`` id.
 
     A buyer-side adopter porting a v1 catalog onto v2 frequently has a
@@ -457,7 +457,7 @@ def group_declarations_by_product(
             which v1 format ids belong to which product.
 
     Returns:
-        ``{product_id: [ProductFormatDeclaration, ...]}`` ready to
+        ``{product_id: [Format, ...]}`` ready to
         drop into ``Product.format_options[]`` for each product.
         Order within each product preserves the input declaration
         order. Products with no matching declarations are omitted.
@@ -487,7 +487,7 @@ def group_declarations_by_product(
         for v1_id in v1_ids:
             reverse.setdefault(v1_id, product_id)
 
-    out: dict[str, list[ProductFormatDeclaration]] = {}
+    out: dict[str, list[Format]] = {}
     for declaration in declarations:
         refs = declaration.legacy_format_refs
         if not refs:

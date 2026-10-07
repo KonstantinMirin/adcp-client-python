@@ -42,7 +42,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from adcp.canonical_formats.advisory import _echo_identifier, make_sdk_advisory
-from adcp.types import Error, ProductFormatDeclaration
+from adcp.types import Error, Format
 
 # ---------------------------------------------------------------------------
 # Typed divergence record (replaces the raw ``dict[str, Any]`` return)
@@ -305,7 +305,7 @@ def check_narrows(
 
 
 def narrowing_advisory(
-    declaration: ProductFormatDeclaration,
+    declaration: Format,
     *,
     v1_requirements: dict[str, Any],
     v1_format_id: str,
@@ -318,7 +318,7 @@ def narrowing_advisory(
     ``details.divergences`` listing the failing fields when divergent.
 
     Args:
-        declaration: The v2 ``ProductFormatDeclaration`` carrying
+        declaration: The v2 ``Format`` carrying
             ``v1_format_ref[]``.
         v1_requirements: The referenced v1 format's ``requirements``
             object (dict or Pydantic model).

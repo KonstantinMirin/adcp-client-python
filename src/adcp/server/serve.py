@@ -332,6 +332,7 @@ class ServeConfig:
     validation: ValidationHookConfig | None = None
     pre_validation_hooks: PreValidationHooks | None = None
     response_enhancer: ResponseEnhancer | None = None
+    supported_versions: Sequence[str] | None = None
 
     # --- Discovery manifest ---
     base_url: str | None = None
@@ -350,6 +351,11 @@ class ServeConfig:
     debug_public: bool = False
 
     def __post_init__(self) -> None:
+        from adcp.server.version_policy import resolve_supported_versions
+
+        object.__setattr__(
+            self, "supported_versions", resolve_supported_versions(self.supported_versions)
+        )
         _a2a_only = (
             "task_store",
             "push_config_store",
@@ -852,6 +858,7 @@ def serve(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     enable_debug_endpoints: bool = False,
     debug_traffic_source: Callable[[], dict[str, int]] | None = None,
     session_count_source: Callable[[], dict[str, Any]] | None = None,
@@ -1231,6 +1238,7 @@ def serve(
         validation = config.validation
         pre_validation_hooks = config.pre_validation_hooks
         response_enhancer = config.response_enhancer
+        supported_versions = config.supported_versions
         enable_debug_endpoints = config.enable_debug_endpoints
         debug_traffic_source = config.debug_traffic_source
         session_count_source = config.session_count_source
@@ -1269,6 +1277,14 @@ def serve(
         if not name or name == "adcp-agent":
             name = handler.name
         handler = handler.build_handler()
+
+    from adcp.server.version_policy import resolve_supported_versions
+
+    supported_versions = resolve_supported_versions(
+        supported_versions,
+        handler=handler,
+        adcp_version=_resolve_handler_adcp_version(handler, None),
+    )
 
     # Compose debug endpoints as the outermost ASGI middleware on HTTP
     # transports. stdio has no HTTP layer, so debug endpoints are ignored
@@ -1322,6 +1338,7 @@ def serve(
             validation=validation,
             pre_validation_hooks=pre_validation_hooks,
             response_enhancer=response_enhancer,
+            supported_versions=supported_versions,
             base_url=base_url,
             specialisms=specialisms,
             description=description,
@@ -1356,6 +1373,7 @@ def serve(
             validation=validation,
             pre_validation_hooks=pre_validation_hooks,
             response_enhancer=response_enhancer,
+            supported_versions=supported_versions,
             base_url=base_url,
             specialisms=specialisms,
             description=description,
@@ -1393,6 +1411,7 @@ def serve(
             validation=validation,
             pre_validation_hooks=pre_validation_hooks,
             response_enhancer=response_enhancer,
+            supported_versions=supported_versions,
             base_url=base_url,
             specialisms=specialisms,
             description=description,
@@ -1809,6 +1828,7 @@ def _serve_mcp(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
@@ -1837,6 +1857,7 @@ def _serve_mcp(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         allowed_hosts=allowed_hosts,
         allowed_origins=allowed_origins,
         enable_dns_rebinding_protection=enable_dns_rebinding_protection,
@@ -1996,6 +2017,7 @@ def _build_a2a_app(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
@@ -2031,6 +2053,7 @@ def _build_a2a_app(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         allowed_hosts=allowed_hosts,
         allowed_origins=allowed_origins,
         enable_dns_rebinding_protection=enable_dns_rebinding_protection,
@@ -2090,6 +2113,7 @@ def _serve_a2a(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
@@ -2124,6 +2148,7 @@ def _serve_a2a(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         base_url=base_url,
         specialisms=specialisms,
         description=description,
@@ -2180,6 +2205,7 @@ def _build_mcp_and_a2a_app(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
@@ -2231,6 +2257,7 @@ def _build_mcp_and_a2a_app(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         allowed_hosts=allowed_hosts,
         allowed_origins=allowed_origins,
         enable_dns_rebinding_protection=enable_dns_rebinding_protection,
@@ -2291,6 +2318,7 @@ def _build_mcp_and_a2a_app(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         allowed_hosts=allowed_hosts,
         allowed_origins=allowed_origins,
         enable_dns_rebinding_protection=enable_dns_rebinding_protection,
@@ -2409,6 +2437,7 @@ def _serve_mcp_and_a2a(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     base_url: str | None = None,
     specialisms: list[str] | None = None,
     description: str | None = None,
@@ -2438,6 +2467,13 @@ def _serve_mcp_and_a2a(
     import anyio
     import uvicorn
 
+    from adcp.server.version_policy import resolve_supported_versions
+
+    supported_versions = resolve_supported_versions(
+        supported_versions,
+        handler=handler,
+        adcp_version=_resolve_handler_adcp_version(handler, None),
+    )
     resolved_port = port or int(os.environ.get("PORT", "3001"))
     # Intentional server default, configurable by argument or deployment env.
     resolved_host = host or os.environ.get("ADCP_HOST", "0.0.0.0")  # nosec B104
@@ -2469,6 +2505,7 @@ def _serve_mcp_and_a2a(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         base_url=base_url,
         specialisms=specialisms,
         description=description,
@@ -2585,6 +2622,7 @@ def create_mcp_server(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     allowed_hosts: Sequence[str] | None = None,
     allowed_origins: Sequence[str] | None = None,
     enable_dns_rebinding_protection: bool | None = None,
@@ -2744,12 +2782,23 @@ def create_mcp_server(
     """
     from mcp.server import MCPServer
 
+    from adcp.server.version_policy import resolve_supported_versions
+
+    supported_versions = resolve_supported_versions(
+        supported_versions,
+        handler=handler,
+        adcp_version=_resolve_handler_adcp_version(handler, None),
+    )
     resolved_port = port or int(os.environ.get("PORT", "3001"))
     # Intentional server default, configurable by argument or deployment env.
     resolved_host = (
         host if host is not None else (os.environ.get("ADCP_HOST") or "0.0.0.0")  # nosec B104
     )
     mcp: Any = MCPServer(name, instructions=instructions)
+    mcp._adcp_supported_versions = supported_versions
+    mcp._adcp_default_version = (
+        _resolve_handler_adcp_version(handler, None) or DEFAULT_UNNEGOTIATED_ADCP_VERSION
+    )
     mcp._adcp_operational_routes = prepare_operational_routes(unauthenticated_routes)
     mcp.settings = _ADCPMCPSettingsProxy(mcp.settings)
     object.__setattr__(mcp.settings, "host", resolved_host)
@@ -2782,6 +2831,7 @@ def create_mcp_server(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         mcp_result_text=mcp_result_text,
     )
     if session_idle_timeout is not None and session_idle_timeout <= 0:
@@ -3031,6 +3081,7 @@ def _register_handler_tools(
     validation: ValidationHookConfig | None = DEFAULT_VALIDATION,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
 ) -> None:
     """Register all ADCP tools from a handler onto an MCP server."""
     # Freeze middleware ordering at registration time. Tuple both guards
@@ -3063,6 +3114,7 @@ def _register_handler_tools(
             validation=validation,
             pre_validation_hook=hook,
             response_enhancer=response_enhancer,
+            supported_versions=supported_versions,
             default_unnegotiated_adcp_version=(
                 resolved_adcp_version or DEFAULT_UNNEGOTIATED_ADCP_VERSION
             ),

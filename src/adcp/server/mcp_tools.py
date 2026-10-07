@@ -21,7 +21,7 @@ from __future__ import annotations
 import copy
 import difflib
 import logging
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any, Literal
 
 from adcp.server._hooks import (
@@ -2965,6 +2965,7 @@ def create_tool_caller(
     pre_validation_hook: PreValidationHookChain | None = None,
     default_unnegotiated_adcp_version: str | None = DEFAULT_UNNEGOTIATED_ADCP_VERSION,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
 ) -> Callable[..., Any]:
     """Create a tool caller function for an ADCP handler method.
 
@@ -3071,8 +3072,13 @@ def create_tool_caller(
     from adcp.compat.legacy.errors import legacy_adapter_task_error
     from adcp.exceptions import ADCPTaskError
     from adcp.server.helpers import inject_context
+    from adcp.server.version_policy import project_supported_versions, resolve_supported_versions
     from adcp.types import Error
-    from adcp.validation.envelope import UnsupportedVersionError, detect_wire_version
+    from adcp.validation.envelope import (
+        SUPPORTED_WIRE_VERSIONS,
+        UnsupportedVersionError,
+        detect_wire_version,
+    )
     from adcp.validation.schema_errors import build_adcp_validation_error_payload
     from adcp.validation.schema_validator import (
         format_issues,
@@ -3105,6 +3111,29 @@ def create_tool_caller(
         validation.unknown_fields if validation is not None else None
     )
     pre_validation_hooks = _flatten_pre_validation_hooks(pre_validation_hook)
+    selected_versions = resolve_supported_versions(
+        supported_versions,
+        handler=handler,
+    )
+    accepted_versions = selected_versions or SUPPORTED_WIRE_VERSIONS
+    from adcp._version import resolve_adcp_version_alias
+
+    served_contracts = {resolve_adcp_version_alias(version) for version in accepted_versions}
+
+    def unsupported_version_error(exc: UnsupportedVersionError) -> ADCPTaskError:
+        return ADCPTaskError(
+            operation=method_name,
+            errors=[
+                Error(
+                    code="VERSION_UNSUPPORTED",
+                    message=str(exc),
+                    details={
+                        "claimed_version": exc.wire_value,
+                        "supported_versions": list(exc.supported),
+                    },
+                )
+            ],
+        )
 
     async def call_tool(params: dict[str, Any], context: ToolContext | None = None) -> Any:
         ctx = context if context is not None else ToolContext()
@@ -3186,24 +3215,9 @@ def create_tool_caller(
         # handler dispatch. Only an omitted envelope may continue into the
         # legacy shape probes below.
         try:
-            wire_version = detect_wire_version(params)
+            wire_version = detect_wire_version(params, supported=accepted_versions)
         except UnsupportedVersionError as exc:
-            raise ADCPTaskError(
-                operation=method_name,
-                errors=[
-                    Error(
-                        code="VERSION_UNSUPPORTED",
-                        message=str(exc),
-                        # Preserve the wire field's original type so buyer
-                        # telemetry sees the same shape it sent (int for
-                        # ``adcp_major_version``, str for ``adcp_version``).
-                        details={
-                            "claimed_version": exc.wire_value,
-                            "supported_versions": list(exc.supported),
-                        },
-                    )
-                ],
-            ) from exc
+            raise unsupported_version_error(exc) from exc
 
         # Shape-based legacy detection (issue: real v2.5 buyers can't
         # send ``adcp_version`` — the field didn't exist in the v2.5
@@ -3246,6 +3260,22 @@ def create_tool_caller(
         )
         if wire_version is None:
             wire_version = default_unnegotiated_adcp_version
+        if selected_versions is not None:
+            # A2A's unpinned default is the packaged contract. Legacy shape
+            # probes and omitted envelopes must obey the same selected set as
+            # explicit version claims, even when schema validation is off.
+            from adcp._version import resolve_adcp_version
+
+            effective_version = wire_version or resolve_adcp_version(None)
+            effective_version = resolve_adcp_version_alias(
+                normalize_to_release_precision(effective_version)
+            )
+            if effective_version not in served_contracts:
+                raise unsupported_version_error(
+                    UnsupportedVersionError(effective_version, accepted_versions)
+                )
+            if wire_version is not None:
+                wire_version = effective_version
 
         claimed_release = params.get("adcp_version")
         bridged_response_version: str | None = None
@@ -3575,6 +3605,8 @@ def create_tool_caller(
         # Convert Pydantic models to JSON-safe dicts for MCP serialization
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json", exclude_none=True)
+        if method_name == "get_adcp_capabilities" and isinstance(result, dict):
+            result = project_supported_versions(result, selected_versions)
         # ADCP requires echoing context from request to response — read
         # from the raw dict the transport sent, not from the validated
         # model (which won't carry the wire ``context`` field).
@@ -3604,6 +3636,8 @@ def create_tool_caller(
             # it here to avoid a double pass.
             if "adcp_error" not in result and method_name != "sync_reporting_receipts":
                 _apply_response_enhancer(response_enhancer, method_name, result, ctx)
+            if method_name == "get_adcp_capabilities" and "adcp_error" not in result:
+                result = project_supported_versions(result, selected_versions)
 
         if response_mode is not None and response_mode != "off" and isinstance(result, dict):
             # Skip validation when the handler returned the AdCP L3
@@ -3673,6 +3707,7 @@ class MCPToolSet:
         validation: ValidationHookConfig | None = None,
         pre_validation_hooks: PreValidationHooks | None = None,
         response_enhancer: ResponseEnhancer | None = None,
+        supported_versions: Sequence[str] | None = None,
         adcp_version: str | None = None,
         schema_mode: SchemaMode = "compact",
     ):
@@ -3699,6 +3734,11 @@ class MCPToolSet:
         """
         self.handler = handler
         resolved_adcp_version = _resolve_handler_adcp_version(handler, adcp_version)
+        from adcp.server.version_policy import resolve_supported_versions
+
+        supported_versions = resolve_supported_versions(
+            supported_versions, handler=handler, adcp_version=resolved_adcp_version
+        )
         self._filtered_definitions = get_tools_for_handler(
             handler,
             advertise_all=advertise_all,
@@ -3717,6 +3757,7 @@ class MCPToolSet:
                 validation=validation,
                 pre_validation_hook=hook,
                 response_enhancer=response_enhancer,
+                supported_versions=supported_versions,
                 default_unnegotiated_adcp_version=(
                     resolved_adcp_version or DEFAULT_UNNEGOTIATED_ADCP_VERSION
                 ),
@@ -3756,6 +3797,7 @@ def create_mcp_tools(
     validation: ValidationHookConfig | None = None,
     pre_validation_hooks: PreValidationHooks | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
     adcp_version: str | None = None,
     schema_mode: SchemaMode = "compact",
 ) -> MCPToolSet:
@@ -3816,6 +3858,7 @@ def create_mcp_tools(
         validation=validation,
         pre_validation_hooks=pre_validation_hooks,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
         adcp_version=adcp_version,
         schema_mode=schema_mode,
     )
