@@ -57,6 +57,9 @@ def _capabilities(
             "restatement_window": restatement_window,
             "restatement_cadence": restatement_cadence,
             "official_close_lag": official_close_lag,
+            # These tests exercise restatement policy with already-ready data.
+            "expected_availability_lag": "PT0S",
+            "worst_case_availability_lag": "PT0S",
         }
     )
     payload = base.model_dump(mode="json")
@@ -68,6 +71,17 @@ def _capabilities(
         )
         for item in base.offerings
     ]
+    for offering in payload["offerings"]:
+        if offering["offering_id"] == OFFICIAL_OFFERING_ID:
+            # Policy fixtures make authoritative data ready independently of
+            # the configured close cadence, just like the snapshot above.
+            offering.update(
+                expected_availability_lag="PT0S",
+                worst_case_availability_lag="PT0S",
+                source_timezone="UTC",
+                days_after_period_end=0,
+                source_local_ready_time="00:00",
+            )
     payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
     return ReportingSourceCapabilitiesV1.model_validate(payload)
 
@@ -101,6 +115,7 @@ async def _harness(
     capabilities: ReportingSourceCapabilitiesV1,
     *,
     store_factory: Any = None,
+    read_jitter_window: timedelta = timedelta(0),
 ) -> tuple[
     ReportingProducer,
     InMemoryReportingLedgerStore,
@@ -150,6 +165,7 @@ async def _harness(
         object_reader=staging,
         max_periods_per_turn=1,
         clock=lambda: clock[0],
+        read_jitter_window=read_jitter_window,
     )
     return producer, store, fetch, clock
 

@@ -276,6 +276,7 @@ class Source:
         clock=None,
         product_ids=("catalog-7391", "catalog-5820"),
         official=False,
+        expected_availability_lag="PT0S",
     ):
         raw = redacted_capabilities().model_dump(mode="json")
         raw["offerings"] = [raw["offerings"][int(official)]]
@@ -311,6 +312,9 @@ class Source:
                 )
             },
         }
+        # The default fixture supplies a closed period immediately. Tests of
+        # delayed availability override this declaration explicitly.
+        raw["offerings"][0]["expected_availability_lag"] = expected_availability_lag
         raw["offerings"][0]["worst_case_availability_lag"] = "PT1H"
         raw["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(raw)
         self.capabilities = ReportingSourceCapabilitiesV1.model_validate(raw)
@@ -513,6 +517,7 @@ async def production_harness(
             clock=source_clock,
             revision_verifier=verifier,
             object_reader=source.reader,
+            read_jitter_window=timedelta(0),
         )
         if pool is None:
             projection = InMemoryReportingStatusProjection(
@@ -573,6 +578,7 @@ async def production_harness(
                 clock=lambda: END,
                 revision_verifier=verifier,
                 object_reader=other.reader,
+                read_jitter_window=timedelta(0),
             )
             offerings += (
                 ReportingProductionOffering(

@@ -41,7 +41,8 @@ from adcp.server.mcp_tools import get_tools_for_handler
 from adcp.types import GetMediaBuyDeliveryResponse
 from adcp.validation.schema_loader import get_named_validator
 
-NOW = datetime(2026, 11, 1, 3, 10, tzinfo=timezone.utc)
+# The snapshot fixture declares a thirty-minute availability lag.
+NOW = datetime(2026, 11, 1, 3, 30, tzinfo=timezone.utc)
 SCHEDULE = ReportingScheduleSpec(period_duration="PT1H", delivery_sla="PT10M", alignment="utc")
 DEFINITION = ReportingDefinitionBinding(
     report_definition_uri="https://contracts.example.test/reporting/paid-media-daily-v1",
@@ -164,6 +165,49 @@ async def test_service_routes_two_frozen_generations_and_resolves_each_once() ->
     assert len(gam.calls) == len(freewheel.calls) == 1
     assert gam.calls[0].identity.delivery_config_id == "gam-delivery"
     assert freewheel.calls[0].identity.delivery_config_id == "freewheel-delivery"
+
+
+@pytest.mark.parametrize("window", [None, timedelta(0), timedelta(minutes=2)])
+async def test_service_exposes_first_read_jitter_control(window: timedelta | None) -> None:
+    service = ReliableReportingService.memory(
+        account_context=_account_context, read_jitter_window=window
+    )
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), [_rows(10)]))
+    await service.configure(_configuration())
+    assert service._bindings[_generation_key("gam")].producer._read_jitter_window == (
+        timedelta(minutes=5) if window is None else window
+    )
+
+
+def test_service_refuses_negative_read_jitter_window() -> None:
+    with pytest.raises(ReliableReportingConfigurationError, match="nonnegative"):
+        ReliableReportingService.memory(
+            account_context=_account_context, read_jitter_window=timedelta(seconds=-1)
+        )
+
+
+async def test_default_jitter_preserves_existing_custom_producer_factory_signature() -> None:
+    from adcp.reporting.ledger import ReportingProducer
+
+    def factory(*, source, offerings, store, object_reader, escalation, worker_id, clock):
+        return ReportingProducer(
+            source=source,
+            offerings=offerings,
+            store=store,
+            object_reader=object_reader,
+            escalation=escalation,
+            worker_id=worker_id,
+            clock=clock,
+        )
+
+    service = ReliableReportingService.memory(
+        account_context=_account_context, producer_factory=factory
+    )
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), [_rows(10)]))
+    await service.configure(_configuration())
+    assert service._bindings[_generation_key("gam")].producer._read_jitter_window == timedelta(
+        minutes=5
+    )
 
 
 async def test_service_serves_status_and_exact_revision_content() -> None:

@@ -458,6 +458,7 @@ class ReliableReportingService:
         clock: Callable[[], datetime] | None = None,
         worker_interval: timedelta | None = None,
         producer_factory: ProducerFactory = ReportingProducer,
+        read_jitter_window: timedelta | None = None,
         materialization_worker: ReportingBackgroundWorker | None = None,
         notification_worker: ReportingBackgroundWorker | None = None,
         notification_attempt_store: Any | None = None,
@@ -472,6 +473,7 @@ class ReliableReportingService:
         if production is not None and (
             caller_resolver is not None
             or producer_factory is not ReportingProducer
+            or read_jitter_window is not None
             or worker_interval is not None
             or materialization_worker is not None
             or notification_worker is not None
@@ -500,6 +502,16 @@ class ReliableReportingService:
         self._status_retention_days = status_retention_days
         self._worker_interval = worker_interval
         self._producer_factory = producer_factory
+        # Preserve the existing custom-factory keyword contract unless the
+        # caller explicitly opts into forwarding this additional setting.
+        self._pass_read_jitter_window = (
+            producer_factory is ReportingProducer or read_jitter_window is not None
+        )
+        self._read_jitter_window = (
+            timedelta(minutes=5) if read_jitter_window is None else read_jitter_window
+        )
+        if self._read_jitter_window < timedelta(0):
+            raise ReliableReportingConfigurationError("read jitter window must be nonnegative")
         self._materialization_worker = materialization_worker
         self._notification_worker = notification_worker
         self._notification_attempt_store = notification_attempt_store
@@ -709,6 +721,11 @@ class ReliableReportingService:
             escalation=self._escalation,
             worker_id=f"reporting-service:{context.adapter}",
             clock=self._clock,
+            **(
+                {"read_jitter_window": self._read_jitter_window}
+                if self._pass_read_jitter_window
+                else {}
+            ),
         )
         binding = _Binding(configuration=configuration, context=context, producer=producer)
         if persist:

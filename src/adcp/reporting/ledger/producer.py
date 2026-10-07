@@ -37,6 +37,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, TypeAlias
+from zoneinfo import ZoneInfo
 
 from adcp.reporting._settlement import cancel_and_settle
 from adcp.reporting._source_authorization import (
@@ -62,6 +63,7 @@ from adcp.reporting.ledger.models import (
     iso_duration_to_timedelta,
 )
 from adcp.reporting.ledger.provisional import (
+    PendingProvisionalAcquisitionStore,
     ProvisionalAcquisition,
     ProvisionalObservation,
     ProvisionalObservationStore,
@@ -77,6 +79,7 @@ from adcp.reporting.ledger.store import (
 )
 from adcp.reporting.revision_selection import select_reporting_revision
 from adcp.reporting.source import (
+    AuthoritativeOfferingV1,
     MediaBuyConstituentV1,
     ProvisionalSnapshotOfferingV1,
     ReportingConstituent,
@@ -277,7 +280,10 @@ class ReportingProducer:
         retry_max_delay: timedelta = timedelta(minutes=30),
         post_deadline_retry_interval: timedelta = timedelta(hours=1),
         retry_store: RetryScheduleStore | None = None,
+        read_jitter_window: timedelta = timedelta(minutes=5),
     ) -> None:
+        if read_jitter_window < timedelta(0):
+            raise ValueError("read jitter window must be nonnegative")
         if (
             retry_initial_delay <= timedelta(0)
             or retry_max_delay < retry_initial_delay
@@ -309,6 +315,7 @@ class ReportingProducer:
         self._retry_max_delay = retry_max_delay
         self._post_deadline_retry_interval = post_deadline_retry_interval
         self._retry_store = retry_store
+        self._read_jitter_window = read_jitter_window
 
     @property
     def store(self) -> ReportingLedgerStore:
@@ -642,6 +649,8 @@ class ReportingProducer:
             )
             if obligation is None:
                 continue
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
+                continue
             try:
                 policy = self._settling_policy(configuration, obligation)
                 if policy is None:
@@ -685,6 +694,10 @@ class ReportingProducer:
             )
             if obligation is None or obligation.generation_key != configuration.generation_key:
                 raise LedgerConflictError("HISTORY_UNAVAILABLE", "producer history is unavailable")
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
+                # Waiting for the declared source window is not completion.
+                # Leave the durable work item available to a later turn.
+                continue
             policy = self._settling_policy(configuration, obligation)
             finished = policy is None
             try:
@@ -712,6 +725,108 @@ class ReportingProducer:
                 await progress.finish_producer_acquisition(
                     configuration, reporting_obligation_id=identifier
                 )
+
+    async def _automatic_read_ready(
+        self,
+        configuration: ReportingConfiguration,
+        obligation: ReportingObligationRecord,
+        *,
+        now: datetime,
+    ) -> bool:
+        if _utc(now) < self._source_available_at(obligation):
+            return False
+        if _utc(now) >= self._scheduled_source_ready_at(configuration, obligation):
+            return True
+        if await self._store.list_revisions(
+            account_id=obligation.account_id,
+            reporting_obligation_id=obligation.reporting_obligation_id,
+        ):
+            # A successful manual snapshot has already passed the first read.
+            # Its short settling or immediate official close cannot inherit
+            # an automatic first-read delay it never needed.
+            return True
+        # A manual acquisition may have started work before its first automatic
+        # phase. That frozen attempt keeps the ordinary persisted retry clock.
+        retry = await self._get_retry(self._retry_keys(obligation)[0])
+        return retry is not None and retry.attempt > 0
+
+    def _scheduled_source_ready_at(
+        self, configuration: ReportingConfiguration, obligation: ReportingObligationRecord
+    ) -> datetime:
+        """Spread the first automatic read; later observations retain that phase.
+
+        The stable offset follows actual offering readiness, never precedes it,
+        and consumes only available SLA headroom. Successful observations keep
+        their persisted checked-at + cadence schedule without adding it again.
+        Retries, explicit acquisition and official-close boundaries keep their
+        existing clocks.
+        """
+        ready = self._source_available_at(obligation)
+        policy = self._settling_policy(configuration, obligation)
+        bound = min(
+            self._read_jitter_window,
+            (_utc(obligation.period.end) - _utc(obligation.period.start)) / 10,
+            max(timedelta(0), _utc(obligation.period.expected_at) - ready),
+            max(timedelta(0), _utc(obligation.automated_recovery_deadline_at) - ready),
+        )
+        if policy is not None:
+            bound = min(bound, policy.restatement_cadence / 10)
+        microseconds = bound // timedelta(microseconds=1)
+        if microseconds <= 0:
+            return ready
+        seed = canonical_json_utf8_v1(
+            [
+                "reporting-first-read-jitter-v1",
+                obligation.account_id,
+                obligation.consumer_id,
+                obligation.delivery_config_id,
+                obligation.delivery_config_version,
+                obligation.report_definition_id,
+                _utc(obligation.period.start).isoformat(),
+                _utc(obligation.period.end).isoformat(),
+                self._offerings.offering_for(obligation.required_finality),
+            ]
+        )
+        offset = int.from_bytes(hashlib.sha256(seed).digest(), "big") % (microseconds + 1)
+        return ready + timedelta(microseconds=offset)
+
+    def _source_available_at(
+        self,
+        obligation: ReportingObligationRecord,
+        *,
+        target_finality: str | None = None,
+        offering_id: str | None = None,
+        worst_case: bool = False,
+    ) -> datetime:
+        end = _utc(obligation.period.end)
+        offering_id = offering_id or self._offerings.offering_for(
+            target_finality or obligation.required_finality
+        )
+        if offering_id is None:
+            # The acquisition path reports the existing missing-offering error.
+            return end
+        offering = self._source.capabilities.offering(offering_id)
+        lag = (
+            offering.worst_case_availability_lag
+            if worst_case
+            else offering.expected_availability_lag
+        )
+        ready_at = end + timedelta(milliseconds=iso_duration_milliseconds_v1(lag))
+        if isinstance(offering, AuthoritativeOfferingV1):
+            zone = ZoneInfo(offering.source_timezone or obligation.period.source_timezone)
+            local_day = end.astimezone(zone).date() + timedelta(days=offering.days_after_period_end)
+            hour, minute = (int(part) for part in offering.source_local_ready_time.split(":"))
+            local_ready = datetime.combine(local_day, datetime.min.time()).replace(
+                hour=hour, minute=minute, tzinfo=zone
+            )
+            # Pick the later instant across a clock fold or gap. Ambiguous
+            # local readiness must not make the scheduler read the source early.
+            ready_at = max(
+                ready_at,
+                _utc(local_ready.replace(fold=0)),
+                _utc(local_ready.replace(fold=1)),
+            )
+        return ready_at
 
     def _settling_policy(
         self,
@@ -770,12 +885,59 @@ class ReportingProducer:
         if latest is not None:
             frozen = latest.acquisition.policy
             policy = _SettlingPolicy(frozen.window, frozen.cadence, frozen.official_close_lag)
+        explicit_close = (
+            policy.official_close_lag is not None
+            and self._offerings.official_offering_id is not None
+        )
         revisions = await self._store.list_revisions(
             account_id=obligation.account_id,
             reporting_obligation_id=obligation.reporting_obligation_id,
         )
         if any(item.finality == "official" for item in revisions):
             return True
+        checkpoint = await checkpoint_store.get_restatement_checkpoint(
+            account_id=obligation.account_id,
+            reporting_obligation_id=obligation.reporting_obligation_id,
+        )
+        ordinal = checkpoint.next_observation if checkpoint is not None else len(revisions)
+        pending = await self._pending_acquisition(obligation, ordinal=ordinal)
+        if pending is not None:
+            # Finish frozen source work before selecting a new finality. A
+            # snapshot retry may cross the official-close boundary while the
+            # authoritative offering is still unavailable.
+            request = pending.request()
+            if _utc(now) < self._source_available_at(obligation, offering_id=request.offering_id):
+                return False
+            await self.acquire_obligation(
+                configuration,
+                obligation,
+                restate=bool(revisions),
+                turn=turn,
+                now=now,
+                target_finality=(
+                    "snapshot"
+                    if request.publication_class == "PROVISIONAL_SNAPSHOT"
+                    else "official"
+                ),
+                track_settling=True,
+            )
+            revisions = await self._store.list_revisions(
+                account_id=obligation.account_id,
+                reporting_obligation_id=obligation.reporting_obligation_id,
+            )
+            if any(item.finality == "official" for item in revisions):
+                return True
+            if not explicit_close:
+                published = await observation_store.get_provisional_observation(
+                    account_id=obligation.account_id,
+                    reporting_obligation_id=obligation.reporting_obligation_id,
+                )
+                return (
+                    published is not None
+                    and published.acquisition.ordinal == ordinal
+                    and published.next_due_at is None
+                )
+            return False
         if not revisions:
             await self.acquire_obligation(
                 configuration,
@@ -787,10 +949,6 @@ class ReportingProducer:
             )
             return False
 
-        checkpoint = await checkpoint_store.get_restatement_checkpoint(
-            account_id=obligation.account_id,
-            reporting_obligation_id=obligation.reporting_obligation_id,
-        )
         declared_until = _utc(obligation.period.end) + policy.restatement_window
         settles_at = (
             _utc(checkpoint.provisional_until)
@@ -801,10 +959,6 @@ class ReportingProducer:
             checkpoint.checked_at
             if checkpoint is not None
             else max(revisions, key=lambda item: _utc(item.created_at)).created_at
-        )
-        explicit_close = (
-            policy.official_close_lag is not None
-            and self._offerings.official_offering_id is not None
         )
         next_due = (
             latest.next_due_at
@@ -840,6 +994,7 @@ class ReportingProducer:
         closes_at = max(
             settles_at,
             _utc(obligation.period.end) + policy.official_close_lag,
+            self._source_available_at(obligation, target_finality="official"),
         )
         if _utc(now) >= closes_at:
             await self.acquire_obligation(
@@ -893,8 +1048,39 @@ class ReportingProducer:
         obligation = await self._stored_obligation(obligation)
         turn = turn or WorkerTurn()
         now = now or self._clock()
+        finality = target_finality or obligation.required_finality
         if not manual_replay and await self._retry_not_before(obligation, turn, now=now):
-            self._note_escalation(obligation, turn, now=now)
+            retry_offering_id: str | None = None
+            if track_settling:
+                checkpoint = await self._restatement_store().get_restatement_checkpoint(
+                    account_id=obligation.account_id,
+                    reporting_obligation_id=obligation.reporting_obligation_id,
+                )
+                ordinal = (
+                    checkpoint.next_observation
+                    if checkpoint is not None
+                    else len(
+                        await self._store.list_revisions(
+                            account_id=obligation.account_id,
+                            reporting_obligation_id=obligation.reporting_obligation_id,
+                        )
+                    )
+                )
+                pending = await self._pending_acquisition(obligation, ordinal=ordinal)
+                if pending is not None:
+                    retry_offering_id = pending.request().offering_id
+            keys = turn._retry_keys_by_obligation[obligation.reporting_obligation_id]
+            retryable = not any(
+                turn._retry_entries[key].blocked for key in keys if key in turn._retry_entries
+            )
+            self._note_escalation(
+                obligation,
+                turn,
+                now=now,
+                availability_retry=retryable,
+                target_finality=finality,
+                offering_id=retry_offering_id,
+            )
             return None
         revisions = await self._store.list_revisions(
             account_id=obligation.account_id,
@@ -922,7 +1108,6 @@ class ReportingProducer:
         # the no-op it already was instead of becoming an error on every turn.
         require_frozen_currency(obligation.currency)
 
-        finality = target_finality or obligation.required_finality
         offering_id = self._offerings.offering_for(finality)
         if offering_id is None:
             raise LedgerConflictError(
@@ -977,6 +1162,12 @@ class ReportingProducer:
                     checkpoint.provisional_until if checkpoint is not None else None,
                 )
             )
+            if not acquisition.binds(obligation):
+                raise LedgerConflictError(
+                    "OBSERVATION_CONFLICT",
+                    "frozen source acquisition does not bind the obligation's consumer; "
+                    "operator reconciliation and a new configuration generation are required",
+                )
             request = acquisition.request(deadline_at=_utc(now) + self._offerings.slice_timeout)
             if manual_replay:
                 request = request.model_copy(update={"trigger": "manual_replay"})
@@ -1006,7 +1197,13 @@ class ReportingProducer:
             await cancel_and_settle(execution)
             turn.slices_failed.append(obligation.reporting_obligation_id)
             await self._schedule_retry(obligation, turn, now=now, replayed=manual_replay)
-            self._note_escalation(obligation, turn, now=now)
+            self._note_escalation(
+                obligation,
+                turn,
+                now=now,
+                availability_retry=True,
+                offering_id=request.offering_id,
+            )
             return None
 
         if isinstance(result, _InlineStorageFailure):
@@ -1035,7 +1232,13 @@ class ReportingProducer:
                 blocked=error.retry == "terminal",
                 replayed=manual_replay,
             )
-            self._note_escalation(obligation, turn, now=now)
+            self._note_escalation(
+                obligation,
+                turn,
+                now=now,
+                availability_retry=error.retry == "retryable",
+                offering_id=request.offering_id,
+            )
             return None
 
         manifest = self._verified_manifest(result)
@@ -1362,8 +1565,35 @@ class ReportingProducer:
             )
         return self._store
 
+    async def _pending_acquisition(
+        self, obligation: ReportingObligationRecord, *, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        if inspect.getattr_static(
+            self._store, "get_provisional_acquisition", None
+        ) is None or not isinstance(self._store, PendingProvisionalAcquisitionStore):
+            return None
+        acquisition = await self._store.get_provisional_acquisition(
+            account_id=obligation.account_id,
+            reporting_obligation_id=obligation.reporting_obligation_id,
+            ordinal=ordinal,
+        )
+        if acquisition is not None and not acquisition.binds(obligation):
+            raise LedgerConflictError(
+                "OBSERVATION_CONFLICT",
+                "retained source acquisition lacks matching consumer identity; "
+                "operator reconciliation and a new configuration generation are required",
+            )
+        return acquisition
+
     def _note_escalation(
-        self, obligation: ReportingObligationRecord, turn: WorkerTurn, *, now: datetime
+        self,
+        obligation: ReportingObligationRecord,
+        turn: WorkerTurn,
+        *,
+        now: datetime,
+        availability_retry: bool = False,
+        target_finality: str | None = None,
+        offering_id: str | None = None,
     ) -> None:
         """Record that this obligation has run out of automated recovery.
 
@@ -1372,6 +1602,13 @@ class ReportingProducer:
         that the boundary has passed so a supervisor can alert instead of
         letting a dead feed idle inside a retry loop forever.
         """
+        if availability_retry and _utc(now) < self._source_available_at(
+            obligation,
+            target_finality=target_finality,
+            offering_id=offering_id,
+            worst_case=True,
+        ):
+            return
         if _utc(now) >= _utc(obligation.automated_recovery_deadline_at):
             turn.escalated.append(obligation.reporting_obligation_id)
 
@@ -1596,6 +1833,7 @@ class ReportingProducer:
         identity = manifest.identity
         if (
             identity.account_id != obligation.account_id
+            or identity.consumer_id != obligation.consumer_id
             or identity.reporting_obligation_id != obligation.reporting_obligation_id
             or identity.delivery_config_id != obligation.delivery_config_id
             or identity.delivery_config_version != obligation.delivery_config_version
@@ -1717,6 +1955,7 @@ class ReportingProducer:
         return ReportingSourceSliceRequestV1(
             identity=ReportingSourceIdentityV1(
                 account_id=obligation.account_id,
+                consumer_id=obligation.consumer_id,
                 delivery_config_id=obligation.delivery_config_id,
                 delivery_config_version=obligation.delivery_config_version,
                 report_definition_id=obligation.report_definition_id,
@@ -1768,6 +2007,7 @@ def _logical_slice_fingerprint(obligation: ReportingObligationRecord, offering_i
     return reporting_fingerprint_v1(
         {
             "account_id": obligation.account_id,
+            "consumer_id": obligation.consumer_id,
             "delivery_config_id": obligation.delivery_config_id,
             "delivery_config_version": obligation.delivery_config_version,
             "report_definition_id": obligation.report_definition_id,

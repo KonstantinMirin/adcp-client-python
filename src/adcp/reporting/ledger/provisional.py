@@ -96,6 +96,7 @@ class ProvisionalAcquisition:
         identity = request.identity
         return (
             identity.account_id == obligation.account_id
+            and identity.consumer_id == obligation.consumer_id
             and identity.reporting_obligation_id == obligation.reporting_obligation_id
             and identity.delivery_config_id == obligation.delivery_config_id
             and identity.delivery_config_version == obligation.delivery_config_version
@@ -174,6 +175,16 @@ class ProvisionalObservation:
             ),
             json.dumps(value["manifest"], sort_keys=True, separators=(",", ":")),
         )
+
+
+@runtime_checkable
+class PendingProvisionalAcquisitionStore(Protocol):
+    """Optional lookup of a frozen acquisition before selecting its readiness window."""
+
+    async def get_provisional_acquisition(
+        self, *, account_id: str, reporting_obligation_id: str, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        pass
 
 
 @runtime_checkable

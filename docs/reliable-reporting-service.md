@@ -209,6 +209,22 @@ registrations can still start for retained reads only. Older custom stores witho
 the enumeration operation can keep explicit `configure()` startup. Enumeration
 is for service recovery and is never exposed as a buyer task.
 
+Scheduled source reads wait until the selected offering's
+`expected_availability_lag` has elapsed after the period end. Authoritative
+offerings also wait for `days_after_period_end` and `source_local_ready_time` in
+the offering's `source_timezone`, falling back to the stored period's timezone
+when it is omitted. Obligations still close at the period boundary;
+waiting does not change `expected_at` or the advertised recovery deadline.
+Retryable source failures do not escalate before the worst-case availability
+window of the actual requested offering. Built-in stores resume frozen pending
+acquisitions using that request's offering readiness, including a snapshot retry
+that crosses an official-close boundary. Custom observation stores may implement
+`PendingProvisionalAcquisitionStore` to provide the same lookup; without it, a
+pending snapshot waits conservatively until the authoritative offering is ready.
+
+Terminal failures still follow the existing recovery deadline.
+Direct acquisition and manual replay keep their explicit-call behavior.
+
 Pass `ReportingProductionOptions` to compose the managed materializer, status
 projection, exact reads, consumer/receipt handlers, and optional signed
 notification workers. Adopters supply domain declarations and their actual
@@ -365,3 +381,37 @@ and receive the SDK's recovery classification for that code. Reporting cursor/
 input extensions are correctable, storage-unavailability extensions are transient,
 and unknown extension or integrity failures default to terminal. Disabled optional methods and aggregate delivery
 continue to delegate to the application.
+
+## Source identity and automatic read timing
+
+Adapters receive the authenticated owner in `request.identity.consumer_id`.
+The SDK copies it from the obligation and binds it into the request fingerprint
+and sealed manifest; use that identity for any buyer-specific source routing.
+It is distinct from `account_id`, because several buyers can share an account.
+See the [source adapter contract](reporting-source-adapters.md#authenticated-consumer-identity)
+and [retained acquisition recovery](reporting-caller-ownership-migration.md#retained-source-acquisitions).
+
+Automatic workers wait for the actual source offering's availability, then spread
+each period's first read over a deterministic window of up to five minutes by default.
+The offset includes the account, consumer, configuration generation, period and
+offering. It is bounded by delivery/recovery headroom and one tenth of the period
+and applicable restatement cadence. A short period or no available headroom can
+reduce the offset to zero.
+
+Successful snapshots persist their checked-at plus cadence schedule; restarting
+the service does not add the offset again or accumulate drift. Existing retry
+deadlines, explicit acquisitions and official-close boundaries retain their
+timing. A successful manual snapshot also bypasses the initial automatic offset
+when its official close becomes due. Every automatic read still waits for its actual
+offering to be ready.
+
+For Core service composition, set `read_jitter_window=timedelta(...)` on
+`ReliableReportingService.memory(...)`, `.postgres(...)`, or the constructor.
+For managed production, set the same option on `ReportingProductionOptions`.
+Direct `ReportingProducer` users can set it on the producer. A nonnegative
+duration is required; `timedelta(0)` opts out. Managed production owns this
+option in `ReportingProductionOptions`, so do not also pass the Core option.
+
+An existing Core `producer_factory` keeps its previous keyword signature when
+`read_jitter_window` is omitted. When explicitly configuring that option, the
+custom factory must accept and forward the `read_jitter_window` keyword.

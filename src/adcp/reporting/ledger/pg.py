@@ -1065,6 +1065,19 @@ class PgReportingLedgerStore:
             ).fetchall()
         return tuple(_revision_from_row(row) for row in rows)
 
+    async def get_provisional_acquisition(
+        self, *, account_id: str, reporting_obligation_id: str, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        async with self._connection() as connection:
+            row = await (
+                await connection.execute(
+                    "SELECT payload FROM reporting_provisional_acquisitions"
+                    " WHERE account_id=%s AND reporting_obligation_id=%s AND ordinal=%s",
+                    (account_id, reporting_obligation_id, ordinal),
+                )
+            ).fetchone()
+        return ProvisionalAcquisition.from_wire(row[0]) if row is not None else None
+
     async def reserve_provisional_acquisition(
         self, acquisition: ProvisionalAcquisition
     ) -> ProvisionalAcquisition:
@@ -1079,8 +1092,6 @@ class PgReportingLedgerStore:
                     key,
                 )
             ).fetchone()
-            if existing is not None:
-                return ProvisionalAcquisition.from_wire(existing[0])
             obligation = await self.get_obligation(
                 account_id=acquisition.account_id,
                 reporting_obligation_id=acquisition.obligation_id,
@@ -1089,6 +1100,15 @@ class PgReportingLedgerStore:
                 raise LedgerConflictError("OBLIGATION_NOT_FOUND", "unknown observation obligation")
             if not acquisition.binds(obligation):
                 raise LedgerConflictError("OBSERVATION_CONFLICT", "acquisition generation differs")
+            if existing is not None:
+                retained = ProvisionalAcquisition.from_wire(existing[0])
+                if not retained.binds(obligation):
+                    raise LedgerConflictError(
+                        "OBSERVATION_CONFLICT",
+                        "retained source acquisition lacks matching consumer identity; "
+                        "operator reconciliation and a new configuration generation are required",
+                    )
+                return retained
             duplicate = await (
                 await connection.execute(
                     "SELECT 1 FROM reporting_provisional_acquisitions"
@@ -1156,6 +1176,15 @@ class PgReportingLedgerStore:
         async with self.transaction(), self._connection() as connection:
             await self._lock_account(connection, acquisition.account_id)
             await self._require_provisional_schema(connection)
+            obligation = await self.get_obligation(
+                account_id=acquisition.account_id,
+                reporting_obligation_id=acquisition.obligation_id,
+            )
+            if obligation is None or not acquisition.binds(obligation):
+                raise LedgerConflictError(
+                    "OBSERVATION_CONFLICT",
+                    "observation replay differs: acquisition does not bind this obligation",
+                )
             existing = await (
                 await connection.execute(
                     "SELECT reporting_revision_id,payload FROM reporting_provisional_observations"
