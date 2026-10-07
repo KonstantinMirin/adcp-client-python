@@ -177,6 +177,16 @@ class ProvisionalObservation:
 
 
 @runtime_checkable
+class PendingProvisionalAcquisitionStore(Protocol):
+    """Optional lookup of a frozen acquisition before selecting its readiness window."""
+
+    async def get_provisional_acquisition(
+        self, *, account_id: str, reporting_obligation_id: str, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        pass
+
+
+@runtime_checkable
 class ProvisionalObservationStore(Protocol):
     async def reserve_provisional_acquisition(
         self, acquisition: ProvisionalAcquisition

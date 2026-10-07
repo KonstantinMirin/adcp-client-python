@@ -1065,6 +1065,19 @@ class PgReportingLedgerStore:
             ).fetchall()
         return tuple(_revision_from_row(row) for row in rows)
 
+    async def get_provisional_acquisition(
+        self, *, account_id: str, reporting_obligation_id: str, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        async with self._connection() as connection:
+            row = await (
+                await connection.execute(
+                    "SELECT payload FROM reporting_provisional_acquisitions"
+                    " WHERE account_id=%s AND reporting_obligation_id=%s AND ordinal=%s",
+                    (account_id, reporting_obligation_id, ordinal),
+                )
+            ).fetchone()
+        return ProvisionalAcquisition.from_wire(row[0]) if row is not None else None
+
     async def reserve_provisional_acquisition(
         self, acquisition: ProvisionalAcquisition
     ) -> ProvisionalAcquisition:

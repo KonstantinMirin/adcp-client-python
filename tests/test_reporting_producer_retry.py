@@ -24,13 +24,29 @@ from adcp.reporting.ledger import (
     RetryScheduleEntry,
     WorkerTurn,
 )
-from adcp.reporting.source import ReportingSourceErrorV1, ReportingSourceExecutorResult
+from adcp.reporting.source import (
+    ReportingSourceCapabilitiesV1,
+    ReportingSourceErrorV1,
+    ReportingSourceExecutorResult,
+    reporting_source_capabilities_sha256_v1,
+)
 
 NOW = datetime(2026, 11, 1, 2, 10, tzinfo=timezone.utc)
 
 
+def _ready_capabilities():
+    """Retry tests begin after data readiness, without an availability delay."""
+    payload = redacted_capabilities().model_dump(mode="json")
+    for offering in payload["offerings"]:
+        offering.update(expected_availability_lag="PT0S", worst_case_availability_lag="PT0S")
+        if offering["offering_id"] == OFFICIAL_OFFERING_ID:
+            offering.update(source_local_ready_time="00:00", days_after_period_end=0)
+    payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
+    return ReportingSourceCapabilitiesV1.model_validate(payload)
+
+
 class FailingSource:
-    capabilities = redacted_capabilities()
+    capabilities = _ready_capabilities()
 
     def __init__(
         self,
@@ -180,7 +196,7 @@ async def test_unanswered_slice_is_deferred_on_worker_turn():
         return None
 
     source = InlineReportingSource(
-        capabilities=redacted_capabilities(),
+        capabilities=_ready_capabilities(),
         fetch=unanswered,
         staging=InMemoryStagingStore(),
         seals=InMemorySealStore(),

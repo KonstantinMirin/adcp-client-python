@@ -41,7 +41,8 @@ from adcp.server.mcp_tools import get_tools_for_handler
 from adcp.types import GetMediaBuyDeliveryResponse
 from adcp.validation.schema_loader import get_named_validator
 
-NOW = datetime(2026, 11, 1, 3, 10, tzinfo=timezone.utc)
+# The snapshot fixture declares a thirty-minute availability lag.
+NOW = datetime(2026, 11, 1, 3, 30, tzinfo=timezone.utc)
 SCHEDULE = ReportingScheduleSpec(period_duration="PT1H", delivery_sla="PT10M", alignment="utc")
 DEFINITION = ReportingDefinitionBinding(
     report_definition_uri="https://contracts.example.test/reporting/paid-media-daily-v1",
