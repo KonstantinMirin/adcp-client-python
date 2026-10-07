@@ -135,7 +135,15 @@ class FactoryApplication(Application):
 
 
 @asynccontextmanager
-async def factory_harness(backend, path, *, push=False, existing_pool=None, start=True):
+async def factory_harness(
+    backend,
+    path,
+    *,
+    push=False,
+    existing_pool=None,
+    start=True,
+    read_jitter_window=timedelta(0),
+):
     async with AsyncExitStack() as stack:
         pool = existing_pool
         if backend == "postgres" and pool is None:
@@ -283,6 +291,9 @@ async def factory_harness(backend, path, *, push=False, existing_pool=None, star
             authorize,
             notifications=push,
             poll_seconds=60,
+            **(
+                {"read_jitter_window": read_jitter_window} if read_jitter_window is not None else {}
+            ),
             **notification_inputs,
         )
         factory = (
@@ -338,6 +349,15 @@ async def admit(h):
         assert state["configuration"]["active"] is True and state["state"] == "ready"
         assert state["current_coverage"]["status"] == "full"
     return mounted
+
+
+@pytest.mark.parametrize("window", [None, timedelta(0), timedelta(minutes=2)])
+async def test_factory_exposes_and_forwards_read_jitter_control(window, tmp_path):
+    async with factory_harness(
+        "memory", tmp_path / "jitter.sqlite", start=False, read_jitter_window=window
+    ) as h:
+        expected = timedelta(minutes=5) if window is None else window
+        assert h.production.offerings[0].producer._read_jitter_window == expected
 
 
 @pytest.mark.parametrize("backend", ["memory", "postgres"])

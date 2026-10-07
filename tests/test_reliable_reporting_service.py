@@ -167,6 +167,49 @@ async def test_service_routes_two_frozen_generations_and_resolves_each_once() ->
     assert freewheel.calls[0].identity.delivery_config_id == "freewheel-delivery"
 
 
+@pytest.mark.parametrize("window", [None, timedelta(0), timedelta(minutes=2)])
+async def test_service_exposes_first_read_jitter_control(window: timedelta | None) -> None:
+    service = ReliableReportingService.memory(
+        account_context=_account_context, read_jitter_window=window
+    )
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), [_rows(10)]))
+    await service.configure(_configuration())
+    assert service._bindings[_generation_key("gam")].producer._read_jitter_window == (
+        timedelta(minutes=5) if window is None else window
+    )
+
+
+def test_service_refuses_negative_read_jitter_window() -> None:
+    with pytest.raises(ReliableReportingConfigurationError, match="nonnegative"):
+        ReliableReportingService.memory(
+            account_context=_account_context, read_jitter_window=timedelta(seconds=-1)
+        )
+
+
+async def test_default_jitter_preserves_existing_custom_producer_factory_signature() -> None:
+    from adcp.reporting.ledger import ReportingProducer
+
+    def factory(*, source, offerings, store, object_reader, escalation, worker_id, clock):
+        return ReportingProducer(
+            source=source,
+            offerings=offerings,
+            store=store,
+            object_reader=object_reader,
+            escalation=escalation,
+            worker_id=worker_id,
+            clock=clock,
+        )
+
+    service = ReliableReportingService.memory(
+        account_context=_account_context, producer_factory=factory
+    )
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), [_rows(10)]))
+    await service.configure(_configuration())
+    assert service._bindings[_generation_key("gam")].producer._read_jitter_window == timedelta(
+        minutes=5
+    )
+
+
 async def test_service_serves_status_and_exact_revision_content() -> None:
     clock = DeterministicReportingClock(NOW)
     service = ReliableReportingService.memory(

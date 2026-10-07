@@ -115,6 +115,7 @@ async def _harness(
     capabilities: ReportingSourceCapabilitiesV1,
     *,
     store_factory: Any = None,
+    read_jitter_window: timedelta = timedelta(0),
 ) -> tuple[
     ReportingProducer,
     InMemoryReportingLedgerStore,
@@ -164,6 +165,7 @@ async def _harness(
         object_reader=staging,
         max_periods_per_turn=1,
         clock=lambda: clock[0],
+        read_jitter_window=read_jitter_window,
     )
     return producer, store, fetch, clock
 

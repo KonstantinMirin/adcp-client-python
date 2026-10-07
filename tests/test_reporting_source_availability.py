@@ -107,6 +107,7 @@ async def _harness(
     official: bool = False,
     delivery_sla: str = "PT6H",
     capabilities: ReportingSourceCapabilitiesV1 | None = None,
+    read_jitter_window: timedelta = timedelta(0),
     **changes: Any,
 ) -> tuple[Any, ...]:
     clock = [END + timedelta(seconds=30)]
@@ -159,6 +160,7 @@ async def _harness(
         store=store,
         object_reader=staging,
         clock=lambda: clock[0],
+        read_jitter_window=read_jitter_window,
     )
     obligation = (await producer.close_elapsed_periods(configuration, now=clock[0]))[0]
     return producer, store, configuration, obligation, calls, clock
@@ -272,6 +274,7 @@ async def test_first_read_waits_for_the_declared_lag_and_survives_restart(store_
         store=store,
         object_reader=producer._object_reader,
         clock=lambda: clock[0],
+        read_jitter_window=timedelta(0),
     )
     clock[0] = END + timedelta(hours=1)
     turn = await restarted.run_configuration(configuration, now=clock[0])

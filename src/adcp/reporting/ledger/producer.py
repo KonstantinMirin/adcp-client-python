@@ -280,7 +280,10 @@ class ReportingProducer:
         retry_max_delay: timedelta = timedelta(minutes=30),
         post_deadline_retry_interval: timedelta = timedelta(hours=1),
         retry_store: RetryScheduleStore | None = None,
+        read_jitter_window: timedelta = timedelta(minutes=5),
     ) -> None:
+        if read_jitter_window < timedelta(0):
+            raise ValueError("read jitter window must be nonnegative")
         if (
             retry_initial_delay <= timedelta(0)
             or retry_max_delay < retry_initial_delay
@@ -312,6 +315,7 @@ class ReportingProducer:
         self._retry_max_delay = retry_max_delay
         self._post_deadline_retry_interval = post_deadline_retry_interval
         self._retry_store = retry_store
+        self._read_jitter_window = read_jitter_window
 
     @property
     def store(self) -> ReportingLedgerStore:
@@ -645,7 +649,7 @@ class ReportingProducer:
             )
             if obligation is None:
                 continue
-            if _utc(now) < self._source_available_at(obligation):
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
                 continue
             try:
                 policy = self._settling_policy(configuration, obligation)
@@ -690,7 +694,7 @@ class ReportingProducer:
             )
             if obligation is None or obligation.generation_key != configuration.generation_key:
                 raise LedgerConflictError("HISTORY_UNAVAILABLE", "producer history is unavailable")
-            if _utc(now) < self._source_available_at(obligation):
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
                 # Waiting for the declared source window is not completion.
                 # Leave the durable work item available to a later turn.
                 continue
@@ -721,6 +725,70 @@ class ReportingProducer:
                 await progress.finish_producer_acquisition(
                     configuration, reporting_obligation_id=identifier
                 )
+
+    async def _automatic_read_ready(
+        self,
+        configuration: ReportingConfiguration,
+        obligation: ReportingObligationRecord,
+        *,
+        now: datetime,
+    ) -> bool:
+        if _utc(now) < self._source_available_at(obligation):
+            return False
+        if _utc(now) >= self._scheduled_source_ready_at(configuration, obligation):
+            return True
+        if await self._store.list_revisions(
+            account_id=obligation.account_id,
+            reporting_obligation_id=obligation.reporting_obligation_id,
+        ):
+            # A successful manual snapshot has already passed the first read.
+            # Its short settling or immediate official close cannot inherit
+            # an automatic first-read delay it never needed.
+            return True
+        # A manual acquisition may have started work before its first automatic
+        # phase. That frozen attempt keeps the ordinary persisted retry clock.
+        retry = await self._get_retry(self._retry_keys(obligation)[0])
+        return retry is not None and retry.attempt > 0
+
+    def _scheduled_source_ready_at(
+        self, configuration: ReportingConfiguration, obligation: ReportingObligationRecord
+    ) -> datetime:
+        """Spread the first automatic read; later observations retain that phase.
+
+        The stable offset follows actual offering readiness, never precedes it,
+        and consumes only available SLA headroom. Successful observations keep
+        their persisted checked-at + cadence schedule without adding it again.
+        Retries, explicit acquisition and official-close boundaries keep their
+        existing clocks.
+        """
+        ready = self._source_available_at(obligation)
+        policy = self._settling_policy(configuration, obligation)
+        bound = min(
+            self._read_jitter_window,
+            (_utc(obligation.period.end) - _utc(obligation.period.start)) / 10,
+            max(timedelta(0), _utc(obligation.period.expected_at) - ready),
+            max(timedelta(0), _utc(obligation.automated_recovery_deadline_at) - ready),
+        )
+        if policy is not None:
+            bound = min(bound, policy.restatement_cadence / 10)
+        microseconds = bound // timedelta(microseconds=1)
+        if microseconds <= 0:
+            return ready
+        seed = canonical_json_utf8_v1(
+            [
+                "reporting-first-read-jitter-v1",
+                obligation.account_id,
+                obligation.consumer_id,
+                obligation.delivery_config_id,
+                obligation.delivery_config_version,
+                obligation.report_definition_id,
+                _utc(obligation.period.start).isoformat(),
+                _utc(obligation.period.end).isoformat(),
+                self._offerings.offering_for(obligation.required_finality),
+            ]
+        )
+        offset = int.from_bytes(hashlib.sha256(seed).digest(), "big") % (microseconds + 1)
+        return ready + timedelta(microseconds=offset)
 
     def _source_available_at(
         self,

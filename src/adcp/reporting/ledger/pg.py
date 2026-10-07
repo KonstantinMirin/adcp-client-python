@@ -1182,7 +1182,8 @@ class PgReportingLedgerStore:
             )
             if obligation is None or not acquisition.binds(obligation):
                 raise LedgerConflictError(
-                    "OBSERVATION_CONFLICT", "observation does not bind the obligation's consumer"
+                    "OBSERVATION_CONFLICT",
+                    "observation replay differs: acquisition does not bind this obligation",
                 )
             existing = await (
                 await connection.execute(

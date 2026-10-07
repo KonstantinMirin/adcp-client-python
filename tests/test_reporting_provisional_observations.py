@@ -71,6 +71,41 @@ async def latest(store):
     return observation
 
 
+async def test_jitter_phase_is_persisted_by_memory_and_postgres_observations(make_harness):
+    producer, store, _, clock = await make_harness(_capabilities(restatement_window="P3D"))
+    configurations = await store.list_configurations(
+        caller=OwnershipCaller(ACCOUNT, "buyer-settling")
+    )
+    configuration = configurations[0]
+    obligation = (await producer.close_elapsed_periods(configuration, now=clock[0]))[0]
+    producer = ReportingProducer(
+        source=producer._source,
+        offerings=producer._offerings,
+        store=store,
+        object_reader=producer._object_reader,
+        clock=lambda: clock[0],
+    )
+    due = producer._scheduled_source_ready_at(configuration, obligation)
+    assert obligation.period.end < due <= obligation.period.end + timedelta(minutes=5)
+    clock[0] = due
+    await producer.run_configuration(configuration, now=due)
+    original = await latest(store)
+    assert original.next_due_at == due + timedelta(hours=1)
+    restarted = ReportingProducer(
+        source=producer._source,
+        offerings=producer._offerings,
+        store=store,
+        object_reader=producer._object_reader,
+        clock=lambda: clock[0],
+        read_jitter_window=timedelta(minutes=50),
+    )
+    clock[0] = original.next_due_at
+    await restarted.run_configuration(configuration, now=clock[0])
+    refreshed = await latest(store)
+    assert refreshed.checked_at == original.next_due_at
+    assert refreshed.next_due_at == original.next_due_at + timedelta(hours=1)
+
+
 async def test_retained_ownerless_acquisition_requires_reconciliation_before_replay(make_harness):
     producer, store, fetch, clock = await make_harness(_capabilities(restatement_window="P3D"))
     requests = []

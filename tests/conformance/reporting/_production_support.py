@@ -517,6 +517,7 @@ async def production_harness(
             clock=source_clock,
             revision_verifier=verifier,
             object_reader=source.reader,
+            read_jitter_window=timedelta(0),
         )
         if pool is None:
             projection = InMemoryReportingStatusProjection(
@@ -577,6 +578,7 @@ async def production_harness(
                 clock=lambda: END,
                 revision_verifier=verifier,
                 object_reader=other.reader,
+                read_jitter_window=timedelta(0),
             )
             offerings += (
                 ReportingProductionOffering(
