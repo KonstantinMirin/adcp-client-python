@@ -12,7 +12,7 @@ pass. The pull requests are linked for the full rationale and measurements.
 | Structural pointer refs resolve to the type they select | #1371 | 47 per-position `RootModel` wrapper names under `adcp.types._generated` |
 | Generated models validate `boolean`/`integer`/`number` strictly | #1375 | Payloads that relied on `"yes"`, `"1"`, `1` coercion |
 | Root-level `anyOf`/`oneOf` required groups are enforced | #1368 | Documents that omit every required group of 42 request/response models, on generated and canonical names alike |
-| `format_kind` is a `str`, not the closed enum, and no model refuses a value | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; any model refusing a kind this SDK version does not know |
+| Consumer `format_kind` fields preserve open strings | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; the authoring union still requires a known discriminator |
 
 Nothing is removed from `adcp` or `adcp.types`: every name importable before
 is importable after. The additions are `Issue`, `AdcpVersionEnvelope`, seven
@@ -63,8 +63,101 @@ event = TypeAdapter(WholesaleFeedEvent).validate_python(payload)   # honours the
 inner = request.start_time
 ```
 
+For repeated union validation, use the SDK's cached helper. It returns the
+selected model directly and preserves discriminator validation:
+
+```python
+from adcp.types import VendorPricingOption, VendorPricingOptionUnion, validate_union
+
+option = validate_union(VendorPricingOption, {
+    "pricing_option_id": "price-1", "model": "cpm", "cpm": 2.0, "currency": "USD",
+})
+assert VendorPricingOption is VendorPricingOptionUnion
+```
+
+`validate_union` caches adapters for reusable hashable aliases, with a bounded
+cache. Aliases containing unhashable annotation metadata remain supported via
+an uncached adapter. Applications can also construct a `TypeAdapter` once and
+reuse it. The additional `VendorPricingOption` spelling preserves the existing
+`VendorPricingOptionUnion` name.
+
+### List roots still use `.root`
+
+Pure list roots retain their `RootModel[list[...]]` contract. Construct or
+validate the wrapper and iterate its `.root`; it is not a list itself:
+
+```python
+from adcp.types.domains.core.acceptance_policy_profile_ids import AcceptancePolicyProfileIds
+
+profiles = AcceptancePolicyProfileIds.model_validate(["policy-a"])
+for profile in profiles.root:
+    process_profile(profile)
+```
+
+The bundled generated surface currently declares 33 pure list roots. Domain
+module paths distinguish repeated names; numbered generated names can change
+when schemas are regenerated.
+
+| Class | Public module |
+| --- | --- |
+| `LocalizedScalar1` | `adcp.types.domains.brand_discovery` |
+| `LocalizedStringList1` | `adcp.types.domains.brand_discovery` |
+| `ColorValue2` | `adcp.types.domains.brand_discovery` |
+| `Tagline` | `adcp.types.domains.brand_discovery` |
+| `Agents` | `adcp.types.domains.brand_discovery` |
+| `AcceptancePolicyProfileIds` | `adcp.types.domains.core.acceptance_policy_profile_ids` |
+| `NonblockingImpacts` | `adcp.types.domains.core.account_identity_change_preview` |
+| `BlockedImpacts` | `adcp.types.domains.core.account_identity_change_preview` |
+| `Value` | `adcp.types.domains.core.audience_characteristic` |
+| `Assets` | `adcp.types.domains.core.creative_asset` |
+| `CreativeAssets1` | `adcp.types.domains.core.creative_assets` |
+| `Assets` | `adcp.types.domains.core.creative_localization` |
+| `ResolvedAssets1` | `adcp.types.domains.core.creative_localization_readback` |
+| `Assets` | `adcp.types.domains.core.creative_manifest` |
+| `DaastVersions` | `adcp.types.domains.core.daast_tracker_constraints` |
+| `ForecastPointDimensions` | `adcp.types.domains.core.forecast_point_dimensions` |
+| `StringArray` | `adcp.types.domains.core.registry_event` |
+| `ChangedFields` | `adcp.types.domains.core.registry_event` |
+| `Countries` | `adcp.types.domains.core.registry_event` |
+| `ReportingVerificationProfileSet` | `adcp.types.domains.core.reporting_verification_profile_set` |
+| `IanaTimezones` | `adcp.types.domains.core.targeting_overlay_support` |
+| `VastVersions` | `adcp.types.domains.core.vast_tracker_constraints` |
+| `Assets` | `adcp.types.domains.creative.list_creatives_response` |
+| `EnvelopeField1` | `adcp.types.domains.error_details.requote_required` |
+| `BoundedValueLevel31` | `adcp.types.domains.governance.reported_outcome_error` |
+| `BoundedValueLevel21` | `adcp.types.domains.governance.reported_outcome_error` |
+| `BoundedValue1` | `adcp.types.domains.governance.reported_outcome_error` |
+| `StatusFilter` | `adcp.types.domains.media_buy.get_media_buy_delivery_request` |
+| `StatusFilter` | `adcp.types.domains.media_buy.get_media_buys_request` |
+| `ProductResponseFields` | `adcp.types.domains.media_buy.product_fields` |
+| `ProductRefinementRequests` | `adcp.types.domains.media_buy.product_refinement` |
+| `TargetingKvs` | `adcp.types.domains.trusted_match.context_match_response` |
+| `TargetingKvs` | `adcp.types.domains.trusted_match.provider_context_match_response` |
+
 A single-model root such as `CheckGovernanceRequest` keeps
 `model_validate(...)` and can now be subclassed with `extra="forbid"`.
+
+### Product declarations use the authoring union
+
+`ProductFormatDeclaration` now names the 16 generated, discriminated authoring
+branches from `core/product-format-declaration.json`, with its normative
+cross-field rules enforced. It is no longer an alias for the open `Format`
+model. Validate an authored declaration with the cached helper:
+
+```python
+from adcp.types import ProductFormatDeclaration, validate_union
+
+declaration = validate_union(ProductFormatDeclaration, {
+    "format_kind": "image", "params": {"width": 300, "height": 250},
+})
+```
+
+The selected branch exposes typed parameters and requires a known discriminator.
+Use `Format(...)` for open consumer parsing, projection helpers and the existing
+`params_as` convenience method. `Format` continues to preserve unknown kind
+strings and parameter fields. `LegacyProductFormatDeclaration` remains available
+as a compatibility spelling for the raw generated union; new authoring code
+should use the current name with its cross-field validation.
 
 ## 3. Pointer refs resolve to the selected type (#1371)
 
@@ -154,10 +247,10 @@ manifest.format_kind is CanonicalFormatKind.image   # now False
 If you compared with `is`, compare with `==`. `CanonicalFormatKind` is a
 `StrEnum`, so `==` holds against the member and against the plain string.
 
-**No model refuses a value, in either direction.** There is one type, one
-field and one behaviour: `format_kind: str`, retained as sent, on
+**Consumer format-kind fields preserve unknown strings.** There is one type,
+field and behaviour for these open fields: `format_kind: str`, retained as sent, on
 `CreativeManifest` and `CreativeAsset` as much as on `Creative` and
-`DeliveryCreative`. If you were relying on a request model raising
+`DeliveryCreative`. If you were relying on a creative request model raising
 `ValidationError` for a kind outside the sixteen, it no longer does.
 
 That is deliberate. A seller supports some set of format kinds, and that set
@@ -185,6 +278,13 @@ if not is_canonical_format_kind(creative.format_kind):
 if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
     reject_with_unsupported_format(manifest)
 ```
+
+For application models that should reject unknown kinds during construction,
+use the opt-in `CanonicalFormatKindStr` annotation or an
+`AfterValidator(require_canonical_format_kind(vocabulary))`. Nullable and list
+annotations compose normally. See [format-kind validation](canonical-format-kinds-migration.md).
+The product authoring union described above has a fixed set of discriminator
+branches; use open `Format` when consuming a declaration for a future kind.
 
 **What this replaced.** Five pieces of scaffolding existed only to reconcile
 the closed enum with the open requirement, and all five are gone: the

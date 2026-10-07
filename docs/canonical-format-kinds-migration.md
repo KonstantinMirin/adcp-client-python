@@ -1,81 +1,54 @@
 # Canonical creative format-kind validation
 
-`CreativeAsset.format_kind`, `Creative.format_kind`, and
-`CreativeManifest.format_kind` now reject strings outside `CanonicalFormatKind`.
-This is a breaking change from releases through 8.0.0-rc.2, which accepted and
-preserved arbitrary strings in these fields. It aligns their enum validation
-with the pinned `core/canonical-format-kind.json` schema.
-
-Recognized wire strings still normalize to enum members and serialize to their
-original string values. The public type stubs and validation JSON Schema now
-describe the same closed set. `CreativeAsset` and `Creative` still require a
-non-null kind. `CreativeManifest` retains its optional `None` default for model
-composition; a complete wire manifest must also satisfy the versioned schema's
-identity and asset requirements.
-
-## Updating callers
-
-Use a recognized canonical kind when validating creative data:
+SDK 9 preserves `format_kind` as a string on creative and manifest models,
+including values introduced after the SDK's bundled vocabulary. Known strings
+also remain strings. Replace enum identity comparisons with string equality:
 
 ```python
-from adcp.types import CanonicalFormatKind, CreativeAsset
-
-creative = CreativeAsset.model_validate(
-    {
-        "creative_id": "creative-1",
-        "name": "Product image",
-        "format_kind": "image",
-        "assets": {},
-    }
-)
-kind: CanonicalFormatKind = creative.format_kind
-assert kind is CanonicalFormatKind.image
+if creative.format_kind == "image":
+    handle_image(creative)
 ```
 
-Validate stored values before upgrading workflows that read existing creatives.
-Unknown values such as `"totally_bogus"` now raise Pydantic `ValidationError`
-during construction, `model_validate`, and `model_validate_json`, including
-nested creative and manifest input fields. Correct each value to the canonical kind
-whose contract the creative satisfies. Applications receiving a kind introduced
-by a newer protocol version need an SDK version that supports that kind.
+`CanonicalFormatKind` remains available as a vocabulary enum, and
+`is_canonical_format_kind(value)` checks membership in the bundled vocabulary.
+It returns a boolean; do not install that predicate directly as a Pydantic
+`AfterValidator`, which must return the validated value.
 
-Adopter-defined formats use the existing `custom` kind with a corresponding
-format declaration's `format_shape` and `format_schema`. Use it when the creative
-conforms to that custom contract, rather than as a fallback for unknown values.
+## Opt into a closed application vocabulary
 
-The public input annotations are `CanonicalFormatKind` for `CreativeAsset` and
-`Creative`, and `CanonicalFormatKind | None` for `CreativeManifest`. Remove
-application branches that treat kinds validated by these types as arbitrary strings.
+Use `CanonicalFormatKindStr` on application fields that must accept only the
+bundled canonical kinds. It returns the original string and raises a validation
+error for an unknown kind. It composes with nullable and list annotations:
 
-## Buyer manifest readback
+```python
+from pydantic import BaseModel, Field
+from adcp.types import CanonicalFormatKindStr
 
-The SDK preserves unknown `format_kind` strings when reading manifests returned
-by another agent. Known kinds still normalize to enum members. This applies to
-all manifest-bearing response paths:
+class CreativeSelection(BaseModel):
+    format_kind: CanonicalFormatKindStr
+    fallback_kind: CanonicalFormatKindStr | None = None
+    accepted_kinds: list[CanonicalFormatKindStr] = Field(default_factory=list)
+```
 
-| Response | Manifest path |
-| --- | --- |
-| Canonical and legacy creative delivery | `creatives[].variants[].manifest` |
-| `LegacyPreviewCreativeResponse3` | `manifest` |
-| `LegacyBuildCreativeResponse1` | `creative_manifest` |
-| `LegacyBuildCreativeResponse3` | `creative_manifests[]` |
-| `LegacyBuildCreativeResponse4` | `creatives[].variants[].creative_manifest` |
-| Trusted-match router and provider responses | `offers[].creative_manifest` |
+For a deployment-specific vocabulary, `require_canonical_format_kind` builds a
+validator and snapshots the supplied iterable so it can be reused safely:
 
-Completed async build and preview results follow the same rule, including the
-webhook result wrapper. `DeliveryCreative.format_kind` also remains
-`CanonicalFormatKind | str | None`. This is tolerant SDK response parsing; it
-does not widen the versioned wire schema's enum.
+```python
+from typing import Annotated
+from pydantic import AfterValidator
+from adcp.types import require_canonical_format_kind
 
-Direct `Creative.format_kind` and `CreativeAsset.format_kind` fields remain
-strict, including `ListCreativesResponse.creatives[].format_kind`. The tolerance
-applies to response manifests, not to these directly embedded creative types.
+SellerKind = Annotated[
+    str, AfterValidator(require_canonical_format_kind(("image", "video")))
+]
+```
 
-Responses use private manifest views, with private enclosing variants and offers
-where needed. These types are reachable through responses but are not exported
-from `adcp.types`. The public and generated `CreativeManifest` types remain
-strict inputs. To reuse a returned manifest as input, dump it and validate it
-with `CreativeManifest.model_validate(returned_manifest.model_dump())`. An
-unknown kind fails this validation; choose a supported kind or upgrade the SDK
-before submitting it. Passing the tolerant instance directly also cannot bypass
-the input validator.
+These helpers are optional application validation. The SDK's creative models
+continue to preserve unknown strings, and a versioned wire schema remains the
+authority for protocol validation. A seller must also check a chosen kind
+against the selected product's declared `format_options`; use
+`validate_format_kind_in_options` at that application decision point.
+
+Adopter-defined formats can use `custom` with a corresponding declaration's
+`format_shape` and `format_schema`. Choose it when the creative satisfies that
+contract, rather than changing an unknown value to `custom` without validation.
