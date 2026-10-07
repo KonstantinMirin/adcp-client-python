@@ -5,17 +5,20 @@ from __future__ import annotations
 import asyncio
 import operator
 from collections.abc import AsyncIterator
-from dataclasses import replace
+from dataclasses import fields, replace
+from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
 from adcp.reporting.fixtures import redacted_capabilities
+from adcp.reporting.ledger import ReportingProducer, WorkerTurn
 from adcp.reporting.service import (
     ReliableReportingConfigurationError,
     ReliableReportingService,
     ReliableReportingServiceError,
+    ReportingAccountContext,
 )
 from adcp.reporting.testing import ScriptedReportingAdapter
 from tests.conformance.reporting._generation_support import isolated_reporting_pool
@@ -201,6 +204,17 @@ async def recovery_service_factory(request: Any) -> AsyncIterator[Any]:
 
 def _invalid_context(configuration: Any, kind: str) -> Any:
     context = _account_context(configuration)
+    if kind in {"projection", "projection_shape"}:
+
+        class InvalidProjection(ReportingAccountContext):
+            def producer_offerings(self) -> Any:
+                if kind == "projection_shape":
+                    return None
+                raise ValueError("invalid account projection")
+
+        return InvalidProjection(
+            **{field.name: getattr(context, field.name) for field in fields(context)}
+        )
     changes: dict[str, Any] = {
         "account": {"account_id": "wrong-account"},
         "timezone": {"account_timezone": "America/New_York"},
@@ -226,6 +240,8 @@ def _invalid_context(configuration: Any, kind: str) -> Any:
         "offering",
         "capability",
         "capability_shape",
+        "projection",
+        "projection_shape",
     ],
 )
 async def test_retry_resolving_invalid_context_stays_local_and_requires_explicit_repair(
@@ -257,11 +273,15 @@ async def test_retry_resolving_invalid_context_stays_local_and_requires_explicit
         failure = service.initialization_errors[affected.generation_key]
         expected = (
             TypeError
-            if invalid == "type"
+            if invalid in {"type", "projection_shape"}
             else (
-                AttributeError
-                if invalid == "capability_shape"
-                else ReliableReportingConfigurationError
+                ValueError
+                if invalid == "projection"
+                else (
+                    AttributeError
+                    if invalid == "capability_shape"
+                    else ReliableReportingConfigurationError
+                )
             )
         )
         assert isinstance(failure, expected)
@@ -284,26 +304,15 @@ async def test_retry_resolving_invalid_context_stays_local_and_requires_explicit
         await service.close()
 
 
-@pytest.mark.parametrize("stage", ["producer", "scope", "cancellation"])
-async def test_retry_static_setup_and_cancellation_failures_remain_fatal(
-    stage: str, monkeypatch: Any
+@pytest.mark.parametrize("stage", ["producer", "scope"])
+@pytest.mark.parametrize("admission", ["startup", "configure"])
+async def test_initial_static_setup_failures_remain_fatal(
+    stage: str, admission: str, monkeypatch: Any
 ) -> None:
     configuration = _configuration()
-    attempts = 0
-
-    def resolve(config: Any) -> Any:
-        nonlocal attempts
-        attempts += 1
-        if attempts == 1:
-            raise RuntimeError("temporary account lookup failure")
-        if stage == "cancellation":
-            raise asyncio.CancelledError()
-        return _account_context(config)
-
-    service = _service(resolve)
+    service = _service(_account_context)
     await service.store.put_configuration(configuration)
     try:
-        await service.start()
         if stage == "producer":
 
             def fail_construction(**kwargs: Any) -> Any:
@@ -318,11 +327,196 @@ async def test_retry_static_setup_and_cancellation_failures_remain_fatal(
                 registration.executor.capabilities.model_copy(update={"scope": "catalog"}),
             )
         expected = (
-            asyncio.CancelledError
-            if stage == "cancellation"
-            else (RuntimeError, ReliableReportingConfigurationError)
+            (ReliableReportingServiceError if admission == "startup" else RuntimeError)
+            if stage == "producer"
+            else ReliableReportingConfigurationError
         )
         with pytest.raises(expected):
+            if admission == "startup":
+                await service.start()
+            else:
+                await service.configure(configuration)
+    finally:
+        await service.close()
+
+
+@pytest.mark.parametrize("permanent", [False, True])
+async def test_retry_producer_failure_preserves_healthy_turns_and_recovers(
+    recovery_service_factory: Any, permanent: bool, monkeypatch: Any
+) -> None:
+    healthy, affected = (_configuration(account_id=account) for account in ("a", "b"))
+    resolutions = 0
+    constructions = 0
+    repaired = False
+    failure = (
+        ReliableReportingConfigurationError("invalid producer setup")
+        if permanent
+        else RuntimeError("temporary producer setup failure")
+    )
+
+    def resolve(configuration: Any) -> ReportingAccountContext:
+        nonlocal resolutions
+        if configuration == affected:
+            resolutions += 1
+            if resolutions == 1:
+                raise RuntimeError("temporary lookup failure")
+        return replace(
+            _account_context(configuration), publication_namespace=configuration.account_id
+        )
+
+    def construct(**kwargs: Any) -> ReportingProducer:
+        nonlocal constructions
+        if kwargs["offerings"].publication_namespace == affected.account_id:
+            constructions += 1
+            if not repaired:
+                raise failure
+        return ReportingProducer(**kwargs)
+
+    service = recovery_service_factory(resolve)
+    monkeypatch.setattr(service, "_producer_factory", construct)
+    await service.store.create_schema()
+    for configuration in (healthy, affected):
+        await service.store.put_configuration(configuration)
+    try:
+        await service.start()
+        for _ in range(2):
+            turn = await service.run_worker(now=NOW)
+            assert service.ready
+            assert set(turn.configurations) == {healthy.generation_key}
+            assert turn.configuration_errors == {affected.generation_key: failure}
+            assert service.initialization_errors == {affected.generation_key: failure}
+        assert constructions == (1 if permanent else 2)
+        repaired = True
+        if permanent:
+            await service.configure(affected)
+        recovered = await service.run_worker(now=NOW)
+        assert service.ready
+        assert set(recovered.configurations) == {healthy.generation_key, affected.generation_key}
+        assert not recovered.configuration_errors and not service.initialization_errors
+        assert constructions == (2 if permanent else 3)
+    finally:
+        await service.close()
+
+
+async def test_retry_registered_scope_error_stays_local_until_explicit_repair(
+    monkeypatch: Any,
+) -> None:
+    healthy, affected = (_configuration(account_id=account) for account in ("a", "b"))
+    attempts = 0
+
+    def resolve(configuration: Any) -> ReportingAccountContext:
+        nonlocal attempts
+        if configuration == affected:
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError("temporary lookup failure")
+        return _account_context(configuration)
+
+    service = _service(resolve)
+    for configuration in (healthy, affected):
+        await service.store.put_configuration(configuration)
+    try:
+        await service.start()
+        executor = service.sources.get("gam").executor
+        capabilities = executor.capabilities
+        monkeypatch.setattr(
+            executor, "_capabilities", capabilities.model_copy(update={"scope": "catalog"})
+        )
+        turn = await service.run_worker(now=NOW)
+        failure = service.initialization_errors[affected.generation_key]
+        assert isinstance(failure, ReliableReportingConfigurationError)
+        assert set(turn.configurations) == {healthy.generation_key}
+        assert turn.configuration_errors[affected.generation_key] is failure
+        assert service.ready
+        await service.run_worker(now=NOW)
+        assert attempts == 2
+        monkeypatch.setattr(executor, "_capabilities", capabilities)
+        await service.configure(affected)
+        recovered = await service.run_worker(now=NOW)
+        assert set(recovered.configurations) == {healthy.generation_key, affected.generation_key}
+        assert not recovered.configuration_errors and not service.initialization_errors
+    finally:
+        await service.close()
+
+
+async def test_managed_worker_keeps_healthy_accounts_running_across_factory_failures() -> None:
+    configurations = tuple(_configuration(account_id=account) for account in ("a", "b", "c"))
+    affected = configurations[-1]
+    resolutions = 0
+    construction_failures = 0
+    repaired = False
+    healthy_runs = {"a": 0, "b": 0}
+    healthy_continues = asyncio.Event()
+    recovered = asyncio.Event()
+    failure = RuntimeError("temporary producer setup failure")
+
+    def resolve(configuration: Any) -> ReportingAccountContext:
+        nonlocal resolutions
+        if configuration == affected:
+            resolutions += 1
+            if resolutions == 1:
+                raise RuntimeError("temporary lookup failure")
+        return replace(
+            _account_context(configuration), publication_namespace=configuration.account_id
+        )
+
+    class RecordingProducer(ReportingProducer):
+        async def run_configuration(self, configuration: Any, **kwargs: Any) -> WorkerTurn:
+            if configuration == affected:
+                recovered.set()
+            else:
+                healthy_runs[configuration.account_id] += 1
+                if construction_failures >= 2 and min(healthy_runs.values()) >= 2:
+                    healthy_continues.set()
+            return WorkerTurn()
+
+    def construct(**kwargs: Any) -> ReportingProducer:
+        nonlocal construction_failures
+        if kwargs["offerings"].publication_namespace == affected.account_id and not repaired:
+            construction_failures += 1
+            raise failure
+        return RecordingProducer(**kwargs)
+
+    service = ReliableReportingService.memory(
+        account_context=resolve,
+        clock=lambda: NOW,
+        worker_interval=timedelta(milliseconds=10),
+        producer_factory=construct,
+    )
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), []))
+    for configuration in configurations:
+        await service.store.put_configuration(configuration)
+    try:
+        await service.start()
+        await asyncio.wait_for(healthy_continues.wait(), timeout=5)
+        assert service.ready
+        assert service.initialization_errors == {affected.generation_key: failure}
+        healthy_before_repair = dict(healthy_runs)
+        repaired = True
+        await asyncio.wait_for(recovered.wait(), timeout=5)
+        assert service.ready and not service.initialization_errors
+        assert all(
+            healthy_runs[account] > count for account, count in healthy_before_repair.items()
+        )
+    finally:
+        await service.close()
+
+
+async def test_queued_resolver_cancellation_still_propagates() -> None:
+    attempts = 0
+
+    def resolve(configuration: Any) -> Any:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise RuntimeError("temporary lookup failure")
+        raise asyncio.CancelledError()
+
+    service = _service(resolve)
+    await service.store.put_configuration(_configuration())
+    try:
+        await service.start()
+        with pytest.raises(asyncio.CancelledError):
             await service.run_worker(now=NOW)
         assert attempts == 2
     finally:
