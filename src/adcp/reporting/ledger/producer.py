@@ -280,7 +280,10 @@ class ReportingProducer:
         retry_max_delay: timedelta = timedelta(minutes=30),
         post_deadline_retry_interval: timedelta = timedelta(hours=1),
         retry_store: RetryScheduleStore | None = None,
+        read_jitter_window: timedelta = timedelta(minutes=5),
     ) -> None:
+        if read_jitter_window < timedelta(0):
+            raise ValueError("read jitter window must be nonnegative")
         if (
             retry_initial_delay <= timedelta(0)
             or retry_max_delay < retry_initial_delay
@@ -312,6 +315,7 @@ class ReportingProducer:
         self._retry_max_delay = retry_max_delay
         self._post_deadline_retry_interval = post_deadline_retry_interval
         self._retry_store = retry_store
+        self._read_jitter_window = read_jitter_window
 
     @property
     def store(self) -> ReportingLedgerStore:
@@ -645,7 +649,7 @@ class ReportingProducer:
             )
             if obligation is None:
                 continue
-            if _utc(now) < self._source_available_at(obligation):
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
                 continue
             try:
                 policy = self._settling_policy(configuration, obligation)
@@ -690,7 +694,7 @@ class ReportingProducer:
             )
             if obligation is None or obligation.generation_key != configuration.generation_key:
                 raise LedgerConflictError("HISTORY_UNAVAILABLE", "producer history is unavailable")
-            if _utc(now) < self._source_available_at(obligation):
+            if not await self._automatic_read_ready(configuration, obligation, now=now):
                 # Waiting for the declared source window is not completion.
                 # Leave the durable work item available to a later turn.
                 continue
@@ -721,6 +725,70 @@ class ReportingProducer:
                 await progress.finish_producer_acquisition(
                     configuration, reporting_obligation_id=identifier
                 )
+
+    async def _automatic_read_ready(
+        self,
+        configuration: ReportingConfiguration,
+        obligation: ReportingObligationRecord,
+        *,
+        now: datetime,
+    ) -> bool:
+        if _utc(now) < self._source_available_at(obligation):
+            return False
+        if _utc(now) >= self._scheduled_source_ready_at(configuration, obligation):
+            return True
+        if await self._store.list_revisions(
+            account_id=obligation.account_id,
+            reporting_obligation_id=obligation.reporting_obligation_id,
+        ):
+            # A successful manual snapshot has already passed the first read.
+            # Its short settling or immediate official close cannot inherit
+            # an automatic first-read delay it never needed.
+            return True
+        # A manual acquisition may have started work before its first automatic
+        # phase. That frozen attempt keeps the ordinary persisted retry clock.
+        retry = await self._get_retry(self._retry_keys(obligation)[0])
+        return retry is not None and retry.attempt > 0
+
+    def _scheduled_source_ready_at(
+        self, configuration: ReportingConfiguration, obligation: ReportingObligationRecord
+    ) -> datetime:
+        """Spread the first automatic read; later observations retain that phase.
+
+        The stable offset follows actual offering readiness, never precedes it,
+        and consumes only available SLA headroom. Successful observations keep
+        their persisted checked-at + cadence schedule without adding it again.
+        Retries, explicit acquisition and official-close boundaries keep their
+        existing clocks.
+        """
+        ready = self._source_available_at(obligation)
+        policy = self._settling_policy(configuration, obligation)
+        bound = min(
+            self._read_jitter_window,
+            (_utc(obligation.period.end) - _utc(obligation.period.start)) / 10,
+            max(timedelta(0), _utc(obligation.period.expected_at) - ready),
+            max(timedelta(0), _utc(obligation.automated_recovery_deadline_at) - ready),
+        )
+        if policy is not None:
+            bound = min(bound, policy.restatement_cadence / 10)
+        microseconds = bound // timedelta(microseconds=1)
+        if microseconds <= 0:
+            return ready
+        seed = canonical_json_utf8_v1(
+            [
+                "reporting-first-read-jitter-v1",
+                obligation.account_id,
+                obligation.consumer_id,
+                obligation.delivery_config_id,
+                obligation.delivery_config_version,
+                obligation.report_definition_id,
+                _utc(obligation.period.start).isoformat(),
+                _utc(obligation.period.end).isoformat(),
+                self._offerings.offering_for(obligation.required_finality),
+            ]
+        )
+        offset = int.from_bytes(hashlib.sha256(seed).digest(), "big") % (microseconds + 1)
+        return ready + timedelta(microseconds=offset)
 
     def _source_available_at(
         self,
@@ -1094,6 +1162,12 @@ class ReportingProducer:
                     checkpoint.provisional_until if checkpoint is not None else None,
                 )
             )
+            if not acquisition.binds(obligation):
+                raise LedgerConflictError(
+                    "OBSERVATION_CONFLICT",
+                    "frozen source acquisition does not bind the obligation's consumer; "
+                    "operator reconciliation and a new configuration generation are required",
+                )
             request = acquisition.request(deadline_at=_utc(now) + self._offerings.slice_timeout)
             if manual_replay:
                 request = request.model_copy(update={"trigger": "manual_replay"})
@@ -1498,11 +1572,18 @@ class ReportingProducer:
             self._store, "get_provisional_acquisition", None
         ) is None or not isinstance(self._store, PendingProvisionalAcquisitionStore):
             return None
-        return await self._store.get_provisional_acquisition(
+        acquisition = await self._store.get_provisional_acquisition(
             account_id=obligation.account_id,
             reporting_obligation_id=obligation.reporting_obligation_id,
             ordinal=ordinal,
         )
+        if acquisition is not None and not acquisition.binds(obligation):
+            raise LedgerConflictError(
+                "OBSERVATION_CONFLICT",
+                "retained source acquisition lacks matching consumer identity; "
+                "operator reconciliation and a new configuration generation are required",
+            )
+        return acquisition
 
     def _note_escalation(
         self,
@@ -1752,6 +1833,7 @@ class ReportingProducer:
         identity = manifest.identity
         if (
             identity.account_id != obligation.account_id
+            or identity.consumer_id != obligation.consumer_id
             or identity.reporting_obligation_id != obligation.reporting_obligation_id
             or identity.delivery_config_id != obligation.delivery_config_id
             or identity.delivery_config_version != obligation.delivery_config_version
@@ -1873,6 +1955,7 @@ class ReportingProducer:
         return ReportingSourceSliceRequestV1(
             identity=ReportingSourceIdentityV1(
                 account_id=obligation.account_id,
+                consumer_id=obligation.consumer_id,
                 delivery_config_id=obligation.delivery_config_id,
                 delivery_config_version=obligation.delivery_config_version,
                 report_definition_id=obligation.report_definition_id,
@@ -1924,6 +2007,7 @@ def _logical_slice_fingerprint(obligation: ReportingObligationRecord, offering_i
     return reporting_fingerprint_v1(
         {
             "account_id": obligation.account_id,
+            "consumer_id": obligation.consumer_id,
             "delivery_config_id": obligation.delivery_config_id,
             "delivery_config_version": obligation.delivery_config_version,
             "report_definition_id": obligation.report_definition_id,

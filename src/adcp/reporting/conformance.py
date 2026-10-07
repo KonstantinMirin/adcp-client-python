@@ -611,6 +611,7 @@ def _semantic_scope(manifest: SourceBatchManifestV1) -> dict[str, Any]:
 def _sequence_scope(manifest: SourceBatchManifestV1) -> dict[str, Any]:
     return {
         "account_id": manifest.identity.account_id,
+        "consumer_id": manifest.identity.consumer_id,
         "delivery_config_id": manifest.identity.delivery_config_id,
         "report_definition_id": manifest.identity.report_definition_id,
         "source_scope": manifest.identity.source_scope,

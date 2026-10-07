@@ -1,10 +1,13 @@
 # Reporting correlation on AdCP 3.2
 
-AdCP 3.2.1 requires a buyer-supplied `operation_id` in scheduled delivery
-webhook envelopes, but its `reporting_webhook` schema does not declare that
-field. [adcp#7885](https://github.com/adcontextprotocol/adcp/issues/7885)
-tracks the gap; [adcp#7895](https://github.com/adcontextprotocol/adcp/pull/7895)
-proposes the field for 3.3.
+AdCP 3.2 delivery webhook envelopes require `operation_id`, but the published
+`reporting_webhook` registration schema still omits it through 3.2.3.
+[adcp#7895](https://github.com/adcontextprotocol/adcp/pull/7895) merged the optional
+core field for 3.3 and closed
+[adcp#7885](https://github.com/adcontextprotocol/adcp/issues/7885). The
+[3.3 release PR](https://github.com/adcontextprotocol/adcp/pull/7897) remains
+pending. Until that release is published and synchronized into the SDK, use the
+opt-in 3.2 agreement below.
 
 The SDK restores an optional `ReportingWebhook.operation_id` as an interim
 extension. The published registration schema permits additional fields.

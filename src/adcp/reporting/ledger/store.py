@@ -1201,13 +1201,19 @@ class InMemoryReportingLedgerStore:
         key = (acquisition.account_id, acquisition.obligation_id, acquisition.ordinal)
         async with self._mutation():
             existing = self._provisional_acquisitions.get(key)
-            if existing is not None:
-                return existing
             obligation = self._obligations.get(acquisition.obligation_id)
             if obligation is None or obligation.account_id != acquisition.account_id:
                 raise LedgerConflictError("OBLIGATION_NOT_FOUND", "unknown observation obligation")
             if not acquisition.binds(obligation):
                 raise LedgerConflictError("OBSERVATION_CONFLICT", "acquisition generation differs")
+            if existing is not None:
+                if not existing.binds(obligation):
+                    raise LedgerConflictError(
+                        "OBSERVATION_CONFLICT",
+                        "retained source acquisition lacks matching consumer identity; "
+                        "operator reconciliation and a new configuration generation are required",
+                    )
+                return existing
             if any(
                 item.account_id == acquisition.account_id
                 and item.execution_key == acquisition.execution_key
@@ -1258,6 +1264,12 @@ class InMemoryReportingLedgerStore:
             raise LedgerConflictError("OBSERVATION_CONFLICT", "observation identity differs")
         async with self._mutation():
             existing = self._provisional_observations.get(key)
+            obligation = self._obligations.get(acquisition.obligation_id)
+            if obligation is None or not acquisition.binds(obligation):
+                raise LedgerConflictError(
+                    "OBSERVATION_CONFLICT",
+                    "observation replay differs: acquisition does not bind this obligation",
+                )
             if existing is not None:
                 if (
                     existing.acquisition != acquisition

@@ -5,6 +5,7 @@ eligibility flag. Its immutable rows and grants survive a new provider process.
 """
 
 import hashlib
+import inspect
 import json
 import sqlite3
 from contextlib import asynccontextmanager
@@ -502,6 +503,12 @@ async def production_harness(
         if not second_source:
             source.bind_generation(config)
         escalation = ReportingDeliveryEscalation()
+        # Frozen installed SDKs predate the configurable first-read delay.
+        producer_options = (
+            {"read_jitter_window": timedelta(0)}
+            if "read_jitter_window" in inspect.signature(ReportingProducer).parameters
+            else {}
+        )
         producer = ReportingProducer(
             source=source,
             offerings=ProducerOfferings(
@@ -517,6 +524,7 @@ async def production_harness(
             clock=source_clock,
             revision_verifier=verifier,
             object_reader=source.reader,
+            **producer_options,
         )
         if pool is None:
             projection = InMemoryReportingStatusProjection(
@@ -577,6 +585,7 @@ async def production_harness(
                 clock=lambda: END,
                 revision_verifier=verifier,
                 object_reader=other.reader,
+                **producer_options,
             )
             offerings += (
                 ReportingProductionOffering(

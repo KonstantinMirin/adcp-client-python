@@ -85,9 +85,12 @@ class ReportingProductionOptions:
     automated_recovery_window: timedelta = timedelta(hours=6)
     status_retention_days: int = 400
     poll_seconds: float = 0.25
+    read_jitter_window: timedelta = timedelta(minutes=5)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "offerings", tuple(self.offerings))
+        if self.read_jitter_window < timedelta(0):
+            raise ValueError("read jitter window must be nonnegative")
         if not self.offerings:
             raise ValueError("production requires at least one source offering")
         notification_inputs = (self.subscriptions, self.cipher, self.signing)
@@ -157,6 +160,7 @@ class ReportingProductionOptions:
                     escalation=escalation,
                     clock=clock,
                     worker_id=f"reporting-service:{item.adapter}",
+                    read_jitter_window=self.read_jitter_window,
                 )
                 profiles[item.adapter] = item
                 producers[item.adapter] = producer

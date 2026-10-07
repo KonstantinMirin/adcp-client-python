@@ -111,10 +111,11 @@ Durable due-time selection and its fairness tests remain a service activation
 requirement; the default window is not a claim of completed production rollout.
 
 Successful observations retain their next cadence checkpoint. Failed or not-ready
-attempts retain their acquisition identity, but do not yet persist an independent
-retry time. Repeated worker turns can retry that acquisition before its source's
-safe cadence. Restart-safe retry scheduling remains required before full rollout;
-an in-process delay alone would not complete that requirement.
+attempts retain their acquisition identity and a durable retry deadline. Worker
+turns and restarts respect that deadline instead of retrying on every poll. A
+retry retains its frozen cutoff, execution key and request fields; only its
+attempt deadline is renewed. This retry timing does not resolve the progress
+queue fairness requirement above.
 
 ## Previously retired work: activation requirement remains open
 
