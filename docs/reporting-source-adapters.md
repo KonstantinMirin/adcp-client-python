@@ -70,6 +70,22 @@ copies semantic-contract ID, version, and digest from the **selected offering**.
 adapter input; the sealed manifest continues to use its existing
 `metric_availability` list and statuses.
 
+## Authenticated consumer identity
+
+Every new producer request includes `request.identity.consumer_id`, copied from
+the obligation's authenticated owner. It is part of the logical request,
+content fingerprint, revision sequence and sealed manifest identity. Use it when
+choosing a buyer-specific source route; never derive an owner from source scope
+or a buyer-supplied request field. Two callers sharing an account and configuration
+ID have distinct source requests and cannot substitute each other's manifests.
+
+The source identity model still decodes retained manifests without this field
+and omits an absent owner from their canonical encoding. That compatibility
+preserves historical fingerprints; it does not authorize replay of an ownerless
+frozen acquisition for an active owned obligation. Follow the
+[ownership recovery guide](reporting-caller-ownership-migration.md#retained-source-acquisitions)
+for that case.
+
 ## Defaults and freshness
 
 Omit `cell_availability` (or pass `None` or `{}`) to retain the existing derived

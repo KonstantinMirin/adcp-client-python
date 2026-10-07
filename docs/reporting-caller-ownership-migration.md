@@ -17,6 +17,21 @@ Core status IDs, supersession chains and journal entries are scoped by account
 and caller. Repeated status IDs from independent callers cannot suppress changes
 or advance another caller's snapshot or checkpoint boundary.
 
+## Retained source acquisitions
+
+New source requests and manifests bind `identity.consumer_id` to the authenticated
+obligation owner. Retained manifests without this optional field still decode and
+keep their original canonical hashes. An active owned obligation cannot resume
+an ownerless or differently owned frozen acquisition: the producer fails closed
+before dispatching source work.
+
+Inventory these acquisitions during maintenance, including state retained by
+early SDK 9 beta deployments. Reconcile uncertain external effects using the
+original evidence, then create a new configuration generation for subsequent
+work. Do not insert an inferred owner into an old frozen request or relabel its
+manifest under the same execution key. Decoding legacy evidence does not grant
+permission to reuse it for an authenticated caller.
+
 ## Maintenance order
 
 Mixed-version reporting processes are unsupported. This includes old Core
