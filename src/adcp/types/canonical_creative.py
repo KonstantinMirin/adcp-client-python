@@ -5,6 +5,61 @@ AdCP 3.x transition and therefore contain legacy named-format identity.  They
 are exposed from :mod:`adcp.types.legacy`.  This module provides the primary
 application-facing models: legacy identity is absent from their declared
 fields, JSON Schema, and serialized output at every nesting depth.
+
+``format_kind`` is a ``str``, not the generated enum — a deliberate override
+-------------------------------------------------------------------------
+
+``core/canonical-format-kind.json`` declares a **closed** 16-member ``enum``
+and, in the same file, states as normative:
+
+    Consumer SDKs MUST treat this enum as **open** at parse time: an unknown
+    ``format_kind`` value MUST be retained as-is on the in-memory object (not
+    silently dropped or rewritten to ``"custom"``) and MUST NOT cause the
+    surrounding payload to fail validation. ... The producer-side enum stays
+    closed (sellers MUST NOT mint ad-hoc ``format_kind`` values ...); the
+    consumer-side enum stays open for forward compatibility.
+
+**The schema already knows the rule is directional, and then encodes it as a
+single closed enum, which cannot carry that.** So this override implements what
+the schema says rather than contradicting it: every reference to that schema
+generates a bare ``str`` — ``OPEN_VOCABULARY_SCHEMAS`` in
+``scripts/generate_types.py``, one schema-level transform rather than a
+widening at each call site.
+
+**The SDK refuses nothing, in either direction, and that is deliberate.** A
+seller supports some set of format kinds; that set is the seller's, not this
+library's and not the pinned enum's. It can be larger — the seller handles a
+kind promoted in a spec newer than the pin — or smaller, four of the sixteen.
+A pinned SDK cannot tell "a kind the seller invented" from "a kind defined
+after my pin": both are simply "not in my 16". Refusing the second to prevent
+the first would make this SDK's version a ceiling on what the protocol permits,
+which is the same defect as the closed enum with the enforcement moved into a
+validator. The producer-side MUST is a seller's obligation; this library gives
+it the vocabulary and :func:`is_canonical_format_kind` to meet it, and leaves
+the decision where the knowledge is.
+
+So the vocabulary is not discarded, it is **relocated**:
+:class:`CanonicalFormatKind` stays a first-class export, used for comparison
+(``creative.format_kind == CanonicalFormatKind.image`` — it is a ``StrEnum``,
+so that holds against a plain string field and no adopter writes a literal) and
+for membership through :func:`is_canonical_format_kind`, whose vocabulary is a
+parameter. What changed is only that the field no longer refuses the
+seventeenth value a newer server sends. That is the registry pattern the
+sibling fields already use: ``format_shape`` and ``asset_group_id`` are plain
+strings governed by versioned registries whose own governance says
+non-canonical values stay valid and validators may warn.
+
+The one cost is that the generated models no longer agree with the bundled
+schema for this one field. That is declared, by name and with this reason, as a
+single entry in ``tests/conformance/_schema_parity.py``'s ``DECLARED`` —
+``format_kind_is_an_open_vocabulary_by_decision``. The parity rule itself is
+not relaxed.
+
+Upstream ask: `adcontextprotocol/adcp#7929
+<https://github.com/adcontextprotocol/adcp/issues/7929>`_. If it lands — the
+schema stating the directional rule in a form that can carry it, the way
+``format_shape`` is governed — delete the transform, delete this section, and
+the generated models go back to agreeing with their schema.
 """
 
 from __future__ import annotations
@@ -12,9 +67,8 @@ from __future__ import annotations
 import copy
 import json
 import re
-from collections.abc import Collection, Sequence
-from enum import Enum
-from typing import Annotated, Any, ClassVar, Literal, TypeVar
+from collections.abc import Callable, Iterable, Sequence
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
 
 from pydantic import (
     ConfigDict,
@@ -23,92 +77,91 @@ from pydantic import (
     PrivateAttr,
     SerializerFunctionWrapHandler,
     WithJsonSchema,
-    create_model,
     field_validator,
     model_serializer,
     model_validator,
 )
+from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
-from adcp.types._str_enum import StrEnum
 from adcp.types.base import AdCPBaseModel
-from adcp.types.generated_poc.core.canonical_format_kind import CanonicalFormatKind
-from adcp.types.generated_poc.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
-from adcp.types.generated_poc.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
-from adcp.types.generated_poc.core.creative_manifest import (
+from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
+from adcp.types.domains.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
+from adcp.types.domains.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
+from adcp.types.domains.core.creative_manifest import (
     CreativeManifest as _CanonicalCreativeManifestWire,
 )
-from adcp.types.generated_poc.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
-from adcp.types.generated_poc.core.package import Package as _LegacyPackage
-from adcp.types.generated_poc.core.placement import Placement as _LegacyPlacement
-from adcp.types.generated_poc.core.platform_extension_ref import PlatformExtensionReference
-from adcp.types.generated_poc.core.pricing_option import PricingOption as _LegacyPricingOption
-from adcp.types.generated_poc.core.product import Product as _LegacyProduct
-from adcp.types.generated_poc.core.product_filters import ProductFilters as _LegacyProductFilters
-from adcp.types.generated_poc.core.product_format_declaration import SellerPreference
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
+from adcp.types.domains.core.package import Package as _LegacyPackage
+from adcp.types.domains.core.placement import Placement as _LegacyPlacement
+from adcp.types.domains.core.platform_extension_ref import PlatformExtensionReference
+from adcp.types.domains.core.pricing_option import PricingOption as _LegacyPricingOption
+from adcp.types.domains.core.product import Product as _LegacyProduct
+from adcp.types.domains.core.product_filters import ProductFilters as _LegacyProductFilters
+from adcp.types.domains.core.product_format_declaration import SellerPreference
+from adcp.types.domains.creative.get_creative_delivery_response import (
     Creative as _LegacyDeliveryCreative,
 )
-from adcp.types.generated_poc.creative.get_creative_delivery_response import (
+from adcp.types.domains.creative.get_creative_delivery_response import (
     GetCreativeDeliveryResponse as _LegacyGetCreativeDeliveryResponse,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import (
+from adcp.types.domains.creative.list_creatives_request import (
     ListCreativesRequest as _LegacyListCreativesRequest,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     Creatives1 as _CanonicalListedCreative,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     ListCreativesResponse as _LegacyListCreativesResponse,
 )
-from adcp.types.generated_poc.creative.sync_creatives_request import (
+from adcp.types.domains.creative.sync_creatives_request import (
     SyncCreativesRequest as _LegacySyncCreativesRequest,
 )
-from adcp.types.generated_poc.enums.channels import MediaChannel
-from adcp.types.generated_poc.media_buy.create_media_buy_request import (
+from adcp.types.domains.enums.channels import MediaChannel
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequest as _LegacyCreateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1 as _LegacyCreateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse2 as _LegacyCreateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse3 as _LegacyCreateMediaBuyResponse3,
 )
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
     GetMediaBuyDeliveryResponse as _LegacyGetMediaBuyDeliveryResponse,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     GetMediaBuysResponse as _LegacyGetMediaBuysResponse,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     MediaBuy as _LegacyMediaBuy,
 )
-from adcp.types.generated_poc.media_buy.get_media_buys_response import (
+from adcp.types.domains.media_buy.get_media_buys_response import (
     Package as _LegacyMediaBuyPackage,
 )
-from adcp.types.generated_poc.media_buy.get_products_request import (
+from adcp.types.domains.media_buy.get_products_request import (
     GetProductsRequest as _LegacyGetProductsRequest,
 )
-from adcp.types.generated_poc.media_buy.get_products_response import (
+from adcp.types.domains.media_buy.get_products_response import (
     GetProductsResponse as _LegacyGetProductsResponse,
 )
-from adcp.types.generated_poc.media_buy.package_request import (
+from adcp.types.domains.media_buy.package_request import (
     PackageRequest as _LegacyPackageRequest,
 )
-from adcp.types.generated_poc.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
-from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+from adcp.types.domains.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
+from adcp.types.domains.media_buy.update_media_buy_request import (
     UpdateMediaBuyRequest as _LegacyUpdateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse1 as _LegacyUpdateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse2 as _LegacyUpdateMediaBuyResponse2,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse3 as _LegacyUpdateMediaBuyResponse3,
 )
 from adcp.types.legacy import LegacyFormatId
@@ -117,10 +170,45 @@ from adcp.types.media_buy_status_helpers import (
     unwrap_enum_value,
 )
 
-_OpenCanonicalFormatKind = Annotated[
-    CanonicalFormatKind | str,
-    Field(union_mode="left_to_right"),
-]
+
+def is_canonical_format_kind(
+    value: object,
+    vocabulary: Iterable[str] = CanonicalFormatKind,
+) -> bool:
+    """Is *value* one of *vocabulary*'s format kinds?
+
+    The vocabulary defaults to :class:`CanonicalFormatKind`, the sixteen kinds
+    the pinned AdCP bundle declares — but it is a PARAMETER, because the set
+    that matters is the seller's, not this SDK's. A seller may support a kind
+    promoted in a spec newer than the pin, or only four of the sixteen, and
+    neither is expressible by anything this library knows.
+
+    **The SDK never calls this for you.** ``format_kind`` is a ``str``
+    everywhere, on the way out and on the way back, and no model refuses a
+    value. That is deliberate: a pinned library cannot tell "a kind the seller
+    invented" from "a kind defined after my pin", so refusing the second to
+    prevent the first would make this SDK's version a ceiling on what the
+    protocol permits. "I accept the request and then tell you I cannot process
+    this creative" is a seller's answer, not a type error.
+
+    This function is the sanctioned way to be strict, where the caller knows
+    which spec version its counterpart speaks::
+
+        from adcp.types import is_canonical_format_kind
+
+        if not is_canonical_format_kind(creative.format_kind):
+            route_as_declared_but_unsupported(creative)
+
+        if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
+            reject_with_unsupported_format(manifest)
+
+    Comparison needs no helper: ``CanonicalFormatKind`` is a ``StrEnum``, so
+    ``creative.format_kind == CanonicalFormatKind.image`` holds against a plain
+    string field and an adopter never writes a literal.
+    """
+
+    return isinstance(value, str) and any(value == kind for kind in vocabulary)
+
 
 _LEGACY_IDENTITY_KEY = re.compile(r"(^|_)(?:format_ids?|v1_format_ref)($|_)")
 _CREDENTIAL_SHAPED_KEY_SUFFIXES = (
@@ -133,6 +221,23 @@ _CREDENTIAL_SHAPED_KEY_SUFFIXES = (
     "password",
     "bearer",
 )
+
+if TYPE_CHECKING:
+    from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
+
+    # The three shapes the generated parents give legacy creative identity.
+    # Each canonical model that inherits one of those fields redeclares it in a
+    # ``TYPE_CHECKING`` block, so a type checker's synthesized ``__init__``
+    # agrees with the runtime: ``__pydantic_init_subclass__`` removes the field
+    # and ``_reject_legacy_creative_identity`` refuses the key, and ``init=False``
+    # is what makes the keyword unavailable statically as well. The annotations
+    # mirror the generated declaration exactly — a drift in either direction
+    # makes the redeclaration an incompatible override, which mypy and pyright
+    # refuse by name. ``test_canonical_removed_fields.py`` pins that every
+    # removed field has such a redeclaration.
+    _RemovedFormatId = FormatReferenceStructuredObject | None
+    _RemovedFormatIds = list[FormatReferenceStructuredObject] | None
+    _RemovedFormatIdSequence = Sequence[FormatReferenceStructuredObject] | None
 
 
 def _walk_for_credential_keys(value: Any, *, path: str = "") -> str | None:
@@ -156,6 +261,17 @@ def _walk_for_credential_keys(value: Any, *, path: str = "") -> str | None:
     elif isinstance(value, AdCPBaseModel):
         return _walk_for_credential_keys(value.model_dump(mode="python"), path=path)
     return None
+
+
+class _JsonSchemaHandlerWithGenerator(Protocol):
+    """The concrete handler pydantic passes in carries the active generator.
+
+    ``GetJsonSchemaHandler`` is the documented protocol and does not declare
+    ``generate_json_schema``; the object pydantic actually supplies does, and
+    reaching it is how a nested definition registry gets sanitized.
+    """
+
+    generate_json_schema: GenerateJsonSchema
 
 
 def is_legacy_creative_identity_key(key: object) -> bool:
@@ -316,20 +432,80 @@ def _sanitize_schema_node(value: Any) -> Any:
 def sanitize_canonical_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """Return a defensive deep copy with legacy identity removed."""
 
-    return _sanitize_schema_node(copy.deepcopy(schema))
+    sanitized: dict[str, Any] = _sanitize_schema_node(copy.deepcopy(schema))
+    return sanitized
+
+
+def _serialize_canonical_model(
+    self: CanonicalBoundaryModel,
+    handler: SerializerFunctionWrapHandler,
+) -> Any:
+    """Enforce the boundary for nested and TypeAdapter serialization too."""
+
+    return strip_legacy_creative_identity(
+        handler(self),
+        _format_scope=self.__class__.__name__ == "Format",
+    )
 
 
 class CanonicalBoundaryModel(AdCPBaseModel):
-    """Base class enforcing the primary canonical runtime boundary."""
+    """Base class enforcing the primary canonical runtime boundary.
+
+    Every canonical model is a real subclass of the generated wire model it
+    refines, so each one inherits the generated model's fields, its injected
+    ``model_validator``s, and its envelope ancestry. Two concerns that used to
+    be re-attached per class by ``create_model`` are therefore declared once,
+    here, and inherited:
+
+    * ``_serialize_canonical`` — the wrap serializer that strips legacy creative
+      identity from nested and ``TypeAdapter`` serialization.
+    * ``__pydantic_init_subclass__`` — the one declared field removal. Legacy
+      creative identity must be absent from a canonical model's *declared*
+      fields, which is the single thing inheritance alone cannot express; the
+      rule reads the same :func:`is_legacy_creative_identity_key` predicate that
+      governs the input validator, the schema sanitizer and the serializer, so
+      there is one strip predicate for all four.
+
+    ``CanonicalBoundaryModel`` is listed LAST among a canonical model's bases.
+    Pydantic merges ``model_config`` across bases left to right, so the
+    right-most base wins; the generated wire model inherits
+    :class:`AdCPBaseModel`'s ``extra`` policy and would otherwise override this
+    class's ``extra="allow"`` and start dropping caller-supplied extension keys.
+    """
 
     model_config = ConfigDict(extra="allow", defer_build=True)
     __adcp_canonical_creative_model__: ClassVar[bool] = True
-    #: The generated class a canonical clone stands in for; ``None`` on a model
-    #: declared directly. Set by :func:`_canonical_clone`.
-    __adcp_canonical_source__: ClassVar[type[AdCPBaseModel] | None] = None
-    #: Source validators a clone left behind, each with the dropped field names
-    #: it touches. Empty on a model declared directly.
-    __adcp_canonical_validators_left_behind__: ClassVar[dict[str, set[str]]] = {}
+
+    _serialize_canonical = model_serializer(mode="wrap")(_serialize_canonical_model)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Remove inherited legacy creative identity from the declared fields.
+
+        Each removed name is then bound as a plain class attribute holding
+        ``None`` — which is the removal's own truth, and which the inherited
+        validators need. A generated model can carry an injected validator that
+        READS the removed field: ``list-creatives-response.json``'s
+        ``_validate_format_reference_xor`` evaluates
+        ``(self.format_id is None) == (self.format_kind is None)``. Inheritance
+        is the point of this layer, so that validator now runs on the canonical
+        model, and with the field merely deleted it raised ``AttributeError``.
+        With the name reading ``None`` the XOR reduces to exactly the invariant
+        the canonical model should hold — ``format_kind`` must be set — which is
+        the same thing the canonical declaration states by making it required.
+
+        Binding happens AFTER class creation, so pydantic never considers the
+        name a field candidate; ``model_fields``, the JSON schema and the wire
+        are all unaffected. Measured scope: one such validator, on one model.
+        """
+
+        removed = [name for name in cls.model_fields if is_legacy_creative_identity_key(name)]
+        for name in removed:
+            del cls.model_fields[name]
+            cls.__annotations__.pop(name, None)
+            setattr(cls, name, None)
+        if removed:
+            cls.model_rebuild(force=True)
 
     @model_validator(mode="before")
     @classmethod
@@ -347,10 +523,11 @@ class CanonicalBoundaryModel(AdCPBaseModel):
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         kwargs.setdefault("serialize_as_any", False)
-        return strip_legacy_creative_identity(
+        stripped: dict[str, Any] = strip_legacy_creative_identity(
             super().model_dump(**kwargs),
             _format_scope=self.__class__.__name__ == "Format",
         )
+        return stripped
 
     def model_dump_json(self, **kwargs: Any) -> str:
         kwargs.setdefault("serialize_as_any", False)
@@ -384,182 +561,24 @@ class CanonicalBoundaryModel(AdCPBaseModel):
         # node. Mutate the active generator's definition registry as well so
         # unreachable generated legacy definitions cannot leak into the final
         # recursive schema document.
-        generator = handler.generate_json_schema
+        generator = cast(_JsonSchemaHandlerWithGenerator, handler).generate_json_schema
         for key, definition in list(generator.definitions.items()):
             generator.definitions[key] = sanitize_canonical_schema(definition)
         return schema
 
 
-def _field_definitions(
-    source: type[AdCPBaseModel],
-    *,
-    exclude: frozenset[str] = frozenset(),
-    overrides: dict[str, tuple[Any, Any]] | None = None,
-) -> dict[str, tuple[Any, Any]]:
-    fields: dict[str, tuple[Any, Any]] = {}
-    for name, info in source.model_fields.items():
-        if name in exclude or is_legacy_creative_identity_key(name):
-            continue
-        fields[name] = (info.annotation, copy.deepcopy(info))
-    fields.update(overrides or {})
-    return fields
+def _inherit(source: type[AdCPBaseModel], name: str) -> Any:
+    """Return a copy of ``source``'s ``name`` field for a retyped redeclaration.
 
-
-def _serialize_canonical_model(
-    self: CanonicalBoundaryModel,
-    handler: SerializerFunctionWrapHandler,
-) -> Any:
-    """Enforce the boundary for nested and TypeAdapter serialization too."""
-
-    return strip_legacy_creative_identity(
-        handler(self),
-        _format_scope=self.__class__.__name__ == "Format",
-    )
-
-
-def _canonical_clone_bases(source: type[AdCPBaseModel]) -> tuple[type[AdCPBaseModel], ...]:
-    """Return the clone bases for ``source``: what it composes, then the boundary.
-
-    A canonical clone copies the composed *fields*, but a clone built on
-    ``CanonicalBoundaryModel`` alone would drop the composed *ancestry* — so
-    ``issubclass(GetProductsResponse, ProtocolEnvelope)`` would be ``False``
-    even though the response carries ``status``/``replayed``/``task_id``. The
-    bases ``source`` already has are what its schema composes at its root, so
-    carrying them over keeps the canonical surface's ancestry identical to the
-    generated surface it replaces. Reading them off ``source`` rather than
-    naming the envelopes is what makes that true for every composed base:
-    naming them covered ``AdcpVersionEnvelope`` and ``ProtocolEnvelope`` and
-    silently dropped ``DeliveryMetrics`` from ``CreativeVariant`` and
-    ``IndicatorBearingResourceState`` from ``MediaBuy``.
-
-    ``CanonicalBoundaryModel`` comes last on purpose. Pydantic merges
-    ``model_config`` across bases left to right, so the right-most base wins;
-    a composed base inherits :class:`AdCPBaseModel`'s ``extra`` policy and
-    would otherwise override the boundary's ``extra="allow"`` and start
-    dropping caller-supplied extension keys. Method resolution is unaffected —
-    the composed bases override nothing, so ``CanonicalBoundaryModel`` still
-    supplies ``model_dump``/``model_json_schema`` ahead of
-    :class:`AdCPBaseModel`.
-
-    ``source`` is sometimes a clone itself — ``_DeliveryCreativeVariantBase``
-    and the guard fixtures in ``tests/test_code_generation.py`` clone one — so
-    the two bases this function supplies are dropped before it supplies them
-    again. Without that, re-cloning a clone is ``TypeError: duplicate base
-    class CanonicalBoundaryModel``.
+    A canonical model that narrows an inherited field's *annotation* still wants
+    the generated field's constraints, description and default. Redeclaring with
+    this as the assigned value keeps every one of them, where a bare ``Field()``
+    would silently drop ``min_length`` and friends. The return type is ``Any``
+    because a ``FieldInfo`` is what pydantic expects on the right-hand side of an
+    annotated field declaration — the same reason ``Field()`` itself is ``Any``.
     """
 
-    supplied = (AdCPBaseModel, CanonicalBoundaryModel)
-    composed = tuple(base for base in source.__bases__ if base not in supplied)
-    return (*composed, CanonicalBoundaryModel)
-
-
-def _validator_references(function: Any) -> set[str]:
-    """Names a validator's code touches: attributes read and string constants.
-
-    A generated validator reaches a field as ``self.<name>`` (``co_names``) or
-    names it in a literal — the root required-group validator carries its
-    groups as a tuple of field-name strings. Nested code objects (comprehensions)
-    are walked too.
-    """
-    code = getattr(function, "__func__", function).__code__
-    names: set[str] = set()
-    pending = [code]
-    while pending:
-        current = pending.pop()
-        names.update(current.co_names)
-        constants: list[Any] = list(current.co_consts)
-        while constants:
-            constant = constants.pop()
-            if isinstance(constant, str):
-                names.add(constant)
-            elif isinstance(constant, (tuple, frozenset)):
-                constants.extend(constant)
-            elif hasattr(constant, "co_code"):
-                pending.append(constant)
-    return names
-
-
-def _own_validators(
-    source: type[AdCPBaseModel], fields: Collection[str]
-) -> tuple[dict[str, Any], dict[str, set[str]]]:
-    """Return the validators ``source`` declares on itself, re-decorated for a clone.
-
-    A canonical clone is built with ``create_model`` over ``source``'s *bases*
-    (:func:`_canonical_clone_bases`) and a copy of its *fields*
-    (:func:`_field_definitions`), so ``source`` itself is not in the clone's
-    MRO and nothing declared on its class body crosses over: the validators
-    the generator writes onto a request class — the root-level required
-    groups of ``create-media-buy-request.json`` (#1361), the uniqueness checks
-    on reporting selectors, the publisher-property coercion on ``Product`` —
-    would silently stop applying to the canonical name. Inherited validators do
-    cross, through the bases, so only the ones ``source`` declares on its own
-    body are carried here.
-
-    A validator that touches a field the clone does not carry is left behind,
-    and the second mapping names which field for each: the clone drops the
-    legacy creative identity fields on purpose, so a rule written against
-    ``format_id`` — the ``format_id | format_kind`` root group on a manifest,
-    the format-reference XOR on a listed creative — has nothing to enforce on
-    the canonical boundary and would raise ``AttributeError`` on the read.
-
-    The class namespace, not ``Decorator.func``, is what gets re-decorated:
-    pydantic stores a ``before`` validator's ``classmethod`` there, and the
-    unwrapped ``func`` has already lost its ``cls`` binding.
-    """
-    own = vars(source)
-    decorators = source.__pydantic_decorators__
-    dropped = set(source.model_fields) - set(fields)
-    carried: dict[str, Any] = {}
-    left_behind: dict[str, set[str]] = {}
-    for attribute, decorator in decorators.model_validators.items():
-        if attribute not in own:
-            continue
-        touched = _validator_references(own[attribute]) & dropped
-        if touched:
-            left_behind[attribute] = touched
-            continue
-        carried[attribute] = model_validator(mode=decorator.info.mode)(own[attribute])
-    for attribute, decorator in decorators.field_validators.items():
-        if attribute not in own:
-            continue
-        info = decorator.info
-        touched = (set(info.fields) | _validator_references(own[attribute])) & dropped
-        if touched:
-            left_behind[attribute] = touched
-            continue
-        carried[attribute] = field_validator(
-            *info.fields,
-            mode=info.mode,
-            check_fields=info.check_fields,
-        )(own[attribute])
-    return carried, left_behind
-
-
-def _canonical_clone(
-    name: str,
-    source: type[AdCPBaseModel],
-    *,
-    exclude: frozenset[str] = frozenset(),
-    overrides: dict[str, tuple[Any, Any]] | None = None,
-) -> type[CanonicalBoundaryModel]:
-    fields = _field_definitions(source, exclude=exclude, overrides=overrides)
-    carried, left_behind = _own_validators(source, fields)
-    model = create_model(  # type: ignore[call-overload]
-        name,
-        __base__=_canonical_clone_bases(source),
-        __module__=__name__,
-        __validators__={
-            **carried,
-            "_serialize_canonical": model_serializer(mode="wrap")(_serialize_canonical_model),
-        },
-        **fields,
-    )
-    # The generated class a clone stands in for, and the validators it could
-    # not carry. ``tests/test_canonical_validator_parity.py`` reads both to
-    # assert the clone refuses every document its source refuses.
-    model.__adcp_canonical_source__ = source
-    model.__adcp_canonical_validators_left_behind__ = left_behind
-    return model
+    return copy.deepcopy(source.model_fields[name])
 
 
 _CanonicalParamsT = TypeVar("_CanonicalParamsT", bound=AdCPBaseModel)
@@ -592,12 +611,10 @@ class Format(CanonicalBoundaryModel):
     experimental: bool | None = None
     format_shape: str | None = None
     format_schema: PlatformExtensionReference | None = None
-    format_kind: CanonicalFormatKind
+    format_kind: str
     params: dict[str, Any]
 
     _legacy_format_refs: list[LegacyFormatId] = PrivateAttr(default_factory=list)
-
-    _serialize_canonical = model_serializer(mode="wrap")(_serialize_canonical_model)
 
     @model_validator(mode="before")
     @classmethod
@@ -652,7 +669,7 @@ class Format(CanonicalBoundaryModel):
 
     @model_validator(mode="after")
     def _validate_custom_shape(self) -> Format:
-        if self.format_kind is CanonicalFormatKind.custom:
+        if self.format_kind == CanonicalFormatKind.custom.value:
             if not self.format_shape:
                 raise ValueError("custom formats require format_shape")
             if self.format_schema is None:
@@ -665,49 +682,59 @@ class Format(CanonicalBoundaryModel):
 ProductFormatDeclaration = Format
 
 
-Placement = _canonical_clone(
-    "Placement",
-    _LegacyPlacement,
-    overrides={
-        "format_options": (
-            list[Format] | None,
-            Field(default=None, min_length=1),
-        )
-    },
-)
+class Placement(_LegacyPlacement, CanonicalBoundaryModel):
+    """Canonical placement; ``format_options`` are canonical declarations."""
 
-Product = _canonical_clone(
-    "Product",
-    _LegacyProduct,
-    overrides={
-        "format_options": (
-            list[Format],
-            Field(min_length=1, description="Canonical creative formats accepted by this product."),
-        ),
-        "placements": (list[Placement] | None, Field(default=None, min_length=1)),
-        "pricing_options": (list[CanonicalPricingOption], Field(min_length=1)),
-    },
-)
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIdSequence = Field(default=None, init=False)
 
-CreativeAsset = _canonical_clone(
-    "CreativeAsset",
-    _CanonicalCreativeWire,
-    overrides={"format_kind": (CanonicalFormatKind, Field())},
-)
-
-Creative = _canonical_clone(
-    "Creative",
-    _CanonicalListedCreative,
-    overrides={"format_kind": (CanonicalFormatKind, Field())},
-)
-
-_CreativeManifestBase = _canonical_clone(
-    "_CreativeManifestBase",
-    _CanonicalCreativeManifestWire,
-)
+    format_options: list[Format] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
 
 
-class CreativeManifest(_CreativeManifestBase):
+class Product(_LegacyProduct, CanonicalBoundaryModel):
+    """Canonical product; formats, placements and pricing are canonical."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
+    format_options: list[Format] = Field(  # type: ignore[assignment]
+        min_length=1, description="Canonical creative formats accepted by this product."
+    )
+    placements: list[Placement] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
+    pricing_options: list[CanonicalPricingOption] = Field(min_length=1)
+
+
+class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
+    """Canonical creative asset; the format kind is required, not optional.
+
+    The kind is narrowed to required and nothing else: it stays ``str`` and the
+    model refuses no value. A buyer SENDS a creative asset, and the
+    producer-side "sellers MUST NOT mint ad-hoc kinds" rule is the sender's
+    obligation, not something a pinned library can tell from a kind defined
+    after its pin — :func:`is_canonical_format_kind` is how a caller meets it.
+    """
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
+
+    format_kind: str
+
+
+class Creative(_CanonicalListedCreative, CanonicalBoundaryModel):
+    """Canonical listed creative; the format kind is required, not optional.
+
+    A listed creative is a row a seller RETURNS, so the kind is required but
+    never confined: a kind a newer seller emits is retained as-is, which is
+    what ``core/canonical-format-kind.json`` requires of a consumer.
+    """
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
+
+    format_kind: str
+
+
+class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
     """Canonical manifest accepting the SDK's public standalone asset models.
 
     The 3.2 aggregate asset-union schema currently generates structurally
@@ -716,6 +743,9 @@ class CreativeManifest(_CreativeManifestBase):
     validates them. This keeps the public constructors composable without
     relaxing the on-wire discriminator checks.
     """
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
 
     @model_validator(mode="before")
     @classmethod
@@ -736,50 +766,66 @@ class CreativeManifest(_CreativeManifestBase):
         }
 
 
-CreativeVariant = _canonical_clone(
-    "CreativeVariant",
-    _LegacyCreativeVariant,
-    overrides={"manifest": (CreativeManifest | None, Field(default=None))},
-)
+class CreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
+    """Canonical creative variant whose manifest is the canonical manifest."""
+
+    manifest: CreativeManifest | None = None
 
 
-_DeliveryCreativeManifestBase = _canonical_clone(
-    "_DeliveryCreativeManifestBase",
-    _CanonicalCreativeManifestWire,
-    overrides={
-        "format_kind": (
-            _OpenCanonicalFormatKind | None,
-            copy.deepcopy(_CanonicalCreativeManifestWire.model_fields["format_kind"]),
-        )
-    },
-)
+class _DeliveryCreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
+    """The buyer's manifest, read back off a delivery row.
 
+    It redeclares nothing about the format-kind vocabulary. ``format_kind`` is
+    ``str`` here and on :class:`CreativeManifest`, neither refuses a value, and
+    the ``_StrictFormatKind`` mixin that used to be the only difference between
+    the two is deleted. **This class is not a tolerant variant of anything.**
 
-class _DeliveryCreativeManifest(_DeliveryCreativeManifestBase):
-    """Tolerant served output, deliberately not a subtype of the strict input."""
+    **The one reason it survives** is ``_normalize_readback`` below, and
+    specifically its first line: the canonical models are real SUBCLASSES of
+    the generated wire models they refine, so a delivery row carrying a
+    manifest INSTANCE of the generated wire class is a PARENT instance, which
+    pydantic refuses for a field typed as the subclass. Dumping it first is
+    what lets a caller compose a delivery response out of the models it already
+    holds.
+
+    Measured, not reasoned: deleting both delivery classes and typing
+    ``DeliveryCreative.variants`` as ``list[CreativeVariant]`` turns the
+    readback suites 6 red, of which exactly ONE is lost behavior —
+
+        Input should be a valid dictionary or instance of CreativeManifest
+        [type=model_type, input_type=CreativeManifest]
+
+    on ``test_delivery_accepts_known_input_models[manifest-CreativeManifest1-canonical]``
+    and its ``variant`` twin. The other four grade the two-class split itself
+    (``test_delivery_manifest_cannot_bypass_strict_input[instance-...]``, its
+    variant twin, ``test_delivery_only_types_are_not_top_level_exports`` and
+    ``test_unknown_nested_manifest_kind_round_trips_in_delivery_readback``) and
+    would be restated, not lost. Keeping one type here therefore costs
+    parent-instance acceptance at the delivery boundary, which is a readback
+    concern and has nothing to do with the vocabulary.
+    """
 
     @model_validator(mode="before")
     @classmethod
     def _normalize_readback(cls, data: Any) -> Any:
         if isinstance(data, AdCPBaseModel) and not isinstance(data, cls):
             data = data.model_dump(mode="python")
-        return CreativeManifest._normalize_standalone_assets(data)
+        # Pydantic binds the validator to a descriptor proxy on the class.
+        normalize = cast(Callable[[Any], Any], CreativeManifest._normalize_standalone_assets)
+        return normalize(data)
 
 
-_DeliveryCreativeVariantBase = _canonical_clone(
-    "_DeliveryCreativeVariantBase",
-    _LegacyCreativeVariant,
-    overrides={
-        "manifest": (
-            _DeliveryCreativeManifest | None,
-            copy.deepcopy(_LegacyCreativeVariant.model_fields["manifest"]),
-        )
-    },
-)
+class _DeliveryCreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
+    """A delivery row carrying the read-back manifest.
 
+    Survives for the same measured reason as
+    :class:`_DeliveryCreativeManifest`: ``_normalize_readback`` accepts a
+    PARENT instance — a variant of the generated wire class — which a field
+    typed as the canonical subclass refuses. Nothing here is about the
+    format-kind vocabulary.
+    """
 
-class _DeliveryCreativeVariant(_DeliveryCreativeVariantBase):
-    """A delivery row whose rendered manifest may use a future format kind."""
+    manifest: _DeliveryCreativeManifest | None = _inherit(_LegacyCreativeVariant, "manifest")
 
     @model_validator(mode="before")
     @classmethod
@@ -789,30 +835,38 @@ class _DeliveryCreativeVariant(_DeliveryCreativeVariantBase):
         return data
 
 
-DeliveryCreative = _canonical_clone(
-    "DeliveryCreative",
-    _LegacyDeliveryCreative,
-    overrides={
-        "format_kind": (_OpenCanonicalFormatKind | None, Field(default=None)),
-        "variants": (
-            list[_DeliveryCreativeVariant],
-            copy.deepcopy(_LegacyDeliveryCreative.model_fields["variants"]),
-        ),
-    },
-)
+class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
+    """Canonical served creative; variants are the read-back delivery rows."""
 
-CreativeFilters = _canonical_clone("CreativeFilters", _LegacyCreativeFilters)
-ProductFilters = _canonical_clone("ProductFilters", _LegacyProductFilters)
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
 
-_PackageRequestBase = _canonical_clone(
-    "PackageRequest",
-    _LegacyPackageRequest,
-    overrides={"creatives": (list[CreativeAsset] | None, Field(default=None, min_length=1))},
-)
+    variants: list[_DeliveryCreativeVariant] = _inherit(  # type: ignore[assignment]
+        _LegacyDeliveryCreative, "variants"
+    )
 
 
-class PackageRequest(_PackageRequestBase):
+class CreativeFilters(_LegacyCreativeFilters, CanonicalBoundaryModel):
+    """Canonical creative filters; legacy identity selection is unavailable."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
+
+class ProductFilters(_LegacyProductFilters, CanonicalBoundaryModel):
+    """Canonical product filters; legacy identity selection is unavailable."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
+
+class PackageRequest(_LegacyPackageRequest, CanonicalBoundaryModel):
     """Canonical package request preserving beta.3 selector constraints."""
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+
+    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def _validate_format_params(self) -> PackageRequest:
@@ -824,33 +878,25 @@ class PackageRequest(_PackageRequestBase):
         return self
 
 
-PackageUpdate = _canonical_clone(
-    "PackageUpdate",
-    _LegacyPackageUpdate,
-    overrides={"creatives": (list[CreativeAsset] | None, Field(default=None, min_length=1))},
-)
+class PackageUpdate(_LegacyPackageUpdate, CanonicalBoundaryModel):
+    """Canonical package update; creatives are canonical assets."""
 
-Package = _canonical_clone("Package", _LegacyPackage)
+    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
 
 
-def _canonical_enum(name: str, source: type[Enum]) -> type[StrEnum]:
-    members = {
-        member.name: member.value
-        for member in source
-        if not is_legacy_creative_identity_key(member.value)
-    }
-    return StrEnum(name, members, module=__name__)  # type: ignore[call-overload,return-value]
+class Package(_LegacyPackage, CanonicalBoundaryModel):
+    """Canonical package; legacy format identity is absent."""
+
+    if TYPE_CHECKING:  # the removed fields, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_pending: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_to_provide: _RemovedFormatIds = Field(default=None, init=False)
 
 
-_GetProductsRequestBase = _canonical_clone(
-    "_GetProductsRequestBase",
-    _LegacyGetProductsRequest,
-    overrides={"filters": (ProductFilters | None, Field(default=None))},
-)
-
-
-class GetProductsRequest(_GetProductsRequestBase):
+class GetProductsRequest(_LegacyGetProductsRequest, CanonicalBoundaryModel):
     """Canonical discovery request with legacy response-field selection rejected."""
+
+    filters: ProductFilters | None = None
 
     @field_validator("fields")
     @classmethod
@@ -864,44 +910,32 @@ class GetProductsRequest(_GetProductsRequestBase):
         return value
 
 
-GetProductsResponse = _canonical_clone(
-    "GetProductsResponse",
-    _LegacyGetProductsResponse,
-    overrides={"products": (list[Product] | None, Field(default=None))},
-)
+class GetProductsResponse(_LegacyGetProductsResponse, CanonicalBoundaryModel):
+    """Canonical discovery response; products are canonical products."""
 
-CreateMediaBuyRequest = _canonical_clone(
-    "CreateMediaBuyRequest",
-    _LegacyCreateMediaBuyRequest,
-    overrides={"packages": (list[PackageRequest] | None, Field(default=None))},
-)
-
-UpdateMediaBuyRequest = _canonical_clone(
-    "UpdateMediaBuyRequest",
-    _LegacyUpdateMediaBuyRequest,
-    overrides={
-        "packages": (list[PackageUpdate] | None, Field(default=None)),
-        "new_packages": (list[PackageRequest] | None, Field(default=None)),
-    },
-)
-
-_CreateMediaBuyResponse1Base = _canonical_clone(
-    "_CreateMediaBuyResponse1Base",
-    _LegacyCreateMediaBuyResponse1,
-    overrides={
-        "packages": (list[Package], Field()),
-        # AdCP 3.2 removes the synchronous task-envelope status from this
-        # schema arm. Keep it as a declared compatibility field so the
-        # normalizer does not inject an unknown extra into adopter subclasses
-        # that choose ``extra='forbid'``.
-        "status": (Literal["completed"], Field(default="completed")),
-    },
-)
+    products: list[Product] | None = None  # type: ignore[assignment]
 
 
-class CreateMediaBuyResponse1(_CreateMediaBuyResponse1Base):
+class CreateMediaBuyRequest(_LegacyCreateMediaBuyRequest, CanonicalBoundaryModel):
+    """Canonical create request; packages are canonical package requests."""
+
+    packages: list[PackageRequest] | None = None
+
+
+class UpdateMediaBuyRequest(_LegacyUpdateMediaBuyRequest, CanonicalBoundaryModel):
+    """Canonical update request; both package lists are canonical."""
+
+    packages: list[PackageUpdate] | None = None
+    new_packages: list[PackageRequest] | None = Field(  # type: ignore[assignment]
+        default=None, min_length=1
+    )
+
+
+class CreateMediaBuyResponse1(_LegacyCreateMediaBuyResponse1, CanonicalBoundaryModel):
     """Canonical create response preserving the 3.x legacy-status normalizer."""
 
+    packages: list[Package]  # type: ignore[assignment]
+
     @model_validator(mode="before")
     @classmethod
     def _normalize_legacy_status(cls, data: Any) -> Any:
@@ -918,26 +952,21 @@ class CreateMediaBuyResponse1(_CreateMediaBuyResponse1Base):
         return data
 
 
-CreateMediaBuyResponse2 = _canonical_clone(
-    "CreateMediaBuyResponse2", _LegacyCreateMediaBuyResponse2
-)
-CreateMediaBuyResponse3 = _canonical_clone(
-    "CreateMediaBuyResponse3", _LegacyCreateMediaBuyResponse3
-)
+class CreateMediaBuyResponse2(_LegacyCreateMediaBuyResponse2, CanonicalBoundaryModel):
+    """Canonical create-media-buy error arm."""
+
+
+class CreateMediaBuyResponse3(_LegacyCreateMediaBuyResponse3, CanonicalBoundaryModel):
+    """Canonical create-media-buy submitted arm."""
+
+
 CreateMediaBuyResponse = CreateMediaBuyResponse1 | CreateMediaBuyResponse2 | CreateMediaBuyResponse3
 
-_UpdateMediaBuyResponse1Base = _canonical_clone(
-    "_UpdateMediaBuyResponse1Base",
-    _LegacyUpdateMediaBuyResponse1,
-    overrides={
-        "affected_packages": (Sequence[Package] | None, Field(default=None)),
-        "status": (Literal["completed"], Field(default="completed")),
-    },
-)
 
-
-class UpdateMediaBuyResponse1(_UpdateMediaBuyResponse1Base):
+class UpdateMediaBuyResponse1(_LegacyUpdateMediaBuyResponse1, CanonicalBoundaryModel):
     """Canonical update response preserving the 3.x legacy-status normalizer."""
+
+    affected_packages: Sequence[Package] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -955,29 +984,27 @@ class UpdateMediaBuyResponse1(_UpdateMediaBuyResponse1Base):
         return data
 
 
-UpdateMediaBuyResponse2 = _canonical_clone(
-    "UpdateMediaBuyResponse2", _LegacyUpdateMediaBuyResponse2
-)
-UpdateMediaBuyResponse3 = _canonical_clone(
-    "UpdateMediaBuyResponse3", _LegacyUpdateMediaBuyResponse3
-)
+class UpdateMediaBuyResponse2(_LegacyUpdateMediaBuyResponse2, CanonicalBoundaryModel):
+    """Canonical update-media-buy error arm."""
+
+
+class UpdateMediaBuyResponse3(_LegacyUpdateMediaBuyResponse3, CanonicalBoundaryModel):
+    """Canonical update-media-buy submitted arm."""
+
+
 UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2 | UpdateMediaBuyResponse3
 
-SyncCreativesRequest = _canonical_clone(
-    "SyncCreativesRequest",
-    _LegacySyncCreativesRequest,
-    overrides={"creatives": (list[CreativeAsset], Field(min_length=1))},
-)
 
-_ListCreativesRequestBase = _canonical_clone(
-    "_ListCreativesRequestBase",
-    _LegacyListCreativesRequest,
-    overrides={"filters": (CreativeFilters | None, Field(default=None))},
-)
+class SyncCreativesRequest(_LegacySyncCreativesRequest, CanonicalBoundaryModel):
+    """Canonical creative sync request; creatives are canonical assets."""
+
+    creatives: list[CreativeAsset] = Field(min_length=1)  # type: ignore[assignment]
 
 
-class ListCreativesRequest(_ListCreativesRequestBase):
+class ListCreativesRequest(_LegacyListCreativesRequest, CanonicalBoundaryModel):
     """Canonical creative read request with legacy field selection rejected."""
+
+    filters: CreativeFilters | None = None
 
     @field_validator("fields")
     @classmethod
@@ -991,31 +1018,41 @@ class ListCreativesRequest(_ListCreativesRequestBase):
         return value
 
 
-ListCreativesResponse = _canonical_clone(
-    "ListCreativesResponse",
-    _LegacyListCreativesResponse,
-    overrides={"creatives": (list[Creative], Field())},
-)
+class ListCreativesResponse(_LegacyListCreativesResponse, CanonicalBoundaryModel):
+    """Canonical creative listing; rows are canonical listed creatives."""
 
-MediaBuyPackage = _canonical_clone("MediaBuyPackage", _LegacyMediaBuyPackage)
-MediaBuy = _canonical_clone(
-    "MediaBuy",
-    _LegacyMediaBuy,
-    overrides={"packages": (Sequence[MediaBuyPackage], Field())},
-)
-GetMediaBuysResponse = _canonical_clone(
-    "GetMediaBuysResponse",
-    _LegacyGetMediaBuysResponse,
-    overrides={"media_buys": (Sequence[MediaBuy], Field())},
-)
-GetMediaBuyDeliveryResponse = _canonical_clone(
-    "GetMediaBuyDeliveryResponse", _LegacyGetMediaBuyDeliveryResponse
-)
-GetCreativeDeliveryResponse = _canonical_clone(
-    "GetCreativeDeliveryResponse",
-    _LegacyGetCreativeDeliveryResponse,
-    overrides={"creatives": (Sequence[DeliveryCreative], Field())},
-)
+    creatives: list[Creative]
+
+
+class MediaBuyPackage(_LegacyMediaBuyPackage, CanonicalBoundaryModel):
+    """Canonical media-buy package row; legacy format identity is absent."""
+
+    if TYPE_CHECKING:  # the removed fields, hidden from the constructor too
+        format_ids: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_pending: _RemovedFormatIds = Field(default=None, init=False)
+        format_ids_to_provide: _RemovedFormatIds = Field(default=None, init=False)
+
+
+class MediaBuy(_LegacyMediaBuy, CanonicalBoundaryModel):
+    """Canonical media buy; packages are canonical package rows."""
+
+    packages: Sequence[MediaBuyPackage]
+
+
+class GetMediaBuysResponse(_LegacyGetMediaBuysResponse, CanonicalBoundaryModel):
+    """Canonical media-buy listing; rows are canonical media buys."""
+
+    media_buys: Sequence[MediaBuy]
+
+
+class GetMediaBuyDeliveryResponse(_LegacyGetMediaBuyDeliveryResponse, CanonicalBoundaryModel):
+    """Canonical media-buy delivery response."""
+
+
+class GetCreativeDeliveryResponse(_LegacyGetCreativeDeliveryResponse, CanonicalBoundaryModel):
+    """Canonical creative delivery response; rows are the read-back delivery creatives."""
+
+    creatives: Sequence[DeliveryCreative]
 
 
 PRIMARY_CANONICAL_MODELS: tuple[type[CanonicalBoundaryModel], ...] = (
@@ -1090,6 +1127,7 @@ __all__ = [
     "UpdateMediaBuyResponse1",
     "UpdateMediaBuyResponse2",
     "UpdateMediaBuyResponse3",
+    "is_canonical_format_kind",
     "is_legacy_creative_identity_key",
     "sanitize_canonical_schema",
     "strip_legacy_creative_identity",

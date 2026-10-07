@@ -16,7 +16,7 @@ from adcp.exceptions import ADCPTaskError
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller
 from adcp.server.responses import media_buy_response, products_response
-from adcp.types.generated_poc.enums.media_buy_status import MediaBuyStatus
+from adcp.types.domains.enums.media_buy_status import MediaBuyStatus
 from adcp.validation import ValidationHookConfig
 
 

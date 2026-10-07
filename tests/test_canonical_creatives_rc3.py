@@ -27,7 +27,7 @@ from adcp.canonical_formats import (
 from adcp.decisioning.account_projection import strip_credentials_from_wire_result
 from adcp.server.responses import list_creatives_response
 from adcp.types.canonical_creative import PRIMARY_CANONICAL_MODELS
-from adcp.types.generated_poc.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.utils import get_format_assets
 
 _GOLDEN = Path(__file__).parent / "fixtures/canonical/typescript-13.0.0-rc.3-option-ids.json"
@@ -68,7 +68,12 @@ def test_root_surface_is_canonical_and_legacy_is_explicit() -> None:
     assert not hasattr(adcp, "FormatId")
     assert not hasattr(adcp.types.aliases, "FormatId")
     assert adcp.Format is adcp.ProductFormatDeclaration
-    assert adcp.LegacyFormatId.__name__ == "LegacyFormatId"
+    # #1398: the explicit legacy name IS the generated format reference. It used
+    # to be a subclass of it, asserted here BY NAME — and the subclass had drifted
+    # into weakening three of its parent's validators, so the public name and the
+    # class the SDK's own model fields declare disagreed about the same payload.
+    assert adcp.LegacyFormatId is adcp.types.legacy.FormatReferenceStructuredObject
+    assert adcp.LegacyFormatId.__module__ == "adcp.types.domains.core.format_id"
     assert "format_kind" in adcp.Format.model_fields
     assert "format_id" not in adcp.Format.model_fields
     assert "format_ids" not in adcp.Product.model_fields
@@ -252,7 +257,7 @@ def test_exact_owner_and_id_wins_and_bare_id_collision_fails_closed() -> None:
         catalog=catalog,
     )
     assert exact.declaration is not None
-    assert exact.declaration.format_kind.value == "image"
+    assert exact.declaration.format_kind == "image"
 
     ambiguous = project_legacy_format_id(
         {"agent_url": "https://seller.example/formats", "id": "shared"},
@@ -278,7 +283,7 @@ def test_converter_overrides_unique_bare_id_compatibility_inference() -> None:
         },
     )
     assert result.declaration is not None
-    assert result.declaration.format_kind.value == "display_tag"
+    assert result.declaration.format_kind == "display_tag"
     assert [ref.model_dump(mode="json") for ref in result.declaration.legacy_format_refs] == [
         source
     ]

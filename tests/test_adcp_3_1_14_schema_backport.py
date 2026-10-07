@@ -1,11 +1,11 @@
 """Regression coverage for enum-reference fixes in AdCP 3.1.14."""
 
 from adcp.types import AdcpProtocol, CatalogType, PropertyType
-from adcp.types.generated_poc.core.registry_event import BadgeRole
-from adcp.types.generated_poc.formats.canonical.sponsored_placement import (
+from adcp.types.domains.core.registry_event import BadgeRole
+from adcp.types.domains.formats.canonical.sponsored_placement import (
     CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import TrustedMatch
+from adcp.types.domains.protocol.get_adcp_capabilities_response import TrustedMatch
 
 
 def test_registry_badge_role_uses_canonical_protocol_enum() -> None:

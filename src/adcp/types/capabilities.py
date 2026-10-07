@@ -6,12 +6,12 @@ Adopters declaring ``DecisioningCapabilities`` for a platform (see
 typed capability sub-models — ``Account``, ``MediaBuy``, ``Targeting``,
 ``GeoMetros``, ``Idempotency`` etc. The generated Pydantic classes
 already exist in
-``adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response``,
+``adcp.types.domains.bundled.protocol.get_adcp_capabilities_response``,
 but three of them (``Account``, ``MediaBuy``, ``Creative``) collide on
 name with unrelated wire types already exported from :mod:`adcp.types`.
 
 This module sits in the import-architecture whitelist for direct
-``generated_poc`` imports, alongside the other re-export layers
+generated-tree imports, alongside the other re-export layers
 (``aliases.py``, ``_ergonomic.py``, ``_forward_compat.py``, ``_generated.py``,
 ``error_details.py`` and the ``domains/`` modules); see
 ``ALLOWED_FILES`` in ``tests/test_import_layering.py`` for the current set. It pulls the capabilities sub-models out
@@ -23,7 +23,7 @@ disambiguated names back to their wire-spec form.
 
 Layering::
 
-    generated_poc/bundled/protocol/get_adcp_capabilities_response.py
+    domains/bundled/protocol/get_adcp_capabilities_response.py
         ↓ (this module — disambiguates colliding names)
     adcp.types.capabilities
         ↓ (re-exported from)
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from adcp.types.base import AdCPBaseModel
 
 from adcp.types._generated import CountryFusedPostalCodeSystem as LegacyPostalCodeSystem
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     A2ui,
     Accreditation,
     Adcp,
@@ -96,10 +96,10 @@ from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response im
 # / ``MediaBuy`` / ``Creative`` within its own namespace, so adopters
 # writing the ``DecisioningCapabilities`` declaration get the wire-spec
 # names.
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Account as CapabilitiesAccount,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Adcp as _Adcp,
 )
 
@@ -108,7 +108,7 @@ from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response im
 # / a2ui / mcp_apps. Re-aliased here as ``SiCapabilities`` to disambiguate
 # from :class:`adcp.decisioning.DecisioningCapabilities` and to make the
 # import site self-documenting.
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Capabilities as SiCapabilities,
 )
 
@@ -117,34 +117,34 @@ from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response im
 # disambiguation pattern as ``Account`` / ``MediaBuy`` / ``Creative`` —
 # imported here under a ``Capabilities*`` alias and re-aliased back to
 # the wire-spec name within :mod:`adcp.decisioning.capabilities`.
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     ContentStandards as CapabilitiesContentStandards,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Creative as CapabilitiesCreative,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     GetAdcpCapabilitiesResponse as _CapabilitiesResponse,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Idempotency as IdempotencySupported,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     MediaBuy as _MediaBuy,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Preview as CapabilitiesPreview,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     RenderingOrigin as CapabilitiesPreviewRenderingOrigin,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Route as CapabilitiesPreviewRoute,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     Signals as _Signals,
 )
-from adcp.types.generated_poc.core.reporting_delivery_capabilities import (
+from adcp.types.domains.core.reporting_delivery_capabilities import (
     ReportingDeliveryCapabilities,
 )
 

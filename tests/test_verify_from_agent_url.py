@@ -194,9 +194,7 @@ def test_request_signature_code_covers_every_resolver_code() -> None:
 
     from adcp.signing.agent_resolver import AgentResolverErrorCode
 
-    assert set(get_args(AgentResolverErrorCode)) == {
-        row[0] for row in _RESOLVER_CODE_TO_SPEC_CODE
-    }
+    assert set(get_args(AgentResolverErrorCode)) == {row[0] for row in _RESOLVER_CODE_TO_SPEC_CODE}
 
 
 #: Every brand.json hop outcome and the code the table assigns it. ``jwks_origin_mismatch``
@@ -244,7 +242,7 @@ def test_request_signature_code_only_emits_codes_the_pinned_enum_defines() -> No
     ``request-signing-error-code`` enum, including the explicit
     ``signature_code`` values the brand.json hop attaches."""
     from adcp.signing.agent_resolver import _brand_resolution_error
-    from adcp.types.generated_poc.enums.request_signing_error_code import (
+    from adcp.types.domains.enums.request_signing_error_code import (
         RequestSigningErrorCode,
     )
 

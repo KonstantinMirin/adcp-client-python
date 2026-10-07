@@ -146,7 +146,7 @@ All seller response builders apply. The generative delta is in `list_creative_fo
 
 `ADCPHandler` advertises `build_creative` and `preview_creative` by default and returns `not_supported` unless you override them. A generative seller MUST implement both, or the storyboard fails at the generation step.
 
-**`build_creative`** — render a creative manifest from a brief. `idempotency_key` is a REQUIRED request field (pattern `^[A-Za-z0-9_.:-]{16,255}$`, see `src/adcp/types/generated_poc/media_buy/build_creative_request.py:157-165`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe retries:
+**`build_creative`** — render a creative manifest from a brief. `idempotency_key` is a REQUIRED request field (pattern `^[A-Za-z0-9_.:-]{16,255}$`, see `src/adcp/types/domains/media_buy/build_creative_request.py:157-165`). Use `adcp.server.idempotency.IdempotencyStore` to dedupe retries:
 
 ```python
 from adcp.server.responses import build_creative_response

@@ -65,7 +65,7 @@ def _configure_fake_pipeline(
     fail_ergonomic: bool,
 ) -> tuple[Path, Path, Path, Path]:
     repository = tmp_path / "repository"
-    output = repository / "src" / "adcp" / "types" / "generated_poc"
+    output = repository / "src" / "adcp" / "types" / "domains"
     consolidated = output.parent / "_generated.py"
     ergonomic = output.parent / "_ergonomic.py"
     deltas = repository / "SCHEMA_DELTAS.md"
@@ -97,7 +97,10 @@ def _configure_fake_pipeline(
     monkeypatch.setattr(generate_types, "prune_unused_bundled_modules", lambda *_args: None)
     monkeypatch.setattr(generate_types, "restore_unchanged_files", lambda *_args: None)
 
-    def fake_package(staging_root: Path, _generated: Path) -> Path:
+    def fake_staged_source(staging_root: Path) -> Path:
+        # Mirrors the real helper: the package copy, with the committed
+        # generated tree dropped so generation creates it. The tree lives
+        # INSIDE this copy now, which is what makes it one artifact.
         source = staging_root / "source"
         types = source / "adcp" / "types"
         types.mkdir(parents=True)
@@ -105,7 +108,7 @@ def _configure_fake_pipeline(
         (types / "_ergonomic.py").write_text("stale ergonomic module\n")
         return source
 
-    monkeypatch.setattr(generate_types, "_copy_package_for_introspection", fake_package)
+    monkeypatch.setattr(generate_types, "_staged_source_tree", fake_staged_source)
 
     def fake_subprocess(args: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
         if "consolidate_exports.py" in args[1]:

@@ -9,27 +9,27 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.formats.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.formats.canonical._base import (
+from adcp.types.domains.formats.canonical._base import (
     CanonicalFormatBase,
     CompositionModel,
     ReferenceMutability,
     RequiredPixelRatio,
     Slot,
 )
-from adcp.types.generated_poc.formats.canonical.agent_placement import (
+from adcp.types.domains.formats.canonical.agent_placement import (
     CanonicalFormatAgentPlacementAiSurfaceSponsoredPlacement,
 )
-from adcp.types.generated_poc.formats.canonical.audio_daast import CanonicalFormatDaastAudio
-from adcp.types.generated_poc.formats.canonical.audio_hosted import CanonicalFormatHostedAudio
-from adcp.types.generated_poc.formats.canonical.audio_vast import CanonicalFormatVastAudio
-from adcp.types.generated_poc.formats.canonical.coordinated_placements import (
+from adcp.types.domains.formats.canonical.audio_daast import CanonicalFormatDaastAudio
+from adcp.types.domains.formats.canonical.audio_hosted import CanonicalFormatHostedAudio
+from adcp.types.domains.formats.canonical.audio_vast import CanonicalFormatVastAudio
+from adcp.types.domains.formats.canonical.coordinated_placements import (
     AssetSource5,
     AudioCodec2,
     CanonicalFormatCoordinatedPlacements,
@@ -70,15 +70,15 @@ from adcp.types.generated_poc.formats.canonical.coordinated_placements import (
     Transitions4,
     Transitions5,
 )
-from adcp.types.generated_poc.formats.canonical.display_tag import CanonicalFormatDisplayTag
-from adcp.types.generated_poc.formats.canonical.html5 import CanonicalFormatHtml5Banner
-from adcp.types.generated_poc.formats.canonical.image import CanonicalFormatImage
-from adcp.types.generated_poc.formats.canonical.image_carousel import CanonicalFormatImageCarousel
-from adcp.types.generated_poc.formats.canonical.native_in_feed import CanonicalFormatNativeInFeed
-from adcp.types.generated_poc.formats.canonical.responsive_creative import (
+from adcp.types.domains.formats.canonical.display_tag import CanonicalFormatDisplayTag
+from adcp.types.domains.formats.canonical.html5 import CanonicalFormatHtml5Banner
+from adcp.types.domains.formats.canonical.image import CanonicalFormatImage
+from adcp.types.domains.formats.canonical.image_carousel import CanonicalFormatImageCarousel
+from adcp.types.domains.formats.canonical.native_in_feed import CanonicalFormatNativeInFeed
+from adcp.types.domains.formats.canonical.responsive_creative import (
     CanonicalFormatResponsiveCreative,
 )
-from adcp.types.generated_poc.formats.canonical.seller_rendered_stateful_display import (
+from adcp.types.domains.formats.canonical.seller_rendered_stateful_display import (
     CanonicalFormatSellerRenderedStatefulDisplay,
     TransitionMode9,
     Transitions10,
@@ -87,11 +87,11 @@ from adcp.types.generated_poc.formats.canonical.seller_rendered_stateful_display
     Transitions8,
     Transitions9,
 )
-from adcp.types.generated_poc.formats.canonical.sponsored_placement import (
+from adcp.types.domains.formats.canonical.sponsored_placement import (
     CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven,
 )
-from adcp.types.generated_poc.formats.canonical.video_hosted import CanonicalFormatHostedVideo
-from adcp.types.generated_poc.formats.canonical.video_vast import CanonicalFormatVastVideo
+from adcp.types.domains.formats.canonical.video_hosted import CanonicalFormatHostedVideo
+from adcp.types.domains.formats.canonical.video_vast import CanonicalFormatVastVideo
 
 # Explicit exports
 __all__ = [

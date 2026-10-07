@@ -66,8 +66,10 @@ from adcp.server.responses import products_response  # Response builders
 ```
 Which import path: default to `from adcp import X` (stable common surface).
 Use `adcp.types.<domain>` for a curated domain grouping, or `adcp.types` for
-the full surface / rarely-used types. NEVER import `adcp.types.generated_poc.*`
-or `adcp.types._generated` — they renumber on every schema regen.
+the full surface / rarely-used types. `adcp.types.domains.<domain>.<schema>`
+is public and is where codegen defines every class — use it for a name the flat
+surface cannot bind. NEVER import `adcp.types._generated`, and never pin a
+numbered class name (`Assets162`) — those renumber on every schema regen.
 `import adcp` is lightweight; the pydantic type graph builds on first type use.
 
 ## Validation
@@ -78,7 +80,7 @@ mypy src/adcp/            # Type checker
 ```
 
 ## Do NOT read (generated, wastes context)
-- `src/adcp/types/generated_poc/` - auto-generated from schemas
+- `src/adcp/types/domains/` - auto-generated from schemas (public, but 1000+ files)
 - `src/adcp/types/_generated.py` - consolidated generated exports
 - `src/adcp/types/_ergonomic.py` - auto-generated coercion
 - `schemas/` - raw JSON schemas

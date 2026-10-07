@@ -8,7 +8,7 @@ Defines:
 * :class:`WorkflowStep`, :class:`WorkflowObjectType`,
   :data:`GovernanceContextJWS` — framework-internal types referenced
   by :class:`StateReader` methods. Defined here (not in
-  ``adcp.types.generated_poc/``) because they're framework-only —
+  ``adcp.types.domains/``) because they're framework-only —
   not on the wire.
 * :class:`_NotYetWiredStateReader` — v6.0 stub. Returns type-correct
   empty values; emits a one-time :class:`UserWarning` per method on
@@ -36,7 +36,7 @@ from typing import Literal, NewType, Protocol, runtime_checkable
 # Wire types referenced through the StateReader. ``Proposal`` is
 # exported from adcp.types; importing from there keeps the layering
 # rule in CLAUDE.md happy (only adcp.types/{stable,aliases,_ergonomic}
-# may import from generated_poc/).
+# may import from the generated tree).
 from adcp.types import Proposal
 
 #: Object types a workflow step can touch. Framework-internal — not on

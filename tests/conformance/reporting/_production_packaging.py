@@ -101,10 +101,10 @@ def production_modules():
             "types/base.py",
             "types/v32.py",
             "types/versioned.py",
-            "types/generated_poc/core/reporting_delivery_capabilities.py",
-            "types/generated_poc/core/reporting_delivery_config.py",
-            "types/generated_poc/media_buy/get_media_buy_delivery_request.py",
-            "types/generated_poc/bundled/protocol/get_adcp_capabilities_response.py",
+            "types/domains/core/reporting_delivery_capabilities.py",
+            "types/domains/core/reporting_delivery_config.py",
+            "types/domains/media_buy/get_media_buy_delivery_request.py",
+            "types/domains/bundled/protocol/get_adcp_capabilities_response.py",
         )
     ]
     return {

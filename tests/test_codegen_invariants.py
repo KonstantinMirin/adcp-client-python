@@ -19,7 +19,7 @@ from adcp.types import (
     RefineProposalsRequest,
 )
 
-_GENERATED_DIR = Path(__file__).resolve().parents[1] / "src/adcp/types/generated_poc"
+_GENERATED_DIR = Path(__file__).resolve().parents[1] / "src/adcp/types/domains"
 _POSTAL_FLAGS = (
     "us_zip",
     "us_zip_plus_four",

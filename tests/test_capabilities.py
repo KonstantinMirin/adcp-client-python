@@ -12,11 +12,11 @@ from adcp.capabilities import FeatureResolver, validate_capabilities
 from adcp.exceptions import ADCPError, ADCPFeatureUnsupportedError
 from adcp.server.base import ADCPHandler
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
-from adcp.types.generated_poc.core.media_buy_features import MediaBuyFeatures
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Adcp as AdcpInfo,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Execution,
     ExtensionsSupportedItem,
     GetAdcpCapabilitiesResponse,
@@ -27,7 +27,7 @@ from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
     SupportedProtocol,
     Targeting,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Features as SignalsFeatures,
 )
 

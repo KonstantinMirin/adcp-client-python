@@ -201,7 +201,7 @@ projection — don't relax validation. The spec shape is the contract.
 ### Spec error codes — what to use
 
 The canonical enum ships at
-[`src/adcp/types/generated_poc/enums/error_code.py`](../../src/adcp/types/generated_poc/enums/error_code.py).
+[`src/adcp/types/domains/enums/error_code.py`](../../src/adcp/types/domains/enums/error_code.py).
 Common codes the translator emits:
 
 | Code | When to use | `recovery` |

@@ -30,7 +30,7 @@ from adcp.signing import (
 )
 from adcp.signing.autosign import current_operation
 from adcp.types.core import AgentConfig, Protocol
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Adcp,
     CoversContentDigest,
     GetAdcpCapabilitiesResponse,

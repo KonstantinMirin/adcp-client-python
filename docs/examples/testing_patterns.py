@@ -25,8 +25,8 @@ from adcp import (
 )
 from adcp.types.core import TaskResult, TaskStatus
 
-# ❌ WRONG: Never import from generated_poc in tests
-# from adcp.types.generated_poc.product import PublisherProperties4
+# ❌ WRONG: Never import an internal numbered class in tests
+# from adcp.types.domains.core.product import PublisherProperties4
 
 
 # =============================================================================
@@ -399,13 +399,13 @@ class AntiPatterns:
     These demonstrate common mistakes that violate testing principles.
     """
 
-    def test_anti_pattern_importing_generated_poc(self):
-        """❌ WRONG: Don't import from generated_poc in tests."""
+    def test_anti_pattern_importing_numbered_variants(self):
+        """❌ WRONG: Don't import internal numbered classes in tests."""
         # This couples tests to internal implementation
         # When schemas evolve, these imports break
 
         # ❌ DON'T DO THIS:
-        # from adcp.types.generated_poc.product import PublisherProperties4
+        # from adcp.types.domains.core.product import PublisherProperties4
         # prop = PublisherProperties4(...)
 
         # ✅ DO THIS INSTEAD:
@@ -552,7 +552,7 @@ def sample_product_json():
 6. Write tests users can learn from
 
 ❌ DON'T:
-1. Import from generated_poc
+1. Import an internal numbered class
 2. Test Pydantic internals
 3. Test type identity (assert X is Y)
 4. Test implementation details

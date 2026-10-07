@@ -34,19 +34,23 @@ moment upstream adds a variant.
 
 ### Mandatory: type-system import layering
 
-Only `_generated.py`, `_eager.py`, `aliases.py`, `capabilities.py`,
-`_ergonomic.py`, `_forward_compat.py`, and `types/__init__.py` may import from
-`src/adcp/types/generated_poc/**` or `src/adcp/types/_generated.py`;
-`tests/test_import_layering.py` enforces the allowlist. Any other module
-importing generated names directly is a `high` finding — it ships unstable
-codegen identifiers to adopters. `adcp/types/__init__.py` is a PEP 562 lazy
+Only `_generated.py`, `_eager.py`, `aliases.py`, `capabilities.py`, and
+`types/__init__.py` may import from `src/adcp/types/_generated.py`;
+`tests/test_import_layering.py` enforces the allowlist. `_generated.py` binds a
+bare name several schemas declare to one sort-order winner, so importing it
+outside those layers is a `high` finding.
+
+`src/adcp/types/domains/**` is the public definition site, not an internal
+layer: importing a domain path is allowed anywhere. Prefer `adcp.types`, and
+flag an import of a NUMBERED generated class (`Assets162`, `Type11`) wherever it
+appears outside `aliases.py` — that identifier is what renumbers. `adcp/types/__init__.py` is a PEP 562 lazy
 facade with its runtime `__getattr__`/`__dir__` under `if not TYPE_CHECKING:`;
 reintroducing eager imports there, or moving the `__getattr__` out from under the
 guard, regresses both import cost and type-checker coverage.
 
 ### Mandatory: generated code is not source
 
-A hand-edit inside `src/adcp/types/generated_poc/**` or
+A hand-edit inside `src/adcp/types/domains/**` or
 `src/adcp/types/_generated.py` is a `high` finding. Legitimate changes there are
 regeneration output and pair with an upstream schema change under `schemas/` or an
 `src/adcp/ADCP_VERSION` bump; check that `aliases.py` and `_ergonomic.py` still
@@ -106,7 +110,7 @@ public export landing without a matching entry in `AGENTS.md`'s handler table is
 
 ## Trivial Paths
 
-- src/adcp/types/generated_poc/**
+- src/adcp/types/domains/**
 - src/adcp/types/_generated.py
 - CHANGELOG.md
 

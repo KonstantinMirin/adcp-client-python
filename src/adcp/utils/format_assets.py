@@ -21,7 +21,7 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from adcp.types.generated_poc.core.format import Assets as AssetsModel
+from adcp.types.domains.core.format import Assets as AssetsModel
 
 
 class LegacyFormatAssetsInput(Protocol):

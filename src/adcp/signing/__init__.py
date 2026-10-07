@@ -67,6 +67,9 @@ The core names you'll reach for (everything else is for advanced use):
   ``WWW-Authenticate: Signature error="..."`` header
 * :func:`signature_challenge` — the header *value* alone, for a seller
   composing the 401 itself
+* :func:`recovery_for` — whether a rejection code is ``correctable``,
+  ``transient`` or ``terminal``, read from the pinned schema's normative
+  ``enumMetadata``; :data:`SIGNING_RECOVERY` is the whole table
 * :class:`InMemoryReplayStore` for single-process deployments;
   :class:`PgReplayStore` (behind ``[pg]`` extra) for multi-worker
 
@@ -219,7 +222,9 @@ from adcp.signing.errors import (
     REQUEST_SIGNATURE_REVOCATION_STALE,
     REQUEST_SIGNATURE_TAG_INVALID,
     REQUEST_SIGNATURE_WINDOW_INVALID,
+    SIGNING_RECOVERY,
     SignatureVerificationError,
+    recovery_for,
     signature_challenge,
 )
 from adcp.signing.etld import (
@@ -440,6 +445,7 @@ __all__ = [
     "REQUEST_SIGNATURE_TAG_INVALID",
     "REQUEST_SIGNATURE_WINDOW_INVALID",
     "REVOCATION_LIST_TYP",
+    "SIGNING_RECOVERY",
     "ReplayStore",
     "RequestBodyMalformedError",
     "ReplayClaimResult",
@@ -508,6 +514,7 @@ __all__ = [
     "pem_to_adcp_jwk",
     "private_key_from_jwk",
     "public_key_from_jwk",
+    "recovery_for",
     "registrable_domain",
     "request_signature_code",
     "resolve_agent",

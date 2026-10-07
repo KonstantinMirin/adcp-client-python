@@ -20,7 +20,7 @@ class TestUpdateMediaBuyRequestCanceledDefault:
     }
 
     def test_canceled_defaults_to_none_when_omitted(self) -> None:
-        from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+        from adcp.types.domains.media_buy.update_media_buy_request import (
             UpdateMediaBuyRequest,
         )
 
@@ -28,7 +28,7 @@ class TestUpdateMediaBuyRequestCanceledDefault:
         assert req.canceled is None
 
     def test_canceled_true_still_accepted(self) -> None:
-        from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+        from adcp.types.domains.media_buy.update_media_buy_request import (
             UpdateMediaBuyRequest,
         )
 
@@ -37,7 +37,7 @@ class TestUpdateMediaBuyRequestCanceledDefault:
 
     def test_canceled_none_excluded_from_wire_payload(self) -> None:
         """When canceled is None, model_dump(exclude_none=True) omits it — no cancellation on wire."""
-        from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+        from adcp.types.domains.media_buy.update_media_buy_request import (
             UpdateMediaBuyRequest,
         )
 
@@ -47,7 +47,7 @@ class TestUpdateMediaBuyRequestCanceledDefault:
 
     def test_canceled_true_present_in_wire_payload(self) -> None:
         """Explicit canceled=True must appear in the wire payload to trigger cancellation."""
-        from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+        from adcp.types.domains.media_buy.update_media_buy_request import (
             UpdateMediaBuyRequest,
         )
 
@@ -59,7 +59,7 @@ class TestUpdateMediaBuyRequestCanceledDefault:
         """Literal[True] still rejects False — the field is a one-way commit signal."""
         from pydantic import ValidationError
 
-        from adcp.types.generated_poc.media_buy.update_media_buy_request import (
+        from adcp.types.domains.media_buy.update_media_buy_request import (
             UpdateMediaBuyRequest,
         )
 
@@ -71,26 +71,26 @@ class TestPackageUpdateCanceledDefault:
     """PackageUpdate.canceled must default to None (non-destructive)."""
 
     def test_canceled_defaults_to_none_when_omitted(self) -> None:
-        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
+        from adcp.types.domains.media_buy.package_update import PackageUpdate
 
         pkg = PackageUpdate(package_id="pkg-1")
         assert pkg.canceled is None
 
     def test_canceled_true_still_accepted(self) -> None:
-        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
+        from adcp.types.domains.media_buy.package_update import PackageUpdate
 
         pkg = PackageUpdate(package_id="pkg-1", canceled=True)
         assert pkg.canceled is True
 
     def test_canceled_none_excluded_from_wire_payload(self) -> None:
-        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
+        from adcp.types.domains.media_buy.package_update import PackageUpdate
 
         pkg = PackageUpdate(package_id="pkg-1")
         payload = pkg.model_dump(mode="json", exclude_none=True)
         assert "canceled" not in payload
 
     def test_canceled_true_present_in_wire_payload(self) -> None:
-        from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
+        from adcp.types.domains.media_buy.package_update import PackageUpdate
 
         pkg = PackageUpdate(package_id="pkg-1", canceled=True)
         payload = pkg.model_dump(mode="json", exclude_none=True)

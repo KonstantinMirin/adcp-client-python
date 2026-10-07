@@ -43,20 +43,20 @@ from adcp.types import (
     ReportingRevision,
 )
 from adcp.types.core import TaskResult, TaskStatus
-from adcp.types.generated_poc.core.reporting_canonical_content_digest import (
+from adcp.types.domains.core.reporting_canonical_content_digest import (
     ReportingCanonicalContentDigest,
 )
-from adcp.types.generated_poc.core.reporting_control_total import ReportingControlTotal
-from adcp.types.generated_poc.media_buy.get_reporting_status_request import (
+from adcp.types.domains.core.reporting_control_total import ReportingControlTotal
+from adcp.types.domains.media_buy.get_reporting_status_request import (
     GetReportingStatusRequest,
 )
-from adcp.types.generated_poc.media_buy.get_reporting_status_response import (
+from adcp.types.domains.media_buy.get_reporting_status_response import (
     GetReportingStatusResponse,
 )
-from adcp.types.generated_poc.media_buy.sync_reporting_receipts_request import (
+from adcp.types.domains.media_buy.sync_reporting_receipts_request import (
     SyncReportingReceiptsRequest,
 )
-from adcp.types.generated_poc.media_buy.sync_reporting_receipts_response import (
+from adcp.types.domains.media_buy.sync_reporting_receipts_response import (
     SyncReportingReceiptsResponse,
 )
 

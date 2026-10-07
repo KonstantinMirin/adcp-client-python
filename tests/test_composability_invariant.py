@@ -12,13 +12,13 @@ import adcp.types as public_types
 import adcp.types.capabilities as capability_types
 from adcp.decisioning.capabilities import MediaBuy, Portfolio
 from adcp.types import AcceptancePolicyDiscovery, PrimaryCountry, PublisherDomain
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     AcceptancePolicyDiscovery as BundledAcceptancePolicyDiscovery,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     PrimaryCountry as BundledPrimaryCountry,
 )
-from adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
     PublisherDomain as BundledPublisherDomain,
 )
 

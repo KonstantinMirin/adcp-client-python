@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal, get_args, get_origin
+from typing import Literal
 
 import pytest
 from pydantic import BaseModel
@@ -23,9 +23,8 @@ from pydantic import BaseModel
 from adcp._version import _read_packaged_version
 from adcp.types import ProtocolEnvelope, canonical_creative
 from adcp.types import aliases as aliases_module
-from adcp.types.generated_poc.enums.task_status import TaskStatus
+from adcp.types.domains.enums.task_status import TaskStatus
 from adcp.validation.version import resolve_bundle_key
-from tests import canonical_stub_gap
 
 _ENVELOPE_FIELDS = frozenset(ProtocolEnvelope.model_fields)
 
@@ -99,7 +98,7 @@ def test_generated_arms_match_their_root_schema_composition(relative: str) -> No
     import importlib
     import re
 
-    module_name = "adcp.types.generated_poc." + relative.removesuffix(".py").replace("/", ".")
+    module_name = "adcp.types.domains." + relative.removesuffix(".py").replace("/", ".")
     module = importlib.import_module(module_name)
 
     schema_path = _schema_dir() / Path(relative).with_suffix(".json").as_posix().replace("_", "-")
@@ -175,10 +174,10 @@ def test_envelope_state_used_to_land_in_extra() -> None:
     assert response.context_id == "ctx_1"
 
 
-# ---- canonical_creative dynamic clones ----
+# ---- canonical_creative public models ----
 
 
-_CANONICAL_RESPONSE_CLONES = (
+_CANONICAL_RESPONSES = (
     "GetProductsResponse",
     "CreateMediaBuyResponse1",
     "CreateMediaBuyResponse2",
@@ -193,27 +192,35 @@ _CANONICAL_RESPONSE_CLONES = (
 )
 
 
-@pytest.mark.parametrize("name", _CANONICAL_RESPONSE_CLONES)
-def test_canonical_clone_preserves_envelope_ancestry(name: str) -> None:
-    """``_canonical_clone`` rebuilds fields; it must keep the ancestry too."""
+@pytest.mark.parametrize("name", _CANONICAL_RESPONSES)
+def test_canonical_response_preserves_envelope_ancestry(name: str) -> None:
+    """A canonical response inherits the generated model, envelopes included.
+
+    The ancestry used to be re-declared: ``_canonical_clone`` copied fields and
+    had to list the envelopes as extra bases to keep ``issubclass`` true. The
+    models are real subclasses now, so the ancestry is transitive and nothing
+    re-declares it — which is the thing this test must keep proving.
+    """
     model = getattr(canonical_creative, name)
     assert issubclass(model, ProtocolEnvelope), name
     assert _ENVELOPE_FIELDS <= set(model.model_fields), name
 
 
-@pytest.mark.parametrize("name", [*_CANONICAL_RESPONSE_CLONES, "GetProductsRequest", "Product"])
-def test_canonical_clone_keeps_the_boundary_extra_policy(name: str) -> None:
-    """The envelope bases must not override ``CanonicalBoundaryModel``'s config.
+@pytest.mark.parametrize("name", [*_CANONICAL_RESPONSES, "GetProductsRequest", "Product"])
+def test_canonical_model_keeps_the_boundary_extra_policy(name: str) -> None:
+    """The generated base must not override ``CanonicalBoundaryModel``'s config.
 
-    Pydantic merges ``model_config`` left to right across bases, so an envelope
-    listed after the boundary model would reinstate :class:`AdCPBaseModel`'s
-    ``extra="ignore"`` and silently drop caller-supplied extension keys.
+    Pydantic merges ``model_config`` left to right across bases, so a generated
+    model listed AFTER the boundary model would reinstate
+    :class:`AdCPBaseModel`'s ``extra="ignore"`` and silently drop
+    caller-supplied extension keys. ``CanonicalBoundaryModel`` is therefore
+    always the last base.
     """
     model = getattr(canonical_creative, name)
     assert model.model_config["extra"] == "allow", name
 
 
-def test_canonical_clone_still_round_trips_extension_keys() -> None:
+def test_canonical_model_still_round_trips_extension_keys() -> None:
     """The config regression above is observable through an unknown key."""
     request = canonical_creative.GetProductsRequest.model_validate(
         {"promoted_offering": "test", "buying_mode": "brief"}
@@ -253,114 +260,53 @@ def test_canonical_responses_construct_without_status() -> None:
     assert accepted.status == TaskStatus.submitted
 
 
-def _stub_status_annotation(runtime_annotation: object) -> str:
-    """Spell a runtime ``status`` annotation the way the stub must declare it."""
-    if runtime_annotation is TaskStatus:
-        return "TaskStatus"
-    if get_origin(runtime_annotation) is Literal:
-        (member,) = get_args(runtime_annotation)
-        if isinstance(member, TaskStatus):
-            return f"Literal[TaskStatus.{member.name}]"
-        return f"Literal['{member}']"
-    raise AssertionError(f"unhandled runtime status annotation: {runtime_annotation!r}")
+def test_canonical_response_status_is_the_generated_one() -> None:
+    """Every concrete canonical response carries its generated ``status`` exactly.
 
+    This replaces ``test_canonical_response_stub_status_matches_runtime``, whose
+    subject was ``canonical_creative.pyi``: the stub declared a private
+    ``_CanonicalResponseEnvelope`` bridge relaxing ``status`` to ``Any`` so the
+    arms' ``Literal`` pins would not trip mypy's Liskov check, and this test
+    pinned every concrete response's hand-written re-declaration against the
+    runtime so the bridge could not leak ``Any`` to adopters.
 
-def test_canonical_response_stub_status_matches_runtime() -> None:
-    """Every concrete canonical response re-declares its exact ``status``.
-
-    ``_CanonicalResponseEnvelope`` relaxes ``status`` to ``Any`` so the arms'
-    ``Literal`` pins do not trip the Liskov check. That relaxation is a bridge,
-    not a public type: a concrete response that forgets to re-declare ``status``
-    silently hands adopters ``Any``, which type-checks against anything and
-    hides the very narrowing this module is about. Pin stub and runtime
-    together so the bridge cannot leak.
+    The stub is deleted and the canonical responses are real subclasses of the
+    generated wire models, so there is no second declaration of ``status`` to
+    drift from the first — the arm's pinned ``Literal`` is inherited. The
+    property worth grading is therefore the one that now carries the contract:
+    a canonical response's ``status`` annotation must be IDENTICAL to the
+    annotation of the generated class it refines. A redeclaration that widened
+    or relaxed it would fail here, which is the leak the old test was watching.
     """
-    import ast
-
-    stub_path = Path(canonical_creative.__file__).with_suffix(".pyi")
-    stub = ast.parse(stub_path.read_text())
-
-    declared: dict[str, str] = {}
-    for node in stub.body:
-        if not isinstance(node, ast.ClassDef):
-            continue
-        if not any(
-            isinstance(base, ast.Name) and base.id == "_CanonicalResponseEnvelope"
-            for base in node.bases
-        ):
-            continue
-        status = next(
-            (
-                item
-                for item in node.body
-                if isinstance(item, ast.AnnAssign)
-                and isinstance(item.target, ast.Name)
-                and item.target.id == "status"
-            ),
-            None,
-        )
-        assert status is not None, (
-            f"{node.name} inherits the relaxed ``status: Any`` bridge without "
-            f"re-declaring its own — adopters would read ``Any``"
-        )
-        declared[node.name] = ast.unparse(status.annotation)
-
-    # Guard the other direction too: a newly added canonical response must show
-    # up in the stub rather than quietly skipping this check.
     runtime_responses = {
-        name
+        name: model
         for name in dir(canonical_creative)
         if not name.startswith("_")
-        and isinstance(getattr(canonical_creative, name), type)
-        and issubclass(getattr(canonical_creative, name), ProtocolEnvelope)
+        and isinstance(model := getattr(canonical_creative, name), type)
+        and issubclass(model, ProtocolEnvelope)
         # ``ProtocolEnvelope`` itself is imported into this namespace as a base;
-        # only the canonical clones built on it are in scope here.
-        and issubclass(getattr(canonical_creative, name), canonical_creative.CanonicalBoundaryModel)
+        # only the canonical models built on it are in scope here.
+        and issubclass(model, canonical_creative.CanonicalBoundaryModel)
     }
-    assert declared.keys() == runtime_responses
+    assert runtime_responses, "no canonical responses discovered"
 
-    for name, stub_annotation in sorted(declared.items()):
-        runtime = getattr(canonical_creative, name).model_fields["status"]
-        assert stub_annotation == _stub_status_annotation(runtime.annotation), name
-        # The stub marks the field defaulted (``= ...``); the runtime agrees.
-        assert not runtime.is_required(), name
-
-
-def test_canonical_stub_declares_every_runtime_field() -> None:
-    """``canonical_creative.pyi`` must not fall behind the models it types.
-
-    The models are built with ``create_model``, so the stub is the only thing a
-    type checker reads. A field the stub omits does not exist to mypy: the
-    synthesized ``__init__`` rejects it as an unexpected keyword argument and
-    reading it is an attribute error, both on fields that are required at
-    runtime. The stub currently omits several hundred, ledgered per class in
-    ``canonical_stub_field_gap.json``; the ledger may only shrink, so a schema
-    bump that adds a field the stub does not declare fails here instead of
-    reaching adopters.
-    """
-    recorded: dict[str, list[str]] = json.loads(
-        canonical_stub_gap.LEDGER_FILE.read_text(encoding="utf-8")
-    )["gap"]
-    measured = canonical_stub_gap.stub_field_gap()
-
-    grown = {
-        name: sorted(set(fields) - set(recorded.get(name, ())))
-        for name, fields in measured.items()
-        if set(fields) - set(recorded.get(name, ()))
-    }
-    assert not grown, (
-        "canonical_creative.pyi does not declare these runtime fields, and the "
-        f"ledger does not record them: {grown}. Declare them in the stub. If a "
-        "field genuinely left the stub, run "
-        "`python scripts/update_canonical_stub_ledger.py` — it refuses to record a loss."
-    )
-
-    closed = {
-        name: sorted(set(fields) - set(measured.get(name, ())))
-        for name, fields in recorded.items()
-        if set(fields) - set(measured.get(name, ()))
-    }
-    assert not closed, (
-        f"The stub now declares these ledgered fields: {closed}. "
-        "Run `python scripts/update_canonical_stub_ledger.py` to shrink the ledger."
-    )
+    for name, model in runtime_responses.items():
+        generated = next(
+            base
+            for base in model.__bases__
+            if base is not canonical_creative.CanonicalBoundaryModel
+        )
+        assert generated.__module__.startswith("adcp.types.domains."), (
+            f"{name} does not refine a generated wire model (base {generated!r}); "
+            f"a canonical response must be a subclass, never a copy"
+        )
+        assert (
+            model.model_fields["status"].annotation == generated.model_fields["status"].annotation
+        ), (
+            f"{name}.status is {model.model_fields['status'].annotation!r} but the "
+            f"generated {generated.__name__}.status is "
+            f"{generated.model_fields['status'].annotation!r}"
+        )
+        # The other half of the old stub contract: ``status`` is defaulted, so a
+        # plain construction never has to supply it.
+        assert not model.model_fields["status"].is_required(), name

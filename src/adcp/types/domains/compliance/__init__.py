@@ -9,14 +9,14 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.compliance.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.compliance.comply_test_controller_request import (
+from adcp.types.domains.compliance.comply_test_controller_request import (
     Account,
     AdvanceTo,
     Arm,
@@ -32,7 +32,7 @@ from adcp.types.generated_poc.compliance.comply_test_controller_request import (
     ReportedSpend,
     TargetHealth,
 )
-from adcp.types.generated_poc.compliance.comply_test_controller_response import (
+from adcp.types.domains.compliance.comply_test_controller_response import (
     AttestationMode,
     ComplyResponseArm,
     ComplyTestControllerResponse,
@@ -53,10 +53,10 @@ from adcp.types.generated_poc.compliance.comply_test_controller_response import 
     RecordedCalls1,
     RecordedCalls2,
 )
-from adcp.types.generated_poc.compliance.get_creative_features_completion import (
+from adcp.types.domains.compliance.get_creative_features_completion import (
     GetCreativeFeaturesComplianceCompletion,
 )
-from adcp.types.generated_poc.compliance.task_completion_data import ComplianceTaskCompletionData
+from adcp.types.domains.compliance.task_completion_data import ComplianceTaskCompletionData
 
 # Explicit exports
 __all__ = [

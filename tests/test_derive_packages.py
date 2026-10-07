@@ -90,7 +90,7 @@ def test_derive_packages_propagates_allocation_flight_times() -> None:
 def test_derive_packages_accepts_typed_total_budget() -> None:
     """Typed ``TotalBudget`` from the wire model works the same as a dict."""
     from adcp.types import PackageRequest
-    from adcp.types.generated_poc.media_buy.create_media_buy_request import TotalBudget
+    from adcp.types.domains.media_buy.create_media_buy_request import TotalBudget
 
     payload = {
         "allocations": [

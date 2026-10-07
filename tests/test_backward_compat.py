@@ -130,7 +130,7 @@ class TestBrandIdentity:
         from adcp import BrandIdentity as RootBrandIdentity
         from adcp.types import BrandIdentity
         from adcp.types.buyer import BrandIdentity as BuyerBrandIdentity
-        from adcp.types.generated_poc.brand_discovery import Brand
+        from adcp.types.domains.brand_discovery import Brand
 
         assert RootBrandIdentity is BrandIdentity is BuyerBrandIdentity is Brand
 
@@ -144,7 +144,7 @@ class TestBrandIdentity:
 
     def test_brand_identity_field_contract_and_collision_separation(self):
         from adcp.types import BrandIdentity
-        from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+        from adcp.types.domains.protocol.get_adcp_capabilities_response import (
             Brand as CapabilitiesBrand,
         )
 

@@ -1,9 +1,9 @@
 """Public types grouped by the AdCP schema that declares them.
 
 The AdCP bundle is organised by domain — ``core/``, ``creative/``,
-``media_buy/`` and the rest — and by schema within each. Codegen mirrors that
-layout, and these modules re-export it, so a type name more than one schema
-declares is unambiguous by path rather than by a mangled name:
+``media_buy/`` and the rest — and by schema within each. Codegen writes this
+package in that layout and defines every class here, so a type name more
+than one schema declares is unambiguous by path rather than by a mangled name:
 
     from adcp.types.domains.creative import QuerySummary
     from adcp.types.domains.core.audience_evidence import Unit
@@ -12,8 +12,8 @@ declares is unambiguous by path rather than by a mangled name:
 A domain root carries the names that domain declares exactly once. For the
 rest, import from the schema's own module, as the last two lines do.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 from __future__ import annotations

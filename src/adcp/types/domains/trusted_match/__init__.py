@@ -9,15 +9,15 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.trusted_match.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.trusted_match.available_package import AvailablePackage
-from adcp.types.generated_poc.trusted_match.context_match_request import (
+from adcp.types.domains.trusted_match.available_package import AvailablePackage
+from adcp.types.domains.trusted_match.context_match_request import (
     ArtifactRef,
     ContextMatchRequest,
     ContextSignals,
@@ -27,12 +27,12 @@ from adcp.types.generated_poc.trusted_match.context_match_request import (
     Sentiment,
     Type,
 )
-from adcp.types.generated_poc.trusted_match.context_match_response import (
+from adcp.types.domains.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisher,
     SignalsByProvider,
 )
-from adcp.types.generated_poc.trusted_match.error import Code, TmpError
-from adcp.types.generated_poc.trusted_match.identity_match_request import (
+from adcp.types.domains.trusted_match.error import Code, TmpError
+from adcp.types.domains.trusted_match.identity_match_request import (
     Attestation,
     Consent,
     Identity,
@@ -40,20 +40,20 @@ from adcp.types.generated_poc.trusted_match.identity_match_request import (
     SealedCredential,
     VerificationLevel,
 )
-from adcp.types.generated_poc.trusted_match.identity_match_response import (
+from adcp.types.domains.trusted_match.identity_match_response import (
     IdentityMatchResponse,
     IdentityMatchResponseRouterPublisher,
     TmpxProviders,
 )
-from adcp.types.generated_poc.trusted_match.offer import Offer
-from adcp.types.generated_poc.trusted_match.offer_price import Model, OfferPrice
-from adcp.types.generated_poc.trusted_match.provider_context_match_response import (
+from adcp.types.domains.trusted_match.offer import Offer
+from adcp.types.domains.trusted_match.offer_price import Model, OfferPrice
+from adcp.types.domains.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter,
 )
-from adcp.types.generated_poc.trusted_match.provider_identity_match_response import (
+from adcp.types.domains.trusted_match.provider_identity_match_response import (
     IdentityMatchResponseProviderRouter,
 )
-from adcp.types.generated_poc.trusted_match.provider_registration import (
+from adcp.types.domains.trusted_match.provider_registration import (
     Country,
     Status,
     TmpProviderRegistration,
@@ -61,11 +61,11 @@ from adcp.types.generated_poc.trusted_match.provider_registration import (
     TmpProviderRegistration2,
     TmpxSlot,
 )
-from adcp.types.generated_poc.trusted_match.publisher_targeting_kv_config import (
+from adcp.types.domains.trusted_match.publisher_targeting_kv_config import (
     PublisherTargetingKvMapping,
 )
-from adcp.types.generated_poc.trusted_match.publisher_tmpx_config import PublisherTmpxMacroMapping
-from adcp.types.generated_poc.trusted_match.tmpx_chunk import TmpxChunk
+from adcp.types.domains.trusted_match.publisher_tmpx_config import PublisherTmpxMacroMapping
+from adcp.types.domains.trusted_match.tmpx_chunk import TmpxChunk
 
 # Explicit exports
 __all__ = [

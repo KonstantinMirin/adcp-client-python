@@ -22,7 +22,7 @@ import importlib
 # Imported via ``import_module`` — a call, not a name binding — so they read as
 # the intentional side-effect imports they are rather than tripping
 # unused-import analysers. (The removed ``format_category`` submodule has a real
-# shim at ``generated_poc/enums/format_category.py``, restored after codegen by
+# shim at ``domains/enums/format_category.py``, restored after codegen by
 # ``scripts/post_generate_fixes.py``.)
 importlib.import_module("adcp.types._ergonomic")
 importlib.import_module("adcp.types._forward_compat")
@@ -706,6 +706,7 @@ from adcp.types.aliases import (
     KeyValueActivationKey,
     LegacyProposalTotalBudgetGuidance,
     LegacyUpdateMediaBuyErrorResponse,
+    LegacyUpdateMediaBuySubmittedResponse,
     LegacyUpdateMediaBuySuccessResponse,
     ListContentStandardsErrorResponse,
     ListContentStandardsResponse1,
@@ -873,7 +874,10 @@ from adcp.types.legacy import (
     LegacyBuildCreativeResponse6,
     LegacyBuildCreativeSubmittedResponse,
     LegacyBuildCreativeSuccessResponse,
+    LegacyCreateMediaBuyErrorResponse,
     LegacyCreateMediaBuyRequest,
+    LegacyCreateMediaBuySubmittedResponse,
+    LegacyCreateMediaBuySuccessResponse,
     LegacyCreativeAsset,
     LegacyCreativeFilters,
     LegacyFormat,
@@ -898,7 +902,9 @@ from adcp.types.legacy import (
     LegacyPreviewCreativeResponse1,
     LegacyPreviewCreativeResponse2,
     LegacyPreviewCreativeResponse3,
+    LegacyPreviewCreativeResponse4,
     LegacyPreviewCreativeSingleResponse,
+    LegacyPreviewCreativeSubmittedResponse,
     LegacyPreviewCreativeVariantResponse,
     LegacyProduct,
     LegacyProductFilters,
@@ -907,6 +913,7 @@ from adcp.types.legacy import (
     LegacyUpdateMediaBuyRequest,
 )
 
+is_canonical_format_kind = _canonical_creative.is_canonical_format_kind
 CreateMediaBuyResponse = _canonical_creative.CreateMediaBuyResponse
 CreateMediaBuyResponse1 = _canonical_creative.CreateMediaBuyResponse1
 CreateMediaBuySuccessResponse = _canonical_creative.CreateMediaBuyResponse1
@@ -974,21 +981,21 @@ from adcp.types.core import (
 # type of the obsolete aggregate ``RootModel`` — documented constructor kwargs
 # get rejected. Importing the variant class by its generated name keeps the
 # runtime object and the static type identical.
-from adcp.types.generated_poc.adagents import AuthorizedAgents1 as AuthorizedAgents
+from adcp.types.domains.adagents import AuthorizedAgents1 as AuthorizedAgents
 
 # Deprecated compatibility types from the root brand discovery document. The
 # document collides with the ``brand/`` task-schema package, so codegen emits
 # it into a dedicated module.
-from adcp.types.generated_poc.brand_discovery import Asset, Disclaimer, Fonts, ProductCatalog
-from adcp.types.generated_poc.core.catalog_item_delivery_metrics import (
+from adcp.types.domains.brand_discovery import Asset, Disclaimer, Fonts, ProductCatalog
+from adcp.types.domains.core.catalog_item_delivery_metrics import (
     CatalogItemDeliveryMetrics as ByCatalogItemItem,
 )
-from adcp.types.generated_poc.core.outcome_measurement import OutcomeMeasurement
-from adcp.types.generated_poc.enums.metric_type import MetricType
+from adcp.types.domains.core.outcome_measurement import OutcomeMeasurement
+from adcp.types.domains.enums.metric_type import MetricType
 
 # Status: _generated picks invoice status (get_account_financials_response) due to
 # alphabetical module sort. Import the delivery status variant directly for backward compat.
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (  # noqa: E501
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (  # noqa: E501
     Status,
 )
 
@@ -1954,7 +1961,13 @@ __all__ = [
     "UpdateContentStandardsSuccessResponse",
     "UpdateFrequency",
     "UpdateMediaBuyErrorResponse",
+    "LegacyCreateMediaBuyErrorResponse",
+    "LegacyCreateMediaBuySubmittedResponse",
+    "LegacyCreateMediaBuySuccessResponse",
+    "LegacyPreviewCreativeResponse4",
+    "LegacyPreviewCreativeSubmittedResponse",
     "LegacyUpdateMediaBuyErrorResponse",
+    "LegacyUpdateMediaBuySubmittedResponse",
     "LegacyUpdateMediaBuySuccessResponse",
     "UpdateMediaBuyPackagesRequest",
     "UpdateMediaBuyPropertiesRequest",
@@ -2073,6 +2086,7 @@ __all__ = [
     "is_sync_creatives_success",
     "is_update_media_buy_error",
     "is_update_media_buy_success",
+    "is_canonical_format_kind",
     "is_validate_content_delivery_success",
     "project_geo_postal_areas",
     "to_account_response",

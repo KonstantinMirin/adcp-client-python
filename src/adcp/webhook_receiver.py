@@ -89,15 +89,15 @@ from adcp.signing.webhook_verifier import (
     WebhookVerifyOptions,
     verify_webhook_signature,
 )
-from adcp.types.generated_poc.brand.revocation_notification import RevocationNotification
-from adcp.types.generated_poc.collection.collection_list_changed_webhook import (
+from adcp.types.domains.brand.revocation_notification import RevocationNotification
+from adcp.types.domains.collection.collection_list_changed_webhook import (
     CollectionListChangedWebhook,
 )
-from adcp.types.generated_poc.content_standards.artifact_webhook_payload import (
+from adcp.types.domains.content_standards.artifact_webhook_payload import (
     ArtifactWebhookPayload,
 )
-from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
-from adcp.types.generated_poc.property.property_list_changed_webhook import (
+from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
+from adcp.types.domains.property.property_list_changed_webhook import (
     PropertyListChangedWebhook,
 )
 

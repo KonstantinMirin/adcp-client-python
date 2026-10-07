@@ -234,7 +234,9 @@ from adcp.types import GetProductsRequest, CreateMediaBuyRequest, Product, Packa
 # Or import from a curated partial module for a narrower surface:
 #   adcp.types.media_buy / creative / signals / protocol / buyer / seller
 from adcp.types.media_buy import CreateMediaBuyRequest
-# Never import from adcp.types.generated_poc.* or adcp.types._generated (internal)
+# adcp.types.domains.<domain>[.<schema>] is public — it is where codegen defines
+# every class. Reach for it when a name several schemas declare is not bound flat.
+# Never import from adcp.types._generated (internal: one winner per bare name)
 
 # Response variant types (discriminated unions)
 from adcp.types.aliases import CreateMediaBuySuccessResponse, CreateMediaBuyErrorResponse

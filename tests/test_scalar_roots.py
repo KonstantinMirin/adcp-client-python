@@ -30,7 +30,7 @@ from adcp.types._scalar import ScalarFloat, ScalarInt, ScalarStr
 from adcp.validation.version import resolve_bundle_key
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_GENERATED_DIR = _REPO_ROOT / "src" / "adcp" / "types" / "generated_poc"
+_GENERATED_DIR = _REPO_ROOT / "src" / "adcp" / "types" / "domains"
 _BUNDLE_KEY = resolve_bundle_key((_REPO_ROOT / "src" / "adcp" / "ADCP_VERSION").read_text().strip())
 _SCHEMA_DIR = _REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
@@ -100,9 +100,9 @@ def test_every_scalar_root_has_exactly_one_class_behind_it() -> None:
 
     The trap flagged in #1277 is fixing this in ``aliases.py`` instead of in the
     generator: generated modules import these names directly from
-    ``generated_poc``, so a redefinition one layer up leaves two classes with
+    the generated tree, so a redefinition one layer up leaves two classes with
     one name and `isinstance` fails across the seam. The rewrite happens in
-    ``generated_poc`` itself, and this holds the line.
+    the generated tree itself, and this holds the line.
     """
     import importlib
 
@@ -116,8 +116,8 @@ def test_every_scalar_root_has_exactly_one_class_behind_it() -> None:
 
     failures: list[str] = []
     for name, cls in sorted(roots.items()):
-        if not cls.__module__.startswith("adcp.types.generated_poc."):
-            failures.append(f"{name}: defined in {cls.__module__}, not under generated_poc")
+        if not cls.__module__.startswith("adcp.types.domains."):
+            failures.append(f"{name}: defined in {cls.__module__}, not under adcp.types.domains")
             continue
         owner = importlib.import_module(cls.__module__)
         if getattr(owner, cls.__name__, None) is not cls:

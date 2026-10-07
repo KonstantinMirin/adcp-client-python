@@ -12,8 +12,8 @@
 `Idempotency3`, `Type11`) by traversal order. Adding or reordering even one
 sibling schema shifts the entire numbering window — a clean re-run can produce
 a 600+ file diff with zero semantic change. Treat any `git diff` on
-`generated_poc/` that consists of only `ClassNameN → ClassNameM` renames as
-churn, not a schema delta, and discard it. `aliases.py` re-exports these
+`src/adcp/types/domains/` that consists of only `ClassNameN → ClassNameM`
+renames as churn, not a schema delta, and discard it. `aliases.py` re-exports these
 numbered classes under semantic names; accepting the renumber breaks the
 alias layer for nothing.
 
@@ -21,7 +21,8 @@ alias layer for nothing.
 The type system has a strict layering to prevent brittleness:
 
 ```
-generated_poc/*.py (internal, auto-generated from schemas)
+domains/**/*.py (auto-generated from schemas; where every class is DEFINED,
+                 and a public address: adcp.types.domains.<domain>.<schema>)
     ↓
 _generated.py (internal consolidation)
     ↓
@@ -39,19 +40,25 @@ runtime `__getattr__`/`__dir__` live under `if not TYPE_CHECKING:` so type
 checkers see the surface only via the explicit `TYPE_CHECKING` re-export block
 — a typo'd import is flagged, not silently typed as `object`.
 
-Only these modules may import from `generated_poc/` or `_generated.py`
-(enforced by `tests/test_import_layering.py`):
-- `_generated.py`: Consolidates exports from `generated_poc/` into a flat namespace
+`domains/` is where the generator writes, and that is the whole point: there
+is no private tree behind the public one and no re-export tree in front of it,
+so nothing is copied and nothing can drift. A domain path is a supported
+import — reach for it when the flat `adcp.types` namespace cannot bind the
+name you need, because several schemas declare it. The generated class NAMES
+are still generator-derived, so a numbered name can renumber on a schema bump;
+`aliases.py` is what gives those a stable spelling.
+
+Only these modules may import from `_generated.py` — the one remaining
+internal namespace, where a bare name resolves to a single winner (enforced by
+`tests/test_import_layering.py`):
+- `_generated.py`: Consolidates `domains/` exports into a flat namespace
 - `_eager.py`: Eager realization of the public surface — binds every exported name and runs the import-time patchers (`_ergonomic`, `_forward_compat`)
 - `aliases.py`: Creates semantic aliases for numbered discriminated union types
 - `capabilities.py`: Re-exports `get_adcp_capabilities_response` sub-models with disambiguated names
-- `_ergonomic.py`: Applies BeforeValidator coercion for type ergonomics
-- `_forward_compat.py`: Patches `Format.assets` / `RepeatableAssetGroup.assets` with open union types at import time
-- `legacy.py`: Explicit facade for generated named-format wire models during the v7 migration
-- `canonical_creative.py`: Canonical-first boundary models that replace generated creative lifecycle surfaces
 - `__init__.py`: Public API surface (thin lazy facade)
 
-All other source code should import from `adcp.types` (the public API).
+All other source code should import from `adcp.types` (the public API), or from
+a domain path when the name it needs is not bound there.
 
 **Type Checking Best Practices**
 - Use `TYPE_CHECKING` for optional dependencies to avoid runtime import errors

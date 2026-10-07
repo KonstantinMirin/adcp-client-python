@@ -9,7 +9,7 @@ so a public symbol sourced from ``_generated`` runs as one variant and
 type-checks as its neighbour.
 
 Both halves of the contract are pinned here. The seven public symbols must be
-the raw ``generated_poc.adagents`` variant classes at runtime (this module),
+the raw ``domains.adagents`` variant classes at runtime (this module),
 and must infer as those same classes under ``mypy --strict``
 (``tests/type_checks/authorized_agents_variants.py``).
 
@@ -25,9 +25,9 @@ import sys
 
 import pytest
 
-from adcp.types import generated_poc
+from adcp.types import domains
 
-# Public symbol -> the ``generated_poc.adagents`` class it must be.
+# Public symbol -> the ``domains.adagents`` class it must be.
 EXPECTED_VARIANTS = {
     "AuthorizedAgents": "AuthorizedAgents1",
     "AuthorizedAgentsByPropertyId": "AuthorizedAgents1",
@@ -58,7 +58,7 @@ def test_public_symbol_is_the_raw_generated_variant(public_name: str, variant_na
     """Each public symbol is the raw variant class, not a shifted rebinding."""
     import adcp.types
 
-    assert getattr(adcp.types, public_name) is getattr(generated_poc.adagents, variant_name)
+    assert getattr(adcp.types, public_name) is getattr(domains.adagents, variant_name)
 
 
 @pytest.mark.parametrize(("public_name", "discriminator"), sorted(EXPECTED_DISCRIMINATORS.items()))
@@ -89,7 +89,7 @@ def test_authorized_agent_union_covers_every_variant_in_order() -> None:
     """The public union is exactly the six raw variants, variant 1 through 6."""
     import adcp.types
 
-    expected = tuple(getattr(generated_poc.adagents, f"AuthorizedAgents{n}") for n in range(1, 7))
+    expected = tuple(getattr(domains.adagents, f"AuthorizedAgents{n}") for n in range(1, 7))
     assert adcp.types.AuthorizedAgent.__args__ == expected
 
 
@@ -119,7 +119,7 @@ IMPORT_ORDERS = {
     "package_first": "import adcp",
     "eager_first": "import adcp.types._eager",
     "generated_first": "import adcp.types._generated",
-    "generated_poc_first": "from adcp.types.generated_poc import adagents",
+    "domain_module_first": "from adcp.types.domains import adagents",
     "partial_module_first": "import adcp.types.seller",
 }
 
@@ -128,7 +128,7 @@ _PROBE = """
 import adcp
 import adcp.types
 import adcp.types.aliases
-from adcp.types.generated_poc import adagents
+from adcp.types.domains import adagents
 
 names = {names!r}
 for name in names:
@@ -156,6 +156,6 @@ def test_bindings_are_stable_across_import_orders(order: str) -> None:
 
     resolved = dict(line.split(" ", 1) for line in result.stdout.strip().splitlines())
     assert resolved == {
-        name: f"adcp.types.generated_poc.adagents.{variant}"
+        name: f"adcp.types.domains.adagents.{variant}"
         for name, variant in EXPECTED_VARIANTS.items()
     }

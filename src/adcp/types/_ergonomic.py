@@ -46,71 +46,70 @@ from adcp.types.coercion import (
     coerce_to_model,
 )
 
-from adcp.types.generated_poc.core.canonical_format_kind import CanonicalFormatKind
-from adcp.types.generated_poc.core.context import ContextObject
-from adcp.types.generated_poc.core.creative_asset import CreativeAsset
-from adcp.types.generated_poc.core.creative_assignment import CreativeAssignment
-from adcp.types.generated_poc.core.error import Error
-from adcp.types.generated_poc.core.ext import ExtensionObject
-from adcp.types.generated_poc.core.format import Format
-from adcp.types.generated_poc.core.package import Package
-from adcp.types.generated_poc.core.product import Product
-from adcp.types.generated_poc.enums.advertiser_industry import AdvertiserIndustry
-from adcp.types.generated_poc.enums.asset_content_type import AssetContentType
-from adcp.types.generated_poc.enums.creative_sort_field import CreativeSortField
-from adcp.types.generated_poc.enums.delivery_type import DeliveryType
-from adcp.types.generated_poc.enums.disclosure_persistence import DisclosurePersistence
-from adcp.types.generated_poc.enums.disclosure_position import DisclosurePosition
-from adcp.types.generated_poc.enums.media_buy_status import MediaBuyStatus
-from adcp.types.generated_poc.enums.media_buy_valid_action import MediaBuyValidAction
-from adcp.types.generated_poc.enums.pacing import Pacing
-from adcp.types.generated_poc.enums.sort_direction import SortDirection
-from adcp.types.generated_poc.enums.task_status import TaskStatus
-from adcp.types.generated_poc.enums.wcag_level import WcagLevel
-from adcp.types.generated_poc.media_buy.create_media_buy_request import (
+from adcp.types.domains.core.context import ContextObject
+from adcp.types.domains.core.creative_asset import CreativeAsset
+from adcp.types.domains.core.creative_assignment import CreativeAssignment
+from adcp.types.domains.core.error import Error
+from adcp.types.domains.core.ext import ExtensionObject
+from adcp.types.domains.core.format import Format
+from adcp.types.domains.core.package import Package
+from adcp.types.domains.core.product import Product
+from adcp.types.domains.enums.advertiser_industry import AdvertiserIndustry
+from adcp.types.domains.enums.asset_content_type import AssetContentType
+from adcp.types.domains.enums.creative_sort_field import CreativeSortField
+from adcp.types.domains.enums.delivery_type import DeliveryType
+from adcp.types.domains.enums.disclosure_persistence import DisclosurePersistence
+from adcp.types.domains.enums.disclosure_position import DisclosurePosition
+from adcp.types.domains.enums.media_buy_status import MediaBuyStatus
+from adcp.types.domains.enums.media_buy_valid_action import MediaBuyValidAction
+from adcp.types.domains.enums.pacing import Pacing
+from adcp.types.domains.enums.sort_direction import SortDirection
+from adcp.types.domains.enums.task_status import TaskStatus
+from adcp.types.domains.enums.wcag_level import WcagLevel
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequest,
 )
-from adcp.types.generated_poc.media_buy.get_products_request import (
+from adcp.types.domains.media_buy.get_products_request import (
     GetProductsRequest,
 )
-from adcp.types.generated_poc.media_buy.list_creative_formats_request import (
+from adcp.types.domains.media_buy.list_creative_formats_request import (
     ListCreativeFormatsRequest,
 )
-from adcp.types.generated_poc.creative.list_creative_formats_request import (
+from adcp.types.domains.creative.list_creative_formats_request import (
     ListCreativeFormatsRequestCreativeAgent,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import (
+from adcp.types.domains.creative.list_creatives_request import (
     Field1 as ListCreativesField,
     ListCreativesRequest,
     Sort,
 )
-from adcp.types.generated_poc.media_buy.package_request import PackageRequest
-from adcp.types.generated_poc.media_buy.package_update import PackageUpdate
-from adcp.types.generated_poc.media_buy.create_media_buy_response import (
+from adcp.types.domains.media_buy.package_request import PackageRequest
+from adcp.types.domains.media_buy.package_update import PackageUpdate
+from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.update_media_buy_response import (
+from adcp.types.domains.media_buy.update_media_buy_response import (
     UpdateMediaBuyResponse1,
 )
-from adcp.types.generated_poc.media_buy.get_media_buy_delivery_response import (
+from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
     GetMediaBuyDeliveryResponse,
     MediaBuyDelivery,
     NotificationType,
 )
-from adcp.types.generated_poc.media_buy.get_products_response import GetProductsResponse
-from adcp.types.generated_poc.media_buy.list_creative_formats_response import (
+from adcp.types.domains.media_buy.get_products_response import GetProductsResponse
+from adcp.types.domains.media_buy.list_creative_formats_response import (
     CreativeAgent,
     ListCreativeFormatsResponse,
 )
-from adcp.types.generated_poc.creative.list_creatives_response import (
+from adcp.types.domains.creative.list_creatives_response import (
     ListCreativesResponse,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import AssignmentProjection
-from adcp.types.generated_poc.media_buy.get_products_request import BuyingMode
-from adcp.types.generated_poc.media_buy.get_products_response import CacheScope
-from adcp.types.generated_poc.creative.list_creatives_response import Creative
-from adcp.types.generated_poc.media_buy.list_creative_formats_response import Source
-from adcp.types.generated_poc.creative.list_creative_formats_request import Type
+from adcp.types.domains.creative.list_creatives_request import AssignmentProjection
+from adcp.types.domains.media_buy.get_products_request import BuyingMode
+from adcp.types.domains.media_buy.get_products_response import CacheScope
+from adcp.types.domains.creative.list_creatives_response import Creative
+from adcp.types.domains.media_buy.list_creative_formats_response import Source
+from adcp.types.domains.creative.list_creative_formats_request import Type
 
 
 def _apply_coercion() -> None:
@@ -287,17 +286,11 @@ def _apply_coercion() -> None:
     GetProductsRequest.model_rebuild(force=True)
 
     # Apply coercion to PackageRequest
-    # - format_kind: CanonicalFormatKind | str | None
     # - pacing: Pacing | str | None
     # - creative_assignments: list[CreativeAssignment] (accepts subclass instances)
     # - creatives: Sequence[CreativeAsset] (accepts subclass instances)
     # - context: ContextObject | dict | None
     # - ext: ExtensionObject | dict | None
-    _patch_field_annotation(
-        PackageRequest,
-        "format_kind",
-        Annotated[CanonicalFormatKind | None, BeforeValidator(coerce_to_enum(CanonicalFormatKind))],
-    )
     _patch_field_annotation(
         PackageRequest,
         "pacing",

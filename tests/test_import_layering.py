@@ -1,30 +1,35 @@
 """Enforce the type-import layering rule documented in CLAUDE.md.
 
-Only type facade/override modules such as ``aliases.py``, ``legacy.py``,
-``canonical_creative.py``, and the public ``adcp.types/__init__.py`` composer
-may import from the auto-generated layer
-(``adcp.types._generated`` / ``adcp.types.generated_poc``). Every other module
-under ``src/adcp/`` should import types via the public surface (``adcp.types``
-or ``adcp``).
+``adcp.types._generated`` is the one internal namespace left: it binds a bare
+type name that several generated modules define to a single winner, chosen by
+module sort order. Only the type facade/override modules that build the public
+surface — ``aliases.py``, ``capabilities.py``, ``_eager.py``, and the public
+``adcp.types/__init__.py`` composer — may import from it. Every other module
+under ``src/adcp/`` imports types via ``adcp.types``, or from the domain module
+that declares the name when the flat namespace cannot bind it.
 
-The rule exists because schema-regen rewrites generated class names. Public
-imports are forwarded through ``aliases.py`` and survive regen; direct
-``generated_poc`` imports break silently when datamodel-code-generator picks
-a different name.
+The rule exists because that single winner is not the schema's choice: a schema
+addition can repoint a bare name, and the only trace is a line in a regenerated
+file.
+
+The generated tree is NOT on this list. ``adcp.types.domains.<domain>`` and
+``adcp.types.domains.<domain>.<schema>`` are where the generator defines every
+class, and they are a public address — there is no private tree to reach into,
+which is why the eight files that used to be listed below as violations now
+import legally.
 
 This test enforces a **frozen baseline**: existing violations are listed in
 ``_KNOWN_VIOLATIONS`` so refactor-them-away can be tackled separately. Any
 *new* file or *new* import that bypasses the public surface fails the test.
 
 To shrink the baseline:
-- Re-route the import through a public namespace. Only ``adcp.types._generated``
-  and ``adcp.types.generated_poc`` are forbidden; ``adcp``, ``adcp.types``,
-  ``adcp.types.domains.<domain>[.<schema>]``, ``adcp.types.legacy``,
-  ``adcp.types.aliases``, ``adcp.types.error_details`` and
-  ``adcp.types.capabilities`` are public and all pass.
+- Re-route the import. Only ``adcp.types._generated`` is forbidden; ``adcp``,
+  ``adcp.types``, ``adcp.types.domains.<domain>[.<schema>]``,
+  ``adcp.types.legacy``, ``adcp.types.aliases``, ``adcp.types.error_details``
+  and ``adcp.types.capabilities`` are public and all pass.
 - Which one depends on WHY the import is deep, and the two answers differ. If
-  the name is merely absent from the public surface, the surface is incomplete:
-  every generated type is exported from the module for the schema that declares
+  the name is merely absent from the flat surface, the surface is incomplete:
+  every generated type is declared by the module for the schema that declares
   it, so ``adcp.types.domains...`` serves it. If the name is QUARANTINED — the
   legacy v1 ``format_id`` world is reachable only under explicitly named
   ``Legacy*`` paths, which ``tests/test_canonical_creatives_rc3.py`` asserts —
@@ -41,51 +46,27 @@ from pathlib import Path
 
 SRC_ROOT = Path(__file__).parent.parent / "src" / "adcp"
 
+#: The generated tree. Skipped wholesale: it is a thousand modules the
+#: generator writes, and it imports its own siblings relatively.
+GENERATED_DIR = SRC_ROOT / "types" / "domains"
+
 ALLOWED_FILES = {
     SRC_ROOT / "types" / "aliases.py",
-    SRC_ROOT / "types" / "_ergonomic.py",
     SRC_ROOT / "types" / "_generated.py",
     SRC_ROOT / "types" / "__init__.py",
     # ``_eager.py`` holds the eager realization of the public type surface
     # (the former ``__init__.py`` body): it binds every exported name from
-    # ``_generated`` / ``generated_poc`` and runs the import-time patchers.
-    # ``__init__.py`` is now a thin lazy facade that imports ``_eager`` on
-    # first attribute access, so the same direct generated-layer access applies.
+    # ``_generated`` and runs the import-time patchers. ``__init__.py`` is now
+    # a thin lazy facade that imports ``_eager`` on first attribute access, so
+    # the same direct ``_generated`` access applies.
     SRC_ROOT / "types" / "_eager.py",
     # ``capabilities.py`` is a re-export layer for the bundled
     # ``get_adcp_capabilities_response`` sub-models — it disambiguates
     # the ``Account`` / ``MediaBuy`` / ``Creative`` name collisions
     # before adopters import them via :mod:`adcp.decisioning.capabilities`.
     # Same architectural role as ``aliases.py`` (re-exports + renames),
-    # so the same direct ``generated_poc`` import access applies.
+    # so the same direct ``_generated`` access applies.
     SRC_ROOT / "types" / "capabilities.py",
-    # ``error_details.py`` and every module under ``domains/`` are generated
-    # re-export layers written by ``scripts/consolidate_exports.py`` alongside
-    # ``_generated.py``: one carries the error-details models with the field
-    # types they reference, the others re-export each schema domain faithfully
-    # so a type name several domains declare is unambiguous by module path.
-    # Same architectural role as ``_generated.py``, so the same direct
-    # generated-layer access applies.
-    SRC_ROOT / "types" / "error_details.py",
-    *(SRC_ROOT / "types" / "domains").rglob("*.py"),
-    # ``_forward_compat.py`` patches Format.assets and Assets94.assets at
-    # import time with open union types (issue #742). It must import the
-    # generated classes in-place to call model_rebuild() on them, giving it
-    # the same architectural role as ``_ergonomic.py``.
-    SRC_ROOT / "types" / "_forward_compat.py",
-    # ``canonical_decl.py`` (issue #741) is the hand-rolled
-    # ``ProductFormatDeclaration`` that replaces the codegen output —
-    # ``datamodel-code-generator`` flattens the upstream discriminated
-    # ``oneOf`` and drops the ``format_kind`` + ``params`` fields, so the
-    # public class is hand-rolled here. Same role as ``aliases.py`` /
-    # ``capabilities.py``: re-exports + overrides of generated types.
-    SRC_ROOT / "types" / "canonical_decl.py",
-    # The 7.0 creative migration exposes generated wire models only through
-    # an explicitly legacy facade and replaces primary creative lifecycle
-    # models with canonical-first boundary models. Both modules therefore
-    # have the same generated-type adapter role as ``aliases.py``.
-    SRC_ROOT / "types" / "legacy.py",
-    SRC_ROOT / "types" / "canonical_creative.py",
 }
 
 # Frozen baseline of pre-existing violations — paths relative to repo root.
@@ -94,21 +75,11 @@ ALLOWED_FILES = {
 # if you forget to update the list, which is the desired behavior).
 _KNOWN_VIOLATIONS = frozenset(
     {
-        "src/adcp/capabilities.py",
-        "src/adcp/client.py",
-        "src/adcp/signing/autosign.py",
-        "src/adcp/signing/client.py",
-        "src/adcp/utils/format_assets.py",
         "src/adcp/utils/preview_cache.py",
-        "src/adcp/webhook_receiver.py",
-        "src/adcp/webhook_sender.py",
     }
 )
 
-_FORBIDDEN_PREFIXES = (
-    "adcp.types._generated",
-    "adcp.types.generated_poc",
-)
+_FORBIDDEN_PREFIXES = ("adcp.types._generated",)
 
 
 def _module_imports_forbidden(path: Path) -> list[str]:
@@ -134,7 +105,7 @@ def test_no_new_layering_violations() -> None:
     repo_root = SRC_ROOT.parent.parent
     violators: dict[str, list[str]] = {}
     for path in SRC_ROOT.rglob("*.py"):
-        if path in ALLOWED_FILES or "generated_poc" in path.parts:
+        if path in ALLOWED_FILES or path.is_relative_to(GENERATED_DIR):
             continue
         rel = str(path.relative_to(repo_root))
         bad = _module_imports_forbidden(path)
@@ -161,12 +132,27 @@ def test_no_new_layering_violations() -> None:
         raise AssertionError("\n".join(msgs))
 
 
+def test_generated_tree_is_not_forbidden() -> None:
+    """The generated tree's own address must stay off the forbidden list.
+
+    The generator writes ``adcp.types.domains`` and defines every public class
+    there, so forbidding that prefix would forbid the definition site. This
+    assertion is what makes the shrink above deliberate rather than a lapse:
+    re-adding the prefix to buy back the old allowlist fails here.
+    """
+    assert not any(p.startswith("adcp.types.domains") for p in _FORBIDDEN_PREFIXES), (
+        "adcp.types.domains is where the generator defines the public classes — "
+        "see docs/type-surface.md. Forbid only namespaces that resolve a name by "
+        "something other than the schema."
+    )
+
+
 def test_claude_md_documents_the_rule() -> None:
     """The architectural rule this test enforces must be documented in CLAUDE.md."""
     claude_md = SRC_ROOT.parent.parent / "CLAUDE.md"
     text = claude_md.read_text(encoding="utf-8")
     # Loose match — we care that someone reading the test can find the rationale.
-    assert re.search(r"generated_poc/.*may import|import.*generated_poc", text), (
-        "CLAUDE.md doesn't reference the generated_poc import layering rule. "
+    assert re.search(r"may import from `_generated\.py`|import.*_generated\.py", text), (
+        "CLAUDE.md doesn't reference the generated-layer import layering rule. "
         "If the rule moved, update this test's docstring with the new pointer."
     )

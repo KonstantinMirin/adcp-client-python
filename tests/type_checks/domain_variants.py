@@ -60,6 +60,4 @@ assert_type(unsupported.supported_majors, list[SupportedMajor] | None)
 billing = BillingNotSupportedDetails(scope=ScopeFromBillingNotSupported.account)
 assert_type(billing.scope, ScopeFromBillingNotSupported | None)
 
-rate_limit_scopes: list[ScopeFromRateLimited] = [
-    ScopeFromRateLimited.account
-]
+rate_limit_scopes: list[ScopeFromRateLimited] = [ScopeFromRateLimited.account]
