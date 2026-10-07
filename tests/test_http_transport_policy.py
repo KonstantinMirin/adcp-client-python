@@ -176,7 +176,7 @@ def test_dynamic_agent_card_is_public_with_foreign_origin(transport):
         for path in ["/.well-known/agent-card.json", "/.well-known/agent.json"]:
             response = client.get(path, headers={"origin": "https://directory.example"})
             assert response.status_code == 200
-            assert "https://seller.example" in response.text
+            assert response.json()["supportedInterfaces"][0]["url"] == "https://seller.example/"
             assert (
                 client.head(path, headers={"origin": "https://directory.example"}).status_code
                 != 403

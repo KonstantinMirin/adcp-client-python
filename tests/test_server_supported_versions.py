@@ -19,7 +19,7 @@ from adcp.server.version_policy import resolve_supported_versions
 from adcp.validation.client_hooks import ValidationHookConfig
 
 
-class Seller(ADCPHandler[ToolContext]):
+class VersionSelectionSeller(ADCPHandler[ToolContext]):
     advertised_tools = {"get_products", "get_adcp_capabilities"}
     adcp_capabilities = {"media_buy": {"features": {"canonical_creatives": True}}}
 
@@ -50,7 +50,7 @@ def test_invalid_selections_fail_at_construction(factory: Any, selection: Any) -
         if factory is ServeConfig:
             factory(supported_versions=selection)
         else:
-            factory(Seller(), supported_versions=selection)
+            factory(VersionSelectionSeller(), supported_versions=selection)
 
 
 def test_selected_versions_require_installed_schema_bundles(
@@ -58,11 +58,11 @@ def test_selected_versions_require_installed_schema_bundles(
 ) -> None:
     monkeypatch.setattr("adcp.server.version_policy.list_validator_keys", lambda **kwargs: [])
     with pytest.raises(ConfigurationError, match="installed schema bundles"):
-        create_mcp_server(Seller(), supported_versions=["3.2"])
+        create_mcp_server(VersionSelectionSeller(), supported_versions=["3.2"])
 
 
 def test_trusted_pin_must_belong_to_selected_contracts() -> None:
-    class PinnedSeller(Seller):
+    class PinnedSeller(VersionSelectionSeller):
         def get_adcp_version(self) -> str:
             return "3.1"
 
@@ -76,7 +76,7 @@ def test_trusted_pin_must_belong_to_selected_contracts() -> None:
 )
 @pytest.mark.parametrize("claim", ["3.0", "3.1", "2.5", "3.2-rc.7"])
 async def test_explicit_excluded_versions_never_reach_handler(validation: Any, claim: str) -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     caller = create_tool_caller(
         seller, "get_products", validation=validation, supported_versions=["3.2"]
     )
@@ -94,7 +94,7 @@ async def test_explicit_excluded_versions_never_reach_handler(validation: Any, c
     "envelope", [{"adcp_version": "3.2"}, {"adcp_version": "3.2.1"}, {"adcp_major_version": 3}]
 )
 async def test_selected_envelopes_route_to_the_selected_bundle(envelope: dict[str, Any]) -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     caller = create_tool_caller(
         seller,
         "get_products",
@@ -116,7 +116,7 @@ async def test_selected_envelopes_route_to_the_selected_bundle(envelope: dict[st
 async def test_unversioned_defaults_and_legacy_probes_cannot_escape_selection(
     params: dict[str, Any], claimed: str
 ) -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     caller = create_tool_caller(seller, "get_products", supported_versions=["3.2"])
     with pytest.raises(ADCPTaskError) as caught:
         await caller(params)
@@ -126,7 +126,7 @@ async def test_unversioned_defaults_and_legacy_probes_cannot_escape_selection(
 
 
 async def test_a2a_packaged_default_also_obeys_selection() -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     executor = ADCPAgentExecutor(seller, validation=None, supported_versions=["3.1"])
     with pytest.raises(ADCPTaskError) as caught:
         await executor._tool_callers["get_products"](REQUEST)
@@ -135,7 +135,7 @@ async def test_a2a_packaged_default_also_obeys_selection() -> None:
 
 
 async def test_hooks_are_checked_before_dispatch_and_aliases_remain_explicit() -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     caller = create_tool_caller(
         seller,
         "get_products",
@@ -157,7 +157,7 @@ async def test_hooks_are_checked_before_dispatch_and_aliases_remain_explicit() -
 
 
 async def test_selections_are_frozen_and_independent_on_the_same_handler() -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     original_versions = list(seller.capabilities["adcp"]["supported_versions"])
     selection = ["3.2"]
     current = MCPToolSet(seller, supported_versions=selection)
@@ -173,7 +173,7 @@ async def test_selections_are_frozen_and_independent_on_the_same_handler() -> No
 
 
 async def test_capability_enhancer_cannot_widen_or_mutate_another_server_selection() -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     original_versions = list(seller.capabilities["adcp"]["supported_versions"])
 
     def enhance(response: dict[str, Any]) -> None:
@@ -199,13 +199,13 @@ def test_config_freezes_selection_and_controls_server_forwarding() -> None:
     selection.append("3.1")
     assert config.supported_versions == ("3.2",)
     with patch.object(serve_module, "_serve_mcp") as run:
-        serve_module.serve(Seller(), config=config, supported_versions=["3.1"])
+        serve_module.serve(VersionSelectionSeller(), config=config, supported_versions=["3.1"])
     assert run.call_args.kwargs["supported_versions"] == ("3.2",)
 
 
 @pytest.mark.parametrize("transport", ["mcp", "a2a", "direct-a2a", "both"])
 def test_public_transport_dispatch_and_capabilities_share_selection(transport: str) -> None:
-    seller = Seller()
+    seller = VersionSelectionSeller()
     kwargs = {"supported_versions": ["3.2"], "validation": None}
     if transport == "mcp":
         app = create_mcp_server(seller, stateless_http=True, **kwargs).streamable_http_app()
@@ -368,11 +368,13 @@ async def test_managed_test_controller_obeys_server_selection(leg: str) -> None:
 
     store = TestControllerStore()
     if leg == "mcp":
-        mcp = create_mcp_server(Seller(), supported_versions=["3.2"])
+        mcp = create_mcp_server(VersionSelectionSeller(), supported_versions=["3.2"])
         register_test_controller(mcp, store)
         caller = mcp._tool_manager._tools["comply_test_controller"].fn
     else:
-        executor = ADCPAgentExecutor(Seller(), test_controller=store, supported_versions=["3.2"])
+        executor = ADCPAgentExecutor(
+            VersionSelectionSeller(), test_controller=store, supported_versions=["3.2"]
+        )
         caller = executor._tool_callers["comply_test_controller"]
 
     async def call(params: dict[str, Any]) -> Any:
@@ -393,11 +395,13 @@ def test_custom_a2a_request_handler_cannot_bypass_selected_dispatch() -> None:
     from unittest.mock import MagicMock
 
     with pytest.raises(ValueError, match="supported_versions.*request_handler"):
-        create_a2a_server(Seller(), supported_versions=["3.2"], request_handler=MagicMock())
+        create_a2a_server(
+            VersionSelectionSeller(), supported_versions=["3.2"], request_handler=MagicMock()
+        )
 
 
 async def test_toolset_explicit_pin_takes_precedence_over_handler_pin() -> None:
-    class PinnedSeller(Seller):
+    class PinnedSeller(VersionSelectionSeller):
         def get_adcp_version(self) -> str:
             return "3.2"
 
@@ -410,7 +414,7 @@ async def test_toolset_explicit_pin_takes_precedence_over_handler_pin() -> None:
 @pytest.mark.parametrize("pin", ["3.2-rc.7", "3.2.1"])
 @pytest.mark.parametrize("leg", ["mcp", "a2a"])
 async def test_trusted_default_pins_use_the_selected_canonical_bundle(pin: str, leg: str) -> None:
-    class PinnedSeller(Seller):
+    class PinnedSeller(VersionSelectionSeller):
         def get_adcp_version(self) -> str:
             return pin
 
@@ -433,7 +437,7 @@ async def test_controller_trusted_default_pins_use_the_selected_canonical_bundle
 ) -> None:
     from adcp.server.test_controller import TestControllerStore, register_test_controller
 
-    class PinnedSeller(Seller):
+    class PinnedSeller(VersionSelectionSeller):
         def get_adcp_version(self) -> str:
             return pin
 
