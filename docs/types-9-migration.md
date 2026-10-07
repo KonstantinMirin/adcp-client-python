@@ -186,6 +186,54 @@ if not is_canonical_format_kind(manifest.format_kind, MY_SUPPORTED_KINDS):
     reject_with_unsupported_format(manifest)
 ```
 
+### What you now own
+
+This is a transfer of responsibility, not a new helper. Before 9.0 a closed
+enum refused an unknown `format_kind` inside the model, so a seller got that
+refusal without asking for it. Now the SDK accepts any string on the way out
+and on the way back, and the seller owns the refusal. **A seller that adds no
+check has silently stopped validating something the library used to validate
+for it** — no error appears, and nothing in a passing test suite says so.
+
+If you emit `format_kind`, the producer-side rule that you MUST NOT mint
+ad-hoc values is now yours to enforce, and `is_canonical_format_kind` is how:
+
+```python
+# at the point you build a declaration, not at the point you serialize it
+if not is_canonical_format_kind(kind, vocabulary=MY_SUPPORTED_KINDS):
+    raise MySellerError(f"{kind} is not a kind this seller publishes")
+```
+
+**`CanonicalFormatKind` is a vocabulary to pass in, not a type to annotate
+with.** It is still exported, still has its sixteen members, and is the
+default `vocabulary` argument. Annotating a model field with it is the mistake
+this change exists to undo — it rebuilds the closed enum one layer down, and
+reintroduces the pin-as-ceiling problem described above:
+
+```python
+class MyProduct(BaseModel):
+    format_kind: CanonicalFormatKind   # wrong: refuses a kind newer than your pin
+    format_kind: str                   # right: accept, then check with your own vocabulary
+```
+
+**One closed-set rule did not move.** `core/product-format-declaration.json`
+requires a seller to reject a `create_media_buy` targeting a `format_kind`
+that is absent from that product's `format_options[]`, and the SDK still
+enforces it for you:
+
+```python
+from adcp.canonical_formats import (
+    FormatKindNotInClosedSetError,
+    validate_format_kind_in_options,
+)
+
+validate_format_kind_in_options(requested_kind, product.format_options)
+```
+
+That is a per-product obligation about what *this* product accepts, and it is
+unrelated to whether the kind is in the canonical sixteen. Only the
+model-level enum refusal was removed; this one is unchanged.
+
 **What this replaced.** Five pieces of scaffolding existed only to reconcile
 the closed enum with the open requirement, and all five are gone: the
 `_OpenCanonicalFormatKind` alias in `adcp.types.canonical_creative`, a second
