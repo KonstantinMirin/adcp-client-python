@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from typing import Any
 from unittest.mock import patch
@@ -276,7 +277,8 @@ def test_decisioning_selection_validates_before_allocating_executor_and_reaches_
     from adcp.decisioning.serve import create_adcp_server_from_platform
     from tests.test_decisioning_serve import _BarePlatform
 
-    with patch("adcp.decisioning.serve.ThreadPoolExecutor") as executor:
+    serve_module = importlib.import_module("adcp.decisioning.serve")
+    with patch.object(serve_module, "ThreadPoolExecutor") as executor:
         with pytest.raises(ConfigurationError, match="supported_versions"):
             create_adcp_server_from_platform(_BarePlatform(), supported_versions=["3.3"])
         executor.assert_not_called()
