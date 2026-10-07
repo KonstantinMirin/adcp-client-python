@@ -76,7 +76,8 @@ async def require_owned_schema_or_empty(connection: Any) -> None:
     if row[0] and not row[1]:
         raise ReportingOwnershipMigrationError(
             "If all legacy tables are empty, call replace_empty_legacy_reporting. "
-            "Otherwise: Stop reporting workers and run migrate_legacy_reporting before create_schema"
+            "Otherwise: Stop reporting workers and run migrate_legacy_reporting "
+            "before create_schema"
         )
 
 
