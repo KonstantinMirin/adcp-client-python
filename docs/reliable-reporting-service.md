@@ -203,10 +203,22 @@ then resolves account context for each recovered generation. It preserves stored
 activation/retirement boundaries, revisions and producer checkpoints; no new
 `configure()` call or adopter-maintained account enumeration is needed. Retired
 generations remain available for outstanding periods. Register every retained
-generation's adapter before startup; an unavailable route or invalid context
-fails startup instead of silently losing scheduled work. A service with no source
-registrations can still start for retained reads only. Older custom stores without
-the enumeration operation can keep explicit `configure()` startup. Enumeration
+generation's adapter before startup; an unavailable route or invalid resolved
+context still fails startup. An account-context resolver failure is isolated to
+its configuration so healthy accounts can start. The read-only
+`initialization_errors` mapping exposes these failures by generation key, and
+each Core worker turn includes unresolved failures in `configuration_errors`.
+Temporary resolver failures are retried on later turns. A resolver that raises
+`ReliableReportingConfigurationError` is not retried automatically; fix the
+account and call `configure()` explicitly to recover it. Schema, connectivity
+and source-registration failures still prevent startup. If a queued retry resolves
+to an invalid context (including a wrong account, timezone, adapter route or
+offering), that generation remains observable as a permanent error while healthy
+accounts continue. Fix its resolved facts and call `configure()` explicitly;
+initial invalid context validation and producer-construction failures remain fatal.
+A service with no source registrations can still start for retained reads only.
+Older custom stores without the enumeration operation can keep explicit
+`configure()` startup. Enumeration
 is for service recovery and is never exposed as a buyer task.
 
 Scheduled source reads wait until the selected offering's

@@ -1,5 +1,6 @@
 """Public ownership/liveness APIs used by a strictly typed adopter."""
 
+from collections.abc import Mapping
 from typing import Protocol
 
 from adcp.reporting import (
@@ -10,7 +11,11 @@ from adcp.reporting import (
     ReliableReportingUnavailableError,
     ReportingServiceResource,
 )
-from adcp.reporting.ledger import ReportingConfiguration, ReportingLedgerStore
+from adcp.reporting.ledger import (
+    ReportingConfiguration,
+    ReportingConfigurationGenerationKey,
+    ReportingLedgerStore,
+)
 from adcp.reporting.service import ReportingContextResolver
 
 
@@ -38,6 +43,12 @@ def compose(
 async def serve_one_turn(
     service: ReliableReportingService, configuration: ReportingConfiguration
 ) -> None:
+    initialization_errors: Mapping[ReportingConfigurationGenerationKey, Exception] = (
+        service.initialization_errors
+    )
+    for key, error in initialization_errors.items():
+        assert key.account_id
+        assert isinstance(error, Exception)
     try:
         await service.configure(configuration)
         await service.run_worker()
