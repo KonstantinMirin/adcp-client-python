@@ -154,6 +154,10 @@ from adcp.types.domains.protocol.sync_principal_response import (
 from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption as VendorPricingOptionUnion,
 )
+
+# Both public spellings refer to the schema's union.
+VendorPricingOption = VendorPricingOptionUnion
+
 from adcp.types.domains.core.vendor_pricing_option import (
     VendorPricingOption1 as CpmVendorPricingOption,
 )
@@ -2422,6 +2426,7 @@ __all__ = [
     "AccountReferenceById",
     "AccountReferenceByNaturalKey",
     # Collision-safe SDK 8 migration surface
+    "VendorPricingOption",
     "VendorPricingOptionUnion",
     "CpmVendorPricingOption",
     "PercentOfMediaVendorPricingOption",

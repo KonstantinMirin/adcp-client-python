@@ -71,6 +71,7 @@ from collections.abc import Callable, Iterable, Sequence
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
 
 from pydantic import (
+    AfterValidator,
     ConfigDict,
     Field,
     GetJsonSchemaHandler,
@@ -208,6 +209,39 @@ def is_canonical_format_kind(
     """
 
     return isinstance(value, str) and any(value == kind for kind in vocabulary)
+
+
+def require_canonical_format_kind(
+    vocabulary: Iterable[str] = CanonicalFormatKind,
+) -> Callable[[str], str]:
+    """Build an opt-in string validator for an adopter's format vocabulary.
+
+    Use it with ``AfterValidator`` or ``field_validator`` on your own boundary
+    models. The vocabulary is captured once, so generators and mutable inputs
+    cannot change the validator after construction. SDK model fields remain
+    open strings; this helper does not change their validation.
+
+    For nullable or plural fields, compose the annotated string with ``None``
+    or ``list``. Values outside the vocabulary raise ``ValueError``; valid
+    values are returned unchanged.
+    """
+    kinds = tuple(vocabulary)
+
+    def validate(value: str) -> str:
+        if not is_canonical_format_kind(value, kinds):
+            raise ValueError(f"Unknown canonical format kind: {value!r}")
+        return value
+
+    return validate
+
+
+CanonicalFormatKindStr = Annotated[str, AfterValidator(require_canonical_format_kind())]
+"""Opt-in string annotation restricted to the pinned canonical vocabulary.
+
+Use ``CanonicalFormatKindStr | None`` or ``list[CanonicalFormatKindStr]`` for
+optional and plural adopter fields. Use ``require_canonical_format_kind`` to
+select a different seller vocabulary.
+"""
 
 
 _LEGACY_IDENTITY_KEY = re.compile(r"(^|_)(?:format_ids?|v1_format_ref)($|_)")
@@ -1128,6 +1162,8 @@ __all__ = [
     "UpdateMediaBuyResponse2",
     "UpdateMediaBuyResponse3",
     "is_canonical_format_kind",
+    "CanonicalFormatKindStr",
+    "require_canonical_format_kind",
     "is_legacy_creative_identity_key",
     "sanitize_canonical_schema",
     "strip_legacy_creative_identity",

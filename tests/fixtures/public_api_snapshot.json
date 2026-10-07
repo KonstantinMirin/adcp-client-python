@@ -855,6 +855,7 @@
       "CanonicalFormatImage": "formats.canonical.image",
       "CanonicalFormatImageCarousel": "formats.canonical.image_carousel",
       "CanonicalFormatKind": "core.canonical_format_kind",
+      "CanonicalFormatKindStr": "union[builtins:str,instance:pydantic.functional_validators:AfterValidator]",
       "CanonicalFormatNativeInFeed": "formats.canonical.native_in_feed",
       "CanonicalFormatResponsiveCreative": "formats.canonical.responsive_creative",
       "CanonicalFormatSponsoredPlacement": "formats.canonical.sponsored_placement:CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven",
@@ -1624,6 +1625,7 @@
       "VcpmPricingOption": "pricing_options.vcpm_option",
       "VehicleUnit": "core.vehicle_item:Unit",
       "VendorErrorCodeRegistry": "error_details.vendor_error_codes",
+      "VendorPricingOption": "union[instance:pydantic.fields:FieldInfo,union[core.vendor_pricing_option:VendorPricingOption10,core.vendor_pricing_option:VendorPricingOption11,core.vendor_pricing_option:VendorPricingOption7,core.vendor_pricing_option:VendorPricingOption8,core.vendor_pricing_option:VendorPricingOption9]]",
       "VendorPricingOptionUnion": "union[instance:pydantic.fields:FieldInfo,union[core.vendor_pricing_option:VendorPricingOption10,core.vendor_pricing_option:VendorPricingOption11,core.vendor_pricing_option:VendorPricingOption7,core.vendor_pricing_option:VendorPricingOption8,core.vendor_pricing_option:VendorPricingOption9]]",
       "VenueBreakdownItem": "core.delivery_metrics",
       "VerifyBrandClaimPayload": "brand.verify_brand_claim_response",
@@ -1664,9 +1666,11 @@
       "media_buy": "module:adcp.types.media_buy",
       "project_geo_postal_areas": "adcp.types.projections",
       "protocol": "module:adcp.types.protocol",
+      "require_canonical_format_kind": "adcp.types.canonical_creative",
       "seller": "module:adcp.types.seller",
       "signals": "module:adcp.types.signals",
-      "to_account_response": "adcp.types.projections"
+      "to_account_response": "adcp.types.projections",
+      "validate_union": "adcp.types.validation"
     }
   },
   "adcp.types._generated": {
