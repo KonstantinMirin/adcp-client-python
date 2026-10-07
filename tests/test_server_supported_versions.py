@@ -192,8 +192,6 @@ async def test_capability_enhancer_cannot_widen_or_mutate_another_server_selecti
 
 
 def test_config_freezes_selection_and_controls_server_forwarding() -> None:
-    import importlib
-
     serve_module = importlib.import_module("adcp.server.serve")
     selection = ["3.2"]
     config = ServeConfig(supported_versions=selection)

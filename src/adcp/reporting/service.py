@@ -740,21 +740,25 @@ class ReliableReportingService:
             if retrying:
                 raise _AccountContextResolutionError(error, permanent=True) from error
             raise
-        # Invalid registered capabilities affect the source itself, rather than
-        # one account's resolved facts, and remain fatal even during a retry.
+        # Check registered source facts separately from the returned account
+        # context. Initial setup failures abort startup; queued retries record
+        # configuration errors without interrupting healthy bindings.
         if registration.executor.capabilities.scope != "effective_account":
             raise ReliableReportingConfigurationError(
                 "registered source capabilities must be scoped to an effective account"
             )
         try:
             self._validate_offerings(configuration, context, registration)
+            offerings = context.producer_offerings()
+            if not isinstance(offerings, ProducerOfferings):
+                raise TypeError("producer_offerings must return ProducerOfferings")
         except Exception as error:
             if retrying:
                 raise _AccountContextResolutionError(error, permanent=True) from error
             raise
         producer = self._producer_factory(
             source=registration.executor,
-            offerings=context.producer_offerings(),
+            offerings=offerings,
             store=self.store,
             object_reader=registration.object_reader,
             escalation=self._escalation,
@@ -778,12 +782,12 @@ class ReliableReportingService:
 
     @property
     def initialization_errors(self) -> Mapping[ReportingConfigurationGenerationKey, Exception]:
-        """Read-only view of unresolved stored account contexts.
+        """Read-only view of unresolved stored configuration bindings.
 
-        Worker turns retry temporary resolver failures and include all unresolved
-        errors in ``configuration_errors``. Permanent resolver configuration
+        Worker turns retry temporary resolution and construction failures and
+        include all unresolved errors in ``configuration_errors``. Configuration
         errors and invalid contexts returned during recovery retries require an
-        explicit ``configure`` call after the account is fixed.
+        explicit ``configure`` call after the underlying facts are fixed.
         """
         return MappingProxyType(self._initialization_errors)
 
@@ -792,10 +796,21 @@ class ReliableReportingService:
     ) -> None:
         try:
             await self._configure(configuration, persist=False, recovering=True, retrying=retrying)
-        except _AccountContextResolutionError as failure:
+        except Exception as failure:
+            if isinstance(failure, _AccountContextResolutionError):
+                error = failure.error
+                permanent = failure.permanent
+            elif retrying:
+                # Initial static setup still fails startup. A queued account
+                # retry owns its entire binding attempt, including construction,
+                # so it cannot interrupt already-bound healthy accounts.
+                error = failure
+                permanent = isinstance(error, ReliableReportingConfigurationError)
+            else:
+                raise
             key = configuration.generation_key
-            self._initialization_errors[key] = failure.error
-            if failure.permanent:
+            self._initialization_errors[key] = error
+            if permanent:
                 self._pending_recovery.pop(key, None)
             else:
                 self._pending_recovery[key] = configuration
