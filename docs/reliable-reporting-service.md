@@ -216,7 +216,13 @@ the offering's `source_timezone`, falling back to the stored period's timezone
 when it is omitted. Obligations still close at the period boundary;
 waiting does not change `expected_at` or the advertised recovery deadline.
 Retryable source failures do not escalate before the worst-case availability
-window ends. Terminal failures still follow the existing recovery deadline.
+window of the actual requested offering. Built-in stores resume frozen pending
+acquisitions using that request's offering readiness, including a snapshot retry
+that crosses an official-close boundary. Custom observation stores may implement
+`PendingProvisionalAcquisitionStore` to provide the same lookup; without it, a
+pending snapshot waits conservatively until the authoritative offering is ready.
+
+Terminal failures still follow the existing recovery deadline.
 Direct acquisition and manual replay keep their explicit-call behavior.
 
 Pass `ReportingProductionOptions` to compose the managed materializer, status
