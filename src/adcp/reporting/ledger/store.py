@@ -1188,6 +1188,11 @@ class InMemoryReportingLedgerStore:
             and item.reporting_obligation_id == reporting_obligation_id
         )
 
+    async def get_provisional_acquisition(
+        self, *, account_id: str, reporting_obligation_id: str, ordinal: int
+    ) -> ProvisionalAcquisition | None:
+        return self._provisional_acquisitions.get((account_id, reporting_obligation_id, ordinal))
+
     async def reserve_provisional_acquisition(
         self, acquisition: ProvisionalAcquisition
     ) -> ProvisionalAcquisition:

@@ -106,6 +106,7 @@ async def _harness(
     *,
     official: bool = False,
     delivery_sla: str = "PT6H",
+    capabilities: ReportingSourceCapabilitiesV1 | None = None,
     **changes: Any,
 ) -> tuple[Any, ...]:
     clock = [END + timedelta(seconds=30)]
@@ -118,7 +119,7 @@ async def _harness(
             data_through=request.period.end,
         )
 
-    capabilities = _capabilities(official=official, **changes)
+    capabilities = capabilities or _capabilities(official=official, **changes)
     staging = InMemoryStagingStore()
     source = InlineReportingSource(
         capabilities=capabilities,
@@ -161,6 +162,94 @@ async def _harness(
     )
     obligation = (await producer.close_elapsed_periods(configuration, now=clock[0]))[0]
     return producer, store, configuration, obligation, calls, clock
+
+
+def _closing_capabilities() -> ReportingSourceCapabilitiesV1:
+    payload = _capabilities().model_dump(mode="json")
+    for offering in payload["offerings"]:
+        if offering["offering_id"] == SNAPSHOT_OFFERING_ID:
+            offering.update(
+                restatement_window="PT2H", restatement_cadence="PT1H", official_close_lag="PT2H"
+            )
+        elif offering["offering_id"] == OFFICIAL_OFFERING_ID:
+            offering.update(
+                expected_availability_lag="PT4H",
+                worst_case_availability_lag="PT8H",
+                source_timezone="UTC",
+                days_after_period_end=0,
+                source_local_ready_time="06:00",
+            )
+    payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
+    return ReportingSourceCapabilitiesV1.model_validate(payload)
+
+
+@pytest.mark.parametrize("store_class", [InMemoryReportingLedgerStore, ProgressStore])
+@pytest.mark.parametrize("pending_lookup", [True, False])
+async def test_snapshot_official_close_waits_for_the_authoritative_offering(
+    store_class: Any, pending_lookup: bool
+) -> None:
+    producer, store, configuration, obligation, calls, clock = await _harness(
+        store_class, capabilities=_closing_capabilities()
+    )
+    if not pending_lookup:
+        # Custom stores can keep the original observation contract.
+        setattr(store, "get_provisional_acquisition", None)
+    clock[0] = END + timedelta(hours=1)
+    first = await producer.run_configuration(configuration, now=clock[0])
+    assert len(first.revisions_committed) == 1
+    assert calls == [clock[0]]
+
+    for instant in (END + timedelta(hours=2), END + timedelta(hours=6, seconds=-1)):
+        clock[0] = instant
+        waiting = await producer.run_configuration(configuration, now=instant)
+        assert not waiting.revisions_committed
+        assert not waiting.slices_failed
+        assert calls == [END + timedelta(hours=1)]
+        if isinstance(store, ProgressStore):
+            assert obligation.reporting_obligation_id in store.pending
+
+    clock[0] = END + timedelta(hours=6)
+    closed = await producer.run_configuration(configuration, now=clock[0])
+    assert len(closed.revisions_committed) == 1
+    assert calls == [END + timedelta(hours=1), clock[0]]
+    revisions = await store.list_revisions(
+        account_id=configuration.account_id,
+        reporting_obligation_id=obligation.reporting_obligation_id,
+    )
+    assert {revision.finality for revision in revisions} == {"snapshot", "official"}
+    if isinstance(store, ProgressStore):
+        assert obligation.reporting_obligation_id not in store.pending
+
+
+@pytest.mark.parametrize("retryable", [True, False])
+async def test_official_close_uses_its_own_worst_case_window(retryable: bool) -> None:
+    capabilities = _closing_capabilities()
+    producer, _, configuration, obligation, _, clock = await _harness(
+        delivery_sla="PT10M", capabilities=capabilities
+    )
+    clock[0] = END + timedelta(hours=1)
+    await producer.run_configuration(configuration, now=clock[0])
+    source = FailingSource(
+        code="PROVIDER_TRANSIENT" if retryable else "AUTHENTICATION_FAILED",
+        retry="retryable" if retryable else "terminal",
+    )
+    source.capabilities = capabilities
+    producer._source = source
+
+    clock[0] = END + timedelta(hours=6)
+    failed = await producer.run_configuration(configuration, now=clock[0])
+    assert source.calls == 1
+    assert source.requests[0].offering_id == OFFICIAL_OFFERING_ID
+    assert failed.escalated == ([] if retryable else [obligation.reporting_obligation_id])
+
+    clock[0] += timedelta(seconds=1)
+    deferred = await producer.run_configuration(configuration, now=clock[0])
+    assert source.calls == 1
+    assert deferred.escalated == ([] if retryable else [obligation.reporting_obligation_id])
+
+    clock[0] = END + timedelta(hours=8)
+    expired = await producer.run_configuration(configuration, now=clock[0])
+    assert expired.escalated == [obligation.reporting_obligation_id]
 
 
 @pytest.mark.parametrize("store_class", [InMemoryReportingLedgerStore, ProgressStore])

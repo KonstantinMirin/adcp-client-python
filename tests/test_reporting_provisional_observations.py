@@ -9,6 +9,7 @@ from datetime import timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
+from adcp.reporting.fixtures import OFFICIAL_OFFERING_ID
 from adcp.reporting.ledger import (
     InMemoryReportingLedgerStore,
     PgReportingLedgerStore,
@@ -17,7 +18,11 @@ from adcp.reporting.ledger import (
 )
 from adcp.reporting.ledger import ReportingStatusCaller as OwnershipCaller
 from adcp.reporting.ledger.store import LedgerConflictError
-from adcp.reporting.source import SourceBatchManifestV1
+from adcp.reporting.source import (
+    ReportingSourceCapabilitiesV1,
+    SourceBatchManifestV1,
+    reporting_source_capabilities_sha256_v1,
+)
 from tests.conformance.reporting._generation_support import isolated_reporting_pool
 from tests.test_reporting_settling import (
     ACCOUNT,
@@ -673,6 +678,89 @@ async def test_reserved_snapshot_retry_survives_explicit_close_boundary(make_har
     official = next(revision for revision in history if revision.finality == "official")
     assert (await latest(store)).revision_id == official.reporting_revision_id
     assert (await latest(store)).acquisition.ordinal == 2
+
+
+@pytest.mark.parametrize("pending_lookup", [True, False])
+async def test_restart_retries_frozen_snapshot_before_authoritative_readiness(
+    make_harness, pending_lookup
+):
+    payload = _capabilities(restatement_window="PT3H", official_close_lag="PT4H").model_dump(
+        mode="json"
+    )
+    for offering in payload["offerings"]:
+        if offering["offering_id"] == OFFICIAL_OFFERING_ID:
+            offering.update(expected_availability_lag="PT8H", worst_case_availability_lag="PT12H")
+    payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
+    capabilities = ReportingSourceCapabilitiesV1.model_validate(payload)
+    producer, store, _, clock = await make_harness(capabilities)
+    await producer.run_worker()
+    source = producer._source
+    original_fetch = source._fetch
+    requests = []
+
+    def not_ready_once(request):
+        requests.append(request)
+        return None if len(requests) == 1 else original_fetch(request)
+
+    source._fetch = not_ready_once
+    clock[0] += timedelta(hours=1)
+    await producer.run_worker()
+    obligation = await _only_obligation(store)
+    pending = await store.get_provisional_acquisition(
+        account_id=ACCOUNT, reporting_obligation_id=obligation.reporting_obligation_id, ordinal=1
+    )
+    assert pending is not None
+    assert pending.request().identity == requests[0].identity
+    assert (
+        await store.get_provisional_acquisition(
+            account_id="other-account",
+            reporting_obligation_id=obligation.reporting_obligation_id,
+            ordinal=1,
+        )
+        is None
+    )
+    if not pending_lookup:
+        # A custom store may omit the optional read without changing its
+        # existing reservation/observation implementation.
+        setattr(store, "get_provisional_acquisition", None)
+
+    restarted = ReportingProducer(
+        source=source,
+        offerings=producer._offerings,
+        store=store,
+        object_reader=producer._object_reader,
+        max_periods_per_turn=1,
+        clock=lambda: clock[0],
+    )
+    clock[0] = obligation.period.end + timedelta(hours=4, minutes=10)
+    await restarted.run_worker()
+    assert len(requests) == (2 if pending_lookup else 1)
+    if pending_lookup:
+        assert requests[1].identity == requests[0].identity
+        assert requests[1].publication_class == "PROVISIONAL_SNAPSHOT"
+    assert len(await _revisions(store)) == (2 if pending_lookup else 1)
+    await restarted.run_worker()
+    assert len(requests) == (2 if pending_lookup else 1)
+    # Waiting for the next offering must not freeze an early source cutoff.
+    if pending_lookup:
+        assert (
+            await store.get_provisional_acquisition(
+                account_id=ACCOUNT,
+                reporting_obligation_id=obligation.reporting_obligation_id,
+                ordinal=2,
+            )
+            is None
+        )
+
+    clock[0] = obligation.period.end + timedelta(hours=8)
+    await restarted.run_worker()
+    if not pending_lookup:
+        assert requests[1].identity == requests[0].identity
+        assert requests[1].publication_class == "PROVISIONAL_SNAPSHOT"
+        await restarted.run_worker()
+    assert requests[-1].publication_class == "AUTHORITATIVE"
+    assert requests[-1].period.source_read_cutoff_at == clock[0]
+    assert len(await _revisions(store)) == 3
 
 
 async def test_empty_successful_reads_still_append_observations(make_harness):

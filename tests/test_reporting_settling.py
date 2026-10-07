@@ -71,6 +71,17 @@ def _capabilities(
         )
         for item in base.offerings
     ]
+    for offering in payload["offerings"]:
+        if offering["offering_id"] == OFFICIAL_OFFERING_ID:
+            # Policy fixtures make authoritative data ready independently of
+            # the configured close cadence, just like the snapshot above.
+            offering.update(
+                expected_availability_lag="PT0S",
+                worst_case_availability_lag="PT0S",
+                source_timezone="UTC",
+                days_after_period_end=0,
+                source_local_ready_time="00:00",
+            )
     payload["capabilities_sha256"] = reporting_source_capabilities_sha256_v1(payload)
     return ReportingSourceCapabilitiesV1.model_validate(payload)
 
