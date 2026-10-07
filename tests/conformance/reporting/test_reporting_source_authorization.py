@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import replace
+from datetime import timedelta
 from functools import partial
 
 import pytest
@@ -372,7 +373,10 @@ async def test_revocation_stops_account_for_turn_and_other_accounts_continue(bac
             pool = await stack.enter_async_context(isolated_reporting_pool(autocommit=True))
             store = PgReportingLedgerStore(pool=pool, clock=lambda: END)
         service = ReliableReportingService(
-            store=store, account_context=account_context, clock=lambda: END
+            store=store,
+            account_context=account_context,
+            clock=lambda: END,
+            read_jitter_window=timedelta(0),
         )
         stack.push_async_callback(service.close)
         service.sources.register_executor("source", source, object_reader=source.reader)
