@@ -294,6 +294,7 @@ def _producer(
         store=store,
         object_reader=staging,
         clock=lambda: now,
+        read_jitter_window=timedelta(0),
     )
     return producer, executor
 
