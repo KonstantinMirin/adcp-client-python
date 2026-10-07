@@ -150,10 +150,16 @@ Pick the surface you are adding to:
   be exported from `adcp.types` — partial modules only re-curate that surface; they
   never import the generated layer.
 
-Never import from `adcp.types.generated_poc.*` or `adcp.types._generated` outside
-the allowlisted layering modules (`_generated.py`, `aliases.py`, `_ergonomic.py`,
-`_forward_compat.py`, `capabilities.py`, `canonical_decl.py`, `_eager.py`, and
-`types/__init__.py`). The generated class names are unstable across schema regen.
+Never import from `adcp.types._generated` outside the allowlisted layering
+modules (`_generated.py`, `aliases.py`, `capabilities.py`, `_eager.py`, and
+`types/__init__.py`): it resolves a bare name that several schemas declare to a
+single sort-order winner, so a schema addition can repoint it silently.
+
+`adcp.types.domains.<domain>[.<schema>]` is public — codegen defines every class
+there and `tests/fixtures/public_api_snapshot.json` pins what each domain root
+resolves to. Prefer the flat `adcp.types` surface; take a domain path for a name
+the flat surface cannot bind. The generated class NAMES are still unstable across
+schema regen, which is what `aliases.py` exists to absorb.
 
 After an intentional change to `adcp.__all__` or `adcp.types.__all__`, regenerate
 the public-API snapshot:

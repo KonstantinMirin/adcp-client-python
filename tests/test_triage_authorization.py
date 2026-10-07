@@ -26,8 +26,7 @@ def authorize(tmp_path: Path):
         if step.get("name") == "Authorize mutation-capable trigger"
     )
     stub = tmp_path / "gh"
-    stub.write_text(
-        """#!/usr/bin/env bash
+    stub.write_text("""#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$API_CALLS"
 [[ "$GH_TOKEN" == fixture-token ]]
@@ -40,8 +39,7 @@ if [[ "$API_STATUS" != 200 ]]; then
   exit 1
 fi
 printf '%s' "$API_RESPONSE" | jq -r "$4"
-"""
-    )
+""")
     stub.chmod(0o755)
     calls = tmp_path / "calls"
 

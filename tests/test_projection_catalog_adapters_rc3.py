@@ -219,7 +219,7 @@ def test_publisher_snapshot_precedes_exact_bundled_aao_route() -> None:
     )
 
     assert projected.declaration is not None
-    assert projected.declaration.format_kind.value == "display_tag"
+    assert projected.declaration.format_kind == "display_tag"
     assert projected.declaration.format_option_id == "publisher_mrec_override"
     assert projected.declaration.publisher_domain == "publisher.example"
 
@@ -245,7 +245,7 @@ def test_ordinary_converter_does_not_override_exact_bundled_aao_route() -> None:
     )
 
     assert projected.declaration is not None
-    assert projected.declaration.format_kind.value == "image"
+    assert projected.declaration.format_kind == "image"
     assert projected.declaration.format_option_id != "ordinary_override"
 
 

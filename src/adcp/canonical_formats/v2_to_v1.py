@@ -57,23 +57,27 @@ FormatId = LegacyFormatId
 # format with no seller-asserted ``v1_format_ref[]`` has no projection
 # target — but a custom declaration MAY carry ``v1_format_ref`` and
 # project via step 2.
-V1_TRANSLATABLE: dict[CanonicalFormatKind, bool] = {
-    CanonicalFormatKind.image: True,
-    CanonicalFormatKind.html5: True,
-    CanonicalFormatKind.display_tag: True,
-    CanonicalFormatKind.image_carousel: False,
-    CanonicalFormatKind.video_hosted: True,
-    CanonicalFormatKind.video_vast: True,
-    CanonicalFormatKind.audio_hosted: True,
-    CanonicalFormatKind.audio_vast: True,
-    CanonicalFormatKind.audio_daast: True,
-    CanonicalFormatKind.sponsored_placement: False,
-    CanonicalFormatKind.native_in_feed: True,
-    CanonicalFormatKind.responsive_creative: False,
-    CanonicalFormatKind.agent_placement: False,
-    CanonicalFormatKind.seller_rendered_stateful_display: False,
-    CanonicalFormatKind.coordinated_placements: False,
-    CanonicalFormatKind.custom: False,
+# Keyed by the vocabulary's STRING values: ``format_kind`` is a ``str`` at
+# every reference (see adcp.types.canonical_creative), and a declaration
+# may legitimately carry a kind promoted after this SDK's release — for
+# which ``.get(kind, True)`` is the right answer.
+V1_TRANSLATABLE: dict[str, bool] = {
+    CanonicalFormatKind.image.value: True,
+    CanonicalFormatKind.html5.value: True,
+    CanonicalFormatKind.display_tag.value: True,
+    CanonicalFormatKind.image_carousel.value: False,
+    CanonicalFormatKind.video_hosted.value: True,
+    CanonicalFormatKind.video_vast.value: True,
+    CanonicalFormatKind.audio_hosted.value: True,
+    CanonicalFormatKind.audio_vast.value: True,
+    CanonicalFormatKind.audio_daast.value: True,
+    CanonicalFormatKind.sponsored_placement.value: False,
+    CanonicalFormatKind.native_in_feed.value: True,
+    CanonicalFormatKind.responsive_creative.value: False,
+    CanonicalFormatKind.agent_placement.value: False,
+    CanonicalFormatKind.seller_rendered_stateful_display.value: False,
+    CanonicalFormatKind.coordinated_placements.value: False,
+    CanonicalFormatKind.custom.value: False,
 }
 
 
@@ -154,7 +158,7 @@ def project_declaration_to_v1(
         sizes_n = _params_sizes_count(declaration)
         if sizes_n > len(refs):
             details: dict[str, Any] = {
-                "format_kind": kind.value,
+                "format_kind": kind,
                 "v1_format_ref_count": len(refs),
                 "sizes_count": sizes_n,
             }
@@ -185,7 +189,7 @@ def project_declaration_to_v1(
 
     # Step 4: canonical IS v1-translatable but seller didn't author refs.
     details = {
-        "format_kind": kind.value,
+        "format_kind": kind,
         "reason": "no_v1_format_ref",
     }
     if product_id is not None:
@@ -195,7 +199,7 @@ def project_declaration_to_v1(
             make_sdk_advisory(
                 code="FORMAT_DECLARATION_V1_AMBIGUOUS",
                 message=(
-                    f"Canonical '{kind.value}' is normally v1-translatable but the "
+                    f"Canonical '{kind}' is normally v1-translatable but the "
                     f"declaration carries no v1_format_ref[] — SDK cannot synthesize "
                     f"a v1 format_id without seller assertion."
                 ),

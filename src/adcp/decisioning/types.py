@@ -41,7 +41,7 @@ from adcp.error_sanitization import sanitize_error_details
 # TYPE_CHECKING because the generated types pull in the heavy
 # adcp.types dependency tree; the framework runs without forcing that
 # import at decisioning module load time. Imports go through the public
-# adcp.types surface (not adcp.types.generated_poc) per the type-import
+# adcp.types surface (not adcp.types.domains) per the type-import
 # layering rule documented in CLAUDE.md.
 if TYPE_CHECKING:
     from adcp.types import (

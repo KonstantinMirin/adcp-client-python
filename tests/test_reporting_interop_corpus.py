@@ -1161,9 +1161,7 @@ def test_managed_server_owns_every_resource_phase_with_recording_fakes() -> None
         }
         process.stdout.write('managed-resource-phase-fakes-complete\n');
       })().catch(error => { console.error(error); process.exitCode = 1; });
-    """.replace(
-        "__MANAGED__", json.dumps(str(DATA / "ts_managed_reporting_server.cjs"))
-    )
+    """.replace("__MANAGED__", json.dumps(str(DATA / "ts_managed_reporting_server.cjs")))
     completed = subprocess.run(
         ["node", "-e", script],
         check=True,

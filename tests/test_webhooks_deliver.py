@@ -24,15 +24,15 @@ import pytest
 from a2a.types import TaskState  # TaskState is the proto enum; still exported
 
 from adcp.signing import SSRFValidationError
-from adcp.types.generated_poc.core.mcp_webhook_payload import McpWebhookPayload
-from adcp.types.generated_poc.core.push_notification_config import (
+from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
+from adcp.types.domains.core.push_notification_config import (
     Authentication as PNAuthentication,
 )
-from adcp.types.generated_poc.core.push_notification_config import (
+from adcp.types.domains.core.push_notification_config import (
     PushNotificationConfig,
 )
-from adcp.types.generated_poc.core.reporting_webhook import Authentication as RWAuth
-from adcp.types.generated_poc.core.reporting_webhook import (
+from adcp.types.domains.core.reporting_webhook import Authentication as RWAuth
+from adcp.types.domains.core.reporting_webhook import (
     ReportingFrequency,
     ReportingWebhook,
 )

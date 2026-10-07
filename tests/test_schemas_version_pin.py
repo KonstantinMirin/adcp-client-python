@@ -81,7 +81,7 @@ def test_adcp_version_matches_schemas_cache() -> None:
     (or vice versa).
 
     Fix: run ``make regenerate-schemas`` at the repo root, then commit
-    the updated ``schemas/cache/`` + ``src/adcp/types/generated_poc/``.
+    the updated ``schemas/cache/`` + ``src/adcp/types/domains/``.
     """
     pinned = _ADCP_VERSION_FILE.read_text().strip()
     cache_data = json.loads(_CACHE_INDEX.read_text())

@@ -341,7 +341,7 @@ class TestGovernanceHandler:
                 return CreatePropertyListResponse.model_construct()
 
             async def handle_get_property_list(self, request, context=None):
-                from adcp.types.generated_poc.property.property_list import PropertyList
+                from adcp.types.domains.property.property_list import PropertyList
 
                 return GetPropertyListResponse(
                     list=PropertyList(list_id="pl-1", name="test"),

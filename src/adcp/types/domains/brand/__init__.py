@@ -9,15 +9,15 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.brand.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.brand.acquire_rights_request import AcquireRightsRequest, Campaign
-from adcp.types.generated_poc.brand.acquire_rights_response import (
+from adcp.types.domains.brand.acquire_rights_request import AcquireRightsRequest, Campaign
+from adcp.types.domains.brand.acquire_rights_response import (
     AcquireRightsResponse,
     AcquireRightsResponse1,
     AcquireRightsResponse2,
@@ -25,19 +25,16 @@ from adcp.types.generated_poc.brand.acquire_rights_response import (
     AcquireRightsResponse4,
     Disclosure,
 )
-from adcp.types.generated_poc.brand.creative_approval_request import CreativeApprovalRequest
-from adcp.types.generated_poc.brand.creative_approval_response import (
+from adcp.types.domains.brand.creative_approval_request import CreativeApprovalRequest
+from adcp.types.domains.brand.creative_approval_response import (
     CreativeApprovalResponse,
     CreativeApprovalResponse1,
     CreativeApprovalResponse2,
     CreativeApprovalResponse3,
     CreativeApprovalResponse4,
 )
-from adcp.types.generated_poc.brand.get_brand_identity_request import (
-    Field1,
-    GetBrandIdentityRequest,
-)
-from adcp.types.generated_poc.brand.get_brand_identity_response import (
+from adcp.types.domains.brand.get_brand_identity_request import Field1, GetBrandIdentityRequest
+from adcp.types.domains.brand.get_brand_identity_response import (
     Asset,
     Colors,
     File,
@@ -49,8 +46,8 @@ from adcp.types.generated_poc.brand.get_brand_identity_response import (
     Tone,
     VoiceSynthesis,
 )
-from adcp.types.generated_poc.brand.get_rights_request import GetRightsRequest
-from adcp.types.generated_poc.brand.get_rights_response import (
+from adcp.types.domains.brand.get_rights_request import GetRightsRequest
+from adcp.types.domains.brand.get_rights_response import (
     Excluded,
     ExclusivityStatus,
     GetRightsResponse,
@@ -59,11 +56,11 @@ from adcp.types.generated_poc.brand.get_rights_response import (
     PreviewAsset,
     Right,
 )
-from adcp.types.generated_poc.brand.revocation_notification import RevocationNotification
-from adcp.types.generated_poc.brand.rights_pricing_option import RightsPricingOption
-from adcp.types.generated_poc.brand.rights_terms import Exclusivity, RightsTerms
-from adcp.types.generated_poc.brand.search_brands_request import SearchBrandsRequest
-from adcp.types.generated_poc.brand.search_brands_response import (
+from adcp.types.domains.brand.revocation_notification import RevocationNotification
+from adcp.types.domains.brand.rights_pricing_option import RightsPricingOption
+from adcp.types.domains.brand.rights_terms import Exclusivity, RightsTerms
+from adcp.types.domains.brand.search_brands_request import SearchBrandsRequest
+from adcp.types.domains.brand.search_brands_response import (
     Background,
     ExcludedCountry,
     KellerType,
@@ -73,15 +70,15 @@ from adcp.types.generated_poc.brand.search_brands_response import (
     SearchBrandsResponse,
     Variant,
 )
-from adcp.types.generated_poc.brand.update_rights_request import UpdateRightsRequest
-from adcp.types.generated_poc.brand.update_rights_response import (
+from adcp.types.domains.brand.update_rights_request import UpdateRightsRequest
+from adcp.types.domains.brand.update_rights_response import (
     UpdateRightsResponse,
     UpdateRightsResponse1,
     UpdateRightsResponse2,
 )
-from adcp.types.generated_poc.brand.verification_status import VerificationStatus
-from adcp.types.generated_poc.brand.verify_brand_claim_request import VerifyBrandClaimRequest
-from adcp.types.generated_poc.brand.verify_brand_claim_response import (
+from adcp.types.domains.brand.verification_status import VerificationStatus
+from adcp.types.domains.brand.verify_brand_claim_request import VerifyBrandClaimRequest
+from adcp.types.domains.brand.verify_brand_claim_response import (
     VerifyBrandClaimErrorResponse,
     VerifyBrandClaimPayload,
     VerifyBrandClaimResponse,
@@ -89,7 +86,7 @@ from adcp.types.generated_poc.brand.verify_brand_claim_response import (
     VerifyBrandClaimSignedSuccessPayload,
     VerifyBrandClaimSuccessResponse,
 )
-from adcp.types.generated_poc.brand.verify_brand_claims_request import (
+from adcp.types.domains.brand.verify_brand_claims_request import (
     Claim,
     Claim1,
     Claim2,
@@ -104,7 +101,7 @@ from adcp.types.generated_poc.brand.verify_brand_claims_request import (
     VerifyBrandClaimsRequest,
     VerifyBrandClaimsRequestBulk,
 )
-from adcp.types.generated_poc.brand.verify_brand_claims_response import (
+from adcp.types.domains.brand.verify_brand_claims_response import (
     ResultEntry,
     ResultEntry1,
     ResultEntry2,

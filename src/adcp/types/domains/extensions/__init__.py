@@ -9,14 +9,14 @@ A type this domain declares in more than one schema is not here: import
     it from its own schema's module, ``adcp.types.domains.extensions.<schema>``.
 Nothing here is renamed.
 
-Auto-generated from the generated_poc module tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-03 13:33:59 UTC
+Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
+Generation date: 2026-10-04 18:45:11 UTC
 """
 
 # ruff: noqa: E501, I001
 from __future__ import annotations
 
-from adcp.types.generated_poc.extensions.extension_meta import AdcpExtensionFileSchema
+from adcp.types.domains.extensions.extension_meta import AdcpExtensionFileSchema
 
 # Explicit exports
 __all__ = ["AdcpExtensionFileSchema"]

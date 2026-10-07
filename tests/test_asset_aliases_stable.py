@@ -134,7 +134,7 @@ def test_format_category_module_raises_migration_pointer() -> None:
     # schemas in AdCP 3.0. Importing the old module path now raises a
     # guided ImportError instead of ModuleNotFoundError.
     with pytest.raises(ImportError, match="MIGRATION_v3_to_v4"):
-        from adcp.types.generated_poc.enums.format_category import (  # noqa: F401
+        from adcp.types.domains.enums.format_category import (  # noqa: F401
             FormatCategory,
         )
 
@@ -184,9 +184,9 @@ def test_content_type_resolves_to_generated_payload_class(
     content_name: str, expected_module_suffix: str
 ) -> None:
     # Each public `<Type>Content` must resolve to the corresponding
-    # generated payload class under ``generated_poc/core/assets/*``.
+    # generated payload class under ``domains/core/assets/*``.
     cls = getattr(adcp_types, content_name)
-    expected_module = f"adcp.types.generated_poc.core.assets.{expected_module_suffix}"
+    expected_module = f"adcp.types.domains.core.assets.{expected_module_suffix}"
     assert cls.__module__ == expected_module, (
         f"{content_name} resolved to {cls.__module__}.{cls.__name__}; "
         f"expected a class from {expected_module}."

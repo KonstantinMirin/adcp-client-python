@@ -16,15 +16,15 @@ from adcp.types import (
     ListCreativesRequest,
     PackageRequest,
 )
-from adcp.types.generated_poc.core.context import ContextObject
-from adcp.types.generated_poc.core.ext import ExtensionObject
-from adcp.types.generated_poc.creative.list_creative_formats_request import (
+from adcp.types.domains.core.context import ContextObject
+from adcp.types.domains.core.ext import ExtensionObject
+from adcp.types.domains.creative.list_creative_formats_request import (
     ListCreativeFormatsRequestCreativeAgent,
 )
-from adcp.types.generated_poc.creative.list_creatives_request import Field1 as FieldModel
-from adcp.types.generated_poc.creative.list_creatives_request import Sort
-from adcp.types.generated_poc.enums.creative_sort_field import CreativeSortField
-from adcp.types.generated_poc.enums.sort_direction import SortDirection
+from adcp.types.domains.creative.list_creatives_request import Field1 as FieldModel
+from adcp.types.domains.creative.list_creatives_request import Sort
+from adcp.types.domains.enums.creative_sort_field import CreativeSortField
+from adcp.types.domains.enums.sort_direction import SortDirection
 from adcp.types.legacy import LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest
 from tests.conftest import validate_union
 
@@ -591,7 +591,7 @@ class TestResponseTypeCoercion:
             GetProductsResponse,
             Product,
         )
-        from adcp.types.generated_poc.core.product import DeliveryMeasurement
+        from adcp.types.domains.core.product import DeliveryMeasurement
 
         class ExtendedProduct(Product):
             """Extended with internal tracking fields."""
@@ -643,7 +643,7 @@ class TestResponseTypeCoercion:
 
         # Import Error from core.error - the type used in ergonomic coercion
         # (adcp.types.Error exports a different Error from content_standards)
-        from adcp.types.generated_poc.core.error import Error as CoreError
+        from adcp.types.domains.core.error import Error as CoreError
 
         class ExtendedError(CoreError):
             """Extended with internal tracking fields."""

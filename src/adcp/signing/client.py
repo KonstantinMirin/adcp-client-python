@@ -68,7 +68,7 @@ from adcp.signing.signer import sign_request
 if TYPE_CHECKING:
     import httpx
 
-    from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+    from adcp.types.domains.protocol.get_adcp_capabilities_response import (
         RequestSigning,
     )
 

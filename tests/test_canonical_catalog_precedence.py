@@ -83,4 +83,4 @@ def test_bundled_aao_catalog_keeps_its_unique_bare_id_fallback() -> None:
     )
 
     assert result.declaration is not None
-    assert result.declaration.format_kind.value == "image"
+    assert result.declaration.format_kind == "image"

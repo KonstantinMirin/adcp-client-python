@@ -663,7 +663,7 @@ async def test_get_signals_hand_rolled_submitted_rejected(executor) -> None:
 def test_task_type_enum_includes_discovery_verbs() -> None:
     """The generated TaskType enum (which validates tasks_get / list_tasks /
     webhook task_type) carries both discovery verbs."""
-    from adcp.types.generated_poc.enums.task_type import TaskType
+    from adcp.types.domains.enums.task_type import TaskType
 
     values = {t.value for t in TaskType}
     assert "get_products" in values

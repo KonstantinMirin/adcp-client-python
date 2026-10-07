@@ -27,7 +27,7 @@ from adcp.signing import (
     signing_operation,
     verify_request_signature,
 )
-from adcp.types.generated_poc.protocol.get_adcp_capabilities_response import (
+from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     CoversContentDigest,
     RequestSigning,
 )

@@ -50,7 +50,7 @@ def graph(request):
         return ReportingDeliveryCapabilities, GetAdcpCapabilitiesResponse
     # Codegen's self-contained clone is deliberately tested as a separate graph.
     module = importlib.import_module(
-        "adcp.types.generated_poc.bundled.protocol.get_adcp_capabilities_response"
+        "adcp.types.domains.bundled.protocol.get_adcp_capabilities_response"
     )
     return module.ReportingDelivery, module.GetAdcpCapabilitiesResponse
 
@@ -159,7 +159,7 @@ def test_subclasses_inside_a_non_sdk_parent_omit_absent_promises():
 def test_post_generation_repair_is_idempotent_for_both_actual_model_layouts(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
-    root = Path(__file__).parents[1] / "src/adcp/types/generated_poc"
+    root = Path(__file__).parents[1] / "src/adcp/types/domains"
     targets = (
         "core/reporting_delivery_capabilities.py",
         "bundled/protocol/get_adcp_capabilities_response.py",

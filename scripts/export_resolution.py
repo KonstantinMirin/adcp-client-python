@@ -47,7 +47,7 @@ def snapshot_modules() -> tuple[tuple[str, str], ...]:
 
 
 #: Stripped from a key for brevity. Every generated class lives under it.
-_GENERATED_PREFIX = "adcp.types.generated_poc."
+_GENERATED_PREFIX = "adcp.types.domains."
 
 
 def resolution_key(obj: object) -> str:

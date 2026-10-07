@@ -468,7 +468,7 @@ async def add_preview_urls_to_products(
             if preview_data:
                 if product.product_id not in product_previews:
                     product_previews[product.product_id] = {}
-                key = declaration.format_option_id or declaration.format_kind.value
+                key = declaration.format_option_id or declaration.format_kind
                 product_previews[product.product_id][key] = preview_data
 
         # Add preview data to products
@@ -495,14 +495,14 @@ async def add_preview_urls_to_products(
                         preview_data = await generator.get_preview_data_for_manifest(
                             declaration, sample_manifest
                         )
-                        key = declaration.format_option_id or declaration.format_kind.value
+                        key = declaration.format_option_id or declaration.format_kind
                         return (key, preview_data)
                 except Exception as e:
                     logger.warning(
                         f"Failed to generate preview for product {product.product_id}, "
                         f"format {declaration}: {e}"
                     )
-                key = declaration.format_option_id or declaration.format_kind.value
+                key = declaration.format_option_id or declaration.format_kind
                 return (key, None)
 
             format_tasks = [process_format(item) for item in product.format_options]

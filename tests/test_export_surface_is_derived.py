@@ -7,8 +7,8 @@ Three properties, each one a defect this suite caught in a shipped wheel:
   ``# type: ignore[assignment]``, which left mypy holding the pre-reassignment
   declaration while the runtime held its neighbour (#1141). The static half of
   that contract is ``tests/type_checks/authorized_agents_variants.py``;
-* every public class in a non-bundled generated module is importable from the
-  public mirror of the schema that declares it (#911);
+* every public class in a non-bundled generated module is importable at the
+  address of the schema that declares it, and is DEFINED there (#911);
 * ``adcp.types.error_details`` carries each ``error-details/*.json`` model
   together with the field types its annotations reference, so a seller
   constructs the payload with typed values (#1080).
@@ -20,6 +20,8 @@ import ast
 import importlib
 import inspect
 import pkgutil
+import types
+import typing
 from pathlib import Path
 
 import pytest
@@ -85,21 +87,56 @@ def test_generated_module_rebinds_no_imported_name() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _is_defined_class(obj: object) -> bool:
+    """True for a real class, False for a union or a parameterized alias.
+
+    ``isinstance(list[int], type)`` is True on 3.10+, and an ``Annotated``
+    alias reports ``__module__ == "typing"``, so the origin check has to come
+    first or every alias reads as a class defined in the wrong place.
+    """
+    if isinstance(obj, types.UnionType) or typing.get_origin(obj) is not None:
+        return False
+    return inspect.isclass(obj)
+
+
 def test_no_generated_type_is_reachable_under_zero_names() -> None:
     """A model an adopter cannot import is a model an adopter cannot construct.
 
-    Every ``(module, type)`` pair the tree declares is bound by the public
-    mirror of the module that declares it. Checked against the built package,
-    name by name, because a generated module binds several names to one class
-    and not every export is a class at all.
+    Every ``(module, type)`` pair the tree declares must import from
+    ``adcp.types.domains.<module>``, and a real class must be DEFINED there.
+    The second clause is the one a re-export tree cannot satisfy, and it is
+    what the previous version of this file could not ask: it compared the
+    public mirror's exports to the private tree's exports, two reads of the
+    same declaration, so it held whatever the public layout was.
+
+    Checked against the built package, name by name, because a generated
+    module binds several names to one class and not every export is a class
+    at all — a schema whose root composes other schemas generates an
+    ``Annotated[...]`` alias, for which being bound here is the whole claim.
     """
     unreachable: list[str] = []
+    misplaced: list[str] = []
+    classes = 0
+    sentinel = object()
     for type_name, modules in sorted(scan_declared_names().items()):
         for module_name in sorted(modules):
-            mirror = importlib.import_module(f"adcp.types.domains.{module_name}")
-            if type_name not in mirror.__all__ or not hasattr(mirror, type_name):
+            qualified = f"adcp.types.domains.{module_name}"
+            module = importlib.import_module(qualified)
+            bound = getattr(module, type_name, sentinel)
+            if bound is sentinel:
                 unreachable.append(f"{module_name}.{type_name}")
+            elif _is_defined_class(bound):
+                classes += 1
+                if bound.__module__ != qualified:
+                    misplaced.append(
+                        f"{qualified}.{type_name}: defined in {bound.__module__}, not here"
+                    )
     assert unreachable == []
+    assert misplaced == []
+    # The ``__module__`` clause carries this test, so a drop to zero graded
+    # classes would make it pass vacuously. The floor also replaces the volume
+    # check the deleted mirror test carried.
+    assert classes > 4000, f"only {classes} definitions graded — the tree shrank"
 
 
 def test_every_domain_root_binds_what_its_domain_declares_once() -> None:
@@ -117,23 +154,11 @@ def test_every_domain_root_binds_what_its_domain_declares_once() -> None:
     for domain, rows in sorted(expected.items()):
         module = importlib.import_module(f"adcp.types.domains.{domain}")
         for type_name, module_name in sorted(rows.items()):
-            source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
+            source = importlib.import_module(f"adcp.types.domains.{module_name}")
             assert getattr(module, type_name) is getattr(source, type_name), f"{domain}.{type_name}"
             assert schema_domain(module_name) == domain
         # Every name a domain root binds keeps the name codegen gave it.
         assert all(name in rows or name in module.__all__ for name in rows)
-
-
-def test_a_mirror_exports_its_schema_verbatim() -> None:
-    """A mirror renames nothing and adds nothing: it is its module's own surface."""
-    checked = 0
-    for module_name in sorted({m for mods in scan_declared_names().values() for m in mods}):
-        mirror = importlib.import_module(f"adcp.types.domains.{module_name}")
-        source = importlib.import_module(f"adcp.types.generated_poc.{module_name}")
-        for name in mirror.__all__:
-            assert getattr(mirror, name) is getattr(source, name), f"{module_name}.{name}"
-            checked += 1
-    assert checked > 4000, f"only {checked} names checked — the mirror shrank"
 
 
 def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
@@ -148,7 +173,7 @@ def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
     import adcp.types.domains.core as core_domain
     import adcp.types.domains.creative as creative_domain
     import adcp.types.domains.protocol as protocol_domain
-    from adcp.types.generated_poc.creative.list_creatives_response import ListCreativesResponse
+    from adcp.types.domains.creative.list_creatives_response import ListCreativesResponse
 
     assert ListCreativesResponse.model_fields["query_summary"].annotation is (
         creative_domain.QuerySummary
@@ -174,7 +199,7 @@ def test_a_domain_module_names_the_variant_the_flat_namespace_cannot() -> None:
 def test_a_name_its_own_domain_declares_twice_is_reached_through_its_schema() -> None:
     """``creative`` declares ``Creative`` four times, so the domain cannot bind it."""
     import adcp.types.domains.creative as creative_domain
-    from adcp.types.generated_poc.creative import list_creatives_response as lcr
+    from adcp.types.domains.creative import list_creatives_response as lcr
 
     assert "Creative" not in creative_domain.__all__
     declaring = {
@@ -249,7 +274,7 @@ def test_generated_modules_define_and_build_no_class(module: object) -> None:
 def test_every_exported_class_is_the_class_its_module_defines() -> None:
     """Identity, not shape: the exported name IS the generated class object.
 
-    ``__module__`` must point into ``generated_poc`` and the class must be the
+    ``__module__`` must point into ``adcp.types.domains`` and the class must be the
     object that module holds under its own name. Both halves matter:
     ``create_model`` stamps the calling module onto the class it builds, so a
     copy would satisfy an identity check that trusted ``__module__``.
@@ -260,7 +285,7 @@ def test_every_exported_class_is_the_class_its_module_defines() -> None:
             bound = getattr(module, name)
             if not inspect.isclass(bound):
                 continue
-            assert bound.__module__.startswith("adcp.types.generated_poc."), (
+            assert bound.__module__.startswith("adcp.types.domains."), (
                 f"{name} resolves to {bound.__module__}.{bound.__name__}, which codegen "
                 "did not define — a derived export re-exports, it does not rebuild"
             )
@@ -283,7 +308,7 @@ def _error_details_models() -> dict[str, object]:
     adopter imports like any other. The ``isclass`` filter dropped two of them
     the moment codegen started emitting that shape.
     """
-    package = importlib.import_module("adcp.types.generated_poc.error_details")
+    package = importlib.import_module("adcp.types.domains.error_details")
     package_dir = Path(package.__path__[0])
     models: dict[str, object] = {}
     for info in pkgutil.iter_modules(package.__path__):

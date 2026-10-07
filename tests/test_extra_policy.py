@@ -20,8 +20,8 @@ from pydantic import ConfigDict, ValidationError
 
 from adcp._version import _read_packaged_version
 from adcp.types.base import AdCPBaseModel
-from adcp.types.generated_poc.core.media_buy_features import MediaBuyFeatures
-from adcp.types.generated_poc.governance.check_governance_request import CheckGovernanceRequest
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.governance.check_governance_request import CheckGovernanceRequest
 from adcp.validation.version import resolve_bundle_key
 from scripts.post_generate_fixes import (
     _ensure_configdict_import,
@@ -33,7 +33,7 @@ from scripts.post_generate_fixes import (
 
 _BUNDLE_KEY = resolve_bundle_key(_read_packaged_version())
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas" / "cache" / _BUNDLE_KEY
-GENERATED_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "generated_poc"
+GENERATED_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "domains"
 
 
 def test_base_model_config_is_ignore() -> None:

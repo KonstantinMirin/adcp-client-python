@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from adcp.types import CreativeAction, GetProductsRequest, MediaBuyStatus
-from adcp.types.generated_poc.media_buy.get_products_request import BuyingMode
+from adcp.types.domains.media_buy.get_products_request import BuyingMode
 from tests.conftest import validate_union
 
-GENERATED_TYPES_DIR = Path(__file__).parents[1] / "src" / "adcp" / "types" / "generated_poc"
+GENERATED_TYPES_DIR = Path(__file__).parents[1] / "src" / "adcp" / "types" / "domains"
 
 
 def test_generated_enums_are_string_comparable() -> None:

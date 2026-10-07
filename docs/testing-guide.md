@@ -35,9 +35,9 @@ async def test_buyer_discovers_products():
 ### ❌ DON'T
 
 ```python
-# Don't import from internal modules
+# Don't import from the internal consolidation, and never a numbered class
 from adcp.types._generated import Product1  # ❌ WRONG
-from adcp.types.generated_poc.product import PublisherProperties4  # ❌ WRONG
+from adcp.types.domains.core.product import PublisherProperties4  # ❌ WRONG (numbered)
 
 # Don't test Pydantic mechanics
 def test_discriminator_field_enforced():  # ❌ WRONG - testing Pydantic, not our code
@@ -482,9 +482,9 @@ For parity, see JS `AgentClient.fromMCPClient()` (v5.19.0).
 ### ❌ Don't Import from Internal Modules
 
 ```python
-# ❌ WRONG: Couples tests to internal implementation
+# ❌ WRONG: Couples tests to a sort-order winner and a renumbered name
 from adcp.types._generated import Product1
-from adcp.types.generated_poc.product import PublisherProperties4
+from adcp.types.domains.core.product import PublisherProperties4
 
 # ✅ CORRECT: Use public API
 from adcp import Product
@@ -577,7 +577,7 @@ def test_semantic_alias_works_for_users():
 
 ### ❌ DON'T
 
-1. Import from `_generated` or `generated_poc`
+1. Import from `_generated` or an internal numbered class
 2. Test Pydantic internals
 3. Test type identity (`assert X is Y`)
 4. Test implementation details

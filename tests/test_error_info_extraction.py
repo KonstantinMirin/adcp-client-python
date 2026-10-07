@@ -63,7 +63,7 @@ class TestExtractAdcpErrorInfo:
     def test_from_pydantic_error_model(self) -> None:
         from adcp.types._generated import BuyerReason as WireBuyerReason
         from adcp.types._generated import Recovery
-        from adcp.types.generated_poc.core.error import Error as WireError
+        from adcp.types.domains.core.error import Error as WireError
 
         wire = WireError(
             code="BUDGET_TOO_LOW",
@@ -153,7 +153,7 @@ class TestExtractAdcpErrorInfo:
 
     def test_retry_after_and_details_from_pydantic_model(self) -> None:
         from adcp.types._generated import Recovery
-        from adcp.types.generated_poc.core.error import Error as WireError
+        from adcp.types.domains.core.error import Error as WireError
 
         wire = WireError(
             code="RATE_LIMITED",
@@ -187,7 +187,7 @@ class TestADCPTaskErrorInfoAccessors:
         # `extract_adcp_error_info` in isolation.
         from adcp.types._generated import BuyerReason as WireBuyerReason
         from adcp.types._generated import Recovery
-        from adcp.types.generated_poc.core.error import Error as WireError
+        from adcp.types.domains.core.error import Error as WireError
 
         wire = WireError(
             code="BUDGET_TOO_LOW",

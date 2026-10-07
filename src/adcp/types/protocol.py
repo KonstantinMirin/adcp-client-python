@@ -25,6 +25,7 @@ __all__ = [
     "Request",
     "Response",
     "ProtocolEnvelope",
+    "AdcpVersionEnvelope",
     "ProtocolResponse",
     "AdcpProtocol",
     "Protocol",
@@ -104,6 +105,7 @@ if TYPE_CHECKING:
     # lazily through ``__getattr__`` at runtime.
     from adcp.types import (  # noqa: F401
         AdcpProtocol,
+        AdcpVersionEnvelope,
         AgentDeclarations,
         AgentNotificationConfig,
         AgentNotificationConfigState,

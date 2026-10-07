@@ -29,15 +29,15 @@ from adcp.types import (
     TargetingOverlay,
     UpdateMediaBuyRequest,
 )
-from adcp.types.generated_poc.core.targeting_input import TargetingOverlayInput as GeneratedInput
-from adcp.types.generated_poc.media_buy.package_control import PackageControl
-from adcp.types.generated_poc.media_buy.package_request import (
+from adcp.types.domains.core.targeting_input import TargetingOverlayInput as GeneratedInput
+from adcp.types.domains.media_buy.package_control import PackageControl
+from adcp.types.domains.media_buy.package_request import (
     PackageRequest as GeneratedPackageRequest,
 )
-from adcp.types.generated_poc.media_buy.package_update import (
+from adcp.types.domains.media_buy.package_update import (
     PackageUpdate as GeneratedPackageUpdate,
 )
-from adcp.types.generated_poc.media_buy.product_purchase_input import ProductPurchaseInput
+from adcp.types.domains.media_buy.product_purchase_input import ProductPurchaseInput
 from adcp.validation import validate_request
 
 _NEW_PACKAGE = {"product_id": "product-1", "pricing_option_id": "price-1", "budget": 1000}

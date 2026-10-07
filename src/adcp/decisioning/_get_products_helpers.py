@@ -34,10 +34,20 @@ no copy is made.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 
 from adcp.types import GetProductsField, GetProductsResponse, Product
+from adcp.types.domains.media_buy.get_products_request import Fields as _RequestOnlyField
+from adcp.types.domains.media_buy.product_fields import ProductResponseField
 
 logger = logging.getLogger(__name__)
+
+#: What ``GetProductsRequest.fields`` actually declares: a union of two
+#: generated enums (38 + 17 members). The public ``GetProductsField`` alias
+#: resolves to a third, 53-member enum that the request never holds — one of
+#: the names #1360 measured as typed a variant off its referent. Accept every
+#: spelling: the projection reads only ``.value``, which all three carry.
+_FieldSelection = GetProductsField | ProductResponseField | _RequestOnlyField
 
 # ---------------------------------------------------------------------------
 # Module-level constants derived from the live model so they stay in sync
@@ -65,7 +75,7 @@ _NON_ENUM_PRODUCT_FIELDS: frozenset[str] = (
 
 def _project_product_fields(
     response: GetProductsResponse,
-    fields: list[GetProductsField],
+    fields: Sequence[_FieldSelection],
 ) -> GetProductsResponse:
     """Drop unrequested product fields from *response*.
 

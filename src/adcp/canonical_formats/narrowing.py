@@ -335,13 +335,13 @@ def narrowing_advisory(
     return make_sdk_advisory(
         code="FORMAT_DECLARATION_DIVERGENT",
         message=(
-            f"v2 declaration (format_kind={declaration.format_kind.value!r}) "
+            f"v2 declaration (format_kind={declaration.format_kind!r}) "
             f"params do not narrow v1 format {safe_id!r} requirements: "
             f"{len(divs)} divergence(s)."
         ),
         field=field_path,
         details={
-            "format_kind": declaration.format_kind.value,
+            "format_kind": declaration.format_kind,
             "v1_format_id": safe_id,
             "divergences": [d.to_dict() for d in divs],
         },

@@ -13,7 +13,7 @@ from adcp.canonical_formats import (
     CanonicalReferenceStatus,
     parse_canonical_reference,
 )
-from adcp.types.generated_poc.core.platform_extension_ref import PlatformExtensionReference
+from adcp.types.domains.core.platform_extension_ref import PlatformExtensionReference
 
 PUBLIC_IP = "93.184.216.34"
 BASE_URI = "https://formats.adcontextprotocol.org/schemas/custom.json"

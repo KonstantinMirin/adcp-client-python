@@ -1,6 +1,6 @@
 """Tests for cross-module name collision aliases (#911, Step 2).
 
-Several bare type names are defined in more than one generated_poc module.
+Several bare type names are defined in more than one generated domain module.
 When adopters write ``from adcp.types import Creative`` they silently get
 whichever module wins the consolidate sort order. ``adcp.types.disambiguated``
 carries every variant under a module-derived qualified name; aliases.py gives
@@ -18,7 +18,7 @@ import importlib
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-# (alias name, source module under generated_poc, base class name in that module)
+# (alias name, source module under adcp.types.domains, base class name in that module)
 COLLISION_ALIASES: list[tuple[str, str, str]] = [
     # Remaining concrete SDK 8 migration inventory (#911 comment)
     ("AccountIdReference", "core.account_ref", "AccountReference1"),
@@ -151,16 +151,16 @@ COLLISION_ALIASES: list[tuple[str, str, str]] = [
 
 
 def _source_class(module_suffix: str, base_name: str) -> type:
-    module = importlib.import_module(f"adcp.types.generated_poc.{module_suffix}")
+    module = importlib.import_module(f"adcp.types.domains.{module_suffix}")
     return getattr(module, base_name)
 
 
 def _duration_unit_source_class() -> type:
     try:
-        module = importlib.import_module("adcp.types.generated_poc.enums.duration_unit")
+        module = importlib.import_module("adcp.types.domains.enums.duration_unit")
         return module.DurationUnit
     except ModuleNotFoundError as exc:
-        if exc.name != "adcp.types.generated_poc.enums.duration_unit":
+        if exc.name != "adcp.types.domains.enums.duration_unit":
             raise
         return _source_class("core.duration", "Unit")
 
@@ -302,7 +302,7 @@ def test_listing_creative_is_the_rich_shape() -> None:
     """
     import adcp.types as types_module
     from adcp.types import aliases as a
-    from adcp.types.generated_poc.creative.list_creatives_response import (
+    from adcp.types.domains.creative.list_creatives_response import (
         Creatives,
         Creatives1,
     )
@@ -370,7 +370,7 @@ def _minimal_list_creatives_response(creative: dict[str, object]) -> dict[str, o
 def test_list_creatives_response_enforces_format_reference_xor() -> None:
     """Generated response rows must keep the schema oneOf exactness."""
     from adcp.types import aliases as a
-    from adcp.types.generated_poc.creative.list_creatives_response import ListCreativesResponse
+    from adcp.types.domains.creative.list_creatives_response import ListCreativesResponse
 
     legacy = _minimal_list_creative()
     canonical = _minimal_list_creative(format_id=None, format_kind="image")
