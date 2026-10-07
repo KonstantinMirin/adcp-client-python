@@ -69,21 +69,74 @@
   and any controlled proxy Host values that actually reach the SDK (for
   example, `allowed_hosts=["agent.example.com", "agent.internal:8000"]`).
   Setting a discovery or public URL does not grant trust to its hostname.
-  Browser requests also need a separate `allowed_origins` allowlist for
-  their origins; Host allowlisting does not authorize an Origin. Native
-  requests without Origin continue to work when their Host is allowed.
+  Browser protocol and operational requests need an appropriate
+  `allowed_origins` allowlist. Public GET/HEAD discovery accepts any Origin
+  and still checks Host; add CORS middleware separately when browsers need
+  to read the response. Native requests without Origin continue to work
+  when their Host is allowed.
   See [HTTP transport policy](docs/handler-authoring.md#http-host-and-origin-policy)
   for wildcard and port matching rules.
 
-* **types:** `CreativeAsset.format_kind`, `Creative.format_kind`, and
-  `CreativeManifest.format_kind` now reject values outside `CanonicalFormatKind`.
-  Valid strings still normalize to enum members. Inputs remain strict, while
-  buyer manifest readback preserves future kinds through private tolerant views
-  in delivery, preview, build (including nested variants and async results), and
-  trusted-match offers. Direct `Creative` and `CreativeAsset` response fields
-  remain strict. Update stored and incoming creative kinds using the
-  [migration guide](docs/canonical-format-kinds-migration.md).
-  This closes [#1241](https://github.com/adcontextprotocol/adcp-client-python/issues/1241).
+* **types:** Consumer creative and manifest `format_kind` fields remain open
+  strings and preserve unknown values. Use string equality and opt into
+  `CanonicalFormatKindStr` or `require_canonical_format_kind(vocabulary)` when
+  an application boundary needs a closed vocabulary. These helpers do not
+  change public consumer defaults. See
+  [format-kind migration](docs/canonical-format-kinds-migration.md).
+
+## [9.0.0-beta.2](https://github.com/adcontextprotocol/adcp-client-python/compare/v9.0.0-beta.1...v9.0.0-beta.2) (2026-10-07)
+
+### Migration notes
+
+See [Migrating from SDK 8 to 9](MIGRATION_v8_to_v9.md) before upgrading.
+
+* `ProductFormatDeclaration` now names the 16-branch authoring union. Validate
+  it with `validate_union` or `TypeAdapter`; use `Format` for open consumer
+  parsing and projection helpers.
+* Source requests and manifests bind `identity.consumer_id` to the obligation
+  owner. Retained ownerless evidence keeps its canonical hashes. An active
+  owned generation cannot replay an ownerless or differently owned frozen
+  acquisition; reconcile that state and create a new generation.
+* First automatic reads spread after actual offering readiness within a window
+  of up to five minutes by default, bounded by delivery/recovery headroom,
+  period length and cadence. Set `read_jitter_window=timedelta(0)` on the
+  producer, Core service or `ReportingProductionOptions` to opt out.
+* Strict format-kind helpers are opt-in; consumer fields remain open strings.
+* `supported_versions` restricts each server's dispatch and advertisement.
+  Public GET/HEAD discovery accepts foreign Origins while retaining Host
+  checks; browser CORS remains separately configured.
+
+
+### Features
+
+* **reporting:** replace verified empty legacy ledgers atomically ([0f41faa](https://github.com/adcontextprotocol/adcp-client-python/commit/0f41faa59be370c758266809395123851fc78208))
+* **reporting:** spread initial source reads across worker turns ([c310a2c](https://github.com/adcontextprotocol/adcp-client-python/commit/c310a2cfb16e7e3aefa8f016cc10ee015fbfa011))
+* **server:** select served protocol versions per instance ([ece1f17](https://github.com/adcontextprotocol/adcp-client-python/commit/ece1f17b546d10d71521a901515218b51a8e8072))
+* **types:** add cached union and strict format-kind validation helpers ([2efd14f](https://github.com/adcontextprotocol/adcp-client-python/commit/2efd14f344c689a9a4c5b6b5d6878ee531e27510))
+
+
+### Bug Fixes
+
+* **docs:** skip removed-type modules during API documentation builds ([#1428](https://github.com/adcontextprotocol/adcp-client-python/issues/1428)) ([a3ad8a7](https://github.com/adcontextprotocol/adcp-client-python/commit/a3ad8a76bbcbb11f3e05acf8d32dead9aecde092))
+* **migrate:** rewrite generated_poc imports to adcp.types.domains, split-aware ([#1420](https://github.com/adcontextprotocol/adcp-client-python/issues/1420)) ([62a972e](https://github.com/adcontextprotocol/adcp-client-python/commit/62a972e8f1daaa31244c52edfb8066dc120909a2))
+* **reporting:** bind source consumers and stagger automatic reads ([c299d42](https://github.com/adcontextprotocol/adcp-client-python/commit/c299d42412aa4436b91121f0ad3841a19729b69a))
+* **reporting:** bind source consumers and stagger automatic reads ([#1445](https://github.com/adcontextprotocol/adcp-client-python/issues/1445)) ([c299d42](https://github.com/adcontextprotocol/adcp-client-python/commit/c299d42412aa4436b91121f0ad3841a19729b69a))
+* **reporting:** bind source requests to their authenticated consumer ([65e6c8d](https://github.com/adcontextprotocol/adcp-client-python/commit/65e6c8d3bbbc01dcf4d1950c25dec932a84ad53b))
+* **reporting:** integrate consumer ownership and automatic read timing ([f52b82b](https://github.com/adcontextprotocol/adcp-client-python/commit/f52b82b356613d5f77d3a7031eecf2182d10b96d))
+* **reporting:** integrate recovery retry isolation with source scheduling ([f32686b](https://github.com/adcontextprotocol/adcp-client-python/commit/f32686bfb84e8e565b10e432d0d8652e9e41326b))
+* **reporting:** isolate account initialization and recovery failures ([2704d0f](https://github.com/adcontextprotocol/adcp-client-python/commit/2704d0f5f1e92d2b0c2992d22b66e2b01be28533))
+* **reporting:** isolate account initialization and recovery failures ([#1405](https://github.com/adcontextprotocol/adcp-client-python/issues/1405)) ([2704d0f](https://github.com/adcontextprotocol/adcp-client-python/commit/2704d0f5f1e92d2b0c2992d22b66e2b01be28533))
+* **reporting:** isolate complete queued binding attempts ([36aee4c](https://github.com/adcontextprotocol/adcp-client-python/commit/36aee4c27378d0f61013749a4bd6666d23523fa4))
+* **reporting:** isolate invalid contexts during recovery retries ([48bd5bb](https://github.com/adcontextprotocol/adcp-client-python/commit/48bd5bb9ee26260b9cb5dd3077c5342e52b66f85))
+* **reporting:** preserve the stopped-worker migration diagnostic ([235d36d](https://github.com/adcontextprotocol/adcp-client-python/commit/235d36d3edc8224d90c215217b46e41b5a651c83))
+* **reporting:** preserve worker recovery and frozen SDK fixtures ([fe7f27a](https://github.com/adcontextprotocol/adcp-client-python/commit/fe7f27afb5a0ef045e982712d2ba1fbc4b84ed1c))
+* **reporting:** use the frozen acquisition offering readiness ([a2d45a7](https://github.com/adcontextprotocol/adcp-client-python/commit/a2d45a7635207697578a769098d3ab5d96d057aa))
+* **reporting:** wait for declared source availability before acquisition ([#1406](https://github.com/adcontextprotocol/adcp-client-python/issues/1406)) ([90e5d3a](https://github.com/adcontextprotocol/adcp-client-python/commit/90e5d3aca964a05a7ce45c5e3811d9582d72a7c3))
+* **sdk:** address SDK 9 GA type and server migration gaps ([fe27084](https://github.com/adcontextprotocol/adcp-client-python/commit/fe2708462d0fb158e7c78c9fd07b36329e19f109))
+* **sdk:** address SDK 9 GA type and server migration gaps ([#1443](https://github.com/adcontextprotocol/adcp-client-python/issues/1443)) ([fe27084](https://github.com/adcontextprotocol/adcp-client-python/commit/fe2708462d0fb158e7c78c9fd07b36329e19f109))
+* **server:** allow cross-origin public discovery reads ([11c6019](https://github.com/adcontextprotocol/adcp-client-python/commit/11c601908c1aa04720f8fd2736ebbd35e267834e))
+* **types:** declare the canonical list overrides precisely for every checker ([#1419](https://github.com/adcontextprotocol/adcp-client-python/issues/1419)) ([43910ce](https://github.com/adcontextprotocol/adcp-client-python/commit/43910ce9fe22ca87e6b2e79dc549f4bf31198a19))
+* **validation:** isolate cached validators across threads ([#1442](https://github.com/adcontextprotocol/adcp-client-python/issues/1442)) ([b83a0c5](https://github.com/adcontextprotocol/adcp-client-python/commit/b83a0c50e8d39a3bb97c53648ea7f4b351dffbe4))
 
 ## [9.0.0-beta.1](https://github.com/adcontextprotocol/adcp-client-python/compare/v8.0.0...v9.0.0-beta.1) (2026-10-06)
 
