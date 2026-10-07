@@ -55,6 +55,41 @@ owners/superusers can override guards; the application role must not own the
 archive or have access to it. Do not grant application users schema creation or
 migration privileges.
 
+## An entirely empty ledger
+
+If reporting was enabled but no configuration or other reporting state was ever
+admitted, use the explicit operator API without creating a quarantine archive:
+
+```python
+from adcp.reporting.migration import replace_empty_legacy_reporting
+
+await replace_empty_legacy_reporting(operator_connection)
+await store.create_schema()
+```
+
+The function takes the schema advisory lock and `ACCESS EXCLUSIVE` locks on
+every retained `reporting_*` and `adcp_reporting_*` table in one transaction.
+It then refuses any populated table. If all are empty, it removes the legacy
+tables, sequences and functions; external dependencies cause a rollback. Nothing
+is archived or backfilled. Use a READ COMMITTED operator transaction; snapshot
+isolation and active row-level security are refused because they can hide rows.
+Keep reporting admission disabled until every process
+uses the owned API. The table locks provide database quiescence for the empty
+replacement; they do not make mixed-version reporting safe afterward.
+
+## Rolling deployment boundary
+
+The owned configuration and obligation tables require `consumer_id NOT NULL`.
+An 8.x INSERT that omits the owner fails instead of silently creating an unowned
+row. This is a bounded failure for that INSERT, not a guarantee for every old
+operation: old reads, UPDATEs and DELETEs can still access another caller's rows
+because they do not filter by owner.
+
+For the empty case, disable reporting admission, replace the empty schema, deploy
+all reporting processes with SDK 9, create the owned schema and then enable
+reporting. Do not admit owned state while old reporting processes remain active.
+For a populated ledger, use the stopped-worker maintenance order above.
+
 ## Retained state and recovery
 
 Unknown-owner generations and all inherited pending work remain in quarantine.

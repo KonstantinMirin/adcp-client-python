@@ -18,6 +18,7 @@ from adcp.reporting.migration import (
     backfill_legacy_reporting,
     legacy_generation_digest,
     migrate_legacy_reporting,
+    replace_empty_legacy_reporting,
 )
 
 
@@ -40,6 +41,7 @@ async def ownership(
     await migrate_legacy_reporting(
         connection, archive_schema="adcp_reporting_quarantine_release", workers_stopped=True
     )
+    await replace_empty_legacy_reporting(connection)
     digest = await legacy_generation_digest(
         connection,
         archive_schema="adcp_reporting_quarantine_release",
