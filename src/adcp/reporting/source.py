@@ -68,7 +68,14 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Annotated, Any, Final, Literal, Protocol, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from adcp.reporting.canonical_json import (
     canonical_json_sha256_v1,
@@ -76,6 +83,7 @@ from adcp.reporting.canonical_json import (
     reporting_fingerprint_v1,
     strip_absent,
 )
+from adcp.reporting.evidence import consumer_reference
 
 __all__ = [
     "REPORTING_EVIDENCE_REASON_MAX_LENGTH_V1",
@@ -329,6 +337,9 @@ class ReportingSourceIdentityV1(_Frozen):
     """
 
     account_id: ExternalId
+    # Optional only for retained pre-owner source evidence. Newly scheduled
+    # ledger work always supplies the obligation's trusted consumer identity.
+    consumer_id: Annotated[str, AfterValidator(consumer_reference)] | None = None
     delivery_config_id: ExternalId
     delivery_config_version: int = Field(ge=1)
     report_definition_id: Identifier
@@ -1746,6 +1757,10 @@ def publication_content_fingerprint_v1(manifest: SourceBatchManifestV1 | Mapping
         },
         "explicit_zero": payload.get("explicit_zero", False),
     }
+    # Retained manifests without an owner retain their original fingerprint.
+    # Adding a null key would invalidate those immutable publications.
+    if payload["identity"].get("consumer_id") is not None:
+        content["consumer_id"] = payload["identity"]["consumer_id"]
     return reporting_fingerprint_v1(content)
 
 

@@ -1094,6 +1094,12 @@ class ReportingProducer:
                     checkpoint.provisional_until if checkpoint is not None else None,
                 )
             )
+            if not acquisition.binds(obligation):
+                raise LedgerConflictError(
+                    "OBSERVATION_CONFLICT",
+                    "frozen source acquisition does not bind the obligation's consumer; "
+                    "operator reconciliation and a new configuration generation are required",
+                )
             request = acquisition.request(deadline_at=_utc(now) + self._offerings.slice_timeout)
             if manual_replay:
                 request = request.model_copy(update={"trigger": "manual_replay"})
@@ -1498,11 +1504,18 @@ class ReportingProducer:
             self._store, "get_provisional_acquisition", None
         ) is None or not isinstance(self._store, PendingProvisionalAcquisitionStore):
             return None
-        return await self._store.get_provisional_acquisition(
+        acquisition = await self._store.get_provisional_acquisition(
             account_id=obligation.account_id,
             reporting_obligation_id=obligation.reporting_obligation_id,
             ordinal=ordinal,
         )
+        if acquisition is not None and not acquisition.binds(obligation):
+            raise LedgerConflictError(
+                "OBSERVATION_CONFLICT",
+                "retained source acquisition lacks matching consumer identity; "
+                "operator reconciliation and a new configuration generation are required",
+            )
+        return acquisition
 
     def _note_escalation(
         self,
@@ -1752,6 +1765,7 @@ class ReportingProducer:
         identity = manifest.identity
         if (
             identity.account_id != obligation.account_id
+            or identity.consumer_id != obligation.consumer_id
             or identity.reporting_obligation_id != obligation.reporting_obligation_id
             or identity.delivery_config_id != obligation.delivery_config_id
             or identity.delivery_config_version != obligation.delivery_config_version
@@ -1873,6 +1887,7 @@ class ReportingProducer:
         return ReportingSourceSliceRequestV1(
             identity=ReportingSourceIdentityV1(
                 account_id=obligation.account_id,
+                consumer_id=obligation.consumer_id,
                 delivery_config_id=obligation.delivery_config_id,
                 delivery_config_version=obligation.delivery_config_version,
                 report_definition_id=obligation.report_definition_id,
@@ -1924,6 +1939,7 @@ def _logical_slice_fingerprint(obligation: ReportingObligationRecord, offering_i
     return reporting_fingerprint_v1(
         {
             "account_id": obligation.account_id,
+            "consumer_id": obligation.consumer_id,
             "delivery_config_id": obligation.delivery_config_id,
             "delivery_config_version": obligation.delivery_config_version,
             "report_definition_id": obligation.report_definition_id,

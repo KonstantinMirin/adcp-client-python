@@ -232,11 +232,13 @@ def redacted_snapshot_request(
     trigger: str = "scheduled_poll",
     currency: str = "USD",
     account_id: str = "account-redacted",
+    consumer_id: str | None = None,
 ) -> ReportingSourceSliceRequestV1:
     """A frozen ``PROVISIONAL_SNAPSHOT`` slice over one media-buy constituent."""
     return ReportingSourceSliceRequestV1(
         identity=ReportingSourceIdentityV1(
             account_id=account_id,
+            consumer_id=consumer_id,
             delivery_config_id="config-redacted",
             delivery_config_version=1,
             report_definition_id="PAID_MEDIA_DAILY_V1",

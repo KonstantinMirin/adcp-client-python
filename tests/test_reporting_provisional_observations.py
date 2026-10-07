@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 from datetime import timedelta, timezone
 
@@ -17,6 +18,7 @@ from adcp.reporting.ledger import (
     revision_content_sha256,
 )
 from adcp.reporting.ledger import ReportingStatusCaller as OwnershipCaller
+from adcp.reporting.ledger.provisional import ProvisionalAcquisition
 from adcp.reporting.ledger.store import LedgerConflictError
 from adcp.reporting.source import (
     ReportingSourceCapabilitiesV1,
@@ -67,6 +69,60 @@ async def latest(store):
     )
     assert observation is not None
     return observation
+
+
+async def test_retained_ownerless_acquisition_requires_reconciliation_before_replay(make_harness):
+    producer, store, fetch, clock = await make_harness(_capabilities(restatement_window="P3D"))
+    requests = []
+
+    def unavailable(request):
+        requests.append(request)
+        return None
+
+    producer._source._fetch = unavailable
+    await producer.run_worker()
+    obligation = await _only_obligation(store)
+    key = (obligation.account_id, obligation.reporting_obligation_id, 0)
+    reserved = await store.get_provisional_acquisition(
+        account_id=key[0], reporting_obligation_id=key[1], ordinal=0
+    )
+    assert (
+        reserved is not None and reserved.request().identity.consumer_id == obligation.consumer_id
+    )
+    wire = reserved.to_wire()
+    wire["request"]["identity"].pop("consumer_id")
+    legacy = ProvisionalAcquisition.from_wire(wire)
+    # Simulate retained 9.0b1 bytes, rather than creating new ownerless work.
+    if isinstance(store, PgReportingLedgerStore):
+        async with store._pool.connection() as connection:
+            async with connection.transaction():
+                # This private fixture represents bytes written by the old
+                # SDK, before owned-source admission existed.
+                await connection.execute(
+                    "ALTER TABLE reporting_provisional_acquisitions DISABLE TRIGGER USER"
+                )
+                await connection.execute(
+                    "UPDATE reporting_provisional_acquisitions SET payload=%s::jsonb "
+                    "WHERE account_id=%s AND reporting_obligation_id=%s AND ordinal=%s",
+                    (json.dumps(wire), *key),
+                )
+                await connection.execute(
+                    "ALTER TABLE reporting_provisional_acquisitions ENABLE TRIGGER USER"
+                )
+    else:
+        store._provisional_acquisitions[key] = legacy
+    with pytest.raises(LedgerConflictError, match="reconciliation"):
+        await store.reserve_provisional_acquisition(reserved)
+    clock[0] += timedelta(hours=1)
+    turn = await producer.run_worker()
+    assert obligation.reporting_obligation_id in turn.slices_failed
+    assert len(requests) == 1
+    assert fetch.calls == []
+    retained = await store.get_provisional_acquisition(
+        account_id=key[0], reporting_obligation_id=key[1], ordinal=0
+    )
+    assert retained.request().identity.consumer_id is None
+    assert retained.request_json == legacy.request_json
 
 
 async def _publication_effect_counts(store):
