@@ -35,7 +35,7 @@ import asyncio
 import inspect
 import logging
 import warnings
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast
 
 from adcp._version import resolve_adcp_version
@@ -1466,6 +1466,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         advertise_all: bool = False,
         timed_sync_get_products_limit: int | None = None,
         adcp_version: str | None = None,
+        supported_versions: Sequence[str] | None = None,
         account_activity: ReportingActivityProjector | None = None,
         reporting_activity: ReportingActivitySupport | None = None,
         reporting_status: ReportingStatusSupport | None = None,
@@ -1475,6 +1476,11 @@ class PlatformHandler(ADCPHandler[ToolContext]):
         # every PlatformHandler has a concrete pin for schema discovery and
         # unnegotiated dispatch.
         self._adcp_version = resolve_adcp_version(adcp_version)
+        from adcp.server.version_policy import resolve_supported_versions
+
+        self._supported_adcp_versions = resolve_supported_versions(
+            supported_versions, adcp_version=self._adcp_version
+        )
         self._platform = platform
         self._account_activity = account_activity
         self._reporting_activity = reporting_activity
@@ -2017,6 +2023,10 @@ class PlatformHandler(ADCPHandler[ToolContext]):
             build_version=adcp.get("build_version"),
             idempotency=adcp.get("idempotency") or {"supported": False},
         )
+
+        from adcp.server.version_policy import project_supported_versions
+
+        response = project_supported_versions(response, self._supported_adcp_versions)
 
         # ----- structured capability blocks (model_dump for each) -----
         # Each block emits only when the adopter has declared a value.

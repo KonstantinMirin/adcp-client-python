@@ -1,6 +1,6 @@
 """Closed-set ``format_options[]`` validation.
 
-Per AdCP 3.1 ``ProductFormatDeclaration.seller_preference`` (normative):
+Per AdCP 3.1 ``Format.seller_preference`` (normative):
 
     `format_options[]` IS the closed set of accepted formats; anything
     outside the list is rejected at `create_media_buy` regardless of
@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from adcp.canonical_formats.identity import canonicalize_agent_url
-from adcp.types import CanonicalFormatKind, Error, ProductFormatDeclaration
+from adcp.types import CanonicalFormatKind, Error, Format
 from adcp.types.legacy import LegacyFormatId
 
 FormatId = LegacyFormatId
@@ -92,7 +92,7 @@ def _coerce_kind(value: str | CanonicalFormatKind) -> str:
 
 def validate_format_kind_in_options(
     format_kind: str | CanonicalFormatKind,
-    format_options: Iterable[ProductFormatDeclaration],
+    format_options: Iterable[Format],
 ) -> None:
     """Raise if ``format_kind`` isn't published in ``format_options[]``.
 
@@ -116,10 +116,10 @@ def validate_format_kind_in_options(
 
 def find_declaration_by_kind(
     format_kind: str | CanonicalFormatKind,
-    format_options: Iterable[ProductFormatDeclaration],
+    format_options: Iterable[Format],
     *,
     format_option_id: str | None = None,
-) -> ProductFormatDeclaration | None:
+) -> Format | None:
     """Look up the declaration in ``format_options[]`` matching the kind.
 
     Disambiguates with ``format_option_id`` when the closed set carries
@@ -151,8 +151,8 @@ def find_declaration_by_kind(
 
 def find_declaration_by_v1_format_id(
     format_id: FormatId,
-    format_options: Iterable[ProductFormatDeclaration],
-) -> ProductFormatDeclaration | None:
+    format_options: Iterable[Format],
+) -> Format | None:
     """Look up the declaration whose ``v1_format_ref[]`` includes ``format_id``.
 
     Seller-side helper for processing v1 ``create_media_buy`` requests

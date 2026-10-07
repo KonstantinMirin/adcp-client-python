@@ -1,4 +1,4 @@
-"""Canonical-first creative models for the Python 7 public API.
+"""Canonical-first creative models for the Python SDK public API.
 
 The generated protocol models intentionally remain wire-faithful through the
 AdCP 3.x transition and therefore contain legacy named-format identity.  They
@@ -26,7 +26,7 @@ generates a bare ``str`` — ``OPEN_VOCABULARY_SCHEMAS`` in
 ``scripts/generate_types.py``, one schema-level transform rather than a
 widening at each call site.
 
-**The SDK refuses nothing, in either direction, and that is deliberate.** A
+**Consumer models retain unknown format kinds, and that is deliberate.** A
 seller supports some set of format kinds; that set is the seller's, not this
 library's and not the pinned enum's. It can be larger — the seller handles a
 kind promoted in a spec newer than the pin — or smaller, four of the sixteen.
@@ -37,6 +37,11 @@ which is the same defect as the closed enum with the enforcement moved into a
 validator. The producer-side MUST is a seller's obligation; this library gives
 it the vocabulary and :func:`is_canonical_format_kind` to meet it, and leaves
 the decision where the knowledge is.
+
+The explicit ``ProductFormatDeclaration`` authoring union selects one of the
+sixteen generated branches and enforces the schema's root cross-field rules.
+Use ``Format`` to parse consumer declarations with future kinds, and the
+opt-in ``CanonicalFormatKindStr`` annotation to restrict an adopter boundary.
 
 So the vocabulary is not discarded, it is **relocated**:
 :class:`CanonicalFormatKind` stays a first-class export, used for comparison
@@ -85,6 +90,7 @@ from pydantic import (
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
+from adcp.types._product_format_declaration import ProductFormatDeclaration
 from adcp.types.base import AdCPBaseModel
 from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
 from adcp.types.domains.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
@@ -184,9 +190,9 @@ def is_canonical_format_kind(
     promoted in a spec newer than the pin, or only four of the sixteen, and
     neither is expressible by anything this library knows.
 
-    **The SDK never calls this for you.** ``format_kind`` is a ``str``
-    everywhere, on the way out and on the way back, and no model refuses a
-    value. That is deliberate: a pinned library cannot tell "a kind the seller
+    **Consumer models never call this for you.** Their ``format_kind`` is a
+    ``str`` on the way out and on the way back, and they retain future values.
+    That is deliberate: a pinned library cannot tell "a kind the seller
     invented" from "a kind defined after my pin", so refusing the second to
     prevent the first would make this SDK's version a ceiling on what the
     protocol permits. "I accept the request and then tell you I cannot process
@@ -711,9 +717,6 @@ class Format(CanonicalBoundaryModel):
         elif self.format_shape is not None or self.format_schema is not None:
             raise ValueError("format_shape and format_schema are only valid for custom formats")
         return self
-
-
-ProductFormatDeclaration = Format
 
 
 class Placement(_LegacyPlacement, CanonicalBoundaryModel):

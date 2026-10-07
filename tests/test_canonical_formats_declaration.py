@@ -1,4 +1,4 @@
-"""Wire-faithful behaviour of the hand-rolled ``ProductFormatDeclaration``.
+"""Wire-faithful behaviour of the hand-rolled ``Format``.
 
 Covers the contracts the upstream schema enforces that codegen drops:
 
@@ -19,7 +19,7 @@ from adcp.types import (
     CanonicalFormatImage,
     CanonicalFormatKind,
     CanonicalFormatVastVideo,
-    ProductFormatDeclaration,
+    Format,
 )
 from adcp.types.legacy import LegacyFormatId as FormatId
 
@@ -36,7 +36,7 @@ def _ref(id_: str = "display_300x250_image") -> FormatId:
 def test_params_is_required() -> None:
     """Schema declares ``required: ["format_kind", "params"]``."""
     with pytest.raises(ValidationError) as exc:
-        ProductFormatDeclaration(format_kind=CanonicalFormatKind.image)  # type: ignore[call-arg]
+        Format(format_kind=CanonicalFormatKind.image)  # type: ignore[call-arg]
 
     msgs = str(exc.value)
     assert "params" in msgs
@@ -50,7 +50,7 @@ def test_params_is_required() -> None:
 def test_canonical_formats_only_excludes_v1_format_ref() -> None:
     """The schema's ``allOf.not`` clause forbids the combination at the wire level."""
     with pytest.raises(ValidationError) as exc:
-        ProductFormatDeclaration(
+        Format(
             format_kind=CanonicalFormatKind.image,
             params={},
             canonical_formats_only=True,
@@ -63,7 +63,7 @@ def test_canonical_formats_only_excludes_v1_format_ref() -> None:
 
 def test_canonical_formats_only_alone_is_accepted() -> None:
     """The exclusion fires only on the combination — either alone is fine."""
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.image,
         params={},
         canonical_formats_only=True,
@@ -73,7 +73,7 @@ def test_canonical_formats_only_alone_is_accepted() -> None:
 
 
 def test_v1_format_ref_alone_is_accepted() -> None:
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.image,
         params={},
         v1_format_ref=[_ref()],
@@ -101,7 +101,7 @@ def test_v1_format_ref_alone_is_accepted() -> None:
 def test_credential_shaped_keys_in_params_are_rejected(credential_key: str) -> None:
     """``params`` is open; credential-shaped keys would round-trip to buyers."""
     with pytest.raises(ValidationError) as exc:
-        ProductFormatDeclaration(
+        Format(
             format_kind=CanonicalFormatKind.image,
             params={credential_key: "sekret"},
         )
@@ -111,7 +111,7 @@ def test_credential_shaped_keys_in_params_are_rejected(credential_key: str) -> N
 def test_credential_shaped_keys_in_nested_params_are_rejected() -> None:
     """Walks the params dict recursively — nested credentials are caught."""
     with pytest.raises(ValidationError) as exc:
-        ProductFormatDeclaration(
+        Format(
             format_kind=CanonicalFormatKind.image,
             params={"vendor": {"upstream": {"api_token": "sekret"}}},
         )
@@ -121,7 +121,7 @@ def test_credential_shaped_keys_in_nested_params_are_rejected() -> None:
 def test_credential_shaped_keys_in_extras_are_rejected() -> None:
     """``extra='allow'`` opens a second credential-stuffing surface; gated too."""
     with pytest.raises(ValidationError) as exc:
-        ProductFormatDeclaration(
+        Format(
             format_kind=CanonicalFormatKind.image,
             params={},
             api_key="sekret",  # type: ignore[call-arg]
@@ -131,7 +131,7 @@ def test_credential_shaped_keys_in_extras_are_rejected() -> None:
 
 def test_non_credential_extras_pass_through() -> None:
     """Forward-compat: unknown non-credential extras are preserved."""
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.image,
         params={},
         correlation_id="trace_xyz",  # type: ignore[call-arg]
@@ -148,7 +148,7 @@ def test_non_credential_extras_pass_through() -> None:
 
 
 def test_params_as_validates_image_canonical() -> None:
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.image,
         params={
             "sizes": [{"width": 300, "height": 250}],
@@ -165,7 +165,7 @@ def test_params_as_validates_image_canonical() -> None:
 
 def test_params_as_raises_on_invalid_params_shape() -> None:
     """params_as is a validate, not a cast — type-incorrect input raises."""
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.image,
         # ``sizes`` MUST be a list of {width, height} objects per the schema;
         # passing a scalar is a wire-shape violation.
@@ -177,7 +177,7 @@ def test_params_as_raises_on_invalid_params_shape() -> None:
 
 
 def test_params_as_returns_typed_vast_video() -> None:
-    decl = ProductFormatDeclaration(
+    decl = Format(
         format_kind=CanonicalFormatKind.video_vast,
         params={"vast_version": "4.2"},
     )

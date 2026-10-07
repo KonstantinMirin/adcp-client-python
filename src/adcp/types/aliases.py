@@ -403,10 +403,8 @@ AssetInstanceType: TypeAlias = Literal[
     "daast_tracker",
 ]
 
-# ``ProductFormatDeclaration`` comes from ``adcp.types.canonical_decl``
-# (a hand-rolled class) rather than the generated tree because the codegen
-# can't represent the discriminated oneOf — see canonical_decl.py.
-from adcp.types.canonical_decl import ProductFormatDeclaration
+# Use the generated authoring union with its schema-derived cross-field rules.
+from adcp.types._product_format_declaration import ProductFormatDeclaration
 from adcp.types.domains.core.assets.pixel_tracker_asset import (
     Method as PixelTrackerMethod,
 )

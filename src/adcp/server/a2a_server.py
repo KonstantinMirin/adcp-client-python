@@ -386,6 +386,7 @@ class ADCPAgentExecutor(AgentExecutor):
         pre_validation_hooks: PreValidationHooks | None = None,
         test_controller_account_resolver: Any | None = None,
         response_enhancer: ResponseEnhancer | None = None,
+        supported_versions: Sequence[str] | None = None,
     ) -> None:
         self._handler = handler
         self._context_factory = context_factory
@@ -408,6 +409,13 @@ class ADCPAgentExecutor(AgentExecutor):
         # TestControllerStore; otherwise we would advertise a skill
         # backed only by the handler's not-supported stub.
         resolved_adcp_version = _resolve_handler_adcp_version(handler, None)
+        from adcp.server.version_policy import resolve_supported_versions
+
+        supported_versions = resolve_supported_versions(
+            supported_versions, handler=handler, adcp_version=resolved_adcp_version
+        )
+        self._supported_versions = supported_versions
+        self._default_adcp_version = resolved_adcp_version
         tool_defs = get_tools_for_handler(
             handler,
             advertise_all=advertise_all,
@@ -425,6 +433,7 @@ class ADCPAgentExecutor(AgentExecutor):
                 pre_validation_hook=hook,
                 default_unnegotiated_adcp_version=resolved_adcp_version,
                 response_enhancer=response_enhancer,
+                supported_versions=supported_versions,
             )
 
         if test_controller is not None:
@@ -451,6 +460,16 @@ class ADCPAgentExecutor(AgentExecutor):
         async def _call_test_controller(
             params: dict[str, Any], context: ToolContext | None = None
         ) -> Any:
+            from adcp.server.version_policy import enforce_selected_version
+
+            version = enforce_selected_version(
+                "comply_test_controller",
+                params,
+                self._supported_versions,
+                default=self._default_adcp_version,
+            )
+            if context is not None and version is not None:
+                context.resolved_adcp_version = version
             result = await _handle_test_controller(
                 store,
                 params,
@@ -1213,6 +1232,7 @@ def create_a2a_server(
     auth: BearerTokenAuth | None = None,
     public_url: str | PublicUrlResolver | None = None,
     response_enhancer: ResponseEnhancer | None = None,
+    supported_versions: Sequence[str] | None = None,
 ) -> Any:
     """Create an A2A Starlette application from an ADCP handler.
 
@@ -1381,6 +1401,11 @@ def create_a2a_server(
     )
 
     if request_handler is not None:
+        if supported_versions is not None or getattr(handler, "_supported_adcp_versions", None):
+            raise ValueError(
+                "supported_versions cannot be combined with request_handler=: "
+                "the custom request handler owns dispatch"
+            )
         if auth is not None and auth.a2a_discovery_skills is not None:
             raise ValueError(
                 "a2a_discovery_skills cannot be combined with request_handler=: "
@@ -1414,6 +1439,7 @@ def create_a2a_server(
         pre_validation_hooks=pre_validation_hooks,
         test_controller_account_resolver=test_controller_account_resolver,
         response_enhancer=response_enhancer,
+        supported_versions=supported_versions,
     )
 
     if request_handler is None and task_store is None:

@@ -12,7 +12,7 @@ import pytest
 
 from adcp.canonical_formats import check_narrows, narrowing_advisory
 from adcp.canonical_formats.advisory import SDK_ID
-from adcp.types import CanonicalFormatKind, ProductFormatDeclaration
+from adcp.types import CanonicalFormatKind, Format
 
 # ---------------------------------------------------------------------------
 # check_narrows — no divergence cases
@@ -122,7 +122,7 @@ def test_exact_field_disagreement_is_divergence() -> None:
 
 
 def test_advisory_is_none_when_narrows() -> None:
-    d = ProductFormatDeclaration(
+    d = Format(
         format_kind=CanonicalFormatKind.image,
         params={"max_file_size_kb": 100},
     )
@@ -132,7 +132,7 @@ def test_advisory_is_none_when_narrows() -> None:
 
 
 def test_advisory_emitted_on_divergence() -> None:
-    d = ProductFormatDeclaration(
+    d = Format(
         format_kind=CanonicalFormatKind.image,
         params={"max_file_size_kb": 500, "image_formats": ["tiff"]},
     )
@@ -160,7 +160,7 @@ def test_advisory_tolerates_pydantic_input() -> None:
         def model_dump(self, exclude_none: bool = False) -> dict:
             return {"max_file_size_kb": 200}
 
-    d = ProductFormatDeclaration(
+    d = Format(
         format_kind=CanonicalFormatKind.image,
         params={"max_file_size_kb": 500},
     )
@@ -231,7 +231,7 @@ def test_subset_check_tolerates_unhashable_elements() -> None:
 
 def test_advisory_caps_echoed_set_length() -> None:
     big_v1 = {"image_formats": [f"fmt_{i}" for i in range(200)]}
-    d = ProductFormatDeclaration(
+    d = Format(
         format_kind=CanonicalFormatKind.image,
         params={"image_formats": [f"bad_{i}" for i in range(200)]},
     )
@@ -245,7 +245,7 @@ def test_advisory_caps_echoed_set_length() -> None:
 
 
 def test_narrowing_advisory_scrubs_v1_format_id() -> None:
-    d = ProductFormatDeclaration(
+    d = Format(
         format_kind=CanonicalFormatKind.image,
         params={"max_file_size_kb": 500},
     )

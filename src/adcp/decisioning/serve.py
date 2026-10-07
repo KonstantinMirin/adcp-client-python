@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import os
 import warnings
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Literal
@@ -106,6 +107,7 @@ def create_adcp_server_from_platform(
     advertise_all: bool = False,
     validate_at_init: bool = True,
     adcp_version: str | None = None,
+    supported_versions: Sequence[str] | None = None,
     account_activity: ReportingActivityProjector | None = None,
     reporting_activity: ReportingActivitySupport | None = None,
     reporting_status: ReportingStatusSupport | None = None,
@@ -271,6 +273,11 @@ def create_adcp_server_from_platform(
     # Validate before allocating a framework-owned executor so a bad public
     # pin cannot leak a worker pool during construction.
     resolved_adcp_version = resolve_adcp_version(adcp_version)
+    from adcp.server.version_policy import resolve_supported_versions
+
+    supported_versions = resolve_supported_versions(
+        supported_versions, adcp_version=resolved_adcp_version
+    )
 
     if executor is not None and thread_pool_size is not None:
         raise ValueError(
@@ -367,7 +374,7 @@ def create_adcp_server_from_platform(
     # Validate the platform AFTER executor + registry exist so any
     # validation diagnostic includes the wiring context. Failure here
     # propagates to the caller.
-    validate_platform(platform)
+    validate_platform(platform, supported_versions=supported_versions)
 
     # Tier 3 brand-authorization gate (issue #350 stage 5). The pair is
     # bundled here so the dispatch path sees an atomic configuration:
@@ -414,6 +421,7 @@ def create_adcp_server_from_platform(
         advertise_all=advertise_all,
         timed_sync_get_products_limit=resolved_timed_sync_limit,
         adcp_version=resolved_adcp_version,
+        supported_versions=supported_versions,
         account_activity=account_activity,
         reporting_activity=reporting_activity,
         reporting_status=reporting_status,
@@ -515,6 +523,7 @@ def serve(
     pre_validation_hooks: dict[str, Any] | None = None,
     validate_at_init: bool = True,
     adcp_version: str | None = None,
+    supported_versions: Sequence[str] | None = None,
     account_activity: ReportingActivityProjector | None = None,
     reporting_activity: ReportingActivitySupport | None = None,
     reporting_status: ReportingStatusSupport | None = None,
@@ -644,6 +653,9 @@ def serve(
     # serves never run during foundation imports anyway.
     from adcp.server.serve import serve as _adcp_serve
 
+    config = serve_kwargs.get("config")
+    if config is not None:
+        supported_versions = config.supported_versions
     handler, _executor, _registry = create_adcp_server_from_platform(
         platform,
         executor=executor,
@@ -666,6 +678,7 @@ def serve(
         advertise_all=advertise_all,
         validate_at_init=validate_at_init,
         adcp_version=adcp_version,
+        supported_versions=supported_versions,
         account_activity=account_activity,
         reporting_activity=reporting_activity,
         reporting_status=reporting_status,
