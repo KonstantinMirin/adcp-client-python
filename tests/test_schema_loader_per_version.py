@@ -161,6 +161,37 @@ def test_root_relative_legacy_refs_resolve_from_offline_registry(
     assert not invalid.valid
 
 
+def test_bundled_root_id_fragment_retains_the_defragmented_registry_document(
+    synthetic_legacy_bundle: tuple[str, Path],
+) -> None:
+    version, root = synthetic_legacy_bundle
+    identifier = "https://adcontextprotocol.org/schemas/2.5/core/fragment-root.json"
+    schema = {
+        "$id": f"{identifier}#root",
+        "properties": {"item": {"$ref": "#/$defs/Value"}},
+        "$defs": {"Value": {"type": "integer"}},
+    }
+    (root / "bundled" / "synthetic-tool-request.json").write_text(json.dumps(schema))
+    (root / "core" / "fragment-root.json").write_text(
+        json.dumps({"$id": identifier, "$defs": {"Value": {"type": "string"}}})
+    )
+    validator = get_validator("synthetic_tool", "request", version=version)
+    assert validator is not None
+    assert validator.is_valid({"item": "valid"})
+    assert not validator.is_valid({"item": 1})
+
+
+@pytest.mark.parametrize("schema", [True, False])
+def test_boolean_task_schema_retains_its_validation_result(
+    synthetic_legacy_bundle: tuple[str, Path], schema: bool
+) -> None:
+    version, root = synthetic_legacy_bundle
+    (root / "bundled" / "synthetic-tool-request.json").write_text(json.dumps(schema))
+    validator = get_validator("synthetic_tool", "request", version=version)
+    assert validator is not None
+    assert validator.is_valid({}) is schema
+
+
 def test_schedule_correction_does_not_change_a_different_version(
     synthetic_legacy_bundle: tuple[str, Path],
 ) -> None:
@@ -374,7 +405,8 @@ def test_default_version_unchanged_when_arg_omitted(
     # Pick a tool that ships in the SDK pin.
     explicit_default = get_validator("get_products", "request", version=None)
     omitted = get_validator("get_products", "request")
-    assert explicit_default is omitted
+    assert explicit_default is not None and omitted is not None
+    assert explicit_default.schema == omitted.schema
 
 
 def _write_exact_release_bundle(root: Path, declared: str, referenced: str) -> None:
