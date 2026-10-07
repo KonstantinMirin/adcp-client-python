@@ -415,6 +415,15 @@ class _Binding:
     producer: ReportingProducer
 
 
+class _AccountContextResolutionError(Exception):
+    """Distinguish resolver failures from invalid static configuration."""
+
+    def __init__(self, error: Exception, *, permanent: bool = False) -> None:
+        super().__init__("account context resolution failed")
+        self.error = error
+        self.permanent = permanent or isinstance(error, ReliableReportingConfigurationError)
+
+
 @dataclass
 class ReliableReportingTurn:
     """Result of one service turn across all frozen configuration routes."""
@@ -512,6 +521,10 @@ class ReliableReportingService:
         ] = {}
         self._initialized = False
         self._configuration_lock = asyncio.Lock()
+        self._initialization_errors: dict[ReportingConfigurationGenerationKey, Exception] = {}
+        self._pending_recovery: dict[
+            ReportingConfigurationGenerationKey, ReportingConfiguration
+        ] = {}
         self._turn_lock = asyncio.Lock()
         self._lifecycle = _ServiceLifecycle(
             self._initialize,
@@ -677,7 +690,12 @@ class ReliableReportingService:
         await self._lifecycle.call(configure, before_start=True)
 
     async def _configure(
-        self, configuration: ReportingConfiguration, *, persist: bool = True
+        self,
+        configuration: ReportingConfiguration,
+        *,
+        persist: bool = True,
+        recovering: bool = False,
+        retrying: bool = False,
     ) -> None:
         key = configuration.generation_key
         existing = self._bindings.get(key)
@@ -688,22 +706,47 @@ class ReliableReportingService:
                     f"for account {key.account_id!r} is already frozen with other facts"
                 )
             return
-        context = await _resolve(self._context_resolver(configuration))
-        if not isinstance(context, ReportingAccountContext):
-            raise TypeError("account_context must resolve ReportingAccountContext")
-        if context.account_id != configuration.account_id:
+        try:
+            context = await _resolve(self._context_resolver(configuration))
+        except Exception as error:
+            if recovering:
+                raise _AccountContextResolutionError(error) from error
+            raise
+        try:
+            if not isinstance(context, ReportingAccountContext):
+                raise TypeError("account_context must resolve ReportingAccountContext")
+            if context.account_id != configuration.account_id:
+                raise ReliableReportingConfigurationError(
+                    "resolved account context does not match the configuration account"
+                )
+            if context.account_timezone != configuration.account_timezone:
+                raise ReliableReportingConfigurationError(
+                    "resolved account timezone does not match the configuration timezone"
+                )
+            registration = self.sources.get(context.adapter)
+        except Exception as error:
+            if retrying:
+                raise _AccountContextResolutionError(error, permanent=True) from error
+            raise
+        # Check registered source facts separately from the returned account
+        # context. Initial setup failures abort startup; queued retries record
+        # configuration errors without interrupting healthy bindings.
+        if registration.executor.capabilities.scope != "effective_account":
             raise ReliableReportingConfigurationError(
-                "resolved account context does not match the configuration account"
+                "registered source capabilities must be scoped to an effective account"
             )
-        if context.account_timezone != configuration.account_timezone:
-            raise ReliableReportingConfigurationError(
-                "resolved account timezone does not match the configuration timezone"
-            )
-        registration = self.sources.get(context.adapter)
-        self._validate_offerings(configuration, context, registration)
+        try:
+            self._validate_offerings(configuration, context, registration)
+            offerings = context.producer_offerings()
+            if not isinstance(offerings, ProducerOfferings):
+                raise TypeError("producer_offerings must return ProducerOfferings")
+        except Exception as error:
+            if retrying:
+                raise _AccountContextResolutionError(error, permanent=True) from error
+            raise
         producer = self._producer_factory(
             source=registration.executor,
-            offerings=context.producer_offerings(),
+            offerings=offerings,
             store=self.store,
             object_reader=registration.object_reader,
             escalation=self._escalation,
@@ -717,6 +760,46 @@ class ReliableReportingService:
             else:
                 self._pending_configurations[key] = configuration
         self._bindings[key] = binding
+        self._initialization_errors.pop(key, None)
+        self._pending_recovery.pop(key, None)
+
+    @property
+    def initialization_errors(self) -> Mapping[ReportingConfigurationGenerationKey, Exception]:
+        """Read-only view of unresolved stored configuration bindings.
+
+        Worker turns retry temporary resolution and construction failures and
+        include all unresolved errors in ``configuration_errors``. Configuration
+        errors and invalid contexts returned during recovery retries require an
+        explicit ``configure`` call after the underlying facts are fixed.
+        """
+        return MappingProxyType(self._initialization_errors)
+
+    async def _recover_configuration(
+        self, configuration: ReportingConfiguration, *, retrying: bool = False
+    ) -> None:
+        try:
+            await self._configure(configuration, persist=False, recovering=True, retrying=retrying)
+        except Exception as failure:
+            if isinstance(failure, _AccountContextResolutionError):
+                error = failure.error
+                permanent = failure.permanent
+            elif retrying:
+                # Initial static setup still fails startup. A queued account
+                # retry owns its entire binding attempt, including construction,
+                # so it cannot interrupt already-bound healthy accounts.
+                error = failure
+                permanent = isinstance(error, ReliableReportingConfigurationError)
+            else:
+                raise
+            key = configuration.generation_key
+            self._initialization_errors[key] = error
+            if permanent:
+                self._pending_recovery.pop(key, None)
+            else:
+                self._pending_recovery[key] = configuration
+            # Provider errors can contain credentials or account identifiers.
+            # Detailed failures remain available through the read-only property.
+            logger.warning("Reliable Reporting stored account context could not be resolved")
 
     def _validate_offerings(
         self,
@@ -725,10 +808,6 @@ class ReliableReportingService:
         registration: AdapterRegistration,
     ) -> None:
         capabilities = registration.executor.capabilities
-        if capabilities.scope != "effective_account":
-            raise ReliableReportingConfigurationError(
-                "registered source capabilities must be scoped to an effective account"
-            )
         if capabilities.source_scope != _thaw(context.source_scope):
             raise ReliableReportingConfigurationError(
                 "resolved source_scope does not match the registered adapter capabilities"
@@ -864,7 +943,7 @@ class ReliableReportingService:
                 enumerate_configurations = getattr(self.store, "list_all_configurations", None)
                 if callable(enumerate_configurations):
                     for configuration in await enumerate_configurations():
-                        await self._configure(configuration, persist=False)
+                        await self._recover_configuration(configuration)
             self.sources.freeze()
             if self._production is not None:
                 await self._production.start()
@@ -968,6 +1047,12 @@ class ReliableReportingService:
             # turn. It must not start fresh work after that turn has drained.
             self._lifecycle.require_ready()
             turn = ReliableReportingTurn()
+            async with self._configuration_lock:
+                for configuration in tuple(self._pending_recovery.values()):
+                    if self._lifecycle.stopping:
+                        break
+                    await self._recover_configuration(configuration, retrying=True)
+                turn.configuration_errors.update(self._initialization_errors)
             with source_turn():
                 for key, binding in sorted(
                     self._bindings.items(),

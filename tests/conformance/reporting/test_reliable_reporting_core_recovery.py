@@ -26,6 +26,50 @@ from ._generation_support import isolated_reporting_pool
 ServiceFactory = Callable[..., ReliableReportingService]
 
 
+async def test_restart_continues_after_one_account_context_fails(
+    core_factory: tuple[ServiceFactory, datetime],
+) -> None:
+    make_service, now = core_factory
+    failure = RuntimeError("account context temporarily unavailable")
+    unavailable = True
+
+    def resolve(configuration: Any) -> Any:
+        if configuration.account_id == "account-b" and unavailable:
+            raise failure
+        return _account_context(configuration)
+
+    service = make_service(account_context=resolve)
+    service.sources.register("gam", ScriptedReportingAdapter(redacted_capabilities(), []))
+    configurations = tuple(
+        replace(
+            _configuration(account_id=account),
+            activated_at=now - timedelta(hours=3),
+        )
+        for account in ("account-a", "account-b", "account-c")
+    )
+    await service.store.create_schema()
+    for configuration in configurations:
+        await service.store.put_configuration(configuration)
+    try:
+        await service.start()
+        assert service.initialization_errors == {configurations[1].generation_key: failure}
+        turn = await service.run_worker(now=now)
+        assert set(turn.configurations) == {
+            configurations[0].generation_key,
+            configurations[2].generation_key,
+        }
+        assert turn.configuration_errors == {configurations[1].generation_key: failure}
+        unavailable = False
+        recovered = await service.run_worker(now=now)
+        assert not recovered.configuration_errors
+        assert set(recovered.configurations) == {
+            configuration.generation_key for configuration in configurations
+        }
+        assert await service.store.list_all_configurations() == configurations
+    finally:
+        await service.close()
+
+
 @pytest.fixture(params=["memory", "pg", "pg-autocommit"])
 async def core_factory(request: Any) -> AsyncIterator[tuple[ServiceFactory, datetime]]:
     if request.param == "memory":
