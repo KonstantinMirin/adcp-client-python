@@ -1,4 +1,4 @@
-"""One Host/Origin policy for protocol, discovery and operational HTTP paths."""
+"""Host validation and Origin policy for the SDK's HTTP paths."""
 
 from __future__ import annotations
 
@@ -8,6 +8,14 @@ from mcp.server.transport_security import TransportSecurityMiddleware, Transport
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+_PUBLIC_DISCOVERY_PATHS = frozenset(
+    {
+        "/.well-known/agent-card.json",
+        "/.well-known/agent.json",
+        "/.well-known/adcp-agents.json",
+    }
+)
 
 
 class HTTPTransportSecuritySettings(TransportSecuritySettings):
@@ -45,9 +53,11 @@ def transport_security_settings(
 
 
 class HostOriginMiddleware:
-    """Validate every HTTP Host and any supplied Origin before routing/auth.
+    """Validate HTTP Host and supplied Origin before routing/auth.
 
     Missing Origin is valid for native clients, including AgentCard discovery.
+    Public discovery GET/HEAD requests bypass Origin checks; Host checks still
+    apply. Protocol requests and operational endpoints retain Origin checks.
     Matching follows MCP's exact-value and trailing ``:*`` port semantics; a
     bare configured Host also accepts any port. Domain wildcards are not globbed.
     Inner instances skip a policy already checked by the assembled outer app.
@@ -67,6 +77,8 @@ class HostOriginMiddleware:
         check_origin = check_host or getattr(
             self.settings, "explicit_origins", bool(self.settings.allowed_origins)
         )
+        if scope.get("method") in {"GET", "HEAD"} and scope.get("path") in _PUBLIC_DISCOVERY_PATHS:
+            check_origin = False
         policy = (
             check_host,
             check_origin,
