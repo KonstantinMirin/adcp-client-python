@@ -488,9 +488,13 @@ def _serialize_canonical_model(
 ) -> Any:
     """Enforce the boundary for nested and TypeAdapter serialization too."""
 
+    # ``self`` is whatever pydantic is serializing at this position, which is not
+    # always a model: a field annotated with a canonical model can hold a plain
+    # dict (a mismatched value pydantic serializes with a warning). Read the
+    # capability off the type defensively, because ``dict`` does not carry it.
     return strip_legacy_creative_identity(
         handler(self),
-        _format_scope=type(self).__adcp_format_declaration_scope__,
+        _format_scope=getattr(type(self), "__adcp_format_declaration_scope__", False),
     )
 
 

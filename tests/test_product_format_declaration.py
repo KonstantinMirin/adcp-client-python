@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -20,6 +21,7 @@ from adcp.types import (
     CanonicalFormatKind,
     Format,
     LegacyProductFormatDeclaration,
+    Package,
     ProductFormatDeclaration,
     validate_union,
 )
@@ -260,6 +262,19 @@ def test_validate_union_and_type_adapter_both_return_the_class() -> None:
         TypeAdapter(ProductFormatDeclaration).validate_python(_payload()),
     ):
         assert isinstance(result, ProductFormatDeclaration)
+
+
+def test_the_wrap_serializer_tolerates_a_dict_at_a_canonical_position() -> None:
+    # A field annotated with a canonical model can hold a plain dict, and the
+    # wrap serializer then receives that dict rather than a model. Reading the
+    # format-declaration capability off it must not raise.
+    class Response(BaseModel):
+        affected_packages: list[Package] | None = None
+
+    response = Response.model_construct(affected_packages=[{"package_id": "pkg_1"}])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        assert response.model_dump() == {"affected_packages": [{"package_id": "pkg_1"}]}
 
 
 def test_open_consumer_format_and_params_helper_remain_available() -> None:
