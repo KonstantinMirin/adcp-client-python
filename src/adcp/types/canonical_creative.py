@@ -38,10 +38,13 @@ validator. The producer-side MUST is a seller's obligation; this library gives
 it the vocabulary and :func:`is_canonical_format_kind` to meet it, and leaves
 the decision where the knowledge is.
 
-The explicit ``ProductFormatDeclaration`` authoring union selects one of the
-sixteen generated branches and enforces the schema's root cross-field rules.
-Use ``Format`` to parse consumer declarations with future kinds, and the
-opt-in ``CanonicalFormatKindStr`` annotation to restrict an adopter boundary.
+The ``ProductFormatDeclaration`` authoring class is a ``Format`` narrowed by
+the root rules of ``core/product-format-declaration.json`` — the six
+cross-field ``allOf`` clauses and the sixteen-branch ``format_kind``/``params``
+``oneOf``, both read from the bundled schema. Use ``Format`` to parse consumer
+declarations with future kinds, ``LegacyProductFormatDeclaration`` for the
+generated branch union, and the opt-in ``CanonicalFormatKindStr`` annotation to
+restrict an adopter boundary.
 
 So the vocabulary is not discarded, it is **relocated**:
 :class:`CanonicalFormatKind` stays a first-class export, used for comparison

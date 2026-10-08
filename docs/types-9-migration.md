@@ -137,27 +137,35 @@ when schemas are regenerated.
 A single-model root such as `CheckGovernanceRequest` keeps
 `model_validate(...)` and can now be subclassed with `extra="forbid"`.
 
-### Product declarations use the authoring union
+### Product declarations are graded against their root schema
 
-`ProductFormatDeclaration` now names the 16 generated, discriminated authoring
-branches from `core/product-format-declaration.json`, with its normative
-cross-field rules enforced. It is no longer an alias for the open `Format`
-model. Validate an authored declaration with the cached helper:
+`ProductFormatDeclaration` is a `Format` subclass that enforces the root rules
+of `core/product-format-declaration.json`: the six cross-field `allOf` clauses
+and the sixteen-branch `format_kind`/`params` `oneOf`, including each branch's
+own schema. It is no longer an alias for the open `Format` model, which
+enforces none of them.
 
 ```python
-from adcp.types import ProductFormatDeclaration, validate_union
+from adcp.types import ProductFormatDeclaration
 
-declaration = validate_union(ProductFormatDeclaration, {
-    "format_kind": "image", "params": {"width": 300, "height": 250},
-})
+declaration = ProductFormatDeclaration(
+    format_kind="image", params={"width": 300, "height": 250}
+)
 ```
 
-The selected branch exposes typed parameters and requires a known discriminator.
-Use `Format(...)` for open consumer parsing, projection helpers and the existing
-`params_as` convenience method. `Format` continues to preserve unknown kind
-strings and parameter fields. `LegacyProductFormatDeclaration` remains available
-as a compatibility spelling for the raw generated union; new authoring code
-should use the current name with its cross-field validation.
+Because it is a class, `ProductFormatDeclaration(...)`,
+`ProductFormatDeclaration.model_validate(...)` and
+`isinstance(x, ProductFormatDeclaration)` all work, and `validate_union` and
+`TypeAdapter` return it. Because it is a `Format`, every projection helper in
+`adcp.canonical_formats` accepts one, and `legacy_format_refs` and `params_as`
+are reachable on it.
+
+`params` is the open bag `Format` declares; read it as a typed model with
+`declaration.params_as(CanonicalFormatImage)`. Use `Format(...)` for open
+consumer parsing of kinds this SDK's pin does not know —
+`ProductFormatDeclaration` refuses a `format_kind` outside the schema's closed
+set, which is the producer-side rule. `LegacyProductFormatDeclaration` names the
+raw generated branch union for code that wants per-branch typed parameters.
 
 ## 3. Pointer refs resolve to the selected type (#1371)
 
