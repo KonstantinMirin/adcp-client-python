@@ -4,7 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adcp"
-version = "9.0.0b1"
+# PEP 440 LOCAL version. The upstream release is 9.0.0b1; this build is that release plus
+# adcontextprotocol/adcp-client-python#1435 (generated validators name the JSON Schema
+# keyword they enforce) and #1415 (docs). Same content under the same version string as
+# PyPI's would be indistinguishable in a lockfile, which is the trap this avoids. A local
+# segment is also the correct marker: it is installable from a URL and refused by public
+# indexes, which is exactly the distribution this has.
+version = "9.0.0b1+prs1435.1415"
 description = "Official Python client for the Ad Context Protocol (AdCP)"
 authors = [
     {name = "AdCP Community", email = "maintainers@adcontextprotocol.org"}
