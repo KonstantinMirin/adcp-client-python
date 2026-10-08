@@ -167,6 +167,39 @@ consumer parsing of kinds this SDK's pin does not know —
 set, which is the producer-side rule. `LegacyProductFormatDeclaration` names the
 raw generated branch union for code that wants per-branch typed parameters.
 
+#### Validating a declaration and publishing it as a `Format`
+
+`Product.format_options` is `list[Format]`, so a seller converting stored
+declarations into products validates each option strictly and then publishes the
+validated object itself. There is no conversion step: a
+`ProductFormatDeclaration` *is* a `Format`.
+
+```python
+from adcp.types import Product, ProductFormatDeclaration
+
+options = [ProductFormatDeclaration.model_validate(raw) for raw in stored_options]
+product = Product(product_id="p1", format_options=options, ...)
+```
+
+The published element keeps its `ProductFormatDeclaration` type, and the wire
+document carries only the fields the stored option set — no branch defaults are
+added, under `model_dump()`, `exclude_unset=True` or `exclude_none=True` alike:
+
+```python
+product.model_dump(mode="json")["format_options"]
+# [{'format_kind': 'image', 'params': {'width': 300, 'height': 250}}]
+```
+
+Round-tripping holds: `ProductFormatDeclaration.model_validate(...)` on a
+published element re-grades it against the root schema.
+
+One field does not survive, by design. `v1_format_ref` is legacy identity, which
+every canonical boundary model strips from its output — `Format` and
+`ProductFormatDeclaration` both capture it on input and expose it as
+`declaration.legacy_format_refs`, and neither serializes it. Project it
+explicitly with `adcp.canonical_formats.project_declaration_to_v1(declaration)`
+when a legacy peer needs `format_ids`.
+
 ## 3. Pointer refs resolve to the selected type (#1371)
 
 A `$ref` into another schema's `properties`/`items` no longer mints a
