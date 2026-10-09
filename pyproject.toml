@@ -10,7 +10,7 @@ name = "adcp"
 # PyPI's would be indistinguishable in a lockfile, which is the trap this avoids. A local
 # segment is also the correct marker: it is installable from a URL and refused by public
 # indexes, which is exactly the distribution this has.
-version = "9.0.0b1+prs1435.1415"
+version = "9.0.0b1+prs1435.1415.1456"
 description = "Official Python client for the Ad Context Protocol (AdCP)"
 authors = [
     {name = "AdCP Community", email = "maintainers@adcontextprotocol.org"}
