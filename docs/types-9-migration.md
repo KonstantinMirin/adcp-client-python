@@ -12,7 +12,7 @@ pass. The pull requests are linked for the full rationale and measurements.
 | Structural pointer refs resolve to the type they select | #1371 | 47 per-position `RootModel` wrapper names under `adcp.types._generated` |
 | Generated models validate `boolean`/`integer`/`number` strictly | #1375 | Payloads that relied on `"yes"`, `"1"`, `1` coercion |
 | Root-level `anyOf`/`oneOf` required groups are enforced | #1368 | Documents that omit every required group of 42 request/response models, on generated and canonical names alike |
-| Consumer `format_kind` fields preserve open strings | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; the authoring union still requires a known discriminator |
+| Consumer `format_kind` fields preserve open strings | [adcp#7929](https://github.com/adcontextprotocol/adcp/issues/7929) | `x.format_kind is CanonicalFormatKind.y` identity comparisons; `ProductFormatDeclaration` still refuses a kind outside its schema's closed set |
 
 Nothing is removed from `adcp` or `adcp.types`: every name importable before
 is importable after. The additions are `Issue`, `AdcpVersionEnvelope`, seven
@@ -324,8 +324,10 @@ For application models that should reject unknown kinds during construction,
 use the opt-in `CanonicalFormatKindStr` annotation or an
 `AfterValidator(require_canonical_format_kind(vocabulary))`. Nullable and list
 annotations compose normally. See [format-kind validation](canonical-format-kinds-migration.md).
-The product authoring union described above has a fixed set of discriminator
-branches; use open `Format` when consuming a declaration for a future kind.
+`ProductFormatDeclaration`, described above, is the producer-side exception:
+it refuses a `format_kind` outside the closed set its root schema declares,
+and the refusal carries the `oneOf` keyword. Use open `Format` when consuming
+a declaration for a kind this pin does not know.
 
 **What this replaced.** Five pieces of scaffolding existed only to reconcile
 the closed enum with the open requirement, and all five are gone: the
