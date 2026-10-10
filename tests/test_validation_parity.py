@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 import adcp.types as public_types
 from adcp import get_adcp_spec_version
@@ -20,9 +20,17 @@ _ALLOWED_DIVERGENCES: dict[str, dict[str, str]] = json.loads(
 )
 
 
-def _pydantic_accepts(model: type[BaseModel], payload: dict[str, Any]) -> bool:
+def _pydantic_accepts(model: Any, payload: dict[str, Any]) -> bool:
+    """Whether the public name accepts the document, however it is shaped.
+
+    A root whose arms partition is a union over branch classes, which has no
+    ``model_validate`` of its own -- parsing a union is what a ``TypeAdapter``
+    is for. Reaching for ``model_validate`` unconditionally is what stopped this
+    whole module from COLLECTING, which left the series with no acceptance gate
+    while every other number in the run looked fine.
+    """
     try:
-        model.model_validate(payload)
+        TypeAdapter(model).validate_python(payload)
     except ValidationError:
         return False
     return True
@@ -94,9 +102,42 @@ def test_high_risk_behavioral_extension_has_targeted_runtime_validator() -> None
 _REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
 
 
-def _carries_required_group_validator(model: type[BaseModel]) -> bool:
-    """Whether the generator emitted the root required-group validator here."""
+def _carries_required_group_validator(model: Any) -> bool:
+    """Whether the generator made this root refuse a document satisfying no arm.
+
+    Two shapes answer yes, and the question is the same for both: does the
+    generated model carry the root's combinator at all?
+
+    * a flat root carries the compiled validator;
+    * a SPLIT root carries it as the arms' own shapes -- each arm requires what
+      its arm requires and types what it forbids as ``None``, and the residual
+      conditions are compiled onto each arm. So the refusal is there, it just
+      is not spelled as one validator on one class.
+
+    Asking only the first question excluded every split root from the population
+    the moment the emitter was wired -- including ``create_media_buy``, which is
+    the root this module exists to grade.
+    """
+    members = get_args(model)
+    if members:
+        return all(
+            _REQUIRED_GROUP_VALIDATOR in member.__pydantic_decorators__.model_validators
+            or _arm_shape_refuses(member)
+            for member in members
+        )
     return _REQUIRED_GROUP_VALIDATOR in model.__pydantic_decorators__.model_validators
+
+
+def _arm_shape_refuses(arm: type[BaseModel]) -> bool:
+    """Whether an arm's own shape is what refuses a foreign document.
+
+    An arm requires at least one field with no default, or types at least one
+    field ``None`` to forbid it. Either makes a document from another arm
+    unacceptable to this class without any validator running.
+    """
+    return any(
+        field.is_required() or field.annotation is type(None) for field in arm.model_fields.values()
+    )
 
 
 def _required_group_cases() -> list[dict[str, Any]]:
