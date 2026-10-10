@@ -34,7 +34,7 @@ from collections.abc import Callable
 from copy import copy, deepcopy
 from functools import partial
 from types import GenericAlias
-from typing import TYPE_CHECKING, Annotated, Any, cast, get_args
+from typing import TYPE_CHECKING, Annotated, Any, TypeAlias, cast, get_args
 
 from pydantic import (
     BaseModel,
@@ -53,8 +53,18 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import CoreSchema, InitErrorDetails, core_schema
 
 from adcp.types.aliases import FormatAssetUnion, GroupFormatAssetUnion, RepeatableAssetGroup
+from adcp.types._split_root import classes_behind, shared_base
 from adcp.types.base import AdCPBaseModel
 from adcp.types.canonical_creative import CreateMediaBuyRequest as _PublicCreateMediaBuyRequest
+from adcp.types.canonical_creative import (
+    CreateMediaBuyRequestCommittedProposalExecution as _PublicCMBProposal,
+)
+from adcp.types.canonical_creative import (
+    CreateMediaBuyRequestExplicitPackagesWithFixedAllocation as _PublicCMBFixed,
+)
+from adcp.types.canonical_creative import (
+    CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation as _PublicCMBSellerOpt,
+)
 from adcp.types.canonical_creative import PackageRequest as PublicPackageRequest
 from adcp.types.canonical_creative import PackageUpdate as PublicPackageUpdate
 from adcp.types.canonical_creative import UpdateMediaBuyRequest as _PublicUpdateMediaBuyRequest
@@ -165,8 +175,24 @@ if TYPE_CHECKING:
     class ControlMediaBuyRequest(_GeneratedControlMediaBuyRequest):
         reporting_webhook: ReportingWebhook | None = None
 
-    class CreateMediaBuyRequest(_PublicCreateMediaBuyRequest):
+    # One static view per arm, because the create request is a union: the field
+    # is patched onto the shared base at runtime, and every arm carries it, so
+    # the static picture has to say that of each of them rather than of the
+    # alias -- which cannot be subclassed.
+    class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(_PublicCMBFixed):
         reporting_webhook: ReportingWebhook | None = None
+
+    class CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation(_PublicCMBSellerOpt):
+        reporting_webhook: ReportingWebhook | None = None
+
+    class CreateMediaBuyRequestCommittedProposalExecution(_PublicCMBProposal):
+        reporting_webhook: ReportingWebhook | None = None
+
+    CreateMediaBuyRequest: TypeAlias = (
+        CreateMediaBuyRequestExplicitPackagesWithFixedAllocation
+        | CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation
+        | CreateMediaBuyRequestCommittedProposalExecution
+    )
 
     class UpdateMediaBuyRequest(_PublicUpdateMediaBuyRequest):
         reporting_webhook: ReportingWebhook | None = None
@@ -226,13 +252,17 @@ def _manifest_readback_clone(
 
 def _normalize_readback_manifest(data: Any) -> Any:
     # Pydantic binds the generated validator proxy to a callable at runtime.
-    normalize = cast(Callable[[Any], Any], CreativeManifest._coerce_standalone_assets)
+    # The validator is declared on the shared base: the arms differ in which
+    # fields they require and forbid, not in how a manifest's assets normalize.
+    normalize = cast(Callable[[Any], Any], shared_base(CreativeManifest)._coerce_standalone_assets)
     return normalize(data)
 
 
 _ReadbackCreativeManifest = _manifest_readback_clone(
     "_ReadbackCreativeManifest",
-    CreativeManifest,
+    # The tolerant readback model is not one arm's shape -- it accepts a manifest
+    # instance of either -- so it clones the base they share.
+    shared_base(CreativeManifest),
     # No field override: ``format_kind`` is generated as ``str`` (see
     # OPEN_VOCABULARY_SCHEMAS in scripts/generate_types.py), so there is nothing
     # left to widen. What this clone still carries is instance normalization —
@@ -438,7 +468,8 @@ def _apply_forward_compat() -> None:
 
     # _ergonomic eagerly builds this legacy parent before the targeting patch.
     # Refresh its cached nested validator as well as the package model itself.
-    _GeneratedCreateMediaBuyRequest.model_rebuild(force=True)
+    for _rebuilt in classes_behind(_GeneratedCreateMediaBuyRequest):
+        _rebuilt.model_rebuild(force=True)
 
     # 3.2.1 permits additional registration fields but does not declare this ID.
     # Keep the extension outside generated code so a schema refresh cannot drop
@@ -454,13 +485,15 @@ def _apply_forward_compat() -> None:
         ReportingWebhook.model_rebuild(force=True)
         # Rebuild after targeting patches too: eager parent validators must
         # capture both the reporting extension and patched package inputs.
+        # A split root contributes its base and every arm: the extension lands
+        # on the base, and an arm does not see it until the arm is rebuilt.
         for request in (
             AcceptProposalRequest,
             BuyProductsRequest,
             ControlMediaBuyRequest,
-            CreateMediaBuyRequest,
+            *classes_behind(CreateMediaBuyRequest),
             UpdateMediaBuyRequest,
-            _GeneratedCreateMediaBuyRequest,
+            *classes_behind(_GeneratedCreateMediaBuyRequest),
             _GeneratedUpdateMediaBuyRequest,
         ):
             request.model_rebuild(force=True)

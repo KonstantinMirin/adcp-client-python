@@ -807,10 +807,14 @@ def generate_consolidated_exports() -> str:
         "from adcp.types import domains  # noqa: F401",
         "",
         "# Rebuild models that reference other models via forward refs",
-        "# Note: only call model_rebuild() on actual classes, not Union type aliases",
+        "# A name here can be a union alias over a split root's arms, which has",
+        "# no model_rebuild of its own. classes_behind is the one derivation of",
+        "# what a name stands for: the shared base and each arm, or the model.",
+        "from adcp.types._split_root import classes_behind",
     ]
     for t in rebuild_types:
-        rebuild_lines.append(f"{t}.model_rebuild()")
+        rebuild_lines.append(f"for _rebuilt in classes_behind({t}):")
+        rebuild_lines.append("    _rebuilt.model_rebuild()")
     rebuild_lines.append("")
     lines.extend(rebuild_lines)
 

@@ -527,7 +527,12 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
     Returns:
         Sample CreativeManifest, or None if unable to create one
     """
-    from adcp.types import CreativeManifest, ImageContent, UrlContent
+    from adcp.types import (
+        CreativeManifestCanonicalFormatManifest,
+        CreativeManifestNamedFormatManifest,
+        ImageContent,
+        UrlContent,
+    )
     from adcp.types._generated import CreativeManifest as LegacyCreativeManifest
     from adcp.utils.format_assets import get_required_assets
 
@@ -588,7 +593,11 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
     if hasattr(fmt, "format_kind") and not hasattr(fmt, "format_id"):
         option_id = getattr(fmt, "format_option_id", None)
         option_ref = {"scope": "product", "format_option_id": option_id} if option_id else None
-        return CreativeManifest(
+        # The arm the kwargs already named: this branch passes format_kind and
+        # no format_id. The hasattr pair above stays -- it discriminates the
+        # FORMAT's shape, not this manifest's, and no branch of the manifest
+        # answers it.
+        return CreativeManifestCanonicalFormatManifest(
             format_kind=fmt.format_kind,
             format_option_ref=option_ref,
             assets=assets,
@@ -621,7 +630,11 @@ def _create_sample_manifest_for_format_id(format_id: FormatId, product: Product)
     Returns:
         Sample CreativeManifest with placeholder assets
     """
-    from adcp.types import ImageContent, UrlContent
+    from adcp.types import (
+        CreativeManifestNamedFormatManifest,
+        ImageContent,
+        UrlContent,
+    )
     from adcp.types._generated import CreativeManifest
 
     assets = {
@@ -633,7 +646,9 @@ def _create_sample_manifest_for_format_id(format_id: FormatId, product: Product)
         "clickthrough_url": UrlContent(url="https://example.com"),
     }
 
-    return CreativeManifest(format_id=format_id, promoted_offering=product.name, assets=assets)
+    return CreativeManifestNamedFormatManifest(
+        format_id=format_id, promoted_offering=product.name, assets=assets
+    )
 
 
 def _create_sample_asset(asset_type: str | None) -> Any:

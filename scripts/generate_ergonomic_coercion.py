@@ -128,21 +128,16 @@ def is_list_of(annotation: Any, item_check) -> tuple[bool, Any]:
 def coercion_target(cls: Any) -> tuple[Any, tuple[Any, ...]]:
     """What to patch for a type, and what has to be rebuilt afterwards.
 
-    A root whose schema arms partition is emitted as a shared base plus one
-    class per arm behind a union alias, so the name in the tables above can
-    resolve to a union -- which has no fields to analyze and no annotations to
-    patch. The shared base is where the fields live: the arms only change which
-    of them are required, forbidden, or pinned, so the coercion surface is
-    exactly the base's. Patching the base then needs every arm rebuilt as well,
-    because a subclass caches its parent's annotations at build time.
-
-    The base is read off an arm's MRO rather than looked up by name: the arms
-    all name it, which is the property the emitter's own tests grade.
+    A name in the tables above can resolve to a union, because a root whose
+    schema arms partition is emitted as a shared base plus a class per arm.
+    The derivation of what stands behind the name lives in
+    ``adcp.types._split_root`` -- one owner, because the export consolidator and
+    ``_forward_compat`` need the same fact.
     """
-    members = get_args(cls)
-    if not members:
-        return cls, ()
-    return members[0].__mro__[1], members
+    from adcp.types._split_root import classes_behind
+
+    behind = classes_behind(cls)
+    return behind[0], behind[1:]
 
 
 def analyze_model(model_class) -> list[dict]:
