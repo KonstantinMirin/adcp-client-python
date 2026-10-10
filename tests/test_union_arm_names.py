@@ -381,7 +381,6 @@ def test_every_partitioning_root_in_the_bundle_names_its_arms() -> None:
         SCHEMA_DIR,
         _schema_root_class_name,
         flat_root_shape,
-        generated_module_for,
     )
     from scripts.schema_constraints import (
         bundle_document_resolver,

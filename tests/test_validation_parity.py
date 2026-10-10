@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any
 
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError

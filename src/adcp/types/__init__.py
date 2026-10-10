@@ -289,6 +289,7 @@ __all__ = [
     "GetBrandIdentityResponse",
     "GetRightsRequest",
     "GetRightsResponse",
+    "VerifyBrandClaimRequestShape",
     "VerifyBrandClaimPayload",
     "VerifyBrandClaimRequest",
     "VerifyBrandClaimResponse",

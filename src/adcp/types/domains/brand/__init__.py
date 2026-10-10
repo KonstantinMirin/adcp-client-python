@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-04 18:45:11 UTC
+Generation date: 2026-10-10 22:49:57 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -67,7 +67,11 @@ from adcp.types.domains.brand.search_brands_response import (
     Orientation,
     RelationshipTrust,
     SearchBrandResult,
+    SearchBrandsError,
     SearchBrandsResponse,
+    SearchBrandsResponseAdapter,
+    SearchBrandsResponseShape,
+    SearchBrandsSuccess,
     Variant,
 )
 from adcp.types.domains.brand.update_rights_request import UpdateRightsRequest
@@ -77,7 +81,15 @@ from adcp.types.domains.brand.update_rights_response import (
     UpdateRightsResponse2,
 )
 from adcp.types.domains.brand.verification_status import VerificationStatus
-from adcp.types.domains.brand.verify_brand_claim_request import VerifyBrandClaimRequest
+from adcp.types.domains.brand.verify_brand_claim_request import (
+    VerifyBrandClaimRequest,
+    VerifyBrandClaimRequestAdapter,
+    VerifyBrandClaimRequestShape,
+    VerifyBrandClaimRequestVerifyParentClaim,
+    VerifyBrandClaimRequestVerifyPropertyClaim,
+    VerifyBrandClaimRequestVerifySubsidiaryClaim,
+    VerifyBrandClaimRequestVerifyTrademarkClaim,
+)
 from adcp.types.domains.brand.verify_brand_claim_response import (
     VerifyBrandClaimErrorResponse,
     VerifyBrandClaimPayload,
@@ -170,8 +182,12 @@ __all__ = [
     "RightsPricingOption",
     "RightsTerms",
     "SearchBrandResult",
+    "SearchBrandsError",
     "SearchBrandsRequest",
     "SearchBrandsResponse",
+    "SearchBrandsResponseAdapter",
+    "SearchBrandsResponseShape",
+    "SearchBrandsSuccess",
     "Store",
     "Tone",
     "UpdateRightsRequest",
@@ -183,6 +199,12 @@ __all__ = [
     "VerifyBrandClaimErrorResponse",
     "VerifyBrandClaimPayload",
     "VerifyBrandClaimRequest",
+    "VerifyBrandClaimRequestAdapter",
+    "VerifyBrandClaimRequestShape",
+    "VerifyBrandClaimRequestVerifyParentClaim",
+    "VerifyBrandClaimRequestVerifyPropertyClaim",
+    "VerifyBrandClaimRequestVerifySubsidiaryClaim",
+    "VerifyBrandClaimRequestVerifyTrademarkClaim",
     "VerifyBrandClaimResponse",
     "VerifyBrandClaimSignedResponse",
     "VerifyBrandClaimSignedSuccessPayload",

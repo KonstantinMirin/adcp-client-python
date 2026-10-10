@@ -7332,6 +7332,39 @@ def generated_module_for(relative_path: Path) -> Path:
     return OUTPUT_DIR.joinpath(*(part.replace("-", "_") for part in module.parts))
 
 
+def _root_declared_properties(schema: dict) -> dict[str, Any]:
+    """Every property the root declares, wherever in the root it declares it.
+
+    A root may carry no ``properties`` of its own and declare all of them inside
+    its combinator's branches or its ``allOf`` members, and
+    ``datamodel-code-generator`` MERGES those onto one flat class. Two roots in
+    the bundle are exactly that shape: ``brand/search-brands-response`` declares
+    ``brands`` and ``errors`` only in its ``oneOf`` branches, and
+    ``brand/verify-brand-claim-request`` declares ``claim_type`` and ``claim``
+    the same way. Both generate one class carrying those fields.
+
+    Reading only ``schema["properties"]`` declined for both, on the reasoning
+    that a root with no properties has no merged shape and so its branches ARE
+    the types. The premise does not entail the conclusion: the properties live
+    in the branches and the class is still flat. That decline was a skip lane
+    spelled ``None``, and it dropped the two roots from the compiled pass.
+    """
+    merged: dict[str, Any] = {}
+    for source in (
+        schema,
+        *(schema.get("allOf") or []),
+        *(schema.get("anyOf") or []),
+        *(schema.get("oneOf") or []),
+    ):
+        if not isinstance(source, dict):
+            continue
+        declared = source.get("properties")
+        if isinstance(declared, dict):
+            for name, sub in declared.items():
+                merged.setdefault(name, sub)
+    return merged
+
+
 def flat_root_shape(schema: dict, relative_path: Path) -> DeclaredShape | None:
     """What the ONE class over a schema root declares, or ``None`` if there is none.
 
@@ -7349,8 +7382,8 @@ def flat_root_shape(schema: dict, relative_path: Path) -> DeclaredShape | None:
     class does not carry a property the root declares, which is a dropped field
     and belongs to whoever generated it rather than to a constraint pass.
     """
-    properties = schema.get("properties")
-    if not isinstance(properties, dict) or not properties:
+    properties = _root_declared_properties(schema)
+    if not properties:
         return None
     module_path = generated_module_for(relative_path)
     if not module_path.is_file():

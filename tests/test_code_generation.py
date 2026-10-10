@@ -2829,13 +2829,25 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
         # those refusals has to name the keyword too -- which is why this asks
         # the module rather than one class name.
         class_name = post_generate_fixes._root_property_class(source, schema)
-        if class_name is None or "def _require_schema_required_group" not in source:
+        if class_name is None:
             continue
         keyword = declared[0]
-        assert re.search(
-            rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", source
-        ), relative
-        assert "raise ValueError(\n            '" + class_name not in source, relative
+        # Two mechanisms satisfy the same obligation, and the gate measures the
+        # obligation rather than one spelling of it. A flat root carries the
+        # compiled validator. A SPLIT root whose branches are purely
+        # requiredness carries no validator at all -- each branch's own shape
+        # refuses -- so its union carries the wrapper that names the keyword.
+        # Counting only the first dropped two roots whose refusal is stronger,
+        # not weaker, than the validator it replaced.
+        if "def _require_schema_required_group" in source:
+            assert re.search(
+                rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", source
+            ), relative
+            assert "raise ValueError(\n            '" + class_name not in source, relative
+        elif f"name_the_combinator({keyword!r})" in source:
+            pass
+        else:
+            continue
         found[class_name] = keyword
 
     # The floor is the anti-vacuity check: a derivation that matched nothing
@@ -2846,6 +2858,10 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
     assert set(found.values()) == {"anyOf", "oneOf"}, found
     assert found["CreativeAssetShape"] == "oneOf", found
     assert found["CreateMediaBuyRequestShape"] == "anyOf", found
+    # The two roots whose branches are purely requiredness, named outright
+    # because they are the ones a mechanism-shaped gate would have lost.
+    assert found["CatchmentShape"] == "oneOf", found
+    assert found["FrequencyCapImpressionConstraintsShape"] == "oneOf", found
 
 
 def test_a_consumer_reads_the_schema_keyword_off_the_refusal():

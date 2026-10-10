@@ -951,6 +951,7 @@ CreativeManifestNamedFormatManifest = generated.CreativeManifestNamedFormatManif
 # a consumer holding that union needs its shape. Withholding it was my error and
 # test_a_shapes_visibility_follows_its_roots is what found it.
 CreateMediaBuyRequestShape = generated.CreateMediaBuyRequestShape
+VerifyBrandClaimRequestShape = generated.VerifyBrandClaimRequestShape
 CreativeAssetShape = generated.CreativeAssetShape
 ListAccountChangesResponseShape = generated.ListAccountChangesResponseShape
 RequestProposalsRequestShape = generated.RequestProposalsRequestShape
