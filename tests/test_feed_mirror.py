@@ -132,6 +132,28 @@ def make_webhook(
 # ---------------------------------------------------------------------------
 
 
+def _omit_scope_if_requested(model: Any, body: dict[str, Any]) -> Any:
+    """Build the response, honouring ``cache_scope: None`` as "the seller omitted it".
+
+    ``FeedMirror``'s 8.x compatibility path exists for a seller that returns no
+    ``cache_scope`` -- it warns and inherits the cached scope. Such a response is
+    one the 3.2 schema refuses twice over: ``cache_scope`` is
+    ``enum: ["public", "account"]``, so a null is a type error, and the standard
+    response branch requires the key. So the document cannot be produced by
+    validating it, and a fixture that wrote ``cache_scope: None`` was only
+    accepted while the compiled check read membership rather than presence on
+    the document SENT.
+
+    Everything else is validated; the scope is cleared afterwards, which is what
+    the mirror sees from a seller that never sent it. The subject under test is
+    the mirror's tolerance, not the model's acceptance.
+    """
+    if body.get("cache_scope") is not None:
+        return model.model_validate(body)
+    validated = model.model_validate({**body, "cache_scope": "public"})
+    return validated.model_copy(update={"cache_scope": None})
+
+
 class StubClient:
     """Records requests and replays scripted GetProducts/GetSignals responses.
 
@@ -159,7 +181,7 @@ class StubClient:
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,
-            data=GetProductsResponse.model_validate(body),
+            data=_omit_scope_if_requested(GetProductsResponse, body),
         )
 
     async def get_signals(self, request: GetSignalsRequest) -> TaskResult[GetSignalsResponse]:
@@ -170,7 +192,7 @@ class StubClient:
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,
-            data=GetSignalsResponse.model_validate(body),
+            data=_omit_scope_if_requested(GetSignalsResponse, body),
         )
 
 

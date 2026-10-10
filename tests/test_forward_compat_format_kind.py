@@ -224,11 +224,18 @@ def test_manifest_format_kind_keeps_its_optional_default() -> None:
     with pytest.raises(ValidationError):
         CreativeManifest(assets={})
 
-    # An explicit ``None`` satisfies the document rule -- the group is keyed on the
-    # field being present, not on it being non-null -- and round-trips as null.
-    explicit = CreativeManifest(assets={}, format_kind=None)
-    assert explicit.format_kind is None
-    assert explicit.model_dump(exclude_unset=True, exclude_none=False)["format_kind"] is None
+    # An explicit ``None`` does NOT satisfy the document rule. It used to, while
+    # the compiled check read membership alone, and that was wrong in two ways
+    # the bundled schema states plainly: ``format_kind`` is an enum of strings,
+    # so ``null`` is not a value it takes, and the client drops a null-valued key
+    # on the way out -- so the document SENT carries neither arm's field. The
+    # group is keyed on the field being present on what is sent.
+    with pytest.raises(ValidationError):
+        CreativeManifest(assets={}, format_kind=None)
+
+    # Naming the arm is what satisfies it.
+    named = CreativeManifest(assets={}, format_kind="image")
+    assert named.format_kind == "image"
 
 
 @pytest.mark.parametrize("json_input", [False, True], ids=["python", "json"])
