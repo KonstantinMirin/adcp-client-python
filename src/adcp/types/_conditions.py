@@ -260,25 +260,33 @@ def unique(value: Any) -> bool:
     return True
 
 
-def absent(data: Any, names: Sequence[str]) -> Any:
-    """``not: {required: [...]}``: the document may not carry these keys at all.
+def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) -> Any:
+    """``not: {required: [...]}``: these keys may not reach the document sent.
 
-    A branch class does not DECLARE a field its arm forbids, which is what
+    A branch class types a field its arm forbids as ``None``, which is what
     makes the combination unspellable at construction. It is not what refuses
     a raw document: the generated models are ``extra='allow'`` where their
-    schemas say ``additionalProperties: true``, so pydantic would file the key
-    under extras and accept. So the shape's forbidden names are refused here,
-    before validation, on the document as sent.
+    schemas say ``additionalProperties: true``, so pydantic would file an
+    undeclared key under extras and accept. So the shape's forbidden names are
+    refused here, before validation.
 
-    Presence is the key being there -- with any value, an explicit null
-    included -- which is exactly what ``required`` asks and therefore exactly
-    what its negation forbids. Returned unchanged when the document carries
-    none of them, and when it is not a mapping at all (a model being
-    revalidated has already been through this).
+    Presence is read the same way ``sent`` reads it, because the negation of
+    ``required`` is about the same document. A name in ``names`` sits at a
+    position the schema forbids ``null``, so the client drops a null-valued key
+    and only a non-null value is carried. A name in ``nullable_names`` sits at
+    a position where a null survives, so its mere presence is what the ban
+    forbids.
+
+    Returned unchanged when the document carries none of them, and when it is
+    not a mapping at all (a model being revalidated has already been through
+    this).
     """
     if not isinstance(data, Mapping):
         return data
-    carried = sorted(name for name in names if name in data)
+    carried = sorted(
+        [name for name in names if data.get(name) is not None]
+        + [name for name in nullable_names if name in data]
+    )
     if carried:
         offending = ", ".join(carried)
         raise ValueError(f"{offending} is not accepted by this request shape")

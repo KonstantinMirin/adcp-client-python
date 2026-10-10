@@ -44,7 +44,12 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
     from scripts import task_message_lattice
 
 try:
-    from branch_classes import BranchPlan, plan_branches, split_into_branch_classes
+    from branch_classes import (
+        BranchPlan,
+        plan_branches,
+        repoint_subclasses_of,
+        split_into_branch_classes,
+    )
     from compile_conditions import (
         CONDITIONS_IMPORT,
         ROOT_CONSTRAINT_VALIDATOR,
@@ -54,6 +59,7 @@ try:
     )
     from schema_constraints import (
         DeclaredShape,
+        RootConstraints,
         bundle_document_resolver,
         partitions_by_requiredness,
         permits_null,
@@ -64,6 +70,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
     from scripts.branch_classes import (  # type: ignore[assignment]
         BranchPlan,
         plan_branches,
+        repoint_subclasses_of,
         split_into_branch_classes,
     )
     from scripts.compile_conditions import (  # type: ignore[assignment]
@@ -75,6 +82,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
     )
     from scripts.schema_constraints import (  # type: ignore[assignment]
         DeclaredShape,
+        RootConstraints,
         bundle_document_resolver,
         partitions_by_requiredness,
         permits_null,
@@ -7495,6 +7503,7 @@ def emit_branch_classes() -> None:
     resolve = bundle_document_resolver(SCHEMA_DIR)
     emitted = 0
     arms = 0
+    repointed = 0
 
     for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
         relative_path = schema_file.relative_to(SCHEMA_DIR)
@@ -7523,27 +7532,72 @@ def emit_branch_classes() -> None:
         if class_name is None:
             continue
         fields = frozenset(shape.fields.values())
-        plans = plan_branches(constraints, class_name, str(relative_path), fields)
-        rewritten = split_into_branch_classes(
+        rewritten = compose_branch_module(
             content, class_name, constraints, str(relative_path), fields
         )
         if rewritten is None:
             continue
-
-        rewritten = _ensure_typing_import(rewritten, "TypeAlias")
-        if any(plan.literals for plan in plans):
-            rewritten = _ensure_typing_import(rewritten, "Literal")
-        rewritten = ensure_pydantic_import(rewritten, "TypeAdapter")
-        if any(plan.absent for plan in plans):
-            rewritten = _ensure_typing_import(rewritten, "Any", "ClassVar")
-        if any(plan.absent or _residual_is_checked(plan) for plan in plans):
-            rewritten = _ensure_model_validator_import(rewritten)
-            rewritten = _ensure_conditions_import(rewritten)
         py_path.write_text(rewritten)
         emitted += 1
-        arms += len(plans)
+        arms += len(plan_branches(constraints, class_name, str(relative_path), fields))
+        repointed += _repoint_subclasses_across_the_tree(class_name)
 
     print(f"  Split {emitted} partitioning root(s) into {arms} branch class(es)")
+    if repointed:
+        print(f"  Repointed {repointed} subclass module(s) onto a split root's shared base")
+
+
+def compose_branch_module(
+    content: str,
+    class_name: str,
+    constraints: RootConstraints,
+    schema_file: str,
+    fields: frozenset[str],
+) -> str | None:
+    """The split module plus the imports its own output needs.
+
+    Separate from the tree walk because it is the whole of what the emitter
+    produces for one root, and so is what a test can run: the output has to
+    IMPORT, and an import the split forgets is a module that fails at import
+    rather than a test that fails on a string.
+    """
+    plans = plan_branches(constraints, class_name, schema_file, fields)
+    rewritten = split_into_branch_classes(content, class_name, constraints, schema_file, fields)
+    if rewritten is None:
+        return None
+
+    banned = any(plan.absent or plan.absent_nullable for plan in plans)
+    rewritten = _ensure_typing_import(rewritten, "TypeAlias")
+    if any(plan.literals for plan in plans):
+        rewritten = _ensure_typing_import(rewritten, "Literal")
+    rewritten = ensure_pydantic_import(rewritten, "TypeAdapter")
+    if banned:
+        rewritten = _ensure_typing_import(rewritten, "Any", "ClassVar")
+    if banned or any(_residual_is_checked(plan) for plan in plans):
+        rewritten = _ensure_model_validator_import(rewritten)
+        rewritten = _ensure_conditions_import(rewritten)
+    return rewritten
+
+
+def _repoint_subclasses_across_the_tree(flat_class: str) -> int:
+    """Point every generated subclass of a split root at the root's base.
+
+    A union is not a base, so a class that subclassed the flat root has to name
+    the shared base instead. Measured on the pin: two modules do
+    (``Creative(CreativeAsset)``, ``CreativeRepresentation(CreativeManifest)``),
+    and nothing subclasses either of those, so the rewrite does not recurse.
+    """
+    changed = 0
+    for module in sorted(OUTPUT_DIR.rglob("*.py")):
+        content = module.read_text()
+        if f"({flat_class})" not in content and f"({flat_class}," not in content:
+            continue
+        rewritten = repoint_subclasses_of(content, flat_class)
+        if rewritten is None or rewritten == content:
+            continue
+        module.write_text(rewritten)
+        changed += 1
+    return changed
 
 
 def _residual_is_checked(plan: BranchPlan) -> bool:

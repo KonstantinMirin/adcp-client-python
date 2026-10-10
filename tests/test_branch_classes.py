@@ -8,23 +8,32 @@ is graded here on its own, and the leftover is graded for what it KEEPS rather
 than only for what it drops -- a planner that quietly swallowed an arm's nested
 content would read as a stronger model and be a weaker one.
 
-The emitter is not wired into the generation pipeline. What blocks it is
-measured and named in the module's own docstring: two generated classes and two
-hand-written SDK layers use a root's public name as a BASE, and a union cannot
-be subclassed, so each needs the same per-member-subclass rewrite before the
-split can ship. The planner is graded now because that is what the rewrite will
-consume.
+The emitter is not wired into the generation pipeline. Four places used a split
+root's public name as a BASE, and a union cannot be subclassed. The shared base
+settles two of them -- ``Creative(CreativeAsset)`` and
+``CreativeRepresentation(CreativeManifest)`` are generated, and the emitter
+repoints them onto the base, which is graded below. The remaining two are the
+hand-written create-media-buy layers (``canonical_creative`` narrows
+``packages``, and ``_forward_compat`` rebuilds the model and declares a
+static view of a runtime-patched field); those narrow PER ARM, so each needs a
+class per arm and its own union, and that is the integration step.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import pytest
+from pydantic import ValidationError
 
-from scripts.branch_classes import plan_branches, render_absence_hook, split_into_branch_classes
+from scripts.branch_classes import (
+    plan_branches,
+    render_absence_hook,
+    repoint_subclasses_of,
+    split_into_branch_classes,
+)
 from scripts.schema_constraints import (
     DeclaredShape,
     PropSatisfies,
@@ -177,10 +186,14 @@ def test_an_absence_set_is_also_refused_on_the_raw_document() -> None:
 
     assert "_ABSENT: ClassVar[frozenset[str]] = frozenset({'b'})" in hook
     assert "mode='before'" in hook
-    assert "_c.absent(data, sorted(cls._ABSENT))" in hook
+    assert (
+        "_c.absent(\n            data, sorted(cls._ABSENT), sorted(cls._ABSENT_NULLABLE)\n        )"
+    ) in hook
 
 
 _FLAT_MODULE = '''from __future__ import annotations
+
+from pydantic import Field
 
 from adcp.types.base import AdCPBaseModel
 
@@ -205,15 +218,101 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     )
 
     assert rewritten is not None
-    assert "class ThingA(AdCPBaseModel):" in rewritten
-    assert "class ThingB(AdCPBaseModel):" in rewritten
+    assert "class _ThingBase(AdCPBaseModel):" in rewritten
+    assert "class ThingA(_ThingBase):" in rewritten
+    assert "class ThingB(_ThingBase):" in rewritten
     assert "Thing: TypeAlias = ThingA | ThingB" in rewritten
     assert "ThingAdapter: TypeAdapter[Thing] = TypeAdapter(Thing)" in rewritten
-    # The arm that requires ``a`` carries ``a`` with no default and no ``b``.
-    arm = rewritten.split("class ThingA(AdCPBaseModel):")[1].split("class ThingB")[0]
+    base = rewritten.split("class _ThingBase(AdCPBaseModel):")[1].split("class ThingA")[0]
+    assert "a: str | None = None" in base
+    assert "b: str | None = None" in base
+    assert "c: str | None = None" in base, "a field no arm constrains is declared once"
+    # The arm that requires ``a`` restates only what it changes: ``a`` loses its
+    # default, ``b`` becomes unpassable, and ``c`` is left to the base.
+    arm = rewritten.split("class ThingA(_ThingBase):")[1].split("class ThingB")[0]
     assert "a: str\n" in arm
-    assert "b:" not in arm
-    assert "c: str | None = None" in arm
+    assert "b: None = None" in arm
+    assert "c:" not in arm
+
+
+def test_every_arm_is_a_subclass_of_one_base_so_the_union_is_one_type() -> None:
+    """The arms differ in requiredness, so they are one type -- not several.
+
+    Measured over the eleven roots the emitter splits: every one has properties
+    shared by all of its arms, and eight of the eleven have arms that constrain
+    no property at all. A union of unrelated classes would say the arms are
+    different types, and nothing in the schemas says that. This is also what
+    gives the union a usable base: a caller can hold the shared fields, and a
+    class elsewhere can subclass what the arms share.
+    """
+    from scripts.post_generate_fixes import compose_branch_module
+
+    rewritten = compose_branch_module(
+        _FLAT_MODULE,
+        "Thing",
+        _constraints(_TWO_ARMS, {"a": "a", "b": "b", "c": "c"}),
+        "core/thing.json",
+        frozenset({"a", "b", "c"}),
+    )
+
+    assert rewritten is not None
+    namespace: dict[str, Any] = {}
+    exec(  # noqa: S102 - the emitter's output is the subject; importing it is the test
+        rewritten.replace("from __future__ import annotations", ""), namespace
+    )
+    base = namespace["_ThingBase"]
+    members = get_args(namespace["Thing"])
+
+    assert len(members) == 2
+    assert all(issubclass(member, base) for member in members)
+    assert {"a", "b", "c"} <= set(base.model_fields), "the base carries what the arms share"
+    assert namespace["ThingAdapter"].validate_python({"a": "x"}).a == "x"
+    with pytest.raises(ValidationError):
+        namespace["ThingAdapter"].validate_python({"a": "x", "b": "y"})
+
+
+def test_the_base_is_module_internal_because_the_union_is_the_contract() -> None:
+    """Stated as a test so the visibility decision is recorded where it binds.
+
+    A consumer parses a document and gets one of the members, so what it
+    annotates is the alias. The base exists to hold the fields the arms share
+    and to be subclassed by a class that needs them; nothing needs ``isinstance``
+    against it. So it is importable and not exported.
+    """
+    rewritten = split_into_branch_classes(
+        _FLAT_MODULE,
+        "Thing",
+        _constraints(_TWO_ARMS, {"a": "a", "b": "b", "c": "c"}),
+        "core/thing.json",
+        frozenset({"a", "b", "c"}),
+    )
+
+    assert rewritten is not None
+    assert "class _ThingBase(" in rewritten, "underscore-prefixed: not part of the public surface"
+    assert '"_ThingBase"' not in rewritten, "and never named in an __all__ the next pass writes"
+
+
+def test_a_class_that_subclassed_the_flat_root_is_repointed_onto_the_base() -> None:
+    """A union cannot be subclassed, so a subclass has to name the base.
+
+    Two generated classes do this on the pin -- ``Creative(CreativeAsset)`` and
+    ``CreativeRepresentation(CreativeManifest)`` -- and the rewrite is what lets
+    the split ship without either of them losing the fields it was reaching for.
+    """
+    module = (
+        "from ..core.thing import Thing\n"
+        "\n"
+        "\n"
+        "class Extended(Thing):\n"
+        "    extra: str | None = None\n"
+    )
+
+    rewritten = repoint_subclasses_of(module, "Thing")
+
+    assert rewritten is not None
+    assert "class Extended(_ThingBase):" in rewritten
+    assert "from ..core.thing import Thing, _ThingBase" in rewritten
+    assert repoint_subclasses_of(module, "Other") is None, "a module naming it in no base list"
 
 
 def test_the_split_drops_a_combinator_check_the_arms_shape_already_answers() -> None:
@@ -346,8 +445,8 @@ def test_a_module_without_the_flat_class_is_reported_not_guessed() -> None:
 def test_the_emitter_is_not_wired_into_the_generation_pipeline() -> None:
     """Stated as a test so the claim in the module docstring cannot go stale.
 
-    Wiring it requires the per-member-subclass rewrite for the four places that
-    use a split root's public name as a base; until then the roots it would
+    Wiring it requires the two hand-written create-media-buy layers to narrow
+    per arm, as the module docstring records; until then the roots it would
     split carry the compiled check that ``enforce_root_constraints`` emits, so
     nothing is parsed and left unenforced.
     """

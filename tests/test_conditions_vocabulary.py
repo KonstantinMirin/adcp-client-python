@@ -90,22 +90,30 @@ def test_sent_is_membership_plus_the_non_null_half() -> None:
 def test_absent_refuses_a_key_the_shape_forbids_and_passes_everything_else() -> None:
     """``not: {required: [x]}`` on a branch class, at wire validation.
 
-    A branch class does not declare a field its arm forbids, which is what
+    A branch class types a field its arm forbids as ``None``, which is what
     makes the combination unspellable at construction. Under ``extra='allow'``
     that is not what refuses a raw document, so the forbidden names are refused
-    here -- present with ANY value, an explicit null included, because that is
-    what ``required`` asks and therefore what its negation forbids. A document
-    carrying none of them, and anything that is not a mapping, pass through
-    unchanged.
+    here -- and presence is read the way ``sent`` reads it, because the negation
+    of ``required`` is about the same document. At a position the schema forbids
+    null, the client drops a null-valued key, so only a non-null value is
+    carried; at a nullable position a null survives and its presence is what
+    the ban forbids. A document carrying none of them, and anything that is not
+    a mapping, pass through unchanged.
     """
     assert c.absent({"packages": ["pkg_1"]}, ["proposal_id"]) == {"packages": ["pkg_1"]}
     assert c.absent("not an object", ["proposal_id"]) == "not an object"
+    assert c.absent({"proposal_id": None}, ["proposal_id"]) == {"proposal_id": None}, (
+        "a null at a position forbidding null never reaches the document sent"
+    )
 
     with pytest.raises(ValueError, match="proposal_id is not accepted"):
-        c.absent({"packages": [], "proposal_id": None}, ["proposal_id"])
+        c.absent({"packages": [], "proposal_id": "prop_1"}, ["proposal_id"])
+
+    with pytest.raises(ValueError, match="daily_budget_cap is not accepted"):
+        c.absent({"daily_budget_cap": None}, [], ["daily_budget_cap"])
 
     with pytest.raises(ValueError, match="budget_allocation, packages"):
-        c.absent({"packages": [], "budget_allocation": {}}, ["packages", "budget_allocation"])
+        c.absent({"packages": [1], "budget_allocation": {}}, ["packages", "budget_allocation"])
 
 
 def test_supplied_reads_a_mapping_by_its_keys() -> None:

@@ -4,15 +4,27 @@
 ``Arm`` records and proves whether the arms partition the document space.
 Where they do, the arms are not a rule over one class -- they are distinct
 types, and the generator's flattening is what turned them into a rule. This
-module renders that: each arm becomes a class carrying the fields that arm
-permits, requiring the fields that arm requires, and NOT DECLARING the fields
-that arm forbids; the root's public name becomes a union over them.
+module renders that.
+
+The arms are ONE type with different requiredness, not several types, and the
+emission says so: a shared base per split root carries the root's own
+properties, each arm subclasses it and restates only what it changes, and the
+root's public name becomes a union over the arms. Measured over the eleven
+roots this splits -- every one has properties shared by all of its arms (29 on
+``create-media-buy-request``, 17 on ``creative-asset``, 2 on the smallest), and
+eight of the eleven have arms that constrain NO property at all, differing only
+in which fields they require and which they forbid. No root in the population
+has an empty shared set, so none of them is a union of unrelated classes. A
+union of unrelated classes would also have no base to subclass, which is what
+the two generated classes that subclass a split root need.
 
 What that makes unconstructible, and why it is a different claim from a check:
 
-* A request combining fields from two arms has no class that carries both
-  names. ``CreateMediaBuyRequestCommittedProposalExecution(packages=...)`` is
-  an unknown keyword argument -- a type error, before anything runs.
+* A field an arm forbids is typed ``None`` on that arm, so
+  ``CreateMediaBuyRequestCommittedProposalExecution(packages=[...])`` is a type
+  error before anything runs. It is declared rather than omitted because the
+  base declares it: omitting it on the subclass would inherit the base's
+  permissive annotation.
 * An arm's required field is required on that arm's class, so omitting it is a
   missing argument rather than a validator's refusal.
 
@@ -76,6 +88,7 @@ __all__ = [
     "BranchPlan",
     "plan_branches",
     "render_absence_hook",
+    "repoint_subclasses_of",
     "split_into_branch_classes",
 ]
 
@@ -88,6 +101,11 @@ class BranchPlan:
     title: str | None
     pointer: str
     absent: frozenset[str]
+    """Names this arm forbids whose position the schema does NOT permit null at."""
+
+    absent_nullable: frozenset[str]
+    """Names it forbids at a position where a null survives to the document."""
+
     required: frozenset[str]
     literals: dict[str, Any]
     residual: Cond
@@ -107,22 +125,27 @@ def _conjuncts(condition: Cond) -> list[Cond]:
     return [condition]
 
 
-def _absent_names(leaf: Cond) -> frozenset[str] | None:
+def _absent_names(leaf: Cond) -> tuple[Supplied, ...] | None:
     """The names a leaf forbids, or ``None`` when it forbids nothing.
 
     Two spellings, both in the bundle: ``not: {required: [x]}`` for one name and
     ``not: {anyOf: [{required: [x]}, ...]}`` for several. Both say the document
-    may not carry the name, which on a class is the absence of the field.
+    may not carry the name, which on a class is a field typed ``None``.
+
+    The ``Supplied`` records come back rather than bare names, because each
+    carries whether the schema permits null at that position -- and that decides
+    what "carry" means. Where null is forbidden the client drops a null-valued
+    key, so only a non-null value is carried; where it is permitted, presence is.
     """
     if not isinstance(leaf, Not):
         return None
     inner = leaf.operand
     if isinstance(inner, Supplied):
-        return frozenset({inner.name})
+        return (inner,)
     if isinstance(inner, AnyOf) and all(
         isinstance(operand, Supplied) for operand in inner.operands
     ):
-        return frozenset(operand.name for operand in inner.operands)  # type: ignore[union-attr]
+        return tuple(inner.operands)  # type: ignore[arg-type]
     if isinstance(inner, AllOf) and all(
         isinstance(operand, Supplied) for operand in inner.operands
     ):
@@ -197,13 +220,15 @@ def plan_branches(
         constraints.arms, names, arm_conditions(constraints), strict=True
     ):
         absent: set[str] = set()
+        absent_nullable: set[str] = set()
         required: set[str] = set(arm.required)
         literals: dict[str, Any] = {}
         residual: list[Cond] = []
         for leaf in _conjuncts(condition):
             banned = _absent_names(leaf)
-            if banned is not None and banned <= fields:
-                absent |= set(banned)
+            if banned is not None and {node.name for node in banned} <= fields:
+                for node in banned:
+                    (absent_nullable if node.nullable else absent).add(node.name)
                 continue
             if isinstance(leaf, Supplied) and leaf.name in fields:
                 required.add(leaf.name)
@@ -227,6 +252,7 @@ def plan_branches(
                 title=arm.title,
                 pointer=arm.pointer,
                 absent=frozenset(absent - required),
+                absent_nullable=frozenset(absent_nullable - required),
                 required=frozenset(required),
                 literals=literals,
                 residual=_conjunction(residual),
@@ -325,46 +351,119 @@ def _statement_source(statement: ast.stmt, source: str) -> str:
     return "\n".join(line[indent:] if line.strip() else "" for line in block)
 
 
-def _render_class(
-    plan: BranchPlan,
+def _base_name(flat_class: str) -> str:
+    """The shared base's spelling: the root's own name, marked module-internal.
+
+    Private by decision, and the decision is that the UNION is the contract. A
+    consumer parses a document and gets one of the members; it annotates the
+    alias. Nothing in the generated tree or the hand-written layers needs
+    ``isinstance`` against the base, so exporting it would publish a name whose
+    only job is to hold the fields the branches share. It stays importable --
+    a subclass in another module names it -- and stays out of ``__all__``.
+    """
+    return f"_{flat_class}Base"
+
+
+def _render_base(
     flat: ast.ClassDef,
+    flat_class: str,
     schema_file: str,
     source: str,
+    branch_names: Sequence[str],
 ) -> str:
-    """One arm's class: the flat class's statements, minus what the arm forbids."""
+    """The root's own shape: every property and everything other passes added.
+
+    This is what makes the branches one type rather than several. Measured over
+    the eleven partitioning roots: every one has properties shared by all of its
+    branches (29 on ``create-media-buy-request``, 17 on ``creative-asset``, 2 on
+    the smallest), and eight of the eleven have branches that constrain NO
+    property at all -- they differ only in which fields they require and which
+    they forbid. So the faithful rendering is one base and a subclass per arm;
+    a union of unrelated classes would say the branches are different types,
+    which the schema does not say anywhere in this population.
+
+    The body is copied verbatim, so every earlier pass's field metadata,
+    validator and config lands on the base and is inherited once rather than
+    repeated per arm.
+    """
     bases = ", ".join(ast.unparse(base) for base in flat.bases)
-    heading = plan.title or f"The {plan.pointer} arm"
+    members = "\n".join(f"    ``{name}``" for name in branch_names)
     lines = [
-        f"class {plan.name}({bases}):",
-        f'    """{heading}.',
+        f"class {_base_name(flat_class)}({bases}):",
+        f'    """What every arm of {schema_file} shares.',
         "",
-        f"    One arm of {schema_file}, which states {plan.pointer} as a shape",
-        "    rather than as a rule: the fields this arm forbids are not declared",
-        "    here, and the fields it requires carry no default.",
+        "    The root's own properties and requiredness. Each arm subclasses this",
+        "    and states only what it changes, so the arms are one type with",
+        "    different requiredness rather than unrelated classes:",
+        "",
+        members,
+        "",
+        f"    Module-internal: {flat_class} -- the union -- is the contract.",
         '    """',
         "",
     ]
     body = 0
     for statement in flat.body:
         if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant):
-            continue  # the flat class's own docstring
+            continue  # the flat class's own docstring, replaced above
         if isinstance(statement, ast.FunctionDef) and statement.name == ROOT_CONSTRAINT_VALIDATOR:
-            # A compiled check over the WHOLE combinator, left on the flat class
-            # by an earlier run of the constraint pass. Copying it onto every arm
-            # would re-ask what the arm's own shape answers, and would answer it
-            # with a union-typed return annotation. This arm's own residual check
-            # is appended below instead.
+            # A compiled check over the WHOLE combinator, left by an earlier run
+            # of the constraint pass. On the base it would re-ask of every arm
+            # what the arm's own shape answers, and its return annotation would
+            # name the union. Each arm's residual check is emitted below instead.
             continue
-        if isinstance(statement, ast.AnnAssign):
-            name = _field_name(statement)
-            if name is not None and name in plan.absent:
-                continue
-            rendered = _render_field(statement, plan)
-        else:
-            rendered = _statement_source(statement, source)
-        lines.extend(f"    {line}" if line.strip() else "" for line in rendered.splitlines())
+        lines.extend(
+            f"    {line}" if line.strip() else ""
+            for line in _statement_source(statement, source).splitlines()
+        )
         body += 1
     if not body:
+        lines.append("    pass")
+    return "\n".join(lines)
+
+
+def _render_branch(plan: BranchPlan, flat: ast.ClassDef, flat_class: str, schema_file: str) -> str:
+    """One arm: only what it changes about the base.
+
+    A required field is redeclared without its default, a pinned field as the
+    ``Literal`` the arm pins it to, and a forbidden field as ``None`` -- which
+    is what makes passing it a type error rather than a validator's refusal.
+    Everything else is inherited, so the arm's class says exactly what the arm
+    says and nothing more.
+    """
+    declared = {
+        name: statement
+        for statement in flat.body
+        if isinstance(statement, ast.AnnAssign)
+        for name in (_field_name(statement),)
+        if name is not None
+    }
+    heading = plan.title or f"The {plan.pointer} arm"
+    lines = [
+        f"class {plan.name}({_base_name(flat_class)}):",
+        f'    """{heading}.',
+        "",
+        f"    One arm of {schema_file}, stated as a shape: {plan.pointer} requires",
+        "    what it declares below without a default, and types what it forbids",
+        "    as ``None``.",
+        '    """',
+        "",
+    ]
+    changed = 0
+    for name in sorted(plan.absent | plan.absent_nullable):
+        statement = declared.get(name)
+        if statement is None:
+            continue
+        lines.append(f"    {name}: None = None")
+        changed += 1
+    for name in sorted(plan.required | set(plan.literals)):
+        statement = declared.get(name)
+        if statement is None:
+            continue
+        rendered = _render_field(statement, plan)
+        lines.extend(f"    {line}" if line.strip() else "" for line in rendered.splitlines())
+        changed += 1
+    if not changed:
         lines.append("    pass")
     return "\n".join(lines)
 
@@ -394,21 +493,27 @@ def render_absence_hook(plan: BranchPlan) -> str:
     this as the one place the type system alone cannot carry an arm's content:
     the type system does not see raw documents.
     """
-    if not plan.absent:
+    if not (plan.absent or plan.absent_nullable):
         return ""
     names = ", ".join(repr(name) for name in sorted(plan.absent))
+    nullable = ", ".join(repr(name) for name in sorted(plan.absent_nullable))
     return "\n".join(
         [
             "",
             f"    _ABSENT: ClassVar[frozenset[str]] = frozenset({{{names}}})",
+            f"    _ABSENT_NULLABLE: ClassVar[frozenset[str]] = frozenset({{{nullable}}})",
             "",
             "    @model_validator(mode='before')",
             "    @classmethod",
             "    def _refuse_keys_this_shape_forbids(cls, data: Any) -> Any:",
-            "        # The fields this arm forbids are not declared above, which is what",
-            "        # makes the combination unspellable. A raw document still needs this:",
-            "        # extra='allow' would file the key under extras and accept.",
-            "        return _c.absent(data, sorted(cls._ABSENT))",
+            "        # The fields this arm forbids are typed None above, which is what",
+            "        # makes the combination a type error. A raw document still needs",
+            "        # this: extra='allow' files an undeclared key under extras and",
+            "        # accepts, and a declared one would arrive as a None the arm does",
+            "        # not forbid at a nullable position.",
+            "        return _c.absent(",
+            "            data, sorted(cls._ABSENT), sorted(cls._ABSENT_NULLABLE)",
+            "        )",
         ]
     )
 
@@ -463,19 +568,21 @@ def split_into_branch_classes(
         return None
 
     plans = plan_branches(constraints, flat_class, schema_file, fields)
-    blocks = [
-        _render_class(plan, flat, schema_file, source)
+    blocks = [_render_base(flat, flat_class, schema_file, source, [plan.name for plan in plans])]
+    blocks.extend(
+        _render_branch(plan, flat, flat_class, schema_file)
         + render_absence_hook(plan)
         + _render_validator(plan, schema_file)
         for plan in plans
-    ]
+    )
     union = " | ".join(plan.name for plan in plans)
     blocks.append(
         "\n".join(
             [
                 f"#: {schema_file}'s arms, proven pairwise disjoint, so a parsed document",
                 "#: comes back as exactly one of them. The alias is the contract; a member",
-                "#: is what a caller names to CONSTRUCT one.",
+                f"#: is what a caller names to CONSTRUCT one, and {_base_name(flat_class)} is",
+                "#: what they share -- so a method on the base behaves per arm.",
                 f"{flat_class}: TypeAlias = {union}",
                 "",
                 "#: Parsing is what a union needs an adapter for. Built once, at import.",
@@ -494,3 +601,64 @@ def split_into_branch_classes(
 def arm_names(constraints: RootConstraints, parent: str, schema_file: str) -> Sequence[str]:
     """The class names this module would emit, without rendering anything."""
     return branch_class_names(parent, constraints.arms, schema_file)
+
+
+def repoint_subclasses_of(source: str, flat_class: str) -> str | None:
+    """Repoint a class that subclasses a split root onto the root's shared base.
+
+    A union is not a base, so a generated subclass of a root the emitter splits
+    has to name the base instead. There are two in the pinned bundle --
+    ``Creative(CreativeAsset)`` and ``CreativeRepresentation(CreativeManifest)``
+    -- and nothing subclasses either of those in turn, so this does not recurse.
+
+    ``None`` when the module names the class in no base list, which is every
+    module but the one or two that do.
+
+    The subclass is NOT a member of the union afterwards, and that is the honest
+    reading: it is a different shape, with its own fields, and a consumer
+    annotating the union never meant to accept it. What it does get is the
+    fields every arm shares, which is what it was reaching for by subclassing
+    the flat class.
+    """
+    base = _base_name(flat_class)
+    tree = ast.parse(source)
+    lines = source.splitlines(keepends=True)
+    edits: list[tuple[int, str, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        for reference in node.bases:
+            target = reference.value if isinstance(reference, ast.Subscript) else reference
+            named = target.id if isinstance(target, ast.Name) else getattr(target, "attr", None)
+            if named != flat_class:
+                continue
+            spelling = ast.unparse(target)
+            edits.append((node.lineno - 1, spelling, spelling.replace(flat_class, base)))
+    if not edits:
+        return None
+    for index, old, new in edits:
+        lines[index] = lines[index].replace(f"({old})", f"({new})").replace(f"({old},", f"({new},")
+    rewritten = "".join(lines)
+    return _repoint_import(rewritten, flat_class, base)
+
+
+def _repoint_import(source: str, flat_class: str, base: str) -> str:
+    """Make the base importable wherever the flat class was imported by name.
+
+    The import is ADDED rather than replaced: the module may still reference the
+    union as a field annotation, which stays valid.
+    """
+    import re
+
+    pattern = re.compile(
+        rf"^(from [^\n]*? import )([^\n(]*\b{re.escape(flat_class)}\b[^\n]*)$", re.MULTILINE
+    )
+    match = pattern.search(source)
+    if match is None:
+        # The flat class is declared in this very module, so the base is too.
+        return source
+    names = [name.strip() for name in match.group(2).split(",") if name.strip()]
+    if base in names:
+        return source
+    statement = match.group(1) + ", ".join(sorted({*names, base}))
+    return source[: match.start()] + statement + source[match.end() :]
