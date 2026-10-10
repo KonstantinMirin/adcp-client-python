@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from adcp.reporting import (
     ExpectedReportingPeriod,
@@ -282,7 +283,20 @@ async def test_expected_period_outside_the_proven_scope_is_not_an_obligation_mis
     elif outside == "media-buy":
         expected = replace(expected, media_buy_ids=("outside-authorized-scope",))
     else:
+        # Declaring incomplete coverage is not a lone flag:
+        # ``get-reporting-status-response.json`` requires the seller to report
+        # it as an action-required health with a HISTORY_UNAVAILABLE issue.
         raw["scope"]["coverage_complete"] = False
+        raw["health"] = "action_required"
+        raw["issues"] = [
+            {
+                "issue_id": "history-unavailable",
+                "code": "HISTORY_UNAVAILABLE",
+                "severity": "action_required",
+                "responsible_party": "seller",
+                "recommended_action": "contact_seller",
+            }
+        ]
     result = evaluate_reporting_ledger(await _load(raw), expected_periods=[expected], now=NOW)
     assert not result.definitive
     assert result.missing_expected_periods == []
@@ -331,22 +345,44 @@ async def test_completed_snapshot_cannot_be_edited_into_different_evidence() -> 
 @pytest.mark.parametrize("field", ["changes_checkpoint", "next_expected_at", "health"])
 async def test_frozen_metadata_is_checked_including_wholly_legacy_pages(explicit, field) -> None:
     pages = _pages(_history(), explicit=explicit)
-    pages[-1][field] = {
-        "changes_checkpoint": "different-checkpoint",
-        "next_expected_at": "2026-10-01T00:00:00Z",
-        "health": "waiting",
-    }[field]
+    # Each entry is the whole update, not one value, because ``health`` cannot
+    # be set on its own: ``get-reporting-status-response.json`` requires an
+    # empty ``issues`` array alongside a health of healthy, waiting or
+    # complete, so a page carrying only ``health`` is one the response schema
+    # refuses. The differing field is still what this test is about.
+    pages[-1].update(
+        {
+            "changes_checkpoint": {"changes_checkpoint": "different-checkpoint"},
+            "next_expected_at": {"next_expected_at": "2026-10-01T00:00:00Z"},
+            "health": {"health": "waiting", "issues": []},
+        }[field]
+    )
     with pytest.raises(ReportingReconciliationError) as error:
         await load_reporting_ledger(Pages(pages), _request(), max_snapshot_restarts=0)
     assert error.value.code == "SNAPSHOT_CHANGED"
 
 
 async def test_every_page_requires_the_frozen_total() -> None:
+    """A page without the total is refused, and the response schema is what refuses it.
+
+    ``get-reporting-status-response.json``'s periods view requires
+    ``pagination.total_count`` -- along with every other field
+    ``_reconcile``'s ``INCOMPLETE_LEDGER_PAGE`` guard tests by hand
+    (``ledger_snapshot_id``, ``ledger_as_of``, ``account_id``, ``scope``,
+    ``pagination.has_more``). That conditional used to be dropped from the
+    generated model, so the guard was the only thing enforcing it and a page
+    missing the total reached it. Now the read fails first, which is why the
+    obligation is asserted where it now lives as well as at the reconciler.
+    """
     pages = _pages(_history())
     pages[0]["pagination"].pop("total_count")
+
+    with pytest.raises(ValidationError):
+        GetReportingStatusResponse.model_validate(pages[0])
+
     with pytest.raises(ReportingReconciliationError) as error:
         await load_reporting_ledger(Pages(pages), _request(), max_snapshot_restarts=0)
-    assert error.value.code == "INCOMPLETE_LEDGER_PAGE"
+    assert error.value.code == "STATUS_READ_FAILED"
 
 
 @pytest.mark.parametrize(

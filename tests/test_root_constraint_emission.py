@@ -69,7 +69,10 @@ def test_a_compilable_root_gets_its_validator(staged: tuple[Path, Path]) -> None
 
     emitted = (output / "thing.py").read_text()
     assert f"def {fixes.ROOT_CONSTRAINT_VALIDATOR}" in emitted
-    assert "_c.supplied(self, 'a')" in emitted
+    # ``sent`` rather than ``supplied``: the fixture declares ``a`` as a plain
+    # ``string``, so the schema forbids null there and the client drops a
+    # null-valued key on the way out.
+    assert "_c.sent(self, 'a')" in emitted
     assert "at least one of these field groups" in emitted
 
 

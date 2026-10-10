@@ -83,6 +83,7 @@ __all__ = [
     "OneOf",
     "arm_conditions",
     "partitions_by_requiredness",
+    "permits_null",
     "PropCount",
     "PropSatisfies",
     "provably_disjoint",
@@ -319,14 +320,31 @@ _DECLARED_REFS = "$refs"
 
 @dataclass(frozen=True)
 class Supplied:
-    """``required``: the caller supplied the field.
+    """``required``: the field is present on the document that is sent.
 
-    Presence is ``model_fields_set`` membership. An explicit null is a supplied
-    value -- on a mutation input it is the command to clear -- and a default the
-    caller never sent is not.
+    Presence is ``model_fields_set`` membership, never an ``is None`` test: a
+    default the caller never sent is not supplied even when it is not ``None``.
+
+    ``nullable`` says whether the SCHEMA permits ``null`` at this position, and
+    it is what membership alone cannot carry. Where null is permitted, an
+    explicit null is the caller's value -- on a mutation input, the command to
+    clear -- and the client keeps the key on the wire, so membership is the
+    whole question. Where it is not, ``exclude_none`` drops the key and
+    ``preserve_explicit_nulls`` does not restore it, so the document that is
+    SENT does not carry it and a check reading it as present refuses a request
+    no seller receives. Measured on ``control-media-buy-request``: ``canceled``
+    is ``Literal[True]``, and ``canceled=None`` with a real mutation beside it
+    is dropped on the way out.
+
+    Defaults to ``False`` because that is what most positions declare -- a
+    property with a plain ``type`` forbids null -- so a constructed node reads
+    as the common case and only a nullable position spells it out. The reader
+    never relies on the default: it derives the value from the declaration it
+    is already walking.
     """
 
     name: str
+    nullable: bool = False
 
 
 @dataclass(frozen=True)
@@ -952,7 +970,9 @@ class _Parser:
 
         if keyword == "required":
             return _conjoin(
-                self._supplied(name, shape, pointer) for name in value if isinstance(name, str)
+                self._supplied(name, shape, pointer, declaration)
+                for name in value
+                if isinstance(name, str)
             )
 
         if keyword == "properties":
@@ -1237,11 +1257,86 @@ class _Parser:
             raise UnplaceableConstraintError(self._file, pointer, wire_name)
         return None
 
-    def _supplied(self, wire_name: str, shape: DeclaredShape, pointer: str) -> Cond:
+    def _supplied(
+        self,
+        wire_name: str,
+        shape: DeclaredShape,
+        pointer: str,
+        declaration: Any = None,
+    ) -> Cond:
+        """``required`` on one name, read as presence on the document SENT.
+
+        ``declaration`` is the node the position declares, which is where
+        nullability lives. Without one -- a ``dependencies`` map names a
+        dependent the parser has no declaration in hand for -- the position is
+        read as nullable, which is membership alone and the weaker of the two
+        readings.
+        """
         attribute = self._attribute(wire_name, shape, pointer)
         if attribute is None:
             return Undeclarable(wire_name)
-        return Supplied(attribute)
+        node = self._declared_node(declaration, wire_name)
+        return Supplied(attribute, nullable=node is None or permits_null(node))
+
+    def _declared_node(self, declaration: Any, wire_name: str, depth: int = 0) -> Any:
+        """The schema node a declaration states for one property, or ``None``.
+
+        A declaration often states a position by reference -- the root declares
+        ``budget_allocation`` as a ``$ref`` and ``packages`` as an array of
+        them -- so reading only the inline ``properties`` finds nothing one
+        level down and every nested ``required`` falls back to the weaker
+        reading. Following the reference to read ONE property's node is bounded:
+        no keyword is accounted for here and no condition is compiled, so this
+        cannot widen the parse.
+        """
+        if not isinstance(declaration, dict) or depth > 4:
+            return None
+        properties = declaration.get("properties")
+        if isinstance(properties, dict) and wire_name in properties:
+            return properties[wire_name]
+        reference = declaration.get("$ref")
+        if isinstance(reference, str):
+            _document, target = self._resolve_reference(reference)
+            if target is not None:
+                return self._declared_node(target, wire_name, depth + 1)
+        for keyword in ("allOf", "anyOf", "oneOf"):
+            members = declaration.get(keyword)
+            if isinstance(members, list):
+                for member in members:
+                    found = self._declared_node(member, wire_name, depth + 1)
+                    if found is not None:
+                        return found
+        return None
+
+
+def permits_null(schema: Any) -> bool:
+    """True when a JSON Schema node explicitly permits ``null``.
+
+    ``required`` and nullability are independent axes: a property listed in
+    ``required`` whose ``type`` array contains ``"null"`` must be PRESENT and
+    may be ``null``. Both spellings count -- the ``type: ["string", "null"]``
+    array form and a ``oneOf``/``anyOf`` branch of ``{"type": "null"}``.
+
+    This is what separates the two readings of presence. Where a position
+    permits ``null``, an explicit null is a value the caller sent and the
+    client keeps it on the wire. Where it does not, the client's
+    ``exclude_none`` drops it and ``preserve_explicit_nulls`` does not put it
+    back, so the key is ABSENT from the document that is sent -- and a
+    constraint that read it as present would refuse a request no seller ever
+    receives.
+    """
+    if not isinstance(schema, dict):
+        return False
+    schema_type = schema.get("type")
+    if isinstance(schema_type, list) and "null" in schema_type:
+        return True
+    for keyword in ("oneOf", "anyOf"):
+        variants = schema.get(keyword)
+        if isinstance(variants, list) and any(
+            isinstance(variant, dict) and variant.get("type") == "null" for variant in variants
+        ):
+            return True
+    return False
 
 
 def _equal(left: Any, right: Any) -> bool:

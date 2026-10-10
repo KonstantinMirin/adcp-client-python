@@ -64,6 +64,29 @@ def test_supplied_is_membership_not_a_null_check() -> None:
     assert not c.supplied(subject, "nested")
 
 
+def test_sent_is_membership_plus_the_non_null_half() -> None:
+    """Presence on the document that is SENT, for a position forbidding null.
+
+    ``supplied`` is membership and is the right reading where the schema marks
+    the position nullable. Where it does not, the client's ``exclude_none``
+    drops a null-valued key and ``preserve_explicit_nulls`` restores only
+    nullable paths, so the document that arrives does not carry it --
+    ``control-media-buy-request``'s ``canceled`` is ``Literal[True]`` and
+    ``canceled=None`` is dropped on the way out. Reading it as present refused
+    a request no seller receives.
+
+    It stays membership-based: the default the caller never sent is absent
+    because it is not in ``model_fields_set``, not because of its value.
+    """
+    subject = _Subject.model_validate({"packages": ["pkg_1"], "proposal_id": None})
+
+    assert c.sent(subject, "packages")
+    assert not c.sent(subject, "proposal_id"), "an explicit null is not sent at a closed position"
+    assert c.supplied(subject, "proposal_id"), "and supplied still answers membership"
+    assert not c.sent(subject, "pacing"), "a default the caller never sent is not sent"
+    assert not c.sent("not an object", "packages")
+
+
 def test_absent_refuses_a_key_the_shape_forbids_and_passes_everything_else() -> None:
     """``not: {required: [x]}`` on a branch class, at wire validation.
 

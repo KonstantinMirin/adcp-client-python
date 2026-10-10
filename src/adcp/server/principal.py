@@ -19,7 +19,7 @@ from typing import Any, Protocol
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from adcp._deferred_adapters import deferred_adapter
 from adcp.server.idempotency import canonical_json_sha256
@@ -156,6 +156,20 @@ def _json(value: object) -> str:
     if isinstance(value, BaseModel):
         value = value.model_dump(mode="json", exclude_none=True)
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _first_message(error: ValidationError) -> str:
+    """The first refusal a pydantic error carries, with the path it sits on.
+
+    The refusal the generated models raise already names the schema file and
+    the properties the rule reads, so this prefixes the location inside the
+    request and passes the rest through rather than composing a sentence of
+    its own.
+    """
+    first = error.errors()[0]
+    location = ".".join(str(part) for part in first["loc"])
+    message = str(first.get("msg", "")).removeprefix("Value error, ")
+    return f"{location}: {message}" if location else message
 
 
 def _failed(code: str, message: str, *, context: object | None = None) -> SyncPrincipalResponse:
@@ -408,7 +422,24 @@ class PrincipalService:
         identity: PrincipalIdentity,
         request: SyncPrincipalRequest | Mapping[str, Any],
     ) -> SyncPrincipalResponse:
-        request = SyncPrincipalRequest.model_validate(request)
+        try:
+            request = SyncPrincipalRequest.model_validate(request)
+        except ValidationError as error:
+            # A request this service cannot parse is an INVALID_REQUEST, which
+            # is already how it answers every rule it checks itself: the
+            # ``ValueError`` its own normalizers raise becomes ``_failed``
+            # below. The parse was outside that conversion because nothing
+            # about a document's CONTENT used to refuse here -- the generated
+            # models dropped their schemas' conditionals, so only a shape error
+            # could fail, and a shape error never reached this method.
+            #
+            # Now it can: ``agent-notification-config.json`` states that a
+            # config subscribing to account events carries
+            # ``all_authorized_accounts: true``, which the model enforces, so a
+            # buyer sending one without it parses no further. Raising a pydantic
+            # error out of a protocol handler would answer that with a transport
+            # failure instead of the rejected response the tool declares.
+            return _failed("INVALID_REQUEST", _first_message(error), context=None)
         if not request.configuration.model_fields_set:
             return _failed(
                 "INVALID_REQUEST",

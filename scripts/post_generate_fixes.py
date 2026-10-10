@@ -56,6 +56,7 @@ try:
         DeclaredShape,
         bundle_document_resolver,
         partitions_by_requiredness,
+        permits_null,
         read_root_constraints,
         root_carries_constraints,
     )
@@ -76,6 +77,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
         DeclaredShape,
         bundle_document_resolver,
         partitions_by_requiredness,
+        permits_null,
         read_root_constraints,
         root_carries_constraints,
     )
@@ -4974,26 +4976,12 @@ def restore_constructible_response_bases() -> None:
 
 
 def _schema_permits_null(schema: Any) -> bool:
-    """True when a JSON Schema property explicitly permits ``null``.
+    """Deprecated spelling of :func:`scripts.schema_constraints.permits_null`.
 
-    ``required`` and nullability are independent axes in JSON Schema: a
-    property listed in ``required`` whose ``type`` array contains ``"null"``
-    must be *present* and may be *null*. Both spellings count here — the
-    ``type: ["string", "null"]`` array form and a ``oneOf``/``anyOf`` branch
-    of ``{"type": "null"}``.
+    Kept as the name the response emitter already calls; the predicate has one
+    owner, which is the module that reads schema nodes.
     """
-    if not isinstance(schema, dict):
-        return False
-    schema_type = schema.get("type")
-    if isinstance(schema_type, list) and "null" in schema_type:
-        return True
-    for keyword in ("oneOf", "anyOf"):
-        variants = schema.get(keyword)
-        if isinstance(variants, list) and any(
-            isinstance(variant, dict) and variant.get("type") == "null" for variant in variants
-        ):
-            return True
-    return False
+    return permits_null(schema)
 
 
 def _top_level_union_parts(annotation: str) -> list[str]:

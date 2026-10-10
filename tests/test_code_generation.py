@@ -2673,8 +2673,12 @@ def test_root_constraint_validator_enforces_each_arm_in_full(tmp_path, monkeypat
     assert "def _require_schema_required_group(self) -> BudgetPlan:" in fixed
     # Each arm compiles to its own predicate, the arm's ``not`` included, and
     # the arms' schema titles are the refusal's own words.
-    assert "not (_c.supplied(self, 'proposal_id')) and _c.supplied(self, 'packages')" in fixed
-    assert "_c.supplied(self, 'proposal_id') and _c.supplied(self, 'total_budget')" in fixed
+    # ``sent`` is presence on the document that is SENT: every property this
+    # fixture declares forbids null, so a null-valued key is dropped before the
+    # request leaves and reading it as present would refuse a request no seller
+    # receives.
+    assert "not (_c.sent(self, 'proposal_id')) and _c.sent(self, 'packages')" in fixed
+    assert "_c.sent(self, 'proposal_id') and _c.sent(self, 'total_budget')" in fixed
     assert "Explicit packages | Committed proposal" in fixed
     # The module tail survives: several generated modules close with
     # compatibility aliases after the root class.

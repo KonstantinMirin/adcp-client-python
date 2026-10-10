@@ -147,6 +147,7 @@ __all__ = [
     "ROOT_CONSTRAINT_VALIDATOR",
     "arm_label",
     "compile_condition",
+    "named_fields",
     "render_root_validator",
 ]
 
@@ -220,7 +221,11 @@ def compile_condition(condition: Cond, subject: str = _SELF) -> str:  # noqa: C9
         return "False"
 
     if isinstance(condition, Supplied):
-        return f"_c.supplied({subject}, {condition.name!r})"
+        # ``supplied`` is membership; ``sent`` adds the non-null half where the
+        # schema forbids null, because the client drops such a key on the way
+        # out and the document that arrives does not carry it.
+        primitive = "supplied" if condition.nullable else "sent"
+        return f"_c.{primitive}({subject}, {condition.name!r})"
 
     if isinstance(condition, Not):
         return f"not ({compile_condition(condition.operand, subject)})"
@@ -295,6 +300,48 @@ def compile_condition(condition: Cond, subject: str = _SELF) -> str:  # noqa: C9
         return f"not ({trigger}) or {_grouped(dependents)}"
 
     raise TypeError(f"no emission for {type(condition).__name__}")
+
+
+def named_fields(condition: Cond) -> tuple[str, ...]:
+    """Every field name a condition reads, sorted, for the refusal to name.
+
+    Schema-derived: these are the properties the node itself mentions, not text
+    this generator composes. A refusal that names only the schema file and the
+    conjunct's index tells a caller which rule fired and nothing about where to
+    look; ``agent-notification-config.json``'s conditional reads ``event_types``
+    and ``all_authorized_accounts``, and naming them is the difference between a
+    diagnostic and a citation.
+    """
+    found: set[str] = set()
+
+    def walk(node: Cond) -> None:
+        if isinstance(node, (Supplied, Undeclarable)):
+            found.add(node.name)
+        elif isinstance(node, PropSatisfies):
+            found.add(node.name)
+            walk(node.operand)
+        elif isinstance(node, DependentRequired):
+            found.add(node.name)
+            found.update(node.names)
+        elif isinstance(node, (NoOtherProps, OtherPropsSatisfy)):
+            found.update(node.names)
+            if isinstance(node, OtherPropsSatisfy):
+                walk(node.operand)
+        elif isinstance(node, Not):
+            walk(node.operand)
+        elif isinstance(node, (AllOf, AnyOf, OneOf)):
+            for operand in node.operands:
+                walk(operand)
+        elif isinstance(node, IfThen):
+            walk(node.condition)
+            for branch in (node.consequent, node.alternative):
+                if branch is not None:
+                    walk(branch)
+        elif isinstance(node, (EveryItem, SomeItem, KeysSatisfy, MatchingKeysSatisfy)):
+            walk(node.operand)
+
+    walk(condition)
+    return tuple(sorted(found))
 
 
 def arm_label(arm: Arm) -> str:
@@ -432,9 +479,11 @@ def _render_conjunct(
     predicate = compile_condition(conjunct, subject)
     if predicate == "True":
         return []
+    named = named_fields(conjunct)
+    over = f" over {', '.join(named)}" if named else ""
     message = (
         f"{class_name} violates a constraint its schema states outside its "
-        f"properties ({schema_file}, root conjunct {index})"
+        f"properties ({schema_file}, root conjunct {index}){over}"
     )
     # A root conjunct is an ``allOf`` member: that is the keyword a consumer
     # reads for a constraint the root states beside its combinator.

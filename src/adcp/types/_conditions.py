@@ -45,6 +45,7 @@ __all__ = [
     "matching_keys",
     "only",
     "others",
+    "sent",
     "some",
     "supplied",
     "unique",
@@ -84,6 +85,23 @@ def supplied(value: Any, name: str) -> bool:
     if isinstance(value, Mapping):
         return name in value
     return False
+
+
+def sent(value: Any, name: str) -> bool:
+    """Whether ``name`` would be PRESENT on the document that is sent.
+
+    ``supplied`` answers membership, which is the whole question at a position
+    the schema marks nullable: there an explicit null is the caller's value and
+    the client keeps the key. Where the schema does NOT permit null, the client
+    drops the key -- ``model_dump(exclude_none=True)`` removes it and
+    ``preserve_explicit_nulls`` restores only nullable paths -- so a null-valued
+    field is absent from what is sent, and a constraint reading it as present
+    refuses a request no seller receives.
+
+    Still membership, not an ``is None`` test: a default the caller never sent
+    is absent because it is not in ``model_fields_set``, whatever its value.
+    """
+    return supplied(value, name) and _member(value, name) is not None
 
 
 def _member(value: Any, name: str) -> Any:

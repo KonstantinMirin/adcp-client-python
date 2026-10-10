@@ -154,7 +154,7 @@ _PRODUCTION_FIXTURES: dict[str, tuple[dict[str, Any], Cond]] = {
     ),
     "dependentSchemas": (
         _arm_root({"dependentSchemas": {"a": {"required": ["b"]}}}),
-        IfThen(Supplied("a"), Supplied("b"), None),
+        IfThen(Supplied("a"), Supplied("b", nullable=True), None),
     ),
     "const": (
         _arm_root({"properties": {"a": {"const": "x"}}}),
@@ -210,11 +210,11 @@ _PRODUCTION_FIXTURES: dict[str, tuple[dict[str, Any], Cond]] = {
     ),
     "items": (
         _arm_root({"properties": {"a": {"items": {"required": ["b"]}}}}),
-        PropSatisfies("a", EveryItem(Supplied("b"))),
+        PropSatisfies("a", EveryItem(Supplied("b", nullable=True))),
     ),
     "contains": (
         _arm_root({"properties": {"a": {"contains": {"required": ["b"]}}}}),
-        PropSatisfies("a", SomeItem(Supplied("b"))),
+        PropSatisfies("a", SomeItem(Supplied("b", nullable=True))),
     ),
     "propertyNames": (
         _arm_root({"properties": {"a": {"propertyNames": {"pattern": "^x"}}}}),
@@ -244,7 +244,7 @@ _PRODUCTION_FIXTURES: dict[str, tuple[dict[str, Any], Cond]] = {
             "$defs": {"narrowed": {"required": ["b"]}},
             "anyOf": [{"properties": {"a": {"$ref": "#/$defs/narrowed"}}}],
         },
-        PropSatisfies("a", Supplied("b")),
+        PropSatisfies("a", Supplied("b", nullable=True)),
     ),
 }
 
@@ -324,6 +324,35 @@ def test_a_constraint_naming_a_field_the_schema_declares_but_the_class_does_not_
     assert raised.value.name == "b"
 
 
+def test_required_reads_presence_on_the_document_that_is_sent() -> None:
+    """Nullability is the axis membership alone cannot carry.
+
+    ``required`` asks whether the key is on the document. At a position the
+    schema marks nullable an explicit null is the caller's value and the client
+    keeps the key, so membership is the whole question. Where null is
+    forbidden, ``exclude_none`` drops the key and ``preserve_explicit_nulls``
+    restores only nullable paths, so the key is absent from what is sent --
+    ``control-media-buy-request``'s ``canceled`` is ``Literal[True]`` and
+    ``canceled=None`` beside a real mutation is dropped on the way out.
+
+    Derived from the declaration at the position, never defaulted: the reader
+    reads the node it is already walking.
+    """
+    root = {
+        "title": "Thing",
+        "type": "object",
+        "properties": {
+            "canceled": {"const": True},
+            "daily_budget_cap": {"type": ["number", "null"]},
+        },
+        "anyOf": [{"required": ["canceled", "daily_budget_cap"]}],
+    }
+
+    assert _only_arm_condition(root) == AllOf(
+        (Supplied("canceled", nullable=False), Supplied("daily_budget_cap", nullable=True))
+    )
+
+
 def test_a_required_name_a_closed_root_never_declares_is_statically_false() -> None:
     """An AdCP root that forbids a key no arm declares is not a dropped field.
 
@@ -363,7 +392,7 @@ def test_a_required_name_an_open_root_never_declares_is_read_off_the_document() 
         "not": {"anyOf": [{"required": ["failure_kind"]}]},
     }
 
-    assert _read(root).conjuncts == (Not(AnyOf((Supplied("failure_kind"),))),)
+    assert _read(root).conjuncts == (Not(AnyOf((Supplied("failure_kind", nullable=True),))),)
 
 
 def test_a_keyword_equal_to_the_declaration_is_a_proven_restatement() -> None:
@@ -393,7 +422,9 @@ def test_a_keyword_equal_to_the_declaration_is_a_proven_restatement() -> None:
         ],
     }
 
-    assert _only_arm_condition(root) == PropSatisfies("packages", EveryItem(Supplied("budget")))
+    assert _only_arm_condition(root) == PropSatisfies(
+        "packages", EveryItem(Supplied("budget", nullable=True))
+    )
 
 
 def test_a_narrowing_of_the_declared_type_compiles_rather_than_restating() -> None:
@@ -452,11 +483,11 @@ def test_an_arms_own_keywords_are_proven_against_the_root_not_against_itself() -
     assert constraints.arms[0].condition == AllOf(
         (
             PropSatisfies("status", ValueConst("completed")),
-            AllOf((Supplied("status"), Supplied("a"))),
+            AllOf((Supplied("status", nullable=True), Supplied("a"))),
         )
     )
     assert constraints.arms[1].condition == AllOf(
-        (PropSatisfies("status", ValueConst("failed")), Supplied("status"))
+        (PropSatisfies("status", ValueConst("failed")), Supplied("status", nullable=True))
     )
 
 
@@ -483,7 +514,16 @@ def test_a_property_named_only_in_a_negated_position_is_not_a_dropped_field() ->
 
     assert constraints.conjuncts == (
         Not(
-            AnyOf((AllOf((PropSatisfies("status", ValueConst("submitted")), Supplied("status"))),))
+            AnyOf(
+                (
+                    AllOf(
+                        (
+                            PropSatisfies("status", ValueConst("submitted")),
+                            Supplied("status", nullable=True),
+                        )
+                    ),
+                )
+            )
         ),
     )
 
@@ -645,3 +685,39 @@ def test_every_key_the_bundle_carries_falls_under_a_named_rule(
 
     assert len(found) > 30, f"the census walk found only {sorted(found)}"
     assert found <= accounted, sorted(found - accounted)
+
+
+def test_the_readers_nullability_agrees_with_the_serializers_on_the_whole_bundle() -> None:
+    """Two copies of one question, necessarily separate, held in step by this.
+
+    ``scripts/schema_constraints.permits_null`` decides what a compiled check
+    reads as present; ``adcp._null_clear`` decides what the client actually
+    sends. They cannot share code -- one is build-time under ``scripts/`` and
+    the other is runtime under ``src/`` -- so they are kept honest by agreeing
+    on every property node the pinned bundle carries. If they ever disagree, a
+    model refuses a document the client never sends, or accepts one it does.
+    """
+    from adcp._null_clear import _permits_null as serializer_permits_null
+    from scripts.schema_constraints import permits_null
+
+    bundle = _bundle_dir()
+    disagreements: list[str] = []
+    checked = 0
+    for path in sorted(bundle.rglob("*.json")):
+        if path.relative_to(bundle).parts[0] in ("mcp", "bundled"):
+            continue
+        try:
+            document = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        for name, node in (
+            (document.get("properties") or {}).items() if isinstance(document, dict) else ()
+        ):
+            checked += 1
+            mine = permits_null(node)
+            theirs = serializer_permits_null(node, document)
+            if mine is not theirs:
+                disagreements.append(f"{path.relative_to(bundle)}#{name}: {mine} vs {theirs}")
+
+    assert checked > 500, f"the walk graded only {checked} property nodes"
+    assert not disagreements, disagreements[:10]

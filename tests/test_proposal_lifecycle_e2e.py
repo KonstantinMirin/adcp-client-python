@@ -571,14 +571,32 @@ async def test_update_and_delivery_hydrate_from_reverse_index(
 
 
 @pytest.mark.asyncio
-async def test_create_media_buy_rejects_disallowed_pricing_model(
+async def test_create_media_buy_cannot_craft_packages_beside_a_proposal(
     handler: PlatformHandler,
     store: InMemoryProposalStore,
 ) -> None:
-    """Buyer requests a pricing_model outside the recipe's overlap →
-    INVALID_REQUEST with field='packages[i].pricing_option_id' before
-    the adapter runs. Per § D4.
+    """A buyer crafting packages alongside a proposal has no request to send.
+
+    This test used to walk to COMMITTED and then hand the handler a request
+    carrying BOTH ``proposal_id`` and a ``packages`` array whose
+    ``_resolved_pricing_model`` sat outside the recipe's overlap, asserting the
+    § D4 gate refused it with ``field='packages[0].pricing_option_id'`` before
+    the adapter ran.
+
+    ``create-media-buy-request.json`` forbids that combination: its two
+    explicit-packages arms ban ``proposal_id`` and its proposal arm bans
+    ``packages``. The generated model dropped that content, so the request was
+    constructible and the gate was the only thing standing between it and the
+    adapter. Now nothing runs at all -- which is the stronger version of
+    "before the adapter runs" -- and the gate's own refusal is graded at its
+    call site by
+    ``tests/test_proposal_lifecycle.py::test_overlap_validation_pricing_model_rejected``.
+    On the create path the packages the gate inspects are the ones DERIVED from
+    the proposal's allocations (``proposal_dispatch.py:806``), not any the
+    buyer sent.
     """
+    from pydantic import ValidationError
+
     from adcp.types import CreateMediaBuyRequest, GetProductsRequest
 
     # Walk to COMMITTED.
@@ -602,32 +620,36 @@ async def test_create_media_buy_rejects_disallowed_pricing_model(
         ToolContext(),
     )
 
-    # Buyer crafts a packages array with pricing_model=cpcv (overlap is cpm).
-    cmb_req = CreateMediaBuyRequest.model_validate(
-        {
-            "proposal_id": PROPOSAL_ID,
-            "total_budget": {"amount": 50000, "currency": "USD"},
-            "start_time": "2026-04-01T00:00:00Z",
-            "end_time": "2026-06-30T23:59:59Z",
-            "buyer_ref": "test-buyer-rej",
-            "idempotency_key": _CMB_IDEM + "reject",
-            "brand": _BRAND,
-            "account": _ACCOUNT,
-            "packages": [
-                {
-                    "buyer_ref": "pkg-1",
-                    "product_id": "ctv-premium-q2",
-                    "pricing_option_id": "po-ctv-cpm",
-                    "_resolved_pricing_model": "cpcv",  # outside overlap
-                    "budget": 10000,
-                }
-            ],
-        }
-    )
-    with pytest.raises(AdcpError) as exc_info:
-        await handler.create_media_buy(cmb_req, ToolContext())
-    assert exc_info.value.code == "INVALID_REQUEST"
-    assert "packages[0].pricing_option_id" in (exc_info.value.field or "")
+    # Buyer crafts a packages array with pricing_model=cpcv (overlap is cpm)
+    # alongside the proposal it is executing.
+    cmb_req_fields = {
+        "proposal_id": PROPOSAL_ID,
+        "total_budget": {"amount": 50000, "currency": "USD"},
+        "start_time": "2026-04-01T00:00:00Z",
+        "end_time": "2026-06-30T23:59:59Z",
+        "buyer_ref": "test-buyer-rej",
+        "idempotency_key": _CMB_IDEM + "reject",
+        "brand": _BRAND,
+        "account": _ACCOUNT,
+        "packages": [
+            {
+                "buyer_ref": "pkg-1",
+                "product_id": "ctv-premium-q2",
+                "pricing_option_id": "po-ctv-cpm",
+                "_resolved_pricing_model": "cpcv",  # outside overlap
+                "budget": 10000,
+            }
+        ],
+    }
+
+    with pytest.raises(ValidationError, match="at least one of these field groups"):
+        CreateMediaBuyRequest.model_validate(cmb_req_fields)
+
+    # Dropping the packages leaves the proposal arm, which is a request a buyer
+    # can send -- so the refusal above is about the combination, not the shape.
+    executable = dict(cmb_req_fields)
+    executable.pop("packages")
+    assert CreateMediaBuyRequest.model_validate(executable).proposal_id == PROPOSAL_ID
 
 
 # ---------------------------------------------------------------------------
