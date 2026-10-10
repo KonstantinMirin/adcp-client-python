@@ -35,6 +35,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 __all__ = [
+    "absent",
     "descend",
     "every",
     "json_type",
@@ -94,16 +95,25 @@ def _member(value: Any, name: str) -> Any:
 def descend(value: Any, name: str, predicate: Predicate) -> bool:
     """Apply ``predicate`` to a supplied member of ``value``.
 
-    Vacuous when the member was not supplied or is an explicit null, because
-    ``properties`` grades present object members and says nothing about a
-    missing one or a ``null``.
+    Vacuous when the member was NOT SUPPLIED, because ``properties`` grades
+    present object members and says nothing about a missing one. An explicit
+    null is supplied, and the subschema applies to it like any other value:
+    ``{"properties": {"format_kind": {"const": "audio_vast"}}}`` is false for
+    ``{"format_kind": null}``, not vacuous. Each primitive already reads a
+    ``None`` the way JSON Schema does -- ``const`` and ``enum`` compare and
+    fail, ``type`` answers ``null``, and a bound on a string or an array is
+    vacuous off its own type -- so passing the null through is what makes the
+    composition match the schema.
+
+    Reading a null as vacuous here was measured wrong on
+    ``creative-manifest.json``: its audio-VAST conjunct tests
+    ``format_kind == 'audio_vast'``, a manifest carrying
+    ``format_kind: null`` satisfied that test vacuously, and the model refused
+    the document under a rule its schema does not apply to it.
     """
     if not supplied(value, name):
         return True
-    member = _member(value, name)
-    if member is None:
-        return True
-    return predicate(member)
+    return predicate(_member(value, name))
 
 
 def every(value: Any, predicate: Predicate) -> bool:
@@ -230,3 +240,28 @@ def unique(value: Any) -> bool:
             return False
         seen.append(element)
     return True
+
+
+def absent(data: Any, names: Sequence[str]) -> Any:
+    """``not: {required: [...]}``: the document may not carry these keys at all.
+
+    A branch class does not DECLARE a field its arm forbids, which is what
+    makes the combination unspellable at construction. It is not what refuses
+    a raw document: the generated models are ``extra='allow'`` where their
+    schemas say ``additionalProperties: true``, so pydantic would file the key
+    under extras and accept. So the shape's forbidden names are refused here,
+    before validation, on the document as sent.
+
+    Presence is the key being there -- with any value, an explicit null
+    included -- which is exactly what ``required`` asks and therefore exactly
+    what its negation forbids. Returned unchanged when the document carries
+    none of them, and when it is not a mapping at all (a model being
+    revalidated has already been through this).
+    """
+    if not isinstance(data, Mapping):
+        return data
+    carried = sorted(name for name in names if name in data)
+    if carried:
+        offending = ", ".join(carried)
+        raise ValueError(f"{offending} is not accepted by this request shape")
+    return data

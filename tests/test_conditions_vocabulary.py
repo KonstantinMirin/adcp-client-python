@@ -64,6 +64,27 @@ def test_supplied_is_membership_not_a_null_check() -> None:
     assert not c.supplied(subject, "nested")
 
 
+def test_absent_refuses_a_key_the_shape_forbids_and_passes_everything_else() -> None:
+    """``not: {required: [x]}`` on a branch class, at wire validation.
+
+    A branch class does not declare a field its arm forbids, which is what
+    makes the combination unspellable at construction. Under ``extra='allow'``
+    that is not what refuses a raw document, so the forbidden names are refused
+    here -- present with ANY value, an explicit null included, because that is
+    what ``required`` asks and therefore what its negation forbids. A document
+    carrying none of them, and anything that is not a mapping, pass through
+    unchanged.
+    """
+    assert c.absent({"packages": ["pkg_1"]}, ["proposal_id"]) == {"packages": ["pkg_1"]}
+    assert c.absent("not an object", ["proposal_id"]) == "not an object"
+
+    with pytest.raises(ValueError, match="proposal_id is not accepted"):
+        c.absent({"packages": [], "proposal_id": None}, ["proposal_id"])
+
+    with pytest.raises(ValueError, match="budget_allocation, packages"):
+        c.absent({"packages": [], "budget_allocation": {}}, ["packages", "budget_allocation"])
+
+
 def test_supplied_reads_a_mapping_by_its_keys() -> None:
     """An open payload reaches a predicate as a mapping, not a model."""
     assert c.supplied({"a": None}, "a")
@@ -72,21 +93,31 @@ def test_supplied_reads_a_mapping_by_its_keys() -> None:
 
 
 def test_descend_is_vacuous_for_a_member_the_document_did_not_carry() -> None:
-    """``properties`` grades present object members only.
+    """``properties`` grades present object members only -- including a null one.
 
     An arm constraining ``nested.mode`` says nothing about a request that sent
-    no ``nested`` at all, and nothing about one that sent ``null`` to clear it.
+    no ``nested`` at all. It does say something about one that sent ``null``:
+    JSON Schema applies the subschema to whatever value is there, and a
+    subschema expecting an object is false for ``null``. Reading the null as
+    vacuous instead let ``creative-manifest.json``'s audio-VAST conjunct fire
+    on a manifest whose ``format_kind`` was null, refusing a document under a
+    rule the schema does not apply to it.
     """
-    predicate = lambda value: value.mode == "fixed"  # noqa: E731
+    predicate = lambda value: getattr(value, "mode", None) == "fixed"  # noqa: E731
 
     assert c.descend(_Subject.model_validate({"nested": {"mode": "fixed"}}), "nested", predicate)
     assert not c.descend(
         _Subject.model_validate({"nested": {"mode": "seller_optimized"}}), "nested", predicate
     )
     assert c.descend(_Subject(), "nested", predicate), "absent is unconstrained"
-    assert c.descend(
+    assert not c.descend(
         _Subject.model_validate({"nested": None}), "nested", predicate
-    ), "an explicit null is unconstrained by properties"
+    ), "an explicit null is a value the subschema grades, and this one fails it"
+    # And a predicate JSON Schema reads as vacuous off-type stays vacuous on a
+    # null, which is what keeps the composition faithful rather than strict.
+    assert c.descend(
+        _Subject.model_validate({"nested": None}), "nested", lambda value: c.matches(value, "^x")
+    )
 
 
 def test_every_grades_each_element_and_nothing_else() -> None:
