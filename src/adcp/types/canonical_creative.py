@@ -152,6 +152,8 @@ from adcp.types.domains.media_buy.create_media_buy_request import (
     # forbids it, which is why the canonical view is a class per arm and a union
     # rather than one class redeclaring the field as optional.
     CreateMediaBuyRequestCommittedProposalExecution as _LegacyCreateMediaBuyProposal,
+)
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation as _LegacyCreateMediaBuyFixed,
 )
 from adcp.types.domains.media_buy.create_media_buy_request import (

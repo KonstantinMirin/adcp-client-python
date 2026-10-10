@@ -533,7 +533,6 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
         ImageContent,
         UrlContent,
     )
-    from adcp.types._generated import CreativeManifest as LegacyCreativeManifest
     from adcp.utils.format_assets import get_required_assets
 
     required_assets = get_required_assets(fmt)
@@ -614,7 +613,10 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
         )
         for asset_id, asset in assets.items()
     }
-    return LegacyCreativeManifest.model_validate(
+    # The document names ``format_id``, so it is the named-format arm. Parsed
+    # through the arm rather than the alias: an alias has no model_validate, and
+    # naming the arm says what the document already said.
+    return CreativeManifestNamedFormatManifest.model_validate(
         {"format_id": fmt.format_id, "assets": legacy_assets}
     )
 
@@ -635,7 +637,6 @@ def _create_sample_manifest_for_format_id(format_id: FormatId, product: Product)
         ImageContent,
         UrlContent,
     )
-    from adcp.types._generated import CreativeManifest
 
     assets = {
         "primary_asset": ImageContent(

@@ -52,8 +52,8 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import CoreSchema, InitErrorDetails, core_schema
 
-from adcp.types.aliases import FormatAssetUnion, GroupFormatAssetUnion, RepeatableAssetGroup
 from adcp.types._split_root import classes_behind, shared_base
+from adcp.types.aliases import FormatAssetUnion, GroupFormatAssetUnion, RepeatableAssetGroup
 from adcp.types.base import AdCPBaseModel
 from adcp.types.canonical_creative import CreateMediaBuyRequest as _PublicCreateMediaBuyRequest
 from adcp.types.canonical_creative import (
