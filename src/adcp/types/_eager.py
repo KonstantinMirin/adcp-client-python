@@ -940,22 +940,22 @@ CreativeManifestNamedFormatManifest = generated.CreativeManifestNamedFormatManif
 # versioned_bases already exports 197 public <Tool><Direction>Base names meaning
 # something else -- the extension base for a tool's request at a pinned version.
 #
-# A shape's visibility FOLLOWS its root's, which is why this is five names and
-# not eleven. The other six split roots are nested object schemas that nothing
-# on the public surface -- including the legacy aliases -- binds to a union, so
-# a consumer cannot name the root either.
-#
-# CreativeAssetShape is here for the LEGACY alias, not for the canonical name:
-# adcp.types.CreativeAsset is the canonical model (which subclasses one arm),
-# while adcp.types.LegacyCreativeAsset IS the generated union over both arms, so
-# a consumer holding that union needs its shape. Withholding it was my error and
-# test_a_shapes_visibility_follows_its_roots is what found it.
-CreateMediaBuyRequestShape = generated.CreateMediaBuyRequestShape
-VerifyBrandClaimRequestShape = generated.VerifyBrandClaimRequestShape
-CreativeAssetShape = generated.CreativeAssetShape
-ListAccountChangesResponseShape = generated.ListAccountChangesResponseShape
-RequestProposalsRequestShape = generated.RequestProposalsRequestShape
-WebhookChallengeResponseShape = generated.WebhookChallengeResponseShape
+# A union's visibility FOLLOWS its root's. The BASE takes the root's own name
+# and is already exported under it, so only the union needs a name here -- for
+# a caller that wants a type checker to force exhaustive narrowing rather than
+# the runtime strictness the base already gives.
+# The CANONICAL union, because adcp.types.CreateMediaBuyRequest is the canonical
+# base. Exporting the generated union beside a canonical base would pair a name
+# with a union whose members do not subclass it.
+CreateMediaBuyRequestBranches = _canonical_creative.CreateMediaBuyRequestBranches
+VerifyBrandClaimRequestBranches = generated.VerifyBrandClaimRequestBranches
+# CreativeAssetBranches is deliberately NOT exported. adcp.types.CreativeAsset is
+# the canonical model refining ONE branch, not a base over both, so pairing the
+# union with that name would promise a supertype it is not. The generated union
+# is already public as LegacyCreativeAsset.
+ListAccountChangesResponseBranches = generated.ListAccountChangesResponseBranches
+RequestProposalsRequestBranches = generated.RequestProposalsRequestBranches
+WebhookChallengeResponseBranches = generated.WebhookChallengeResponseBranches
 CreativeVariant = _canonical_creative.CreativeVariant
 Format = _canonical_creative.Format
 GetCreativeDeliveryResponse = _canonical_creative.GetCreativeDeliveryResponse

@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 21:38:35 UTC
+Generation date: 2026-10-10 22:59:08 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -183,11 +183,11 @@ from adcp.types.domains.media_buy.create_media_buy_request import (
     Authentication,
     BatchFrequency,
     CreateMediaBuyRequest,
-    CreateMediaBuyRequestAdapter,
+    CreateMediaBuyRequestBranches,
+    CreateMediaBuyRequestBranchesAdapter,
     CreateMediaBuyRequestCommittedProposalExecution,
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
     CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
-    CreateMediaBuyRequestShape,
     DeliveryMode,
 )
 from adcp.types.domains.media_buy.create_media_buy_response import (
@@ -447,9 +447,9 @@ from adcp.types.domains.media_buy.request_proposals_async_response_working impor
 from adcp.types.domains.media_buy.request_proposals_request import (
     RequestProposalsRequest,
     RequestProposalsRequestAccount,
-    RequestProposalsRequestAdapter,
+    RequestProposalsRequestBranches,
+    RequestProposalsRequestBranchesAdapter,
     RequestProposalsRequestBrand,
-    RequestProposalsRequestShape,
 )
 from adcp.types.domains.media_buy.request_proposals_response import (
     IncompleteItem5,
@@ -656,11 +656,11 @@ __all__ = [
     "Cpm",
     "CreateMediaBuyInputRequired",
     "CreateMediaBuyRequest",
-    "CreateMediaBuyRequestAdapter",
+    "CreateMediaBuyRequestBranches",
+    "CreateMediaBuyRequestBranchesAdapter",
     "CreateMediaBuyRequestCommittedProposalExecution",
     "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
     "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",
-    "CreateMediaBuyRequestShape",
     "CreateMediaBuyResponse",
     "CreateMediaBuyResponse1",
     "CreateMediaBuyResponse2",
@@ -845,9 +845,9 @@ __all__ = [
     "RequestProposalsInputRequired",
     "RequestProposalsRequest",
     "RequestProposalsRequestAccount",
-    "RequestProposalsRequestAdapter",
+    "RequestProposalsRequestBranches",
+    "RequestProposalsRequestBranchesAdapter",
     "RequestProposalsRequestBrand",
-    "RequestProposalsRequestShape",
     "RequestProposalsResponse",
     "RequestProposalsResponse1",
     "RequestProposalsResponse2",

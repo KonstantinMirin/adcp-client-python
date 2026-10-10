@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 22:49:57 UTC
+Generation date: 2026-10-10 22:59:08 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -69,8 +69,8 @@ from adcp.types.domains.brand.search_brands_response import (
     SearchBrandResult,
     SearchBrandsError,
     SearchBrandsResponse,
-    SearchBrandsResponseAdapter,
-    SearchBrandsResponseShape,
+    SearchBrandsResponseBranches,
+    SearchBrandsResponseBranchesAdapter,
     SearchBrandsSuccess,
     Variant,
 )
@@ -83,8 +83,8 @@ from adcp.types.domains.brand.update_rights_response import (
 from adcp.types.domains.brand.verification_status import VerificationStatus
 from adcp.types.domains.brand.verify_brand_claim_request import (
     VerifyBrandClaimRequest,
-    VerifyBrandClaimRequestAdapter,
-    VerifyBrandClaimRequestShape,
+    VerifyBrandClaimRequestBranches,
+    VerifyBrandClaimRequestBranchesAdapter,
     VerifyBrandClaimRequestVerifyParentClaim,
     VerifyBrandClaimRequestVerifyPropertyClaim,
     VerifyBrandClaimRequestVerifySubsidiaryClaim,
@@ -185,8 +185,8 @@ __all__ = [
     "SearchBrandsError",
     "SearchBrandsRequest",
     "SearchBrandsResponse",
-    "SearchBrandsResponseAdapter",
-    "SearchBrandsResponseShape",
+    "SearchBrandsResponseBranches",
+    "SearchBrandsResponseBranchesAdapter",
     "SearchBrandsSuccess",
     "Store",
     "Tone",
@@ -199,8 +199,8 @@ __all__ = [
     "VerifyBrandClaimErrorResponse",
     "VerifyBrandClaimPayload",
     "VerifyBrandClaimRequest",
-    "VerifyBrandClaimRequestAdapter",
-    "VerifyBrandClaimRequestShape",
+    "VerifyBrandClaimRequestBranches",
+    "VerifyBrandClaimRequestBranchesAdapter",
     "VerifyBrandClaimRequestVerifyParentClaim",
     "VerifyBrandClaimRequestVerifyPropertyClaim",
     "VerifyBrandClaimRequestVerifySubsidiaryClaim",

@@ -7640,8 +7640,9 @@ def compose_branch_module(
     # The union carries a wrapping validator that names the root combinator on a
     # refusal, so every split module needs Annotated, WrapValidator and the
     # conditions vocabulary.
-    rewritten = _ensure_typing_import(rewritten, "Annotated", "TypeAlias")
-    rewritten = ensure_pydantic_import(rewritten, "WrapValidator")
+    rewritten = _ensure_typing_import(rewritten, "Annotated", "Any", "TypeAlias")
+    rewritten = ensure_pydantic_import(rewritten, "GetCoreSchemaHandler", "WrapValidator")
+    rewritten = ensure_pydantic_core_import(rewritten, "CoreSchema")
     rewritten = _ensure_conditions_import(rewritten)
     if any(plan.literals for plan in plans):
         rewritten = _ensure_typing_import(rewritten, "Literal")

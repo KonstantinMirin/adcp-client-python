@@ -2,9 +2,42 @@
 
 ## Field changes
 
+- `account/list_account_changes_response.py`
+  - **classes added**: ListAccountChangesResponse
+  - **classes removed**: ListAccountChangesResponseShape
 - `brand/search_brands_response.py`
-  - **classes added**: SearchBrandsError, SearchBrandsResponseShape, SearchBrandsSuccess
-  - **classes removed**: SearchBrandsResponse
+  - **classes added**: SearchBrandsResponse
+  - **classes removed**: SearchBrandsResponseShape
 - `brand/verify_brand_claim_request.py`
-  - **classes added**: VerifyBrandClaimRequestShape, VerifyBrandClaimRequestVerifyParentClaim, VerifyBrandClaimRequestVerifyPropertyClaim, VerifyBrandClaimRequestVerifySubsidiaryClaim, VerifyBrandClaimRequestVerifyTrademarkClaim
-  - **classes removed**: VerifyBrandClaimRequest
+  - **classes added**: VerifyBrandClaimRequest
+  - **classes removed**: VerifyBrandClaimRequestShape
+- `core/audience_characteristic.py`
+  - **classes added**: AudienceCharacteristic
+  - **classes removed**: AudienceCharacteristicShape
+- `core/catchment.py`
+  - **classes added**: Catchment
+  - **classes removed**: CatchmentShape
+- `core/creative_asset.py`
+  - **classes added**: CreativeAsset
+  - **classes removed**: CreativeAssetShape
+- `core/creative_manifest.py`
+  - **classes added**: CreativeManifest
+  - **classes removed**: CreativeManifestShape
+- `core/frequency_cap_impression_constraints.py`
+  - **classes added**: FrequencyCapImpressionConstraints
+  - **classes removed**: FrequencyCapImpressionConstraintsShape
+- `core/frequency_cap_interval_constraints.py`
+  - **classes added**: FrequencyCapIntervalConstraints
+  - **classes removed**: FrequencyCapIntervalConstraintsShape
+- `core/get_geo_place_resolution_request.py`
+  - **classes added**: GetGeographicPlaceResolutionRequest
+  - **classes removed**: GetGeographicPlaceResolutionRequestShape
+- `core/webhook_challenge_response.py`
+  - **classes added**: WebhookChallengeResponse
+  - **classes removed**: WebhookChallengeResponseShape
+- `media_buy/create_media_buy_request.py`
+  - **classes added**: CreateMediaBuyRequest
+  - **classes removed**: CreateMediaBuyRequestShape
+- `media_buy/request_proposals_request.py`
+  - **classes added**: RequestProposalsRequest
+  - **classes removed**: RequestProposalsRequestShape

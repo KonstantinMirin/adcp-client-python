@@ -219,19 +219,21 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     )
 
     assert rewritten is not None
-    assert "class ThingShape(AdCPBaseModel):" in rewritten
-    assert "class ThingA(ThingShape):" in rewritten
-    assert "class ThingB(ThingShape):" in rewritten
-    assert "Thing: TypeAlias = Annotated[" in rewritten
+    assert "class Thing(AdCPBaseModel):" in rewritten
+    assert "class ThingA(Thing):" in rewritten
+    assert "class ThingB(Thing):" in rewritten
+    assert "ThingBranches: TypeAlias = Annotated[" in rewritten
     assert "    ThingA | ThingB," in rewritten
-    assert "ThingAdapter: TypeAdapter[Thing] = TypeAdapter(Thing)" in rewritten
-    base = rewritten.split("class ThingShape(AdCPBaseModel):")[1].split("class ThingA")[0]
+    assert (
+        "ThingBranchesAdapter: TypeAdapter[ThingBranches] = TypeAdapter(ThingBranches)" in rewritten
+    )
+    base = rewritten.split("class Thing(AdCPBaseModel):")[1].split("class ThingA")[0]
     assert "a: str | None = None" in base
     assert "b: str | None = None" in base
     assert "c: str | None = None" in base, "a field no arm constrains is declared once"
     # The arm that requires ``a`` restates only what it changes: ``a`` loses its
     # default, ``b`` becomes unpassable, and ``c`` is left to the base.
-    arm = rewritten.split("class ThingA(ThingShape):")[1].split("class ThingB")[0]
+    arm = rewritten.split("class ThingA(Thing):")[1].split("class ThingB")[0]
     assert "a: str\n" in arm
     assert "b: None = None" in arm
     assert "c:" not in arm
@@ -262,15 +264,15 @@ def test_every_arm_is_a_subclass_of_one_base_so_the_union_is_one_type() -> None:
     exec(  # noqa: S102 - the emitter's output is the subject; importing it is the test
         rewritten.replace("from __future__ import annotations", ""), namespace
     )
-    base = namespace["ThingShape"]
-    members = branch_members(namespace["Thing"])
+    base = namespace["Thing"]
+    members = branch_members(namespace["ThingBranches"])
 
     assert len(members) == 2
     assert all(issubclass(member, base) for member in members)
     assert {"a", "b", "c"} <= set(base.model_fields), "the base carries what the arms share"
-    assert namespace["ThingAdapter"].validate_python({"a": "x"}).a == "x"
+    assert namespace["ThingBranchesAdapter"].validate_python({"a": "x"}).a == "x"
     with pytest.raises(ValidationError):
-        namespace["ThingAdapter"].validate_python({"a": "x", "b": "y"})
+        namespace["ThingBranchesAdapter"].validate_python({"a": "x", "b": "y"})
 
 
 def test_the_base_is_public_because_a_consumer_needs_to_name_it() -> None:
@@ -296,7 +298,7 @@ def test_the_base_is_public_because_a_consumer_needs_to_name_it() -> None:
     )
 
     assert rewritten is not None
-    assert "class ThingShape(" in rewritten, "no leading underscore: it is public"
+    assert "class Thing(" in rewritten, "the base takes the root's own name"
     assert not rewritten.count("class _Thing"), "nothing module-internal is emitted for the root"
 
 
@@ -318,14 +320,14 @@ def test_a_class_that_subclassed_the_flat_root_is_repointed_onto_the_base() -> N
     rewritten = repoint_subclasses_of(module, "Thing")
 
     assert rewritten is not None
-    assert "class Extended(ThingShape):" in rewritten
-    assert "from ..core.thing import Thing, ThingShape" in rewritten
+    assert "class Extended(Thing):" in rewritten
+    assert "from ..core.thing import Thing" in rewritten
     assert repoint_subclasses_of(module, "Other") is None, "a module naming it in no base list"
 
     # A base nothing imports is a module that fails at import, so the rewrite
     # refuses rather than emitting one. The shape it understands is a single-line
     # import, which is what both sites on the pin use.
-    with pytest.raises(RuntimeError, match="to extend with ThingShape"):
+    with pytest.raises(RuntimeError, match="to extend with Thing"):
         repoint_subclasses_of(
             "from ..core.thing import (\n    Thing,\n)\n\n\nclass Extended(Thing):\n    pass\n",
             "Thing",
@@ -470,7 +472,7 @@ def test_unused_import_guard() -> None:
     assert pytest is not None
 
 
-def test_every_arm_of_every_split_root_names_its_root_shape() -> None:
+def test_every_branch_of_every_split_root_names_its_root() -> None:
     """The subclass relation, read off the SHIPPED tree rather than a re-render.
 
     ``isinstance(arm, shape)`` is the property the public base exists to give a
@@ -525,8 +527,10 @@ def test_every_arm_of_every_split_root_names_its_root_shape() -> None:
         # The root's own name is bound to a union here, so the shape is what the
         # module declares for it. A root the emitter did not split has no shape.
         root = _schema_root_name(schema)
-        shape = f"{root}Shape"
-        if shape not in bases:
+        # The base takes the root's own name, so a split module declares the
+        # root as a class and binds the union to <Root>Branches.
+        shape = root
+        if f"{root}Branches: TypeAlias" not in content:
             continue
         # The prover has to agree the root partitions: a shape with no proof
         # behind it would mean the emitter split something it should not have.
@@ -543,8 +547,8 @@ def test_every_arm_of_every_split_root_names_its_root_shape() -> None:
         for name in branch_class_names(root, constraints.arms, str(relative)):
             assert bases.get(name) == [shape], (relative, name, bases.get(name))
             arms += 1
-        assert f"{root}: TypeAlias" in content, relative
-        assert f"{root}Adapter: TypeAdapter[{root}]" in content, relative
+        assert f"{root}Branches: TypeAlias" in content, relative
+        assert f"{root}BranchesAdapter: TypeAdapter[{root}Branches]" in content, relative
         roots += 1
 
     assert roots >= 11, f"the prover found only {roots} split roots in the shipped tree"
@@ -560,80 +564,117 @@ def _schema_root_name(schema: dict[str, Any]) -> str:
     return _schema_title_to_class_name(title)
 
 
-def _public_split_roots() -> dict[str, tuple[type, tuple[type, ...]]]:
-    """Every name ``adcp.types`` exports that resolves to a union over one shape.
+def _split_roots_from_the_prover() -> dict[str, str]:
+    """Every root the partition prover splits, as ``{root class: combinator}``.
 
-    Derived, not listed: a root added or dropped by a schema refresh is picked
-    up without editing a test, and an alias of a root counts as the root --
-    ``LegacyCreateMediaBuyRequest`` is the same union under another public name.
+    The authoritative population comes from the schemas, not from matching
+    shapes at runtime: a derivation over runtime shapes cannot tell a split
+    root's union from any other union whose members happen to share a base,
+    and this repo exports several of those.
     """
-    import adcp.types as public
-
-    found: dict[str, tuple[type, tuple[type, ...]]] = {}
-    for name in sorted(public.__all__):
-        members = branch_members(getattr(public, name, None))
-        if not members:
-            continue
-        shared = {member.__mro__[1] for member in members}
-        if len(shared) != 1:
-            continue  # a union of unrelated classes, not a split root
-        shape = next(iter(shared))
-        if shape.__name__.endswith("Shape"):
-            found[name] = (shape, members)
-    return found
-
-
-def test_isinstance_against_the_public_shape_holds_for_every_arm() -> None:
-    """The property the public shape exists for, asserted at RUNTIME.
-
-    Not by parsing: this imports the shipped package, walks every public union
-    over a shape, and checks ``issubclass`` for each member. A parse can say the
-    base list names the shape; only an import can say the MRO actually holds and
-    that the name resolves off ``adcp.types``.
-    """
-    roots = _public_split_roots()
-    assert len(roots) >= 5, f"only {len(roots)} public split roots found: {sorted(roots)}"
-
-    arms = 0
-    for name, (shape, members) in roots.items():
-        for member in members:
-            assert issubclass(member, shape), f"{member.__name__} is not a {shape.__name__}"
-            # Every field the shape declares is reachable on the arm, which is
-            # what makes a method written against the shape work per arm.
-            assert set(shape.model_fields) <= set(member.model_fields), (name, member.__name__)
-            arms += 1
-
-    assert arms >= 10, f"only {arms} arms graded"
-
-
-def test_every_public_shape_is_the_shape_of_a_public_union_and_conversely() -> None:
-    """One rule, both directions: the two sets of shapes are the same set.
-
-    A shape nameable from ``adcp.types`` must be the shape behind some public
-    union, and a public union over a shape must have that shape nameable. Stated
-    as a set equality rather than as a name rule, because every name rule I tried
-    was wrong in a way the equality is not: ``<root>Shape`` fails for an alias
-    (``LegacyCreateMediaBuyRequest``'s shape is ``CreateMediaBuyRequestShape``),
-    and requiring ``<root>`` to be a union fails for ``CreativeAsset``, whose
-    public name is the CANONICAL model while ``LegacyCreativeAsset`` is the union.
-
-    Both directions caught a real error in the hand-picked export list I started
-    from: it published five shapes for roots nothing public names, and withheld
-    one that a public legacy union needs.
-    """
-    import adcp.types as public
-
-    exported_shapes = {
-        getattr(public, name)
-        for name in public.__all__
-        if name.endswith("Shape") and isinstance(getattr(public, name, None), type)
-    }
-    shapes_behind_public_unions = {shape for shape, _ in _public_split_roots().values()}
-
-    assert exported_shapes == shapes_behind_public_unions, (
-        "published but behind no public union: "
-        f"{sorted(c.__name__ for c in exported_shapes - shapes_behind_public_unions)}; "
-        "behind a public union but not published: "
-        f"{sorted(c.__name__ for c in shapes_behind_public_unions - exported_shapes)}"
+    from scripts.post_generate_fixes import (
+        SCHEMA_DIR,
+        _schema_root_class_name,
+        flat_root_shape,
     )
-    assert exported_shapes, "the derivation selected nothing"
+    from scripts.schema_constraints import (
+        bundle_document_resolver,
+        partitions_by_requiredness,
+        root_carries_constraints,
+    )
+
+    resolve = bundle_document_resolver(SCHEMA_DIR)
+    roots: dict[str, str] = {}
+    for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
+        relative = schema_file.relative_to(SCHEMA_DIR)
+        if relative.parts[0] in ("mcp", "bundled"):
+            continue
+        try:
+            schema = json.loads(schema_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(schema, dict) or not root_carries_constraints(schema):
+            continue
+        shape = flat_root_shape(schema, relative)
+        if shape is None:
+            continue
+        constraints = read_root_constraints(
+            schema,
+            shape,
+            arms_render_as_classes=False,
+            schema_file=str(relative),
+            resolve_document=resolve,
+        )
+        if not partitions_by_requiredness(constraints):
+            continue
+        root = _schema_root_class_name(schema)
+        assert root is not None
+        roots[root] = constraints.combinator or "anyOf"
+    return roots
+
+
+def test_isinstance_against_the_public_base_holds_for_every_branch() -> None:
+    """The property the public base exists for, asserted at RUNTIME.
+
+    Not by parsing: this imports the shipped package, walks every root the
+    prover splits, and checks ``issubclass`` for each branch. A parse can say
+    the base list names the base; only an import can say the MRO holds and that
+    the name resolves off ``adcp.types``.
+    """
+    import adcp.types._generated as generated
+
+    roots = _split_roots_from_the_prover()
+    assert len(roots) >= 11, f"the prover found only {len(roots)} split roots"
+
+    branches = 0
+    for root in sorted(roots):
+        base = getattr(generated, root, None)
+        assert isinstance(base, type), f"{root} does not resolve to a class"
+        members = branch_members(getattr(generated, f"{root}Branches", None))
+        assert members, f"{root}Branches is not a union over branches"
+        for member in members:
+            assert issubclass(member, base), f"{member.__name__} is not a {root}"
+            # Every field the base declares is reachable on the branch, which is
+            # what makes a method written against the base work per branch.
+            assert set(base.model_fields) <= set(member.model_fields), (root, member.__name__)
+            branches += 1
+
+    assert branches >= 24, f"only {branches} branches graded"
+
+
+def test_a_unions_visibility_follows_its_bases() -> None:
+    """``<Root>Branches`` is exported exactly where ``<Root>`` is.
+
+    The base takes the root's own name, so it is exported wherever the root
+    was. The union is the extra name, and it earns its place only beside a
+    public base -- a union nobody can pair with a nameable base is a name with
+    nothing to annotate against.
+
+    Both directions, because each is silent on its own.
+    """
+    import adcp.types as public
+
+    exported = set(public.__all__)
+    for root in sorted(_split_roots_from_the_prover()):
+        union = f"{root}Branches"
+        if union not in exported:
+            continue
+        # The invariant, not the provenance: whatever the public name denotes,
+        # the exported union's members must subclass it. That holds for the
+        # generated base and for a canonical base with its own branches, and it
+        # fails for a name bound to something the union does not cover.
+        base = getattr(public, root, None)
+        assert isinstance(base, type), f"{union} is public but {root} is not a class"
+        members = branch_members(getattr(public, union))
+        assert members, f"{union} is not a union over branches"
+        for member in members:
+            assert issubclass(
+                member, base
+            ), f"{union} has a member {member.__name__} that is not a {root}"
+
+    for name in sorted(n for n in exported if n.endswith("Branches")):
+        root = name[: -len("Branches")]
+        assert root in exported, f"{name} is public but {root} is not"
+        assert branch_members(getattr(public, name)), f"{name} is not a union over branches"
+
+    assert any(n.endswith("Branches") for n in exported), "the derivation selected nothing"

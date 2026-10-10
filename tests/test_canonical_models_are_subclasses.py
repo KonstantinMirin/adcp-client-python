@@ -170,3 +170,97 @@ def test_an_inherited_validator_that_reads_a_removed_field_still_works() -> None
         canonical_creative.Creative.model_validate(
             {k: v for k, v in row.items() if k != "format_kind"}
         )
+
+
+def _canonical_branch_pairs() -> list[tuple[type[BaseModel], type[BaseModel]]]:
+    """Every canonical class paired with the generated BRANCH it refines.
+
+    Derived from the MRO rather than listed: a canonical class refines a
+    generated branch when a generated class sits in its bases and that class is
+    itself a subclass of a generated split root's base. A schema refresh that
+    splits a twelfth root is covered without editing this.
+    """
+    import adcp.types._generated as generated
+    from adcp.types._split_root import branch_members
+
+    branches: set[type[BaseModel]] = set()
+    for name in dir(generated):
+        members = branch_members(getattr(generated, f"{name}Branches", None))
+        branches.update(members)
+
+    pairs: list[tuple[type[BaseModel], type[BaseModel]]] = []
+    for name in dir(canonical_creative):
+        candidate = getattr(canonical_creative, name)
+        if not isinstance(candidate, type) or not issubclass(candidate, BaseModel):
+            continue
+        refined = [base for base in candidate.__mro__[1:] if base in branches]
+        if refined:
+            pairs.append((candidate, refined[0]))
+    return pairs
+
+
+def test_the_canonical_branch_population_is_not_empty() -> None:
+    """A derivation that selects nothing passes for free."""
+    pairs = _canonical_branch_pairs()
+    assert len(pairs) >= 3, f"only {len(pairs)} canonical classes refine a generated branch"
+
+
+@pytest.mark.parametrize(
+    "canonical,generated",
+    _canonical_branch_pairs(),
+    ids=lambda model: getattr(model, "__name__", str(model)),
+)
+def test_a_canonical_branch_keeps_its_generated_branchs_requiredness(
+    canonical: type[BaseModel], generated: type[BaseModel]
+) -> None:
+    """Requiredness is the branch's own, field by field.
+
+    A canonical class refines the TYPE of a field; it must not change whether
+    the field is required. Requiredness is what distinguishes one branch from
+    another, so relaxing it here reinstates the flattening that branch classes
+    exist to remove -- a document satisfying no branch would be accepted at the
+    canonical surface, which is the one a consumer touches.
+
+    The mechanism that keeps this true is base ORDER, and it is a two-token
+    edit away from being wrong, which is why this is asserted rather than
+    documented.
+    """
+    divergent = [
+        name
+        for name, field in generated.model_fields.items()
+        if name in canonical.model_fields
+        and canonical.model_fields[name].is_required() != field.is_required()
+    ]
+    assert not divergent, (
+        f"{canonical.__name__} diverges from {generated.__name__} on the requiredness of "
+        f"{divergent}. The usual cause is base ORDER: the generated branch must be listed "
+        f"FIRST and CanonicalBoundaryModel LAST, so the branch's requiredness wins by MRO "
+        f"position and model_config still resolves from the canonical side. With the "
+        f"boundary first, every field the branch does not re-declare reverts to optional."
+    )
+
+
+@pytest.mark.parametrize(
+    "canonical,generated",
+    _canonical_branch_pairs(),
+    ids=lambda model: getattr(model, "__name__", str(model)),
+)
+def test_a_canonical_branch_declares_every_field_its_generated_branch_declares(
+    canonical: type[BaseModel], generated: type[BaseModel]
+) -> None:
+    """No field is lost on the way to the canonical surface, except by the rule.
+
+    ``CanonicalBoundaryModel`` removes legacy creative identity from a canonical
+    model's DECLARED fields, which is the layer's purpose. That exception is
+    read from the same predicate the production strip uses, so the test cannot
+    drift from the rule it is excepting -- a hand-listed field name would admit
+    a second removal nobody decided on.
+    """
+    from adcp.types.canonical_creative import is_legacy_creative_identity_key
+
+    missing = sorted(
+        name
+        for name in set(generated.model_fields) - set(canonical.model_fields)
+        if not is_legacy_creative_identity_key(name)
+    )
+    assert not missing, f"{canonical.__name__} drops {missing} declared by {generated.__name__}"

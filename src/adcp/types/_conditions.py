@@ -321,10 +321,29 @@ def name_the_combinator(keyword: str) -> Callable[[Any, Any], Any]:
         try:
             return handler(value)
         except ValidationError as exc:
+            # Group by branch: in a union's errors the first ``loc`` element
+            # names the branch that produced them.
+            per_branch: dict[str, list[dict[str, Any]]] = {}
+            for error in exc.errors():
+                if not error["loc"]:
+                    return handler(value)
+                per_branch.setdefault(str(error["loc"][0]), []).append(dict(error))
+            # Relabel ONLY when the document satisfies no branch's requiredness.
+            # If one branch got past its required fields and failed on content,
+            # that failure is what the caller needs, and replacing it with the
+            # combinator keyword would discard the only informative error --
+            # pydantic re-wraps a raise from inside a validator, so the original
+            # is not recoverable from ``__cause__`` either.
+            if not all(
+                any(error["type"] == "missing" for error in errors)
+                for errors in per_branch.values()
+            ):
+                raise
             absent = sorted(
                 {
                     str(error["loc"][-1])
-                    for error in exc.errors()
+                    for errors in per_branch.values()
+                    for error in errors
                     if error["type"] == "missing" and error["loc"]
                 }
             )

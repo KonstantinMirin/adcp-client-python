@@ -355,3 +355,44 @@ def test_name_the_combinator_names_the_keyword_and_keeps_the_fields() -> None:
     with pytest.raises(ValidationError) as other:
         adapter.validate_python({"a": 1, "b": 2})
     assert "anyOf" not in {error["type"] for error in other.value.errors()}
+
+
+def test_name_the_combinator_keeps_a_branchs_content_failure() -> None:
+    """A branch that passed its required fields owns the refusal.
+
+    The wrapper names the combinator only when the document satisfies NO
+    branch's requiredness. If one branch got past its required fields and then
+    failed on content -- a bound, a pattern, a nested rule -- that failure is
+    the informative one, and replacing it with ``anyOf`` would discard the only
+    error telling the caller what is wrong. Pydantic re-wraps a raise from
+    inside a validator, so the original is not recoverable afterwards either.
+    """
+    from typing import Annotated, TypeAlias
+
+    from pydantic import BaseModel, Field, TypeAdapter, ValidationError, WrapValidator
+
+    class Shape(BaseModel):
+        a: str | None = None
+        b: str | None = None
+
+    class First(Shape):
+        a: Annotated[str, Field(min_length=5)]
+
+    class Second(Shape):
+        b: str
+
+    Wrapped: TypeAlias = Annotated[First | Second, WrapValidator(c.name_the_combinator("anyOf"))]
+    adapter: TypeAdapter[First | Second] = TypeAdapter(Wrapped)
+
+    # ``a`` is supplied, so First passes requiredness and fails on the bound;
+    # Second reports ``b`` missing. The bound is what the caller needs.
+    with pytest.raises(ValidationError) as refusal:
+        adapter.validate_python({"a": "xy"})
+    types = {error["type"] for error in refusal.value.errors()}
+    assert "string_too_short" in types, refusal.value.errors()
+    assert "anyOf" not in types, "a branch's content failure was replaced by the keyword"
+
+    # And a document satisfying no branch's requiredness still names the keyword.
+    with pytest.raises(ValidationError) as none_matched:
+        adapter.validate_python({})
+    assert [error["type"] for error in none_matched.value.errors()] == ["anyOf"]

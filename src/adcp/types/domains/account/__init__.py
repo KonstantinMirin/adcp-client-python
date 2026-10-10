@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 21:38:35 UTC
+Generation date: 2026-10-10 22:59:08 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -34,10 +34,10 @@ from adcp.types.domains.account.list_account_changes_request import (
 from adcp.types.domains.account.list_account_changes_response import (
     Kind,
     ListAccountChangesResponse,
-    ListAccountChangesResponseAdapter,
+    ListAccountChangesResponseBranches,
+    ListAccountChangesResponseBranchesAdapter,
     ListAccountChangesResponseCompleted,
     ListAccountChangesResponseFailed,
-    ListAccountChangesResponseShape,
     SourceCoverageItem,
     Status22,
 )
@@ -81,10 +81,10 @@ __all__ = [
     "LastTopUp",
     "ListAccountChangesRequest",
     "ListAccountChangesResponse",
-    "ListAccountChangesResponseAdapter",
+    "ListAccountChangesResponseBranches",
+    "ListAccountChangesResponseBranchesAdapter",
     "ListAccountChangesResponseCompleted",
     "ListAccountChangesResponseFailed",
-    "ListAccountChangesResponseShape",
     "ListAccountsRequest",
     "ListAccountsResponse",
     "ReportUsageRequest",

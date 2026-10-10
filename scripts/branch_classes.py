@@ -53,6 +53,7 @@ hand-picked export list were found.
 from __future__ import annotations
 
 import ast
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -368,25 +369,89 @@ def _statement_source(statement: ast.stmt, source: str) -> str:
 
 
 def _base_name(flat_class: str) -> str:
-    """The shared base's spelling: the root's name and what the class is.
+    """The base takes the ROOT'S PLAIN NAME, so it needs no suffix at all.
 
-    PUBLIC, and the reasoning is what a consumer will want rather than what
-    the tree happens to do today. A method that behaves differently per arm
-    needs the arms to be one type, and a type nobody can name or annotate is
-    not one -- which puts a caller back at the bare union the base exists to
-    replace. So the base is exported and `isinstance` against it holds for
-    every arm.
+    The base is what a consumer constructs, parses through and tests with
+    ``isinstance``, because it carries the branches' core schema -- so the
+    root's own name belongs on it. Only the union needs a name of its own,
+    and :func:`_branches_name` gives it one.
 
-    ``Shape`` rather than ``Base``: ``versioned_bases`` already exports 197
-    public ``<Tool><Direction>Base`` names meaning something else entirely --
-    the named extension base for a tool's request at a pinned spec version --
-    and two of them (``CreateMediaBuyRequestBase``,
-    ``RequestProposalsRequestBase``) collide with roots this splits. ``Shape``
-    is free on all eleven, groups under the root's prefix in a namespace of
-    about a thousand names, and says what the class is: the shape every arm
-    shares.
+    An earlier spelling suffixed the base and bound the root's name to the
+    union. That made the public name uncallable, which broke two tests the repo
+    already merged to assert what a consumer does, and required editing every
+    call site to say the same thing in more words.
     """
-    return f"{flat_class}Shape"
+    return flat_class
+
+
+def _branches_name(flat_class: str) -> str:
+    """The union over the branches: the root's name plus ``Branches``.
+
+    Exported beside the base, because the two say different things. A consumer
+    annotating the base says "a request of this kind"; one annotating the union
+    says "exactly one of these", which is what makes a type checker force
+    exhaustive narrowing.
+    """
+    return f"{flat_class}Branches"
+
+
+def _schema_constant(flat_class: str) -> str:
+    """The module-level name holding the branches' core schema.
+
+    The base cannot reference the union in its own body: the branches subclass
+    the base, so the union does not exist when the base is created. The hook
+    reads this constant instead, which is ``None`` while the branches are being
+    built and the union's schema afterwards -- and the base is rebuilt once it
+    is set.
+    """
+    return f"_{re.sub(r'(?<!^)(?=[A-Z])', '_', flat_class).upper()}_BRANCHES"
+
+
+def _render_core_schema_hook(flat_class: str) -> list[str]:
+    """Give the base the branches' core schema, so every path dispatches.
+
+    Pydantic validates a nested field and a ``TypeAdapter`` through the CORE
+    SCHEMA, not through ``model_validate``. A classmethod override therefore
+    reaches only a caller who names ``model_validate`` directly, and six of the
+    eleven split roots are nested object schemas -- so a nested document
+    satisfying no branch would parse as the loose base. Measured: it did.
+
+    Returning the branches' schema for the base makes nesting, ``TypeAdapter``,
+    ``model_validate`` AND direct construction all dispatch to the branch the
+    document satisfies, and refuse a document that satisfies none or two.
+
+    The one thing it does not do is make ``Base(**fields)`` RETURN a branch
+    instance: ``__init__`` cannot swap ``self``. Such a value is validated
+    against the branches and is branch-typed only when parsed. Routing through
+    ``__new__`` would change that and is deliberately not done.
+    """
+    constant = _schema_constant(flat_class)
+    base = _base_constant(flat_class)
+    return [
+        "",
+        "    @classmethod",
+        "    def __get_pydantic_core_schema__(",
+        "        cls, source: Any, handler: GetCoreSchemaHandler",
+        "    ) -> CoreSchema:",
+        "        # The branches' schema, for THIS class alone. Keyed on identity,",
+        "        # not on the name: a branch inherits this method and must get its",
+        "        # own shape back, and so must a subclass elsewhere that reuses the",
+        "        # root's name -- the canonical layer declares one, and a name test",
+        "        # would hand it the generated branches and drop its narrowing.",
+        f"        if cls is not {base} or {constant} is None:",
+        "            return handler(source)",
+        f"        return {constant}",
+    ]
+
+
+def _base_constant(flat_class: str) -> str:
+    """The module-level name holding the base class itself.
+
+    ``cls is not <Base>`` cannot be written in the class body -- the name does
+    not exist while the class is being created -- so the hook reads this, which
+    is ``None`` during that first build and the class afterwards.
+    """
+    return f"{_schema_constant(flat_class)}_BASE"
 
 
 def _render_base(
@@ -423,9 +488,13 @@ def _render_base(
         "",
         members,
         "",
-        f"    Public. A caller annotates {flat_class} -- the union -- to say",
-        '    "one of these", and names this one to say "any of them": it is what',
-        "    an isinstance check tests and what a method behaving per arm takes.",
+        "    This class carries the branches' CORE SCHEMA, so parsing it -- by",
+        "    name, nested in another model, or through a TypeAdapter -- returns",
+        "    the branch the document satisfies, and refuses a document that",
+        "    satisfies none or two of them.",
+        "",
+        f"    {_branches_name(flat_class)} is the union over those branches, for a",
+        "    caller that wants a type checker to force exhaustive narrowing.",
         '    """',
         "",
     ]
@@ -446,6 +515,7 @@ def _render_base(
         body += 1
     if not body:
         lines.append("    pass")
+    lines.extend(_render_core_schema_hook(flat_class))
     return "\n".join(lines)
 
 
@@ -601,7 +671,18 @@ def split_into_branch_classes(
         return None
 
     plans = plan_branches(constraints, flat_class, schema_file, fields)
-    blocks = [_render_base(flat, flat_class, schema_file, source, [plan.name for plan in plans])]
+    blocks = [
+        "\n".join(
+            [
+                "#: The branches' core schema, set once the branches and their union",
+                f"#: exist. {flat_class}'s hook reads it; None means 'not yet', which is",
+                "#: the state while the branches themselves are being built.",
+                f"{_schema_constant(flat_class)}: CoreSchema | None = None",
+                f"{_base_constant(flat_class)}: type | None = None",
+            ]
+        ),
+        _render_base(flat, flat_class, schema_file, source, [plan.name for plan in plans]),
+    ]
     blocks.extend(
         _render_branch(plan, flat, flat_class, schema_file)
         + render_absence_hook(plan)
@@ -610,26 +691,35 @@ def split_into_branch_classes(
     )
     union = " | ".join(plan.name for plan in plans)
     combinator = constraints.combinator or "anyOf"
+    branches = _branches_name(flat_class)
+    constant = _schema_constant(flat_class)
     blocks.append(
         "\n".join(
             [
                 f"#: {schema_file}'s branches, proven pairwise disjoint, so a parsed",
-                "#: document comes back as exactly one of them. The alias is the contract;",
-                f"#: a member is what a caller names to CONSTRUCT one, and",
-                f"#: {_base_name(flat_class)} is what they share.",
+                "#: document comes back as exactly one of them. Annotate this to make a",
+                f"#: type checker force exhaustive narrowing; annotate {flat_class} to",
+                '#: say "a request of this kind" and get the same strictness at runtime.',
                 "#:",
                 "#: The wrapper names the root combinator on a refusal. A document that",
                 "#: satisfies no branch fails each branch at field validation, so pydantic",
-                "#: reports 'missing' and nothing names the keyword that core/error.json",
-                "#: requires in issues[].keyword. A validator on the shared base cannot",
-                "#: supply it: field validation fails before an after-validator runs.",
-                f"{flat_class}: TypeAlias = Annotated[",
+                "#: reports 'missing' and nothing names the keyword core/error.json",
+                "#: requires in issues[].keyword.",
+                f"{branches}: TypeAlias = Annotated[",
                 f"    {union},",
                 f"    WrapValidator(_c.name_the_combinator({combinator!r})),",
                 "]",
                 "",
-                "#: Parsing is what a union needs an adapter for. Built once, at import.",
-                f"{flat_class}Adapter: TypeAdapter[{flat_class}] = TypeAdapter({flat_class})",
+                "#: Parsing a union is what a TypeAdapter is for. Built once, at import.",
+                f"{branches}Adapter: TypeAdapter[{branches}] = TypeAdapter({branches})",
+                "",
+                f"# {flat_class} is declared above the branches, so it cannot name the",
+                "# union in its own body. Its core-schema hook reads this constant, which",
+                "# is None while the branches are built and the union's schema after --",
+                "# and the rebuild below is what makes the base use it.",
+                f"{constant} = {branches}Adapter.core_schema",
+                f"{_base_constant(flat_class)} = {flat_class}",
+                f"{flat_class}.model_rebuild(force=True)",
             ]
         )
     )

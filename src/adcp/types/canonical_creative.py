@@ -91,11 +91,13 @@ from pydantic import (
     AfterValidator,
     ConfigDict,
     Field,
+    GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     PrivateAttr,
     SerializerFunctionWrapHandler,
     TypeAdapter,
     WithJsonSchema,
+    WrapValidator,
     field_validator,
     model_serializer,
     model_validator,
@@ -103,6 +105,7 @@ from pydantic import (
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import CoreSchema
 
+from adcp.types import _conditions
 from adcp.types._product_format_declaration import (
     PRODUCT_FORMAT_DECLARATION_SCHEMA,
     check_declaration_rules,
@@ -147,10 +150,12 @@ from adcp.types.domains.creative.sync_creatives_request import (
 )
 from adcp.types.domains.enums.channels import MediaChannel
 from adcp.types.domains.media_buy.create_media_buy_request import (
-    # One arm each. The root's arms partition by requiredness, so there is no
-    # single wire class to refine: two arms require ``packages`` and the third
-    # forbids it, which is why the canonical view is a class per arm and a union
-    # rather than one class redeclaring the field as optional.
+    # The generated base and one class per branch. The root's branches partition
+    # by requiredness, so there is no single wire class to refine: two branches
+    # require ``packages`` and the third forbids it.
+    CreateMediaBuyRequest as _LegacyCreateMediaBuyBase,
+)
+from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequestCommittedProposalExecution as _LegacyCreateMediaBuyProposal,
 )
 from adcp.types.domains.media_buy.create_media_buy_request import (
@@ -1038,23 +1043,53 @@ class GetProductsResponse(_LegacyGetProductsResponse, CanonicalBoundaryModel):
     products: list[Product] | None = None  # type: ignore[assignment]
 
 
+_CANONICAL_CREATE_MEDIA_BUY_BRANCHES: CoreSchema | None = None
+_CANONICAL_CREATE_MEDIA_BUY_BASE: type | None = None
+
+
+class CreateMediaBuyRequest(_LegacyCreateMediaBuyBase, CanonicalBoundaryModel):
+    """Canonical create request; packages are canonical package requests.
+
+    This class carries the branches' core schema, so parsing it -- by name,
+    nested in another model, or through a ``TypeAdapter`` -- returns the
+    canonical branch the document satisfies.
+
+    ``packages`` is narrowed at the BASE's requiredness, not at a branch's. A
+    base cannot carry one requiredness for a field whose requiredness is what
+    distinguishes the branches, so each branch re-declares the narrowing at its
+    own. The generated branch is listed FIRST in each branch's bases, so the
+    branch's requiredness wins by MRO position, and ``CanonicalBoundaryModel``
+    is listed LAST so ``model_config`` resolves from the canonical side.
+    """
+
+    packages: Sequence[PackageRequest] | None = None
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
+        # Keyed on identity: a branch inherits this and must get its own shape,
+        # and so must the generated base, which shares this class's name.
+        if cls is not _CANONICAL_CREATE_MEDIA_BUY_BASE or (
+            _CANONICAL_CREATE_MEDIA_BUY_BRANCHES is None
+        ):
+            return handler(source)
+        return _CANONICAL_CREATE_MEDIA_BUY_BRANCHES
+
+
 class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(
-    _LegacyCreateMediaBuyFixed, CanonicalBoundaryModel
+    _LegacyCreateMediaBuyFixed, CreateMediaBuyRequest
 ):
     """Canonical fixed-allocation create request; packages are canonical.
 
-    ``packages`` is REQUIRED here, which is the arm's own requiredness rather
-    than something this layer restores. The single canonical class this
-    replaced declared ``packages: list[PackageRequest] | None = None`` over all
-    three arms at once, and that default silently relaxed a field two of the
-    arms require.
+    ``packages`` is re-declared to carry the CANONICAL item type. Its
+    requiredness comes from the generated branch by MRO position, not from this
+    line -- dropping the line keeps the field required and loses the narrowing.
     """
 
     packages: Sequence[PackageRequest]
 
 
 class CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation(
-    _LegacyCMBSellerOptimized, CanonicalBoundaryModel
+    _LegacyCMBSellerOptimized, CreateMediaBuyRequest
 ):
     """Canonical seller-optimized create request; packages are canonical."""
 
@@ -1062,28 +1097,38 @@ class CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation(
 
 
 class CreateMediaBuyRequestCommittedProposalExecution(
-    _LegacyCreateMediaBuyProposal, CanonicalBoundaryModel
+    _LegacyCreateMediaBuyProposal, CreateMediaBuyRequest
 ):
     """Canonical proposal-execution create request.
 
-    Nothing to narrow: this arm forbids ``packages``, so the field is typed
-    ``None`` by the arm and there is no item type for this layer to refine.
-    Re-declaring it here as a canonical list would re-widen what the arm bans.
+    ``packages`` is re-declared as ``None`` because this branch FORBIDS it. The
+    canonical base narrows the field for the branches that permit it, and that
+    narrowing and this ban are incompatible declarations inherited from two
+    bases -- so the ban is restated here, where it is true, rather than silenced.
+    Re-declaring it as a canonical list would re-widen what the branch bans.
     """
 
+    packages: None = None
 
-#: The canonical create request, one arm per shape. Keeps the root's public
-#: name, so an existing annotation still means "one of these".
-CreateMediaBuyRequest: TypeAlias = (
+
+#: The canonical create request's branches. Annotate this to make a type checker
+#: force exhaustive narrowing; annotate CreateMediaBuyRequest for the same
+#: strictness at runtime under one name.
+CreateMediaBuyRequestBranches: TypeAlias = Annotated[
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation
     | CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation
-    | CreateMediaBuyRequestCommittedProposalExecution
+    | CreateMediaBuyRequestCommittedProposalExecution,
+    WrapValidator(_conditions.name_the_combinator("anyOf")),
+]
+
+#: Parsing a union is what a TypeAdapter is for. Built once, at import.
+CreateMediaBuyRequestBranchesAdapter: TypeAdapter[CreateMediaBuyRequestBranches] = TypeAdapter(
+    CreateMediaBuyRequestBranches
 )
 
-#: Parsing is what a union needs an adapter for. Built once, at import.
-CreateMediaBuyRequestAdapter: TypeAdapter[CreateMediaBuyRequest] = TypeAdapter(
-    CreateMediaBuyRequest
-)
+_CANONICAL_CREATE_MEDIA_BUY_BRANCHES = CreateMediaBuyRequestBranchesAdapter.core_schema
+_CANONICAL_CREATE_MEDIA_BUY_BASE = CreateMediaBuyRequest
+CreateMediaBuyRequest.model_rebuild(force=True)
 
 
 class UpdateMediaBuyRequest(_LegacyUpdateMediaBuyRequest, CanonicalBoundaryModel):
@@ -1262,7 +1307,8 @@ PRIMARY_CANONICAL_MODELS: tuple[type[CanonicalBoundaryModel], ...] = (
 __all__ = [
     "CanonicalBoundaryModel",
     "CreateMediaBuyRequest",
-    "CreateMediaBuyRequestAdapter",
+    "CreateMediaBuyRequestBranches",
+    "CreateMediaBuyRequestBranchesAdapter",
     "CreateMediaBuyRequestCommittedProposalExecution",
     "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
     "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",

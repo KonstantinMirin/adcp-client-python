@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 21:38:35 UTC
+Generation date: 2026-10-10 22:59:08 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -337,9 +337,9 @@ from adcp.types.domains.core.audience_activation_method import (
 )
 from adcp.types.domains.core.audience_characteristic import (
     AudienceCharacteristic,
-    AudienceCharacteristicAdapter,
+    AudienceCharacteristicBranches,
+    AudienceCharacteristicBranchesAdapter,
     AudienceCharacteristicRange,
-    AudienceCharacteristicShape,
     AudienceCharacteristicValue,
 )
 from adcp.types.domains.core.audience_evidence import (
@@ -520,10 +520,10 @@ from adcp.types.domains.core.catalog_item_reference_not_found_error import (
 from adcp.types.domains.core.catalog_selection import CatalogSelection
 from adcp.types.domains.core.catchment import (
     Catchment,
-    CatchmentAdapter,
+    CatchmentBranches,
+    CatchmentBranchesAdapter,
     CatchmentGeometry,
     CatchmentRadius,
-    CatchmentShape,
     CatchmentTransportModeTravelTime,
 )
 from adcp.types.domains.core.collection import Collection, RelatedCollection
@@ -555,8 +555,8 @@ from adcp.types.domains.core.context import ContextObject
 from adcp.types.domains.core.creative_approval_scope import ScopedCreativeApproval
 from adcp.types.domains.core.creative_asset import (
     CreativeAsset,
-    CreativeAssetAdapter,
-    CreativeAssetShape,
+    CreativeAssetBranches,
+    CreativeAssetBranchesAdapter,
     CreativeAssetV1CreativeNamedFormatReference,
     CreativeAssetV2CreativeCanonicalFormatKind,
     Input,
@@ -579,10 +579,10 @@ from adcp.types.domains.core.creative_localization_readback import (
 )
 from adcp.types.domains.core.creative_manifest import (
     CreativeManifest,
-    CreativeManifestAdapter,
+    CreativeManifestBranches,
+    CreativeManifestBranchesAdapter,
     CreativeManifestCanonicalFormatManifest,
     CreativeManifestNamedFormatManifest,
-    CreativeManifestShape,
 )
 from adcp.types.domains.core.creative_operation_format_declaration import (
     CreativeOperationFormatDeclaration,
@@ -808,18 +808,18 @@ from adcp.types.domains.core.frequency_cap_duration_unit import FrequencyCapDura
 from adcp.types.domains.core.frequency_cap_impression_constraints import (
     AllowedValue,
     FrequencyCapImpressionConstraints,
-    FrequencyCapImpressionConstraintsAdapter,
     FrequencyCapImpressionConstraintsAllowedValues,
+    FrequencyCapImpressionConstraintsBranches,
+    FrequencyCapImpressionConstraintsBranchesAdapter,
     FrequencyCapImpressionConstraintsMaximumMinimum,
-    FrequencyCapImpressionConstraintsShape,
 )
 from adcp.types.domains.core.frequency_cap_interval_constraints import (
     AllowedInterval,
     FrequencyCapIntervalConstraints,
-    FrequencyCapIntervalConstraintsAdapter,
     FrequencyCapIntervalConstraintsAllowedIntervals,
+    FrequencyCapIntervalConstraintsBranches,
+    FrequencyCapIntervalConstraintsBranchesAdapter,
     FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
-    FrequencyCapIntervalConstraintsShape,
 )
 from adcp.types.domains.core.frequency_cap_requirements import FrequencyCapRequirements
 from adcp.types.domains.core.generation_credential import GenerationCredential
@@ -856,9 +856,9 @@ from adcp.types.domains.core.geo_region_requirement import Countries1, Geographi
 from adcp.types.domains.core.geo_region_support import Countries3, GeographicRegionSupport
 from adcp.types.domains.core.get_geo_place_resolution_request import (
     GetGeographicPlaceResolutionRequest,
-    GetGeographicPlaceResolutionRequestAdapter,
+    GetGeographicPlaceResolutionRequestBranches,
+    GetGeographicPlaceResolutionRequestBranchesAdapter,
     GetGeographicPlaceResolutionRequestQ,
-    GetGeographicPlaceResolutionRequestShape,
     GetGeographicPlaceResolutionRequestValue,
 )
 from adcp.types.domains.core.get_geo_place_resolution_response import (
@@ -1756,9 +1756,9 @@ from adcp.types.domains.core.webhook_activity_record import WebhookActivityRecor
 from adcp.types.domains.core.webhook_challenge import WebhookChallenge
 from adcp.types.domains.core.webhook_challenge_response import (
     WebhookChallengeResponse,
-    WebhookChallengeResponseAdapter,
+    WebhookChallengeResponseBranches,
+    WebhookChallengeResponseBranchesAdapter,
     WebhookChallengeResponseChallenge,
-    WebhookChallengeResponseShape,
     WebhookChallengeResponseToken,
 )
 from adcp.types.domains.core.wholesale_feed_event import (
@@ -1945,9 +1945,9 @@ __all__ = [
     "AudienceActivationMethods4",
     "AudienceActivationMethods5",
     "AudienceCharacteristic",
-    "AudienceCharacteristicAdapter",
+    "AudienceCharacteristicBranches",
+    "AudienceCharacteristicBranchesAdapter",
     "AudienceCharacteristicRange",
-    "AudienceCharacteristicShape",
     "AudienceCharacteristicValue",
     "AudienceEvidence",
     "AudienceEvidencePin",
@@ -2115,10 +2115,10 @@ __all__ = [
     "CatalogSelection",
     "CatalogType",
     "Catchment",
-    "CatchmentAdapter",
+    "CatchmentBranches",
+    "CatchmentBranchesAdapter",
     "CatchmentGeometry",
     "CatchmentRadius",
-    "CatchmentShape",
     "CatchmentTransportModeTravelTime",
     "Category",
     "ChangedFields",
@@ -2176,8 +2176,8 @@ __all__ = [
     "CreateMediaBuySubmitted",
     "CreateMediaBuyWorking",
     "CreativeAsset",
-    "CreativeAssetAdapter",
-    "CreativeAssetShape",
+    "CreativeAssetBranches",
+    "CreativeAssetBranchesAdapter",
     "CreativeAssetV1CreativeNamedFormatReference",
     "CreativeAssetV2CreativeCanonicalFormatKind",
     "CreativeAssets",
@@ -2193,10 +2193,10 @@ __all__ = [
     "CreativeLocalization",
     "CreativeLocalizationReadback",
     "CreativeManifest",
-    "CreativeManifestAdapter",
+    "CreativeManifestBranches",
+    "CreativeManifestBranchesAdapter",
     "CreativeManifestCanonicalFormatManifest",
     "CreativeManifestNamedFormatManifest",
-    "CreativeManifestShape",
     "CreativeOperationFormatDeclaration",
     "CreativePolicy",
     "CreativeRepresentation",
@@ -2347,15 +2347,15 @@ __all__ = [
     "FrequencyCapConstraints",
     "FrequencyCapDurationUnit",
     "FrequencyCapImpressionConstraints",
-    "FrequencyCapImpressionConstraintsAdapter",
     "FrequencyCapImpressionConstraintsAllowedValues",
+    "FrequencyCapImpressionConstraintsBranches",
+    "FrequencyCapImpressionConstraintsBranchesAdapter",
     "FrequencyCapImpressionConstraintsMaximumMinimum",
-    "FrequencyCapImpressionConstraintsShape",
     "FrequencyCapIntervalConstraints",
-    "FrequencyCapIntervalConstraintsAdapter",
     "FrequencyCapIntervalConstraintsAllowedIntervals",
+    "FrequencyCapIntervalConstraintsBranches",
+    "FrequencyCapIntervalConstraintsBranchesAdapter",
     "FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval",
-    "FrequencyCapIntervalConstraintsShape",
     "FrequencyCapRequirements",
     "Freshness",
     "FuelType",
@@ -2384,9 +2384,9 @@ __all__ = [
     "GeographicRegionSupport",
     "GetCreativeFeaturesSubmitted",
     "GetGeographicPlaceResolutionRequest",
-    "GetGeographicPlaceResolutionRequestAdapter",
+    "GetGeographicPlaceResolutionRequestBranches",
+    "GetGeographicPlaceResolutionRequestBranchesAdapter",
     "GetGeographicPlaceResolutionRequestQ",
-    "GetGeographicPlaceResolutionRequestShape",
     "GetGeographicPlaceResolutionRequestValue",
     "GetGeographicPlaceResolutionResponse",
     "GetProductsInputRequired",
@@ -3246,9 +3246,9 @@ __all__ = [
     "WebhookAssetRequirements",
     "WebhookChallenge",
     "WebhookChallengeResponse",
-    "WebhookChallengeResponseAdapter",
+    "WebhookChallengeResponseBranches",
+    "WebhookChallengeResponseBranchesAdapter",
     "WebhookChallengeResponseChallenge",
-    "WebhookChallengeResponseShape",
     "WebhookChallengeResponseToken",
     "WebhookResponseType",
     "WebhookSecurityMethod",
