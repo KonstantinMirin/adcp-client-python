@@ -82,3 +82,78 @@ def test_high_risk_behavioral_extension_has_targeted_runtime_validator() -> None
                 "constraints": {"kind": "budget", "max_delta_percent": 10},
             }
         )
+
+
+#: The generated validator whose completeness this module grades. The
+#: post-processor emits it for a schema root whose ``anyOf``/``oneOf`` arms all
+#: declare ``required`` (``_root_required_groups`` in
+#: ``scripts/post_generate_fixes.py``), and it checks only that one arm's
+#: ``required`` names are present. A root conditional (``if``/``then``/``else``)
+#: gets no such validator, which is why ``get_signals`` is outside this
+#: population and its declared divergences are not graded here.
+_REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
+
+
+def _carries_required_group_validator(model: type[BaseModel]) -> bool:
+    """Whether the generator emitted the root required-group validator here."""
+    return _REQUIRED_GROUP_VALIDATOR in model.__pydantic_decorators__.model_validators
+
+
+def _required_group_cases() -> list[dict[str, Any]]:
+    """Fixture cases whose model carries the emitted required-group validator.
+
+    Derived from the live classes: membership is whether the generator put the
+    validator on the model, not a list of ids maintained here.
+    """
+    return [
+        case
+        for case in _CASES
+        if _carries_required_group_validator(getattr(public_types, case["model"]))
+    ]
+
+
+def test_the_required_group_population_is_not_empty() -> None:
+    """A derivation that selects nothing passes for free."""
+    cases = _required_group_cases()
+    assert cases, (
+        "no fixture case exercises a model carrying "
+        f"{_REQUIRED_GROUP_VALIDATOR}; the rule below grades nothing"
+    )
+    assert any(not case["canonical_valid"] for case in cases), (
+        "every such case is schema-valid, so the validator's refusals go ungraded"
+    )
+
+
+@pytest.mark.parametrize("case", _required_group_cases(), ids=lambda case: str(case["id"]))
+def test_emitted_required_group_validator_refuses_what_the_schema_refuses(
+    case: dict[str, Any],
+) -> None:
+    """The emitted validator must be the whole root constraint, not part of it.
+
+    ``enforce_root_required_groups`` states that a presence check over each
+    arm's ``required`` names "is the whole constraint for ``anyOf``". Where an
+    arm also carries ``not``, a nested ``allOf`` or a discriminating ``const``,
+    it is not: the model then accepts a document satisfying no arm of its own
+    schema, and ``model_validate`` is what a caller reads as the contract.
+
+    Both verdicts are computed here rather than read off the fixture, and this
+    rule consults no divergence ledger. Recording the difference does not
+    satisfy it and neither does editing a recorded outcome — only the two
+    validators agreeing on the document does.
+    """
+    model = getattr(public_types, case["model"])
+    canonical_accepts = _canonical_accepts(case)
+    pydantic_accepts = _pydantic_accepts(model, case["payload"])
+
+    if canonical_accepts:
+        assert pydantic_accepts, (
+            f"{case['id']}: the bundled schema accepts this document and {case['model']} refuses it"
+        )
+        return
+
+    assert not pydantic_accepts, (
+        f"{case['id']}: the bundled schema refuses this document and "
+        f"{case['model']}.model_validate accepts it. The root combinator's arms "
+        f"carry conditions beyond their 'required' names, and "
+        f"{_REQUIRED_GROUP_VALIDATOR} checks only the names."
+    )

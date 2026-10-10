@@ -335,5 +335,24 @@
     },
     "canonical_valid": true,
     "pydantic_valid": true
+  },
+  {
+    "id": "create_media_buy.no_required_group_at_all",
+    "tool": "create_media_buy",
+    "direction": "request",
+    "model": "CreateMediaBuyRequest",
+    "payload": {
+      "account": {
+        "account_id": "acct_test"
+      },
+      "brand": {
+        "domain": "example.com"
+      },
+      "idempotency_key": "0123456789abcdef0123",
+      "start_time": "2026-10-07T00:00:00+00:00",
+      "end_time": "2026-11-05T00:00:00+00:00"
+    },
+    "canonical_valid": false,
+    "pydantic_valid": false
   }
 ]
