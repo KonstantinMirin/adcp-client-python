@@ -441,12 +441,14 @@ async def test_get_products_with_preview_urls():
     # Raw result from adapter (unparsed)
     mock_raw_result = TaskResult(
         status=TaskStatus.COMPLETED,
-        data={"products": []},  # Will be replaced by _parse_response mock
+        data={"products": [], "cache_scope": "public"},  # Replaced by the _parse_response mock
         success=True,
     )
 
     # Parsed result from _parse_response
-    mock_products_response = GetProductsResponse(products=[product], errors=None)
+    mock_products_response = GetProductsResponse(
+        products=[product], errors=None, cache_scope="public"
+    )
     mock_parsed_result = TaskResult(
         status=TaskStatus.COMPLETED, data=mock_products_response, success=True
     )

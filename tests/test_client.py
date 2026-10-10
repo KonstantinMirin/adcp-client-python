@@ -221,7 +221,7 @@ async def test_get_products():
 
     mock_parsed_result = TaskResult[GetProductsResponse](
         status=TaskStatus.COMPLETED,
-        data=GetProductsResponse(products=[]),  # Properly typed result
+        data=GetProductsResponse(products=[], cache_scope="public"),  # Properly typed result
         success=True,
     )
 
@@ -261,6 +261,9 @@ def test_get_products_preserves_canonical_format_options():
         status=TaskStatus.COMPLETED,
         success=True,
         data={
+            # Required on every 3.1+ get_products response by the root
+            # conditional's standard branch, alongside ``products``.
+            "cache_scope": "public",
             "products": [
                 _get_products_product(
                     format_options=[
@@ -271,7 +274,7 @@ def test_get_products_preserves_canonical_format_options():
                         }
                     ]
                 )
-            ]
+            ],
         },
     )
 
@@ -303,6 +306,7 @@ def test_get_products_still_projects_legacy_format_ids():
         status=TaskStatus.COMPLETED,
         success=True,
         data={
+            "cache_scope": "public",
             "products": [
                 _get_products_product(
                     format_ids=[
@@ -312,7 +316,7 @@ def test_get_products_still_projects_legacy_format_ids():
                         }
                     ]
                 )
-            ]
+            ],
         },
     )
 
@@ -956,7 +960,7 @@ async def test_multi_agent_parallel_execution():
 
     mock_result = TaskResult(
         status=TaskStatus.COMPLETED,
-        data={"products": []},
+        data={"products": [], "cache_scope": "public"},
         success=True,
     )
 

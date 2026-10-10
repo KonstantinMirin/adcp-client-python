@@ -276,6 +276,7 @@ PARTITIONING_ROOTS = frozenset(
         "core/get-geo-place-resolution-request.json",
         "core/webhook-challenge-response.json",
         "media-buy/create-media-buy-request.json",
+        "media-buy/request-proposals-request.json",
     }
 )
 

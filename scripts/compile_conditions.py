@@ -18,6 +18,66 @@ from __future__ import annotations
 import keyword
 from typing import Any
 
+#: The JSON Schema keywords an injected runtime check may name.
+#:
+#: ``core/error.json`` requires every ``issues[]`` entry to carry a ``keyword``
+#: "drawn from the JSON Schema vocabulary" and says not to invent values there,
+#: so a check names the keyword of the construct it restores and nothing else.
+#: Membership is checked rather than documented because an invented keyword
+#: reaches the wire looking exactly like a real one.
+SCHEMA_KEYWORDS = frozenset(
+    {
+        "allOf",
+        "anyOf",
+        "const",
+        "contains",
+        "dependentRequired",
+        "else",
+        "enum",
+        "format",
+        "if",
+        "maxItems",
+        "maxLength",
+        "maximum",
+        "minItems",
+        "minLength",
+        "minimum",
+        "not",
+        "oneOf",
+        "pattern",
+        "propertyNames",
+        "required",
+        "then",
+        "type",
+        "uniqueItems",
+    }
+)
+
+
+def schema_keyword_raise(keyword: str, message: str, *, indent: str = " " * 8) -> str:
+    """Render the ``raise`` statement an injected runtime check refuses with.
+
+    ``PydanticCustomError`` sets pydantic's error ``type`` to its first argument
+    and keeps the message verbatim, so ``e.errors()[0]["type"]`` is the schema
+    keyword that rejected the payload — which is what a consumer needs for
+    ``error.issues[].keyword``. A bare ``ValueError`` becomes ``value_error``,
+    which names no keyword, and a consumer assembling a conformant envelope then
+    has to drop the issue and refuse the buyer with no structured reason.
+
+    The caller passes the keyword the SCHEMA states, never one read off the
+    message: the English is written for a human and two different keywords can
+    share a phrasing.
+    """
+    if keyword not in SCHEMA_KEYWORDS:
+        raise ValueError(f"{keyword!r} is not a JSON Schema keyword an issue may name")
+    return (
+        f"{indent}raise PydanticCustomError(\n"
+        f"{indent}    {keyword!r},\n"
+        f"{indent}    {message!r},\n"
+        f"{indent})"
+    )
+
+
 try:
     from schema_constraints import (
         AllOf,
@@ -337,9 +397,14 @@ def _render_combinator(constraints: RootConstraints, class_name: str, subject: s
         lines.append("            )")
     lines.append("        ):")
     message = f"{class_name} {GROUP_MESSAGE_PREFIX}: {' | '.join(labels)}"
-    lines.append("            raise ValueError(")
-    lines.append(f"                {message!r}")
-    lines.append("            )")
+    # The keyword the SCHEMA states, never one read off the message: a consumer
+    # needs it for ``error.issues[].keyword``, which ``core/error.json`` requires
+    # and tells it not to invent. A bare ValueError arrives as ``value_error``,
+    # names no keyword, and the consumer then drops the issue and refuses the
+    # buyer with nothing structured. This is #1435, which landed in beta.3 on
+    # the function this series replaced -- the keyword is still known here,
+    # because the reader records which combinator the arms came from.
+    lines.append(schema_keyword_raise(constraints.combinator or "anyOf", message, indent=" " * 12))
 
     # ``oneOf`` is exactly one, which is derivable now that each arm's
     # predicate is its whole condition. The required-names-only reading could
@@ -357,9 +422,7 @@ def _render_combinator(constraints: RootConstraints, class_name: str, subject: s
             f"field groups: {' | '.join(labels)}"
         )
         lines.append(f"        if [{satisfied}].count(True) != 1:")
-        lines.append("            raise ValueError(")
-        lines.append(f"                {exclusive!r}")
-        lines.append("            )")
+        lines.append(schema_keyword_raise("oneOf", exclusive, indent=" " * 12))
     return lines
 
 
@@ -373,11 +436,11 @@ def _render_conjunct(
         f"{class_name} violates a constraint its schema states outside its "
         f"properties ({schema_file}, root conjunct {index})"
     )
+    # A root conjunct is an ``allOf`` member: that is the keyword a consumer
+    # reads for a constraint the root states beside its combinator.
     return [
         "        if not (",
         _wrap(predicate, " " * 12),
         "        ):",
-        "            raise ValueError(",
-        f"                {message!r}",
-        "            )",
+        schema_keyword_raise("allOf", message, indent=" " * 12),
     ]

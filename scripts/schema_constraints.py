@@ -787,7 +787,16 @@ class _Parser:
             conjuncts.append(
                 Not(self._node(schema["not"], "not", root_declaration, self._root_shape))
             )
-        if combinator is None and isinstance(schema.get("allOf"), list):
+        # A root ``allOf`` is two things at once, and both are read. Its
+        # ``$ref`` members are inheritance, which the generator renders and
+        # ``_declaration_of`` therefore counts as declared, so they compile to
+        # ``Restated`` and drop out here. Its inline members are conjuncts
+        # beside whatever else the root states -- including beside a
+        # combinator: ``create-media-buy-request``'s ``allOf`` carries the
+        # opportunity-implies-proposal rule and the bidding rule next to its
+        # three-arm ``anyOf``, and reading them only in the absence of a
+        # combinator dropped both.
+        if isinstance(schema.get("allOf"), list):
             for index, member in enumerate(schema["allOf"]):
                 compiled = self._node(member, f"allOf/{index}", root_declaration, self._root_shape)
                 if not isinstance(compiled, Restated):

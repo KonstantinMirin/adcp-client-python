@@ -26,7 +26,12 @@ async def test_get_products_simple_api():
         name="Test Product",
         description="A test product",
     )
-    mock_response = GetProductsResponse.model_construct(products=[mock_product])
+    # ``model_construct`` skips field validation but the TaskResult below
+    # revalidates, so the response still has to be one its schema accepts:
+    # ``cache_scope`` is required on every 3.1+ get_products response.
+    mock_response = GetProductsResponse.model_construct(
+        products=[mock_product], cache_scope="public"
+    )
     mock_result = TaskResult[GetProductsResponse](
         status=TaskStatus.COMPLETED, data=mock_response, success=True
     )

@@ -119,9 +119,9 @@ def test_the_required_group_population_is_not_empty() -> None:
         "no fixture case exercises a model carrying "
         f"{_REQUIRED_GROUP_VALIDATOR}; the rule below grades nothing"
     )
-    assert any(not case["canonical_valid"] for case in cases), (
-        "every such case is schema-valid, so the validator's refusals go ungraded"
-    )
+    assert any(
+        not case["canonical_valid"] for case in cases
+    ), "every such case is schema-valid, so the validator's refusals go ungraded"
 
 
 @pytest.mark.parametrize("case", _required_group_cases(), ids=lambda case: str(case["id"]))
@@ -146,9 +146,9 @@ def test_emitted_required_group_validator_refuses_what_the_schema_refuses(
     pydantic_accepts = _pydantic_accepts(model, case["payload"])
 
     if canonical_accepts:
-        assert pydantic_accepts, (
-            f"{case['id']}: the bundled schema accepts this document and {case['model']} refuses it"
-        )
+        assert (
+            pydantic_accepts
+        ), f"{case['id']}: the bundled schema accepts this document and {case['model']} refuses it"
         return
 
     assert not pydantic_accepts, (

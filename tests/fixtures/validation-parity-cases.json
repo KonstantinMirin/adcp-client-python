@@ -28,7 +28,7 @@
     "model": "GetSignalsRequest",
     "payload": {},
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "get_signals.wholesale_forbids_selector",
@@ -40,7 +40,7 @@
       "signal_spec": "sports fans"
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "get_signals.pricing_requires_feed_version",
@@ -52,7 +52,7 @@
       "if_pricing_version": "pricing-v1"
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "get_signals.signal_refs_min_items",
@@ -117,7 +117,7 @@
       }
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "create_media_buy.packages_with_min_spend_target",
@@ -147,7 +147,7 @@
       }
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "create_media_buy.packages_with_proposal_id",
@@ -181,7 +181,7 @@
       }
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "create_media_buy.proposal_with_budget_allocation",
@@ -208,7 +208,7 @@
       }
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "create_media_buy.seller_optimized_without_total_budget",
@@ -243,7 +243,7 @@
       }
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "create_media_buy.valid_fixed_allocation",

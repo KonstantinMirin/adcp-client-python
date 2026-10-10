@@ -44,9 +44,41 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
     from scripts import task_message_lattice
 
 try:
-    from schema_constraints import DeclaredShape
+    from branch_classes import BranchPlan, plan_branches, split_into_branch_classes
+    from compile_conditions import (
+        CONDITIONS_IMPORT,
+        ROOT_CONSTRAINT_VALIDATOR,
+        compile_condition,
+        render_root_validator,
+        schema_keyword_raise,
+    )
+    from schema_constraints import (
+        DeclaredShape,
+        bundle_document_resolver,
+        partitions_by_requiredness,
+        read_root_constraints,
+        root_carries_constraints,
+    )
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
-    from scripts.schema_constraints import DeclaredShape
+    from scripts.branch_classes import (  # type: ignore[assignment]
+        BranchPlan,
+        plan_branches,
+        split_into_branch_classes,
+    )
+    from scripts.compile_conditions import (  # type: ignore[assignment]
+        CONDITIONS_IMPORT,
+        ROOT_CONSTRAINT_VALIDATOR,
+        compile_condition,
+        render_root_validator,
+        schema_keyword_raise,
+    )
+    from scripts.schema_constraints import (  # type: ignore[assignment]
+        DeclaredShape,
+        bundle_document_resolver,
+        partitions_by_requiredness,
+        read_root_constraints,
+        root_carries_constraints,
+    )
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -183,66 +215,6 @@ def ensure_pydantic_core_import(source: str, *names: str) -> str:
     if replaced != 1:
         raise RuntimeError(f"no class to place {statement!r} ahead of")
     return source
-
-
-#: The JSON Schema keywords an injected runtime check may name.
-#:
-#: ``core/error.json`` requires every ``issues[]`` entry to carry a ``keyword``
-#: "drawn from the JSON Schema vocabulary" and says not to invent values there,
-#: so a check names the keyword of the construct it restores and nothing else.
-#: Membership is checked rather than documented because an invented keyword
-#: reaches the wire looking exactly like a real one.
-SCHEMA_KEYWORDS = frozenset(
-    {
-        "allOf",
-        "anyOf",
-        "const",
-        "contains",
-        "dependentRequired",
-        "else",
-        "enum",
-        "format",
-        "if",
-        "maxItems",
-        "maxLength",
-        "maximum",
-        "minItems",
-        "minLength",
-        "minimum",
-        "not",
-        "oneOf",
-        "pattern",
-        "propertyNames",
-        "required",
-        "then",
-        "type",
-        "uniqueItems",
-    }
-)
-
-
-def schema_keyword_raise(keyword: str, message: str, *, indent: str = " " * 8) -> str:
-    """Render the ``raise`` statement an injected runtime check refuses with.
-
-    ``PydanticCustomError`` sets pydantic's error ``type`` to its first argument
-    and keeps the message verbatim, so ``e.errors()[0]["type"]`` is the schema
-    keyword that rejected the payload — which is what a consumer needs for
-    ``error.issues[].keyword``. A bare ``ValueError`` becomes ``value_error``,
-    which names no keyword, and a consumer assembling a conformant envelope then
-    has to drop the issue and refuse the buyer with no structured reason.
-
-    The caller passes the keyword the SCHEMA states, never one read off the
-    message: the English is written for a human and two different keywords can
-    share a phrasing.
-    """
-    if keyword not in SCHEMA_KEYWORDS:
-        raise ValueError(f"{keyword!r} is not a JSON Schema keyword an issue may name")
-    return (
-        f"{indent}raise PydanticCustomError(\n"
-        f"{indent}    {keyword!r},\n"
-        f"{indent}    {message!r},\n"
-        f"{indent})"
-    )
 
 
 _VERSION_FILE = REPO_ROOT / "src" / "adcp" / "ADCP_VERSION"
@@ -4130,49 +4102,6 @@ def fix_beta3_secure_url_constraints() -> None:
         print(f"  {relative_path}: restored secure URL constraint")
 
 
-def fix_beta3_package_request_constraints() -> None:
-    """Restore beta.3 PackageRequest conditionals dropped by codegen."""
-
-    target = OUTPUT_DIR / "media_buy" / "package_request.py"
-    if not target.exists():
-        print("  media_buy/package_request.py not found (skipping beta.3 constraints)")
-        return
-    source = target.read_text()
-    if "def _validate_format_params(" in source:
-        print("  media_buy/package_request.py beta.3 constraints already fixed")
-        return
-    source, import_count = re.subn(
-        r"^(from pydantic import .+)$",
-        r"\1, model_validator",
-        source,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    if import_count != 1:
-        print("  media_buy/package_request.py pydantic import shape not found")
-        return
-    class_start = source.find("class PackageRequest(")
-    if class_start == -1:
-        print("  media_buy/package_request.py PackageRequest class not found")
-        return
-    class_end = source.find("\n\nclass ", class_start)
-    if class_end == -1:
-        class_end = len(source)
-    validator = """
-
-    @model_validator(mode='after')
-    def _validate_format_params(self) -> PackageRequest:
-        if self.params is not None and self.format_kind is None:
-            raise ValueError('params requires format_kind')
-        if self.params is not None and self.format_kind == 'image':
-            if ('width' in self.params) != ('height' in self.params):
-                raise ValueError('image params width and height must co-occur')
-        return self"""
-    class_block = source[class_start:class_end].rstrip() + validator
-    target.write_text((source[:class_start] + class_block + source[class_end:]).rstrip() + "\n")
-    print("  media_buy/package_request.py: restored beta.3 format param constraints")
-
-
 def fix_beta3_adagents_renderer_constraints() -> None:
     """Preserve optional catalog role and reference-renderer trust gates."""
 
@@ -6559,7 +6488,7 @@ def fix_creative_manifest_standalone_asset_coercion() -> None:
     if "_coerce_standalone_assets" in source:
         target.write_text(source)
         return
-    # Idempotent: an earlier pass (``enforce_root_required_groups``) may already
+    # Idempotent: an earlier pass (``enforce_root_constraints``) may already
     # have put ``model_validator`` on this line, and a literal prefix replace
     # appended it a second time on every regeneration.
     source = ensure_pydantic_import(source, "model_validator")
@@ -7208,42 +7137,10 @@ def _write_manifest(observed: dict[str, list[str]], previous: dict[str, bool | s
     return 0
 
 
-_REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
-
 # Bases that declare no schema fields of their own. Any other base the
 # generated tree cannot resolve leaves the class's field set unknown, and an
 # unknown field set means the required-group rule is reported, not guessed.
 _FIELDLESS_GENERATED_BASES = {"AdCPBaseModel", "BaseModel", "RootModel"}
-
-
-def _root_required_groups(schema: dict) -> tuple[str, tuple[tuple[str, ...], ...]] | None:
-    """Return the combinator a schema root declares and its required-field groups.
-
-    A root ``anyOf``/``oneOf`` whose every arm carries ``required`` states which
-    combinations of fields a document may omit. Arms also carry discriminating
-    ``properties`` and ``not`` clauses; those narrow an arm further and are not
-    part of its group.
-
-    The combinator comes back with the groups because it is the JSON Schema
-    keyword the emitted check enforces, and ``core/error.json`` requires every
-    ``issues[]`` entry to name one. Deriving it here is the only place it is
-    known: the message text does not distinguish the two, and a consumer reading
-    a bare ``value_error`` off the wire has nothing to put in ``keyword``.
-    """
-    for combinator in ("anyOf", "oneOf"):
-        arms = schema.get(combinator)
-        if not isinstance(arms, list) or not arms:
-            continue
-        if not all(isinstance(arm, dict) and isinstance(arm.get("required"), list) for arm in arms):
-            continue
-        groups: list[tuple[str, ...]] = []
-        for arm in arms:
-            names = tuple(name for name in arm["required"] if isinstance(name, str))
-            if names and names not in groups:
-                groups.append(names)
-        if groups:
-            return combinator, tuple(groups)
-    return None
 
 
 #: The package source root, where the hand-written bases a generated module
@@ -7477,31 +7374,54 @@ def _append_to_class_block(content: str, class_name: str, block: str) -> str:
     return content
 
 
-def enforce_root_required_groups() -> None:
-    """Restore root-level ``anyOf``/``oneOf`` required-group constraints.
+def _ensure_conditions_import(content: str) -> str:
+    """Give a module the vocabulary import, once."""
+    if CONDITIONS_IMPORT in content:
+        return content
+    return re.sub(
+        r"^class ", f"{CONDITIONS_IMPORT}\n\n\nclass ", content, count=1, flags=re.MULTILINE
+    )
 
-    datamodel-code-generator renders a schema root's ``properties`` and drops a
-    root-level ``anyOf``/``oneOf`` over required-field groups, so the generated
-    class accepts documents its own schema rejects — a ``create_media_buy``
-    request with no packages, no budget and no proposal validates.
 
-    Emit a ``model_validator`` requiring at least one group. That is the whole
-    constraint for ``anyOf``. For ``oneOf`` it is the part the schema states in
-    ``required``: cardinality is not derivable here, because those arms are
-    distinguished by ``properties`` discriminators and several schemas give two
-    arms the same ``required`` set, which no "exactly one required group"
-    reading satisfies.
+def enforce_root_constraints() -> None:
+    """Compile what a schema root states beyond its merged ``properties``.
 
-    The refusal names the combinator the groups came from — ``anyOf`` or
-    ``oneOf``, whichever the root declared — so the pydantic error ``type`` is
-    the keyword ``core/error.json`` requires in ``issues[].keyword``. The
-    partial ``oneOf`` enforcement still names ``oneOf``: the document failed the
-    root ``oneOf``, and which of its obligations went unmet is what the message
-    says, not what the keyword says.
+    ``datamodel-code-generator`` renders a root's ``properties`` and drops the
+    rest: a root ``anyOf``/``oneOf`` over overlay arms, a root
+    ``if``/``then``/``else``, root ``dependencies``, a root ``not``. Each
+    dropped keyword is a document the generated model accepts and the canonical
+    schema refuses -- a ``create_media_buy`` request with packages that carry no
+    budget, a ``get_geo_place_resolution`` request carrying both ``q`` and
+    ``value``, a ``list_account_changes`` response that is both completed and
+    failed.
+
+    ``scripts/schema_constraints.py`` reads the whole of that content into one
+    record and ``scripts/compile_conditions.py`` compiles it onto the class.
+    What this pass replaced read each arm's ``required`` NAMES and discarded
+    every other keyword the arm carried, while claiming in its own docstring
+    that the names "are the whole constraint for ``anyOf``" -- which was false
+    for the very file that reproduced the bug.
+
+    Three populations, and every root falls in exactly one:
+
+    * A FLAT root -- one generated class over the root's merged properties --
+      gets the compiled validator. That is this pass's jurisdiction, because the
+      flat class is the shape whose constraint content was dropped.
+    * A root the generator already split into per-arm classes states its arms
+      as types. Its cross-arm exclusivity is carried by canonical wire
+      validation, unchanged by this pass and named in the design's coverage
+      table rather than absorbed here.
+    * A root whose content is entirely restatements of what the class declares
+      gets no validator, because there is nothing left to check.
+
+    A keyword the grammar cannot compile raises ``UnexpressibleKeywordError``
+    and aborts generation. There is no skip lane.
     """
+    resolve = bundle_document_resolver(SCHEMA_DIR)
     emitted = 0
     already = 0
-    skipped: list[str] = []
+    already_typed = 0
+    nothing_to_check = 0
 
     for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
         relative_path = schema_file.relative_to(SCHEMA_DIR)
@@ -7509,68 +7429,138 @@ def enforce_root_required_groups() -> None:
             schema = json.loads(schema_file.read_text())
         except (json.JSONDecodeError, OSError):
             continue
-        if not isinstance(schema, dict):
-            continue
-        declared = _root_required_groups(schema)
-        if declared is None:
-            continue
-        keyword, groups = declared
-
-        module_path = relative_path.with_suffix(".py")
-        py_path = OUTPUT_DIR.joinpath(*(part.replace("-", "_") for part in module_path.parts))
-        if not py_path.is_file():
+        if not isinstance(schema, dict) or not root_carries_constraints(schema):
             continue
 
+        shape = flat_root_shape(schema, relative_path)
+        if shape is None:
+            already_typed += 1
+            continue
+
+        constraints = read_root_constraints(
+            schema,
+            shape,
+            arms_render_as_classes=False,
+            schema_file=str(relative_path),
+            resolve_document=resolve,
+        )
+        py_path = generated_module_for(relative_path)
         content = py_path.read_text()
         class_name = _root_generated_class(content, schema)
-        if class_name is None:
-            skipped.append(f"{relative_path}: no single root model class")
+        if class_name is None:  # pragma: no cover - flat_root_shape just found one
             continue
-        if f"def {_REQUIRED_GROUP_VALIDATOR}" in content:
+        if f"def {ROOT_CONSTRAINT_VALIDATOR}" in content:
             already += 1
             continue
 
-        fields = _generated_fields(py_path, class_name)
-        if fields is None:
-            skipped.append(f"{relative_path}: {class_name} inherits an unresolved base")
+        block = render_root_validator(constraints, class_name, str(relative_path))
+        if not block:
+            nothing_to_check += 1
             continue
-        if any(name not in fields for group in groups for name in group):
-            skipped.append(f"{relative_path}: {class_name} is not one flat model over the groups")
-            continue
-        attribute_groups = [tuple(fields[name] for name in group) for group in groups]
 
-        rendered = ", ".join(repr(group) for group in attribute_groups)
-        readable = " | ".join("+".join(group) for group in attribute_groups)
-        refusal = schema_keyword_raise(
-            keyword,
-            f"{class_name} requires at least one of these field groups: {readable}",
-        )
-        validator = f"""
-
-    @model_validator(mode='after')
-    def {_REQUIRED_GROUP_VALIDATOR}(self) -> {class_name}:
-        # ``required`` asks whether the caller supplied the field, which is what
-        # model_fields_set answers. An explicit null is a supplied value — on a
-        # mutation input it is the command to clear — and a default the caller
-        # never sent is not.
-        for group in ({rendered},):
-            if all(name in self.model_fields_set for name in group):
-                return self
-        # The refusal names the root combinator the groups came from, so a
-        # consumer reads the keyword off ``e.errors()[0]["type"]``.
-{refusal}
-"""
-        content = _append_to_class_block(content, class_name, validator)
+        content = _append_to_class_block(content, class_name, block)
         content = _ensure_model_validator_import(content)
-        content = ensure_pydantic_core_import(content, "PydanticCustomError")
+        content = _ensure_conditions_import(content)
         py_path.write_text(content)
         emitted += 1
 
-    print(f"  Emitted {emitted} root required-group validator(s)")
+    print(f"  Emitted {emitted} compiled root-constraint validator(s)")
     if already:
         print(f"  {already} class(es) already carried one")
-    for note in skipped:
-        print(f"  skipped {note}")
+    print(f"  {already_typed} root(s) state their arms as types already (not flat)")
+    print(f"  {nothing_to_check} flat root(s) state only restatements of their own class")
+
+
+def _ensure_typing_import(content: str, *names: str) -> str:
+    """Give a module a ``typing`` import for ``names``, extending or inserting."""
+    try:
+        return add_to_import(content, "typing", *names)
+    except RuntimeError:
+        statement = f"from typing import {', '.join(sorted(names))}\n"
+        future = "from __future__ import annotations\n\n"
+        if future in content:
+            return content.replace(future, future + statement, 1)
+        return statement + content
+
+
+def emit_branch_classes() -> None:
+    """Render a partitioning root's arms as one class each, behind a union alias.
+
+    Where a root's arms partition the document space -- every arm requires
+    something, and the arms are provably pairwise disjoint under the root's own
+    conjuncts -- the arms are not a rule over one class. They are distinct
+    types, and the flattening is what turned them into a rule. So the flat
+    class is replaced by one class per arm, the root's public name becomes a
+    union over them, and the combination the old validator could only refuse at
+    validation time has no spelling that type-checks.
+
+    Runs late, after every pass that edits a class by name, so each arm's class
+    carries what those passes put on the flat class. ``enforce_root_constraints``
+    deliberately leaves these roots alone: a compiled check over the whole
+    combinator, copied onto every arm, would re-ask a question the arm's own
+    shape has already answered.
+
+    An arm's content that its field set cannot carry -- a const one level down,
+    an overlay on an array's items -- stays a compiled check on that arm's own
+    class. The refusal then still arrives from the class the caller named.
+    """
+    resolve = bundle_document_resolver(SCHEMA_DIR)
+    emitted = 0
+    arms = 0
+
+    for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
+        relative_path = schema_file.relative_to(SCHEMA_DIR)
+        try:
+            schema = json.loads(schema_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(schema, dict) or not root_carries_constraints(schema):
+            continue
+        shape = flat_root_shape(schema, relative_path)
+        if shape is None:
+            continue
+        constraints = read_root_constraints(
+            schema,
+            shape,
+            arms_render_as_classes=False,
+            schema_file=str(relative_path),
+            resolve_document=resolve,
+        )
+        if not partitions_by_requiredness(constraints):
+            continue
+
+        py_path = generated_module_for(relative_path)
+        content = py_path.read_text()
+        class_name = _root_generated_class(content, schema)
+        if class_name is None:
+            continue
+        fields = frozenset(shape.fields.values())
+        plans = plan_branches(constraints, class_name, str(relative_path), fields)
+        rewritten = split_into_branch_classes(
+            content, class_name, constraints, str(relative_path), fields
+        )
+        if rewritten is None:
+            continue
+
+        rewritten = _ensure_typing_import(rewritten, "TypeAlias")
+        if any(plan.literals for plan in plans):
+            rewritten = _ensure_typing_import(rewritten, "Literal")
+        rewritten = ensure_pydantic_import(rewritten, "TypeAdapter")
+        if any(plan.absent for plan in plans):
+            rewritten = _ensure_typing_import(rewritten, "Any", "ClassVar")
+        if any(plan.absent or _residual_is_checked(plan) for plan in plans):
+            rewritten = _ensure_model_validator_import(rewritten)
+            rewritten = _ensure_conditions_import(rewritten)
+        py_path.write_text(rewritten)
+        emitted += 1
+        arms += len(plans)
+
+    print(f"  Split {emitted} partitioning root(s) into {arms} branch class(es)")
+
+
+def _residual_is_checked(plan: BranchPlan) -> bool:
+    """Whether this arm's class carries a compiled check of its own."""
+    return compile_condition(plan.residual) != "True"
 
 
 _ADCP_REQUEST_MARKER = "AdcpRequest"
@@ -7740,13 +7730,12 @@ def main(argv: list[str] | None = None) -> int:
         fix_canceled_literal_defaults,
         fix_unchanged_literal_defaults,
         fix_optional_boolean_literal_defaults,
-        enforce_root_required_groups,
+        enforce_root_constraints,
         fix_reporting_request_selectors,
         fix_reporting_capability_defaults,
         fix_protocol_envelope_status_default,
         fix_trusted_match_runtime_validators,
         fix_beta3_secure_url_constraints,
-        fix_beta3_package_request_constraints,
         restore_trusted_match_compatibility_aliases,
         fix_publisher_tmpx_mapping_key_constraints,
         fix_wholesale_cache_scope_defaults,

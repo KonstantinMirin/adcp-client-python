@@ -2651,16 +2651,17 @@ def _write_required_group_fixture(tmp_path, monkeypatch, schema, module_source):
 
     monkeypatch.setattr(post_generate_fixes, "SCHEMA_DIR", schema_dir)
     monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", generated_dir)
-    post_generate_fixes.enforce_root_required_groups()
+    post_generate_fixes.enforce_root_constraints()
     return target
 
 
-def test_root_required_group_validator_enforces_every_declared_group(tmp_path, monkeypatch):
-    """A root ``anyOf`` over required groups becomes a runtime check.
+def test_root_constraint_validator_enforces_each_arm_in_full(tmp_path, monkeypatch):
+    """A root ``anyOf`` becomes a runtime check over each arm's WHOLE condition.
 
-    The groups come from ``required`` alone: an arm's ``not`` and discriminating
-    ``properties`` narrow that arm further, so "at least one group is present"
-    is the part of the constraint the generator derives.
+    Not over each arm's ``required`` names: this fixture's first arm also bans
+    ``proposal_id``, and a check that read only the names accepted a document
+    carrying packages AND a proposal -- a document the arm it was credited to
+    refuses. That reading is what this pass replaced.
     """
     from pydantic import ValidationError
 
@@ -2670,7 +2671,11 @@ def test_root_required_group_validator_enforces_every_declared_group(tmp_path, m
     fixed = target.read_text()
 
     assert "def _require_schema_required_group(self) -> BudgetPlan:" in fixed
-    assert "(('packages',), ('proposal_id', 'total_budget'),)" in fixed
+    # Each arm compiles to its own predicate, the arm's ``not`` included, and
+    # the arms' schema titles are the refusal's own words.
+    assert "not (_c.supplied(self, 'proposal_id')) and _c.supplied(self, 'packages')" in fixed
+    assert "_c.supplied(self, 'proposal_id') and _c.supplied(self, 'total_budget')" in fixed
+    assert "Explicit packages | Committed proposal" in fixed
     # The module tail survives: several generated modules close with
     # compatibility aliases after the root class.
     assert fixed.rstrip().endswith("LegacyBudgetPlan = BudgetPlan")
@@ -2692,6 +2697,10 @@ def test_root_required_group_validator_enforces_every_declared_group(tmp_path, m
     # A partial group is not a group.
     with pytest.raises(ValidationError, match="at least one of these field groups"):
         model.model_validate({"account": "acct_1", "proposal_id": "prop_1"})
+    # And a document satisfying one arm's NAMES while violating its ``not`` is
+    # refused, which is the document the names-only reading accepted.
+    with pytest.raises(ValidationError, match="at least one of these field groups"):
+        model.model_validate({"account": "acct_1", "packages": ["pkg_1"], "proposal_id": "prop_1"})
 
 
 _ONE_OF_REQUIRED_GROUP_SCHEMA = {
@@ -2861,8 +2870,9 @@ def test_schema_keyword_raise_refuses_a_keyword_outside_the_vocabulary():
 def test_root_required_group_leaves_per_arm_models_alone(tmp_path, monkeypatch):
     """A root the generator splits into arm classes keeps no root-wide check.
 
-    One arm's required group says nothing about another arm, and the union alias
-    is not a class, so there is nothing to attach a validator to.
+    The arms ARE the types there, so their content is already enforced, and the
+    union alias is not a class to attach a validator to. ``flat_root_shape``
+    answers it: a root declaring no merged ``properties`` has no flat class.
     """
     schema = {
         "title": "Budget Plan",
@@ -2887,7 +2897,7 @@ def test_root_required_group_leaves_per_arm_models_alone(tmp_path, monkeypatch):
     assert target.read_text() == module_source
 
 
-def test_root_required_group_resolves_the_generator_acronym_casing(tmp_path, monkeypatch):
+def test_root_constraints_resolve_the_generator_acronym_casing(tmp_path, monkeypatch):
     """The root class name matches the schema title up to case.
 
     datamodel-code-generator title-cases an acronym, so the title
@@ -2922,12 +2932,12 @@ def test_root_required_group_resolves_the_generator_acronym_casing(tmp_path, mon
 
     monkeypatch.setattr(post_generate_fixes, "SCHEMA_DIR", schema_dir)
     monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", generated_dir)
-    post_generate_fixes.enforce_root_required_groups()
+    post_generate_fixes.enforce_root_constraints()
 
     assert "def _require_schema_required_group(self) -> SiSendMessageRequest:" in target.read_text()
 
 
-def test_root_required_group_skips_a_name_two_classes_share(tmp_path, monkeypatch):
+def test_root_constraints_skip_a_name_two_classes_share(tmp_path, monkeypatch):
     """A name that resolves to two classes does not identify the root."""
     schema = {
         "title": "Budget Plan",
@@ -2951,7 +2961,7 @@ def test_root_required_group_skips_a_name_two_classes_share(tmp_path, monkeypatc
     assert target.read_text() == module_source
 
 
-def test_root_required_group_asks_whether_the_caller_supplied_the_field(tmp_path, monkeypatch):
+def test_root_constraints_ask_whether_the_caller_supplied_the_field(tmp_path, monkeypatch):
     """A default is not a supplied value, and an explicit null is.
 
     ``required`` asks whether the property is present. AdCP 3.2 mutation inputs

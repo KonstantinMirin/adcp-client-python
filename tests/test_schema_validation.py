@@ -56,9 +56,18 @@ class TestValidateRequest:
         assert outcome.valid is True
 
     def test_pydantic_model_still_runs_canonical_cross_field_validation(self) -> None:
-        structurally_valid = GetSignalsRequest()
+        """``validate_request`` grades the document, not the model's word for it.
 
-        outcome = validate_request("get_signals", structurally_valid)
+        ``get-signals-request.json`` requires a selector outside wholesale mode,
+        and the empty request satisfies none. The generated model now refuses it
+        too -- that conditional used to be dropped -- so the document reaches
+        this function only through ``model_construct``, which is what the
+        function exists to be given: a model whose own validation was skipped
+        or whose schema the SDK has not yet caught up with.
+        """
+        unvalidated = GetSignalsRequest.model_construct()
+
+        outcome = validate_request("get_signals", unvalidated)
 
         assert outcome.valid is False
         assert any(issue.keyword == "anyOf" for issue in outcome.issues)

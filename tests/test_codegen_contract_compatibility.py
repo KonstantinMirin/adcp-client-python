@@ -58,8 +58,17 @@ def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> Non
         "description"
     ].startswith("Canonical signal reference.")
 
+    # ``signal-listing.json``'s root ``allOf`` requires ``name`` and
+    # ``value_type`` when ``signal_ref.scope`` is ``product``: a product-local
+    # listing defines the signal inline, so it has to say what the signal is
+    # called and what its values are. The conjunct sits beside the root
+    # combinator, which the generator drops and the constraint pass compiles.
     option = ProductSignalTargetingOption.model_validate(
-        {"signal_ref": {"scope": "product", "signal_id": "signal_1"}}
+        {
+            "signal_ref": {"scope": "product", "signal_id": "signal_1"},
+            "name": "Signal One",
+            "value_type": "binary",
+        }
     )
     assert isinstance(option.signal_ref, get_args(arms))
     assert option.signal_ref.scope == "product"
