@@ -457,6 +457,7 @@ __all__ = [
     "CreativeAssignment",
     "CreativeFilters",
     "CreativeManifest",
+    "CreativeManifestNamedFormatManifest",
     "CreativePolicy",
     "CreativeVariant",
     "DevicePlatform",

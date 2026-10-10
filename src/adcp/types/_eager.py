@@ -927,6 +927,10 @@ Creative = _canonical_creative.Creative
 CreativeAsset = _canonical_creative.CreativeAsset
 CreativeFilters = _canonical_creative.CreativeFilters
 CreativeManifest = _canonical_creative.CreativeManifest
+# The named-format arm has no canonical counterpart: the canonical layer models
+# the canonical-format arm only, so the deprecated format_id path reaches the
+# other arm through the generated class.
+CreativeManifestNamedFormatManifest = generated.CreativeManifestNamedFormatManifest
 CreativeVariant = _canonical_creative.CreativeVariant
 Format = _canonical_creative.Format
 GetCreativeDeliveryResponse = _canonical_creative.GetCreativeDeliveryResponse

@@ -528,7 +528,7 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
         Sample CreativeManifest, or None if unable to create one
     """
     from adcp.types import (
-        CreativeManifestCanonicalFormatManifest,
+        CreativeManifest,
         CreativeManifestNamedFormatManifest,
         ImageContent,
         UrlContent,
@@ -592,11 +592,12 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
     if hasattr(fmt, "format_kind") and not hasattr(fmt, "format_id"):
         option_id = getattr(fmt, "format_option_id", None)
         option_ref = {"scope": "product", "format_option_id": option_id} if option_id else None
-        # The arm the kwargs already named: this branch passes format_kind and
-        # no format_id. The hasattr pair above stays -- it discriminates the
+        # ``CreativeManifest`` here is the canonical model, which subclasses the
+        # root's canonical-format arm -- so it already IS the shape this branch's
+        # kwargs name. The hasattr pair above stays: it discriminates the
         # FORMAT's shape, not this manifest's, and no branch of the manifest
         # answers it.
-        return CreativeManifestCanonicalFormatManifest(
+        return CreativeManifest(
             format_kind=fmt.format_kind,
             format_option_ref=option_ref,
             assets=assets,

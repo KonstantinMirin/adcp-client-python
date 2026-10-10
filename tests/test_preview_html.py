@@ -16,9 +16,11 @@ from adcp.types import (
     Product,
     Protocol,
 )
-from adcp.types._generated import (
-    CreativeManifest,
-)
+
+# Every construction below passes ``format_id``, which names the deprecated
+# named-format arm. Taken from the public surface rather than ``_generated``:
+# the root's public name is a union now, and the arm is what these build.
+from adcp.types import CreativeManifestNamedFormatManifest as CreativeManifest
 from adcp.types.core import TaskResult, TaskStatus
 from adcp.types.legacy import (
     LegacyFormat,
