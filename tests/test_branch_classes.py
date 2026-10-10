@@ -332,13 +332,16 @@ def test_the_split_drops_a_combinator_check_the_arms_shape_already_answers() -> 
     an earlier version of the copier dropped decorators while keeping bodies --
     a validator that reads as one and enforces nothing.
     """
-    with_validator = _FLAT_MODULE + """
+    with_validator = (
+        _FLAT_MODULE
+        + """
     @model_validator(mode='after')
     def _require_schema_required_group(self) -> Thing:
         if not (True):
             raise ValueError('nope')
         return self
 """
+    )
 
     rewritten = split_into_branch_classes(
         with_validator,

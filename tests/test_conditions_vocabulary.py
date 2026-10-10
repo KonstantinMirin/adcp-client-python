@@ -102,9 +102,9 @@ def test_absent_refuses_a_key_the_shape_forbids_and_passes_everything_else() -> 
     """
     assert c.absent({"packages": ["pkg_1"]}, ["proposal_id"]) == {"packages": ["pkg_1"]}
     assert c.absent("not an object", ["proposal_id"]) == "not an object"
-    assert c.absent({"proposal_id": None}, ["proposal_id"]) == {"proposal_id": None}, (
-        "a null at a position forbidding null never reaches the document sent"
-    )
+    assert c.absent({"proposal_id": None}, ["proposal_id"]) == {
+        "proposal_id": None
+    }, "a null at a position forbidding null never reaches the document sent"
 
     with pytest.raises(ValueError, match="proposal_id is not accepted"):
         c.absent({"packages": [], "proposal_id": "prop_1"}, ["proposal_id"])
