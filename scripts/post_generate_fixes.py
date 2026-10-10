@@ -7490,6 +7490,10 @@ def enforce_root_constraints() -> None:
         content = _append_to_class_block(content, class_name, block)
         content = _ensure_model_validator_import(content)
         content = _ensure_conditions_import(content)
+        # The refusal names the root combinator (#1435), so the module needs the
+        # error type that carries a keyword. Dropped when this pass replaced the
+        # required-names extractor the import had lived in.
+        content = ensure_pydantic_core_import(content, "PydanticCustomError")
         py_path.write_text(content)
         emitted += 1
 
@@ -7609,6 +7613,10 @@ def compose_branch_module(
     if banned or any(_residual_is_checked(plan) for plan in plans):
         rewritten = _ensure_model_validator_import(rewritten)
         rewritten = _ensure_conditions_import(rewritten)
+    if any(_residual_is_checked(plan) for plan in plans):
+        # The per-arm refusal names the root combinator, so the arm's module
+        # needs the error type that carries a keyword.
+        rewritten = ensure_pydantic_core_import(rewritten, "PydanticCustomError")
     return rewritten
 
 

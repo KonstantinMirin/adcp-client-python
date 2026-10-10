@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -2755,7 +2756,9 @@ def test_root_required_group_refusal_names_the_root_combinator(
     fixed = target.read_text()
 
     assert "from pydantic_core import PydanticCustomError" in fixed
-    assert f"raise PydanticCustomError(\n            {keyword!r}," in fixed
+    # Indentation is not the obligation: the compiled validator nests its
+    # raise inside the arm test, so the keyword is asserted without it.
+    assert re.search(rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", fixed), fixed
 
     namespace: dict[str, object] = {}
     exec(compile(fixed, str(target), "exec"), namespace)  # noqa: S102
@@ -2771,6 +2774,25 @@ def test_root_required_group_refusal_names_the_root_combinator(
     # The conforming document still validates: only the error type changed.
     accepted = {**payload, "packages": ["pkg_1"]}
     assert model.model_validate(accepted).packages == ["pkg_1"]
+
+
+def _root_combinator(schema: dict) -> tuple[str, object] | None:
+    """The root combinator a schema declares, or ``None``.
+
+    Asks the constraint reader, which records which keyword the arms came from.
+    It replaced ``_root_required_groups``, whose return value this once read --
+    the question is the same and the answer now comes from the whole of the
+    root's content rather than from its ``required`` names alone.
+    """
+    from scripts.schema_constraints import root_carries_constraints
+
+    if not root_carries_constraints(schema):
+        return None
+    for combinator in ("anyOf", "oneOf"):
+        arms = schema.get(combinator)
+        if isinstance(arms, list) and arms:
+            return combinator, arms
+    return None
 
 
 def test_every_root_required_group_refusal_names_its_own_schema_combinator():
@@ -2792,7 +2814,7 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
             continue
         if not isinstance(schema, dict):
             continue
-        declared = post_generate_fixes._root_required_groups(schema)
+        declared = _root_combinator(schema)
         if declared is None:
             continue
         module = post_generate_fixes.OUTPUT_DIR.joinpath(
@@ -2801,18 +2823,29 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
         if not module.is_file():
             continue
         source = module.read_text()
-        class_name = post_generate_fixes._root_generated_class(source, schema)
+        # The class carrying the root's properties: the flat class, or the shared
+        # shape where the emitter split the root into arms. A split root's
+        # validator lives on each ARM rather than on one class, and each of
+        # those refusals has to name the keyword too -- which is why this asks
+        # the module rather than one class name.
+        class_name = post_generate_fixes._root_property_class(source, schema)
         if class_name is None or "def _require_schema_required_group" not in source:
             continue
         keyword = declared[0]
-        assert f"raise PydanticCustomError(\n            {keyword!r}," in source, relative
+        assert re.search(
+            rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", source
+        ), relative
         assert "raise ValueError(\n            '" + class_name not in source, relative
         found[class_name] = keyword
 
+    # The floor is the anti-vacuity check: a derivation that matched nothing
+    # would pass silently. Both keywords are represented and the two roots a
+    # consumer reported are named outright -- CreativeAsset's name is now its
+    # shared shape, because the emitter split that root into arms.
     assert len(found) >= 42, found
     assert set(found.values()) == {"anyOf", "oneOf"}, found
-    assert found["CreativeAsset"] == "oneOf", found
-    assert found["CreateMediaBuyRequest"] == "anyOf", found
+    assert found["CreativeAssetShape"] == "oneOf", found
+    assert found["CreateMediaBuyRequestShape"] == "anyOf", found
 
 
 def test_a_consumer_reads_the_schema_keyword_off_the_refusal():
@@ -2865,8 +2898,9 @@ def test_schema_keyword_raise_refuses_a_keyword_outside_the_vocabulary():
     consumer can tell them apart.
     """
     from scripts import post_generate_fixes
+    from scripts.compile_conditions import SCHEMA_KEYWORDS
 
-    assert "oneOf" in post_generate_fixes.SCHEMA_KEYWORDS
+    assert "oneOf" in SCHEMA_KEYWORDS
     with pytest.raises(ValueError, match="not a JSON Schema keyword"):
         post_generate_fixes.schema_keyword_raise("mutuallyExclusive", "nope")
 

@@ -58,7 +58,11 @@ from dataclasses import dataclass
 from typing import Any
 
 try:
-    from compile_conditions import ROOT_CONSTRAINT_VALIDATOR, compile_condition
+    from compile_conditions import (
+        ROOT_CONSTRAINT_VALIDATOR,
+        compile_condition,
+        schema_keyword_raise,
+    )
     from schema_constraints import (
         AllOf,
         AnyOf,
@@ -78,6 +82,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.branch_classes`` in tests.
     from scripts.compile_conditions import (  # type: ignore[assignment]
         ROOT_CONSTRAINT_VALIDATOR,
         compile_condition,
+        schema_keyword_raise,
     )
     from scripts.schema_constraints import (  # type: ignore[assignment]
         AllOf,
@@ -540,8 +545,16 @@ def render_absence_hook(plan: BranchPlan) -> str:
     )
 
 
-def _render_validator(plan: BranchPlan, schema_file: str) -> str:
-    """The arm's residual check, or the empty string when nothing is left."""
+def _render_validator(plan: BranchPlan, schema_file: str, combinator: str) -> str:
+    """The arm's residual check, or the empty string when nothing is left.
+
+    The refusal names the root combinator, because that is the keyword a
+    consumer puts in ``error.issues[].keyword`` -- the arm's residual is part of
+    what the root's ``anyOf``/``oneOf`` states. A bare ``ValueError`` arrives as
+    ``value_error``, names no keyword, and ``core/error.json`` requires one; a
+    seller reported exactly that reaching the wire for ``core/creative-asset``,
+    which is one of the roots this emitter splits.
+    """
     predicate = compile_condition(plan.residual)
     if predicate == "True":
         return ""
@@ -561,9 +574,7 @@ def _render_validator(plan: BranchPlan, schema_file: str) -> str:
             "        if not (",
             f"            {predicate}",
             "        ):",
-            "            raise ValueError(",
-            f"                {refusal!r}",
-            "            )",
+            schema_keyword_raise(combinator, refusal, indent=" " * 12),
             "        return self",
         ]
     )
@@ -594,7 +605,7 @@ def split_into_branch_classes(
     blocks.extend(
         _render_branch(plan, flat, flat_class, schema_file)
         + render_absence_hook(plan)
-        + _render_validator(plan, schema_file)
+        + _render_validator(plan, schema_file, constraints.combinator or "anyOf")
         for plan in plans
     )
     union = " | ".join(plan.name for plan in plans)
