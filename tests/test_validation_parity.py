@@ -118,7 +118,9 @@ def _carries_required_group_validator(model: Any) -> bool:
     the moment the emitter was wired -- including ``create_media_buy``, which is
     the root this module exists to grade.
     """
-    members = get_args(model)
+    from adcp.types._split_root import branch_members
+
+    members = branch_members(model)
     if members:
         return all(
             _REQUIRED_GROUP_VALIDATOR in member.__pydantic_decorators__.model_validators

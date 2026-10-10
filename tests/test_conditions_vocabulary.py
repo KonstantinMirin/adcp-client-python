@@ -308,3 +308,50 @@ def test_every_primitive_the_vocabulary_exports_is_graded_here() -> None:
         if f"c.{name}(" in inspect.getsource(globals()[test])
     }
     assert graded == set(c.__all__), sorted(set(c.__all__) - graded)
+
+
+def test_name_the_combinator_names_the_keyword_and_keeps_the_fields() -> None:
+    """The wrapper a split root's union carries.
+
+    A document that satisfies no branch fails each branch at FIELD validation,
+    so pydantic reports ``missing`` and nothing names the root's combinator.
+    ``core/error.json`` requires a keyword drawn from the JSON Schema
+    vocabulary, so the wrapper supplies one -- and carries the absent field
+    names with it, in the message and in the error context, so the refusal says
+    more than the keyword alone.
+    """
+    from typing import Annotated, TypeAlias
+
+    from pydantic import BaseModel, TypeAdapter, ValidationError, WrapValidator
+
+    class Shape(BaseModel):
+        a: str | None = None
+        b: str | None = None
+
+    class First(Shape):
+        a: str
+        b: None = None
+
+    class Second(Shape):
+        b: str
+        a: None = None
+
+    Wrapped: TypeAlias = Annotated[First | Second, WrapValidator(c.name_the_combinator("anyOf"))]
+    adapter: TypeAdapter[First | Second] = TypeAdapter(Wrapped)
+
+    with pytest.raises(ValidationError) as refusal:
+        adapter.validate_python({})
+    errors = refusal.value.errors()
+    assert [error["type"] for error in errors] == ["anyOf"]
+    assert errors[0]["ctx"] == {"fields": "a, b"}
+    assert "one of these is required: a, b" in errors[0]["msg"]
+
+    # The success path is untouched: a document that satisfies a branch comes
+    # back as that branch rather than as the base.
+    assert type(adapter.validate_python({"a": "x"})) is First
+
+    # A refusal that is not about an absent field passes through unchanged, so
+    # the wrapper never relabels a failure it did not diagnose.
+    with pytest.raises(ValidationError) as other:
+        adapter.validate_python({"a": 1, "b": 2})
+    assert "anyOf" not in {error["type"] for error in other.value.errors()}

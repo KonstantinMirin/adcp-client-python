@@ -23,19 +23,37 @@ module does not have to know how the base is spelled.
 
 from __future__ import annotations
 
-from typing import Any, get_args
+from typing import Annotated, Any, get_args, get_origin
 
-__all__ = ["classes_behind", "shared_base"]
+__all__ = ["branch_members", "classes_behind", "shared_base"]
+
+
+def branch_members(declared: Any) -> tuple[Any, ...]:
+    """The branch classes a split root's public name stands for, or ``()``.
+
+    The alias is ``Annotated[A | B, WrapValidator(...)]``, because a refusal has
+    to name the root's combinator. ``get_args`` on that returns the union and
+    the metadata rather than the members, so every reader unwraps the annotation
+    first. One owner for that, because three readers need it and each would get
+    it subtly wrong: a reader that takes ``get_args(...)[0]`` and calls
+    ``issubclass`` on it raises ``TypeError``, which is how this was found.
+    """
+    if get_origin(declared) is Annotated:
+        declared = get_args(declared)[0]
+    members = get_args(declared)
+    if not members or not all(isinstance(member, type) for member in members):
+        return ()
+    return members
 
 
 def classes_behind(declared: Any) -> tuple[Any, ...]:
     """Every class the name stands for, base first, or just the model itself.
 
-    For a split root: the shared base followed by each arm, which is the order
-    a patch-then-rebuild needs -- the base carries the change and every arm has
-    to be rebuilt to see it.
+    For a split root: the shared base followed by each branch, which is the
+    order a patch-then-rebuild needs -- the base carries the change and every
+    branch has to be rebuilt to see it.
     """
-    members = get_args(declared)
+    members = branch_members(declared)
     if not members:
         return (declared,)
     return (members[0].__mro__[1], *members)

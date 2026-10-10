@@ -7604,7 +7604,12 @@ def compose_branch_module(
         return None
 
     banned = any(plan.absent or plan.absent_nullable for plan in plans)
-    rewritten = _ensure_typing_import(rewritten, "TypeAlias")
+    # The union carries a wrapping validator that names the root combinator on a
+    # refusal, so every split module needs Annotated, WrapValidator and the
+    # conditions vocabulary.
+    rewritten = _ensure_typing_import(rewritten, "Annotated", "TypeAlias")
+    rewritten = ensure_pydantic_import(rewritten, "WrapValidator")
+    rewritten = _ensure_conditions_import(rewritten)
     if any(plan.literals for plan in plans):
         rewritten = _ensure_typing_import(rewritten, "Literal")
     rewritten = ensure_pydantic_import(rewritten, "TypeAdapter")

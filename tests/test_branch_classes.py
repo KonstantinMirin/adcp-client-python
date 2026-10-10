@@ -23,11 +23,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
+from adcp.types._split_root import branch_members
 from scripts.branch_classes import (
     plan_branches,
     render_absence_hook,
@@ -221,7 +222,8 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     assert "class ThingShape(AdCPBaseModel):" in rewritten
     assert "class ThingA(ThingShape):" in rewritten
     assert "class ThingB(ThingShape):" in rewritten
-    assert "Thing: TypeAlias = ThingA | ThingB" in rewritten
+    assert "Thing: TypeAlias = Annotated[" in rewritten
+    assert "    ThingA | ThingB," in rewritten
     assert "ThingAdapter: TypeAdapter[Thing] = TypeAdapter(Thing)" in rewritten
     base = rewritten.split("class ThingShape(AdCPBaseModel):")[1].split("class ThingA")[0]
     assert "a: str | None = None" in base
@@ -261,7 +263,7 @@ def test_every_arm_is_a_subclass_of_one_base_so_the_union_is_one_type() -> None:
         rewritten.replace("from __future__ import annotations", ""), namespace
     )
     base = namespace["ThingShape"]
-    members = get_args(namespace["Thing"])
+    members = branch_members(namespace["Thing"])
 
     assert len(members) == 2
     assert all(issubclass(member, base) for member in members)
@@ -569,8 +571,8 @@ def _public_split_roots() -> dict[str, tuple[type, tuple[type, ...]]]:
 
     found: dict[str, tuple[type, tuple[type, ...]]] = {}
     for name in sorted(public.__all__):
-        members = get_args(getattr(public, name, None))
-        if not members or not all(isinstance(member, type) for member in members):
+        members = branch_members(getattr(public, name, None))
+        if not members:
             continue
         shared = {member.__mro__[1] for member in members}
         if len(shared) != 1:

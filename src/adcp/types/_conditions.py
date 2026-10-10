@@ -34,7 +34,10 @@ import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
+from pydantic import ValidationError
+
 __all__ = [
+    "name_the_combinator",
     "absent",
     "descend",
     "every",
@@ -291,3 +294,46 @@ def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) 
         offending = ", ".join(carried)
         raise ValueError(f"{offending} is not accepted by this request shape")
     return data
+
+
+def name_the_combinator(keyword: str) -> Callable[[Any, Any], Any]:
+    """Build the wrapping validator a split root's union carries.
+
+    ``core/error.json`` requires every ``issues[]`` entry to carry a ``keyword``
+    drawn from the JSON Schema vocabulary, and tells a consumer not to invent
+    one. A document that satisfies no branch fails each branch at FIELD
+    validation, so pydantic reports ``missing`` and nothing names the root's
+    combinator. ``missing`` is not in that vocabulary, so a consumer assembling
+    a conformant envelope has nothing valid to put in the field.
+
+    A model validator on the shared base cannot supply it: field validation
+    fails first and an after-validator never runs. A wrapper around the UNION
+    runs, because it sits where the union's own validation happens.
+
+    The absent field names travel with the keyword, in the message and in the
+    error context, so the refusal says more than a bare combinator keyword
+    says. The success path is untouched: a document that satisfies a branch
+    returns that branch's instance.
+    """
+    from pydantic_core import PydanticCustomError
+
+    def _wrap(value: Any, handler: Any) -> Any:
+        try:
+            return handler(value)
+        except ValidationError as exc:
+            absent = sorted(
+                {
+                    str(error["loc"][-1])
+                    for error in exc.errors()
+                    if error["type"] == "missing" and error["loc"]
+                }
+            )
+            if not absent:
+                raise
+            raise PydanticCustomError(
+                keyword,
+                "satisfies no branch of this schema root; one of these is required: {fields}",
+                {"fields": ", ".join(absent)},
+            ) from exc
+
+    return _wrap

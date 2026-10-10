@@ -609,14 +609,24 @@ def split_into_branch_classes(
         for plan in plans
     )
     union = " | ".join(plan.name for plan in plans)
+    combinator = constraints.combinator or "anyOf"
     blocks.append(
         "\n".join(
             [
-                f"#: {schema_file}'s arms, proven pairwise disjoint, so a parsed document",
-                "#: comes back as exactly one of them. The alias is the contract; a member",
-                f"#: is what a caller names to CONSTRUCT one, and {_base_name(flat_class)} is",
-                "#: what they share -- so a method on the base behaves per arm.",
-                f"{flat_class}: TypeAlias = {union}",
+                f"#: {schema_file}'s branches, proven pairwise disjoint, so a parsed",
+                "#: document comes back as exactly one of them. The alias is the contract;",
+                f"#: a member is what a caller names to CONSTRUCT one, and",
+                f"#: {_base_name(flat_class)} is what they share.",
+                "#:",
+                "#: The wrapper names the root combinator on a refusal. A document that",
+                "#: satisfies no branch fails each branch at field validation, so pydantic",
+                "#: reports 'missing' and nothing names the keyword that core/error.json",
+                "#: requires in issues[].keyword. A validator on the shared base cannot",
+                "#: supply it: field validation fails before an after-validator runs.",
+                f"{flat_class}: TypeAlias = Annotated[",
+                f"    {union},",
+                f"    WrapValidator(_c.name_the_combinator({combinator!r})),",
+                "]",
                 "",
                 "#: Parsing is what a union needs an adapter for. Built once, at import.",
                 f"{flat_class}Adapter: TypeAdapter[{flat_class}] = TypeAdapter({flat_class})",
