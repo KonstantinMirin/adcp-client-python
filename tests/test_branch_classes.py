@@ -218,18 +218,18 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     )
 
     assert rewritten is not None
-    assert "class _ThingBase(AdCPBaseModel):" in rewritten
-    assert "class ThingA(_ThingBase):" in rewritten
-    assert "class ThingB(_ThingBase):" in rewritten
+    assert "class ThingShape(AdCPBaseModel):" in rewritten
+    assert "class ThingA(ThingShape):" in rewritten
+    assert "class ThingB(ThingShape):" in rewritten
     assert "Thing: TypeAlias = ThingA | ThingB" in rewritten
     assert "ThingAdapter: TypeAdapter[Thing] = TypeAdapter(Thing)" in rewritten
-    base = rewritten.split("class _ThingBase(AdCPBaseModel):")[1].split("class ThingA")[0]
+    base = rewritten.split("class ThingShape(AdCPBaseModel):")[1].split("class ThingA")[0]
     assert "a: str | None = None" in base
     assert "b: str | None = None" in base
     assert "c: str | None = None" in base, "a field no arm constrains is declared once"
     # The arm that requires ``a`` restates only what it changes: ``a`` loses its
     # default, ``b`` becomes unpassable, and ``c`` is left to the base.
-    arm = rewritten.split("class ThingA(_ThingBase):")[1].split("class ThingB")[0]
+    arm = rewritten.split("class ThingA(ThingShape):")[1].split("class ThingB")[0]
     assert "a: str\n" in arm
     assert "b: None = None" in arm
     assert "c:" not in arm
@@ -260,7 +260,7 @@ def test_every_arm_is_a_subclass_of_one_base_so_the_union_is_one_type() -> None:
     exec(  # noqa: S102 - the emitter's output is the subject; importing it is the test
         rewritten.replace("from __future__ import annotations", ""), namespace
     )
-    base = namespace["_ThingBase"]
+    base = namespace["ThingShape"]
     members = get_args(namespace["Thing"])
 
     assert len(members) == 2
@@ -271,13 +271,19 @@ def test_every_arm_is_a_subclass_of_one_base_so_the_union_is_one_type() -> None:
         namespace["ThingAdapter"].validate_python({"a": "x", "b": "y"})
 
 
-def test_the_base_is_module_internal_because_the_union_is_the_contract() -> None:
+def test_the_base_is_public_because_a_consumer_needs_to_name_it() -> None:
     """Stated as a test so the visibility decision is recorded where it binds.
 
-    A consumer parses a document and gets one of the members, so what it
-    annotates is the alias. The base exists to hold the fields the arms share
-    and to be subclassed by a class that needs them; nothing needs ``isinstance``
-    against it. So it is importable and not exported.
+    The base exists so the arms are ONE type, and a type nobody can name or
+    annotate is not one -- a method that behaves per arm has to take something,
+    and an ``isinstance`` check has to test something. So the base is public,
+    and this asserts the two things that makes true of the emitted module: no
+    leading underscore, and a name the next pass's ``__all__`` can carry.
+
+    The earlier version of this test asserted the opposite. It was decided on
+    who does ``isinstance`` against a split root TODAY, which is a measurement
+    of current usage of a type that did not exist yet -- it could not answer the
+    question. Four consumers appeared as soon as the split landed.
     """
     rewritten = split_into_branch_classes(
         _FLAT_MODULE,
@@ -288,8 +294,8 @@ def test_the_base_is_module_internal_because_the_union_is_the_contract() -> None
     )
 
     assert rewritten is not None
-    assert "class _ThingBase(" in rewritten, "underscore-prefixed: not part of the public surface"
-    assert '"_ThingBase"' not in rewritten, "and never named in an __all__ the next pass writes"
+    assert "class ThingShape(" in rewritten, "no leading underscore: it is public"
+    assert not rewritten.count("class _Thing"), "nothing module-internal is emitted for the root"
 
 
 def test_a_class_that_subclassed_the_flat_root_is_repointed_onto_the_base() -> None:
@@ -310,14 +316,14 @@ def test_a_class_that_subclassed_the_flat_root_is_repointed_onto_the_base() -> N
     rewritten = repoint_subclasses_of(module, "Thing")
 
     assert rewritten is not None
-    assert "class Extended(_ThingBase):" in rewritten
-    assert "from ..core.thing import Thing, _ThingBase" in rewritten
+    assert "class Extended(ThingShape):" in rewritten
+    assert "from ..core.thing import Thing, ThingShape" in rewritten
     assert repoint_subclasses_of(module, "Other") is None, "a module naming it in no base list"
 
     # A base nothing imports is a module that fails at import, so the rewrite
     # refuses rather than emitting one. The shape it understands is a single-line
     # import, which is what both sites on the pin use.
-    with pytest.raises(RuntimeError, match="to extend with _ThingBase"):
+    with pytest.raises(RuntimeError, match="to extend with ThingShape"):
         repoint_subclasses_of(
             "from ..core.thing import (\n    Thing,\n)\n\n\nclass Extended(Thing):\n    pass\n",
             "Thing",
@@ -395,9 +401,8 @@ def test_no_plan_forbids_a_field_it_also_requires() -> None:
     """Over the whole partitioning population, not just the worked example."""
     from scripts.post_generate_fixes import (
         SCHEMA_DIR,
-        _root_generated_class,
+        _schema_root_class_name,
         flat_root_shape,
-        generated_module_for,
     )
     from scripts.schema_constraints import (
         bundle_document_resolver,
@@ -429,7 +434,11 @@ def test_no_plan_forbids_a_field_it_also_requires() -> None:
         )
         if not constraints.combinator or not partitions_by_requiredness(constraints):
             continue
-        parent = _root_generated_class(generated_module_for(relative).read_text(), schema)
+        # The root's NAME, which the schema states. Not the class the module
+        # declares: after the split there is no flat class, and the shape that
+        # carries the properties is called <Root>Shape -- deriving arm names
+        # from that spells them <Root>Shape<Arm>.
+        parent = _schema_root_class_name(schema)
         assert parent is not None
         for plan in plan_branches(
             constraints, parent, str(relative), frozenset(shape.fields.values())
@@ -454,51 +463,30 @@ def test_a_module_without_the_flat_class_is_reported_not_guessed() -> None:
     )
 
 
-def test_the_emitter_is_not_wired_into_the_generation_pipeline() -> None:
-    """Stated as a test so the claim in the module docstring cannot go stale.
-
-    Wiring it requires the two hand-written create-media-buy layers to narrow
-    per arm, as the module docstring records; until then the roots it would
-    split carry the compiled check that ``enforce_root_constraints`` emits, so
-    nothing is parsed and left unenforced.
-    """
-    import inspect
-
-    from scripts import post_generate_fixes
-
-    source = inspect.getsource(post_generate_fixes.main)
-
-    assert "emit_branch_classes" not in source
-    assert "enforce_root_constraints" in source
-
-
 def test_unused_import_guard() -> None:
     """Keeps ``pytest`` imported for the collection-time fixtures above."""
     assert pytest is not None
 
 
-def test_every_arm_of_every_split_root_names_its_root_base() -> None:
-    """The subclass relation holds for all 24 arms, derived from the schemas.
+def test_every_arm_of_every_split_root_names_its_root_shape() -> None:
+    """The subclass relation, read off the SHIPPED tree rather than a re-render.
 
-    ``isinstance(arm, base)`` is the property the public base exists to give a
+    ``isinstance(arm, shape)`` is the property the public base exists to give a
     consumer, and the population it has to hold over is whichever roots the
     partition prover finds -- not a list written here, which would go stale the
-    moment a schema refresh adds or drops a partitioning root. So the roots come
-    from the prover, the arm names from the emitter, and the relation is read
-    off the emitted module.
+    moment a schema refresh adds or drops a partitioning root.
 
-    Read by parsing rather than by importing, and that is a real limit worth
-    stating: the emitter is unwired, so there is no split tree to import, and
-    importing one would need the two hand-written create-media-buy layers to
-    narrow per arm first. The runtime ``isinstance`` is graded on the fixture
-    module above, which does import.
+    This reads the generated modules as they ship. The earlier version rendered
+    each root again and graded the render, which it had to while the emitter was
+    unwired: the committed tree still carried the flat class, and the render was
+    the only place the arms existed. Now the arms are in the tree, so grading a
+    second render would grade the renderer twice and the artifact never -- and
+    would not notice a later pass that edits what the emitter wrote.
     """
     import ast as _ast
 
     from scripts.post_generate_fixes import (
         SCHEMA_DIR,
-        _root_generated_class,
-        compose_branch_module,
         flat_root_shape,
         generated_module_for,
     )
@@ -507,6 +495,7 @@ def test_every_arm_of_every_split_root_names_its_root_base() -> None:
         partitions_by_requiredness,
         root_carries_constraints,
     )
+    from scripts.union_arm_names import branch_class_names
 
     resolve = bundle_document_resolver(SCHEMA_DIR)
     roots = 0
@@ -521,37 +510,128 @@ def test_every_arm_of_every_split_root_names_its_root_base() -> None:
             continue
         if not isinstance(schema, dict) or not root_carries_constraints(schema):
             continue
-        shape = flat_root_shape(schema, relative)
-        if shape is None:
+        module = generated_module_for(relative)
+        if not module.exists():
             continue
+        content = module.read_text()
+        tree = _ast.parse(content)
+        bases = {
+            node.name: [_ast.unparse(base) for base in node.bases]
+            for node in tree.body
+            if isinstance(node, _ast.ClassDef)
+        }
+        # The root's own name is bound to a union here, so the shape is what the
+        # module declares for it. A root the emitter did not split has no shape.
+        root = _schema_root_name(schema)
+        shape = f"{root}Shape"
+        if shape not in bases:
+            continue
+        # The prover has to agree the root partitions: a shape with no proof
+        # behind it would mean the emitter split something it should not have.
+        parsed = flat_root_shape(schema, relative)
+        assert parsed is not None, relative
         constraints = read_root_constraints(
             schema,
-            shape,
+            parsed,
             arms_render_as_classes=False,
             schema_file=str(relative),
             resolve_document=resolve,
         )
-        if not partitions_by_requiredness(constraints):
-            continue
-        content = generated_module_for(relative).read_text()
-        parent = _root_generated_class(content, schema)
-        assert parent is not None
-        rendered = compose_branch_module(
-            content, parent, constraints, str(relative), frozenset(shape.fields.values())
-        )
-        assert rendered is not None, relative
-        plans = plan_branches(constraints, parent, str(relative), frozenset(shape.fields.values()))
-        declared = {
-            node.name: [_ast.unparse(base) for base in node.bases]
-            for node in _ast.parse(rendered).body
-            if isinstance(node, _ast.ClassDef)
-        }
-        base = f"_{parent}Base"
-        assert base in declared, (relative, sorted(declared))
-        for plan in plans:
-            assert declared.get(plan.name) == [base], (relative, plan.name, declared.get(plan.name))
+        assert partitions_by_requiredness(constraints), relative
+        for name in branch_class_names(root, constraints.arms, str(relative)):
+            assert bases.get(name) == [shape], (relative, name, bases.get(name))
             arms += 1
+        assert f"{root}: TypeAlias" in content, relative
+        assert f"{root}Adapter: TypeAdapter[{root}]" in content, relative
         roots += 1
 
-    assert roots >= 11, f"the prover found only {roots} partitioning roots"
+    assert roots >= 11, f"the prover found only {roots} split roots in the shipped tree"
     assert arms >= 24, f"only {arms} arms graded"
+
+
+def _schema_root_name(schema: dict[str, Any]) -> str:
+    """The class name the generator derives from a schema title."""
+    from scripts.post_generate_fixes import _schema_title_to_class_name
+
+    title = schema.get("title")
+    assert isinstance(title, str) and title.strip()
+    return _schema_title_to_class_name(title)
+
+
+def _public_split_roots() -> dict[str, tuple[type, tuple[type, ...]]]:
+    """Every name ``adcp.types`` exports that resolves to a union over one shape.
+
+    Derived, not listed: a root added or dropped by a schema refresh is picked
+    up without editing a test, and an alias of a root counts as the root --
+    ``LegacyCreateMediaBuyRequest`` is the same union under another public name.
+    """
+    import adcp.types as public
+
+    found: dict[str, tuple[type, tuple[type, ...]]] = {}
+    for name in sorted(public.__all__):
+        members = get_args(getattr(public, name, None))
+        if not members or not all(isinstance(member, type) for member in members):
+            continue
+        shared = {member.__mro__[1] for member in members}
+        if len(shared) != 1:
+            continue  # a union of unrelated classes, not a split root
+        shape = next(iter(shared))
+        if shape.__name__.endswith("Shape"):
+            found[name] = (shape, members)
+    return found
+
+
+def test_isinstance_against_the_public_shape_holds_for_every_arm() -> None:
+    """The property the public shape exists for, asserted at RUNTIME.
+
+    Not by parsing: this imports the shipped package, walks every public union
+    over a shape, and checks ``issubclass`` for each member. A parse can say the
+    base list names the shape; only an import can say the MRO actually holds and
+    that the name resolves off ``adcp.types``.
+    """
+    roots = _public_split_roots()
+    assert len(roots) >= 5, f"only {len(roots)} public split roots found: {sorted(roots)}"
+
+    arms = 0
+    for name, (shape, members) in roots.items():
+        for member in members:
+            assert issubclass(member, shape), f"{member.__name__} is not a {shape.__name__}"
+            # Every field the shape declares is reachable on the arm, which is
+            # what makes a method written against the shape work per arm.
+            assert set(shape.model_fields) <= set(member.model_fields), (name, member.__name__)
+            arms += 1
+
+    assert arms >= 10, f"only {arms} arms graded"
+
+
+def test_every_public_shape_is_the_shape_of_a_public_union_and_conversely() -> None:
+    """One rule, both directions: the two sets of shapes are the same set.
+
+    A shape nameable from ``adcp.types`` must be the shape behind some public
+    union, and a public union over a shape must have that shape nameable. Stated
+    as a set equality rather than as a name rule, because every name rule I tried
+    was wrong in a way the equality is not: ``<root>Shape`` fails for an alias
+    (``LegacyCreateMediaBuyRequest``'s shape is ``CreateMediaBuyRequestShape``),
+    and requiring ``<root>`` to be a union fails for ``CreativeAsset``, whose
+    public name is the CANONICAL model while ``LegacyCreativeAsset`` is the union.
+
+    Both directions caught a real error in the hand-picked export list I started
+    from: it published five shapes for roots nothing public names, and withheld
+    one that a public legacy union needs.
+    """
+    import adcp.types as public
+
+    exported_shapes = {
+        getattr(public, name)
+        for name in public.__all__
+        if name.endswith("Shape") and isinstance(getattr(public, name, None), type)
+    }
+    shapes_behind_public_unions = {shape for shape, _ in _public_split_roots().values()}
+
+    assert exported_shapes == shapes_behind_public_unions, (
+        "published but behind no public union: "
+        f"{sorted(c.__name__ for c in exported_shapes - shapes_behind_public_unions)}; "
+        "behind a public union but not published: "
+        f"{sorted(c.__name__ for c in shapes_behind_public_unions - exported_shapes)}"
+    )
+    assert exported_shapes, "the derivation selected nothing"

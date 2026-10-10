@@ -379,7 +379,7 @@ def test_every_partitioning_root_in_the_bundle_names_its_arms() -> None:
     """
     from scripts.post_generate_fixes import (
         SCHEMA_DIR,
-        _root_generated_class,
+        _schema_root_class_name,
         flat_root_shape,
         generated_module_for,
     )
@@ -414,7 +414,11 @@ def test_every_partitioning_root_in_the_bundle_names_its_arms() -> None:
         )
         if not constraints.combinator or not partitions_by_requiredness(constraints):
             continue
-        parent = _root_generated_class(generated_module_for(relative).read_text(), schema)
+        # The root's NAME, which the schema states. Not the class the module
+        # declares: after the split there is no flat class, and the shape that
+        # carries the properties is called <Root>Shape -- deriving arm names
+        # from that spells them <Root>Shape<Arm>.
+        parent = _schema_root_class_name(schema)
         assert parent is not None
         named[str(relative)] = branch_class_names(parent, constraints.arms, str(relative))
 

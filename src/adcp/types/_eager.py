@@ -931,6 +931,30 @@ CreativeManifest = _canonical_creative.CreativeManifest
 # the canonical-format arm only, so the deprecated format_id path reaches the
 # other arm through the generated class.
 CreativeManifestNamedFormatManifest = generated.CreativeManifestNamedFormatManifest
+
+# The shared shape of each root whose arms partition AND whose union is public.
+# PUBLIC because the arms are one type only if that type can be named: a method
+# behaving per arm has to take something, and an isinstance check has to test
+# something. The union keeps the root's own name and means "one of these"; the
+# shape means "any of them". Spelled Shape rather than Base because
+# versioned_bases already exports 197 public <Tool><Direction>Base names meaning
+# something else -- the extension base for a tool's request at a pinned version.
+#
+# A shape's visibility FOLLOWS its root's, which is why this is five names and
+# not eleven. The other six split roots are nested object schemas that nothing
+# on the public surface -- including the legacy aliases -- binds to a union, so
+# a consumer cannot name the root either.
+#
+# CreativeAssetShape is here for the LEGACY alias, not for the canonical name:
+# adcp.types.CreativeAsset is the canonical model (which subclasses one arm),
+# while adcp.types.LegacyCreativeAsset IS the generated union over both arms, so
+# a consumer holding that union needs its shape. Withholding it was my error and
+# test_a_shapes_visibility_follows_its_roots is what found it.
+CreateMediaBuyRequestShape = generated.CreateMediaBuyRequestShape
+CreativeAssetShape = generated.CreativeAssetShape
+ListAccountChangesResponseShape = generated.ListAccountChangesResponseShape
+RequestProposalsRequestShape = generated.RequestProposalsRequestShape
+WebhookChallengeResponseShape = generated.WebhookChallengeResponseShape
 CreativeVariant = _canonical_creative.CreativeVariant
 Format = _canonical_creative.Format
 GetCreativeDeliveryResponse = _canonical_creative.GetCreativeDeliveryResponse

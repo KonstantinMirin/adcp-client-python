@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 21:01:44 UTC
+Generation date: 2026-10-10 21:38:35 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -187,6 +187,7 @@ from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequestCommittedProposalExecution,
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
     CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
+    CreateMediaBuyRequestShape,
     DeliveryMode,
 )
 from adcp.types.domains.media_buy.create_media_buy_response import (
@@ -448,6 +449,7 @@ from adcp.types.domains.media_buy.request_proposals_request import (
     RequestProposalsRequestAccount,
     RequestProposalsRequestAdapter,
     RequestProposalsRequestBrand,
+    RequestProposalsRequestShape,
 )
 from adcp.types.domains.media_buy.request_proposals_response import (
     IncompleteItem5,
@@ -658,6 +660,7 @@ __all__ = [
     "CreateMediaBuyRequestCommittedProposalExecution",
     "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
     "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",
+    "CreateMediaBuyRequestShape",
     "CreateMediaBuyResponse",
     "CreateMediaBuyResponse1",
     "CreateMediaBuyResponse2",
@@ -844,6 +847,7 @@ __all__ = [
     "RequestProposalsRequestAccount",
     "RequestProposalsRequestAdapter",
     "RequestProposalsRequestBrand",
+    "RequestProposalsRequestShape",
     "RequestProposalsResponse",
     "RequestProposalsResponse1",
     "RequestProposalsResponse2",

@@ -3,35 +3,35 @@
 ## Field changes
 
 - `account/list_account_changes_response.py`
-  - **classes added**: ListAccountChangesResponseCompleted, ListAccountChangesResponseFailed, _ListAccountChangesResponseBase
-  - **classes removed**: ListAccountChangesResponse
+  - **classes added**: ListAccountChangesResponseShape
+  - **classes removed**: _ListAccountChangesResponseBase
 - `core/audience_characteristic.py`
-  - **classes added**: AudienceCharacteristicRange, AudienceCharacteristicValue, _AudienceCharacteristicBase
-  - **classes removed**: AudienceCharacteristic
+  - **classes added**: AudienceCharacteristicShape
+  - **classes removed**: _AudienceCharacteristicBase
 - `core/catchment.py`
-  - **classes added**: CatchmentGeometry, CatchmentRadius, CatchmentTransportModeTravelTime, _CatchmentBase
-  - **classes removed**: Catchment
+  - **classes added**: CatchmentShape
+  - **classes removed**: _CatchmentBase
 - `core/creative_asset.py`
-  - **classes added**: CreativeAssetV1CreativeNamedFormatReference, CreativeAssetV2CreativeCanonicalFormatKind, _CreativeAssetBase
-  - **classes removed**: CreativeAsset
+  - **classes added**: CreativeAssetShape
+  - **classes removed**: _CreativeAssetBase
 - `core/creative_manifest.py`
-  - **classes added**: CreativeManifestCanonicalFormatManifest, CreativeManifestNamedFormatManifest, _CreativeManifestBase
-  - **classes removed**: CreativeManifest
+  - **classes added**: CreativeManifestShape
+  - **classes removed**: _CreativeManifestBase
 - `core/frequency_cap_impression_constraints.py`
-  - **classes added**: FrequencyCapImpressionConstraintsAllowedValues, FrequencyCapImpressionConstraintsMaximumMinimum, _FrequencyCapImpressionConstraintsBase
-  - **classes removed**: FrequencyCapImpressionConstraints
+  - **classes added**: FrequencyCapImpressionConstraintsShape
+  - **classes removed**: _FrequencyCapImpressionConstraintsBase
 - `core/frequency_cap_interval_constraints.py`
-  - **classes added**: FrequencyCapIntervalConstraintsAllowedIntervals, FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval, _FrequencyCapIntervalConstraintsBase
-  - **classes removed**: FrequencyCapIntervalConstraints
+  - **classes added**: FrequencyCapIntervalConstraintsShape
+  - **classes removed**: _FrequencyCapIntervalConstraintsBase
 - `core/get_geo_place_resolution_request.py`
-  - **classes added**: GetGeographicPlaceResolutionRequestQ, GetGeographicPlaceResolutionRequestValue, _GetGeographicPlaceResolutionRequestBase
-  - **classes removed**: GetGeographicPlaceResolutionRequest
+  - **classes added**: GetGeographicPlaceResolutionRequestShape
+  - **classes removed**: _GetGeographicPlaceResolutionRequestBase
 - `core/webhook_challenge_response.py`
-  - **classes added**: WebhookChallengeResponseChallenge, WebhookChallengeResponseToken, _WebhookChallengeResponseBase
-  - **classes removed**: WebhookChallengeResponse
+  - **classes added**: WebhookChallengeResponseShape
+  - **classes removed**: _WebhookChallengeResponseBase
 - `media_buy/create_media_buy_request.py`
-  - **classes added**: CreateMediaBuyRequestCommittedProposalExecution, CreateMediaBuyRequestExplicitPackagesWithFixedAllocation, CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation, _CreateMediaBuyRequestBase
-  - **classes removed**: CreateMediaBuyRequest
+  - **classes added**: CreateMediaBuyRequestShape
+  - **classes removed**: _CreateMediaBuyRequestBase
 - `media_buy/request_proposals_request.py`
-  - **classes added**: RequestProposalsRequestAccount, RequestProposalsRequestBrand, _RequestProposalsRequestBase
-  - **classes removed**: RequestProposalsRequest
+  - **classes added**: RequestProposalsRequestShape
+  - **classes removed**: _RequestProposalsRequestBase

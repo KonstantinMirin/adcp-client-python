@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 21:01:44 UTC
+Generation date: 2026-10-10 21:38:35 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -339,6 +339,7 @@ from adcp.types.domains.core.audience_characteristic import (
     AudienceCharacteristic,
     AudienceCharacteristicAdapter,
     AudienceCharacteristicRange,
+    AudienceCharacteristicShape,
     AudienceCharacteristicValue,
 )
 from adcp.types.domains.core.audience_evidence import (
@@ -522,6 +523,7 @@ from adcp.types.domains.core.catchment import (
     CatchmentAdapter,
     CatchmentGeometry,
     CatchmentRadius,
+    CatchmentShape,
     CatchmentTransportModeTravelTime,
 )
 from adcp.types.domains.core.collection import Collection, RelatedCollection
@@ -554,6 +556,7 @@ from adcp.types.domains.core.creative_approval_scope import ScopedCreativeApprov
 from adcp.types.domains.core.creative_asset import (
     CreativeAsset,
     CreativeAssetAdapter,
+    CreativeAssetShape,
     CreativeAssetV1CreativeNamedFormatReference,
     CreativeAssetV2CreativeCanonicalFormatKind,
     Input,
@@ -579,6 +582,7 @@ from adcp.types.domains.core.creative_manifest import (
     CreativeManifestAdapter,
     CreativeManifestCanonicalFormatManifest,
     CreativeManifestNamedFormatManifest,
+    CreativeManifestShape,
 )
 from adcp.types.domains.core.creative_operation_format_declaration import (
     CreativeOperationFormatDeclaration,
@@ -807,6 +811,7 @@ from adcp.types.domains.core.frequency_cap_impression_constraints import (
     FrequencyCapImpressionConstraintsAdapter,
     FrequencyCapImpressionConstraintsAllowedValues,
     FrequencyCapImpressionConstraintsMaximumMinimum,
+    FrequencyCapImpressionConstraintsShape,
 )
 from adcp.types.domains.core.frequency_cap_interval_constraints import (
     AllowedInterval,
@@ -814,6 +819,7 @@ from adcp.types.domains.core.frequency_cap_interval_constraints import (
     FrequencyCapIntervalConstraintsAdapter,
     FrequencyCapIntervalConstraintsAllowedIntervals,
     FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
+    FrequencyCapIntervalConstraintsShape,
 )
 from adcp.types.domains.core.frequency_cap_requirements import FrequencyCapRequirements
 from adcp.types.domains.core.generation_credential import GenerationCredential
@@ -852,6 +858,7 @@ from adcp.types.domains.core.get_geo_place_resolution_request import (
     GetGeographicPlaceResolutionRequest,
     GetGeographicPlaceResolutionRequestAdapter,
     GetGeographicPlaceResolutionRequestQ,
+    GetGeographicPlaceResolutionRequestShape,
     GetGeographicPlaceResolutionRequestValue,
 )
 from adcp.types.domains.core.get_geo_place_resolution_response import (
@@ -1751,6 +1758,7 @@ from adcp.types.domains.core.webhook_challenge_response import (
     WebhookChallengeResponse,
     WebhookChallengeResponseAdapter,
     WebhookChallengeResponseChallenge,
+    WebhookChallengeResponseShape,
     WebhookChallengeResponseToken,
 )
 from adcp.types.domains.core.wholesale_feed_event import (
@@ -1939,6 +1947,7 @@ __all__ = [
     "AudienceCharacteristic",
     "AudienceCharacteristicAdapter",
     "AudienceCharacteristicRange",
+    "AudienceCharacteristicShape",
     "AudienceCharacteristicValue",
     "AudienceEvidence",
     "AudienceEvidencePin",
@@ -2109,6 +2118,7 @@ __all__ = [
     "CatchmentAdapter",
     "CatchmentGeometry",
     "CatchmentRadius",
+    "CatchmentShape",
     "CatchmentTransportModeTravelTime",
     "Category",
     "ChangedFields",
@@ -2167,6 +2177,7 @@ __all__ = [
     "CreateMediaBuyWorking",
     "CreativeAsset",
     "CreativeAssetAdapter",
+    "CreativeAssetShape",
     "CreativeAssetV1CreativeNamedFormatReference",
     "CreativeAssetV2CreativeCanonicalFormatKind",
     "CreativeAssets",
@@ -2185,6 +2196,7 @@ __all__ = [
     "CreativeManifestAdapter",
     "CreativeManifestCanonicalFormatManifest",
     "CreativeManifestNamedFormatManifest",
+    "CreativeManifestShape",
     "CreativeOperationFormatDeclaration",
     "CreativePolicy",
     "CreativeRepresentation",
@@ -2338,10 +2350,12 @@ __all__ = [
     "FrequencyCapImpressionConstraintsAdapter",
     "FrequencyCapImpressionConstraintsAllowedValues",
     "FrequencyCapImpressionConstraintsMaximumMinimum",
+    "FrequencyCapImpressionConstraintsShape",
     "FrequencyCapIntervalConstraints",
     "FrequencyCapIntervalConstraintsAdapter",
     "FrequencyCapIntervalConstraintsAllowedIntervals",
     "FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval",
+    "FrequencyCapIntervalConstraintsShape",
     "FrequencyCapRequirements",
     "Freshness",
     "FuelType",
@@ -2372,6 +2386,7 @@ __all__ = [
     "GetGeographicPlaceResolutionRequest",
     "GetGeographicPlaceResolutionRequestAdapter",
     "GetGeographicPlaceResolutionRequestQ",
+    "GetGeographicPlaceResolutionRequestShape",
     "GetGeographicPlaceResolutionRequestValue",
     "GetGeographicPlaceResolutionResponse",
     "GetProductsInputRequired",
@@ -3233,6 +3248,7 @@ __all__ = [
     "WebhookChallengeResponse",
     "WebhookChallengeResponseAdapter",
     "WebhookChallengeResponseChallenge",
+    "WebhookChallengeResponseShape",
     "WebhookChallengeResponseToken",
     "WebhookResponseType",
     "WebhookSecurityMethod",

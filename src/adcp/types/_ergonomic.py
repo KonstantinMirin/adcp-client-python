@@ -69,7 +69,7 @@ from adcp.types.domains.media_buy.create_media_buy_request import (
     CreateMediaBuyRequestCommittedProposalExecution,
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
     CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
-    _CreateMediaBuyRequestBase,
+    CreateMediaBuyRequestShape,
 )
 from adcp.types.domains.media_buy.get_products_request import (
     GetProductsRequest,
@@ -317,14 +317,14 @@ def _apply_coercion() -> None:
     )
     PackageRequest.model_rebuild(force=True)
 
-    # Apply coercion to _CreateMediaBuyRequestBase
+    # Apply coercion to CreateMediaBuyRequestShape
     # - packages: Sequence[PackageRequest] (accepts subclass instances)
     # - advertiser_industry: AdvertiserIndustry | str | None
     # - pacing: Pacing | str | None
     # - context: ContextObject | dict | None
     # - ext: ExtensionObject | dict | None
     _patch_field_annotation(
-        _CreateMediaBuyRequestBase,
+        CreateMediaBuyRequestShape,
         "packages",
         Annotated[
             Sequence[PackageRequest] | None,
@@ -332,26 +332,26 @@ def _apply_coercion() -> None:
         ],
     )
     _patch_field_annotation(
-        _CreateMediaBuyRequestBase,
+        CreateMediaBuyRequestShape,
         "advertiser_industry",
         Annotated[AdvertiserIndustry | None, BeforeValidator(coerce_to_enum(AdvertiserIndustry))],
     )
     _patch_field_annotation(
-        _CreateMediaBuyRequestBase,
+        CreateMediaBuyRequestShape,
         "pacing",
         Annotated[Pacing | None, BeforeValidator(coerce_to_enum(Pacing))],
     )
     _patch_field_annotation(
-        _CreateMediaBuyRequestBase,
+        CreateMediaBuyRequestShape,
         "context",
         Annotated[ContextObject | None, BeforeValidator(coerce_to_model(ContextObject))],
     )
     _patch_field_annotation(
-        _CreateMediaBuyRequestBase,
+        CreateMediaBuyRequestShape,
         "ext",
         Annotated[ExtensionObject | None, BeforeValidator(coerce_to_model(ExtensionObject))],
     )
-    _CreateMediaBuyRequestBase.model_rebuild(force=True)
+    CreateMediaBuyRequestShape.model_rebuild(force=True)
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation.model_rebuild(force=True)
     CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation.model_rebuild(force=True)
     CreateMediaBuyRequestCommittedProposalExecution.model_rebuild(force=True)

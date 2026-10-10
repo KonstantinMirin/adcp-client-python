@@ -7,8 +7,8 @@ types, and the generator's flattening is what turned them into a rule. This
 module renders that.
 
 The arms are ONE type with different requiredness, not several types, and the
-emission says so: a shared base per split root carries the root's own
-properties, each arm subclasses it and restates only what it changes, and the
+emission says so: a shared base per split root -- ``<Root>Shape`` -- carries the
+root's own properties, each arm subclasses it and restates only what it changes, and the
 root's public name becomes a union over the arms.
 
 Measured over the eleven roots this splits, counting the properties the base
@@ -38,9 +38,16 @@ array's items, a value bound. Those are compiled onto the arm's own class by
 ``scripts/compile_conditions.py``, so the refusal still arrives from the class
 the caller named, but it arrives at validation rather than at type-check time.
 
-Nothing here invents an identifier. Class names come from
+Nothing here invents an identifier. Arm names come from
 ``scripts/union_arm_names.py``'s rungs over the same ``Arm`` records, and the
-module-internal spellings are the parent name with a leading underscore.
+shared base is the root's name plus ``Shape``.
+
+The base is PUBLIC, and its visibility FOLLOWS its root's: a shape is exported
+exactly when some public name resolves to the union over its arms, which is
+five of the eleven today. ``adcp.types`` never exported the other six roots, so
+a consumer cannot name those roots either. ``tests/test_branch_classes.py``
+asserts that as a set equality in both directions, which is how two errors in a
+hand-picked export list were found.
 """
 
 from __future__ import annotations
@@ -356,16 +363,25 @@ def _statement_source(statement: ast.stmt, source: str) -> str:
 
 
 def _base_name(flat_class: str) -> str:
-    """The shared base's spelling: the root's own name, marked module-internal.
+    """The shared base's spelling: the root's name and what the class is.
 
-    Private by decision, and the decision is that the UNION is the contract. A
-    consumer parses a document and gets one of the members; it annotates the
-    alias. Nothing in the generated tree or the hand-written layers needs
-    ``isinstance`` against the base, so exporting it would publish a name whose
-    only job is to hold the fields the branches share. It stays importable --
-    a subclass in another module names it -- and stays out of ``__all__``.
+    PUBLIC, and the reasoning is what a consumer will want rather than what
+    the tree happens to do today. A method that behaves differently per arm
+    needs the arms to be one type, and a type nobody can name or annotate is
+    not one -- which puts a caller back at the bare union the base exists to
+    replace. So the base is exported and `isinstance` against it holds for
+    every arm.
+
+    ``Shape`` rather than ``Base``: ``versioned_bases`` already exports 197
+    public ``<Tool><Direction>Base`` names meaning something else entirely --
+    the named extension base for a tool's request at a pinned spec version --
+    and two of them (``CreateMediaBuyRequestBase``,
+    ``RequestProposalsRequestBase``) collide with roots this splits. ``Shape``
+    is free on all eleven, groups under the root's prefix in a namespace of
+    about a thousand names, and says what the class is: the shape every arm
+    shares.
     """
-    return f"_{flat_class}Base"
+    return f"{flat_class}Shape"
 
 
 def _render_base(
@@ -402,7 +418,9 @@ def _render_base(
         "",
         members,
         "",
-        f"    Module-internal: {flat_class} -- the union -- is the contract.",
+        f"    Public. A caller annotates {flat_class} -- the union -- to say",
+        '    "one of these", and names this one to say "any of them": it is what',
+        "    an isinstance check tests and what a method behaving per arm takes.",
         '    """',
         "",
     ]

@@ -7279,19 +7279,51 @@ def _root_generated_class(content: str, schema: dict) -> str | None:
     the generator split it into per-arm classes behind a union alias — and a
     group derived from one arm does not constrain another. When two classes
     carry it, the name does not identify the root.
+
+    This is the FLAT class only, and deliberately: its name is also the root's
+    name, which is what arm class names are derived from. A reader that wants
+    "whichever class declares the root's properties" on an already-split tree
+    wants :func:`_root_property_class`, which answers the shape — asking this
+    one to fall back to the shape made it return ``CreateMediaBuyRequestShape``
+    as the root's name and produced arms called
+    ``CreateMediaBuyRequestShapeExplicitPackagesWithFixedAllocation``.
     """
+    return _named_class(content, _schema_root_class_name(schema))
+
+
+def _schema_root_class_name(schema: dict) -> str | None:
+    """The class name the generator derives from a schema title, or ``None``."""
     title = schema.get("title")
     if not isinstance(title, str) or not title.strip():
         return None
-    wanted = _schema_title_to_class_name(title).lower()
+    return _schema_title_to_class_name(title)
+
+
+def _named_class(content: str, wanted: str | None) -> str | None:
+    """The one class whose name matches, up to case, or ``None``."""
+    if wanted is None:
+        return None
     declared = {
         match.group(1)
         for match in re.finditer(r"^class (\w+)\b", content, re.MULTILINE)
-        if match.group(1).lower() == wanted
+        if match.group(1).lower() == wanted.lower()
     }
-    if len(declared) != 1:
+    return declared.pop() if len(declared) == 1 else None
+
+
+def _root_property_class(content: str, schema: dict) -> str | None:
+    """Whichever class declares the root's merged properties.
+
+    The flat class before the emitter runs, and ``<Root>Shape`` after: the
+    root's own name is bound to a union then, and its properties live on the
+    shape the arms share. Both are the same declaration, which is why a reader
+    of a declaration may take either — and why a reader of the root's NAME may
+    not (see :func:`_root_generated_class`).
+    """
+    root = _schema_root_class_name(schema)
+    if root is None:
         return None
-    return declared.pop()
+    return _named_class(content, root) or _named_class(content, f"{root}Shape")
 
 
 def generated_module_for(relative_path: Path) -> Path:
@@ -7323,7 +7355,8 @@ def flat_root_shape(schema: dict, relative_path: Path) -> DeclaredShape | None:
     module_path = generated_module_for(relative_path)
     if not module_path.is_file():
         return None
-    class_name = _root_generated_class(module_path.read_text(), schema)
+    # The DECLARATION, which after the emitter has run lives on the shape.
+    class_name = _root_property_class(module_path.read_text(), schema)
     if class_name is None:
         return None
     fields = _generated_fields(module_path, class_name)
