@@ -314,6 +314,15 @@ def test_a_class_that_subclassed_the_flat_root_is_repointed_onto_the_base() -> N
     assert "from ..core.thing import Thing, _ThingBase" in rewritten
     assert repoint_subclasses_of(module, "Other") is None, "a module naming it in no base list"
 
+    # A base nothing imports is a module that fails at import, so the rewrite
+    # refuses rather than emitting one. The shape it understands is a single-line
+    # import, which is what both sites on the pin use.
+    with pytest.raises(RuntimeError, match="to extend with _ThingBase"):
+        repoint_subclasses_of(
+            "from ..core.thing import (\n    Thing,\n)\n\n\nclass Extended(Thing):\n    pass\n",
+            "Thing",
+        )
+
 
 def test_the_split_drops_a_combinator_check_the_arms_shape_already_answers() -> None:
     """A flat validator left by the constraint pass must not be copied per arm.

@@ -9,14 +9,18 @@ module renders that.
 The arms are ONE type with different requiredness, not several types, and the
 emission says so: a shared base per split root carries the root's own
 properties, each arm subclasses it and restates only what it changes, and the
-root's public name becomes a union over the arms. Measured over the eleven
-roots this splits -- every one has properties shared by all of its arms (29 on
-``create-media-buy-request``, 17 on ``creative-asset``, 2 on the smallest), and
-eight of the eleven have arms that constrain NO property at all, differing only
-in which fields they require and which they forbid. No root in the population
-has an empty shared set, so none of them is a union of unrelated classes. A
-union of unrelated classes would also have no base to subclass, which is what
-the two generated classes that subclass a split root need.
+root's public name becomes a union over the arms.
+
+Measured over the eleven roots this splits, counting the properties the base
+declares against the names any arm constrains at all (requires, forbids, or
+pins): 31/5 on ``create-media-buy-request``, 21/8 on
+``list-account-changes-response``, 17/2 on ``creative-asset``, down to 2/2 on
+``webhook-challenge-response``. No root's base is empty, and no arm constrains
+more than 7 of its root's properties -- the arms differ in which fields they
+require and which they forbid, not in what the fields are. So none of these
+roots is a union of unrelated classes, and a union of unrelated classes would
+also have no base to subclass, which is what the two generated classes that
+subclass a split root need.
 
 What that makes unconstructible, and why it is a different claim from a check:
 
@@ -650,13 +654,20 @@ def _repoint_import(source: str, flat_class: str, base: str) -> str:
     """
     import re
 
+    if re.search(rf"^class {re.escape(flat_class)}\b", source, re.MULTILINE):
+        # Declared in this very module, so the base is declared here too.
+        return source
     pattern = re.compile(
         rf"^(from [^\n]*? import )([^\n(]*\b{re.escape(flat_class)}\b[^\n]*)$", re.MULTILINE
     )
     match = pattern.search(source)
     if match is None:
-        # The flat class is declared in this very module, so the base is too.
-        return source
+        # The class was rewritten to name a base that nothing imports, which is
+        # a module that fails at import. Raised rather than returned, like the
+        # pipeline's other import helpers: the generated shape changed in a way
+        # this rewrite no longer matches -- a parenthesized import block, say --
+        # and that is a regeneration failure, not something to leave quiet.
+        raise RuntimeError(f"no single-line 'import {flat_class}' statement to extend with {base}")
     names = [name.strip() for name in match.group(2).split(",") if name.strip()]
     if base in names:
         return source
