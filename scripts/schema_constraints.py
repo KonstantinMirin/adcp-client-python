@@ -81,8 +81,11 @@ __all__ = [
     "Not",
     "OtherPropsSatisfy",
     "OneOf",
+    "arm_conditions",
+    "partitions_by_requiredness",
     "PropCount",
     "PropSatisfies",
+    "provably_disjoint",
     "read_root_constraints",
     "Restated",
     "root_carries_constraints",
@@ -90,6 +93,7 @@ __all__ = [
     "SomeItem",
     "Supplied",
     "Undeclarable",
+    "UndisjointOneOfError",
     "UnexpressibleKeywordError",
     "UnplaceableConstraintError",
     "ValueBounds",
@@ -183,15 +187,59 @@ NON_ASSERTING_KEYS = frozenset(
         # JSON Schema keyword; both are text alongside the sibling that
         # asserts.
         "enumDescriptions",
+        "enumMetadata",
         "notes",
         # AdCP annotations.
         "x-entity",
         "x-status",
+        "x-added-in",
         "x-deprecated-in",
         "x-removed-in",
+        # Two boolean markers on a position, both ``true`` wherever the bundle
+        # writes them: ``x-accessibility`` marks a field as accessibility
+        # material, ``x-extensible`` marks an enum as open to registry
+        # additions. Neither says anything about an instance -- the sibling
+        # ``enum`` is what asserts.
+        "x-accessibility",
+        "x-extensible",
         # Marks a field whose object value is carried through unmodelled.
         # A rendering instruction, not a constraint on the document.
         "x-adcp-open-payload",
+        # Instructions to THIS generator and to a reader of the bundle, not
+        # statements about an instance: where to hoist a nested model, what to
+        # inline into model context, which schema URI a node came from, which
+        # schema is SDK-local, and which result schema a task type overrides.
+        "x-adcp-hoist",
+        "x-adcp-model-context-inline",
+        "x-adcp-schema-uri",
+        "x-adcp-sdk-local",
+        "x-task-result-schema-overrides",
+        # Protocol and registry metadata about the TOOL or the enum, each with
+        # a sibling that does the asserting. ``x-pattern`` is the shape a
+        # registry addition to an ``x-extensible`` enum should take -- the
+        # sibling ``enum`` is what the canonical validator applies, so treating
+        # it as an assertion would make the model STRICTER than the bundled
+        # schema, which the differential parity suite grades.
+        "x-pattern",
+        "x-enum-descriptions",
+        "x-deprecated-enum-values",
+        "x-deprecated-enum-values-doc",
+        "x-entity-definitions",
+        "x-mutates-state",
+        "x-governed-commitment",
+        "x-idempotency-key-required",
+        "x-operation-family",
+        "x-tool-summary",
+        "x-superseded-by",
+        "x-legacy-fallback",
+        "x-compatibility-projection-only",
+        # Units for a sibling size bound, and how to canonicalize a value for
+        # signing. Neither bounds what the document may contain.
+        "x-adcp-file-size-units",
+        "x-canonicalization",
+        # A note stating, in prose, that the canonical format schemas do NOT
+        # mark parameter fields required. It declares a non-enforcement.
+        "x-canonical-policy-required-params-not-enforced",
     }
 )
 
@@ -509,11 +557,23 @@ class DeclaredShape:
     parser could not resolve the nested class, so it carries wire names through
     unchanged. ``OPAQUE`` also answers "declares every name", which is what
     keeps an unresolved nesting from manufacturing a field-drop refusal.
+
+    ``closed`` says no key outside ``fields`` can reach the object at all --
+    ``additionalProperties: false``, which the generator renders as
+    ``extra='forbid'``. It decides what a constraint naming an undeclared key
+    means: under a closed shape the key can never be present, so the predicate
+    is statically false (:class:`Undeclarable`); under an open one pydantic
+    carries the key as an extra, puts it in ``model_fields_set`` and resolves it
+    through ``getattr``, so the predicate reads it off the document under its
+    wire name. Both were measured: ``control-media-buy-request`` is closed and
+    forbids ``creatives``; ``get-reporting-status-response`` is open and its
+    nested arm names ``failure_kind``, which no field holds.
     """
 
     fields: Mapping[str, str] = field(default_factory=dict)
     nested: Mapping[str, DeclaredShape] = field(default_factory=dict)
     opaque: bool = False
+    closed: bool = False
 
     def attribute(self, wire_name: str) -> str | None:
         """The attribute for a wire name, or ``None`` when undeclared."""
@@ -542,6 +602,7 @@ class DeclaredShape:
         return cls(
             fields={name: name for name in properties},
             nested={name: cls.from_schema(sub) for name, sub in properties.items()},
+            closed=isinstance(schema, dict) and schema.get("additionalProperties") is False,
         )
 
 
@@ -605,10 +666,11 @@ def root_carries_constraints(schema: Any) -> bool:
     return any(isinstance(schema.get(key), list) and schema[key] for key in ("anyOf", "oneOf"))
 
 
-#: Positions whose subschema describes the same object as its parent, so a
-#: property named there is a property of the parent.
+#: Positions whose subschema DECLARES the same object as its parent, so a
+#: property named there is a property of the parent. The conditional and
+#: negated positions (``if``/``then``/``else``/``not``) describe the same object
+#: too, but they declare nothing -- see :func:`_declared_properties`.
 _SAME_OBJECT_LISTS = ("allOf", "anyOf", "oneOf")
-_SAME_OBJECT_NODES = ("if", "then", "else", "not")
 
 
 def _declaration_of(node: Any) -> dict[str, Any]:
@@ -646,8 +708,18 @@ def _declared_properties(node: Any) -> dict[str, Any]:
 
     A root constraint may name a field a sibling arm declares -- an arm that
     forbids ``errors`` is the arm whose sibling declares it -- so the set of
-    names a root's constraint content may reference is the union over every
-    subschema describing the same object.
+    names a root's constraint content may reference is the union over the
+    positions that DECLARE the object: its own ``properties``, its ``allOf``
+    members' (inheritance, which the generator merges) and its arms'.
+
+    A negated or conditional position declares nothing. ``not``, ``if``,
+    ``then``, ``else`` and the ``dependencies`` maps are constraint content --
+    the generator renders no field from any of them -- so a property name
+    reachable only through one of those is a key the document may carry and no
+    class declares, which is :class:`Undeclarable` and decidable, not a dropped
+    field. ``get-creative-features-terminal-success.json`` is the measured case:
+    its root ``not`` forbids ``status: submitted``, and reading that as a
+    declaration turned a compilable absence ban into a field-drop refusal.
     """
     if not isinstance(node, dict):
         return {}
@@ -660,14 +732,6 @@ def _declared_properties(node: Any) -> dict[str, Any]:
         if isinstance(members, list):
             for member in members:
                 collected.update(_declared_properties(member))
-    for key in _SAME_OBJECT_NODES:
-        if key in node:
-            collected.update(_declared_properties(node[key]))
-    for key in ("dependencies", "dependentSchemas"):
-        members = node.get(key)
-        if isinstance(members, dict):
-            for member in members.values():
-                collected.update(_declared_properties(member))
     return collected
 
 
@@ -679,11 +743,15 @@ class _Parser:
         schema_file: str,
         declared: DeclaredShape,
         resolve_document: ResolveDocument | None,
+        *,
+        arms_render_as_classes: bool,
     ) -> None:
         self._file = schema_file
         self._root_shape = declared
         self._resolve_document = resolve_document
+        self._arms_render_as_classes = arms_render_as_classes
         self._schema_names: frozenset[str] = frozenset()
+        self._root_names: frozenset[str] = frozenset()
         self._document: Any = {}
         self._resolving: frozenset[str] = frozenset()
         self.behavioral = False
@@ -694,6 +762,7 @@ class _Parser:
         combinator: Literal["anyOf", "oneOf"] | None = None
         arms: tuple[Arm, ...] = ()
         root_declaration = _declaration_of(schema)
+        self._root_names = frozenset(root_declaration.get("properties") or {})
         self._schema_names = frozenset(_declared_properties(schema))
         self._document = schema
 
@@ -743,15 +812,24 @@ class _Parser:
         arm_properties = arm_declaration.get("properties")
         arm_names = set(arm_properties) if isinstance(arm_properties, dict) else set()
         declares_fields = bool(arm_names - root_names)
-        # An arm the generator renders as its own type declares its own shape;
-        # an overlay arm narrows the shape the root declares. The generator
-        # renders an arm that introduces fields as a class, and a bare ``$ref``
-        # or scalar arm as that referenced or scalar type -- so in all three the
-        # arm's own declarative keys are the declaration a restatement is proven
-        # against. An arm whose properties only narrow the root's is the one
-        # whose keywords are constraint content.
+
+        # An arm the generator renders as ITS OWN TYPE states its own
+        # declaration: a bare ``$ref`` becomes the referenced type and an arm of
+        # a different scalar type becomes that type, so a keyword restating
+        # either is already enforced. An OVERLAY arm on a FLAT root states
+        # constraint content instead, and is proven against the ROOT's
+        # declaration -- one class holds the merged properties, and what the arm
+        # says about a position is enforced only where the root says the same.
+        #
+        # Whether an arm that introduces a property becomes a class is the one
+        # part that is NOT inferable from the schema, which is why the caller
+        # supplies it. Inferring it from ``declares_fields`` is what
+        # ``list-account-changes-response`` measured wrong: one flat class over
+        # both arms, each arm introducing ``status``, so each arm's ``required``
+        # and ``properties`` were proven restatements of themselves and the
+        # model was left enforcing nothing at all.
         renders_own_shape = (
-            declares_fields
+            (declares_fields and self._arms_render_as_classes)
             or "$ref" in arm_declaration
             or arm_declaration.get("type", root_declaration.get("type"))
             != root_declaration.get("type")
@@ -1029,28 +1107,37 @@ class _Parser:
         The referenced schema lands at the position the reference occupies, so
         it is graded against the same declaration -- the target is constraint
         content, not a declaration of its own.
+
+        Descending into another document makes that document the one a nested
+        local pointer resolves against. ``change-term-constraints.json`` spells
+        a money amount ``{"$ref": "#/definitions/money"}``, and resolving it
+        against whichever root the walk started from finds nothing.
         """
         if ref in self._resolving:
             # A recursive reference states nothing new at this depth.
             return Restated("$ref")
-        target = self._resolve_reference(ref)
+        document, target = self._resolve_reference(ref)
         if target is None:
             return None
+        previous = self._document
         self._resolving = self._resolving | {ref}
+        self._document = document
         try:
             return self._node(target, pointer, declaration, shape)
         finally:
             self._resolving = self._resolving - {ref}
+            self._document = previous
 
-    def _resolve_reference(self, ref: str) -> Any | None:
+    def _resolve_reference(self, ref: str) -> tuple[Any, Any | None]:
+        """The document the reference lands in, and the node it names."""
         document, fragment = (ref.split("#", 1) + [""])[:2] if "#" in ref else (ref, "")
         if document:
             resolved = self._resolve_document(document) if self._resolve_document else None
             if resolved is None:
-                return None
+                return self._document, None
         else:
             resolved = self._document
-        return _follow_pointer(resolved, fragment)
+        return resolved, _follow_pointer(resolved, fragment)
 
     # -- productions needing two keys --------------------------------------- #
 
@@ -1109,16 +1196,35 @@ class _Parser:
     def _attribute(self, wire_name: str, shape: DeclaredShape, pointer: str) -> str | None:
         """The field name for a wire name, or ``None`` when the key cannot exist.
 
-        Two different absences. A name the SCHEMA declares somewhere but the
-        generated class does not is a dropped field, and refuses. A name the
-        schema never declares anywhere is a key the document may not carry at
-        all -- an AdCP request root that forbids ``creatives`` -- and that is a
-        statically decidable predicate, not a gap.
+        Three different absences, and each decided rather than assumed.
+
+        A name the root DECLARES that the generated class does not carry is a
+        dropped field, and refuses: the constraint grades a position the model
+        does not have.
+
+        A name no field holds on an OPEN object is a key the document may carry
+        as an extra. Pydantic puts an extra in ``model_fields_set`` and resolves
+        it through ``getattr``, so the predicate reads it under its wire name --
+        which is how ``get-reporting-status-response``'s nested arm grades
+        ``failure_kind``, a property only that arm declares and the generator
+        renders no field for.
+
+        A name no field holds on a CLOSED object is a key the document may not
+        carry at all -- an AdCP request root that forbids ``creatives`` behind
+        ``additionalProperties: false`` -- and that is statically decidable.
         """
         attribute = shape.attribute(wire_name)
         if attribute is not None:
             return attribute
-        if wire_name in self._schema_names:
+        at_root = shape is self._root_shape
+        if at_root and wire_name in self._root_names:
+            raise UnplaceableConstraintError(self._file, pointer, wire_name)
+        if not shape.closed:
+            return wire_name
+        if at_root and wire_name in self._schema_names:
+            # Declared by an arm, no field holds it, and the document may not
+            # carry it either: the constraint grades a position no instance can
+            # ever have. Unplaceable for the same reason a dropped root field is.
             raise UnplaceableConstraintError(self._file, pointer, wire_name)
         return None
 
@@ -1207,6 +1313,7 @@ def read_root_constraints(
     schema: dict[str, Any],
     declared: DeclaredShape,
     *,
+    arms_render_as_classes: bool,
     schema_file: str = "<schema>",
     resolve_document: ResolveDocument | None = None,
 ) -> RootConstraints:
@@ -1214,6 +1321,14 @@ def read_root_constraints(
 
     ``declared`` is the wire-to-field map of the class the generator emits for
     this root; compiled predicates name attributes, not wire names.
+
+    ``arms_render_as_classes`` says whether the generator rendered each arm that
+    introduces a property as its own class. On a FLAT root it is ``False``: one
+    class holds the merged properties, so every arm's content is constraint
+    content. On a root the generator already split into per-arm classes it is
+    ``True``, and an arm's own ``required`` and ``properties`` are then
+    declarations the classes carry. Nothing in the schema distinguishes the two,
+    so it is not inferred; the caller reads it off the generated module.
 
     ``resolve_document`` resolves the document half of a ``$ref`` the schema's
     own ``$defs`` do not hold. Without one, such a reference refuses -- the
@@ -1223,4 +1338,286 @@ def read_root_constraints(
     compile, and :class:`UnplaceableConstraintError` for a constraint naming a
     property no class declares. Both abort generation.
     """
-    return _Parser(schema_file, declared, resolve_document).read(schema)
+    return _Parser(
+        schema_file, declared, resolve_document, arms_render_as_classes=arms_render_as_classes
+    ).read(schema)
+
+
+# --------------------------------------------------------------------------- #
+# Disjointness: the one prover, used for the emit rule and for ``oneOf``
+# --------------------------------------------------------------------------- #
+
+
+class UndisjointOneOfError(Exception):
+    """A root ``oneOf`` whose arms this module cannot prove pairwise disjoint.
+
+    ``oneOf`` is exactly-one. A union renders at-least-one, so rendering an
+    unproven ``oneOf`` as a union would ship anyOf-weaker semantics. Refusing
+    aborts generation in the same family as :class:`UnexpressibleKeywordError`.
+    """
+
+    def __init__(self, schema_file: str, left: str, right: str) -> None:
+        self.schema_file = schema_file
+        self.left = left
+        self.right = right
+        super().__init__(
+            f"{schema_file}: oneOf arms {left} and {right} are not provably disjoint, so "
+            f"rendering them as a union would admit a document satisfying both -- which "
+            f"oneOf forbids. Either the schema means anyOf, or the prover in "
+            f"scripts/schema_constraints.py needs the production that separates them."
+        )
+
+
+@dataclass(frozen=True)
+class _Present:
+    """``path`` is a member the document carries (negated: does not carry)."""
+
+    path: tuple[str, ...]
+    positive: bool
+
+
+@dataclass(frozen=True)
+class _Admits:
+    """The value at ``path`` is one of ``values`` (negated: is none of them)."""
+
+    path: tuple[str, ...]
+    values: frozenset[Any]
+    positive: bool
+
+
+_Literal = _Present | _Admits
+
+#: One conjunction of literals, and a disjunction of those: DNF.
+_Clause = frozenset[_Literal]
+
+#: TRUE is the one empty clause; FALSE is no clause at all.
+_TRUE: tuple[_Clause, ...] = (frozenset(),)
+_FALSE: tuple[_Clause, ...] = ()
+
+#: Past this many clauses the pair is reported unproven rather than expanded.
+#: Every arm in the pinned bundle stays three orders of magnitude under it; the
+#: cap exists so an adversarial future schema costs a lost proof, not a hang.
+_CLAUSE_CEILING = 2048
+
+
+class _TooBigError(Exception):
+    """The DNF of one arm exceeded :data:`_CLAUSE_CEILING`."""
+
+
+def _hashable(value: Any) -> Any:
+    """A hashable stand-in for a JSON value, for equality only."""
+    if isinstance(value, dict):
+        return ("object", tuple(sorted((key, _hashable(sub)) for key, sub in value.items())))
+    if isinstance(value, list):
+        return ("array", tuple(_hashable(element) for element in value))
+    return value
+
+
+def _prefix(clauses: tuple[_Clause, ...], name: str) -> tuple[_Clause, ...]:
+    """Re-root every literal's path under ``name``."""
+    return tuple(
+        frozenset(
+            (
+                _Present((name, *literal.path), literal.positive)
+                if isinstance(literal, _Present)
+                else _Admits((name, *literal.path), literal.values, literal.positive)
+            )
+            for literal in clause
+        )
+        for clause in clauses
+    )
+
+
+def _product(left: tuple[_Clause, ...], right: tuple[_Clause, ...]) -> tuple[_Clause, ...]:
+    """Conjunction in DNF: every pairing, contradictory pairings dropped."""
+    clauses = tuple(
+        merged for one in left for other in right if _satisfiable(merged := one | other)
+    )
+    if len(clauses) > _CLAUSE_CEILING:
+        raise _TooBigError
+    return clauses
+
+
+def _union(parts: Iterable[tuple[_Clause, ...]]) -> tuple[_Clause, ...]:
+    clauses: list[_Clause] = []
+    for part in parts:
+        clauses.extend(part)
+    if len(clauses) > _CLAUSE_CEILING:
+        raise _TooBigError
+    return tuple(clauses)
+
+
+def _satisfiable(clause: _Clause) -> bool:
+    """Whether one conjunction of literals can hold.
+
+    Two decisions, both first-order. A member cannot be both carried and not
+    carried. And a value cannot lie in two value sets with no member in common
+    -- sound because a value literal only ever reaches a clause alongside the
+    presence literal for its own path, so an absent member never clashes.
+    """
+    present: dict[tuple[str, ...], bool] = {}
+    for literal in clause:
+        if not isinstance(literal, _Present):
+            continue
+        if present.setdefault(literal.path, literal.positive) is not literal.positive:
+            return False
+    admitted: dict[tuple[str, ...], set[Any]] = {}
+    for literal in clause:
+        if not isinstance(literal, _Admits) or not literal.positive:
+            continue
+        current = admitted.get(literal.path)
+        admitted[literal.path] = (
+            set(literal.values) if current is None else current & literal.values
+        )
+    for literal in clause:
+        if not isinstance(literal, _Admits) or literal.positive:
+            continue
+        if literal.path in admitted:
+            admitted[literal.path] -= literal.values
+    return all(values for values in admitted.values())
+
+
+def _clauses(
+    condition: Cond, negated: bool = False
+) -> tuple[_Clause, ...]:  # noqa: C901, PLR0911, PLR0912
+    """One ``Cond`` in disjunctive normal form over presence and value literals.
+
+    Every node kind the prover has no literal for compiles to TRUE, under
+    negation as well. That WEAKENS the arm, and a refutation of a weaker
+    conjunction refutes the stronger one, so an unmodelled kind can only cost a
+    proof -- never manufacture one.
+    """
+    if isinstance(condition, Restated):
+        return _FALSE if negated else _TRUE
+    if isinstance(condition, Supplied):
+        return (frozenset({_Present((condition.name,), not negated)}),)
+    if isinstance(condition, Undeclarable):
+        # False of every instance of a class that cannot carry the key.
+        return _TRUE if negated else _FALSE
+    if isinstance(condition, Not):
+        return _clauses(condition.operand, not negated)
+    if isinstance(condition, AllOf):
+        if negated:
+            return _union(_clauses(operand, True) for operand in condition.operands)
+        clauses = _TRUE
+        for operand in condition.operands:
+            clauses = _product(clauses, _clauses(operand))
+        return clauses
+    if isinstance(condition, (AnyOf, OneOf)):
+        # ``oneOf`` is read as its ``anyOf`` weakening here, which is the safe
+        # direction: a bigger satisfying set, so a refutation still holds.
+        if negated:
+            clauses = _TRUE
+            for operand in condition.operands:
+                clauses = _product(clauses, _clauses(operand, True))
+            return clauses
+        return _union(_clauses(operand) for operand in condition.operands)
+    if isinstance(condition, IfThen):
+        condition_true = _clauses(condition.condition)
+        condition_false = _clauses(condition.condition, True)
+        consequent = _TRUE if condition.consequent is None else _clauses(condition.consequent)
+        alternative = _TRUE if condition.alternative is None else _clauses(condition.alternative)
+        if negated:
+            negated_consequent = (
+                _FALSE if condition.consequent is None else _clauses(condition.consequent, True)
+            )
+            negated_alternative = (
+                _FALSE if condition.alternative is None else _clauses(condition.alternative, True)
+            )
+            return _union(
+                (
+                    _product(condition_true, negated_consequent),
+                    _product(condition_false, negated_alternative),
+                )
+            )
+        return _union(
+            (_product(condition_true, consequent), _product(condition_false, alternative))
+        )
+    if isinstance(condition, PropSatisfies):
+        # ``properties`` grades a present member only, so the node is "absent,
+        # or present and satisfying" -- which is what makes a value literal
+        # always arrive with its own presence literal.
+        inner = _prefix(_clauses(condition.operand), condition.name)
+        if negated:
+            return _product(
+                (frozenset({_Present((condition.name,), True)}),),
+                _prefix(_clauses(condition.operand, True), condition.name),
+            )
+        return _union(
+            (
+                (frozenset({_Present((condition.name,), False)}),),
+                _product((frozenset({_Present((condition.name,), True)}),), inner),
+            )
+        )
+    if isinstance(condition, ValueConst):
+        return (frozenset({_Admits((), frozenset({_hashable(condition.value)}), not negated)}),)
+    if isinstance(condition, ValueEnum):
+        values = frozenset(_hashable(value) for value in condition.values)
+        return (frozenset({_Admits((), values, not negated)}),)
+    # Every other production bounds a value rather than naming it. Weakening
+    # them to TRUE keeps the prover first-order; see the docstring.
+    return _TRUE
+
+
+def arm_conditions(constraints: RootConstraints) -> tuple[Cond, ...]:
+    """What a document satisfying each arm must satisfy, conjuncts included.
+
+    A root's conjuncts hold of every document the root accepts, so each arm's
+    real condition is the arm conjoined with them. Distributing them is what
+    turns three both-present bans into disjointness rather than leaving them as
+    a check beside arms that overlap without them: ``webhook-challenge-response``
+    bans ``challenge`` and ``token`` together at the root, and its two arms
+    require one each.
+    """
+    return tuple(_conjoin((arm.condition, *constraints.conjuncts)) for arm in constraints.arms)
+
+
+def provably_disjoint(left: Cond, right: Cond) -> bool:
+    """Whether no document can satisfy both conditions.
+
+    Sound and deliberately incomplete: it decides presence and named-value
+    clashes, which is what the arms of the pinned bundle are separated by, and
+    reports anything else unproven.
+    """
+    try:
+        return all(
+            not _satisfiable(one | other) for one in _clauses(left) for other in _clauses(right)
+        )
+    except _TooBigError:
+        return False
+
+
+def partitions_by_requiredness(constraints: RootConstraints) -> bool:
+    """Whether the arms partition the document space, so each arm is a type.
+
+    Two conditions. Every arm must require something: without ``required`` an
+    arm grades only members that are present, so it is vacuously satisfiable and
+    a document mentioning none of its fields satisfies it
+    (``postal-country-system``'s ten arms, all satisfied by a document with no
+    ``country``). And the arms must be provably pairwise disjoint, which is what
+    makes the class a parsed document comes back as schema information rather
+    than branch order (``control-media-buy-request``'s twelve arms each require
+    one field and permit the other eleven -- "name at least one field to
+    change", one shape, where an ``isinstance`` on the returned class reads the
+    order of a JSON file and nothing about the document).
+
+    The approved rule reads "partition by requiredness into DISTINCT, mutually
+    exclusive field sets", and distinctness of the required sets is deliberately
+    not a third condition here. Measured over the pinned bundle it decides
+    nothing -- no root has two arms with the same required set that the prover
+    separates -- and as a rule it would refuse a const-discriminated pair that
+    requires the same group, which is a partition the design asks to emit. What
+    it was guarding is that two arms needing the same rung-3 name cannot both be
+    named, and the naming rule refuses that where it arises.
+    """
+    arms = constraints.arms
+    if len(arms) < 2:
+        return False
+    if any(not arm.required for arm in arms):
+        return False
+    conditions = arm_conditions(constraints)
+    return all(
+        provably_disjoint(conditions[index], conditions[other])
+        for index in range(len(conditions))
+        for other in range(index + 1, len(conditions))
+    )

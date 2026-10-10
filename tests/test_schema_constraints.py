@@ -75,6 +75,10 @@ def _bundle_dir() -> Path:
 
 
 def _read(root: dict[str, Any], **kwargs: Any) -> Any:
+    # ``_arm_root``'s arms are overlays on a flat root, which is what
+    # ``arms_render_as_classes=False`` says: one class over the merged
+    # properties, so every arm keyword is constraint content.
+    kwargs.setdefault("arms_render_as_classes", False)
     return read_root_constraints(root, DeclaredShape.from_schema(root), **kwargs)
 
 
@@ -310,27 +314,56 @@ def test_a_constraint_naming_a_field_the_schema_declares_but_the_class_does_not_
     declared_without_b = DeclaredShape(fields={"a": "a"}, nested={})
 
     with pytest.raises(UnplaceableConstraintError) as raised:
-        read_root_constraints(root, declared_without_b, schema_file="media-buy/thing.json")
+        read_root_constraints(
+            root,
+            declared_without_b,
+            arms_render_as_classes=False,
+            schema_file="media-buy/thing.json",
+        )
 
     assert raised.value.name == "b"
 
 
-def test_a_required_name_the_schema_never_declares_is_statically_false() -> None:
+def test_a_required_name_a_closed_root_never_declares_is_statically_false() -> None:
     """An AdCP root that forbids a key no arm declares is not a dropped field.
 
-    ``control-media-buy-request`` forbids ``creatives``: the document may not
-    carry the key at all, so a model has no field for it and can be given none.
-    That is decidable, and deciding it is what keeps the field-drop refusal
-    above meaningful rather than firing on every such root.
+    ``control-media-buy-request`` forbids ``creatives`` behind
+    ``additionalProperties: false``, which the generator renders as
+    ``extra='forbid'``: the document may not carry the key at all, so a model
+    has no field for it and can be given none. That is decidable, and deciding
+    it is what keeps the field-drop refusal above meaningful rather than firing
+    on every such root.
     """
     root = {
         "title": "Thing",
         "type": "object",
         "properties": {"a": {}},
+        "additionalProperties": False,
         "not": {"anyOf": [{"required": ["creatives"]}]},
     }
 
     assert _read(root).conjuncts == (Not(AnyOf((Undeclarable("creatives"),))),)
+
+
+def test_a_required_name_an_open_root_never_declares_is_read_off_the_document() -> None:
+    """Under ``additionalProperties: true`` the key is carryable, so it is read.
+
+    ``get-reporting-status-response`` is open and its nested arm grades
+    ``failure_kind``, a property only that arm declares and the generator
+    renders no field for. Pydantic files such a key under extras, puts it in
+    ``model_fields_set`` and resolves it through ``getattr``, so the predicate
+    is ordinary presence under the wire name. Calling it statically false here
+    would silently drop a constraint the document can violate.
+    """
+    root = {
+        "title": "Thing",
+        "type": "object",
+        "properties": {"a": {}},
+        "additionalProperties": True,
+        "not": {"anyOf": [{"required": ["failure_kind"]}]},
+    }
+
+    assert _read(root).conjuncts == (Not(AnyOf((Supplied("failure_kind"),))),)
 
 
 def test_a_keyword_equal_to_the_declaration_is_a_proven_restatement() -> None:
@@ -389,6 +422,70 @@ def test_the_declared_behavioral_key_is_classified_not_compiled() -> None:
     assert constraints.declares_behavioral_rules
     assert constraints.arms[0].declares_behavioral_rules
     assert constraints.arms[0].condition == Supplied("a")
+
+
+def test_an_arms_own_keywords_are_proven_against_the_root_not_against_itself() -> None:
+    """A flat root's arm states constraint content, whatever it introduces.
+
+    ``list-account-changes-response`` is one class over two arms, each arm
+    introducing ``status`` with its own ``const`` and its own ``required``.
+    Reading the arm as its own class proves each of those a restatement of
+    itself, and the measured result was a model enforcing nothing at all from
+    either arm.
+    """
+    root = {
+        "title": "Thing",
+        "type": "object",
+        "properties": {"a": {}},
+        "oneOf": [
+            {"required": ["status", "a"], "properties": {"status": {"const": "completed"}}},
+            {"required": ["status"], "properties": {"status": {"const": "failed"}}},
+        ],
+    }
+
+    constraints = read_root_constraints(
+        root,
+        DeclaredShape(fields={"a": "a", "status": "status"}),
+        arms_render_as_classes=False,
+    )
+
+    assert constraints.arms[0].condition == AllOf(
+        (
+            PropSatisfies("status", ValueConst("completed")),
+            AllOf((Supplied("status"), Supplied("a"))),
+        )
+    )
+    assert constraints.arms[1].condition == AllOf(
+        (PropSatisfies("status", ValueConst("failed")), Supplied("status"))
+    )
+
+
+def test_a_property_named_only_in_a_negated_position_is_not_a_dropped_field() -> None:
+    """``not`` declares nothing, so a name reachable only through one is not one.
+
+    ``get-creative-features-terminal-success``'s root ``not`` forbids
+    ``status: submitted`` and the schema declares ``status`` nowhere else.
+    Counting the negated position as a declaration turned a compilable absence
+    ban into a field-drop refusal that aborted generation.
+    """
+    root = {
+        "title": "Thing",
+        "type": "object",
+        "properties": {"a": {}},
+        "not": {
+            "anyOf": [{"properties": {"status": {"const": "submitted"}}, "required": ["status"]}]
+        },
+    }
+
+    constraints = read_root_constraints(
+        root, DeclaredShape(fields={"a": "a"}), arms_render_as_classes=False
+    )
+
+    assert constraints.conjuncts == (
+        Not(
+            AnyOf((AllOf((PropSatisfies("status", ValueConst("submitted")), Supplied("status"))),))
+        ),
+    )
 
 
 def test_the_three_classification_sets_are_disjoint() -> None:
@@ -517,6 +614,12 @@ def test_every_root_constraint_node_in_the_bundle_parses_with_no_unaccounted_key
             read_root_constraints(
                 schema,
                 DeclaredShape.from_schema(schema),
+                # No generated tree is consulted here, so the shape's own
+                # reading applies: every arm that declares a property is read as
+                # its own class, which is what ``from_schema`` asserts by
+                # carrying every arm-declared name. This rule grades keyword
+                # accounting, not which shape got emitted.
+                arms_render_as_classes=True,
                 schema_file=name,
                 resolve_document=resolve,
             )

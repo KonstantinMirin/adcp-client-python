@@ -43,6 +43,11 @@ try:
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
     from scripts import task_message_lattice
 
+try:
+    from schema_constraints import DeclaredShape
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts.schema_constraints import DeclaredShape
+
 REPO_ROOT = Path(__file__).parent.parent
 
 
@@ -7241,6 +7246,20 @@ def _root_required_groups(schema: dict) -> tuple[str, tuple[tuple[str, ...], ...
     return None
 
 
+#: The package source root, where the hand-written bases a generated module
+#: imports absolutely live. Only ``adcp.*`` resolves here: a third-party base
+#: leaves the field set unknown, which is reported rather than guessed.
+_PACKAGE_ROOT = REPO_ROOT / "src"
+
+
+def _absolute_package(module: str) -> tuple[Path | None, list[str]]:
+    """Resolve an absolute ``adcp.*`` import to its package directory and tail."""
+    parts = module.split(".")
+    if parts[0] != "adcp":
+        return None, []
+    return _PACKAGE_ROOT, parts
+
+
 def _generated_import_targets(
     py_path: Path, tree: ast.Module
 ) -> dict[str, tuple[Path, str | None]]:
@@ -7248,15 +7267,26 @@ def _generated_import_targets(
 
     The second element is the symbol imported from that file, or ``None`` when
     the name is the module itself (``from ..core import account_ref``).
+
+    A generated module reaches the hand-written bases absolutely --
+    ``from adcp.types.base import AdcpRequest`` -- so those resolve against the
+    package source root, which is never the staged tree. Without them every
+    request root inheriting ``AdcpRequest`` has an unknown field set, and an
+    unknown field set is reported rather than constrained.
     """
     targets: dict[str, tuple[Path, str | None]] = {}
     for node in tree.body:
-        if not isinstance(node, ast.ImportFrom) or node.level < 1:
+        if not isinstance(node, ast.ImportFrom):
             continue
-        package = py_path.parent
-        for _ in range(node.level - 1):
-            package = package.parent
-        module_parts = (node.module or "").split(".")
+        if node.level < 1:
+            package, module_parts = _absolute_package(node.module or "")
+            if package is None:
+                continue
+        else:
+            package = py_path.parent
+            for _ in range(node.level - 1):
+                package = package.parent
+            module_parts = (node.module or "").split(".")
         for alias in node.names:
             as_module = package.joinpath(*module_parts, alias.name).with_suffix(".py")
             if as_module.is_file():
@@ -7369,6 +7399,48 @@ def _root_generated_class(content: str, schema: dict) -> str | None:
     if len(declared) != 1:
         return None
     return declared.pop()
+
+
+def generated_module_for(relative_path: Path) -> Path:
+    """The generated module a schema path maps to."""
+    module = relative_path.with_suffix(".py")
+    return OUTPUT_DIR.joinpath(*(part.replace("-", "_") for part in module.parts))
+
+
+def flat_root_shape(schema: dict, relative_path: Path) -> DeclaredShape | None:
+    """What the ONE class over a schema root declares, or ``None`` if there is none.
+
+    A flat root is one the generator rendered as a single class holding the
+    root's merged ``properties``. That is the shape whose root constraint
+    content was dropped, so it is the whole jurisdiction of the constraint
+    reader -- and the one place the question "which declaration exists" has an
+    answer other than a guess.
+
+    ``None`` means the root is not flat, each for a named reason: the module was
+    not generated; no single class carries the root's title, because the
+    generator split the root into per-arm classes behind a union alias; a base
+    outside the package leaves the field set unknown; the root declares no
+    properties, so there is no merged shape and the arms ARE the types; or the
+    class does not carry a property the root declares, which is a dropped field
+    and belongs to whoever generated it rather than to a constraint pass.
+    """
+    properties = schema.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        return None
+    module_path = generated_module_for(relative_path)
+    if not module_path.is_file():
+        return None
+    class_name = _root_generated_class(module_path.read_text(), schema)
+    if class_name is None:
+        return None
+    fields = _generated_fields(module_path, class_name)
+    if fields is None or any(name not in fields for name in properties):
+        return None
+    return DeclaredShape(
+        fields=fields,
+        nested={name: DeclaredShape.from_schema(sub) for name, sub in properties.items()},
+        closed=schema.get("additionalProperties") is False,
+    )
 
 
 def _ensure_model_validator_import(content: str) -> str:
