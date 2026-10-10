@@ -475,3 +475,83 @@ def test_the_emitter_is_not_wired_into_the_generation_pipeline() -> None:
 def test_unused_import_guard() -> None:
     """Keeps ``pytest`` imported for the collection-time fixtures above."""
     assert pytest is not None
+
+
+def test_every_arm_of_every_split_root_names_its_root_base() -> None:
+    """The subclass relation holds for all 24 arms, derived from the schemas.
+
+    ``isinstance(arm, base)`` is the property the public base exists to give a
+    consumer, and the population it has to hold over is whichever roots the
+    partition prover finds -- not a list written here, which would go stale the
+    moment a schema refresh adds or drops a partitioning root. So the roots come
+    from the prover, the arm names from the emitter, and the relation is read
+    off the emitted module.
+
+    Read by parsing rather than by importing, and that is a real limit worth
+    stating: the emitter is unwired, so there is no split tree to import, and
+    importing one would need the two hand-written create-media-buy layers to
+    narrow per arm first. The runtime ``isinstance`` is graded on the fixture
+    module above, which does import.
+    """
+    import ast as _ast
+
+    from scripts.post_generate_fixes import (
+        SCHEMA_DIR,
+        _root_generated_class,
+        compose_branch_module,
+        flat_root_shape,
+        generated_module_for,
+    )
+    from scripts.schema_constraints import (
+        bundle_document_resolver,
+        partitions_by_requiredness,
+        root_carries_constraints,
+    )
+
+    resolve = bundle_document_resolver(SCHEMA_DIR)
+    roots = 0
+    arms = 0
+    for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
+        relative = schema_file.relative_to(SCHEMA_DIR)
+        if relative.parts[0] in ("mcp", "bundled"):
+            continue
+        try:
+            schema = json.loads(schema_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(schema, dict) or not root_carries_constraints(schema):
+            continue
+        shape = flat_root_shape(schema, relative)
+        if shape is None:
+            continue
+        constraints = read_root_constraints(
+            schema,
+            shape,
+            arms_render_as_classes=False,
+            schema_file=str(relative),
+            resolve_document=resolve,
+        )
+        if not partitions_by_requiredness(constraints):
+            continue
+        content = generated_module_for(relative).read_text()
+        parent = _root_generated_class(content, schema)
+        assert parent is not None
+        rendered = compose_branch_module(
+            content, parent, constraints, str(relative), frozenset(shape.fields.values())
+        )
+        assert rendered is not None, relative
+        plans = plan_branches(constraints, parent, str(relative), frozenset(shape.fields.values()))
+        declared = {
+            node.name: [_ast.unparse(base) for base in node.bases]
+            for node in _ast.parse(rendered).body
+            if isinstance(node, _ast.ClassDef)
+        }
+        base = f"_{parent}Base"
+        assert base in declared, (relative, sorted(declared))
+        for plan in plans:
+            assert declared.get(plan.name) == [base], (relative, plan.name, declared.get(plan.name))
+            arms += 1
+        roots += 1
+
+    assert roots >= 11, f"the prover found only {roots} partitioning roots"
+    assert arms >= 24, f"only {arms} arms graded"
