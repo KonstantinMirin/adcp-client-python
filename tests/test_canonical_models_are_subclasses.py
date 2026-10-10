@@ -56,7 +56,7 @@ def _ids(models: tuple[type[BaseModel], ...]) -> list[str]:
 
 def test_the_canonical_model_list_is_not_empty() -> None:
     """A later refactor must not satisfy these tests by emptying the list."""
-    assert len(PRIMARY_CANONICAL_MODELS) == 31
+    assert len(PRIMARY_CANONICAL_MODELS) == 33
 
 
 @pytest.mark.parametrize("model", PRIMARY_CANONICAL_MODELS, ids=_ids(PRIMARY_CANONICAL_MODELS))

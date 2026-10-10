@@ -125,6 +125,26 @@ def is_list_of(annotation: Any, item_check) -> tuple[bool, Any]:
     return False, None
 
 
+def coercion_target(cls: Any) -> tuple[Any, tuple[Any, ...]]:
+    """What to patch for a type, and what has to be rebuilt afterwards.
+
+    A root whose schema arms partition is emitted as a shared base plus one
+    class per arm behind a union alias, so the name in the tables above can
+    resolve to a union -- which has no fields to analyze and no annotations to
+    patch. The shared base is where the fields live: the arms only change which
+    of them are required, forbidden, or pinned, so the coercion surface is
+    exactly the base's. Patching the base then needs every arm rebuilt as well,
+    because a subclass caches its parent's annotations at build time.
+
+    The base is read off an arm's MRO rather than looked up by name: the arms
+    all name it, which is the property the emitter's own tests grade.
+    """
+    members = get_args(cls)
+    if not members:
+        return cls, ()
+    return members[0].__mro__[1], members
+
+
 def analyze_model(model_class) -> list[dict]:
     """Analyze a Pydantic model and return fields needing coercion."""
     from pydantic import BaseModel
@@ -323,10 +343,11 @@ def generate_code() -> str:
     all_coercions = {}
     all_imports = set()
 
-    for name, cls in {**request_classes, **response_classes, **nested_classes}.items():
+    for name, declared in {**request_classes, **response_classes, **nested_classes}.items():
+        cls, members = coercion_target(declared)
         coercions = analyze_model(cls)
         if coercions:
-            all_coercions[name] = (cls, coercions)
+            all_coercions[name] = (cls, coercions, members)
             # Collect imports
             for c in coercions:
                 if "target_class" in c:
@@ -421,8 +442,13 @@ def generate_code() -> str:
 
     # Add request type imports
     if "CreateMediaBuyRequest" in all_coercions:
+        patched, members = (
+            all_coercions["CreateMediaBuyRequest"][0],
+            all_coercions["CreateMediaBuyRequest"][2],
+        )
         lines.append("from adcp.types.domains.media_buy.create_media_buy_request import (")
-        lines.append("    CreateMediaBuyRequest,")
+        for imported in sorted({patched.__name__, *(member.__name__ for member in members)}):
+            lines.append(f"    {imported},")
         lines.append(")")
     lines.append("from adcp.types.domains.media_buy.get_products_request import (")
     lines.append("    GetProductsRequest,")
@@ -539,7 +565,10 @@ def generate_code() -> str:
         if type_name not in all_coercions:
             continue
 
-        cls, coercions = all_coercions[type_name]
+        cls, coercions, members = all_coercions[type_name]
+        # The symbol to patch is the class the fields live on, which for a split
+        # root is the shared base rather than the union the table named.
+        symbol = cls.__name__
 
         # Add comment describing what we're coercing
         field_comments = []
@@ -567,7 +596,7 @@ def generate_code() -> str:
                     "(accepts subclass instances)"
                 )
 
-        lines.append(f"    # Apply coercion to {type_name}")
+        lines.append(f"    # Apply coercion to {symbol}")
         for comment in field_comments:
             lines.append(f"    # - {comment}")
 
@@ -577,7 +606,7 @@ def generate_code() -> str:
             if c["type"] == "enum":
                 target = get_symbol_name(c["target_class"])
                 lines.append("    _patch_field_annotation(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 annotation = f"{target} | None, BeforeValidator(coerce_to_enum({target}))"
                 line = f"        Annotated[{annotation}],"
@@ -592,14 +621,14 @@ def generate_code() -> str:
             elif c["type"] == "unique_enum_list":
                 target = get_symbol_name(c["target_class"])
                 lines.append("    _patch_unique_enum_list(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 lines.append(f"        {target},")
                 lines.append("    )")
             elif c["type"] == "enum_list":
                 target = get_symbol_name(c["target_class"])
                 lines.append("    _patch_field_annotation(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 lines.append("        Annotated[")
                 lines.append(f"            list[{target}] | None,")
@@ -608,7 +637,7 @@ def generate_code() -> str:
                 lines.append("    )")
             elif c["type"] == "context":
                 lines.append("    _patch_field_annotation(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 lines.append(
                     "        Annotated[ContextObject | None, "
@@ -617,7 +646,7 @@ def generate_code() -> str:
                 lines.append("    )")
             elif c["type"] == "ext":
                 lines.append("    _patch_field_annotation(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 lines.append(
                     "        Annotated[ExtensionObject | None, "
@@ -640,7 +669,7 @@ def generate_code() -> str:
                     f"{container}[{target}] | None" if is_optional else f"{container}[{target}]"
                 )
                 lines.append("    _patch_field_annotation(")
-                lines.append(f"        {type_name},")
+                lines.append(f"        {symbol},")
                 lines.append(f'        "{field}",')
                 lines.append("        Annotated[")
                 lines.append(f"            {type_str},")
@@ -648,7 +677,8 @@ def generate_code() -> str:
                 lines.append("        ],")
                 lines.append("    )")
 
-        lines.append(f"    {type_name}.model_rebuild(force=True)")
+        for rebuilt in (symbol, *(member.__name__ for member in members)):
+            lines.append(f"    {rebuilt}.model_rebuild(force=True)")
         lines.append("")
 
     # PackageUpdate is now a single class (flattened from validation-only oneOf)

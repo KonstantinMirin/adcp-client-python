@@ -7804,6 +7804,9 @@ def main(argv: list[str] | None = None) -> int:
         point_integer_fields_at_the_schema_integer_type,
         remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,
+        # Last of all the class-shaping passes: every pass above edits a class
+        # by name, and the shared base carries what they put on the flat one.
+        emit_branch_classes,
         # After every pass that can add, rename or remove a class: the
         # ``__all__`` it writes has to name the final set.
         declare_root_schema_module_exports,

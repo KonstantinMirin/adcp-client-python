@@ -76,7 +76,16 @@ import copy
 import json
 import re
 from collections.abc import Callable, Iterable, Sequence
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Protocol, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    ClassVar,
+    Protocol,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 
 from pydantic import (
     AfterValidator,
@@ -85,6 +94,7 @@ from pydantic import (
     GetJsonSchemaHandler,
     PrivateAttr,
     SerializerFunctionWrapHandler,
+    TypeAdapter,
     WithJsonSchema,
     field_validator,
     model_serializer,
@@ -99,10 +109,15 @@ from adcp.types._product_format_declaration import (
 )
 from adcp.types.base import AdCPBaseModel
 from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
-from adcp.types.domains.core.creative_asset import CreativeAsset as _CanonicalCreativeWire
+from adcp.types.domains.core.creative_asset import (
+    # The canonical asset IS the root's canonical-format-kind arm: that arm
+    # requires ``format_kind`` and types the deprecated ``format_id`` as
+    # ``None``, which is precisely what this layer used to add by hand.
+    CreativeAssetV2CreativeCanonicalFormatKind as _CanonicalCreativeWire,
+)
 from adcp.types.domains.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
 from adcp.types.domains.core.creative_manifest import (
-    CreativeManifest as _CanonicalCreativeManifestWire,
+    CreativeManifestCanonicalFormatManifest as _CanonicalCreativeManifestWire,
 )
 from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
 from adcp.types.domains.core.package import Package as _LegacyPackage
@@ -132,7 +147,15 @@ from adcp.types.domains.creative.sync_creatives_request import (
 )
 from adcp.types.domains.enums.channels import MediaChannel
 from adcp.types.domains.media_buy.create_media_buy_request import (
-    CreateMediaBuyRequest as _LegacyCreateMediaBuyRequest,
+    # One arm each. The root's arms partition by requiredness, so there is no
+    # single wire class to refine: two arms require ``packages`` and the third
+    # forbids it, which is why the canonical view is a class per arm and a union
+    # rather than one class redeclaring the field as optional.
+    CreateMediaBuyRequestCommittedProposalExecution as _LegacyCreateMediaBuyProposal,
+    CreateMediaBuyRequestExplicitPackagesWithFixedAllocation as _LegacyCreateMediaBuyFixed,
+)
+from adcp.types.domains.media_buy.create_media_buy_request import (
+    CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation as _LegacyCMBSellerOptimized,
 )
 from adcp.types.domains.media_buy.create_media_buy_response import (
     CreateMediaBuyResponse1 as _LegacyCreateMediaBuyResponse1,
@@ -810,10 +833,12 @@ class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
     after its pin — :func:`is_canonical_format_kind` is how a caller meets it.
     """
 
-    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
-        format_id: _RemovedFormatId = Field(default=None, init=False)
-
-    format_kind: str
+    # Nothing is declared here. The arm this subclasses requires ``format_kind``
+    # and types ``format_id`` as ``None``, so the narrowing and the removal this
+    # class used to spell by hand are the arm's own shape -- and the ``None``
+    # annotation is stronger than the hidden-from-the-constructor trick it
+    # replaces, because it is a type error at every call rather than only the
+    # ones a type checker sees through ``init=False``.
 
 
 class Creative(_CanonicalListedCreative, CanonicalBoundaryModel):
@@ -840,8 +865,7 @@ class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
     relaxing the on-wire discriminator checks.
     """
 
-    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
-        format_id: _RemovedFormatId = Field(default=None, init=False)
+    # ``format_id`` is typed ``None`` by the arm; see :class:`CreativeAsset`.
 
     @model_validator(mode="before")
     @classmethod
@@ -1012,10 +1036,52 @@ class GetProductsResponse(_LegacyGetProductsResponse, CanonicalBoundaryModel):
     products: list[Product] | None = None  # type: ignore[assignment]
 
 
-class CreateMediaBuyRequest(_LegacyCreateMediaBuyRequest, CanonicalBoundaryModel):
-    """Canonical create request; packages are canonical package requests."""
+class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(
+    _LegacyCreateMediaBuyFixed, CanonicalBoundaryModel
+):
+    """Canonical fixed-allocation create request; packages are canonical.
 
-    packages: list[PackageRequest] | None = None
+    ``packages`` is REQUIRED here, which is the arm's own requiredness rather
+    than something this layer restores. The single canonical class this
+    replaced declared ``packages: list[PackageRequest] | None = None`` over all
+    three arms at once, and that default silently relaxed a field two of the
+    arms require.
+    """
+
+    packages: Sequence[PackageRequest]
+
+
+class CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation(
+    _LegacyCMBSellerOptimized, CanonicalBoundaryModel
+):
+    """Canonical seller-optimized create request; packages are canonical."""
+
+    packages: Sequence[PackageRequest]
+
+
+class CreateMediaBuyRequestCommittedProposalExecution(
+    _LegacyCreateMediaBuyProposal, CanonicalBoundaryModel
+):
+    """Canonical proposal-execution create request.
+
+    Nothing to narrow: this arm forbids ``packages``, so the field is typed
+    ``None`` by the arm and there is no item type for this layer to refine.
+    Re-declaring it here as a canonical list would re-widen what the arm bans.
+    """
+
+
+#: The canonical create request, one arm per shape. Keeps the root's public
+#: name, so an existing annotation still means "one of these".
+CreateMediaBuyRequest: TypeAlias = (
+    CreateMediaBuyRequestExplicitPackagesWithFixedAllocation
+    | CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation
+    | CreateMediaBuyRequestCommittedProposalExecution
+)
+
+#: Parsing is what a union needs an adapter for. Built once, at import.
+CreateMediaBuyRequestAdapter: TypeAdapter[CreateMediaBuyRequest] = TypeAdapter(
+    CreateMediaBuyRequest
+)
 
 
 class UpdateMediaBuyRequest(_LegacyUpdateMediaBuyRequest, CanonicalBoundaryModel):
@@ -1167,7 +1233,12 @@ PRIMARY_CANONICAL_MODELS: tuple[type[CanonicalBoundaryModel], ...] = (
     Package,
     GetProductsRequest,
     GetProductsResponse,
-    CreateMediaBuyRequest,
+    # One entry per arm: the create request is a union now, and each arm is a
+    # canonical model in its own right -- every property this tuple is graded
+    # for has to hold of each of them, not of the alias over them.
+    CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
+    CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
+    CreateMediaBuyRequestCommittedProposalExecution,
     CreateMediaBuyResponse1,
     CreateMediaBuyResponse2,
     CreateMediaBuyResponse3,
@@ -1189,6 +1260,10 @@ PRIMARY_CANONICAL_MODELS: tuple[type[CanonicalBoundaryModel], ...] = (
 __all__ = [
     "CanonicalBoundaryModel",
     "CreateMediaBuyRequest",
+    "CreateMediaBuyRequestAdapter",
+    "CreateMediaBuyRequestCommittedProposalExecution",
+    "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
+    "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",
     "CreateMediaBuyResponse",
     "CreateMediaBuyResponse1",
     "CreateMediaBuyResponse2",

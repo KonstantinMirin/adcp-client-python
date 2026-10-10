@@ -2,27 +2,36 @@
 
 ## Field changes
 
-- `account/list_account_changes_request.py`
-  - `ListAccountChangesRequest`: `-adcp_major_version`, `-adcp_version`
-- `brand/search_brands_request.py`
-  - `SearchBrandsRequest`: `-adcp_major_version`
-- `media_buy/accept_proposal_request.py`
-  - `AcceptProposalRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/buy_products_request.py`
-  - `BuyProductsRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/control_media_buy_request.py`
-  - `ControlMediaBuyRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/decline_proposals_request.py`
-  - `DeclineProposalsRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/list_products_request.py`
-  - `ListProductsRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/refine_proposals_request.py`
-  - `RefineProposalsRequest`: `-adcp_major_version`, `-adcp_version`
+- `account/list_account_changes_response.py`
+  - **classes added**: ListAccountChangesResponseCompleted, ListAccountChangesResponseFailed, _ListAccountChangesResponseBase
+  - **classes removed**: ListAccountChangesResponse
+- `core/audience_characteristic.py`
+  - **classes added**: AudienceCharacteristicRange, AudienceCharacteristicValue, _AudienceCharacteristicBase
+  - **classes removed**: AudienceCharacteristic
+- `core/catchment.py`
+  - **classes added**: CatchmentGeometry, CatchmentRadius, CatchmentTransportModeTravelTime, _CatchmentBase
+  - **classes removed**: Catchment
+- `core/creative_asset.py`
+  - **classes added**: CreativeAssetV1CreativeNamedFormatReference, CreativeAssetV2CreativeCanonicalFormatKind, _CreativeAssetBase
+  - **classes removed**: CreativeAsset
+- `core/creative_manifest.py`
+  - **classes added**: CreativeManifestCanonicalFormatManifest, CreativeManifestNamedFormatManifest, _CreativeManifestBase
+  - **classes removed**: CreativeManifest
+- `core/frequency_cap_impression_constraints.py`
+  - **classes added**: FrequencyCapImpressionConstraintsAllowedValues, FrequencyCapImpressionConstraintsMaximumMinimum, _FrequencyCapImpressionConstraintsBase
+  - **classes removed**: FrequencyCapImpressionConstraints
+- `core/frequency_cap_interval_constraints.py`
+  - **classes added**: FrequencyCapIntervalConstraintsAllowedIntervals, FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval, _FrequencyCapIntervalConstraintsBase
+  - **classes removed**: FrequencyCapIntervalConstraints
+- `core/get_geo_place_resolution_request.py`
+  - **classes added**: GetGeographicPlaceResolutionRequestQ, GetGeographicPlaceResolutionRequestValue, _GetGeographicPlaceResolutionRequestBase
+  - **classes removed**: GetGeographicPlaceResolutionRequest
+- `core/webhook_challenge_response.py`
+  - **classes added**: WebhookChallengeResponseChallenge, WebhookChallengeResponseToken, _WebhookChallengeResponseBase
+  - **classes removed**: WebhookChallengeResponse
+- `media_buy/create_media_buy_request.py`
+  - **classes added**: CreateMediaBuyRequestCommittedProposalExecution, CreateMediaBuyRequestExplicitPackagesWithFixedAllocation, CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation, _CreateMediaBuyRequestBase
+  - **classes removed**: CreateMediaBuyRequest
 - `media_buy/request_proposals_request.py`
-  - `RequestProposalsRequest`: `-adcp_major_version`, `-adcp_version`
-- `media_buy/sync_reporting_status_request.py`
-  - `SyncReportingStatusRequest`: `-adcp_major_version`, `-adcp_version`
-- `trusted_match/context_match_request.py`
-  - `ContextMatchRequest`: `-adcp_major_version`, `-adcp_version`
-- `trusted_match/identity_match_request.py`
-  - `IdentityMatchRequest`: `-adcp_major_version`, `-adcp_version`
+  - **classes added**: RequestProposalsRequestAccount, RequestProposalsRequestBrand, _RequestProposalsRequestBase
+  - **classes removed**: RequestProposalsRequest
