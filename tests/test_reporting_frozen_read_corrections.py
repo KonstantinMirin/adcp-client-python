@@ -69,6 +69,9 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
         "accepted_receipt_count",
         "adjustment_receipt_count",
         "accepted_adjustment_receipt_count",
+        # ``declare_pending`` is the only thing that puts this count back, which
+        # is what makes the omitted case an omission.
+        "pending_adjustment_count",
     ):
         owner.pop(field)
     accepted = evidence in {"accepted", "accepted-leaf"}
@@ -359,7 +362,10 @@ async def test_pending_adjustment_count_cannot_invent_ownership_of_selected_offi
     assert not result.definitive
     assert all("AMBIGUOUS_REVISION_OWNERSHIP" in item.reasons for item in result.obligations)
     # Even ambiguous ownership cannot explain more pending rows than exist.
-    raw["periods"][0]["pending_adjustment_count"] = 2
+    # core/reporting-obligation.json allOf[7] pins the count to 0 while the
+    # obligation reads complete, so the health moves with it; the guard under
+    # test reads neither health nor mode.
+    raw["periods"][0].update(pending_adjustment_count=2, health="waiting")
     with pytest.raises(ReportingReconciliationError) as error:
         await _load_distinct(raw, explicit=False)
     assert error.value.code == "LEDGER_COUNT_MISMATCH"

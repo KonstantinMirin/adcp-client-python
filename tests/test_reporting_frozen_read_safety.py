@@ -157,6 +157,20 @@ def _counts(raw: dict[str, Any]) -> None:
     }
 
 
+def _declare_pending(raw: dict[str, Any], count: int) -> None:
+    """Declare the obligation's pending adjustment count, health included.
+
+    ``core/reporting-obligation.json`` allOf[7] pins the count to 0 while a
+    consumer_receipt obligation reads healthy or complete, so an outstanding
+    adjustment on a complete obligation is not a state the spec has. The
+    reconciler's count guard reads neither health nor mode, so moving the health
+    with the count leaves what these tests grade alone.
+    """
+    raw["periods"][0].update(
+        pending_adjustment_count=count, health="complete" if count == 0 else "waiting"
+    )
+
+
 def _pages(raw: dict[str, Any], *, explicit: bool = True) -> list[dict[str, Any]]:
     rows = [(name, row) for name in ARRAYS for row in raw.get(name, [])]
     pages = []
@@ -794,10 +808,15 @@ async def test_pending_adjustment_count_matches_only_the_current_leaf(accepted) 
     if not accepted:
         raw["adjustment_receipts"][0].update(status="rejected", rejection_codes=["MISMATCH"])
     _counts(raw)
-    raw["periods"][0]["pending_adjustment_count"] = int(not accepted)
+    _declare_pending(raw, int(not accepted))
     result = evaluate_reporting_ledger(await _load(raw), expected_periods=_expected(), now=NOW)
     assert result.definitive is accepted
-    raw["periods"][0]["pending_adjustment_count"] = int(accepted)
+    # The waiting health the schema forces alongside a pending adjustment would
+    # carry this assertion on its own, so the adjustment condition is named.
+    assert (
+        "MISSING_MATCHING_ADJUSTMENT_RECEIPT" in result.obligations[0].reasons
+    ) is not accepted
+    _declare_pending(raw, int(accepted))
     with pytest.raises(ReportingReconciliationError) as error:
         await _load(raw)
     assert error.value.code == "LEDGER_COUNT_MISMATCH"
