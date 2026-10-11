@@ -68,6 +68,7 @@ __all__ = [
     "Branch",
     "bundle_document_resolver",
     "COMPILED_KEYWORDS",
+    "DROPPED_KEYWORDS",
     "Cond",
     "DECLARED_BEHAVIORAL_KEY",
     "DeclaredShape",
@@ -286,6 +287,44 @@ COMPILED_KEYWORDS = frozenset(
         "required",
         "then",
         "type",
+        "uniqueItems",
+    }
+)
+
+#: Whole-object and whole-array keywords ``datamodel-code-generator`` DROPS: it
+#: has no field to hang them on, so nothing in the generated class carries them.
+#:
+#: They are the reason this set has to be named at all. Everything else the
+#: grammar compiles is either a logic key -- which the generator also drops, and
+#: which :data:`LOGIC_KEYS` already names -- or a declarative key the generator
+#: renders as a field constraint, where the restatement rule correctly reports it
+#: as already enforced. These six are in neither category: declarative in form,
+#: dropped in fact. Treating them as declarative is what shut all three doors
+#: below, each independently sufficient to lose the constraint:
+#:
+#: * :func:`_states_logic` did not admit a root carrying one, so its content was
+#:   never examined (salesagent-09ghh, and the same shape as the ``allOf`` gate
+#:   closed by a2989c205);
+#: * :meth:`_Parser.read` read the root's combinator, ``if``, ``dependencies``,
+#:   ``dependentRequired``, ``not`` and ``allOf`` members -- so a top-level
+#:   ``minProperties`` sat in no position it looked at, and widening the gate
+#:   alone produced ten admitted roots and ten EMPTY validators;
+#: * :func:`_declaration_of` kept them as "what the generator renders", so the
+#:   restatement rule at :meth:`_Parser._keyword` reported them already enforced
+#:   -- which would have defeated a fix to the first two for every ``allOf``
+#:   member case.
+#:
+#: ``uniqueItems`` is in the set because the gate must admit its roots, not
+#: because a root conjunct can carry it: an array root renders as a ``RootModel``
+#: with no object field, so ``flat_root_shape`` returns ``None`` and no root
+#: validator is emitted. Putting it on the element type is salesagent-pizni.
+DROPPED_KEYWORDS = frozenset(
+    {
+        "contains",
+        "maxProperties",
+        "minProperties",
+        "patternProperties",
+        "propertyNames",
         "uniqueItems",
     }
 )
@@ -726,7 +765,14 @@ def _states_logic(node: Any) -> bool:
     """Whether a node carries a keyword the generator drops."""
     if not isinstance(node, dict):
         return False
-    if any(key in node for key in ("if", "dependencies", "dependentRequired", "not")):
+    if any(
+        key in node
+        for key in ("if", "dependencies", "dependentRequired", "dependentSchemas", "not")
+    ):
+        return True
+    # A whole-object keyword is dropped exactly as a logic key is, so a root
+    # carrying one states something no field of the class expresses.
+    if any(key in node for key in DROPPED_KEYWORDS):
         return True
     return any(isinstance(node.get(key), list) and node[key] for key in ("anyOf", "oneOf"))
 
@@ -749,7 +795,16 @@ def _declaration_of(node: Any) -> dict[str, Any]:
     """
     if not isinstance(node, dict):
         return {}
-    declaration = {key: value for key, value in node.items() if key not in LOGIC_KEYS}
+    # ``DROPPED_KEYWORDS`` leave with the logic keys: the generator renders
+    # neither, so neither is part of the declaration a restatement is proven
+    # against. Keeping them here made ``minProperties`` inside an ``allOf``
+    # member compile to ``Restated('declaration')`` against a class that
+    # declares no such thing.
+    declaration = {
+        key: value
+        for key, value in node.items()
+        if key not in LOGIC_KEYS and key not in DROPPED_KEYWORDS
+    }
     refs = [declaration["$ref"]] if isinstance(declaration.get("$ref"), str) else []
     members = node.get("allOf")
     if isinstance(members, list):
@@ -841,7 +896,14 @@ class _Parser:
         conjuncts: list[Cond] = []
         if "if" in schema:
             conjuncts.append(self._if_then(schema, "", root_declaration, self._root_shape))
-        for keyword in ("dependencies", "dependentRequired"):
+        # ``dependentSchemas`` beside its two siblings: all three are dropped by
+        # codegen, all three compile through ``_dependencies``, and the gate and
+        # this loop both named only two. No schema in the pinned bundle uses it,
+        # so this closes a latent hole rather than changing a verdict -- which is
+        # the same defect class as the other four doors and is why
+        # tests/test_dropped_keyword_doors.py grades the partition rather than
+        # the instances.
+        for keyword in ("dependencies", "dependentRequired", "dependentSchemas"):
             if keyword in schema:
                 conjuncts.extend(self._dependencies(schema[keyword], keyword, "", self._root_shape))
         if "not" in schema:
@@ -862,6 +924,16 @@ class _Parser:
                 compiled = self._node(member, f"allOf/{index}", root_declaration, self._root_shape)
                 if not isinstance(compiled, Restated):
                     conjuncts.append(compiled)
+        # The root's OWN whole-object keywords. They sit in none of the positions
+        # above -- not in the combinator, not in ``if``, not in an ``allOf``
+        # member -- so without this the gate admits the root and the reader hands
+        # the grammar nothing. Compiled as a node of just those keys, which is
+        # what they constrain: the object the root declares.
+        dropped = {key: schema[key] for key in sorted(DROPPED_KEYWORDS) if key in schema}
+        if dropped:
+            compiled = self._node(dropped, "", root_declaration, self._root_shape)
+            if not isinstance(compiled, Restated):
+                conjuncts.append(compiled)
 
         return RootConstraints(
             combinator=combinator,
