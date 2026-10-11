@@ -676,12 +676,36 @@ class RootConstraints:
 
 
 def root_carries_constraints(schema: Any) -> bool:
-    """Whether a schema root states anything beyond its merged ``properties``."""
+    """Whether a schema root states anything beyond its merged ``properties``.
+
+    This predicate is the reader's ADMISSION gate, so what it misses is content
+    nothing examines -- not content examined and skipped. It used to test only
+    the root's own keys plus a root ``anyOf``/``oneOf``, and this bundle puts
+    conditional rules inside ``allOf`` MEMBERS: 112 roots carried
+    ``allOf: [{if, then}, ...]`` and were reported as carrying nothing.
+    ``core/reporting-obligation`` has ten such members, one of which requires
+    ``pending_adjustment_count``, and the model accepted documents the schema
+    refused for exactly that reason.
+
+    So an ``allOf`` member is examined too. A root ``allOf`` is inheritance for
+    the DECLARATIVE keys the generator merges, and a carrier of logic for the
+    keys it drops -- the same list either way, read for two purposes.
+    """
     if not isinstance(schema, dict):
         return False
-    if any(key in schema for key in ("if", "dependencies", "dependentRequired", "not")):
+    if _states_logic(schema):
         return True
-    return any(isinstance(schema.get(key), list) and schema[key] for key in ("anyOf", "oneOf"))
+    members = schema.get("allOf")
+    return isinstance(members, list) and any(_states_logic(member) for member in members)
+
+
+def _states_logic(node: Any) -> bool:
+    """Whether a node carries a keyword the generator drops."""
+    if not isinstance(node, dict):
+        return False
+    if any(key in node for key in ("if", "dependencies", "dependentRequired", "not")):
+        return True
+    return any(isinstance(node.get(key), list) and node[key] for key in ("anyOf", "oneOf"))
 
 
 #: Positions whose subschema DECLARES the same object as its parent, so a

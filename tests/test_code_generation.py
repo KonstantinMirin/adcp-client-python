@@ -2856,12 +2856,13 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
     # shared shape, because the emitter split that root into arms.
     assert len(found) >= 42, found
     assert set(found.values()) == {"anyOf", "oneOf"}, found
-    assert found["CreativeAssetShape"] == "oneOf", found
-    assert found["CreateMediaBuyRequestShape"] == "anyOf", found
+    assert found["CreativeAsset"] == "oneOf", found
+    assert found["CreateMediaBuyRequest"] == "anyOf", found
     # The two roots whose branches are purely requiredness, named outright
-    # because they are the ones a mechanism-shaped gate would have lost.
-    assert found["CatchmentShape"] == "oneOf", found
-    assert found["FrequencyCapImpressionConstraintsShape"] == "oneOf", found
+    # because they are the ones a mechanism-shaped gate would have lost. The
+    # base takes the root's own name, so these are the plain names.
+    assert found["Catchment"] == "oneOf", found
+    assert found["FrequencyCapImpressionConstraints"] == "oneOf", found
 
 
 def test_a_consumer_reads_the_schema_keyword_off_the_refusal():
@@ -2887,8 +2888,17 @@ def test_a_consumer_reads_the_schema_keyword_off_the_refusal():
     with pytest.raises(ValidationError) as refusal:
         CreateMediaBuyRequest.model_validate(media_buy)
     assert [error["type"] for error in refusal.value.errors()] == ["anyOf"]
+    # The package carries a budget, which the fixed-allocation branch requires:
+    # "Fixed allocation requires budget on every package". Without it the
+    # bundled schema refuses the document, and this assertion passed only while
+    # the model did not enforce the root combinator.
     assert CreateMediaBuyRequest.model_validate(
-        {**media_buy, "packages": [{"product_id": "p1", "pricing_option_id": "cpm_usd_fixed"}]}
+        {
+            **media_buy,
+            "packages": [
+                {"product_id": "p1", "pricing_option_id": "cpm_usd_fixed", "budget": 1000.0}
+            ],
+        }
     ).packages
 
     # The generated class, because the public ``adcp.types.CreativeAsset`` is
