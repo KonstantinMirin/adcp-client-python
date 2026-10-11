@@ -91,7 +91,6 @@ from pydantic import (
     AfterValidator,
     ConfigDict,
     Field,
-    GetCoreSchemaHandler,
     GetJsonSchemaHandler,
     PrivateAttr,
     SerializerFunctionWrapHandler,
@@ -1043,10 +1042,6 @@ class GetProductsResponse(_LegacyGetProductsResponse, CanonicalBoundaryModel):
     products: list[Product] | None = None  # type: ignore[assignment]
 
 
-_CANONICAL_CREATE_MEDIA_BUY_BRANCHES: CoreSchema | None = None
-_CANONICAL_CREATE_MEDIA_BUY_BASE: type | None = None
-
-
 class CreateMediaBuyRequest(_LegacyCreateMediaBuyBase, CanonicalBoundaryModel):
     """Canonical create request; packages are canonical package requests.
 
@@ -1065,14 +1060,22 @@ class CreateMediaBuyRequest(_LegacyCreateMediaBuyBase, CanonicalBoundaryModel):
     packages: Sequence[PackageRequest] | None = None
 
     @classmethod
-    def __get_pydantic_core_schema__(cls, source: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
-        # Keyed on identity: a branch inherits this and must get its own shape,
-        # and so must the generated base, which shares this class's name.
-        if cls is not _CANONICAL_CREATE_MEDIA_BUY_BASE or (
-            _CANONICAL_CREATE_MEDIA_BUY_BRANCHES is None
-        ):
-            return handler(source)
-        return _CANONICAL_CREATE_MEDIA_BUY_BRANCHES
+    def _branch_models(cls) -> tuple[type, ...]:
+        # Re-declared, which is what moves the dispatch from the GENERATED
+        # branches to the canonical ones: the shared hook asks whether a class
+        # declares this method, so the generated base of the same name keeps its
+        # own branches and this one gets these. Inheriting it instead left the
+        # method reporting the generated branches while the schema was built
+        # from the canonical ones -- two answers to one question.
+        return (
+            CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
+            CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
+            CreateMediaBuyRequestCommittedProposalExecution,
+        )
+
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return "anyOf"
 
 
 class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(
@@ -1126,8 +1129,9 @@ CreateMediaBuyRequestBranchesAdapter: TypeAdapter[CreateMediaBuyRequestBranches]
     CreateMediaBuyRequestBranches
 )
 
-_CANONICAL_CREATE_MEDIA_BUY_BRANCHES = CreateMediaBuyRequestBranchesAdapter.core_schema
-_CANONICAL_CREATE_MEDIA_BUY_BASE = CreateMediaBuyRequest
+# CreateMediaBuyRequest is declared above its branches, so _branch_models
+# cannot resolve them while the class body is compiled. The rebuild installs
+# the branches' schema -- the same two-step every other root with branches uses.
 CreateMediaBuyRequest.model_rebuild(force=True)
 
 
