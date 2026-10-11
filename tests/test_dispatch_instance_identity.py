@@ -12,11 +12,15 @@ That difference shipped unnamed. The removal commit's message states it in
 text -- "identity for an instance of the LOOSE BASE" -- and text is not a test,
 so nothing failed when the override went away. This file is the missing half.
 
-It grades two things, and the SECOND is the durable one:
+It grades three things, and the SECOND is the durable one:
 
 * an instance of the loose base is refused by its own name, over every root the
   hook dispatches;
-* ``revalidate_instances`` is pydantic's default on every generated class.
+* ``revalidate_instances`` is pydantic's default on every generated class;
+* every operation that REBUILDS an instance without a document still works, now
+  that the base dispatches construction (salesagent-setka). ``__new__`` has to
+  return a blank instance when it is called with no data, and five operations
+  call it that way.
 
 The agreement on the other four inputs is not a property of this codebase. It
 follows from pydantic's default ``'never'``, under which a model schema accepts
@@ -31,6 +35,9 @@ exists is that a behavioural difference reached main with no test naming it.
 
 from __future__ import annotations
 
+import copy
+import pickle
+
 import pytest
 from pydantic import BaseModel, ValidationError
 
@@ -40,7 +47,10 @@ from pydantic import BaseModel, ValidationError
 import adcp.types._generated  # noqa: F401
 import adcp.types.canonical_creative  # noqa: F401
 from adcp.types.base import AdCPBaseModel
-from tests.test_branch_dispatch_on_every_path import _roots_with_branches
+from tests.test_branch_dispatch_on_every_path import (
+    _accepted_document,
+    _roots_with_branches,
+)
 
 #: Pydantic's default, and the fact the four agreeing cases rest on. Named here
 #: so the assertion reads as a claim about this codebase rather than a repeat of
@@ -123,17 +133,17 @@ def test_a_branch_instance_passes_through_the_base_by_identity() -> None:
             ),
         ):
             returned = root.model_validate(instance)
-            assert returned is instance, (
-                f"{name} did not return {label} by identity; it returned {type(returned).__name__}"
-            )
+            assert (
+                returned is instance
+            ), f"{name} did not return {label} by identity; it returned {type(returned).__name__}"
 
         class Holder(AdCPBaseModel):
             payload: root  # type: ignore[valid-type]
 
         nested = branches[0].model_construct()
-        assert Holder.model_validate({"payload": nested}).payload is nested, (
-            f"{name} nested in another model's field did not keep the instance"
-        )
+        assert (
+            Holder.model_validate({"payload": nested}).payload is nested
+        ), f"{name} nested in another model's field did not keep the instance"
 
 
 def test_the_identity_pass_through_rests_on_a_pydantic_default_nothing_here_states() -> None:
@@ -175,3 +185,76 @@ def test_the_identity_pass_through_rests_on_a_pydantic_default_nothing_here_stat
         BaseModel.model_config.get("revalidate_instances", PYDANTIC_DEFAULT_REVALIDATION)
         == PYDANTIC_DEFAULT_REVALIDATION
     ), "pydantic's own default for revalidate_instances moved"
+
+
+def test_rebuilding_an_instance_without_a_document_still_works() -> None:
+    """``__new__`` dispatches construction, so a no-data call must not validate.
+
+    ``BranchDispatchMixin.__new__`` chooses a branch from the payload
+    (salesagent-setka). Five operations rebuild an instance with NO payload and
+    reach that same hook, and all five would raise a ``ValidationError`` for the
+    missing fields of an empty document if it tried to dispatch them.
+
+    Measured on the BASE, which is the half that matters and the half a careless
+    probe misses: the same five on a BRANCH instance never reach the hook at all,
+    because a branch does not declare ``_branch_models`` and the guard's second
+    condition short-circuits. A probe that built its instance by constructing a
+    valid document got a branch back and reported all five unaffected -- true of
+    that probe, and nothing about the guard.
+    """
+    roots = _roots_with_branches()
+    assert roots, "the derivation selected no root to grade"
+
+    for name, root in sorted(roots.items()):
+        blank = root.model_construct()
+        assert type(blank) is root, (
+            f"{name}.model_construct() returned {type(blank).__name__}; a no-data "
+            "rebuild must not be dispatched to a branch"
+        )
+        for label, rebuild in (
+            ("copy.copy", lambda b=blank: copy.copy(b)),
+            ("copy.deepcopy", lambda b=blank: copy.deepcopy(b)),
+            ("pickle round trip", lambda b=blank: pickle.loads(pickle.dumps(b))),
+            ("model_copy", lambda b=blank: b.model_copy()),
+        ):
+            rebuilt = rebuild()
+            assert (
+                type(rebuilt) is root
+            ), f"{name}: {label} returned {type(rebuilt).__name__}, not the class it copied"
+
+
+def test_an_adopter_subclass_constructs_as_itself() -> None:
+    """A subclass that does not declare branches is not dispatched away from.
+
+    ``LegacyCreativeAsset`` is a deliberately exposed public alias OF A BASE, and
+    an adopter subclassing one of these roots and calling ``super().__init__``
+    must get an instance of THEIR class -- not of a branch, which would discard
+    whatever they added. The gate is "declares ``_branch_models``", not
+    ``issubclass``, and this is the input that separates the two: a plain
+    subclass is a subclass of the base and must still construct as itself.
+    """
+    roots = _roots_with_branches()
+    assert roots, "the derivation selected no root to grade"
+
+    graded = 0
+    for name, root in sorted(roots.items()):
+        document = _accepted_document(root)
+        if document is None:
+            continue
+
+        class Adopter(root):  # type: ignore[misc,valid-type]
+            """An adopter's own subclass, with its own __init__."""
+
+            def __init__(self, **data: object) -> None:
+                super().__init__(**data)
+
+        constructed = Adopter(**document)
+        assert type(constructed) is Adopter, (
+            f"{name}: an adopter subclass constructed as {type(constructed).__name__}, "
+            "so super().__init__ dispatched away from the caller's class"
+        )
+        # And the object is usable, which is the whole point of the fix.
+        constructed.model_dump(mode="json")
+        graded += 1
+
+    assert graded >= 18, f"only {graded} roots had a document to construct from"

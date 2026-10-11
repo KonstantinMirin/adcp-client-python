@@ -113,10 +113,18 @@ class BranchDispatchMixin:
         pydantic to expose branch selection without building an instance.
         """
         if not data or "_branch_models" not in cls.__dict__:
-            # No data: ``model_construct``, ``copy.deepcopy`` and unpickling all
-            # call ``cls.__new__(cls)`` and must get a blank instance rather than
-            # a validation of ``{}``. Not the declaring class: a branch keeps its
-            # own construction, for the same reason it keeps its own schema.
+            # No data: every operation that rebuilds an instance without one
+            # reaches here and must get a blank instance rather than a validation
+            # of ``{}``. Measured on a BASE instance, all five arrive with empty
+            # ``data``: ``model_construct``, ``copy.copy``, ``copy.deepcopy``, a
+            # pickle round trip, and ``model_copy``. (The same five on a BRANCH
+            # instance never reach this at all -- a branch does not declare the
+            # method, so the second condition short-circuits. A first probe that
+            # exercised only branch instances reported them unaffected, which was
+            # a statement about that probe's scope and not about the guard.)
+            #
+            # Not the declaring class: a branch keeps its own construction, for
+            # the same reason it keeps its own schema.
             return super().__new__(cls)
         try:
             branches = cls._branch_models()
