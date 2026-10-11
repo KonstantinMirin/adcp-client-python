@@ -76,7 +76,6 @@ from adcp.types import (
     ListTransformersRequest,
     LogEventRequest,
     ProvidePerformanceFeedbackRequest,
-    Recovery,
     RefineProposalsRequest,
     ReportPlanAdjustmentRequest,
     ReportPlanOutcomeRequest,
@@ -277,18 +276,9 @@ def invalid_request(
         # The builder's message, not "Invalid request: {e}" — the old spelling
         # interpolated the exception and so echoed the payload here too.
         reason=payload["message"],
-        error=Error(
-            **payload,
-            # core/error.json: "AdCP 3.2 producers MUST populate `recovery` on
-            # every error", and its enum documents correctable as "fix the
-            # request and resend (invalid field ...)".
-            recovery=Recovery.correctable,
-            # core/error.json declares `issues` at the top level and says
-            # details.issues is the pre-3.1 mirror: "new consumers SHOULD
-            # prefer the top-level issues field". The builder populates only
-            # the mirror (salesagent-8qela.18), so this lane adds the primary.
-            issues=payload["details"]["issues"],
-        ),
+        # Every envelope field comes from the builder, so this lane and the
+        # jsonschema oracle answer a rejection identically.
+        error=Error(**payload),
     )
 
 

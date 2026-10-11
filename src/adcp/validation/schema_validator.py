@@ -210,6 +210,82 @@ def _path_to_pointer(path: Any) -> str:
     return "/" + "/".join(escape(seg) for seg in path)
 
 
+#: A segment JSONPath-lite can write after a ``.`` unambiguously. Schema-declared
+#: AdCP names are all of this shape; a segment that is not comes from an open map
+#: in the payload (``ext``, ``details``, a targeting key) where a peer chose it.
+_BARE_SEGMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_INDEX_SEGMENT = re.compile(r"^(?:0|[1-9][0-9]*)$")
+_JSONPATH_TOKEN = re.compile(
+    r"""
+      \[ (?P<index>\d+) \]                      # [0]
+    | \[ ' (?P<quoted>(?:[^'\\]|\\.)*) ' \]     # ['a.b']
+    | \.? (?P<bare>[A-Za-z_][A-Za-z0-9_]*)      # name  or  .name
+    """,
+    re.VERBOSE,
+)
+
+
+def pointer_to_field(pointer: str) -> str:
+    """An RFC 6901 pointer as the JSONPath-lite ``error.field`` uses.
+
+    ``/packages/0/targeting`` -> ``packages[0].targeting``. Required by
+    ``core/error.json``: when ``issues[]`` is present, ``field`` is
+    ``issues[0].pointer`` translated.
+
+    The target format is the lossy one, and the pin says so where it defines
+    ``issues[].pointer`` — RFC 6901 is "standardized and unambiguous on keys
+    containing ``/`` or ``~``", "differs from the legacy top-level ``field``
+    which uses JSONPath-lite", and sellers "MUST translate the format"
+    regardless. So dot notation cannot express three pointer shapes:
+
+    * a segment that is not a bare identifier is bracket-quoted
+      (``/a.b`` -> ``['a.b']``), which covers keys containing ``.`` and the
+      ``~1``/``~0`` escapes for ``/`` and ``~``. Standard JSONPath member
+      access, beyond the examples the spec gives;
+    * an all-digit segment becomes an index (``[0]``), so a digit-string
+      object key is indistinguishable from one — the one lossy case;
+    * root (``"/"``, this repo's spelling for the empty path) becomes ``""``.
+    """
+    if pointer in ("", "/"):
+        return ""
+    out: list[str] = []
+    for raw in pointer.lstrip("/").split("/"):
+        segment = raw.replace("~1", "/").replace("~0", "~")
+        if _INDEX_SEGMENT.match(segment):
+            out.append(f"[{segment}]")
+        elif _BARE_SEGMENT.match(segment):
+            out.append(segment if not out else f".{segment}")
+        else:
+            escaped = segment.replace("\\", "\\\\").replace("'", "\\'")
+            out.append(f"['{escaped}']")
+    return "".join(out)
+
+
+def field_to_pointer(field: str) -> str:
+    """The RFC 6901 pointer a JSONPath-lite ``error.field`` came from.
+
+    The inverse of :func:`pointer_to_field`; the two are asserted inverses in
+    ``tests/test_error_field_jsonpath_lite.py``, which is what covers the
+    escape handling in both directions.
+    """
+    if not field:
+        return "/"
+    segments: list[str] = []
+    position = 0
+    while position < len(field):
+        match = _JSONPATH_TOKEN.match(field, position)
+        if match is None:
+            raise ValueError(f"not JSONPath-lite at offset {position}: {field!r}")
+        position = match.end()
+        if (index := match.group("index")) is not None:
+            segments.append(index)
+        elif (quoted := match.group("quoted")) is not None:
+            segments.append(re.sub(r"\\(.)", r"\1", quoted))
+        else:
+            segments.append(match.group("bare"))
+    return _path_to_pointer(segments)
+
+
 _BOUNDED_KEYWORDS = frozenset(
     {
         "minLength",

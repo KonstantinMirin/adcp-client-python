@@ -10,6 +10,7 @@ from adcp.validation.schema_validator import (
     SchemaValidationError,
     ValidationIssue,
     _issue_to_wire,
+    pointer_to_field,
 )
 
 
@@ -53,10 +54,12 @@ def build_adcp_validation_error_payload(
 ) -> dict[str, Any]:
     """Serialize issues into the kwargs expected by the AdCP ``Error`` model.
 
-    Returns a dict with ``code`` / ``message`` / optional ``field`` /
-    ``details`` keys — ready to splat into
-    ``Error(**build_adcp_validation_error_payload(...))`` or into the
-    server's ``adcp_error`` response envelope.
+    Returns ``code``, ``message``, ``recovery`` and ``details``, plus
+    ``issues`` and ``field`` when there is at least one issue — ready to splat
+    into ``Error(**build_adcp_validation_error_payload(...))`` or into the
+    server's ``adcp_error`` response envelope. The one owner of this envelope:
+    both the jsonschema oracle and the pydantic projection reach the wire
+    through here, so neither can disagree about its shape.
 
     Messages on every ``ValidationIssue`` are already sanitized (see
     :func:`adcp.validation.schema_validator._safe_message`) — they do
@@ -70,23 +73,31 @@ def build_adcp_validation_error_payload(
     else:
         message = f"{tool} {side} failed schema validation"
 
+    wire_issues = [_issue_to_wire(i) for i in issues]
     payload: dict[str, Any] = {
         "code": "VALIDATION_ERROR",
         "message": message,
+        # core/error.json: details.issues is the pre-3.1 mirror of the
+        # top-level `issues`, which new consumers SHOULD prefer.
         "details": {
             "tool": tool,
             "side": side,
-            "issues": [_issue_to_wire(i) for i in issues],
+            "issues": wire_issues,
         },
+        # 3.2 producers MUST populate `recovery`; a malformed request is the
+        # enum's own example of correctable.
+        "recovery": "correctable",
     }
+    if wire_issues:
+        payload["issues"] = wire_issues
     if any(issue.keyword == "schema_unavailable" for issue in issues):
         from adcp.validation.envelope import SUPPORTED_WIRE_VERSIONS
 
         payload["code"] = "VERSION_UNSUPPORTED"
-        payload["field"] = "adcp_version"
-        payload["recovery"] = "correctable"
         payload["details"]["supported_versions"] = list(SUPPORTED_WIRE_VERSIONS)
-        return payload
-    if first is not None and first.pointer:
-        payload["field"] = first.pointer
+    # core/error.json: when issues[] is present, `field` is issues[0].pointer
+    # translated to JSONPath-lite. One translator so every lane agrees on the
+    # format, VERSION_UNSUPPORTED included.
+    if first is not None and (field := pointer_to_field(first.pointer)):
+        payload["field"] = field
     return payload
