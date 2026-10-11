@@ -34,6 +34,9 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, NamedTuple
 
+from datamodel_code_generator.parser.base import title_to_class_name
+from datamodel_code_generator.reference import ModelResolver
+
 try:
     import consolidate_exports
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
@@ -713,9 +716,9 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
             if obj.get("x-adcp-open-payload") is True:
                 title = obj.get("title")
                 if path == ():
-                    class_names.append(_schema_title_to_class_name(title) if title else None)
+                    class_names.append(_generated_root_class_name(title) if title else None)
                 elif isinstance(title, str) and title.strip():
-                    class_names.append(_schema_title_to_class_name(title))
+                    class_names.append(_generated_class_name(title))
                 else:
                     anonymous_count += 1
 
@@ -729,9 +732,38 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
     return class_names, anonymous_count
 
 
-def _schema_title_to_class_name(title: object) -> str:
-    words = re.findall(r"[A-Za-z0-9]+", str(title))
-    return "".join(word[:1].upper() + word[1:] for word in words)
+def _generated_class_name(title: object) -> str:
+    """The class name ``datamodel-code-generator`` gives a named nested object.
+
+    Asks the generator rather than restating its rule. This repo restated it —
+    ``"".join(word[:1].upper() + word[1:] for word in words)`` — and the
+    restatement was a faithful copy of THIS rule, which preserves an acronym:
+    ``"VAST Asset"`` is ``VASTAsset``. It was then used for schema ROOTS too,
+    where the generator applies a different rule, and the two disagreed on
+    every acronym for 94 of the bundle's roots (salesagent-5pe83). One
+    representation per fact; there are two facts here, so there are two
+    functions, each a call into the generator that owns the answer.
+    """
+    return ModelResolver().default_class_name_generator(str(title))
+
+
+def _generated_root_class_name(title: object) -> str:
+    """The class name ``datamodel-code-generator`` gives a schema ROOT.
+
+    A root is named by the title, and goes through one step a nested object
+    does not: ``JsonSchemaParser._resolve_root_model_name`` title-cases a title
+    that is not already a Python identifier, so ``"Get AdCP Capabilities
+    Response"`` becomes ``GetAdcpCapabilitiesResponse`` and not
+    ``GetAdCPCapabilitiesResponse``. A title that IS already an identifier is
+    kept verbatim — ``GetCreativeFeaturesSuccess`` is one, and title-casing it
+    unconditionally yields ``Getcreativefeaturessuccess``.
+
+    Both steps are the generator's own, called in the generator's order.
+    """
+    name = str(title)
+    if not ModelResolver.validate_name(name):
+        name = title_to_class_name(name)
+    return _generated_class_name(name)
 
 
 def _first_generated_class_name(content: str) -> str | None:
@@ -8104,10 +8136,14 @@ def _generated_fields(
 def _root_generated_class(content: str, schema: dict) -> str | None:
     """Return the single class datamodel-code-generator emits for a schema root.
 
-    The root class takes its name from the schema title, up to case: the
-    generator title-cases an acronym, so "SI Send Message Request" becomes
-    ``SiSendMessageRequest``. Match the title-derived name case-insensitively
-    and return the class as the module spells it.
+    The root class takes its name from the schema title, and
+    :func:`_schema_root_class_name` derives that name by asking the generator,
+    so the two agree on casing — "SI Send Message Request" derives
+    ``SiSendMessageRequest``, which is what the module declares. The match here
+    is still case-insensitive, now only so that a generator whose naming rule
+    moves is caught by the guard on the derivation
+    (``test_generated_hierarchy.py``) rather than by this function silently
+    returning ``None`` for every root.
 
     When no class carries that name the root did not generate one flat model —
     the generator split it into per-branch classes behind a union alias — and a
@@ -8130,7 +8166,7 @@ def _schema_root_class_name(schema: dict) -> str | None:
     title = schema.get("title")
     if not isinstance(title, str) or not title.strip():
         return None
-    return _schema_title_to_class_name(title)
+    return _generated_root_class_name(title)
 
 
 def _named_class(content: str, wanted: str | None) -> str | None:

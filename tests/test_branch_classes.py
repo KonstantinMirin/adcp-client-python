@@ -558,11 +558,11 @@ def test_every_branch_of_every_split_root_names_its_root() -> None:
 
 def _schema_root_name(schema: dict[str, Any]) -> str:
     """The class name the generator derives from a schema title."""
-    from scripts.post_generate_fixes import _schema_title_to_class_name
+    from scripts.post_generate_fixes import _schema_root_class_name
 
-    title = schema.get("title")
-    assert isinstance(title, str) and title.strip()
-    return _schema_title_to_class_name(title)
+    root = _schema_root_class_name(schema)
+    assert root is not None, f"schema carries no usable title: {schema.get('title')!r}"
+    return root
 
 
 def _split_roots_from_the_prover() -> dict[str, str]:
