@@ -34,8 +34,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from datamodel_code_generator.parser.base import title_to_class_name
-from datamodel_code_generator.reference import ModelResolver
+try:
+    from generated_names import generated_nested_class_name, generated_root_class_name
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts.generated_names import (  # type: ignore[assignment]
+        generated_nested_class_name,
+        generated_root_class_name,
+    )
 
 try:
     import consolidate_exports
@@ -716,9 +721,9 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
             if obj.get("x-adcp-open-payload") is True:
                 title = obj.get("title")
                 if path == ():
-                    class_names.append(_generated_root_class_name(title) if title else None)
+                    class_names.append(generated_root_class_name(title) if title else None)
                 elif isinstance(title, str) and title.strip():
-                    class_names.append(_generated_nested_class_name(title))
+                    class_names.append(generated_nested_class_name(title))
                 else:
                     anonymous_count += 1
 
@@ -730,40 +735,6 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
 
     walk(schema, ())
     return class_names, anonymous_count
-
-
-def _generated_nested_class_name(title: object) -> str:
-    """The class name ``datamodel-code-generator`` gives a named nested object.
-
-    Asks the generator rather than restating its rule. This repo restated it —
-    ``"".join(word[:1].upper() + word[1:] for word in words)`` — and the
-    restatement was a faithful copy of THIS rule, which preserves an acronym:
-    ``"VAST Asset"`` is ``VASTAsset``. It was then used for schema ROOTS too,
-    where the generator applies a different rule, and the two disagreed on
-    every acronym for 94 of the bundle's roots (salesagent-5pe83). One
-    representation per fact; there are two facts here, so there are two
-    functions, each a call into the generator that owns the answer.
-    """
-    return ModelResolver().default_class_name_generator(str(title))
-
-
-def _generated_root_class_name(title: object) -> str:
-    """The class name ``datamodel-code-generator`` gives a schema ROOT.
-
-    A root is named by the title, and goes through one step a nested object
-    does not: ``JsonSchemaParser._resolve_root_model_name`` title-cases a title
-    that is not already a Python identifier, so ``"Get AdCP Capabilities
-    Response"`` becomes ``GetAdcpCapabilitiesResponse`` and not
-    ``GetAdCPCapabilitiesResponse``. A title that IS already an identifier is
-    kept verbatim — ``GetCreativeFeaturesSuccess`` is one, and title-casing it
-    unconditionally yields ``Getcreativefeaturessuccess``.
-
-    Both steps are the generator's own, called in the generator's order.
-    """
-    name = str(title)
-    if not ModelResolver.validate_name(name):
-        name = title_to_class_name(name)
-    return _generated_nested_class_name(name)
 
 
 def _first_generated_class_name(content: str) -> str | None:
@@ -8166,7 +8137,7 @@ def _schema_root_class_name(schema: dict) -> str | None:
     title = schema.get("title")
     if not isinstance(title, str) or not title.strip():
         return None
-    return _generated_root_class_name(title)
+    return generated_root_class_name(title)
 
 
 def _named_class(content: str, wanted: str | None) -> str | None:
@@ -8784,7 +8755,7 @@ def insert_task_message_markers() -> None:
         marker = _ADCP_REQUEST_MARKER if kind == "request" else _ADCP_RESPONSE_MARKER
         tree = ast.parse(module.read_text())
         for class_name in task_message_lattice.root_class_names(
-            schema_rel, module, tree, task_message_lattice.mangle_schema_title(title)
+            schema_rel, module, tree, generated_root_class_name(title)
         ):
             previous = wanted.get((module, class_name))
             if previous is not None and previous != marker:

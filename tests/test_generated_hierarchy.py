@@ -38,7 +38,8 @@ from pydantic import BaseModel, RootModel
 
 from adcp.validation.version import resolve_bundle_key
 from scripts import generate_types as codegen
-from scripts.post_generate_fixes import _generated_root_class_name, _resolve_schema_ref
+from scripts.generated_names import generated_root_class_name
+from scripts.post_generate_fixes import _resolve_schema_ref
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _GENERATED_DIR = _REPO_ROOT / "src" / "adcp" / "types" / "domains"
@@ -210,8 +211,8 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     title = schema.get("title")
     candidates = []
     if isinstance(title, str) and title.strip():
-        candidates.append(_generated_root_class_name(title))
-    candidates.append(_generated_root_class_name(rel.stem.replace("-", " ")))
+        candidates.append(generated_root_class_name(title))
+    candidates.append(generated_root_class_name(rel.stem.replace("-", " ")))
 
     for candidate in candidates:
         root = tuple(name for name in (*classes, *bound) if name.lower() == candidate.lower())

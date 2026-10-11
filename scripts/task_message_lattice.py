@@ -28,6 +28,11 @@ import json
 import re
 import sys
 import typing
+
+try:
+    from generated_names import generated_root_class_name
+except ModuleNotFoundError:  # Imported as ``scripts.task_message_lattice`` in tests.
+    from scripts.generated_names import generated_root_class_name  # type: ignore[assignment]
 from pathlib import Path
 
 _CANONICAL_REF = re.compile(r"^https://adcontextprotocol\.org/schemas/[^/]+/(.+)$")
@@ -47,19 +52,6 @@ def registry_ref_to_path(ref: str) -> Path:
     if file_ref.startswith("/schemas/"):
         return Path(file_ref.removeprefix("/schemas/"))
     raise RuntimeError(f"task registry $ref is not absolute: {ref!r}")
-
-
-def mangle_schema_title(title: str) -> str:
-    """The class name datamodel-code-generator derives from a schema ``title``.
-
-    Measured against all 154 task-message schemas at pin 3.2.1: this reproduces the
-    generated root class (or union alias) name for 154 of 154. The acronym collapse is the
-    part a filename-derived guess gets wrong in both directions -- "Get AdCP Capabilities
-    Request" becomes ``GetAdcpCapabilitiesRequest``, and
-    ``list-creative-formats-request.json`` does NOT become ``ListCreativeFormatsRequest``
-    because its title names the agent variant.
-    """
-    return "".join(word.capitalize() for word in re.split(r"[^0-9a-zA-Z]+", title) if word)
 
 
 def task_registry_messages(schema_dir: Path) -> list[tuple[str, str, Path]]:
@@ -211,7 +203,7 @@ def task_message_roots(
                 kind,
                 schema_rel,
                 module,
-                root_class_names(schema_rel, module, tree, mangle_schema_title(title)),
+                root_class_names(schema_rel, module, tree, generated_root_class_name(title)),
             )
         )
     return rows
