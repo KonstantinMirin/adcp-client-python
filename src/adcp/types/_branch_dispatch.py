@@ -33,10 +33,12 @@ a field onto a class and forcing a rebuild to make the patch take.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import GetCoreSchemaHandler, TypeAdapter
+from pydantic import GetCoreSchemaHandler, TypeAdapter, WrapValidator
 from pydantic_core import CoreSchema
+
+from adcp.types._conditions import name_the_combinator
 
 __all__ = ["BranchDispatchMixin"]
 
@@ -52,6 +54,24 @@ class BranchDispatchMixin:
         in without declaring branches keeps its own shape.
         """
         return ()
+
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        """The JSON Schema keyword a refusal names: ``anyOf`` or ``oneOf``.
+
+        ``core/error.json`` requires every ``issues[]`` entry to carry a keyword
+        drawn from the JSON Schema vocabulary. A document satisfying no branch
+        fails each branch at FIELD validation, so pydantic reports ``missing``
+        and nothing names the root's combinator -- and ``missing`` is outside
+        that vocabulary.
+
+        The union this hook builds carries the wrapper that supplies it. An
+        earlier version of this mixin built a BARE union and the keyword was
+        silently lost on every path through the base, while the per-branch
+        residual checks still named it -- so the refusals that named a keyword
+        were the ones that needed it least.
+        """
+        return "anyOf"
 
     @classmethod
     def __get_pydantic_core_schema__(cls, source: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
@@ -74,4 +94,5 @@ class BranchDispatchMixin:
         union: Any = branches[0]
         for branch in branches[1:]:
             union |= branch
-        return TypeAdapter(union).core_schema
+        wrapped = Annotated[union, WrapValidator(name_the_combinator(cls._branch_combinator()))]
+        return TypeAdapter(wrapped).core_schema

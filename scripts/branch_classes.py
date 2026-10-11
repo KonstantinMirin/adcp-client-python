@@ -395,63 +395,36 @@ def _branches_name(flat_class: str) -> str:
     return f"{flat_class}Branches"
 
 
-def _schema_constant(flat_class: str) -> str:
-    """The module-level name holding the branches' core schema.
+def _render_branch_models(branch_names: Sequence[str], combinator: str) -> list[str]:
+    """Declare the branches, which is how the shared hook finds them.
 
-    The base cannot reference the union in its own body: the branches subclass
-    the base, so the union does not exist when the base is created. The hook
-    reads this constant instead, which is ``None`` while the branches are being
-    built and the union's schema afterwards -- and the base is rebuilt once it
-    is set.
+    ``BranchDispatchMixin`` carries the one implementation, and the base is the
+    class that DECLARES this method -- so declaring it is what makes a class the
+    base, and a branch or a refinement elsewhere inherits it and keeps its own
+    shape. Nothing has to be registered, so nothing can be forgotten: a new
+    split root works by emitting this method.
+
+    This replaced a hook emitted per root, which was eleven copies of one
+    function. Two bugs were found in that function while it was still one copy.
     """
-    return f"_{re.sub(r'(?<!^)(?=[A-Z])', '_', flat_class).upper()}_BRANCHES"
-
-
-def _render_core_schema_hook(flat_class: str) -> list[str]:
-    """Give the base the branches' core schema, so every path dispatches.
-
-    Pydantic validates a nested field and a ``TypeAdapter`` through the CORE
-    SCHEMA, not through ``model_validate``. A classmethod override therefore
-    reaches only a caller who names ``model_validate`` directly, and six of the
-    eleven split roots are nested object schemas -- so a nested document
-    satisfying no branch would parse as the loose base. Measured: it did.
-
-    Returning the branches' schema for the base makes nesting, ``TypeAdapter``,
-    ``model_validate`` AND direct construction all dispatch to the branch the
-    document satisfies, and refuse a document that satisfies none or two.
-
-    The one thing it does not do is make ``Base(**fields)`` RETURN a branch
-    instance: ``__init__`` cannot swap ``self``. Such a value is validated
-    against the branches and is branch-typed only when parsed. Routing through
-    ``__new__`` would change that and is deliberately not done.
-    """
-    constant = _schema_constant(flat_class)
-    base = _base_constant(flat_class)
+    listed = ",\n            ".join(branch_names)
     return [
         "",
         "    @classmethod",
-        "    def __get_pydantic_core_schema__(",
-        "        cls, source: Any, handler: GetCoreSchemaHandler",
-        "    ) -> CoreSchema:",
-        "        # The branches' schema, for THIS class alone. Keyed on identity,",
-        "        # not on the name: a branch inherits this method and must get its",
-        "        # own shape back, and so must a subclass elsewhere that reuses the",
-        "        # root's name -- the canonical layer declares one, and a name test",
-        "        # would hand it the generated branches and drop its narrowing.",
-        f"        if cls is not {base} or {constant} is None:",
-        "            return handler(source)",
-        f"        return {constant}",
+        "    def _branch_models(cls) -> tuple[type, ...]:",
+        "        # The branches subclass this class, so they are not defined while",
+        "        # this body is compiled. The hook resolves them on first use, after",
+        "        # the model_rebuild below.",
+        "        return (",
+        f"            {listed},",
+        "        )",
+        "",
+        "    @classmethod",
+        "    def _branch_combinator(cls) -> str:",
+        "        # The keyword a refusal names, from the root's own schema. The",
+        "        # union the hook builds carries the wrapper that supplies it.",
+        f"        return {combinator!r}",
     ]
-
-
-def _base_constant(flat_class: str) -> str:
-    """The module-level name holding the base class itself.
-
-    ``cls is not <Base>`` cannot be written in the class body -- the name does
-    not exist while the class is being created -- so the hook reads this, which
-    is ``None`` during that first build and the class afterwards.
-    """
-    return f"{_schema_constant(flat_class)}_BASE"
 
 
 def _render_base(
@@ -460,6 +433,7 @@ def _render_base(
     schema_file: str,
     source: str,
     branch_names: Sequence[str],
+    combinator: str,
 ) -> str:
     """The root's own shape: every property and everything other passes added.
 
@@ -476,7 +450,11 @@ def _render_base(
     validator and config lands on the base and is inherited once rather than
     repeated per arm.
     """
-    bases = ", ".join(ast.unparse(base) for base in flat.bases)
+    # The mixin is listed FIRST so its __get_pydantic_core_schema__ wins over
+    # BaseModel's. model_config merges right-to-left with the right-most base
+    # winning, so prepending it does not disturb the config the generated bases
+    # resolve -- which is the same ordering fact the canonical layer depends on.
+    bases = ", ".join(["BranchDispatchMixin", *(ast.unparse(base) for base in flat.bases)])
     members = "\n".join(f"    ``{name}``" for name in branch_names)
     lines = [
         f"class {_base_name(flat_class)}({bases}):",
@@ -515,7 +493,7 @@ def _render_base(
         body += 1
     if not body:
         lines.append("    pass")
-    lines.extend(_render_core_schema_hook(flat_class))
+    lines.extend(_render_branch_models(branch_names, combinator))
     return "\n".join(lines)
 
 
@@ -672,16 +650,14 @@ def split_into_branch_classes(
 
     plans = plan_branches(constraints, flat_class, schema_file, fields)
     blocks = [
-        "\n".join(
-            [
-                "#: The branches' core schema, set once the branches and their union",
-                f"#: exist. {flat_class}'s hook reads it; None means 'not yet', which is",
-                "#: the state while the branches themselves are being built.",
-                f"{_schema_constant(flat_class)}: CoreSchema | None = None",
-                f"{_base_constant(flat_class)}: type | None = None",
-            ]
-        ),
-        _render_base(flat, flat_class, schema_file, source, [plan.name for plan in plans]),
+        _render_base(
+            flat,
+            flat_class,
+            schema_file,
+            source,
+            [plan.name for plan in plans],
+            constraints.combinator or "anyOf",
+        )
     ]
     blocks.extend(
         _render_branch(plan, flat, flat_class, schema_file)
@@ -692,7 +668,6 @@ def split_into_branch_classes(
     union = " | ".join(plan.name for plan in plans)
     combinator = constraints.combinator or "anyOf"
     branches = _branches_name(flat_class)
-    constant = _schema_constant(flat_class)
     blocks.append(
         "\n".join(
             [
@@ -713,12 +688,16 @@ def split_into_branch_classes(
                 "#: Parsing a union is what a TypeAdapter is for. Built once, at import.",
                 f"{branches}Adapter: TypeAdapter[{branches}] = TypeAdapter({branches})",
                 "",
-                f"# {flat_class} is declared above the branches, so it cannot name the",
-                "# union in its own body. Its core-schema hook reads this constant, which",
-                "# is None while the branches are built and the union's schema after --",
-                "# and the rebuild below is what makes the base use it.",
-                f"{constant} = {branches}Adapter.core_schema",
-                f"{_base_constant(flat_class)} = {flat_class}",
+                f"# {flat_class} is declared above its branches, so _branch_models",
+                "# cannot resolve them while the class body is compiled. The rebuild is",
+                "# what installs the branches' schema -- a class's core schema is built",
+                "# at class creation, so the hook's earlier return is already cached.",
+                "#",
+                "# This is not a surviving patch. What this series deletes is a model",
+                "# patched from a FOREIGN module: a field installed that the class never",
+                "# declared, with a forced rebuild to make the patch take. A rebuild in",
+                "# the declaring module, resolving a forward reference the class cannot",
+                "# name at declaration time, is what model_rebuild is for.",
                 f"{flat_class}.model_rebuild(force=True)",
             ]
         )
@@ -781,7 +760,6 @@ def _repoint_import(source: str, flat_class: str, base: str) -> str:
     The import is ADDED rather than replaced: the module may still reference the
     union as a field annotation, which stays valid.
     """
-    import re
 
     if re.search(rf"^class {re.escape(flat_class)}\b", source, re.MULTILINE):
         # Declared in this very module, so the base is declared here too.

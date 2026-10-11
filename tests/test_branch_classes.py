@@ -219,7 +219,7 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     )
 
     assert rewritten is not None
-    assert "class Thing(AdCPBaseModel):" in rewritten
+    assert "class Thing(BranchDispatchMixin, AdCPBaseModel):" in rewritten
     assert "class ThingA(Thing):" in rewritten
     assert "class ThingB(Thing):" in rewritten
     assert "ThingBranches: TypeAlias = Annotated[" in rewritten
@@ -227,7 +227,9 @@ def test_the_split_module_declares_each_arm_and_a_union_over_them() -> None:
     assert (
         "ThingBranchesAdapter: TypeAdapter[ThingBranches] = TypeAdapter(ThingBranches)" in rewritten
     )
-    base = rewritten.split("class Thing(AdCPBaseModel):")[1].split("class ThingA")[0]
+    base = rewritten.split("class Thing(BranchDispatchMixin, AdCPBaseModel):")[1].split(
+        "class ThingA"
+    )[0]
     assert "a: str | None = None" in base
     assert "b: str | None = None" in base
     assert "c: str | None = None" in base, "a field no arm constrains is declared once"
@@ -298,7 +300,9 @@ def test_the_base_is_public_because_a_consumer_needs_to_name_it() -> None:
     )
 
     assert rewritten is not None
-    assert "class Thing(" in rewritten, "the base takes the root's own name"
+    assert (
+        "class Thing(BranchDispatchMixin," in rewritten
+    ), "the base takes the root's own name and mixes in the one shared hook"
     assert not rewritten.count("class _Thing"), "nothing module-internal is emitted for the root"
 
 

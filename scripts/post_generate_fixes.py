@@ -7436,6 +7436,20 @@ def _append_to_class_block(content: str, class_name: str, block: str) -> str:
     return content
 
 
+#: The one hook a split root's base mixes in. One implementation, not one copy
+#: per root -- two bugs were found in that hook while it was still a single copy.
+BRANCH_DISPATCH_IMPORT = "from adcp.types._branch_dispatch import BranchDispatchMixin"
+
+
+def _ensure_branch_dispatch_import(content: str) -> str:
+    """Give a split module the shared dispatch mixin, once."""
+    if BRANCH_DISPATCH_IMPORT in content:
+        return content
+    return re.sub(
+        r"^class ", f"{BRANCH_DISPATCH_IMPORT}\n\n\nclass ", content, count=1, flags=re.MULTILINE
+    )
+
+
 def _ensure_conditions_import(content: str) -> str:
     """Give a module the vocabulary import, once."""
     if CONDITIONS_IMPORT in content:
@@ -7640,9 +7654,9 @@ def compose_branch_module(
     # The union carries a wrapping validator that names the root combinator on a
     # refusal, so every split module needs Annotated, WrapValidator and the
     # conditions vocabulary.
-    rewritten = _ensure_typing_import(rewritten, "Annotated", "Any", "TypeAlias")
-    rewritten = ensure_pydantic_import(rewritten, "GetCoreSchemaHandler", "WrapValidator")
-    rewritten = ensure_pydantic_core_import(rewritten, "CoreSchema")
+    rewritten = _ensure_typing_import(rewritten, "Annotated", "TypeAlias")
+    rewritten = ensure_pydantic_import(rewritten, "WrapValidator")
+    rewritten = _ensure_branch_dispatch_import(rewritten)
     rewritten = _ensure_conditions_import(rewritten)
     if any(plan.literals for plan in plans):
         rewritten = _ensure_typing_import(rewritten, "Literal")
