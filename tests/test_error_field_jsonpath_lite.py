@@ -1,0 +1,239 @@
+"""``error.field`` is ``issues[0].pointer`` translated, and one owner does it.
+
+``core/error.json`` states the obligation three times — on ``field``, on
+``issues``, and on ``issues[].pointer`` — and argues for its own strength:
+"MUST (not SHOULD) so consumers reading ``field`` get deterministic behavior
+across sellers". The builder emitted the RFC 6901 pointer unchanged, so
+``field`` carried ``/packages/0/targeting`` where the spec requires
+``packages[0].targeting``.
+
+WHERE THE CASES COME FROM, because a translator graded against cases derived
+from the translator proves only that it agrees with itself:
+
+* ``test_spec_stated_examples`` parses the arrow examples out of the PINNED
+  schema bundle and asserts the translator reproduces them. The authority is
+  the spec text, and the extraction asserts it found something.
+* ``test_round_trip_on_real_validation_pointers`` drives REAL rejections
+  through both validators and round-trips whatever pointers they emit. The
+  population comes from the validators, and it is asserted non-empty.
+* ``test_round_trip_on_authored_edge_cases`` is hand-written and says so —
+  the pointer shapes the spec's examples do not cover. A declared row can be
+  audited; a derived one cannot be.
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import re
+
+import pytest
+from pydantic import ValidationError
+
+from adcp.types import CreateMediaBuyRequest
+from adcp.validation.pydantic_errors import issues_from_validation_error
+from adcp.validation.schema_errors import build_adcp_validation_error_payload
+from adcp.validation.schema_validator import (
+    ValidationIssue,
+    field_to_pointer,
+    pointer_to_field,
+    validate_request,
+)
+
+_SCHEMA_ROOT = pathlib.Path(__file__).resolve().parents[1] / "schemas" / "cache" / "3.2"
+
+#: ``'/packages/0/targeting' -> 'packages[0].targeting'`` as the descriptions
+#: write it, in either arrow spelling.
+_ARROW = re.compile(r"[`']((?:/[^`' ]+)+)[`']\s*(?:→|->)\s*[`']([^`' ]+)[`']")
+
+
+def _spec_example_pairs() -> list[tuple[str, str]]:
+    """Every pointer -> JSONPath-lite example the pinned bundle states."""
+    strings: list[str] = []
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+        elif isinstance(node, str):
+            strings.append(node)
+
+    for path in sorted(_SCHEMA_ROOT.rglob("*.json")):
+        try:
+            walk(json.loads(path.read_text()))
+        except (OSError, json.JSONDecodeError):  # pragma: no cover
+            continue
+    return sorted(set(_ARROW.findall("\n".join(strings))))
+
+
+def _real_validation_pointers() -> list[str]:
+    """Pointers emitted by the two validators on real malformed payloads.
+
+    Not authored: whatever the jsonschema oracle and pydantic actually produce
+    for these payloads is the population. Deep and nested shapes are the point
+    — a translator that only ever sees one-segment pointers is untested.
+    """
+    payloads: list[object] = [
+        {"packages": [{"targeting_overlay": {"geo_countries": [5]}}]},
+        {"packages": "not-a-list"},
+        {"buyer_ref": 7, "packages": [{"products": [{}]}]},
+        {},
+        "not-an-object",
+        [1, 2],
+    ]
+    pointers: set[str] = set()
+    for payload in payloads:
+        outcome = validate_request("create_media_buy", payload)
+        pointers.update(issue.pointer for issue in outcome.issues)
+        try:
+            CreateMediaBuyRequest.model_validate(payload)
+        except ValidationError as error:
+            pointers.update(issue.pointer for issue in issues_from_validation_error(error))
+    return sorted(pointers)
+
+
+#: Hand-authored. The three shapes with no dotted rendering, plus root.
+AUTHORED_EDGE_CASES = [
+    "/",
+    "/a.b",
+    "/a~1b",
+    "/a~0b",
+    "/0",
+    "/x/a.b/y",
+    "/ext/vendor.key/value",
+    "/details/a'b",
+    "/packages/0/optimization_goals/1/event_sources/0",
+]
+
+SPEC_PAIRS = _spec_example_pairs()
+REAL_POINTERS = _real_validation_pointers()
+
+
+@pytest.mark.parametrize(("pointer", "expected_field"), SPEC_PAIRS)
+def test_spec_stated_examples(pointer, expected_field):
+    """The translator reproduces every example the pinned spec states."""
+    assert pointer_to_field(pointer) == expected_field
+
+
+def test_spec_examples_were_actually_found():
+    """An extraction that matched nothing would make the parametrize empty.
+
+    A zero-case parametrize is reported as passing, so the population is
+    asserted rather than assumed.
+    """
+    assert SPEC_PAIRS, f"no arrow examples extracted from {_SCHEMA_ROOT}"
+
+
+@pytest.mark.parametrize("pointer", REAL_POINTERS)
+def test_round_trip_on_real_validation_pointers(pointer):
+    """Translating a real pointer and back returns the same pointer."""
+    assert field_to_pointer(pointer_to_field(pointer)) == pointer
+
+
+def test_real_validation_pointers_are_not_empty_and_are_nested():
+    """The validators must actually have produced pointers, including deep ones."""
+    assert REAL_POINTERS, "no pointers collected from real validation failures"
+    assert any(p.count("/") >= 3 for p in REAL_POINTERS), REAL_POINTERS
+
+
+@pytest.mark.parametrize("pointer", AUTHORED_EDGE_CASES)
+def test_round_trip_on_authored_edge_cases(pointer):
+    assert field_to_pointer(pointer_to_field(pointer)) == pointer
+
+
+def test_translation_is_not_the_identity():
+    """Guards the whole file against a translator that returns its input.
+
+    Every round-trip above would pass if ``pointer_to_field`` were ``lambda
+    p: p`` and ``field_to_pointer`` its mirror. The spec cases catch that too,
+    but only while they keep being extracted.
+    """
+    assert pointer_to_field("/packages/0/targeting") != "/packages/0/targeting"
+
+
+def _issue(pointer: str) -> ValidationIssue:
+    return ValidationIssue(pointer=pointer, message="m", keyword="type", schema_path="")
+
+
+@pytest.mark.parametrize("pointer", AUTHORED_EDGE_CASES + REAL_POINTERS)
+def test_builder_field_is_the_translated_first_pointer(pointer):
+    """The dual-write the spec demands, asserted on the builder's output."""
+    payload = build_adcp_validation_error_payload("create_media_buy", "request", [_issue(pointer)])
+    expected = pointer_to_field(pointer)
+    if expected:
+        assert payload["field"] == expected
+        assert not payload["field"].startswith("/"), "field is still an RFC 6901 pointer"
+    else:
+        # Root: there is no field path to name, and `field` is not required.
+        assert "field" not in payload
+
+
+def test_builder_emits_top_level_issues_and_recovery():
+    payload = build_adcp_validation_error_payload(
+        "create_media_buy", "request", [_issue("/packages/0/targeting")]
+    )
+    assert payload["issues"] == payload["details"]["issues"]
+    assert payload["recovery"] == "correctable"
+
+
+def test_builder_omits_field_and_issues_when_there_are_none():
+    """`issues` has no minItems, so an empty list is legal and must not lie.
+
+    With no ``issues[0]`` there is nothing for the MUST to source ``field``
+    from, and both fields are optional, so neither is emitted.
+    """
+    payload = build_adcp_validation_error_payload("create_media_buy", "request", [])
+    assert "field" not in payload
+    assert "issues" not in payload
+    assert payload["details"]["issues"] == []
+
+
+def test_both_lanes_emit_the_same_envelope():
+    """The jsonschema oracle and the pydantic projection must not disagree.
+
+    Two routes reach ``VALIDATION_ERROR``: the oracle (``validate_request`` ->
+    builder) and a handler's pydantic rejection (``invalid_request`` ->
+    projection -> builder). While the builder emitted neither ``recovery`` nor
+    top-level ``issues``, the handler lane added both itself and the oracle
+    lane did not — one fact with two representations, which is the split this
+    change closes. Both lanes are given a FIELD-LEVEL rejection so the
+    comparison is like for like; a root-level rejection legitimately has no
+    ``field`` and is covered by the builder tests above.
+    """
+    oracle = build_adcp_validation_error_payload(
+        "create_media_buy", "request", validate_request("create_media_buy", {"packages": 1}).issues
+    )
+    try:
+        CreateMediaBuyRequest.model_validate({"packages": 1})
+        raise AssertionError("payload validated when the test needs it rejected")
+    except ValidationError as error:
+        handler = build_adcp_validation_error_payload(
+            "create_media_buy", "request", issues_from_validation_error(error)
+        )
+
+    assert sorted(oracle) == sorted(handler), (sorted(oracle), sorted(handler))
+    for payload in (oracle, handler):
+        assert payload["recovery"] == "correctable"
+        assert payload["issues"] == payload["details"]["issues"]
+        assert payload["field"] == pointer_to_field(payload["issues"][0]["pointer"])
+        assert not payload["field"].startswith("/")
+
+
+def test_version_unsupported_field_comes_from_the_translator():
+    """The branch that used to hand-write ``field="adcp_version"``.
+
+    That literal was this translation done by eye. It stays correct only by
+    coincidence unless one owner computes it.
+    """
+    issue = ValidationIssue(
+        pointer="/adcp_version",
+        message="no bundled request validator",
+        keyword="schema_unavailable",
+        schema_path="",
+    )
+    payload = build_adcp_validation_error_payload("create_media_buy", "request", [issue])
+    assert payload["code"] == "VERSION_UNSUPPORTED"
+    assert payload["field"] == "adcp_version"

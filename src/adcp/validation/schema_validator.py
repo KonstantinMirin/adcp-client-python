@@ -210,6 +210,95 @@ def _path_to_pointer(path: Any) -> str:
     return "/" + "/".join(escape(seg) for seg in path)
 
 
+#: A segment JSONPath-lite can write after a ``.`` with no ambiguity. AdCP field
+#: names are snake_case identifiers, so every pointer the schemas themselves
+#: produce is made of these; anything else comes from an open map in the payload
+#: (``ext``, ``details``, a targeting key) where a peer chooses the key.
+_BARE_SEGMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_INDEX_SEGMENT = re.compile(r"^(?:0|[1-9][0-9]*)$")
+_JSONPATH_TOKEN = re.compile(
+    r"""
+      \[ (?P<index>\d+) \]                      # [0]
+    | \[ ' (?P<quoted>(?:[^'\\]|\\.)*) ' \]     # ['a.b']
+    | \.? (?P<bare>[A-Za-z_][A-Za-z0-9_]*)      # name  or  .name
+    """,
+    re.VERBOSE,
+)
+
+
+def pointer_to_field(pointer: str) -> str:
+    """An RFC 6901 pointer as the JSONPath-lite ``error.field`` uses.
+
+    ``core/error.json`` states the obligation three times — on ``field``, on
+    ``issues``, and on ``issues[].pointer`` — and argues for its own strength:
+    "MUST (not SHOULD) so consumers reading ``field`` get deterministic
+    behavior across sellers". ``/packages/0/targeting`` becomes
+    ``packages[0].targeting``.
+
+    NOT TOTAL IN THE SPEC'S OWN GRAMMAR, which is why this is one function and
+    not an inline join. The spec's examples are all snake_case keys and numeric
+    indices; three pointer shapes have no dotted rendering at all:
+
+    * a key containing ``.`` — ``/a.b`` dotted is ``a.b``, indistinguishable
+      from the nested ``a`` → ``b``;
+    * a key containing ``/`` or ``~``, which RFC 6901 escapes as ``~1``/``~0``
+      and dot notation cannot express;
+    * an object key that is all digits, which is written the same way as an
+      array index.
+
+    Ambiguity is the one thing the MUST exists to prevent, so a segment that is
+    not a bare identifier is bracket-quoted (``['a.b']``) — standard JSONPath
+    member access, and an EXTENSION BEYOND THE SPEC'S EXAMPLES, taken because
+    the alternative emits a ``field`` that reads as a different path than the
+    one that failed. The all-digit segment resolves the other way, to ``[0]``:
+    the spec's every example of an index is numeric and ``_path_to_pointer``
+    has already stringified away the ``int``/``str`` distinction its input had,
+    so the index reading is the recoverable one. A digit-string object key is
+    the residual loss and it is named here rather than hidden.
+
+    Root (``"/"``, this repo's spelling for the empty path) maps to ``""``.
+    """
+    if pointer in ("", "/"):
+        return ""
+    out: list[str] = []
+    for raw in pointer.lstrip("/").split("/"):
+        segment = raw.replace("~1", "/").replace("~0", "~")
+        if _INDEX_SEGMENT.match(segment):
+            out.append(f"[{segment}]")
+        elif _BARE_SEGMENT.match(segment):
+            out.append(segment if not out else f".{segment}")
+        else:
+            escaped = segment.replace("\\", "\\\\").replace("'", "\\'")
+            out.append(f"['{escaped}']")
+    return "".join(out)
+
+
+def field_to_pointer(field: str) -> str:
+    """The RFC 6901 pointer a JSONPath-lite ``error.field`` came from.
+
+    The inverse of :func:`pointer_to_field`, and it exists so the pair can be
+    asserted inverse over the shapes that actually occur. An escape-handling
+    bug in one direction is invisible from inside that direction alone; two
+    functions proven inverse cannot drift.
+    """
+    if not field:
+        return "/"
+    segments: list[str] = []
+    position = 0
+    while position < len(field):
+        match = _JSONPATH_TOKEN.match(field, position)
+        if match is None:
+            raise ValueError(f"not JSONPath-lite at offset {position}: {field!r}")
+        position = match.end()
+        if (index := match.group("index")) is not None:
+            segments.append(index)
+        elif (quoted := match.group("quoted")) is not None:
+            segments.append(re.sub(r"\\(.)", r"\1", quoted))
+        else:
+            segments.append(match.group("bare"))
+    return _path_to_pointer(segments)
+
+
 _BOUNDED_KEYWORDS = frozenset(
     {
         "minLength",

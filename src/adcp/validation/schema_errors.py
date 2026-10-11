@@ -10,6 +10,7 @@ from adcp.validation.schema_validator import (
     SchemaValidationError,
     ValidationIssue,
     _issue_to_wire,
+    pointer_to_field,
 )
 
 
@@ -70,23 +71,36 @@ def build_adcp_validation_error_payload(
     else:
         message = f"{tool} {side} failed schema validation"
 
+    wire_issues = [_issue_to_wire(i) for i in issues]
     payload: dict[str, Any] = {
         "code": "VALIDATION_ERROR",
         "message": message,
+        # core/error.json declares `issues` at the TOP level and calls
+        # details.issues the pre-3.1 mirror: "new consumers SHOULD prefer the
+        # top-level issues field". Emitting only the mirror gave a 3.1+ reader
+        # following that SHOULD strictly less than a 3.0 reader got.
         "details": {
             "tool": tool,
             "side": side,
-            "issues": [_issue_to_wire(i) for i in issues],
+            "issues": wire_issues,
         },
+        # "AdCP 3.2 producers MUST populate `recovery` on every error", and a
+        # malformed request is the enum's own example of correctable.
+        "recovery": "correctable",
     }
+    if wire_issues:
+        payload["issues"] = wire_issues
     if any(issue.keyword == "schema_unavailable" for issue in issues):
         from adcp.validation.envelope import SUPPORTED_WIRE_VERSIONS
 
         payload["code"] = "VERSION_UNSUPPORTED"
-        payload["field"] = "adcp_version"
-        payload["recovery"] = "correctable"
         payload["details"]["supported_versions"] = list(SUPPORTED_WIRE_VERSIONS)
-        return payload
-    if first is not None and first.pointer:
-        payload["field"] = first.pointer
+    # The dual-write core/error.json states three times: when issues[] is
+    # present, `field` is issues[0].pointer TRANSLATED to JSONPath-lite. One
+    # translator owns the format, so the two lanes into this envelope cannot
+    # disagree about it -- and the VERSION_UNSUPPORTED branch stops carrying a
+    # hand-written "adcp_version", which was this translation of its own
+    # issue's /adcp_version pointer done by eye.
+    if first is not None and (field := pointer_to_field(first.pointer)):
+        payload["field"] = field
     return payload

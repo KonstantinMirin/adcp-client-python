@@ -234,7 +234,13 @@ class TestErrorBuilders:
         payload = build_adcp_validation_error_payload("create_media_buy", "response", issues)
         assert payload["code"] == "VALIDATION_ERROR"
         assert "/media_buy_id" in payload["message"]
-        assert payload["field"] == "/media_buy_id"
+        # core/error.json: `field` is JSONPath-lite, and when issues[] is
+        # present sellers MUST set it to issues[0].pointer TRANSLATED. This
+        # assertion read "/media_buy_id" and so pinned the untranslated
+        # pointer — the defect itself (salesagent-8qela.18). The pointer keeps
+        # its RFC 6901 spelling one line below: the two formats side by side
+        # are the dual-write the spec asks for.
+        assert payload["field"] == "media_buy_id"
         assert payload["details"]["tool"] == "create_media_buy"
         assert payload["details"]["side"] == "response"
         assert payload["details"]["issues"][0]["pointer"] == "/media_buy_id"
