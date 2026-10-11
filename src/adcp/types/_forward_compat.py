@@ -34,7 +34,7 @@ from collections.abc import Callable
 from copy import copy, deepcopy
 from functools import partial
 from types import GenericAlias
-from typing import TYPE_CHECKING, Annotated, Any, TypeAlias, cast, get_args
+from typing import Annotated, Any, cast, get_args
 
 from pydantic import (
     BaseModel,
@@ -56,15 +56,6 @@ from adcp.types._split_root import classes_behind, shared_base
 from adcp.types.aliases import FormatAssetUnion, GroupFormatAssetUnion, RepeatableAssetGroup
 from adcp.types.base import AdCPBaseModel
 from adcp.types.canonical_creative import CreateMediaBuyRequest as _PublicCreateMediaBuyRequest
-from adcp.types.canonical_creative import (
-    CreateMediaBuyRequestCommittedProposalExecution as _PublicCMBProposal,
-)
-from adcp.types.canonical_creative import (
-    CreateMediaBuyRequestExplicitPackagesWithFixedAllocation as _PublicCMBFixed,
-)
-from adcp.types.canonical_creative import (
-    CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation as _PublicCMBSellerOpt,
-)
 from adcp.types.canonical_creative import PackageRequest as PublicPackageRequest
 from adcp.types.canonical_creative import PackageUpdate as PublicPackageUpdate
 from adcp.types.canonical_creative import UpdateMediaBuyRequest as _PublicUpdateMediaBuyRequest
@@ -129,9 +120,6 @@ from adcp.types.domains.media_buy.package_control import PackageControl
 from adcp.types.domains.media_buy.package_request import PackageRequest
 from adcp.types.domains.media_buy.package_update import PackageUpdate
 from adcp.types.domains.media_buy.product_purchase_input import ProductPurchaseInput
-from adcp.types.domains.media_buy.update_media_buy_request import (
-    UpdateMediaBuyRequest as _GeneratedUpdateMediaBuyRequest,
-)
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     AcceptancePolicyDiscovery,
     PrimaryCountry,
@@ -144,67 +132,17 @@ from adcp.types.domains.trusted_match.provider_context_match_response import (
     ContextMatchResponseProviderRouter,
 )
 
-_ReportingOperationId = Annotated[
-    str | None,
-    Field(
-        min_length=1,
-        max_length=255,
-        pattern="^[A-Za-z0-9_.:-]{1,255}$",
-        description=(
-            "Opt-in AdCP 3.2 reporting-stream correlation extension pending adcp#7885. "
-            "Cooperating sellers store and echo the buyer-supplied value verbatim in "
-            "media_buy_delivery webhook payloads. Confirm seller support before use; "
-            "registrations without a value cannot enable this interim delivery path."
-        ),
-    ),
-]
-
-if TYPE_CHECKING:
-
-    class ReportingWebhook(_GeneratedReportingWebhook):
-        """Static view of the optional field patched into the original runtime class."""
-
-        operation_id: _ReportingOperationId = None
-
-    class AcceptProposalRequest(_GeneratedAcceptProposalRequest):
-        reporting_webhook: ReportingWebhook | None = None
-
-    class BuyProductsRequest(_GeneratedBuyProductsRequest):
-        reporting_webhook: ReportingWebhook | None = None
-
-    class ControlMediaBuyRequest(_GeneratedControlMediaBuyRequest):
-        reporting_webhook: ReportingWebhook | None = None
-
-    # One static view per branch, because the create request is a union: the field
-    # is patched onto the shared base at runtime, and every branch carries it, so
-    # the static picture has to say that of each of them rather than of the
-    # alias -- which cannot be subclassed.
-    class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(_PublicCMBFixed):
-        reporting_webhook: ReportingWebhook | None = None
-
-    class CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation(_PublicCMBSellerOpt):
-        reporting_webhook: ReportingWebhook | None = None
-
-    class CreateMediaBuyRequestCommittedProposalExecution(_PublicCMBProposal):
-        reporting_webhook: ReportingWebhook | None = None
-
-    CreateMediaBuyRequest: TypeAlias = (
-        CreateMediaBuyRequestExplicitPackagesWithFixedAllocation
-        | CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation
-        | CreateMediaBuyRequestCommittedProposalExecution
-    )
-
-    class UpdateMediaBuyRequest(_PublicUpdateMediaBuyRequest):
-        reporting_webhook: ReportingWebhook | None = None
-
-else:
-    # Keep class identity across public imports and nested generated requests.
-    ReportingWebhook = _GeneratedReportingWebhook
-    AcceptProposalRequest = _GeneratedAcceptProposalRequest
-    BuyProductsRequest = _GeneratedBuyProductsRequest
-    ControlMediaBuyRequest = _GeneratedControlMediaBuyRequest
-    CreateMediaBuyRequest = _PublicCreateMediaBuyRequest
-    UpdateMediaBuyRequest = _PublicUpdateMediaBuyRequest
+# The generated classes carry ``operation_id`` -- ``PIN_GAP_FIELDS`` in
+# scripts/generate_types.py declares it on core/reporting-webhook.json and the
+# generator emits it, so all five nesting request schemas get it by generation.
+# A TYPE_CHECKING shadow used to restate the field on each of those five plus
+# one per split-root branch; a generated field needs no static view.
+ReportingWebhook = _GeneratedReportingWebhook
+AcceptProposalRequest = _GeneratedAcceptProposalRequest
+BuyProductsRequest = _GeneratedBuyProductsRequest
+ControlMediaBuyRequest = _GeneratedControlMediaBuyRequest
+CreateMediaBuyRequest = _PublicCreateMediaBuyRequest
+UpdateMediaBuyRequest = _PublicUpdateMediaBuyRequest
 
 
 class _ManifestReadbackModel(AdCPBaseModel):
@@ -470,33 +408,6 @@ def _apply_forward_compat() -> None:
     # Refresh its cached nested validator as well as the package model itself.
     for _rebuilt in classes_behind(_GeneratedCreateMediaBuyRequest):
         _rebuilt.model_rebuild(force=True)
-
-    # 3.2.1 permits additional registration fields but does not declare this ID.
-    # Keep the extension outside generated code so a schema refresh cannot drop
-    # it again. An eventual upstream core definition takes precedence.
-    if "operation_id" not in ReportingWebhook.model_fields:
-        # Pydantic accepts annotated unions at runtime; its helper's annotation
-        # is narrower than that supported dynamic input.
-        reporting_operation_id_annotation: Any = _ReportingOperationId
-        ReportingWebhook.model_fields["operation_id"] = FieldInfo.from_annotated_attribute(
-            reporting_operation_id_annotation, None
-        )
-        ReportingWebhook.__annotations__["operation_id"] = _ReportingOperationId
-        ReportingWebhook.model_rebuild(force=True)
-        # Rebuild after targeting patches too: eager parent validators must
-        # capture both the reporting extension and patched package inputs.
-        # A split root contributes its base and every branch: the extension lands
-        # on the base, and an branch does not see it until the branch is rebuilt.
-        for request in (
-            AcceptProposalRequest,
-            BuyProductsRequest,
-            ControlMediaBuyRequest,
-            *classes_behind(CreateMediaBuyRequest),
-            UpdateMediaBuyRequest,
-            *classes_behind(_GeneratedCreateMediaBuyRequest),
-            _GeneratedUpdateMediaBuyRequest,
-        ):
-            request.model_rebuild(force=True)
 
     # Response manifests retain unknown future kinds because the field is
     # ``str`` everywhere. These patches thread the readback NODES through the
