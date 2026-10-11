@@ -321,11 +321,18 @@ class TestGovernanceHandler:
                 return SyncPlansResponse(plans=[])
 
             async def handle_check_governance(self, request, context=None):
+                # `verdict` replaced `status` in 3.1 — check-governance-response.json
+                # says the rename freed the top-level `status` key for the envelope
+                # task status. An approved verdict also requires plan_id and
+                # expires_at; the bundled oracle and the model agree on both, which
+                # is what says this fixture was wrong rather than the compiled
+                # conjunct (salesagent-8qela.21).
                 return CheckGovernanceResponse(
                     check_id="chk_123",
-                    status="approved",
+                    verdict="approved",
                     plan_id="plan_123",
                     explanation="Approved",
+                    expires_at="2026-12-31T00:00:00Z",
                 )
 
             async def handle_report_plan_outcome(self, request, context=None):
