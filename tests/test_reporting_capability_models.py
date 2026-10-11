@@ -178,6 +178,7 @@ def test_core_attributes_schema_and_json_round_trip_do_not_synthesize_promises(g
         # is the only owner in either graph.
         ("receipt_task", "reconciled_billing", None),
     ],
+    ids=["readiness_notification-managed_delivery", "receipt_task-reconciled_billing"],
 )
 @pytest.mark.parametrize("flag", [None, False])
 def test_inverse_tier_validation_runs_in_both_standalone_and_nested_graphs(
