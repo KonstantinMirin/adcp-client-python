@@ -8270,6 +8270,164 @@ def _append_to_class_block(content: str, class_name: str, block: str) -> str:
     return content
 
 
+class DerivedDefault(NamedTuple):
+    """A field whose ergonomic default contradicts the root conjunct that reads it.
+
+    A compiled root conjunct asks SENT-ness, which is the right question for
+    ``required`` on an input and the wrong one for a conditional the schema
+    applies to the SERIALIZED document: there a default is indistinguishable
+    from a value the caller sent. So a defaulted field slips through a
+    ``_c.descend`` -- vacuous when the field is not supplied -- and is then
+    emitted, and the model states a value its own schema forbids.
+
+    Three fixes were available and two were rejected on measurement. Grading the
+    DUMPED document instead of ``model_fields_set`` would invert three repairs
+    already in the tree, cost a recursive dump inside a ``mode='after'``
+    validator per model per validation, and change what presence means for all
+    215 conjuncts to fix two fields. Dropping the unset default from the wire is
+    what those three repairs do, and it is unavailable here: the Protocol
+    Envelope states ``status`` is REQUIRED on every task response.
+
+    So the third: make the DEFAULT correct. Derived from the field the conjunct
+    guards on, the value becomes SENT, the conjunct grades it, and
+    ``_c.sent`` and the other conjuncts are untouched.
+
+    Not derived from the schema: ``source_value`` -> ``value`` is a reading of
+    what the conditional MEANS, and a generator cannot pick between the two
+    values ``status in ['failed','rejected']`` permits. Two entries, auditable
+    against the schema they cite. A third escape appearing anywhere is caught by
+    ``tests/test_root_conjunct_defaults.py``, which derives the exposure rather
+    than listing it.
+    """
+
+    #: Path under ``OUTPUT_DIR``, posix-spelled.
+    module: str
+    class_name: str
+    #: The defaulted field whose value is derived.
+    field: str
+    #: The nested member the conjunct guards on, and the value that fires it.
+    source: str
+    source_field: str
+    source_value: str
+    #: The value to supply, as a source expression, which must satisfy the
+    #: conjunct's own check.
+    value: str
+    #: Imports the value expression needs, each written once.
+    imports: tuple[str, ...]
+    #: The schema stating the conditional, cited in the generated output.
+    because: str
+
+
+DERIVED_DEFAULTS: tuple[DerivedDefault, ...] = (
+    DerivedDefault(
+        module="protocol/get_principal_response.py",
+        class_name="GetPrincipalResponse",
+        field="status",
+        source="result",
+        source_field="kind",
+        source_value="failed",
+        value="_DerivedTaskStatus('failed')",
+        imports=(
+            "from adcp.types.domains.enums.task_status import " "TaskStatus as _DerivedTaskStatus",
+        ),
+        because=(
+            "protocol/get-principal-response.json ties status to result.kind: if the "
+            "result failed, status is one of ['failed','rejected']. The envelope defaults "
+            "status to 'completed' for ergonomic construction, which that conditional "
+            "forbids for this result -- and the conjunct reads status with _c.descend, "
+            "vacuous for a field the caller never sent, so the document was accepted and "
+            "then emitted with status='completed'. Deriving the value makes it SENT, so "
+            "the conjunct grades it. 'failed' rather than 'rejected' because it mirrors "
+            "the kind it is derived from; the schema permits either. See salesagent-38fdf."
+        ),
+    ),
+    DerivedDefault(
+        module="protocol/sync_principal_response.py",
+        class_name="SyncPrincipalResponse",
+        field="status",
+        source="result",
+        source_field="kind",
+        source_value="failed",
+        value="_DerivedTaskStatus('failed')",
+        imports=(
+            "from adcp.types.domains.enums.task_status import " "TaskStatus as _DerivedTaskStatus",
+        ),
+        because=(
+            "protocol/sync-principal-response.json states the same conditional as "
+            "get-principal-response.json, and had the same escape. See salesagent-38fdf."
+        ),
+    ),
+)
+
+
+def _render_derived_default(entry: DerivedDefault) -> str:
+    citation = "\n".join(f"        # {line}" for line in textwrap.wrap(entry.because, width=84))
+    return f"""
+    @model_validator(mode='after')
+    def _derive_{entry.field}_from_{entry.source}_{entry.source_field}(self) -> '{entry.class_name}':
+        \"\"\"Supply ``{entry.field}`` from ``{entry.source}.{entry.source_field}``, so the EMITTED document is one the schema permits.
+
+        Reads the EFFECTIVE value, not the input document:
+        ``{entry.source}.{entry.source_field}`` is itself a defaulted
+        discriminator, so a document omitting it validates into the arm that
+        pins it. A ``mode='before'`` version of this read the raw input, saw
+        nothing, and left the escape open on exactly those documents.
+
+        It does NOT make the conjunct grade the value, and cannot. The conjunct
+        runs FIRST whatever the source order, because ``ProtocolEnvelope``
+        declares a validator of the same name and pydantic keeps the collection
+        slot of the inherited one -- measured, after a first attempt placed this
+        above the conjunct on the assumption that definition order decides. So
+        the contract here is the document that is SENT, and
+        ``tests/test_root_conjunct_defaults.py`` is what holds it: it
+        re-validates the dump against the same class.
+                \"\"\"
+{citation}
+        if '{entry.field}' in self.__pydantic_fields_set__:
+            return self
+        {entry.source_field} = getattr(self.{entry.source}, '{entry.source_field}', None)
+        if getattr({entry.source_field}, 'value', {entry.source_field}) != '{entry.source_value}':
+            return self
+        self.{entry.field} = {entry.value}
+        self.__pydantic_fields_set__.add('{entry.field}')
+        return self
+"""
+
+
+def derive_conjunct_sensitive_defaults() -> None:
+    """Write each :data:`DERIVED_DEFAULTS` entry onto its generated class.
+
+    Raises when the class or the conjunct it depends on is gone: the validator
+    exists only to make a specific conjunct grade a specific field, so without
+    that conjunct it is a silent behaviour change rather than a repair.
+    """
+    print("Deriving the defaults a root conjunct would otherwise not grade...")
+
+    for entry in DERIVED_DEFAULTS:
+        path = OUTPUT_DIR / entry.module
+        if not path.exists():
+            raise RuntimeError(f"{entry.module} does not exist; {entry.class_name} is not emitted")
+        content = path.read_text()
+        if f"class {entry.class_name}(" not in content:
+            raise RuntimeError(f"{entry.module}: {entry.class_name} is not declared")
+        if ROOT_CONSTRAINT_VALIDATOR not in content:
+            raise RuntimeError(
+                f"{entry.module}: {entry.class_name} carries no compiled root conjunct, so "
+                f"deriving {entry.field} would change behaviour rather than repair it"
+            )
+        if f"_derive_{entry.field}_from_" in content:
+            raise RuntimeError(f"{entry.module}: {entry.field} is already derived")
+        content = add_to_import(content, "pydantic", "model_validator")
+        for statement in entry.imports:
+            content = _ensure_module_import(content, statement)
+        content = _append_to_class_block(content, entry.class_name, _render_derived_default(entry))
+        path.write_text(content)
+        print(
+            f"  ✓ {entry.module}: {entry.class_name}.{entry.field} from "
+            f"{entry.source}.{entry.source_field}"
+        )
+
+
 #: The one hook a split root's base mixes in. One implementation, not one copy
 #: per root -- two bugs were found in that hook while it was still a single copy.
 BRANCH_DISPATCH_IMPORT = "from adcp.types._branch_dispatch import BranchDispatchMixin"
@@ -8693,6 +8851,7 @@ def main(argv: list[str] | None = None) -> int:
         fix_unchanged_literal_defaults,
         fix_optional_boolean_literal_defaults,
         enforce_root_constraints,
+        derive_conjunct_sensitive_defaults,
         fix_reporting_request_selectors,
         fix_reporting_capability_defaults,
         fix_protocol_envelope_status_default,
