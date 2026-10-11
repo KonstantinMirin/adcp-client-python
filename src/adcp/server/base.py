@@ -276,10 +276,8 @@ def invalid_request(
         # The builder's message, not "Invalid request: {e}" — the old spelling
         # interpolated the exception and so echoed the payload here too.
         reason=payload["message"],
-        # Every envelope field comes from the builder. This lane used to add
-        # `recovery` and top-level `issues` itself, because the builder emitted
-        # neither — which made the SDK answer one envelope two different ways
-        # depending on which validator refused. The builder owns them now.
+        # Every envelope field comes from the builder, so this lane and the
+        # jsonschema oracle answer a rejection identically.
         error=Error(**payload),
     )
 

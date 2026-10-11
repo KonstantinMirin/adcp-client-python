@@ -210,10 +210,9 @@ def _path_to_pointer(path: Any) -> str:
     return "/" + "/".join(escape(seg) for seg in path)
 
 
-#: A segment JSONPath-lite can write after a ``.`` with no ambiguity. AdCP field
-#: names are snake_case identifiers, so every pointer the schemas themselves
-#: produce is made of these; anything else comes from an open map in the payload
-#: (``ext``, ``details``, a targeting key) where a peer chooses the key.
+#: A segment JSONPath-lite can write after a ``.`` unambiguously. Schema-declared
+#: AdCP names are all of this shape; a segment that is not comes from an open map
+#: in the payload (``ext``, ``details``, a targeting key) where a peer chose it.
 _BARE_SEGMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _INDEX_SEGMENT = re.compile(r"^(?:0|[1-9][0-9]*)$")
 _JSONPATH_TOKEN = re.compile(
@@ -229,34 +228,19 @@ _JSONPATH_TOKEN = re.compile(
 def pointer_to_field(pointer: str) -> str:
     """An RFC 6901 pointer as the JSONPath-lite ``error.field`` uses.
 
-    ``core/error.json`` states the obligation three times — on ``field``, on
-    ``issues``, and on ``issues[].pointer`` — and argues for its own strength:
-    "MUST (not SHOULD) so consumers reading ``field`` get deterministic
-    behavior across sellers". ``/packages/0/targeting`` becomes
-    ``packages[0].targeting``.
+    ``/packages/0/targeting`` -> ``packages[0].targeting``. Required by
+    ``core/error.json``: when ``issues[]`` is present, ``field`` is
+    ``issues[0].pointer`` translated.
 
-    NOT TOTAL IN THE SPEC'S OWN GRAMMAR, which is why this is one function and
-    not an inline join. The spec's examples are all snake_case keys and numeric
-    indices; three pointer shapes have no dotted rendering at all:
+    Dot notation cannot express three pointer shapes, so:
 
-    * a key containing ``.`` — ``/a.b`` dotted is ``a.b``, indistinguishable
-      from the nested ``a`` → ``b``;
-    * a key containing ``/`` or ``~``, which RFC 6901 escapes as ``~1``/``~0``
-      and dot notation cannot express;
-    * an object key that is all digits, which is written the same way as an
-      array index.
-
-    Ambiguity is the one thing the MUST exists to prevent, so a segment that is
-    not a bare identifier is bracket-quoted (``['a.b']``) — standard JSONPath
-    member access, and an EXTENSION BEYOND THE SPEC'S EXAMPLES, taken because
-    the alternative emits a ``field`` that reads as a different path than the
-    one that failed. The all-digit segment resolves the other way, to ``[0]``:
-    the spec's every example of an index is numeric and ``_path_to_pointer``
-    has already stringified away the ``int``/``str`` distinction its input had,
-    so the index reading is the recoverable one. A digit-string object key is
-    the residual loss and it is named here rather than hidden.
-
-    Root (``"/"``, this repo's spelling for the empty path) maps to ``""``.
+    * a segment that is not a bare identifier is bracket-quoted
+      (``/a.b`` -> ``['a.b']``), which covers keys containing ``.`` and the
+      ``~1``/``~0`` escapes for ``/`` and ``~``. Standard JSONPath member
+      access, beyond the examples the spec gives;
+    * an all-digit segment becomes an index (``[0]``), so a digit-string
+      object key is indistinguishable from one — the one lossy case;
+    * root (``"/"``, this repo's spelling for the empty path) becomes ``""``.
     """
     if pointer in ("", "/"):
         return ""
@@ -276,10 +260,9 @@ def pointer_to_field(pointer: str) -> str:
 def field_to_pointer(field: str) -> str:
     """The RFC 6901 pointer a JSONPath-lite ``error.field`` came from.
 
-    The inverse of :func:`pointer_to_field`, and it exists so the pair can be
-    asserted inverse over the shapes that actually occur. An escape-handling
-    bug in one direction is invisible from inside that direction alone; two
-    functions proven inverse cannot drift.
+    The inverse of :func:`pointer_to_field`; the two are asserted inverses in
+    ``tests/test_error_field_jsonpath_lite.py``, which is what covers the
+    escape handling in both directions.
     """
     if not field:
         return "/"
