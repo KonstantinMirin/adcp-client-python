@@ -72,12 +72,17 @@ Rung = Literal["title", "const", "required-set", "none"]
 def pascal_case(value: object) -> str:
     """PascalCase a schema string while PRESERVING interior capitals.
 
-    Distinct from :func:`scripts.task_message_lattice.mangle_schema_title`, which
-    reproduces the generator's root naming and therefore uses ``str.capitalize``
-    (lower-casing the tail: ``Get AdCP Capabilities Request`` ->
-    ``GetAdcpCapabilitiesRequest``). An branch title is frequently already written in
-    PascalCase (``CreateMediaBuySuccess``), and ``capitalize`` would mangle it to
+    Distinct from :func:`scripts.generated_names.generated_root_class_name`, which
+    is the generator's ROOT naming and lower-cases the tail of a word
+    (``Get AdCP Capabilities Request`` -> ``GetAdcpCapabilitiesRequest``). A
+    branch title is frequently already written in PascalCase
+    (``CreateMediaBuySuccess``), and that rule would mangle it to
     ``Createmediabuysuccess``. Two inputs, two specifications, two functions.
+
+    And this one is NOT a restatement of a generator rule, which is why it stays
+    here while the two that were moved to ``scripts/generated_names.py``: the
+    generator throws a branch's identity away, so a branch's name is chosen by
+    this repo's own emitter and there is no generator answer to ask for.
     """
     words = [word for word in re.split(r"[^0-9a-zA-Z]+", str(value)) if word]
     return "".join(word[:1].upper() + word[1:] for word in words)

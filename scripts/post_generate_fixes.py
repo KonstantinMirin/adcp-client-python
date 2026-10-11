@@ -35,6 +35,14 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 try:
+    from generated_names import generated_nested_class_name, generated_root_class_name
+except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
+    from scripts.generated_names import (  # type: ignore[assignment]
+        generated_nested_class_name,
+        generated_root_class_name,
+    )
+
+try:
     import consolidate_exports
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
     from scripts import consolidate_exports
@@ -713,9 +721,9 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
             if obj.get("x-adcp-open-payload") is True:
                 title = obj.get("title")
                 if path == ():
-                    class_names.append(_schema_title_to_class_name(title) if title else None)
+                    class_names.append(generated_root_class_name(title) if title else None)
                 elif isinstance(title, str) and title.strip():
-                    class_names.append(_schema_title_to_class_name(title))
+                    class_names.append(generated_nested_class_name(title))
                 else:
                     anonymous_count += 1
 
@@ -727,11 +735,6 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
 
     walk(schema, ())
     return class_names, anonymous_count
-
-
-def _schema_title_to_class_name(title: object) -> str:
-    words = re.findall(r"[A-Za-z0-9]+", str(title))
-    return "".join(word[:1].upper() + word[1:] for word in words)
 
 
 def _first_generated_class_name(content: str) -> str | None:
@@ -8104,10 +8107,14 @@ def _generated_fields(
 def _root_generated_class(content: str, schema: dict) -> str | None:
     """Return the single class datamodel-code-generator emits for a schema root.
 
-    The root class takes its name from the schema title, up to case: the
-    generator title-cases an acronym, so "SI Send Message Request" becomes
-    ``SiSendMessageRequest``. Match the title-derived name case-insensitively
-    and return the class as the module spells it.
+    The root class takes its name from the schema title, and
+    :func:`_schema_root_class_name` derives that name by asking the generator,
+    so the two agree on casing — "SI Send Message Request" derives
+    ``SiSendMessageRequest``, which is what the module declares. The match here
+    is still case-insensitive, now only so that a generator whose naming rule
+    moves is caught by the guard on the derivation
+    (``test_generated_hierarchy.py``) rather than by this function silently
+    returning ``None`` for every root.
 
     When no class carries that name the root did not generate one flat model —
     the generator split it into per-branch classes behind a union alias — and a
@@ -8130,7 +8137,7 @@ def _schema_root_class_name(schema: dict) -> str | None:
     title = schema.get("title")
     if not isinstance(title, str) or not title.strip():
         return None
-    return _schema_title_to_class_name(title)
+    return generated_root_class_name(title)
 
 
 def _named_class(content: str, wanted: str | None) -> str | None:
@@ -8590,7 +8597,7 @@ def insert_task_message_markers() -> None:
         marker = _ADCP_REQUEST_MARKER if kind == "request" else _ADCP_RESPONSE_MARKER
         tree = ast.parse(module.read_text())
         for class_name in task_message_lattice.root_class_names(
-            schema_rel, module, tree, task_message_lattice.mangle_schema_title(title)
+            schema_rel, module, tree, generated_root_class_name(title)
         ):
             previous = wanted.get((module, class_name))
             if previous is not None and previous != marker:
