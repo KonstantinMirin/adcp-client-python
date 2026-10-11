@@ -8252,6 +8252,26 @@ def _ensure_model_validator_import(content: str) -> str:
     )
 
 
+def _class_defines(content: str, class_name: str, function: str) -> bool:
+    """Whether ``class_name`` itself defines ``function``.
+
+    Class-scoped on purpose. A module-wide ``f"def {name}" in content`` test is
+    what made the first version of this fix a no-op on its own motivating case:
+    the split COPIES the flat class's compiled validator onto every branch, so
+    ``creative_manifest`` already contained the string twice -- on
+    ``CreativeManifestNamedFormatManifest`` and on
+    ``CreativeManifestCanonicalFormatManifest`` -- while the shared base the
+    branches subclass had none. Asking the module answers a different question
+    than asking the class.
+    """
+    for node in ast.parse(content).body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return any(
+                isinstance(child, ast.FunctionDef) and child.name == function for child in node.body
+            )
+    return False
+
+
 def _append_to_class_block(content: str, class_name: str, block: str) -> str:
     """Insert ``block`` at the end of ``class_name``'s body.
 
@@ -8633,6 +8653,46 @@ def compose_branch_module(
     rewritten = split_into_branch_classes(content, class_name, constraints, schema_file, fields)
     if rewritten is None:
         return None
+
+    # The root's compiled constraint, on the SHARED BASE the branches subclass.
+    #
+    # ``enforce_root_constraints`` skips a split root, because a compiled check
+    # copied onto every branch would re-ask what the branch's own shape already
+    # answers. That is true of the BRANCHES and says nothing about a SUBCLASS of
+    # the root, which is what the canonical layer and every adopter build --
+    # ``CanonicalBoundaryModel``'s own docstring says inheritance is the point of
+    # that layer. Measured on this tree: the root refuses a document satisfying
+    # no branch by ``type='oneOf'``, and a bare ``class Sub(Root): pass`` ACCEPTED
+    # it, because the refusal lives in the root's core schema (the union plus its
+    # wrapping validator) and a subclass is handed its own flat core schema
+    # instead. 11 of the 12 constrained roots lost it that way; the twelfth only
+    # looked safe because all its branches require the same keys, so ordinary
+    # field requiredness refused for an unrelated reason.
+    #
+    # An ``after`` validator IS inherited, whatever the core schema is assembled
+    # from, which is how upstream enforced this before the split and how the flat
+    # roots still do (``forecast_range`` and five peers: root and bare subclass
+    # both refuse by the combinator). ``_conditions``'s note that "a model
+    # validator on the shared BASE cannot supply it: field validation fails first"
+    # is about a document that fails INSIDE a branch -- on the root the union
+    # refuses first and this validator never runs, leaving the root's behaviour
+    # exactly as it is. On a subclass field validation SUCCEEDS, which is the very
+    # reason it over-accepted, so the validator runs and the constraint is back.
+    #
+    # It goes on the base and not on the branches, which is also what the original
+    # objection asked for: a branch satisfying its own required set satisfies "at
+    # least one group" anyway, so inheriting it costs the branches nothing.
+    root_validator = render_root_validator(constraints, class_name, schema_file)
+    if root_validator and not _class_defines(rewritten, class_name, ROOT_CONSTRAINT_VALIDATOR):
+        appended = _append_to_class_block(rewritten, class_name, root_validator)
+        if appended == rewritten:
+            raise RuntimeError(
+                f"{schema_file}: the split root {class_name} is not a class in the "
+                "composed module, so its compiled constraint has nowhere to live"
+            )
+        rewritten = appended
+        rewritten = _ensure_model_validator_import(rewritten)
+        rewritten = ensure_pydantic_core_import(rewritten, "PydanticCustomError")
 
     banned = any(plan.absent or plan.absent_nullable for plan in plans)
     # The union carries a wrapping validator that names the root combinator on a
