@@ -321,11 +321,16 @@ class TestGovernanceHandler:
                 return SyncPlansResponse(plans=[])
 
             async def handle_check_governance(self, request, context=None):
+                # An approved verdict states when it expires and the context the
+                # buyer carries into the tool call it approves
+                # (governance/check-governance-response.json, root allOf).
                 return CheckGovernanceResponse(
                     check_id="chk_123",
                     status="approved",
                     plan_id="plan_123",
                     explanation="Approved",
+                    expires_at="2026-12-01T00:00:00Z",
+                    governance_context="ctx-chk-123",
                 )
 
             async def handle_report_plan_outcome(self, request, context=None):

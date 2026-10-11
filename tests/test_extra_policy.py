@@ -95,9 +95,13 @@ class TestGeneratedTypeOverrides:
             "custom_targeting": {"segments": ["sports_fans"], "score": 0.92},
         }
 
+        # A payload makes this an intent check, and governance/check-governance-request.json
+        # states that an intent check names the tool and the agent it targets.
         obj = CheckGovernanceRequest(
             plan_id="plan_1",
             caller="https://buyer.example",
+            tool="create_media_buy",
+            target_agent="https://seller.example",
             payload=payload,
         )
 
@@ -343,10 +347,9 @@ class TestGeneratedCodeMatchesSchemas:
                 if schema_name in schema_allows and not schema_allows[schema_name]:
                     spurious.append(f"{py_file.name} <- {schema_name}")
 
-        assert (
-            not spurious
-        ), "Generated files have extra='allow' without schema support:\n" + "\n".join(
-            f"  {s}" for s in spurious
+        assert not spurious, (
+            "Generated files have extra='allow' without schema support:\n"
+            + "\n".join(f"  {s}" for s in spurious)
         )
 
     def test_open_payload_true_allows_extra_even_without_additional_properties(self) -> None:
