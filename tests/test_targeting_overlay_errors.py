@@ -179,7 +179,7 @@ def test_error_order_controls_primary_field_and_message(
             model.model_validate_json(json.dumps(params))
         else:
             model.model_validate(params)
-    error = _validation_error_to_invalid_request(task, raised.value)
+    error = _validation_error_to_invalid_request(task, raised.value, params)
     prefix = f"{collection}.0.targeting_overlay.keyword_targets.0"
     if mode == "json":
         assert error.field == f"{prefix}.unexpected"
@@ -323,8 +323,9 @@ def test_shared_platform_formatter_preserves_document_error(
     task: str, collection: str, model: type[BaseModel]
 ) -> None:
     with pytest.raises(ValidationError) as raised:
-        model.model_validate(_payload(task, collection))
-    error = _validation_error_to_invalid_request(task, raised.value)
+        payload = _payload(task, collection)
+        model.model_validate(payload)
+    error = _validation_error_to_invalid_request(task, raised.value, payload)
     _assert_error(
         {
             "code": error.code,
@@ -371,7 +372,9 @@ def test_genuine_union_keeps_both_variant_errors_and_locations() -> None:
         ("choice", "SecondVariant", "value"),
     ]
     assert narrow_union_errors(errors) == errors
-    public_error = _validation_error_to_invalid_request("example", raised.value)
+    public_error = _validation_error_to_invalid_request(
+        "example", raised.value, {"choice": {"value": _SECRET}}
+    )
     # core/error.json: `field` is a "Field path ... in JSONPath-lite format",
     # and issues[].pointer is a pointer "to the offending field in the request
     # payload". `FirstVariant` is a Python class name and appears nowhere in

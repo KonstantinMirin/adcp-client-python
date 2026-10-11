@@ -781,7 +781,9 @@ def _internal_error_details(exc: BaseException) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _validation_error_to_invalid_request(method_name: str, exc: ValidationError) -> AdcpError:
+def _validation_error_to_invalid_request(
+    method_name: str, exc: ValidationError, payload: Any
+) -> AdcpError:
     """Convert a ``pydantic.ValidationError`` raised inside a platform method
     to ``AdcpError('INVALID_REQUEST', recovery='correctable')``.
 
@@ -799,11 +801,25 @@ def _validation_error_to_invalid_request(method_name: str, exc: ValidationError)
     genuine bug worth surfacing rather than masking with a fallback.
     """
     from adcp.types.error_narrowing import narrow_union_errors
+    from adcp.validation.pydantic_errors import _document_path
 
     raw = exc.errors(include_input=False, include_context=False, include_url=False)
     errors: list[Any] = list(narrow_union_errors(raw))
     first: dict[str, Any] = dict(errors[0]) if errors else {}
-    field_path = ".".join(str(loc) for loc in first.get("loc", ()))
+    # `field` is a path into the buyer's DOCUMENT, so the loc is resolved
+    # against it rather than joined raw. pydantic's loc carries elements that
+    # address nothing the peer sent — a wrapped member's core-schema
+    # expression, and a union branch's class name for any union at all — and
+    # joining them produced e.g. "choice.FirstVariant.value" for a document
+    # whose only keys are choice and value.
+    #
+    # `payload` is read for KEY MEMBERSHIP only: the resolver appends elements
+    # of the loc and never anything out of the document, so no buyer value
+    # reaches this error. That is what keeps the field value-free while still
+    # letting it be resolvable.
+    field_path = ".".join(
+        str(part) for part in _document_path(tuple(first.get("loc", ())), payload)
+    )
     msg = first.get("msg", "validation failed")
     return AdcpError(
         "INVALID_REQUEST",
@@ -1727,7 +1743,7 @@ async def _invoke_platform_method(
             method_name,
             exc_info=True,
         )
-        wrapped = _validation_error_to_invalid_request(method_name, exc)
+        wrapped = _validation_error_to_invalid_request(method_name, exc, params)
         if on_failure is not None:
             await _safe_on_failure_call(on_failure, wrapped, method_name)
         raise wrapped from exc
