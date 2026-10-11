@@ -718,7 +718,7 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
                 if path == ():
                     class_names.append(_generated_root_class_name(title) if title else None)
                 elif isinstance(title, str) and title.strip():
-                    class_names.append(_generated_class_name(title))
+                    class_names.append(_generated_nested_class_name(title))
                 else:
                     anonymous_count += 1
 
@@ -732,7 +732,7 @@ def _open_payload_class_names(schema: dict) -> tuple[list[str | None], int]:
     return class_names, anonymous_count
 
 
-def _generated_class_name(title: object) -> str:
+def _generated_nested_class_name(title: object) -> str:
     """The class name ``datamodel-code-generator`` gives a named nested object.
 
     Asks the generator rather than restating its rule. This repo restated it —
@@ -763,7 +763,7 @@ def _generated_root_class_name(title: object) -> str:
     name = str(title)
     if not ModelResolver.validate_name(name):
         name = title_to_class_name(name)
-    return _generated_class_name(name)
+    return _generated_nested_class_name(name)
 
 
 def _first_generated_class_name(content: str) -> str | None:
