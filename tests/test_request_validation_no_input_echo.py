@@ -62,8 +62,12 @@ POISON_PAYLOADS = (
 def _validating_methods(handler_cls: type) -> list[str]:
     """Names of the request-validation methods this class defines.
 
-    Derived from the class body: a method that answers a rejection through
-    ``invalid_request`` is one of the paths this file grades.
+    Keyed on ``model_validate(params)`` — what makes a method one of these
+    paths — and deliberately NOT on ``invalid_request``, the helper that
+    fixes them. Keying on the fix makes the suite grade only the sites that
+    already have it: a fire-probe that put ``str(e)`` back at one site saw
+    the behavioural tests stay GREEN, because reintroducing the defect
+    removed that site from the population instead of failing it.
     """
     found = []
     for name, member in vars(handler_cls).items():
@@ -75,7 +79,7 @@ def _validating_methods(handler_cls: type) -> list[str]:
             source = inspect.getsource(member)
         except OSError:  # pragma: no cover - source always available here
             continue
-        if "invalid_request" in source:
+        if "model_validate(params)" in source:
             found.append(name)
     return sorted(found)
 
