@@ -325,6 +325,15 @@ _DISCRIMINATOR_MISMATCH_TYPES = frozenset(
 )
 
 
+def _document_depth(errs: list[Any]) -> int:
+    """How far into the buyer's document this variant's errors reach.
+
+    Depth is over :func:`document_path`, not raw ``loc``, so a union member's
+    label is not counted as a step into the document.
+    """
+    return max((len(document_path(e.get("loc", ()))) for e in errs), default=0)
+
+
 def _pick_winning_variant(
     per_variant: dict[str, list[Any]],
 ) -> str | None:
@@ -389,6 +398,30 @@ def _pick_winning_variant(
             if len(past_requiredness) == 1:
                 return next(iter(past_requiredness))
             matched = past_requiredness
+        # How far into the DOCUMENT each variant got, before counting errors.
+        #
+        # A variant that refuses the document wholesale reports at the root:
+        # one `value_error` saying the shape is not its own. A variant that
+        # accepted the shape and failed on a field reports at a deep path. So
+        # depth measures how far a branch actually read, which is what "closest
+        # fit" means -- whereas the error COUNT measures terseness, which a
+        # wholesale refusal maximises precisely by not looking at the shape.
+        #
+        # Measured on create_media_buy with a bad geo_countries entry: the
+        # branch refusing `packages` outright reports 1 error at depth 0, and
+        # the two branches carrying the real string_type error report 8 and 10
+        # at depth 5. Counting errors handed the buyer the root; depth does not.
+        #
+        # Depth is read through `document_path`, so a member label never counts
+        # as a step into the document, and nothing here knows the name of any
+        # validator -- a name-keyed rule would die on the next rename.
+        deepest = max(_document_depth(errs) for errs in matched.values())
+        reached = {
+            variant: errs for variant, errs in matched.items() if _document_depth(errs) == deepest
+        }
+        if len(reached) == 1:
+            return next(iter(reached))
+        matched = reached
         # Multiple still matched (rare — would mean two variants share the
         # same discriminator literal). Pick the one with fewest
         # errors.

@@ -372,6 +372,15 @@ def test_genuine_union_keeps_both_variant_errors_and_locations() -> None:
     ]
     assert narrow_union_errors(errors) == errors
     public_error = _validation_error_to_invalid_request("example", raised.value)
-    assert public_error.field == "choice.FirstVariant.value"
+    # core/error.json: `field` is a "Field path ... in JSONPath-lite format",
+    # and issues[].pointer is a pointer "to the offending field in the request
+    # payload". `FirstVariant` is a Python class name and appears nowhere in
+    # {"choice": {"value": ...}}, so a buyer resolving it against what it sent
+    # gets nothing. This asserted "choice.FirstVariant.value" — the variant
+    # label inside a document path — which is the defect salesagent-8qela.28
+    # is about. The label is not lost: `details.validation_errors` below keeps
+    # the raw locs, so which variant complained is still available. field is
+    # the resolvable path; details is the full diagnostic.
+    assert public_error.field == "choice.value"
     assert public_error.details == {"validation_errors": errors}
     assert _SECRET not in public_error.args[0]
