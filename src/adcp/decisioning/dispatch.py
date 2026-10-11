@@ -798,12 +798,14 @@ def _validation_error_to_invalid_request(method_name: str, exc: ValidationError)
     in-repo / Pydantic APIs respectively, so a failure here would be a
     genuine bug worth surfacing rather than masking with a fallback.
     """
-    from adcp.types.error_narrowing import narrow_union_errors
+    from adcp.types.error_narrowing import document_path, narrow_union_errors
 
     raw = exc.errors(include_input=False, include_context=False, include_url=False)
     errors: list[Any] = list(narrow_union_errors(raw))
     first: dict[str, Any] = dict(errors[0]) if errors else {}
-    field_path = ".".join(str(loc) for loc in first.get("loc", ()))
+    # ``document_path`` drops the union-member labels pydantic interleaves into
+    # ``loc``. They name Python types, not keys the buyer sent.
+    field_path = ".".join(str(loc) for loc in document_path(first.get("loc", ())))
     msg = first.get("msg", "validation failed")
     return AdcpError(
         "INVALID_REQUEST",
@@ -1420,9 +1422,11 @@ def _coerce_params_to_platform_type(
                 # JSON-serialized strings.
                 return annotation.model_validate(params.model_dump(mode="python"))
             except ValidationError as exc:
+                from adcp.types.error_narrowing import document_path
+
                 errors = exc.errors(include_input=False, include_context=False, include_url=False)
                 first: dict[str, Any] = dict(errors[0]) if errors else {}
-                field_path = ".".join(str(loc) for loc in first.get("loc", ()))
+                field_path = ".".join(str(loc) for loc in document_path(first.get("loc", ())))
                 msg = first.get("msg", "validation failed")
                 raise AdcpError(
                     "INVALID_REQUEST",

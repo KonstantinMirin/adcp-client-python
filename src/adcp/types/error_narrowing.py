@@ -26,30 +26,89 @@ Used by:
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from typing import Any
 
+#: A pydantic CORE-SCHEMA label, which is the other way pydantic spells a union
+#: member in ``loc``. A member that is a plain model is spelled by its class
+#: name; a member that is wrapped or composed is spelled by its core schema --
+#: ``tagged-union[ImageAsset,VideoAsset]``,
+#: ``function-after[_require_schema_required_group(), WebhookChallengeResponseToken]``,
+#: ``nullable[...]``, ``definitions[...]``.
+#:
+#: Matched structurally rather than by a list of prefixes: every such label is
+#: a lowercase-hyphenated schema kind followed by a bracketed body, and no field
+#: name in this protocol's schemas has that shape.
+_CORE_SCHEMA_LABEL = re.compile(r"^[a-z][a-z0-9-]*\[.*\]$")
 
-# Heuristic: a "variant" location segment is a class name.
-# Pydantic emits ``("assets", "hero", "ImageAsset", "width")`` for
+
+# Heuristic: a "variant" location segment names a union MEMBER, not a document
+# key. Pydantic emits ``("assets", "hero", "ImageAsset", "width")`` for
 # union-validation errors. The variant name is the
 # second-to-last position when the error is on a field, OR the
 # last position when the error is at the variant itself
 # (e.g. ``union_tag_not_found``).
 def _looks_like_variant_name(segment: Any) -> bool:
-    """Heuristic: a Python class name (CamelCase, starts with capital).
+    """Whether this ``loc`` segment names a union member rather than a key.
 
-    Used to detect variant segments in ``ValidationError.errors()[i].loc``.
-    Pydantic interleaves variant class names into the loc tuple for
-    discriminated-union failures; we strip those segments to identify
-    "this error belongs to variant X."
+    Two spellings, because pydantic has two. A member that is a plain model is
+    its class name: CamelCase, no underscore. A member that is wrapped or
+    composed is a core-schema expression.
+
+    Only the first was recognised, and the module's own docstring already noted
+    the consequence for the second -- "an inline tagged union spells its branch
+    in a form no variant-name heuristic recognizes". Branch classes made that
+    hole load-bearing: a split root's members are
+    ``function-after[_require_schema_required_group(), <Branch>]``, so every
+    error under one carried a Python validator's name into the buyer-facing
+    field path.
     """
     if not isinstance(segment, str):
         return False
     if not segment:
         return False
+    if _CORE_SCHEMA_LABEL.match(segment):
+        return True
     # Class names start with an uppercase letter and contain only
     # alphanumerics. Reject ``snake_case`` field names.
     return segment[0].isupper() and segment.replace("_", "").isalnum() and "_" not in segment
+
+
+def without_schema_labels(loc: Iterable[Any]) -> tuple[Any, ...]:
+    """``loc`` without pydantic's CORE-SCHEMA labels, keeping variant names.
+
+    The two kinds of member label are not equally useful. A CamelCase class
+    name identifies which variant an error came from, which is what the
+    narrowing below groups by and what a caller reading
+    ``details.validation_errors`` can act on. A core-schema expression --
+    ``function-after[_require_schema_required_group(), <Branch>]`` -- is
+    pydantic's internal spelling of a wrapper around that member and names a
+    repo-private validator; it is never useful and must not reach a buyer.
+
+    So this drops the second and keeps the first. :func:`document_path` drops
+    both, because a FIELD PATH is a path through the buyer's document and no
+    member label belongs in one.
+    """
+    return tuple(
+        segment
+        for segment in loc
+        if not (isinstance(segment, str) and _CORE_SCHEMA_LABEL.match(segment))
+    )
+
+
+def document_path(loc: Iterable[Any]) -> tuple[Any, ...]:
+    """The path through the DOCUMENT that a pydantic ``loc`` points at.
+
+    A union member's label is a fact about the Python types, not a key the
+    buyer sent, so it has no place in a field path or a JSON pointer. This
+    drops those segments and keeps the rest in order.
+
+    Every projection of a ``loc`` to something a buyer reads goes through here,
+    so the two spellings of a member label are handled once rather than per
+    call site.
+    """
+    return tuple(segment for segment in loc if not _looks_like_variant_name(segment))
 
 
 def _split_at_variant(
@@ -113,7 +172,7 @@ def _asset_variant_index(loc: tuple[Any, ...]) -> int | None:
     return None
 
 
-def narrow_union_errors(
+def _narrow_union_errors(
     errors: Any,
 ) -> list[Any]:
     """Return a focused subset of ``errors`` for discriminated-union
@@ -223,6 +282,25 @@ def narrow_union_errors(
     return narrowed
 
 
+def narrow_union_errors(errors: Any) -> list[Any]:
+    """:func:`_narrow_union_errors`, with pydantic's core-schema labels removed.
+
+    The projection is on the way OUT, not on the way in. Stripping at entry was
+    tried and is wrong: the narrowing buckets errors BY their variant label, so
+    removing a label first collapses three branches into one bucket with nothing
+    to group by -- and a buyer then receives every branch's complaint instead of
+    the one branch that got furthest. Measured on a ``create_media_buy`` request
+    with a bad ``geo_countries`` entry: five errors where one is wanted.
+
+    So the labels survive the narrowing and are dropped from what it returns:
+    one place, after the one consumer of them has run.
+    """
+    return [
+        dict(err, loc=without_schema_labels(err.get("loc", ()))) if isinstance(err, dict) else err
+        for err in _narrow_union_errors(errors)
+    ]
+
+
 #: Pydantic-2 error types that signal "this variant's discriminator
 #: didn't match the user's input". A variant whose error list contains
 #: ANY of these is eliminated from step 1's candidate pool.
@@ -237,6 +315,11 @@ def narrow_union_errors(
 #: * ``union_tag_invalid`` — pydantic-2's "tag found but invalid for
 #:   this union" code. Same semantic as ``union_tag_not_found`` for
 #:   our purposes.
+#: Error types that say "this variant wants a field the document does not
+#: carry". A variant failing only these has not been reached at all; a sibling
+#: with any other error type has been, and is the one worth reporting.
+_REQUIREDNESS_TYPES = frozenset({"missing", "missing_argument", "missing_keyword_only_argument"})
+
 _DISCRIMINATOR_MISMATCH_TYPES = frozenset(
     {"literal_error", "union_tag_not_found", "union_tag_invalid"}
 )
@@ -256,6 +339,9 @@ def _pick_winning_variant(
        / AudioStack 60-line-dump fix — when the user provides
        ``asset_type='image'`` and ImageAsset's other fields fail, we
        surface ImageAsset errors only.
+    1b. **Past requiredness among those**: a variant whose every error is a
+       missing required field loses to a sibling that got past its own
+       required fields and failed on content.
     2. **Fewest errors among matched**: if multiple variants matched
        the discriminator, pick the one with fewest errors (closest
        fit to user's input shape).
@@ -279,7 +365,31 @@ def _pick_winning_variant(
     if matched:
         if len(matched) == 1:
             return next(iter(matched.keys()))
-        # Multiple matched (rare — would mean two variants share the
+        # Requiredness, among the variants the discriminator admitted. A
+        # variant that failed only because the document lacks a field IT
+        # requires has not been reached; a sibling that got past its own
+        # required fields and failed on CONTENT is the one a caller can act on.
+        #
+        # This is the rule the union's wrapping validator already applies to
+        # the MESSAGE -- relabel to the combinator only when EVERY branch
+        # reports `missing` -- stated here for the error LIST so the two agree.
+        # Branch classes made it load-bearing: a split root's branches differ
+        # by requiredness and nothing else, so the discriminator rules cannot
+        # separate them and every branch's complaint reached the buyer.
+        #
+        # It runs AFTER the discriminator match, not before. Before, it
+        # overrode a matched discriminator, which is stronger evidence --
+        # measured as three regressions in this module's own tests.
+        past_requiredness = {
+            variant: errs
+            for variant, errs in matched.items()
+            if any(e.get("type") not in _REQUIREDNESS_TYPES for e in errs)
+        }
+        if past_requiredness and len(past_requiredness) < len(matched):
+            if len(past_requiredness) == 1:
+                return next(iter(past_requiredness))
+            matched = past_requiredness
+        # Multiple still matched (rare — would mean two variants share the
         # same discriminator literal). Pick the one with fewest
         # errors.
         sorted_matched = sorted(matched.items(), key=lambda kv: len(kv[1]))
@@ -303,5 +413,7 @@ def _pick_winning_variant(
 
 
 __all__ = [
+    "document_path",
+    "without_schema_labels",
     "narrow_union_errors",
 ]
