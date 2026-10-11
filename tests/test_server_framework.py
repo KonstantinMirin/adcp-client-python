@@ -321,12 +321,15 @@ class TestGovernanceHandler:
                 return SyncPlansResponse(plans=[])
 
             async def handle_check_governance(self, request, context=None):
-                # An approved verdict states when it expires and the context the
-                # buyer carries into the tool call it approves
-                # (governance/check-governance-response.json, root allOf).
+                # governance/check-governance-response.json requires check_id,
+                # verdict and explanation, and does not declare `status` at all --
+                # the 3.1 rename freed that key for the envelope task-status. The
+                # root allOf then requires an approved verdict to state when it
+                # expires and the context the buyer carries into the call it
+                # approves. Oracle-checked as a whole document, not per field.
                 return CheckGovernanceResponse(
                     check_id="chk_123",
-                    status="approved",
+                    verdict="approved",
                     plan_id="plan_123",
                     explanation="Approved",
                     expires_at="2026-12-01T00:00:00Z",
