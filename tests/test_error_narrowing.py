@@ -21,6 +21,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
 from adcp.types.error_narrowing import narrow_union_errors
 
@@ -202,9 +203,9 @@ def test_e2e_creative_manifest_missing_width_height_surfaces_actionable_errors()
     except ValidationError as exc:
         raw = exc.errors(include_input=False, include_context=False, include_url=False)
         narrowed = narrow_union_errors(raw)
-        assert (
-            len(narrowed) <= 4
-        ), f"too many errors reach adopter: {len(narrowed)} (raw={len(raw)})"
+        assert len(narrowed) <= 4, (
+            f"too many errors reach adopter: {len(narrowed)} (raw={len(raw)})"
+        )
         assert all("image" in err["loc"] for err in narrowed), (
             "errors should localize to the matched 'image' asset variant; "
             f"got: {[err['loc'] for err in narrowed]}"
@@ -291,12 +292,22 @@ def test_narrow_returns_defensive_copies() -> None:
     assert original_err["msg"] == "Field required"
 
 
-def test_narrow_passes_through_oversized_input() -> None:
-    """DoS guard: above 500 errors we don't run narrowing — narrowing
-    is UX, not correctness, and a hostile request shouldn't get to
-    amplify CPU through the bucketing logic. Verifies the cap is
-    enforced and the original list comes back unchanged."""
-    # Build 600 errors that WOULD be narrowable if we ran the algorithm.
+def test_narrow_keeps_every_arm_of_a_six_hundred_way_tie() -> None:
+    """600 arms, one ``missing`` each, all kept — because they TIE.
+
+    This asserted a DoS cap: above 500 errors narrowing was skipped and the
+    input returned unchanged. The cap is gone (salesagent-8qela.75) — it made
+    quality degrade exactly when volume was highest, and narrowing measured
+    linear at ~4-5us per error, so there was no amplification to guard.
+
+    The length is still 600, which is why the removal did not turn this red:
+    it now passes through the TIE path instead of the cap. Every arm has one
+    ``missing``, so none gets past its own requiredness, depths are equal, and
+    the count sort ties — ``_pick_winning_variant`` returns None and declines
+    to guess. Same number, different reason, so the docstring is corrected
+    rather than the assertion: a test passing for a mechanism that no longer
+    exists is worse than one failing.
+    """
     errors: list[dict[str, Any]] = [
         {
             "type": "missing",
@@ -306,4 +317,95 @@ def test_narrow_passes_through_oversized_input() -> None:
         for i in range(600)
     ]
     narrowed = narrow_union_errors(errors)
-    assert len(narrowed) == 600  # bypass — input came back as-is
+    assert len(narrowed) == 600
+
+
+# ---------------------------------------------------------------------------
+# The depth preference, pinned in BOTH directions.
+#
+# These use models declared HERE rather than SDK types, deliberately. The
+# existing coverage of union narrowing went through generated request models,
+# and the emitter change that collapsed a split root's branches took the
+# behaviour out from under it -- 275 items could then no longer reach the
+# preference at all, and a sweep concluded it had nothing to decide. An
+# adopter-shaped fixture cannot go stale that way, and it is the path the
+# module's own docstring names: "Adopter code via narrow_validation_error ...
+# for adopters who construct typed models in their platform method bodies".
+# ---------------------------------------------------------------------------
+
+
+class ArmInner(BaseModel):
+    need: int
+
+
+class ShallowArm(BaseModel):
+    kind: str
+
+
+class DeepArm(BaseModel):
+    kind: str
+    inner: ArmInner
+
+
+class ShallowArmHolder(BaseModel):
+    choice: ShallowArm | DeepArm
+
+
+class TiedArmA(BaseModel):
+    value: int
+
+
+class TiedArmB(BaseModel):
+    value: int
+
+
+class TiedHolder(BaseModel):
+    choice: TiedArmA | TiedArmB
+
+
+def _errors_of(model: type[BaseModel], payload: dict[str, Any]) -> list[Any]:
+    with pytest.raises(ValidationError) as raised:
+        model.model_validate(payload)
+    return raised.value.errors(include_input=False, include_context=False, include_url=False)
+
+
+def test_equal_depth_arms_both_survive() -> None:
+    """Arms that fail at the SAME depth are not separable, so neither is dropped.
+
+    The document gives no signal about which arm was meant — both declare
+    ``value`` and both reject the same way — so narrowing declines to guess.
+    This is the invariant against over-narrowing.
+    """
+    errors = _errors_of(TiedHolder, {"choice": {"value": "not-an-int"}})
+    narrowed = narrow_union_errors(errors)
+
+    assert len(narrowed) == 2
+    assert {tuple(e["loc"])[-1] for e in narrowed} == {"value"}
+
+
+def test_depth_differing_arms_keep_only_the_deeper_one() -> None:
+    """Arms that reach DIFFERENT depths are separable, and the deeper one wins.
+
+    This asserts a DROP on purpose, which is why it is spelled out: the arm
+    discarded is the one the buyer did NOT select, and keeping it would bury
+    the error they will actually hit.
+
+    The document carries ``inner``, a key only ``DeepArm`` declares, so ``DeepArm``
+    is the arm that was meant. It reports two errors (``kind`` wrong type and
+    ``inner.need`` missing) at depth 4; ``ShallowArm`` reports one (``kind``) at
+    depth 3. Counting errors would pick ``ShallowArm`` — fewest — and tell the
+    buyer only about ``kind``, hiding ``inner.need`` until they fixed ``kind``
+    and resubmitted. That is worse than not narrowing at all, and it is what
+    the depth preference exists to prevent.
+
+    Equal depth is the tie covered above; differing depth is evidence the arms
+    are not equivalent, so dropping one here does not weaken that invariant.
+    """
+    errors = _errors_of(ShallowArmHolder, {"choice": {"kind": 5, "inner": {}}})
+    narrowed = narrow_union_errors(errors)
+
+    kept_paths = {tuple(str(part) for part in e["loc"]) for e in narrowed}
+    assert all("ShallowArm" not in path for path in kept_paths), kept_paths
+    # The error a count-based rule would have hidden.
+    assert any(path[-1] == "need" for path in kept_paths), kept_paths
+    assert len(narrowed) == 2
