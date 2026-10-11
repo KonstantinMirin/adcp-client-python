@@ -285,8 +285,14 @@ def compile_condition(condition: Cond, subject: str = _SELF) -> str:  # noqa: C9
         return f"_c.json_type({subject}, {names})"
     if isinstance(condition, ValuePattern):
         return f"_c.matches({subject}, {condition.pattern!r})"
-    if isinstance(condition, (ValueLen, ValueItems, PropCount)):
+    if isinstance(condition, (ValueLen, ValueItems)):
         return _bounds("length", subject, minimum=condition.minimum, maximum=condition.maximum)
+    if isinstance(condition, PropCount):
+        # A count of members, not a ``len``. ``_c.length`` cannot measure a
+        # pydantic object at all, so routing these two through it emitted a
+        # validator that graded nothing -- the fourth closed door behind
+        # salesagent-09ghh, and the one that made the other three look sufficient.
+        return _bounds("members", subject, minimum=condition.minimum, maximum=condition.maximum)
     if isinstance(condition, ValueBounds):
         return _bounds(
             "within", subject, ge=condition.ge, le=condition.le, gt=condition.gt, lt=condition.lt

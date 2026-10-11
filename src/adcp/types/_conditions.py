@@ -253,16 +253,44 @@ def matches(value: Any, pattern: str) -> bool:
 
 
 def length(value: Any, minimum: int | None = None, maximum: int | None = None) -> bool:
-    """``minLength``/``maxLength``, ``minItems``/``maxItems``, ``min``/``maxProperties``.
+    """``minLength``/``maxLength`` and ``minItems``/``maxItems``.
 
-    All six are bounds on a size, differing only in the type they grade -- and
-    each is vacuous off its own type, which a single ``len`` test over anything
-    sized reproduces exactly.
+    Four bounds on a size, differing only in the type they grade -- and each is
+    vacuous off its own type, which a single ``len`` test over anything sized
+    reproduces exactly.
+
+    NOT ``min``/``maxProperties``, which this docstring used to claim. A pydantic
+    object model has no ``__len__``, so those two returned ``True`` for every
+    object: the production existed, the renderer pointed here, and nothing was
+    graded. They are :func:`members` now, and the split is necessary rather than
+    tidy -- adding a model branch HERE would measure a ``RootModel``'s own single
+    field against an array's ``minItems``.
     """
     try:
         size = len(value)
     except TypeError:
         return True
+    if minimum is not None and size < minimum:
+        return False
+    return not (maximum is not None and size > maximum)
+
+
+def members(value: Any, minimum: int | None = None, maximum: int | None = None) -> bool:
+    """``minProperties``/``maxProperties``: how many members the document carried.
+
+    The same question :func:`supplied` asks, counted instead of tested: a
+    model answers from ``model_fields_set`` plus its extras, a mapping from its
+    keys. A default the caller never sent is not a property of the document, for
+    the same reason it is not ``supplied``.
+
+    Vacuous off its own type, like every primitive here. A ``RootModel`` does not
+    reach this from a root conjunct -- ``flat_root_shape`` returns ``None`` for a
+    map or array root, so no root validator is emitted for one, and its count
+    renders as a field constraint on the key or element type instead.
+    """
+    if not (isinstance(value, Mapping) or _is_model(value)):
+        return True
+    size = len(list(_named_members(value)))
     if minimum is not None and size < minimum:
         return False
     return not (maximum is not None and size > maximum)
