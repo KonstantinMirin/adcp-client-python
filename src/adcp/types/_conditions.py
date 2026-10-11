@@ -397,9 +397,31 @@ def branch_title(branch: type) -> str:
 
 #: The error types ``ValidationError.from_exception_data`` resolves by name.
 #: ``ErrorType`` is the public enumeration of them; a type outside it is a
-#: ``PydanticCustomError`` a compiled validator minted, and has to be re-minted
-#: rather than named.
+#: ``PydanticCustomError`` someone minted, and has to be re-minted rather than
+#: named.
 _KNOWN_ERROR_TYPES = frozenset(typing.get_args(ErrorType))
+
+
+def _is_known(error: Any) -> bool:
+    """Whether ``from_exception_data`` can rebuild this error FROM ITS NAME.
+
+    The name is not enough on its own. A custom error may REUSE a known name
+    with its own context: ``EmailStr`` reports ``value_error`` carrying
+    ``{'reason': ...}``, while pydantic's own ``value_error`` carries
+    ``{'error': <exception>}`` and refuses to be built without it. Naming such
+    an error raises ``TypeError: ValueError: 'error' required in context``,
+    which is how this was found -- three parity tests, after the rest of the
+    suite was green.
+
+    So the record itself is asked: ``errors()`` attaches ``url``, the
+    documentation link for a known type, and omits it for a custom one.
+    Measured on all four combinations -- ``int_parsing`` (known, url),
+    ``EmailStr``'s ``value_error`` (custom, no url), a compiled ``anyOf``
+    (custom, no url), and a bare ``ValueError`` (known, url). The name is kept
+    as a second condition, so an error with neither falls to the re-mint, which
+    always builds.
+    """
+    return error["type"] in _KNOWN_ERROR_TYPES and "url" in error
 
 
 def _is_branch_requiredness(error: Any) -> bool:
@@ -429,13 +451,20 @@ def _in_the_document(error: Any) -> Any:
         "loc": tuple(error["loc"][1:]),
         "input": error["input"],
     }
-    if error["type"] not in _KNOWN_ERROR_TYPES:
-        # A compiled validator's own refusal. Its context is already substituted
-        # into the message it rendered, so the message IS the template and there
-        # is no context left to carry.
-        detail["type"] = PydanticCustomError(error["type"], error["msg"])
-    elif error.get("ctx") is not None:
-        detail["ctx"] = error["ctx"]
+    context = error.get("ctx")
+    if _is_known(error):
+        if context is not None:
+            detail["ctx"] = context
+    else:
+        # A custom refusal -- a compiled root constraint, or a library's own.
+        # Its context is already substituted into the message it rendered, so
+        # the message IS the template; a brace left in it stays literal, which
+        # is measured rather than assumed.
+        detail["type"] = (
+            PydanticCustomError(error["type"], error["msg"], context)
+            if context is not None
+            else PydanticCustomError(error["type"], error["msg"])
+        )
     return detail
 
 
