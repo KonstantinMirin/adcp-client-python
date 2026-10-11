@@ -73,6 +73,7 @@
     "remove_imports_shadowed_by_a_local_class": true,
     "remove_unused_pydantic_field_imports": true,
     "emit_readback_clones": true,
+    "emit_open_asset_unions": true,
     "declare_compatibility_annotations": true,
     "emit_branch_classes": true,
     "declare_root_schema_module_exports": true,

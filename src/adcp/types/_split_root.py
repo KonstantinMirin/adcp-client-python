@@ -11,9 +11,13 @@ own way before this existed:
   ``model_rebuild``, and the generated comment beside those calls already said
   "only call model_rebuild() on actual classes, not Union type aliases" without
   any way to tell;
-* ``_forward_compat`` patches a field and then rebuilds, and a patch to the
-  base is invisible to an branch until that branch is rebuilt too, because a subclass
-  caches its parent's annotations when it is built.
+* a read-back clone copies the FIELDS of a root whose branches differ only in
+  which of them are required, so it has to copy the base's -- which is why
+  ``READBACK_CLONES`` in ``scripts/post_generate_fixes.py`` passes
+  ``shared_base(CreativeManifest)`` and not the public name. (The third reader
+  used to be ``_forward_compat``, which patched a base and then rebuilt every
+  branch, because a subclass caches its parent's annotations when it is built.
+  Nothing patches a field any more; the derivation outlived the reason for it.)
 
 So the derivation lives here once. The base is read off an branch's MRO rather
 than looked up by name or spelled out: the branches all name it, which is the

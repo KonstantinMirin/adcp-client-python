@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-10 22:59:08 UTC
+Generation date: 2026-10-11 05:25:19 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -789,11 +789,15 @@ from adcp.types.domains.core.format import (
     Dimensions,
     Dimensions1,
     DisclosureCapability,
+    FormatAssetUnion,
     FormatCard,
     FormatCardDetailed,
+    GroupFormatAssetUnion,
     Renders,
     Renders1,
     Responsive,
+    UnknownFormatAsset,
+    UnknownGroupAsset,
 )
 from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
 from adcp.types.domains.core.format_option_ref import (
@@ -2333,6 +2337,7 @@ __all__ = [
     "ForecastRange",
     "ForecastRateRange",
     "ForecastVendorMetricValue",
+    "FormatAssetUnion",
     "FormatCard",
     "FormatCardDetailed",
     "FormatKind",
@@ -2399,6 +2404,7 @@ __all__ = [
     "GovernanceAgent",
     "GradingProfile",
     "GrantStatus",
+    "GroupFormatAssetUnion",
     "HistoryItem",
     "HotelItem",
     "HtmlAssetRequirements",
@@ -3174,6 +3180,8 @@ __all__ = [
     "Trust",
     "UnavailableReason",
     "UniversalMacro",
+    "UnknownFormatAsset",
+    "UnknownGroupAsset",
     "UnknownHandling",
     "UpdateFrequency",
     "UpdateMediaBuyInputRequired",

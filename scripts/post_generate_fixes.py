@@ -3645,6 +3645,292 @@ def _ensure_module_import(content: str, statement: str) -> str:
     return source
 
 
+class OpenAssetUnion(NamedTuple):
+    """One asset slot's generated union, plus the fallback branch the spec needs."""
+
+    #: The union's name in the generated module.
+    alias: str
+    #: The base class whose direct subclasses are the branches.
+    base: str
+    #: The fallback branch's class name.
+    fallback: str
+    #: The callable discriminator's function name.
+    discriminator: str
+    #: Emit ahead of this class: the one that carries the union, or the first of
+    #: them, so the name exists before pydantic builds that class.
+    before_class: str
+    doc: str
+    #: ``(class, field)``: the field whose list element type becomes the alias.
+    carried_by: tuple[str, str]
+    #: The repeatable-group class, when this union has it as a branch.
+    group_branch: str | None = None
+
+
+#: The open asset unions, and the module they are emitted into.
+#:
+#: ``core/format.py`` generates a CLOSED union per asset slot, and the spec
+#: requires a consumer to keep an unrecognised ``asset_type`` rather than fail
+#: the whole ``list_creative_formats`` response. So each union gains one fallback
+#: branch, and the field carries the open union instead -- declared here, written
+#: into the module that declares the branches, so a response reaches it by
+#: generation rather than by a patch.
+#:
+#: The VOCABULARY IS DERIVED, which is the point of doing this here. It used to be
+#: two hand-written frozensets in ``src/adcp/types/aliases.py`` -- 14 individual
+#: and 12 group members -- beside a generated union of 21 and 21. Everything
+#: outside the literal fell to the fallback, so seven individual asset types the
+#: PINNED schema declares (``zip``, ``display_tag``, ``published_post``, ``card``,
+#: ``pixel_tracker``, ``vast_tracker``, ``daast_tracker``) and nine group types
+#: parsed as the unknown branch with their typed fields in ``__pydantic_extra__``,
+#: with generated classes for every one of them sitting unused. See
+#: salesagent-d2wuv. The generator knows each branch's ``asset_type`` literal
+#: because it emitted it, so nothing is declared and nothing can go stale.
+_OPEN_ASSET_UNIONS: tuple[OpenAssetUnion, ...] = (
+    OpenAssetUnion(
+        alias="GroupFormatAssetUnion",
+        base="BaseGroupAsset",
+        fallback="UnknownGroupAsset",
+        discriminator="_group_asset_discriminator",
+        # Assets29, the repeatable group, carries this union, and every group
+        # branch is declared ahead of it.
+        before_class="Assets29",
+        carried_by=("Assets29", "assets"),
+        doc=(
+            "Open discriminated union for the slots inside a repeatable asset group.\\n\\n"
+            "    The generated union closed over the group asset classes; this adds the\\n"
+            "    fallback branch an unrecognised ``asset_type`` needs."
+        ),
+    ),
+    OpenAssetUnion(
+        alias="FormatAssetUnion",
+        base="BaseIndividualAsset",
+        fallback="UnknownFormatAsset",
+        discriminator="_format_asset_discriminator",
+        # This union includes the repeatable group as a branch, so it comes after
+        # Assets29 and before Format, which is the class that carries it.
+        before_class="Format",
+        carried_by=("Format", "assets"),
+        group_branch="Assets29",
+        doc=(
+            "Open discriminated union for ``Format.assets``.\\n\\n"
+            "    The generated union closed over the individual asset classes plus the\\n"
+            "    repeatable group; this adds the fallback branch an unrecognised\\n"
+            "    ``asset_type`` needs."
+        ),
+    ),
+)
+
+
+def _asset_branches(tree: ast.Module, base: str) -> list[tuple[str, str]]:
+    """``(class name, asset_type literal)`` for every direct subclass of ``base``.
+
+    Read off the generated source, in declaration order. A ``Tag`` must be unique
+    within a union, so a duplicate literal is refused rather than silently
+    dropping whichever branch came second.
+    """
+    branches: list[tuple[str, str]] = []
+    seen: dict[str, str] = {}
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef):
+            continue
+        if base not in {ast.unparse(parent) for parent in node.bases}:
+            continue
+        for statement in node.body:
+            if not isinstance(statement, ast.AnnAssign):
+                continue
+            if getattr(statement.target, "id", None) != "asset_type":
+                continue
+            literal = _extract_single_literal_value(statement.annotation)
+            if not isinstance(literal, str):
+                continue
+            if literal in seen:
+                raise RuntimeError(
+                    f"core/format.py: asset_type {literal!r} is declared by both "
+                    f"{seen[literal]} and {node.name}; a discriminated union cannot "
+                    "tag two branches the same"
+                )
+            seen[literal] = node.name
+            branches.append((node.name, literal))
+    if not branches:
+        raise RuntimeError(f"core/format.py: no subclass of {base} declares an asset_type")
+    return branches
+
+
+def _render_open_asset_union(union: OpenAssetUnion, branches: list[tuple[str, str]]) -> str:
+    """The fallback class, its discriminator, and the tagged union, as source."""
+    known = "".join(f"        {literal!r},\n" for _name, literal in branches)
+    arms = [f"Annotated[{name}, Tag({literal!r})]" for name, literal in branches]
+    if union.group_branch:
+        arms.append(f"Annotated[{union.group_branch}, Tag('repeatable_group')]")
+    arms.append(f"Annotated[{union.fallback}, Tag('_unknown')]")
+    # The first arm carries no leading ``|``; black keeps this layout.
+    tags = f"    {arms[0]}\n" + "".join(f"    | {arm}\n" for arm in arms[1:])
+    group_route = (
+        "    if item_type == 'repeatable_group':\n        return 'repeatable_group'\n"
+        if union.group_branch
+        else ""
+    )
+    read_item_type = (
+        "    item_type = value.get('item_type', 'individual') if isinstance(value, dict) "
+        "else getattr(value, 'item_type', 'individual')\n"
+        if union.group_branch
+        else ""
+    )
+    return f'''class {union.fallback}({union.base}):
+    """Fallback branch for an ``asset_type`` outside this pin's vocabulary.
+
+    A response carrying an asset type defined after this SDK's pin parses as this
+    class instead of failing, which would zero out every format in the response.
+    The structural fields are still validated; the type-specific ones are kept in
+    ``__pydantic_extra__``.
+
+    ``extra='allow'`` is deliberate and not inherited from the strict-validation
+    policy on ``AdCPBaseModel``: dropping or refusing the unknown fields defeats
+    the whole purpose of the branch. Read path only -- a request keeps its closed
+    ``Literal`` branches.
+    """
+
+    model_config = ConfigDict(extra='allow')
+    asset_type: str
+
+
+#: The ``asset_type`` values this pin has a class for. Derived from the branches
+#: above, so a schema that adds a type adds its class AND its tag together.
+_KNOWN_{union.base.upper()}_TYPES: frozenset[str] = frozenset(
+    {{
+{known}    }}
+)
+
+
+def {union.discriminator}(value: Any) -> str:
+    """Route a wire asset to its ``Tag``, or to the fallback."""
+{read_item_type}{group_route}    asset_type = (
+        value.get('asset_type', '')
+        if isinstance(value, dict)
+        else getattr(value, 'asset_type', '')
+    )
+    return asset_type if asset_type in _KNOWN_{union.base.upper()}_TYPES else '_unknown'
+
+
+{union.alias} = Annotated[
+{tags}    ,
+    Discriminator({union.discriminator}),
+]
+"""{union.doc}
+"""'''
+
+
+def _union_class_names(node: ast.AST, aliases: dict[str, ast.AST]) -> set[str]:
+    """Every class name a possibly-aliased union annotation resolves to.
+
+    ``Format.assets`` spells its union inline; ``Assets29.assets`` reaches one
+    through a generated ``Assets30 = Annotated[A | B, Field(discriminator=...)]``
+    alias, so the alias is followed rather than counted as a branch.
+    """
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return _union_class_names(node.left, aliases) | _union_class_names(node.right, aliases)
+    if isinstance(node, ast.Subscript) and _subscript_base_name(node) == "Annotated":
+        inner = node.slice.elts[0] if isinstance(node.slice, ast.Tuple) else node.slice
+        return _union_class_names(inner, aliases)
+    if isinstance(node, ast.Name):
+        if node.id in aliases:
+            return _union_class_names(aliases[node.id], aliases)
+        return {node.id}
+    return {ast.unparse(node)}
+
+
+def _module_union_aliases(tree: ast.Module) -> dict[str, ast.AST]:
+    """Top-level ``Name = <annotation>`` bindings, so a union alias can be followed."""
+    return {
+        node.targets[0].id: node.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+    }
+
+
+def _carry_open_asset_union(content: str, union: OpenAssetUnion, expected: set[str]) -> str:
+    """Point ``union.carried_by`` at the alias, after checking what it carries now.
+
+    The membership check is the guard, and it is DERIVED rather than declared: the
+    field's current element union must resolve to exactly the branch set the alias
+    was just built from. A schema refresh that adds an asset type changes both
+    sides together and passes; one that reshapes the field, or that adds a branch
+    the base does not own, fails here rather than leaving the field closed.
+    """
+    class_name, field_name = union.carried_by
+    block = _find_class_field_block(content, class_name, field_name)
+    if block is None:
+        raise RuntimeError(
+            f"core/format.py: {class_name}.{field_name} is not declared, so "
+            f"{union.alias} has nothing to open"
+        )
+    start, end = block
+    annotation = content[start:end]
+    element = re.search(r"list\[(.*?)\]\s*(?:\|\s*None)?,", annotation, re.DOTALL)
+    if element is None:
+        raise RuntimeError(
+            f"core/format.py: {class_name}.{field_name} is not a list annotation "
+            f"({annotation.strip()[:80]!r}); {union.alias} assumes it is"
+        )
+    aliases = _module_union_aliases(ast.parse(content))
+    # Parenthesized: a generated union spans lines, and the continuation lines are
+    # indented, which bare ``ast.parse`` reads as an IndentationError.
+    carried = _union_class_names(
+        ast.parse(f"({element.group(1).strip()})", mode="eval").body, aliases
+    )
+    if carried != expected:
+        raise RuntimeError(
+            f"core/format.py: {class_name}.{field_name} carries {sorted(carried)}, but "
+            f"{union.alias} was built from {sorted(expected)}. The generated union and "
+            "the branch derivation disagree, so the field would not be opened over the "
+            "classes the union covers."
+        )
+    opened = annotation[: element.start(1)] + union.alias + annotation[element.end(1) :]
+    return content[:start] + opened + content[end:]
+
+
+def emit_open_asset_unions() -> None:
+    """Write each :data:`_OPEN_ASSET_UNIONS` definition into ``core/format.py``.
+
+    Raises when the module, a base, or an anchor class is missing: an asset union
+    that silently failed to open would turn every unrecognised asset type into a
+    whole-response validation failure, which is the thing it exists to prevent.
+    """
+    print("Emitting the open asset unions into core/format.py...")
+
+    path = OUTPUT_DIR / "core" / "format.py"
+    if not path.exists():
+        raise RuntimeError("core/format.py does not exist; the asset unions have no home")
+    content = path.read_text()
+    for union in _OPEN_ASSET_UNIONS:
+        branches = _asset_branches(ast.parse(content), union.base)
+        anchor = re.compile(rf"^class {re.escape(union.before_class)}\b", re.MULTILINE)
+        match = anchor.search(content)
+        if match is None:
+            raise RuntimeError(
+                f"core/format.py: no 'class {union.before_class}' to emit "
+                f"{union.alias} ahead of"
+            )
+        content = (
+            content[: match.start()]
+            + _render_open_asset_union(union, branches)
+            + "\n\n\n"
+            + content[match.start() :]
+        )
+        expected = {name for name, _literal in branches}
+        if union.group_branch:
+            expected.add(union.group_branch)
+        content = _carry_open_asset_union(content, union, expected)
+        print(
+            f"  ✓ {union.alias}: {len(branches)} branch(es) plus the fallback, carried by "
+            f"{union.carried_by[0]}.{union.carried_by[1]}"
+        )
+    content = _ensure_module_import(content, "from pydantic import Discriminator, Tag")
+    path.write_text(content)
+
+
 class ReadbackClone(NamedTuple):
     """A tolerant read-back node, emitted next to the class whose fields it copies.
 
@@ -8371,8 +8657,9 @@ def main(argv: list[str] | None = None) -> int:
         # After the import-cleanup passes, which would otherwise read the import
         # a compatibility annotation adds as unused -- nothing had referenced the
         # aliased name at the moment they ran.
-        # Ahead of the annotations that reference the clones it emits.
+        # Ahead of the annotations that reference what they emit.
         emit_readback_clones,
+        emit_open_asset_unions,
         declare_compatibility_annotations,
         # Last of all the class-shaping passes: every pass above edits a class
         # by name, and the shared base carries what they put on the flat one.
