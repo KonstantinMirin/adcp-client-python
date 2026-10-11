@@ -140,17 +140,29 @@ def _module_name(path: Path) -> str:
 
 
 def _types_tree_population() -> list[str]:
-    """Every package root under ``adcp.types``, plus one leaf from each.
+    """Every package root under ``adcp.types``, plus leaves: ALL at the root, one deeper.
 
     DERIVED, so a package added later is covered without anyone remembering.
-    One leaf per package rather than all 1139 modules, and that is a reduction
-    with a reason rather than a sample: the amplifier is a package ``__init__``,
-    so when one runs eagerly and its domain is in a cycle, EVERY leaf of that
-    package fails and one of them detects it. The full tree is about an hour of
-    CPU here -- a subprocess import costs ~3s and 1057 of the 1139 modules
-    import across package boundaries, so there is no cheaper honest subset --
-    which is a scan to run by hand when the import graph is reshaped, not a
-    guard.
+
+    ONE leaf per DEEP package rather than all 1139 modules, and that is a
+    reduction with a reason rather than a sample: the amplifier there is a
+    package ``__init__``, so when one runs eagerly and its domain is in a cycle,
+    EVERY leaf of that package fails and one of them detects it. The full tree is
+    about an hour of CPU here -- a subprocess import costs ~3s and 1057 of the
+    1139 modules import across package boundaries, so there is no cheaper honest
+    subset -- which is a scan to run by hand when the import graph is reshaped,
+    not a guard.
+
+    ALL leaves of the ``adcp.types`` ROOT, because that argument does not hold
+    there and sampling one of them hid a live defect for as long as this
+    population existed. The root's 27 top-level modules are not leaves of a
+    generated domain that fails together; each is hand-written and cross-imports
+    on its own terms. The sampled one was ``aliases`` (alphabetically first) and
+    the broken one was ``projections``, which imported four TYPE NAMES from
+    ``adcp.types`` -- routed through the single ``_eager`` module that binds the
+    whole surface and that imports ``projections`` back, so the module could not
+    be imported first. This test was green throughout (salesagent-8qela.77).
+    26 extra subprocess imports, pooled, ~10s.
     """
     population: set[str] = set()
     for init in sorted(SRC_TYPES.rglob("__init__.py")):
@@ -163,9 +175,20 @@ def _types_tree_population() -> list[str]:
             if path.name != "__init__.py" and not path.name.startswith("_")
         )
         if leaves:
-            population.add(_module_name(leaves[0]))
+            population.update(
+                _module_name(leaf) for leaf in (leaves if init.parent == SRC_TYPES else leaves[:1])
+            )
     population -= _DELIBERATE_IMPORT_REFUSALS
     assert len(population) > 30, f"population is {len(population)}: that is not the package tree"
+    # The package's own entry point, named rather than left to the derivation.
+    # Removing an edge a cycle runs through can trade a direct-import failure for
+    # a worse top-level one, and a population that stopped covering the root
+    # would let that pass.
+    assert "adcp.types" in population, "the population lost the package entry point"
+    assert "adcp.types.projections" in population, (
+        "the population lost adcp.types.projections, whose import-first failure "
+        "this sampling could not see before (salesagent-8qela.60 / .77)"
+    )
     return sorted(population)
 
 
