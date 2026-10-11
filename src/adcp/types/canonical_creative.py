@@ -92,6 +92,7 @@ from pydantic import (
     ConfigDict,
     Field,
     GetJsonSchemaHandler,
+    ModelWrapValidatorHandler,
     PrivateAttr,
     SerializerFunctionWrapHandler,
     TypeAdapter,
@@ -597,9 +598,35 @@ class CanonicalBoundaryModel(AdCPBaseModel):
         if removed:
             cls.model_rebuild(force=True)
 
-    @model_validator(mode="before")
+    @model_validator(mode="wrap")
     @classmethod
-    def _reject_legacy_creative_identity(cls, value: Any) -> Any:
+    def _reject_legacy_creative_identity(
+        cls, value: Any, handler: ModelWrapValidatorHandler[Any]
+    ) -> Any:
+        """Refuse a removed creative-identity key, naming the migration.
+
+        WRAP rather than BEFORE, and the kind is what makes this reachable. A
+        generated branch that FORBIDS the same key refuses it too, through
+        ``_c.absent``, with the generic sentence every forbidden key gets:
+        "format_id is not accepted by this request shape". That sentence states
+        the refusal and not the remedy, and a buyer told a field is unusable
+        needs to be told what to use instead.
+
+        Both were ``mode="before"``, and the generated one won. Measured: a
+        same-named override keeps the slot where the name was FIRST collected
+        walking the MRO, so declaring this on the most derived class does not
+        move it -- the generated validator still ran first and this one never
+        saw the key. A wrap validator wraps the whole inner validation,
+        including every before-validator a subclass declares, so precedence
+        here comes from the validator's KIND and not from a collection order
+        nobody controls. Measured on both: wrap-on-the-base wins, and keeps
+        winning through a further refinement.
+
+        The two refusals are not redundant and neither is deleted. This one
+        reads a PATH, so it catches a legacy identity nested anywhere in the
+        document; ``_ABSENT`` is top-level keys only. The generic refusal still
+        answers for every other key a shape forbids.
+        """
         found = _legacy_creative_identity_path(
             value,
             allow_root_v1_ref=cls.__adcp_format_declaration_scope__,
@@ -609,7 +636,7 @@ class CanonicalBoundaryModel(AdCPBaseModel):
             raise ValueError(
                 f"{found} contains legacy creative identity; use an explicit Legacy* model"
             )
-        return value
+        return handler(value)
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         kwargs.setdefault("serialize_as_any", False)
