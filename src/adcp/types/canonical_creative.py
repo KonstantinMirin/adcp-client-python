@@ -826,8 +826,18 @@ class Product(_LegacyProduct, CanonicalBoundaryModel):
     if TYPE_CHECKING:  # the removed field, hidden from the constructor too
         format_ids: _RemovedFormatIds = Field(default=None, init=False)
 
-    format_options: list[Format] = Field(  # type: ignore[assignment]
-        min_length=1, description="Canonical creative formats accepted by this product."
+    # Optional, because core/product.json requires it in no branch unconditionally:
+    # the root's ``required`` is [product_id, name, description, publisher_properties,
+    # delivery_type, pricing_options, reporting_capabilities], and ``format_options``
+    # is required only inside the ``anyOf`` branch "Canonical-format product". An
+    # anyOf branch's requirement is not the root's, so narrowing the ITEM type here
+    # is right and dropping ``| None`` was not -- it made the other branch
+    # unconstructible. ``placements`` two lines down is the same narrowing done
+    # correctly, and ``pricing_options`` is required because the ROOT requires it.
+    format_options: list[Format] | None = Field(  # type: ignore[assignment]
+        default=None,
+        min_length=1,
+        description="Canonical creative formats accepted by this product.",
     )
     placements: list[Placement] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
     pricing_options: list[CanonicalPricingOption] = Field(min_length=1)
@@ -1224,7 +1234,16 @@ UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2 | Upd
 class SyncCreativesRequest(_LegacySyncCreativesRequest, CanonicalBoundaryModel):
     """Canonical creative sync request; creatives are canonical assets."""
 
-    creatives: list[CreativeAsset] = Field(min_length=1)  # type: ignore[assignment]
+    # Optional, matching ``PackageRequest.creatives`` above and the generated parent:
+    # creative/sync-creatives-request.json requires only [idempotency_key, account] at
+    # the root and ``creatives`` only inside an untitled ``anyOf`` branch. Requiring it
+    # here made the SDK refuse a schema-valid sync_creatives request that takes the
+    # other branch -- a request model, so this was a refusal and not a typing
+    # inconvenience. Narrowing the item type to the canonical asset is the part that
+    # was correct.
+    creatives: list[CreativeAsset] | None = Field(  # type: ignore[assignment]
+        default=None, min_length=1
+    )
 
 
 class ListCreativesRequest(_LegacyListCreativesRequest, CanonicalBoundaryModel):
