@@ -86,7 +86,6 @@ def _decode_cursor(cursor: str, expected_query_hash: str, secret: bytes | None =
             "pagination.cursor is malformed or expired. Omit the cursor to restart from page 1."
         ),
         field="pagination.cursor",
-        recovery="correctable",
     )
     try:
         # Restore stripped padding before decoding.
@@ -118,7 +117,6 @@ def _decode_cursor(cursor: str, expected_query_hash: str, secret: bytes | None =
                 "issued. Omit the cursor to restart pagination with the new filter values."
             ),
             field="pagination.cursor",
-            recovery="correctable",
             suggestion="Omit the cursor to start from the first page with the updated filters.",
         )
 
