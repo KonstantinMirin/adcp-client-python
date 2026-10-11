@@ -357,3 +357,151 @@ def test_an_accepted_document_constructs_as_a_branch_and_serializes() -> None:
         for mode in ("python", "json"):
             constructed.model_dump(mode=mode)
         constructed.model_dump_json()
+
+
+#: An error type that NAMES A KEY THE DOCUMENT DOES NOT CARRY. Its last ``loc``
+#: element is the absent key, so only the prefix can be resolved against the
+#: submitted document. Every other type points at something that is there.
+_NAMES_AN_ABSENT_KEY = frozenset({"missing"})
+
+
+def _copy_with(document: Any, path: tuple[Any, ...], value: Any) -> Any:
+    """``document`` with ``path`` replaced by ``value``, copied along the way."""
+    if not path:
+        return value
+    head, rest = path[0], path[1:]
+    if isinstance(document, dict):
+        return {**document, head: _copy_with(document[head], rest, value)}
+    return [
+        _copy_with(item, rest, value) if index == head else item
+        for index, item in enumerate(document)
+    ]
+
+
+def _leaf_paths(document: Any, prefix: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
+    """Every scalar position in ``document``, deepest first.
+
+    Deepest first because depth is where the defect this grades lived: a
+    one-element path cannot tell a prepended element from the key itself in
+    every spelling, and a path three levels down can.
+
+    An EMPTY container is a leaf: three of these roots accept a document whose
+    only value is ``[]`` (``{"accounts": []}``), and descending into it yields
+    no position at all -- which left them with nothing to corrupt and dropped
+    them out of the grading silently.
+    """
+    if isinstance(document, (dict, list)) and not document:
+        return [prefix]
+    if isinstance(document, dict):
+        found = [
+            path for key, value in document.items() for path in _leaf_paths(value, (*prefix, key))
+        ]
+    elif isinstance(document, list):
+        found = [
+            path
+            for index, value in enumerate(document)
+            for path in _leaf_paths(value, (*prefix, index))
+        ]
+    else:
+        return [prefix]
+    return sorted(found, key=len, reverse=True)
+
+
+def _addresses(document: Any, loc: tuple[Any, ...], error_type: str) -> bool:
+    """Whether ``loc`` OPENS with a path INTO ``document``.
+
+    Resolution, not spelling. A synthetic element is a plain string
+    indistinguishable from a legitimate key by inspection -- a union member is
+    spelled by its class name, and a wrapped one by a core-schema expression --
+    so a predicate that recognised them would be a list of spellings that the
+    next spelling escapes. Walking the submitted document cannot be escaped: an
+    element that is not a key or an index it carries does not resolve.
+
+    THE FIRST ELEMENT, which is where the label of a split root's own union sits
+    by construction: the hook installs that union AT the root, so its choice
+    label is prepended to every error the root reports and lands at position
+    zero. A deeper element can also fail to resolve, from a union that is a
+    FIELD's declared type -- measured as ``/account/AccountReference1/account_id``
+    on the canonical create request, with this root cause already fixed. That is
+    salesagent-8qela.46, and it is a different question: the dotted
+    ``error.field`` a pydantic loc reaches a buyer as is graded by
+    ``test_genuine_union_keeps_both_variant_errors_and_locations`` to KEEP a
+    genuine union's member name, so widening this to the whole path is that
+    issue's acceptance test rather than this one's assertion.
+    """
+    opening = loc[:-1] if error_type in _NAMES_AN_ABSENT_KEY else loc
+    if not opening:
+        return True
+    element = opening[0]
+    if isinstance(document, dict):
+        return element in document
+    return isinstance(element, int) and isinstance(document, list) and element < len(document)
+
+
+def test_a_refusal_points_at_a_path_in_the_submitted_document() -> None:
+    """Every ``loc`` a root with branches reports resolves against the document.
+
+    A pydantic union does not report a document path: it prefixes every error
+    with the label of the choice that produced it, which for these roots is a
+    class this package generated, and for a branch carrying a compiled validator
+    is pydantic's own spelling of the wrapper --
+    ``function-after[_require_schema_required_group(), <Branch>]``. That element
+    reaches a buyer: the three places that build an INVALID_REQUEST join a loc
+    into ``error.field``, and ``core/error.json`` specifies ``issues[].pointer``
+    as an RFC 6901 JSON Pointer to the offending field in the request payload.
+    A buyer resolving either against what it sent gets nothing.
+
+    The element's source is the UNION, not the validator. Measured: a union of
+    two plain models reports ``('PlainA', 'packages', 0, 'geo', 0)`` for a
+    document error at ``/packages/0/geo/0``, the same models carrying a
+    model-level validator report the ``function-after`` spelling, and a FLAT
+    model with that validator adds nothing at all. So this grades the union
+    every root with branches installs, over all of them, rather than the one
+    root whose pointer was reported.
+
+    The document is the one the sibling tests synthesize, with its DEEPEST leaf
+    corrupted, so a resolvable path here is a path through a real request rather
+    than through a one-key probe.
+    """
+    graded = {
+        name: root
+        for name, root in _roots_with_branches().items()
+        if name not in _WITHOUT_A_SYNTHESIZABLE_DOCUMENT
+    }
+    # A derivation that matches nothing is green, so the floor is asserted and
+    # the root whose pointer carried a validator's name is named.
+    assert len(graded) >= 18, f"only {len(graded)} roots left after the exclusion"
+    assert "adcp.types.canonical_creative.CreateMediaBuyRequest" in graded
+
+    refused = 0
+    for name, root in sorted(graded.items()):
+        document = _accepted_document(root)
+        assert document is not None, (
+            f"{name}: no document could be synthesized, so this root is graded "
+            "vacuously -- add it to _WITHOUT_A_SYNTHESIZABLE_DOCUMENT with the reason"
+        )
+        # A value no field accepts, at the deepest position that produces a
+        # refusal: a leaf typed ``Any`` accepts anything, so which position
+        # refuses is a fact about the schema and is found rather than assumed.
+        entries: list[Any] = []
+        for path in _leaf_paths(document):
+            corrupted = _copy_with(document, path, object())
+            try:
+                root.model_validate(corrupted)
+            except ValidationError as exc:
+                entries = exc.errors()
+                break
+        if not entries:
+            continue
+        refused += 1
+        for entry in entries:
+            loc = tuple(entry["loc"])
+            assert _addresses(corrupted, loc, entry["type"]), (
+                f"{name}: issues[].pointer would be "
+                f"/{'/'.join(str(element) for element in loc)}, which does not "
+                f"resolve against the submitted document -- its keys are "
+                f"{sorted(corrupted)}. Corrupted {path}, error {entry['type']}."
+            )
+    # The corruption has to actually refuse, or every assertion above is skipped
+    # by a loop that never runs.
+    assert refused >= 18, f"only {refused} of {len(graded)} roots refused the corrupted document"
