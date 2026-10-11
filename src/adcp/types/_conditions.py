@@ -52,6 +52,7 @@ __all__ = [
     "length",
     "matches",
     "matching_keys",
+    "members",
     "only",
     "others",
     "sent",
@@ -193,10 +194,21 @@ def some(value: Any, predicate: Predicate) -> bool:
 
 
 def _named_members(value: Any) -> Iterable[str]:
+    """The names the document carried, each once.
+
+    pydantic puts an extra a model KEPT into ``model_fields_set`` as well as
+    ``model_extra``, so concatenating the two names every extra twice. Four of
+    the five callers quantify over these names and cannot see a duplicate;
+    :func:`members` lengths them, and for it a duplicate is a wrong count -- an
+    open model carrying two members read as three, so ``maxProperties: 2``
+    refused a document the schema accepts. Both sources are still read, so a
+    name present in only one of them still counts.
+    """
     if isinstance(value, Mapping):
         return list(value)
     if _is_model(value):
-        return list(value.model_fields_set) + list(getattr(value, "model_extra", None) or ())
+        extras = getattr(value, "model_extra", None) or ()
+        return list(dict.fromkeys([*value.model_fields_set, *extras]))
     return ()
 
 

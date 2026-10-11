@@ -314,6 +314,38 @@ def test_unique_compares_unhashable_elements() -> None:
     assert c.unique("not an array")
 
 
+def test_members_counts_what_the_document_carried_not_what_the_model_declares() -> None:
+    """``minProperties``/``maxProperties``, which ``length`` cannot measure.
+
+    A pydantic object has no ``__len__``, so routing these two through
+    :func:`c.length` sent every object down its ``TypeError`` branch and
+    returned True -- the validator existed and graded nothing. The count is
+    ``model_fields_set`` plus the extras a model kept, which is the question
+    :func:`c.supplied` asks, counted instead of tested: a default the caller
+    never sent is not a member.
+
+    The open-model case is here because it is where this went wrong a second
+    time. pydantic records a kept extra in BOTH ``model_fields_set`` and
+    ``model_extra``, so naming them by concatenation counted every extra twice
+    and ``maxProperties`` refused documents the schema accepts.
+    """
+    subject = _Subject.model_validate({"packages": ["pkg_1"], "proposal_id": None})
+
+    assert c.members(subject, minimum=2), "the document carried two members"
+    assert not c.members(subject, minimum=3), "and pacing's default is not a third"
+    assert c.members(subject, maximum=2)
+    assert not c.members(subject, maximum=1)
+
+    open_subject = _Open.model_validate({"declared": 1, "undeclared": 2})
+    assert c.members(open_subject, minimum=2), "an extra the model kept is a member"
+    assert not c.members(open_subject, minimum=3), "but it is ONE member, not two"
+    assert c.members(open_subject, maximum=2)
+
+    assert c.members({"a": 1, "b": 2}, minimum=2), "a mapping answers from its keys"
+    assert not c.members({}, minimum=1)
+    assert c.members("not an object", minimum=5), "vacuous off its own type"
+
+
 def test_every_primitive_the_vocabulary_exports_is_graded_here() -> None:
     """A primitive the generator can emit but nothing grades would be a hole.
 
