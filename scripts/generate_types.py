@@ -168,6 +168,93 @@ def _normalize_schema_ref_target(
 #: with their schema.
 OPEN_VOCABULARY_SCHEMAS = {Path("core/canonical-format-kind.json")}
 
+#: Fields the implementation needs that the PINNED schema does not declare.
+#:
+#: A pin gap is not a defect in the generated tree and not a strictness
+#: decision: it is a field a cooperating seller and buyer have agreed on, whose
+#: schema change is still upstream. The SDK has to carry it, and WHERE it
+#: carries it decides whether it works.
+#:
+#: Declared here, as a SCHEMA transform, for the same reason
+#: ``OPEN_VOCABULARY_SCHEMAS`` is: the generator then emits the field like any
+#: other, with its constraints and its description, and every generated class
+#: that nests the owning schema gets it by generation rather than by a patch.
+#: That is the whole difference. Patching the class after generation reaches
+#: only the class, and ``core/reporting-webhook.json`` is nested by five
+#: request schemas that each name the generated type -- so a parsed request
+#: produced a webhook without the field, and a hand-written subclass carrying
+#: it was reachable only by a caller who named it.
+#:
+#: The upstream issue is cited in the field's own ``description``, so the
+#: citation reaches the GENERATED OUTPUT and a reader of the model sees why the
+#: field is there. Each gap also has one ``DECLARED`` entry in
+#: ``tests/conformance/_schema_parity.py``, which is the sunset: that file fails
+#: on a declared divergence that no longer occurs, so the entry cannot outlive
+#: the upstream fix.
+PIN_GAP_FIELDS: dict[Path, tuple[dict[str, Any], ...]] = {
+    Path("core/reporting-webhook.json"): (
+        {
+            "pointer": "",
+            "name": "operation_id",
+            "schema": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255,
+                "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
+                "description": (
+                    "Opt-in AdCP 3.2 reporting-stream correlation extension pending "
+                    "adcp#7885. Cooperating sellers store and echo the buyer-supplied "
+                    "value verbatim in media_buy_delivery webhook payloads. Confirm "
+                    "seller support before use; registrations without a value cannot "
+                    "enable this interim delivery path."
+                ),
+            },
+        },
+    ),
+}
+
+
+def add_pin_gap_fields(schema: Any, current_schema_rel_path: Path) -> Any:
+    """Declare each :data:`PIN_GAP_FIELDS` entry on the schema that owns it.
+
+    Additive and position-addressed: the field is written into the ``properties``
+    of the node the entry's pointer names, and never into ``required`` -- a gap
+    field is opt-in by construction, because a seller that has not adopted it
+    cannot be sent one.
+
+    Raises if the pointer does not resolve or the property already exists. The
+    second is the loud half: when upstream declares the field, this entry stops
+    being a gap and the run fails here rather than silently shadowing a schema
+    that now disagrees with it.
+    """
+    entries = PIN_GAP_FIELDS.get(current_schema_rel_path)
+    if not entries:
+        return schema
+    for entry in entries:
+        node = schema
+        for segment in [part for part in entry["pointer"].split("/") if part]:
+            if not isinstance(node, dict) or segment not in node:
+                raise RuntimeError(
+                    f"{current_schema_rel_path}: pin-gap pointer {entry['pointer']!r} "
+                    f"does not resolve (stopped at {segment!r})"
+                )
+            node = node[segment]
+        if not isinstance(node, dict):
+            raise RuntimeError(
+                f"{current_schema_rel_path}: pin-gap pointer {entry['pointer']!r} "
+                "names a non-object node"
+            )
+        properties = node.setdefault("properties", {})
+        if entry["name"] in properties:
+            raise RuntimeError(
+                f"{current_schema_rel_path}: {entry['name']!r} is declared by the schema "
+                "now, so it is no longer a pin gap. Delete its PIN_GAP_FIELDS entry and "
+                "its DECLARED entry in tests/conformance/_schema_parity.py."
+            )
+        properties[entry["name"]] = copy.deepcopy(entry["schema"])
+    return schema
+
+
 #: Keys worth keeping when a reference is opened: they document the field and
 #: carry no validation, so keeping them leaves the generated annotation's
 #: description intact.
@@ -1035,6 +1122,7 @@ def flatten_schemas(temp_dir: Path):
         # ``_normalize_schema_ref_target`` resolves. See OPEN_VOCABULARY_SCHEMAS
         # for why one enum is deliberately not reproduced.
         schema = open_vocabulary_refs(schema, rel_path)
+        schema = add_pin_gap_fields(schema, rel_path)
         schema = rewrite_refs(schema, rel_path)
         schema = stabilize_inlined_core_refs(schema, rel_path)
         schema = stabilize_nested_discriminators(schema, rel_path)
