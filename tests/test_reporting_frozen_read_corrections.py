@@ -182,17 +182,20 @@ async def test_ownerless_revisionless_status_does_not_certify_multiple_obligatio
 
 
 @pytest.mark.parametrize("explicit", [False, True])
-@pytest.mark.parametrize("binding", ["owner", "revision"])
-async def test_exact_status_binding_counts_once_even_when_logical_keys_match(explicit, binding):
+async def test_exact_status_binding_counts_once_even_when_logical_keys_match(explicit):
+    """A revision-only binding is not a case: the wire requires the owner.
+
+    ``core/reporting-consumer-status.json`` allOf[0] requires
+    ``reporting_obligation_id`` of a ``received`` status, so the unowned
+    parametrization this test used to carry described a page no conforming
+    seller sends. That the read refuses it is graded by
+    ``test_legacy_typed_status_without_owner_uses_exact_revision_binding``; the
+    owner binding below is the case that exists.
+    """
     raw = _distinct_histories(2)
     status = _with_status(_history())["consumer_statuses"][0]
     status["reporting_revision_id"] = raw["revisions"][0]["reporting_revision_id"]
-    if binding == "owner":
-        status["reporting_obligation_id"] = raw["periods"][0]["reporting_obligation_id"]
-    else:
-        # Pure already-typed legacy tolerance; rc6 received-status wire still
-        # requires the owner, and these tests claim no mounted compatibility.
-        status.pop("reporting_obligation_id")
+    status["reporting_obligation_id"] = raw["periods"][0]["reporting_obligation_id"]
     raw["consumer_statuses"] = [status]
     raw["periods"][0].update(
         consumer_status_count=1, current_consumer_status_id=status["reporting_status_id"]
@@ -309,7 +312,11 @@ def _partly_owned_legacy_history() -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("field", "declared"),
     [
-        ("revision_count", 0),
+        # A revision_count of 0 is absent: core/reporting-obligation.json
+        # allOf[5] requires at least one revision of a published obligation
+        # (allOf[1] again at a healthy or complete health), so no page carries
+        # it. The below-bound case is still graded by the three counts that
+        # follow, which the spec leaves free.
         ("revision_count", 3),
         ("adjustment_count", 0),
         ("adjustment_count", 2),

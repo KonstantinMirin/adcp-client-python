@@ -130,7 +130,14 @@ def _with_status(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def _counts(raw: dict[str, Any]) -> None:
-    """Recompute fixture counts; mutation tests deliberately run after this."""
+    """Recompute fixture counts; mutation tests deliberately run after this.
+
+    Counts only. The health these counts constrain
+    (``core/reporting-obligation.json`` allOf[7]) is NOT derived here: callers
+    recount before changing the reconciliation mode, so a health decided here
+    would be decided against a mode the fixture has not reached yet. The sites
+    that take the receipt evidence away move the health themselves.
+    """
     for obligation in raw["periods"]:
         owner = obligation["reporting_obligation_id"]
         materials = [m for m in raw["materializations"] if m["reporting_obligation_id"] == owner]
@@ -150,11 +157,36 @@ def _counts(raw: dict[str, Any]) -> None:
             accepted_adjustment_receipt_count=sum(
                 r["status"] == "accepted" for r in raw.get("adjustment_receipts", [])
             ),
+            pending_adjustment_count=sum(
+                not any(
+                    receipt["reporting_adjustment_id"] == adjustment["reporting_adjustment_id"]
+                    and receipt["status"] == "accepted"
+                    for receipt in raw.get("adjustment_receipts", [])
+                )
+                for adjustment in raw.get("adjustments", [])
+            ),
         )
     raw["pagination"] = {
         "has_more": False,
         "total_count": sum(len(raw.get(name, [])) for name in ARRAYS),
     }
+
+
+def _counts_with_health(raw: dict[str, Any]) -> None:
+    """Recount, then let the health follow what the receipt evidence now shows.
+
+    ``core/reporting-obligation.json`` allOf[7]: a consumer_receipt obligation
+    reads healthy or complete only with an accepted receipt and nothing pending.
+    The sites that take that evidence away call this rather than :func:`_counts`,
+    because a complete health over absent evidence is a page the spec refuses
+    and the read never gets past it to the condition under test.
+    """
+    _counts(raw)
+    for obligation in raw["periods"]:
+        if obligation["reconciliation_mode"] == "consumer_receipt" and (
+            obligation["accepted_receipt_count"] == 0 or obligation["pending_adjustment_count"] != 0
+        ):
+            obligation["health"] = "waiting"
 
 
 def _declare_pending(raw: dict[str, Any], count: int) -> None:
@@ -265,19 +297,22 @@ async def test_full_read_discards_incremental_omissions_and_cursor_but_keeps_pag
 
 
 async def test_health_finality_and_exact_revision_selectors_cannot_hide_history() -> None:
-    client = Pages(_pages(_history()))
-    request = _request(
-        view="revision",
-        reporting_revision_id=REVISION_ID,
-        health=["action_required"],
-        finality=["official"],
-    )
-    await load_reporting_ledger(client, request)
-    assert all(r.view.value == "periods" for r in client.requests)
-    assert all(
-        r.health is None and r.finality is None and r.reporting_revision_id is None
-        for r in client.requests
-    )
+    # media-buy/get-reporting-status-request.json allOf[3] forbids health,
+    # finality and every other filter on a revision view, so the narrowing
+    # selectors and the exact-revision view are two requests rather than one.
+    # Both are dropped, which is what this test is about.
+    for changes in (
+        {"view": "periods", "health": ["action_required"], "finality": ["official"]},
+        {"view": "revision", "reporting_revision_id": REVISION_ID},
+    ):
+        client = Pages(_pages(_history()))
+        await load_reporting_ledger(client, _request(**changes))
+        assert client.requests
+        assert all(r.view.value == "periods" for r in client.requests)
+        assert all(
+            r.health is None and r.finality is None and r.reporting_revision_id is None
+            for r in client.requests
+        )
 
 
 @pytest.mark.parametrize("outside", ["horizon", "generation", "media-buy", "retention"])
@@ -461,11 +496,24 @@ async def test_positive_status_count_requires_its_exact_current_status_dependenc
 
 
 async def test_legacy_typed_status_without_owner_uses_exact_revision_binding() -> None:
+    """A received status states its owner, so an unowned one never reaches binding.
+
+    ``core/reporting-consumer-status.json`` allOf[0] requires
+    ``reporting_obligation_id`` of a ``received`` status, and allOf[1..4] require
+    it of every other status except ``obligation_missing``, which forbids a
+    revision binding as well. An unowned typed status is therefore not a page a
+    conforming seller can send, and the read refuses it ahead of the
+    reconciler's own exact-revision fallback.
+    """
     raw = _with_status(_history())
     raw["consumer_statuses"][0].pop("reporting_obligation_id")
-    ledger = await _load(raw)
-    assert ledger.consumer_statuses[0].reporting_obligation_id is None
-    assert evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW).definitive
+
+    with pytest.raises(ValidationError):
+        GetReportingStatusResponse.model_validate(_pages(raw)[-1])
+
+    with pytest.raises(ReportingReconciliationError) as error:
+        await _load(raw)
+    assert error.value.code == "STATUS_READ_FAILED"
 
 
 @pytest.mark.parametrize("bounds", [{"max_bytes": 100}, {"max_records": 4}])
@@ -554,7 +602,7 @@ async def test_every_receipt_chain_is_exact_and_complete(kind, topology) -> None
         first.update(status="accepted")
         first.pop("rejection_codes")
     raw[array] = records
-    _counts(raw)
+    _counts_with_health(raw)
     with pytest.raises(ReportingReconciliationError) as error:
         await _load(raw)
     assert error.value.code == "INVALID_RECEIPT_CHAIN"
@@ -577,11 +625,11 @@ async def test_rejected_predecessors_and_only_the_accepted_current_leaf_satisfy(
         ),
         build(reporting_receipt_id="reporting-receipt-root", status="rejected"),
     ]
-    _counts(raw)
+    _counts_with_health(raw)
     ledger = await _load(raw)
     assert evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW).definitive
     raw[array][0].update(status="rejected", rejection_codes=["EVIDENCE_MISMATCH"])
-    _counts(raw)
+    _counts_with_health(raw)
     ledger = await _load(raw)
     result = evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW)
     assert not result.definitive
@@ -598,7 +646,7 @@ async def test_receipt_id_namespace_and_cross_kind_predecessors_are_not_intercha
         raw["receipts"][0].update(status="rejected", rejection_codes=["EVIDENCE_MISMATCH"])
         key = "reporting_receipt_id" if collision else "supersedes_reporting_receipt_id"
         raw["adjustment_receipts"][0][key] = raw["receipts"][0]["reporting_receipt_id"]
-        _counts(raw)
+        _counts_with_health(raw)
         with pytest.raises(ReportingReconciliationError) as error:
             await _load(raw)
         assert error.value.code == "INVALID_RECEIPT_CHAIN"
@@ -634,7 +682,7 @@ async def test_receipt_predecessors_cannot_cross_exact_targets(kind) -> None:
         predecessor["reporting_adjustment_id"] = "another-adjustment"
     raw[array][0]["supersedes_reporting_receipt_id"] = "receipt-other-target"
     raw[array].append(predecessor)
-    _counts(raw)
+    _counts_with_health(raw)
     with pytest.raises(ReportingReconciliationError) as error:
         await _load(raw)
     assert error.value.code == "INVALID_RECEIPT_CHAIN"
@@ -702,7 +750,20 @@ async def test_accepted_receipt_stays_bound_to_its_materialization_after_later_o
     elif later == "expired":
         newer["resource"]["expires_at"] = "2026-09-02T23:00:00Z"
     elif later == "corrupt":
-        raw["periods"][0]["health"] = "action_required"
+        # core/reporting-obligation.json allOf[8]: an action_required health
+        # names at least one issue, so the health and the record move together.
+        raw["periods"][0].update(
+            health="action_required",
+            issues=[
+                {
+                    "issue_id": "delivery-failed",
+                    "code": "DELIVERY_FAILED",
+                    "severity": "action_required",
+                    "responsible_party": "seller",
+                    "recommended_action": "contact_seller",
+                }
+            ],
+        )
     elif later == "bad-producer-evidence":
         newer["verification"]["row_count"] = 999
     raw["materializations"].append(newer)
@@ -813,9 +874,7 @@ async def test_pending_adjustment_count_matches_only_the_current_leaf(accepted) 
     assert result.definitive is accepted
     # The waiting health the schema forces alongside a pending adjustment would
     # carry this assertion on its own, so the adjustment condition is named.
-    assert (
-        "MISSING_MATCHING_ADJUSTMENT_RECEIPT" in result.obligations[0].reasons
-    ) is not accepted
+    assert ("MISSING_MATCHING_ADJUSTMENT_RECEIPT" in result.obligations[0].reasons) is not accepted
     _declare_pending(raw, int(accepted))
     with pytest.raises(ReportingReconciliationError) as error:
         await _load(raw)

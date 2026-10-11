@@ -313,7 +313,10 @@ def _response(receipts: list[dict[str, object]] | None = None) -> dict[str, obje
                 issues=[],
             )
         else:
-            item.update(reconciliation_status="rejected", health="waiting")
+            # allOf[3]: a published consumer_receipt obligation whose
+            # reconciliation was rejected reads action_required and names the
+            # rejection, the same way allOf[2] states the pending case.
+            item.update(reconciliation_status="rejected", health="action_required")
             item["issues"][0].update(
                 issue_id=item["issues"][0]["issue_id"].replace("required", "rejected"),
                 code="RECEIPT_REJECTED",
