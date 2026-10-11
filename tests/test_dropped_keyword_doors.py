@@ -29,17 +29,23 @@ One live assertion per door, so a regression in any one of them fails here.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
 import adcp.types._conditions as _c
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from compile_conditions import compile_condition  # noqa: E402
-from schema_constraints import (  # noqa: E402
+# ``from scripts.x import y``, like the other 25 test files that reach into
+# scripts/, and NOT a ``sys.path`` insert onto scripts/ with a top-level import.
+# ``scripts/compile_conditions.py`` and ``scripts/branch_classes.py`` both PREFER
+# the top-level spelling and fall back to the package one, so putting scripts/ on
+# ``sys.path`` makes BOTH spellings importable -- and then ``compile_condition``
+# tests ``isinstance`` against ``schema_constraints.AllOf`` while a caller holds
+# ``scripts.schema_constraints.AllOf``. Two classes, same name, so the check is
+# False and the emitter reports a node it cannot render. Measured: with this file
+# collected, ``AllOf`` had 4 bindings over 2 distinct class objects, and
+# test_branch_classes and test_root_constraint_emission failed for that reason
+# alone.
+from scripts.compile_conditions import compile_condition
+from scripts.schema_constraints import (
     COMPILED_KEYWORDS,
     DROPPED_KEYWORDS,
     LOGIC_KEYS,
