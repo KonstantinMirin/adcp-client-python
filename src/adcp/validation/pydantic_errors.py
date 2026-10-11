@@ -140,6 +140,13 @@ _BOUND_CTX_KEY: dict[str, str] = {
 _OPAQUE_TYPES = frozenset({"value_error", "assertion_error"})
 
 
+class _Unresolved:
+    """Sentinel: no document supplied, so ``loc`` is used as given."""
+
+
+_UNRESOLVED = _Unresolved()
+
+
 def _keyword(error_type: str) -> str:
     """The JSON Schema keyword standing in for a pydantic error type."""
     if error_type in _KEYWORD_BY_TYPE:
@@ -178,20 +185,65 @@ def _message(entry: dict[str, Any], keyword: str) -> str:
     return safe_message_for(keyword)
 
 
-def issues_from_validation_error(error: ValidationError) -> list[ValidationIssue]:
+def _document_path(loc: tuple[Any, ...], payload: Any) -> list[Any]:
+    """The elements of ``loc`` that address ``payload``.
+
+    pydantic's ``loc`` is not a document path. It carries synthetic elements
+    that name the validator or the selected class — ``function-after[...]`` for
+    a wrapping validator, and the branch's class name for any union, which
+    pydantic emits with no wrapper involved. Those address nothing in the
+    submitted document, so an RFC 6901 pointer built from them does not
+    resolve against what the peer sent.
+
+    Resolution rather than pattern-matching is deliberate: a union branch name
+    is a plain string indistinguishable from a key, so no list of spellings can
+    be complete. An element is kept when the document actually has it. The last
+    element is kept regardless, since a ``missing`` failure names a key that is
+    absent by definition.
+    """
+    kept: list[Any] = []
+    node = payload
+    for index, element in enumerate(loc):
+        is_last = index == len(loc) - 1
+        if isinstance(node, dict) and element in node:
+            kept.append(element)
+            node = node[element]
+        elif (
+            isinstance(node, list)
+            and isinstance(element, int)
+            and -len(node) <= element < len(node)
+        ):
+            kept.append(element)
+            node = node[element]
+        elif is_last and isinstance(element, str):
+            # A key the document does not have — the whole point of `missing`.
+            kept.append(element)
+    return kept
+
+
+def issues_from_validation_error(
+    error: ValidationError, payload: Any = _UNRESOLVED
+) -> list[ValidationIssue]:
     """Every refusal in ``error``, as value-free :class:`ValidationIssue` rows.
 
     The ``pointer`` is RFC 6901 over pydantic's ``loc``; the ``keyword`` is
     the JSON Schema keyword standing in for pydantic's internal error type;
     the ``message`` is built from schema-side facts only. No field carries a
     payload value or a pydantic type name.
+
+    Pass ``payload`` — the document that was validated — to resolve ``loc``
+    against it, which drops the synthetic elements pydantic adds for a union
+    branch or a wrapping validator. Without it the pointer is whatever ``loc``
+    said, which may name a class rather than a field.
     """
     issues: list[ValidationIssue] = []
     for entry in error.errors():
         keyword = _keyword(str(entry.get("type", "")))
+        loc = tuple(entry.get("loc") or ())
+        path = list(loc) if payload is _UNRESOLVED else _document_path(loc, payload)
         issues.append(
             ValidationIssue(
-                pointer=_path_to_pointer(list(entry.get("loc") or ())),
+                pointer=_path_to_pointer(path),
                 message=_message(dict(entry), keyword),
                 keyword=keyword,
                 # A pydantic model is not a schema document, so there is no

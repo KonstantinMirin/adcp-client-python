@@ -158,18 +158,29 @@ def _json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
 
 
-def _first_message(error: ValidationError) -> str:
+def _first_message(error: ValidationError, payload: Any) -> str:
     """The first refusal a pydantic error carries, with the path it sits on.
 
-    The refusal the generated models raise already names the schema file and
-    the properties the rule reads, so this prefixes the location inside the
-    request and passes the rest through rather than composing a sentence of
-    its own.
+    Goes through the same projection the handler lane uses
+    (:func:`adcp.validation.pydantic_errors.issues_from_validation_error`), so
+    the message is built from schema-side facts and the path is resolved
+    against ``payload``. Passing pydantic's own ``msg`` and ``loc`` through
+    instead put producer-internal names on the wire: ``msg`` for a type
+    mismatch reads "instance of Configuration", and ``loc`` carries the
+    selected union branch's class name, e.g. ``AgentReportingDestination1``.
+
+    ``field`` uses JSONPath-lite, so the location is written that way here too
+    rather than as the RFC 6901 pointer ``issues[].pointer`` carries.
     """
-    first = error.errors()[0]
-    location = ".".join(str(part) for part in first["loc"])
-    message = str(first.get("msg", "")).removeprefix("Value error, ")
-    return f"{location}: {message}" if location else message
+    from adcp.validation.pydantic_errors import issues_from_validation_error
+    from adcp.validation.schema_validator import pointer_to_field
+
+    issues = issues_from_validation_error(error, payload)
+    if not issues:
+        return "the request could not be validated"
+    first = issues[0]
+    location = pointer_to_field(first.pointer)
+    return f"{location}: {first.message}" if location else first.message
 
 
 def _failed(code: str, message: str, *, context: object | None = None) -> SyncPrincipalResponse:
@@ -439,7 +450,7 @@ class PrincipalService:
             # buyer sending one without it parses no further. Raising a pydantic
             # error out of a protocol handler would answer that with a transport
             # failure instead of the rejected response the tool declares.
-            return _failed("INVALID_REQUEST", _first_message(error), context=None)
+            return _failed("INVALID_REQUEST", _first_message(error, request), context=None)
         if not request.configuration.model_fields_set:
             return _failed(
                 "INVALID_REQUEST",
