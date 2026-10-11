@@ -124,8 +124,7 @@ class SchemaValidationError(Exception):
             first = issues[0] if issues else None
             if first is not None:
                 message = (
-                    f"{tool} {side} failed schema validation at "
-                    f"{first.pointer}: {first.message}"
+                    f"{tool} {side} failed schema validation at {first.pointer}: {first.message}"
                 )
             else:
                 message = f"{tool} {side} failed schema validation"
@@ -211,30 +210,8 @@ def _path_to_pointer(path: Any) -> str:
     return "/" + "/".join(escape(seg) for seg in path)
 
 
-def _safe_message(err: Any, keyword: str) -> str:
-    """Value-free description of the failure.
-
-    Never echoes the offending payload value — that would leak bearer
-    tokens, PII, or prompt-injection strings through the error envelope.
-    Keeps only the structural facts the caller needs to locate the
-    offending field and understand why the schema rejected it.
-    """
-    if keyword == "required":
-        # ``err.message`` contains a schema-declared key name, not user
-        # data. Pattern: "'X' is a required property". Safe to pass through.
-        return str(err.message)
-    if keyword == "type":
-        expected = err.validator_value
-        return f"expected type {expected!r}"
-    if keyword == "enum":
-        try:
-            size = len(err.validator_value)
-        except TypeError:
-            size = 0
-        return f"value not in allowed enum ({size} option{'s' if size != 1 else ''})"
-    if keyword == "const":
-        return "value does not match the required constant"
-    if keyword in {
+_BOUNDED_KEYWORDS = frozenset(
+    {
         "minLength",
         "maxLength",
         "minimum",
@@ -246,17 +223,89 @@ def _safe_message(err: Any, keyword: str) -> str:
         "minProperties",
         "maxProperties",
         "multipleOf",
-    }:
-        return f"{keyword} constraint failed (bound={err.validator_value!r})"
+    }
+)
+
+
+class _Unset:
+    """Sentinel: a fact the caller's error shape does not carry.
+
+    Distinct from ``None``, which a schema can legitimately supply as a
+    bound — so the two render differently.
+    """
+
+
+UNSET = _Unset()
+
+
+def safe_message_for(
+    keyword: str,
+    *,
+    required_message: str | None = None,
+    bound: Any = UNSET,
+    enum_size: int | None = None,
+    format_name: Any = UNSET,
+) -> str:
+    """Value-free wording for a rejection, given only structural facts.
+
+    The one owner of how a refusal is PHRASED to a peer. Takes facts
+    rather than a validator's error object so both projections share it:
+    :func:`_safe_message` extracts them from a ``jsonschema`` error, and
+    :mod:`adcp.validation.pydantic_errors` extracts them from a pydantic
+    one. Neither passes a payload value in, so neither can leak one out.
+    """
+    if keyword == "required":
+        # A schema-declared key name, not user data. Pattern:
+        # "'X' is a required property".
+        return required_message or "required constraint failed"
+    if keyword == "type":
+        if bound is UNSET:
+            return "value is the wrong type"
+        return f"expected type {bound!r}"
+    if keyword == "enum":
+        if enum_size is None:
+            return "value not in allowed enum"
+        return f"value not in allowed enum ({enum_size} option{'s' if enum_size != 1 else ''})"
+    if keyword == "const":
+        return "value does not match the required constant"
+    if keyword in _BOUNDED_KEYWORDS:
+        if bound is UNSET:
+            return f"{keyword} constraint failed"
+        return f"{keyword} constraint failed (bound={bound!r})"
     if keyword == "pattern":
         return "string does not match required pattern"
     if keyword == "format":
-        return f"value does not match required format ({err.validator_value!r})"
+        if format_name is UNSET:
+            return "value does not match required format"
+        return f"value does not match required format ({format_name!r})"
     if keyword == "additionalProperties":
         return "unexpected property"
     if keyword in {"oneOf", "anyOf", "allOf", "not"}:
         return f"{keyword} composition failed"
     return f"{keyword} constraint failed"
+
+
+def _safe_message(err: Any, keyword: str) -> str:
+    """Value-free description of a ``jsonschema`` failure.
+
+    Never echoes the offending payload value — that would leak bearer
+    tokens, PII, or prompt-injection strings through the error envelope.
+    Keeps only the structural facts the caller needs to locate the
+    offending field and understand why the schema rejected it.
+    """
+    enum_size: int | None = None
+    if keyword == "enum":
+        try:
+            enum_size = len(err.validator_value)
+        except TypeError:
+            enum_size = 0
+    return safe_message_for(
+        keyword,
+        required_message=str(err.message) if keyword == "required" else None,
+        bound=err.validator_value,
+        enum_size=enum_size,
+        format_name=err.validator_value,
+    )
 
 
 def _missing_required_key(err: Any) -> str | None:
