@@ -23,10 +23,11 @@ import pathlib
 import re
 
 import pytest
+from jsonschema import Draft7Validator
 from pydantic import ValidationError
 
 from adcp.types import CreateMediaBuyRequest
-from adcp.validation.pydantic_errors import issues_from_validation_error
+from adcp.validation.pydantic_errors import _keyword, issues_from_validation_error
 from adcp.validation.schema_errors import build_adcp_validation_error_payload
 from adcp.validation.schema_validator import (
     ValidationIssue,
@@ -225,6 +226,58 @@ def test_no_reachable_pointer_names_a_pydantic_internal(model):
                 assert "function-" not in issue.pointer, issue.pointer
                 assert "[" not in issue.pointer, issue.pointer
                 assert pointer_to_field(issue.pointer).count("['") == 0, issue.pointer
+
+
+def _generated_custom_error_types() -> list[str]:
+    """The error types the generated models raise, read from their source.
+
+    The generator emits ``PydanticCustomError('allOf', ...)`` for every schema
+    conditional, so these names come from the generated tree rather than from
+    a list kept here.
+    """
+    import ast
+
+    found: set[str] = set()
+    for path in (pathlib.Path(__file__).resolve().parents[1] / "src/adcp/types").rglob("*.py"):
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError:  # pragma: no cover
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = getattr(node.func, "id", getattr(node.func, "attr", ""))
+            if name != "PydanticCustomError" or not node.args:
+                continue
+            first = node.args[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                found.add(first.value)
+    return sorted(found)
+
+
+#: Of the types the generator raises, the ones that ARE JSON Schema keywords.
+#: Filtered rather than skipped at runtime, so the parametrize carries only
+#: applicable cases and its emptiness is an assertable fact.
+GENERATED_KEYWORD_TYPES = [
+    t for t in _generated_custom_error_types() if t in Draft7Validator.VALIDATORS
+]
+
+
+def test_generated_keyword_types_were_found():
+    """Population check: an empty scan would make the test below vacuous."""
+    assert GENERATED_KEYWORD_TYPES, "no JSON Schema keyword types found under src/adcp/types"
+
+
+@pytest.mark.parametrize("error_type", GENERATED_KEYWORD_TYPES)
+def test_a_keyword_the_generator_raises_survives_the_projection(error_type):
+    """A pydantic type that IS a JSON Schema keyword must not be flattened.
+
+    ``core/error.json`` asks ``issues[].keyword`` for a name "drawn from the
+    JSON Schema vocabulary … do not invent custom values here". The generated
+    models raise exactly such names, so mapping them to a fallback throws away
+    the field's whole purpose — and ``safe_message_for`` already renders them.
+    """
+    assert _keyword(error_type) == error_type
 
 
 def test_both_lanes_emit_the_same_envelope():

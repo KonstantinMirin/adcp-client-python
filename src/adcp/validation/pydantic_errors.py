@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from jsonschema import Draft7Validator
 from pydantic import ValidationError
 
 from adcp.validation.schema_validator import (
@@ -31,6 +32,11 @@ from adcp.validation.schema_validator import (
     _path_to_pointer,
     safe_message_for,
 )
+
+#: The keyword vocabulary core/error.json points ``issues[].keyword`` at, taken
+#: from the validator that implements it rather than restated here — a hand-kept
+#: copy is a second declaration of someone else's list.
+_JSON_SCHEMA_KEYWORDS = frozenset(Draft7Validator.VALIDATORS)
 
 # Pydantic error ``type`` -> the JSON Schema keyword the same rejection would
 # carry. Only the structural rejections appear here; see ``_keyword`` for the
@@ -148,7 +154,15 @@ _UNRESOLVED = _Unresolved()
 
 
 def _keyword(error_type: str) -> str:
-    """The JSON Schema keyword standing in for a pydantic error type."""
+    """The JSON Schema keyword standing in for a pydantic error type.
+
+    A type that is ALREADY a keyword passes through. The generated models
+    raise ``PydanticCustomError('allOf', ...)`` for every schema conditional
+    — 592 sites across ``allOf``, ``anyOf`` and ``oneOf`` — so mapping those
+    to a fallback discards the one thing ``issues[].keyword`` is for.
+    """
+    if error_type in _JSON_SCHEMA_KEYWORDS:
+        return error_type
     if error_type in _KEYWORD_BY_TYPE:
         return _KEYWORD_BY_TYPE[error_type]
     if error_type in _JSON_TYPE_BY_TYPE:
