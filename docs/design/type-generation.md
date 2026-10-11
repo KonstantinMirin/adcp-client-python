@@ -4,7 +4,8 @@ Status: current. Generator pinned at `datamodel-code-generator==0.64.0`.
 Schema pin: `src/adcp/ADCP_VERSION` = `3.2.1`, which `resolve_bundle_key` collapses to the
 bundle `schemas/cache/3.2`.
 
-This document is for whoever has to change the pipeline. It covers every step in order, how
+This document is for whoever has to change the pipeline. It covers every step in order,
+what a schema root states that a Python class cannot express and how that is answered, how
 a class gets its name, what the guards are, how to add a schema feature, and what to do
 when the generator renders something wrong.
 
@@ -13,8 +14,9 @@ For subclassing a generated type, see [../extending-types.md](../extending-types
 
 ## The shape of the thing
 
-1053 non-bundled schema files become 1056 generated model modules, which become one flat
-namespace of 923 names and a 1084-module public mirror under `adcp.types.domains`. Nothing
+1057 non-bundled schema files become 1088 generated model modules, which become one flat
+namespace of 3022 names under `adcp.types`, mirrored module-by-module under
+`adcp.types.domains`. Nothing
 in it is hand-written: the flat `__all__`, the `_generated.py` arena, the mirror, the
 error-details exports and the collision table are all emitted.
 
@@ -135,6 +137,12 @@ compose; and it must follow `inline_structural_pointer_refs`, so the envelope re
 appends is never itself inlined back into copied fields — which would turn inheritance into
 flattened fields.
 
+`flatten_root_object_validation_union` and `flatten_validation_oneof` delete a root's
+combinator, which is what keeps the root's public name a subclassable class rather than a
+`RootModel` union. What then enforces the combination is
+*[What a schema root says that a class cannot](#what-a-schema-root-says-that-a-class-cannot)*
+below; the two halves only make sense together.
+
 Each of these operates on the staging copy only. The cached bundle, the schemas the wheel
 ships and any direct-from-schema validation are untouched, which is what keeps the
 transforms from changing what the SDK validates against.
@@ -156,8 +164,9 @@ on the file being present and absent.
 
 ## The post-generation pass
 
-`scripts/post_generate_fixes.py` is 7367 lines holding 130 module-level functions: 72 fix
-entrypoints, built as one ordered list in `main()` and run in list order, plus 58 helpers.
+`scripts/post_generate_fixes.py` is 7954 lines holding 153 module-level functions: 80 fix
+entrypoints, built as one ordered list in `main()` and run in list order, plus the helpers
+they share.
 
 Three ordering constraints are commented in the list itself and must be preserved:
 
@@ -182,10 +191,207 @@ no syntax error and no test failure. Locate by AST, or through the shared
 preserve the statement's form, and raise rather than mangle. Ten fixes still match an
 import by exact literal text; that is recorded fragility, not a pattern to copy.
 
-There is no per-fix effect ledger today, so a fix whose locator goes stale stops working
-silently until a test notices. PR #1374 adds one — a declared manifest of which fixes
-change files, re-measured rather than hand-edited, checked on every run — and that is the
-mechanism to extend rather than inventing a second one.
+`scripts/post_generation_manifest.json` is the per-fix effect ledger: it declares which
+fixes change files, it is re-measured rather than hand-edited, and a fix the manifest
+records as firing that changes nothing fails the run. Extend it rather than inventing a
+second mechanism — a renamed identifier inside a fix's locator string is exactly what it
+catches, because the fix then searches for a class the generator never writes.
+
+## What a schema root says that a class cannot
+
+A schema root says more than "here are my properties". It can say *one of these
+combinations of fields* (`anyOf`, `oneOf`), or *if this field, then that one* (`if`/`then`,
+usually inside a root `allOf`), or *never these two together* (`not`), or
+*this field only alongside that one* (`dependencies`).
+
+**A Python class is a flat field set with per-field requiredness, and that cannot express
+"these three together, or that one alone."** `create-media-buy-request` declares three ways
+to be a media buy — explicit packages with a fixed allocation, explicit packages with a
+seller-optimised one, or the execution of a committed proposal — and the first two require
+`packages` while the third forbids it. One class with `packages` optional accepts a request
+that is none of the three.
+
+Three consequences follow, and the pipeline has an answer for each.
+
+`datamodel-code-generator` renders a root `anyOf`/`oneOf` as a `RootModel` union. That
+union *does* enforce the combination, and it is not subclassable or constructible — so the
+root's public name stops being a type a consumer can extend, annotate against, or hold.
+
+The pre-generation transforms `flatten_root_object_validation_union` and
+`flatten_validation_oneof` therefore delete the root combinator before the generator sees
+it, which is what keeps the public name a class. They say so in their own docstrings.
+
+A root `if`/`then` inside an `allOf` was a third case, and the quietest: the admission
+predicate that decides which roots carry constraint content read only the root's own keys,
+and this bundle puts conditional rules inside `allOf` MEMBERS. It descends into them now —
+`core/reporting-obligation` has ten such members, one of which requires
+`pending_adjustment_count`.
+
+## Branches that partition become types; rules that do not partition stay checks
+
+That is the whole rule, and which side a root falls on is proved rather than chosen.
+
+| the root's branches | what is generated | population |
+|---|---|---|
+| partition by requiredness | one class per branch, a shared public base, the base dispatches | **13 roots, 30 branch classes** |
+| do not partition | a compiled check on the class | **203 generated modules carry one** |
+
+Eighteen generated modules dispatch to branches: the 13 split roots, plus the five public
+response bases described below. 210 of the 1088 generated modules carry one mechanism or
+the other.
+
+`scripts/schema_constraints.py` is the one reader. It parses a root's constraint content
+into `RootConstraints` — a combinator, its `Branch` records, and the conjuncts beside it —
+and `partitions_by_requiredness` decides the row. Partitioning means the branches'
+required-field sets are pairwise disjoint in a way a document cannot satisfy two of, which
+`provably_disjoint` establishes from the branches themselves.
+
+### Parsing is key-consuming
+
+For every node it visits, the reader accounts for every key as exactly one of: **compiled**
+into a `Cond`; **non-asserting** by a named frozen set (`title`, `$comment`, `default` and
+the rest, each listed with the reason it carries no validation semantics); **declared
+behavioral**, which is exactly `x-adcp-validation`; or a **proven restatement** of what the
+generated class already declares, where equality is checked rather than assumed.
+
+Anything else raises `UnexpressibleKeywordError` and aborts generation, naming the file, the
+JSON pointer and the keyword. There is no list of known-dropped keywords in the module, no
+skip lane and no allowlist: a keyword is compiled, classified by a named rule, or fatal.
+That is what makes "the model is weaker than its schema, silently" unconstructible for a
+root the reader examines rather than merely detected.
+
+### A partitioning root: one class per branch
+
+`scripts/branch_classes.py` renders a base carrying the root's own properties, one subclass
+per branch restating only what that branch changes, and a union alias over them:
+
+```python
+class WebhookChallengeResponse(BranchDispatchMixin, AdCPBaseModel):
+    """What every branch of core/webhook-challenge-response.json shares."""
+    challenge: str | None = None
+    token: str | None = None
+
+    @classmethod
+    def _branch_models(cls) -> tuple[type, ...]:
+        return (WebhookChallengeResponseChallenge, WebhookChallengeResponseToken)
+
+    @classmethod
+    def _branch_combinator(cls) -> str:
+        return 'anyOf'
+```
+
+What that makes **unspellable**, which is a different claim from refusing it:
+
+- a field a branch forbids is typed `None` on that branch, so
+  `CreateMediaBuyRequestCommittedProposalExecution(packages=[...])` is a type error before
+  anything runs. It is declared rather than omitted because the base declares it; omitting
+  it would inherit the base's permissive annotation.
+- a branch's required field is required on that branch's class, so leaving it out is a
+  missing argument rather than a validator's refusal.
+
+Everything in a branch's condition that is **not** requiredness or absence stays a compiled
+check on that branch's own class: a `const` one level down, an overlay on an array's items,
+a value bound. The refusal then still arrives from the class the caller named.
+
+Branch class names come from the schema, through `scripts/union_branch_names.py`'s ordered
+rungs over the same `Branch` records — the branch's `title` first, then a discriminator
+`const`, then its full `required` set — failing closed rather than numbering. No identifier
+is invented: `anyOf/0` titled "Explicit packages with fixed allocation" becomes
+`CreateMediaBuyRequestExplicitPackagesWithFixedAllocation`, and that title also opens the
+branch class's docstring, which is where a refusal reads it back.
+
+### The base dispatches, on every validation path
+
+`src/adcp/types/_branch_dispatch.py` holds one `BranchDispatchMixin` for the whole tree. It
+gives the base the branches' core schema, so the root's public name resolves to the branch
+a document satisfies — called directly, nested as another model's field, validated through
+a `TypeAdapter`, or constructed.
+
+All four paths matter, and three of them are invisible to a `model_validate` override:
+pydantic validates a nested field and a `TypeAdapter` through the core schema, and most
+roots with branches are nested object schemas. `adcp.types.validation.validate_union`, the
+public helper the server framework calls on a handler's return value, is a `TypeAdapter`.
+
+**Which class gets the branches' schema is a fact about the class, not a registration:** the
+base is the class that DECLARES `_branch_models`. A branch inherits the method and gets its
+own shape back; so does a refinement declared elsewhere, such as the canonical creative
+layer's narrowing of a single branch. Nothing has to be registered, so nothing can be
+forgotten — a new partitioning root works by emitting that method.
+
+Membership is not a sufficient test for it. `cls in branches` admits both "is a branch" and
+"is an unrelated subclass of the base", and only the second matters once the schema itself
+is being replaced.
+
+The branches subclass the base, so they do not exist while the base's body is compiled. The
+hook returns the base's own schema then, and the declaring module's
+`model_rebuild(force=True)` after the branches are defined installs the union — a forward
+reference resolved in the module that declares it, which is what `model_rebuild` is for.
+
+### A refusal names a JSON Schema keyword
+
+`core/error.json` requires every `issues[]` entry to carry a `keyword` drawn from the JSON
+Schema vocabulary, and tells a consumer not to invent one. A document satisfying no branch
+fails each branch at FIELD validation, so pydantic reports `missing`, which is outside that
+vocabulary — a consumer assembling a conformant envelope would have nothing valid to put in
+the field.
+
+So the union carries a wrapping validator that supplies the root's own combinator, and the
+sentence it writes is the one a flat root's compiled validator writes:
+
+```
+requires at least one of these field groups: Explicit packages with fixed allocation |
+Explicit packages with seller-optimized allocation | Committed proposal execution
+```
+
+A root moving between the two mechanisms changes how it refuses, not what a reader sees.
+The absent field names travel beside the titles in the error context, where a consumer
+reads them without parsing the sentence.
+
+A compiled check runs `mode="after"`, so the value it grades is what pydantic PARSED rather
+than what the document carried. The `type` predicate therefore accepts the Python types a
+JSON string arrives as — `datetime`, `AnyUrl`, `UUID` and the rest — because
+`isinstance(value, str)` is false for every `format`-bearing field. They are enumerated
+rather than defined by excluding the other five JSON types: a JSON *number* also arrives as
+a non-`float`, since pydantic parses one into `Decimal` where the field says so.
+
+### What this does not reach
+
+The admission predicate `root_carries_constraints` admits **533** roots across the bundle's
+1625 schema files. **205** of those have a shape the reader can read, and get a compiled
+check or a split. Of the rest, **114 are canonical-tree roots with a generated module that
+get nothing**: `flat_root_shape` needs a flat class carrying the root's properties, and
+these are the roots where the generator emitted numbered classes plus a union alias instead
+of merging onto one class.
+
+`account/sync-accounts-response.json` is the shape — a root `oneOf` with two members, root
+`properties` empty, `SyncAccountsResponse1` and `SyncAccountsResponse2` generated, and no
+validator in the module. Its root `oneOf` and its two `allOf` conjuncts are unenforced.
+
+**92 of the 114 have exactly the shape the five public response bases have** (below), so the
+mechanism that covers them is the one already here. This is a gap in the ADMISSION path
+rather than a residue set inside the parser — a root that reaches the parser is still
+compiled, classified or fatal — but it produces the same outcome the parser's contract
+exists to prevent, so it is named here rather than left to turn up one root at a time.
+
+### The five public response bases
+
+Five response names predate the generator emitting a union, and callers construct them. For
+those, the post-generation pass restores a constructible base over the numbered classes the
+generator wrote and mixes in the same `BranchDispatchMixin`:
+
+```python
+class CreateContentStandardsResponse(BranchDispatchMixin, AdcpVersionEnvelope, ProtocolEnvelope):
+    """Constructible compatibility base for generated response branches."""
+```
+
+`ComplyTestControllerResponse`, `CreateContentStandardsResponse`,
+`ListContentStandardsResponse`, `UpdateContentStandardsResponse` and
+`SyncGovernanceResponse`. The combinator each names on refusal is read from its root's own
+schema; all five declare `oneOf`.
+
+The list of five is hand-written, because "which names stay constructible" is a
+compatibility decision rather than a property of the schemas. A row the generated tree no
+longer answers raises rather than being stepped over.
 
 ## `consolidate_exports.py`
 
@@ -299,7 +505,7 @@ def _is_structural_pointer(fragment: str) -> bool:
 A definition-container pointer names a reusable subschema, and the generator emits one
 shared class for it. Every other pointer addresses a structural position —
 `/properties/<name>`, `/items`, `/oneOf/<n>` — which has no name, so the generator mints a
-one-arm `RootModel` wrapper per referencing site. `inline_structural_pointer_refs` replaces
+one-branch `RootModel` wrapper per referencing site. `inline_structural_pointer_refs` replaces
 such a reference with the subschema it selects, so the wrapper is never named at all.
 
 The predicate is on the *selected subschema*, not on the pointer token: inline only what
@@ -310,32 +516,39 @@ declared as a pointer-or-null union, which otherwise produces
 `targeting.AudienceExclude = RootModel[list[str]]` and becomes `list[str] | None` once
 resolved.
 
-### Union arm names: positional today
+### Union branch names: schema-derived
 
-Root-level union arms are named by position. `restore_response_variant_aliases` mints
-them off a hand-written 22-row table of `(module path, base class name)` pairs:
+A branch class is named from its own schema node, through
+`scripts/union_branch_names.py`'s ordered rungs over the reader's `Branch` records: the
+branch's `title`, then a discriminator `const`, then its full `required` set. A branch no
+rung can name raises rather than taking a position, so a name is never a number.
 
 ```python
-class_names = [f"{self.base}{index}" for index in range(1, len(arms) + 1)]
+# core/webhook-challenge-response.json, anyOf/0 titled "Challenge"
+WebhookChallengeResponseChallenge
+# media-buy/create-media-buy-request.json, anyOf/2 titled "Committed proposal execution"
+CreateMediaBuyRequestCommittedProposalExecution
 ```
 
-and carries a hardcoded permutation so that an upstream insertion did not move two existing
-public names:
+Exactly one branch in the pinned bundle is unnameable by every rung, and
+`test_union_branch_names.py` names it.
+
+Response branches the generator numbers are a separate case.
+`restore_response_variant_aliases` mints `<Base>1 … <Base>N` off a hand-written 22-row
+table of `(module path, base class name)` pairs, and carries a hardcoded permutation so an
+upstream insertion does not move two existing public names:
 
 ```python
-if self.base == "BuildCreativeResponse" and len(arms) == 6:
+if self.base == "BuildCreativeResponse" and len(branches) == 6:
     # Preserve the long-standing public numbering where Response1 is the simple
-    # success arm and Response2 is the error arm; append newer schema branches after those.
-    arms = [arms[index] for index in (0, 4, 1, 2, 3, 5)]
+    # success branch and Response2 is the error branch; append newer schema
+    # branches after those.
+    branches = [branches[index] for index in (0, 4, 1, 2, 3, 5)]
 ```
 
 That permutation is the drift channel made visible: a positional name's meaning changed,
-and a hand-written reorder was the only way to hold it still.
-
-A rule that names an arm from its schema node (`title`, then discriminator `const`,
-then full `required` set, failing closed instead of numbering) is designed and measured
-against the pinned bundle but not wired in; it is tracked, with the two surface-policy
-decisions wiring it needs, in #1409.
+and a hand-written reorder was the only way to hold it still. Extending the schema-derived
+rule to those names needs two surface-policy decisions, tracked in #1409.
 
 ## What keeps a name's meaning stable, and where it does not
 
@@ -457,12 +670,12 @@ exactly one schema declares it, it is there; if more than one does, it is in
    module to find the broken one. That is how the `from pydantic import (, model_validator`
    composition defect was located at all.
 3. **Ask what the generator does with the whole root, not just the node you changed.** A
-   root `properties` is merged into every arm the generator builds, but a root `allOf`
-   `$ref` becomes a base only of the arm built *from the root object*: an arm that is a bare
+   root `properties` is merged into every branch the generator builds, but a root `allOf`
+   `$ref` becomes a base only of the branch built *from the root object*: an branch that is a bare
    `$ref` to another schema is generated from that schema, and the root's bases never reach
    it. Moving a field from `properties` into an `allOf` therefore **deletes** it from such an
-   arm rather than relocating it — measured on two schemas, where it removed `adcp_version`
-   from a submitted arm whose `extra` policy is `forbid`, so a seller echoing that field
+   branch rather than relocating it — measured on two schemas, where it removed `adcp_version`
+   from a submitted branch whose `extra` policy is `forbid`, so a seller echoing that field
    would then have been rejected. `_has_bare_ref_root_arm` is the refusal that resulted.
 4. **Measure the whole field set, not the field you expected to change.** That deletion was
    found by comparing full `model_fields` sets before and after, in a step already reported
@@ -496,13 +709,13 @@ churn and breaking generated-code imports that reference specific suffixes.
 $ref file not found: .../.schema_temp/media_buy/enums/proposal_status.json
 ```
 
-The trigger is a relative `$ref` inside a **multi-arm** `allOf`.
+The trigger is a relative `$ref` inside a **multi-branch** `allOf`.
 `media-buy/media-buy-commitment-response.json` declares, at
-`/oneOf/0/properties/accepted_proposal`, an `allOf` of two arms: a cross-directory `$ref` to
+`/oneOf/0/properties/accepted_proposal`, an `allOf` of two branches: a cross-directory `$ref` to
 `core/canonical-proposal.json`, and an inline `const` overlay. The referenced document then
 refs `../enums/proposal-status.json`, and from 0.72.0 the generator joins that `../`
 against the *referring* document's path instead of the *defining* document's directory.
-Isolated to the multi-arm form: a single-arm `allOf` and a plain `$ref` both generate
+Isolated to the multi-branch form: a single-branch `allOf` and a plain `$ref` both generate
 cleanly.
 
 19 releases were probed with a three-file minimal repro. 0.64.0 through 0.71.0 all return 0;
@@ -556,7 +769,7 @@ constraint every layer above is built around.
   regenerations. Real source makes the stub unnecessary.
 - **Refused: growing a hand-maintained allowlist.** The collision allowlist's reader is
   gone; `KNOWN_COLLISIONS` is the one table left, and the derived guards above are what
-  replaced the rest. Nothing should add a third — including for arm naming, which fails
+  replaced the rest. Nothing should add a third — including for branch naming, which fails
   closed and takes a one-line upstream title change rather than a ledger of tolerated
   numbers.
 - **Refused: a positional name on the public surface.** Numbered classes may remain as
