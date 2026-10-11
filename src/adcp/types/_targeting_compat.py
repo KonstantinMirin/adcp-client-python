@@ -43,7 +43,7 @@ from adcp.types.domains.core.targeting_input import TargetingOverlayInput
 __all__ = [
     "TargetingOverlayMutation",
     "TargetingOverlayMutationInMaterializedJson",
-    "inherited_overlay_field",
+    "mutation_overlay_field",
 ]
 
 
@@ -139,6 +139,12 @@ TargetingOverlayMutation = Annotated[
 #: split were measured: forcing False everywhere fails six JSON error-ordering cases in
 #: tests/test_targeting_overlay_errors.py, and forcing True everywhere fails the two
 #: repeated-key diagnostics cases there.
+#:
+#: A canonical model subclasses its generated parent, so it REDECLARES the field with
+#: this alias. A pydantic subclass that redeclares a field replaces the whole
+#: ``FieldInfo``, so the declaration assigns ``canonical_creative._inherit(...)`` to keep
+#: the generated description and constraints -- dropping the description was measured to
+#: fail ``test_advertised_targeting_mutations_keep_input_only_schema[update_media_buy]``.
 TargetingOverlayMutationInMaterializedJson = Annotated[
     _MutationUnion,
     Field(union_mode="left_to_right"),
@@ -146,15 +152,19 @@ TargetingOverlayMutationInMaterializedJson = Annotated[
 ]
 
 
-def inherited_overlay_field(parent: type[BaseModel]) -> Any:
-    """The generated field's own ``Field(...)``, for a canonical redeclaration.
+def mutation_overlay_field(parent: type[BaseModel]) -> Any:
+    """The generated field's default and description, for a canonical redeclaration.
 
-    A canonical model subclasses its generated parent and needs the OTHER alias,
-    because it materializes JSON before its fields are validated. A pydantic subclass
-    that redeclares a field replaces the whole ``FieldInfo``, so restating the
-    annotation alone would drop the generated description -- measured: dropping it
-    fails ``test_advertised_targeting_mutations_keep_input_only_schema[update_media_buy]``,
-    which reads the advertised mutation schema. Reading the description off the parent
-    keeps the one copy that came from the schema.
+    NOT ``canonical_creative._inherit``, which deep-copies the whole ``FieldInfo``.
+    That is right for a field whose parent carries only schema metadata, and wrong
+    here: the generated parent's ``FieldInfo`` already carries THIS annotation's
+    metadata (``union_mode`` and the ``GetPydanticSchema``), so copying it applies
+    both twice and pydantic raises ``Unable to apply constraint 'union_mode' to
+    schema of type 'json-or-python'`` -- measured, not predicted.
+
+    Default and description are the whole of what the generated field carries
+    besides that metadata, so nothing is dropped: alias, title, constraints,
+    json_schema_extra and the rest are all unset on all four of these fields.
     """
-    return Field(default=None, description=parent.model_fields["targeting_overlay"].description)
+    field = parent.model_fields["targeting_overlay"]
+    return Field(default=field.default, description=field.description)

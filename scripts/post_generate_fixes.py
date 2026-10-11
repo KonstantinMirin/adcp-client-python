@@ -3481,6 +3481,86 @@ COMPATIBILITY_ANNOTATIONS: tuple[CompatibilityAnnotation, ...] = (
             "portfolio typed rather than dict-shaped."
         ),
     ),
+    # The read-back nodes. Each of these modules already imports the module its
+    # clone is emitted into -- that is how it referenced the source class -- so
+    # none of these entries needs an import.
+    CompatibilityAnnotation(
+        module="creative/get_creative_delivery_response.py",
+        class_name="Creative",
+        field="variants",
+        expected="list[creative_variant.CreativeVariant]",
+        replacement="list[creative_variant._DeliveryVariant]",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="creative/preview_creative_response.py",
+        class_name="PreviewCreativeResponse3",
+        field="manifest",
+        expected="creative_manifest_1.CreativeManifest | None",
+        replacement="creative_manifest_1._ReadbackCreativeManifest | None",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/build_creative_response.py",
+        class_name="BuildCreativeResponse1",
+        field="creative_manifest",
+        expected="creative_manifest_1.CreativeManifest",
+        replacement="creative_manifest_1._ReadbackCreativeManifest",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/build_creative_response.py",
+        class_name="BuildCreativeResponse3",
+        field="creative_manifests",
+        expected="list[creative_manifest_1.CreativeManifest]",
+        replacement="list[creative_manifest_1._ReadbackCreativeManifest]",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/build_creative_response.py",
+        class_name="BuildCreativeResponse4",
+        field="creatives",
+        expected="list[Creative]",
+        replacement="list[_BuildReadbackCreative]",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="trusted_match/context_match_response.py",
+        class_name="ContextMatchResponseRouterPublisher",
+        field="offers",
+        expected="list[offer.Offer]",
+        replacement="list[offer._ReadbackOffer]",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="trusted_match/provider_context_match_response.py",
+        class_name="ContextMatchResponseProviderRouter",
+        field="offers",
+        expected="list[offer.Offer]",
+        replacement="list[offer._ReadbackOffer]",
+        imports=(),
+        because=(
+            "A response carries the tolerant read-back node, not the strict input class: a seller may send an unknown field, or a manifest instance of a sibling class, and neither may become acceptable on the INPUT model (#1241). See adcp.types._readback and READBACK_CLONES in scripts/post_generate_fixes.py."
+        ),
+    ),
     # The rc.3 targeting mutation bridge, on each of the four generated mutation
     # fields. ``adcp.types.canonical_creative`` declares the other alias on its two
     # facades, because a canonical model materializes JSON before its fields are
@@ -3563,6 +3643,151 @@ def _ensure_module_import(content: str, statement: str) -> str:
     if replaced != 1:
         raise RuntimeError(f"no class to place {statement!r} ahead of")
     return source
+
+
+class ReadbackClone(NamedTuple):
+    """A tolerant read-back node, emitted next to the class whose fields it copies.
+
+    A response must accept what a seller sends -- an unknown field kept, a
+    manifest INSTANCE of a sibling class -- and a request must accept neither
+    (#1241). So the tolerance lives on a separate class that COPIES the input's
+    fields without inheriting from it; ``adcp.types._readback.readback_clone``
+    builds it, and that module imports nothing from the generated tree.
+
+    The definition is emitted HERE, into the generated module, rather than kept
+    in a hand-written one, because ``_BuildReadbackCreative`` copies
+    ``media_buy/build_creative_response.Creative`` and the field that carries it
+    is in that same module -- a hand-written home would have to import the
+    module that imports it. One mechanism for all five beats four of them living
+    somewhere tidier and one special case.
+
+    No entry needs a new import for its CONSUMERS: a module that referenced the
+    source class already imports the module the clone is emitted into.
+    """
+
+    #: Path under ``OUTPUT_DIR``, posix-spelled: the module that declares the
+    #: class whose fields are copied.
+    module: str
+    name: str
+    #: The definition, verbatim. This is what lands in the generated output, so
+    #: it is written the way it should read there.
+    definition: str
+    #: Import statements the definition needs, each written once.
+    imports: tuple[str, ...]
+    #: Emit ahead of this class. ``None`` appends at the end of the module,
+    #: which is correct unless a class LATER in the same module carries it.
+    before_class: str | None
+
+
+READBACK_CLONES: tuple[ReadbackClone, ...] = (
+    ReadbackClone(
+        module="core/creative_manifest.py",
+        name="_ReadbackCreativeManifest",
+        definition="""_ReadbackCreativeManifest = readback_clone(
+    "_ReadbackCreativeManifest",
+    # Not one branch's shape -- a readback node accepts a manifest instance of
+    # either branch -- so it copies the base they share.
+    shared_base(CreativeManifest),
+    # No field override: ``format_kind`` is generated as ``str`` (see
+    # OPEN_VOCABULARY_SCHEMAS in scripts/generate_types.py), so there is nothing left
+    # to widen. What this clone carries is instance normalization -- a readback node
+    # accepts a manifest INSTANCE of a sibling class, which a plain field does not.
+    validators={
+        "_coerce_standalone_assets": model_validator(mode="before")(
+            readback_normalizer(CreativeManifest, "_coerce_standalone_assets")
+        ),
+    },
+)""",
+        imports=(
+            "from adcp.types._readback import readback_clone, readback_normalizer",
+            "from adcp.types._split_root import shared_base",
+        ),
+        before_class=None,
+    ),
+    ReadbackClone(
+        module="core/creative_variant.py",
+        name="_DeliveryVariant",
+        definition="""_DeliveryVariant = readback_clone(
+    "_DeliveryVariant",
+    CreativeVariant,
+    {"manifest": creative_manifest._ReadbackCreativeManifest | None},
+)""",
+        imports=("from adcp.types._readback import readback_clone",),
+        before_class=None,
+    ),
+    ReadbackClone(
+        module="media_buy/build_creative_response.py",
+        name="_BuildReadbackVariant",
+        definition="""_BuildReadbackVariant = readback_clone(
+    "_BuildReadbackVariant",
+    Variant,
+    {"creative_manifest": creative_manifest_1._ReadbackCreativeManifest},
+)""",
+        imports=("from adcp.types._readback import readback_clone",),
+        # BuildCreativeResponse4 is later in this module and carries the clone
+        # below, so both definitions are emitted ahead of the response classes.
+        before_class="BuildCreativeResponse1",
+    ),
+    ReadbackClone(
+        module="media_buy/build_creative_response.py",
+        name="_BuildReadbackCreative",
+        definition="""_BuildReadbackCreative = readback_clone(
+    "_BuildReadbackCreative",
+    Creative,
+    {
+        # This constraint is inside the optional union in the generated type, so it
+        # has to stay on the non-None branch when that annotation is replaced.
+        "variants": Annotated[list[_BuildReadbackVariant], Field(min_length=1)] | None
+    },
+)""",
+        imports=("from adcp.types._readback import readback_clone",),
+        before_class="BuildCreativeResponse1",
+    ),
+    ReadbackClone(
+        module="trusted_match/offer.py",
+        name="_ReadbackOffer",
+        definition="""_ReadbackOffer = readback_clone(
+    "_ReadbackOffer",
+    Offer,
+    {"creative_manifest": creative_manifest_1._ReadbackCreativeManifest | None},
+)""",
+        imports=("from adcp.types._readback import readback_clone",),
+        before_class=None,
+    ),
+)
+
+
+def emit_readback_clones() -> None:
+    """Write each :data:`READBACK_CLONES` definition into its generated module.
+
+    Raises when the module or the class it copies is not there: a clone whose
+    source class moved would otherwise be built from whatever still answers to
+    the name, and the field that carries it would be silently un-tolerant.
+    """
+    print("Emitting read-back clones beside the classes they copy...")
+
+    for clone in READBACK_CLONES:
+        path = OUTPUT_DIR / clone.module
+        if not path.exists():
+            raise RuntimeError(f"{clone.module} does not exist; {clone.name} has no source class")
+        content = path.read_text()
+        if clone.before_class is None:
+            content = content.rstrip("\n") + "\n\n\n" + clone.definition + "\n"
+        else:
+            anchor = re.compile(rf"^class {re.escape(clone.before_class)}\b", re.MULTILINE)
+            match = anchor.search(content)
+            if match is None:
+                raise RuntimeError(
+                    f"{clone.module}: no 'class {clone.before_class}' to emit "
+                    f"{clone.name} ahead of"
+                )
+            content = (
+                content[: match.start()] + clone.definition + "\n\n\n" + content[match.start() :]
+            )
+        for statement in clone.imports:
+            content = _ensure_module_import(content, statement)
+        path.write_text(content)
+        print(f"  ✓ {clone.module}: {clone.name}")
 
 
 def declare_compatibility_annotations() -> None:
@@ -8146,6 +8371,8 @@ def main(argv: list[str] | None = None) -> int:
         # After the import-cleanup passes, which would otherwise read the import
         # a compatibility annotation adds as unused -- nothing had referenced the
         # aliased name at the moment they ran.
+        # Ahead of the annotations that reference the clones it emits.
+        emit_readback_clones,
         declare_compatibility_annotations,
         # Last of all the class-shaping passes: every pass above edits a class
         # by name, and the shared base carries what they put on the flat one.

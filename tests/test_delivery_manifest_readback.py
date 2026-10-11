@@ -106,8 +106,10 @@ def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_
     * an instance is accepted or refused by ordinary pydantic class rules, not
       by anything about the vocabulary — the canonical response nests a
       subclass of the generated manifest, so the instance revalidates and
-      passes; the legacy response nests a ``_forward_compat`` clone that
-      inherits from nothing, so it is refused as ``model_type``.
+      passes; the legacy response nests a read-back clone -- ``READBACK_CLONES``
+      in ``scripts/post_generate_fixes.py``, built by ``adcp.types._readback``
+      and emitted beside the class it copies -- which inherits from nothing, so
+      it is refused as ``model_type``.
 
     Deciding which kinds to accept is the caller's, through
     ``adcp.types.is_canonical_format_kind``, and

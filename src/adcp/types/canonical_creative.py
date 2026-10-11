@@ -111,7 +111,7 @@ from adcp.types._product_format_declaration import (
 )
 from adcp.types._targeting_compat import (
     TargetingOverlayMutationInMaterializedJson,
-    inherited_overlay_field,
+    mutation_overlay_field,
 )
 from adcp.types.base import AdCPBaseModel
 from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
@@ -971,9 +971,7 @@ class DeliveryCreative(_LegacyDeliveryCreative, CanonicalBoundaryModel):
     if TYPE_CHECKING:  # the removed field, hidden from the constructor too
         format_id: _RemovedFormatId = Field(default=None, init=False)
 
-    variants: list[_DeliveryCreativeVariant] = _inherit(  # type: ignore[assignment]
-        _LegacyDeliveryCreative, "variants"
-    )
+    variants: list[_DeliveryCreativeVariant] = _inherit(_LegacyDeliveryCreative, "variants")
 
 
 class CreativeFilters(_LegacyCreativeFilters, CanonicalBoundaryModel):
@@ -1001,7 +999,7 @@ class PackageRequest(_LegacyPackageRequest, CanonicalBoundaryModel):
     # materializes JSON in its before validator, so this subtree re-enters core JSON
     # validation to keep native error codes and extra/missing order -- which is the
     # only difference between the two aliases.
-    targeting_overlay: TargetingOverlayMutationInMaterializedJson = inherited_overlay_field(
+    targeting_overlay: TargetingOverlayMutationInMaterializedJson = mutation_overlay_field(
         _LegacyPackageRequest
     )
 
@@ -1020,7 +1018,7 @@ class PackageUpdate(_LegacyPackageUpdate, CanonicalBoundaryModel):
 
     creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
     # See PackageRequest.targeting_overlay above.
-    targeting_overlay: TargetingOverlayMutationInMaterializedJson = inherited_overlay_field(
+    targeting_overlay: TargetingOverlayMutationInMaterializedJson = mutation_overlay_field(
         _LegacyPackageUpdate
     )
 
