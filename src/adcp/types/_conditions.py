@@ -30,11 +30,16 @@ nested predicate without first resolving the nested annotation.
 
 from __future__ import annotations
 
+import datetime
+import decimal
+import ipaddress
+import pathlib
 import re
+import uuid
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import AnyUrl, ValidationError
 
 __all__ = [
     "name_the_combinator",
@@ -58,15 +63,50 @@ __all__ = [
 #: What a predicate over one value looks like.
 Predicate = Callable[[Any], bool]
 
+#: Python types a JSON STRING arrives as once pydantic has parsed it. A
+#: compiled ``type`` check runs after validation, so ``isinstance(value, str)``
+#: alone is false for every ``format``-bearing string field -- the model then
+#: refuses a document its schema accepts, permanently and silently.
+#:
+#: Measured on the pin: seven fields over six modules were in exactly that
+#: state -- ``reporting-revision``'s ``data_through``, ``search-brands-response``'s
+#: ``relationship_verified_at`` and its logo ``url``, and four ``timestamp``
+#: fields -- each annotated ``AwareDatetime`` or ``AnyUrl`` and each carrying a
+#: root ``type: "string"`` rule it could never satisfy.
+#:
+#: Enumerated rather than defined by exclusion. "Not object, array, number,
+#: boolean or null, therefore string" is true of JSON and wrong here, because
+#: a JSON NUMBER also arrives as a non-``float``: pydantic parses one into
+#: ``Decimal`` where the field says so, and exclusion would call that a string.
+_STRING_BACKED = (
+    str,
+    datetime.datetime,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+    uuid.UUID,
+    AnyUrl,
+    pathlib.PurePath,
+    ipaddress.IPv4Address,
+    ipaddress.IPv6Address,
+)
+
+#: Python types a JSON NUMBER arrives as. ``Decimal`` is neither ``int`` nor
+#: ``float``, and a field declared with a multiple-of or a money precision gets
+#: one.
+_NUMBER_BACKED = (int, float, decimal.Decimal)
+
 #: JSON type names, and the Python instances that answer to them. ``integer``
 #: excludes ``bool``, which is a subclass of ``int`` in Python and a separate
 #: type in JSON.
 _JSON_TYPES: dict[str, Callable[[Any], bool]] = {
     "object": lambda value: isinstance(value, Mapping) or _is_model(value),
     "array": lambda value: isinstance(value, (list, tuple)),
-    "string": lambda value: isinstance(value, str),
-    "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
-    "number": lambda value: isinstance(value, (int, float)) and not isinstance(value, bool),
+    "string": lambda value: isinstance(value, _STRING_BACKED),
+    "integer": lambda value: isinstance(value, (int, decimal.Decimal))
+    and not isinstance(value, bool)
+    and int(value) == value,
+    "number": lambda value: isinstance(value, _NUMBER_BACKED) and not isinstance(value, bool),
     "boolean": lambda value: isinstance(value, bool),
     "null": lambda value: value is None,
 }

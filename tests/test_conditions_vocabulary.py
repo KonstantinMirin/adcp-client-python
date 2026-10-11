@@ -14,12 +14,16 @@ so.
 
 from __future__ import annotations
 
+import datetime
+import decimal
 import inspect
+import ipaddress
 import types
+import uuid
 from typing import Any
 
 import pytest
-from pydantic import BaseModel, ConfigDict
+from pydantic import AnyUrl, BaseModel, ConfigDict
 
 from adcp.types import _conditions as c
 
@@ -217,15 +221,39 @@ def test_others_grades_the_unnamed_members() -> None:
         (_Subject(), ("object",), True),
         (None, ("null",), True),
         ("text", ("integer", "string"), True),
+        # A compiled ``type`` check runs AFTER validation, so the value it sees
+        # is what pydantic parsed, not what the document carried. Every one of
+        # these arrived as a JSON string.
+        (datetime.datetime(2026, 1, 1, tzinfo=datetime.UTC), ("string",), True),
+        (datetime.date(2026, 1, 1), ("string",), True),
+        (datetime.timedelta(seconds=5), ("string",), True),
+        (uuid.UUID(int=1), ("string",), True),
+        (AnyUrl("https://seller.example"), ("string",), True),
+        (ipaddress.IPv4Address("10.0.0.1"), ("string",), True),
+        # And a JSON number can arrive as a Decimal, which is neither int nor
+        # float -- so defining "string" by excluding the other five JSON types
+        # would call this one a string.
+        (decimal.Decimal("2.5"), ("number",), True),
+        (decimal.Decimal("2.5"), ("string",), False),
+        (decimal.Decimal("2.5"), ("integer",), False),
+        (decimal.Decimal("2"), ("integer",), True),
     ],
 )
 def test_json_type_answers_the_json_type_names(
     value: Any, names: tuple[str, ...], expected: bool
 ) -> None:
-    """``type``, including the two Python-versus-JSON mismatches.
+    """``type``, including the Python-versus-JSON mismatches.
 
     ``bool`` is a subclass of ``int`` in Python and a separate type in JSON, and
     a pydantic model is a JSON object without being a mapping.
+
+    The third mismatch is the one that shipped broken: a ``format``-bearing
+    string field is a ``datetime`` or an ``AnyUrl`` by the time the check runs,
+    so an ``isinstance(value, str)`` test is false for every document and the
+    model refuses what its schema accepts. Seven fields over six modules were in
+    that state on the pin -- ``reporting-revision``'s ``data_through`` among
+    them, which made ``tests/test_reporting_consumer_loop.py`` fail at
+    COLLECTION.
     """
     assert c.json_type(value, *names) is expected
 
