@@ -3481,6 +3481,76 @@ COMPATIBILITY_ANNOTATIONS: tuple[CompatibilityAnnotation, ...] = (
             "portfolio typed rather than dict-shaped."
         ),
     ),
+    # The one live ergonomic coercion. Annotated flattens, so the inner Annotated
+    # merges into the field's own and the generated Field(...) is untouched.
+    CompatibilityAnnotation(
+        module="media_buy/list_creative_formats_request.py",
+        class_name="ListCreativeFormatsRequest",
+        field="disclosure_positions",
+        expected="list[disclosure_position.DisclosurePosition] | None",
+        replacement=(
+            "Annotated[\n            list[disclosure_position.DisclosurePosition] | None,\n"
+            "            WrapValidator(coerce_to_unique_enum_list(disclosure_position.DisclosurePosition)),\n        ]"
+        ),
+        imports=(
+            "from pydantic import WrapValidator",
+            "from adcp.types.coercion import coerce_to_unique_enum_list",
+        ),
+        because=(
+            "Order-preserving de-duplication of a repeated filter value. This is the one coercion that pydantic does not already do natively: an enum list accepts strings because the generated enums are StrEnum, and a model field accepts a dict because pydantic does that, but nothing drops a repeat. It was applied by a patch in _ergonomic.py; see salesagent-1jj5e."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/list_creative_formats_request.py",
+        class_name="ListCreativeFormatsRequest",
+        field="disclosure_persistence",
+        expected="list[disclosure_persistence_1.DisclosurePersistence] | None",
+        replacement=(
+            "Annotated[\n            list[disclosure_persistence_1.DisclosurePersistence] | None,\n"
+            "            WrapValidator(coerce_to_unique_enum_list(disclosure_persistence_1.DisclosurePersistence)),\n        ]"
+        ),
+        imports=(
+            "from pydantic import WrapValidator",
+            "from adcp.types.coercion import coerce_to_unique_enum_list",
+        ),
+        because=(
+            "Order-preserving de-duplication of a repeated filter value. This is the one coercion that pydantic does not already do natively: an enum list accepts strings because the generated enums are StrEnum, and a model field accepts a dict because pydantic does that, but nothing drops a repeat. It was applied by a patch in _ergonomic.py; see salesagent-1jj5e."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="creative/list_creative_formats_request.py",
+        class_name="ListCreativeFormatsRequestCreativeAgent",
+        field="disclosure_positions",
+        expected="list[disclosure_position.DisclosurePosition] | None",
+        replacement=(
+            "Annotated[\n            list[disclosure_position.DisclosurePosition] | None,\n"
+            "            WrapValidator(coerce_to_unique_enum_list(disclosure_position.DisclosurePosition)),\n        ]"
+        ),
+        imports=(
+            "from pydantic import WrapValidator",
+            "from adcp.types.coercion import coerce_to_unique_enum_list",
+        ),
+        because=(
+            "Order-preserving de-duplication of a repeated filter value. This is the one coercion that pydantic does not already do natively: an enum list accepts strings because the generated enums are StrEnum, and a model field accepts a dict because pydantic does that, but nothing drops a repeat. It was applied by a patch in _ergonomic.py; see salesagent-1jj5e."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="creative/list_creative_formats_request.py",
+        class_name="ListCreativeFormatsRequestCreativeAgent",
+        field="disclosure_persistence",
+        expected="list[disclosure_persistence_1.DisclosurePersistence] | None",
+        replacement=(
+            "Annotated[\n            list[disclosure_persistence_1.DisclosurePersistence] | None,\n"
+            "            WrapValidator(coerce_to_unique_enum_list(disclosure_persistence_1.DisclosurePersistence)),\n        ]"
+        ),
+        imports=(
+            "from pydantic import WrapValidator",
+            "from adcp.types.coercion import coerce_to_unique_enum_list",
+        ),
+        because=(
+            "Order-preserving de-duplication of a repeated filter value. This is the one coercion that pydantic does not already do natively: an enum list accepts strings because the generated enums are StrEnum, and a model field accepts a dict because pydantic does that, but nothing drops a repeat. It was applied by a patch in _ergonomic.py; see salesagent-1jj5e."
+        ),
+    ),
     # The read-back nodes. Each of these modules already imports the module its
     # clone is emitted into -- that is how it referenced the source class -- so
     # none of these entries needs an import.

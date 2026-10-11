@@ -39,7 +39,6 @@ regenerate-schemas: ## Download latest schemas and skills from bundle, then rege
 	$(PYTHON) scripts/generate_versioned_bases.py
 	$(PYTHON) scripts/generate_types.py
 	$(PYTHON) scripts/consolidate_exports.py
-	$(PYTHON) scripts/generate_ergonomic_coercion.py
 ```
 
 | Step | Consumes | Produces | Network |
@@ -49,9 +48,8 @@ regenerate-schemas: ## Download latest schemas and skills from bundle, then rege
 | `bundle_schemas.py` | the cache | `src/adcp/_schemas/**`, the schemas the wheel ships | no |
 | `generate_versioned_stubs.py` | the cache | `src/adcp/types/v30.pyi`, `v31.pyi`, `v32.pyi` | no |
 | `generate_versioned_bases.py` | the cache | `src/adcp/types/versioned_bases/**` | no |
-| `generate_types.py` | the cache | `domains/**`, `_generated.py`, `_ergonomic.py` | no |
+| `generate_types.py` | the cache | `domains/**`, `_generated.py` | no |
 | `consolidate_exports.py` | the generated tree | `_generated.py`, each `domains/<domain>/__init__.py`, `domains/__init__.py`, `error_details.py`, `docs/shared-type-names.md` | no |
-| `generate_ergonomic_coercion.py` | the generated tree | `_ergonomic.py` | no |
 
 `sync_schemas.py` is the only step that touches the network, and skipping it regenerates
 against the committed cache. That is the normal inner loop:
@@ -61,10 +59,18 @@ python scripts/generate_types.py            # regenerate from the committed cach
 python scripts/generate_types.py --check     # verify without writing anything
 ```
 
-Note that `generate_types.py` already runs `consolidate_exports.py` and
-`generate_ergonomic_coercion.py` as subprocesses against its staging tree and installs
-their output, so the Makefile target runs both of them a second time. Harmless, but do not
-read the Makefile as the statement of what depends on what.
+Note that `generate_types.py` already runs `consolidate_exports.py` as a subprocess
+against its staging tree and installs its output, so the Makefile target runs it a second
+time. Harmless, but do not read the Makefile as the statement of what depends on what.
+
+`generate_ergonomic_coercion.py` used to be a third step here, producing
+`src/adcp/types/_ergonomic.py`, which patched 74 field annotations at import time. Both are
+deleted. 70 of those patches were inert — `model_rebuild` rebuilds a schema from
+`model_fields`, not from `__annotations__` — and the coercion they appeared to supply is
+native: a generated enum is a `StrEnum`, so a string is accepted without help, and pydantic
+builds a model field from a dict without help. The four that were live are declared on the
+generated field by `COMPATIBILITY_ANNOTATIONS` in `post_generate_fixes.py`
+(salesagent-1jj5e).
 
 ### One tree
 
@@ -104,13 +110,13 @@ In order:
 7. `apply_post_generation_fixes` — a subprocess running `post_generate_fixes.py` against
    the staged tree.
 8. `prune_unused_bundled_modules` — keep only the three paths in `BUNDLED_KEEP`.
-9. Run `consolidate_exports.py`, then `generate_ergonomic_coercion.py`, against the staging
-   tree. The first writes the domain roots into the tree generated in step 4.
+9. Run `consolidate_exports.py` against the staging tree, which writes the domain roots
+   into the tree generated in step 4.
 10. `restore_unchanged_files` — restore byte-for-byte any file whose only change is a
     timestamp header, so a no-op regeneration produces no diff. Once, over the whole tree,
     after the roots are in it.
 11. Compare the artifacts against the checkout — `domains/`, `_generated.py`,
-    `_ergonomic.py`, `error_details.py`, `docs/shared-type-names.md`. Under `--check`,
+    `error_details.py`, `docs/shared-type-names.md`. Under `--check`,
     print the drift and return 1 without writing. Otherwise install and write
     `SCHEMA_DELTAS.md`.
 
@@ -589,8 +595,8 @@ The one authority on whether the committed tree matches the pipeline is:
 python scripts/generate_types.py --check     # "✓ Generated types are up to date"
 ```
 
-It stages a complete regeneration, compares `domains/`, `_generated.py` and
-`_ergonomic.py` byte-for-byte against the checkout, and writes nothing. **Run it yourself
+It stages a complete regeneration, compares `domains/` and `_generated.py` byte-for-byte
+against the checkout, and writes nothing. **Run it yourself
 after any pipeline change: `make validate-generated` does not.** That target checks syntax
 and the two versioned-stub generators only; PR #1374 is what wires the staleness check into
 the Makefile and into CI as a blocking step. Until it lands, nothing automated fails on a

@@ -1,10 +1,13 @@
 """Eager realization of the AdCP type surface.
 
-This module binds every public name exported by :mod:`adcp.types` and runs
-the import-time Pydantic patching (``_ergonomic`` coercion +
-``_forward_compat`` open-union ``Format.assets``). It is imported on demand
-by :mod:`adcp.types`'s lazy ``__getattr__`` the first time any type symbol is
-accessed, so ``import adcp.types`` itself stays cheap.
+This module binds every public name exported by :mod:`adcp.types`. It is
+imported on demand by :mod:`adcp.types`'s lazy ``__getattr__`` the first time
+any type symbol is accessed, so ``import adcp.types`` itself stays cheap.
+
+It used to also run the import-time Pydantic patching -- ``_ergonomic``
+coercion and ``_forward_compat``'s open ``Format.assets``. Both are now
+declared where the field is declared, by the generator, so there is nothing
+to run here.
 
 Do not import this module directly — import from :mod:`adcp.types` (or
 :mod:`adcp`). The name set here is mirrored by ``adcp.types.__all__``; the
@@ -13,20 +16,12 @@ Do not import this module directly — import from :mod:`adcp.types` (or
 
 from __future__ import annotations
 
-import importlib
-
-# Run the import-time patchers as a side effect, before binding the generated
-# types below (must come first — see the original "must be imported before
-# other types" note): ``_ergonomic`` applies BeforeValidator coercion and
-# ``_forward_compat`` opens ``Format.assets`` / ``RepeatableAssetGroup.assets``.
-# Imported via ``import_module`` — a call, not a name binding — so they read as
-# the intentional side-effect imports they are rather than tripping
-# unused-import analysers. (The removed ``format_category`` submodule has a real
-# shim at ``domains/enums/format_category.py``, restored after codegen by
+# ``_forward_compat`` is now six name bindings, imported below for them. The
+# ``import_module`` call that ran it for its side effects is gone with the side
+# effects: the coercion and the open unions are generated into the fields.
+# (The removed ``format_category`` submodule has a real shim at
+# ``domains/enums/format_category.py``, restored after codegen by
 # ``scripts/post_generate_fixes.py``.)
-importlib.import_module("adcp.types._ergonomic")
-importlib.import_module("adcp.types._forward_compat")
-
 # Re-exported submodules (part of the public surface via ``__all__`` below).
 from adcp.types import _generated as generated  # noqa: F401
 from adcp.types import aliases  # noqa: F401

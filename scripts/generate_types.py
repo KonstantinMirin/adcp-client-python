@@ -1540,14 +1540,6 @@ def _staged_source_tree(staging_root: Path) -> Path:
     if staged_generated.exists():
         shutil.rmtree(staged_generated)
 
-    # The committed ergonomic module can import generated names that no longer
-    # exist. The isolated import graph uses this inert stub until a fresh module
-    # is generated from the staged models.
-    (staged_package / "types" / "_ergonomic.py").write_text(
-        '"""Temporary ergonomic stub used during type generation."""\n\n'
-        "def apply_ergonomic_coercion() -> None:\n"
-        "    pass\n"
-    )
     return staged_source
 
 
@@ -1640,7 +1632,6 @@ def main(argv: list[str] | None = None):
             staged_types = staged_source / "adcp" / "types"
             staged_output = staged_types / OUTPUT_DIR.name
             staged_consolidated = staged_types / "_generated.py"
-            staged_ergonomic = staged_types / "_ergonomic.py"
             staged_error_details = staged_types / "error_details.py"
             staged_report = staging_root / "shared-type-names.md"
 
@@ -1678,32 +1669,8 @@ def main(argv: list[str] | None = None):
             if result.stdout:
                 print(result.stdout, end="")
 
-            ergonomic_script = REPO_ROOT / "scripts" / "generate_ergonomic_coercion.py"
-            if ergonomic_script.exists():
-                print("\nGenerating ergonomic coercion module...")
-                result = subprocess.run(
-                    [
-                        sys.executable,
-                        str(ergonomic_script),
-                        "--source-root",
-                        str(staged_source),
-                        "--output-file",
-                        str(staged_ergonomic),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    cwd=staging_root,
-                )
-                if result.returncode != 0:
-                    print("\n✗ Ergonomic coercion generation failed:", file=sys.stderr)
-                    print(result.stderr, file=sys.stderr)
-                    return 1
-                if result.stdout:
-                    print(result.stdout, end="")
-
             current_types = REPO_ROOT / "src" / "adcp" / "types"
             restore_unchanged_file(staged_consolidated, current_types / "_generated.py")
-            restore_unchanged_file(staged_ergonomic, current_types / "_ergonomic.py")
             restore_unchanged_file(staged_error_details, current_types / "error_details.py")
             restore_unchanged_file(staged_report, SHARED_TYPE_NAMES_FILE)
             restore_unchanged_files(staged_output)
@@ -1711,7 +1678,6 @@ def main(argv: list[str] | None = None):
             artifacts = [
                 (staged_output, OUTPUT_DIR),
                 (staged_consolidated, current_types / "_generated.py"),
-                (staged_ergonomic, current_types / "_ergonomic.py"),
                 (staged_error_details, current_types / "error_details.py"),
                 (staged_report, SHARED_TYPE_NAMES_FILE),
             ]
