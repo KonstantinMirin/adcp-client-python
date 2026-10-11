@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import hashlib
 import json
 import threading
 from copy import deepcopy
 from datetime import datetime
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
@@ -204,6 +206,28 @@ def _issue(code: str) -> dict[str, object]:
         "responsible_party": "buyer",
         "recommended_action": "contact_buyer",
     }
+
+
+def _restate(record: Any, **changes: Any) -> Any:
+    """A typed record with fields restated, built without re-validating it."""
+    return record.model_construct(**{**record.__dict__, **changes})
+
+
+def _restated(ledger: Any, field: str, index: int, record: Any) -> Any:
+    """``ledger`` with one of its typed records replaced.
+
+    ``evaluate_reporting_ledger`` is a pure function over typed records, and some of
+    its checks guard states the pinned schema refuses outright: an official revision
+    with no finality evidence (core/reporting-revision.json member 1), or a resource
+    kind and verification path disagreeing with the method (members 2 to 4 of
+    core/reporting-materialization.json, which fix both from the method). No
+    validated response can carry one, and a loaded ledger refuses mutation, so the
+    record is restated and the ledger rebuilt around it. That grades the check at
+    the boundary it actually defends.
+    """
+    records = list(getattr(ledger, field))
+    records[index] = record
+    return dataclasses.replace(ledger, **{field: tuple(records)})
 
 
 def _health(value: str, *, code: str = "RECEIPT_REQUIRED") -> dict[str, object]:
@@ -1638,6 +1662,12 @@ async def test_mismatched_native_producer_evidence_is_not_definitive() -> None:
         },
     )
     verification.pop("canonical_content_digest")
+    # core/reporting-materialization.json member 5: a BILLING materialization that
+    # is available or delivered verifies by canonical digest. Native commit is an
+    # analytics-feed profile, so the whole generation states that purpose.
+    for item in [obligation, attempt, *raw["scope"]["delivery_config_generations"]]:
+        item["feed_purpose"] = "analytics"
+    raw["scope"]["feed_purposes"] = ["analytics"]
 
     class NativeMismatchClient(_Client):
         async def get_reporting_status(
@@ -1673,11 +1703,6 @@ async def test_official_revision_requires_finality_evidence() -> None:
         reconciliation_status="not_required",
         **_health("complete"),
     )
-    revision = raw["revisions"][0]
-    assert isinstance(revision, dict)
-    revision.pop("finality_basis")
-    revision.pop("finality_policy_id")
-    revision.pop("finalized_at")
 
     class MissingFinalityEvidenceClient(_Client):
         async def get_reporting_status(
@@ -1692,6 +1717,17 @@ async def test_official_revision_requires_finality_evidence() -> None:
         MissingFinalityEvidenceClient(),
         GetReportingStatusRequest.model_validate(
             {"account": {"account_id": "account-1"}, "view": "periods"}
+        ),
+    )
+    ledger = _restated(
+        ledger,
+        "revisions",
+        0,
+        _restate(
+            ledger.revisions[0],
+            finality_basis=None,
+            finality_policy_id=None,
+            finalized_at=None,
         ),
     )
     result = evaluate_reporting_ledger(
@@ -1714,14 +1750,6 @@ async def test_materialization_method_evidence_must_match_method() -> None:
         reconciliation_status="not_required",
         **_health("complete"),
     )
-    materialization = raw["materializations"][0]
-    assert isinstance(materialization, dict)
-    resource = materialization["resource"]
-    verification = materialization["verification"]
-    assert isinstance(resource, dict)
-    assert isinstance(verification, dict)
-    resource["kind"] = "warehouse_relation"
-    verification["verification_path"] = "destination"
 
     class MethodMismatchClient(_Client):
         async def get_reporting_status(
@@ -1736,6 +1764,17 @@ async def test_materialization_method_evidence_must_match_method() -> None:
         MethodMismatchClient(),
         GetReportingStatusRequest.model_validate(
             {"account": {"account_id": "account-1"}, "view": "periods"}
+        ),
+    )
+    materialization = ledger.materializations[0]
+    ledger = _restated(
+        ledger,
+        "materializations",
+        0,
+        _restate(
+            materialization,
+            resource=_restate(materialization.resource, kind="warehouse_relation"),
+            verification=_restate(materialization.verification, verification_path="destination"),
         ),
     )
     result = evaluate_reporting_ledger(

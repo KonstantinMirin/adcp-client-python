@@ -130,6 +130,22 @@ def _with_status(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+def _pending(obligation: dict[str, Any], count: int) -> None:
+    """Declare an outstanding-adjustment count with the health it implies.
+
+    core/reporting-obligation.json member 7 says a complete consumer_receipt
+    obligation has none outstanding, so a declared count moves health off complete
+    and member 8 then requires the issue that names what is outstanding.
+    """
+    obligation["pending_adjustment_count"] = count
+    if obligation.get("reconciliation_mode") == "consumer_receipt":
+        obligation.update(
+            _health("complete")
+            if not count
+            else _health("action_required", code="ADJUSTMENT_RECEIPT_REQUIRED")
+        )
+
+
 def _reconciled(obligation: dict[str, Any]) -> None:
     """Derive reconciliation_status, health and issues from the receipt counts.
 
@@ -144,7 +160,13 @@ def _reconciled(obligation: dict[str, Any]) -> None:
     if obligation.get("reconciliation_mode") != "consumer_receipt":
         return
     if obligation.get("accepted_receipt_count"):
-        pending = obligation.get("pending_adjustment_count", 0)
+        # Outstanding adjustments are the ones whose current leaf is not accepted;
+        # a stale declared count contradicts the evidence the reader recomputes.
+        pending = max(
+            obligation.get("adjustment_count", 0)
+            - obligation.get("accepted_adjustment_receipt_count", 0),
+            0,
+        )
         obligation.update(reconciliation_status="accepted", pending_adjustment_count=pending)
         obligation.update(
             _health("complete")
@@ -484,12 +506,13 @@ async def test_positive_status_count_requires_its_exact_current_status_dependenc
     assert error.value.code == "INVALID_LEDGER_DEPENDENCY"
 
 
-async def test_legacy_typed_status_without_owner_uses_exact_revision_binding() -> None:
-    raw = _with_status(_history())
-    raw["consumer_statuses"][0].pop("reporting_obligation_id")
-    ledger = await _load(raw)
-    assert ledger.consumer_statuses[0].reporting_obligation_id is None
-    assert evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW).definitive
+# An owner-free consumer status used to be read here through a loaded ledger. Every
+# value of consumer_status requires reporting_obligation_id in
+# core/reporting-consumer-status.json, so the pinned wire cannot carry one, and a
+# definitive claim requires a LOADED ledger -- a manually assembled one is
+# diagnostic by construction. The owner-free tolerance is still graded, on a loaded
+# ledger, by test_ownerless_revisionless_status_does_not_certify_multiple_obligations
+# in tests/test_reporting_frozen_read_corrections.py.
 
 
 @pytest.mark.parametrize("bounds", [{"max_bytes": 100}, {"max_records": 4}])
@@ -725,12 +748,14 @@ async def test_accepted_receipt_stays_bound_to_its_materialization_after_later_o
             newer.update(failed_at="2026-09-02T00:01:06Z", failure_code="WRITE_FAILED")
     elif later == "expired":
         newer["resource"]["expires_at"] = "2026-09-02T23:00:00Z"
-    elif later == "corrupt":
-        raw["periods"][0]["health"] = "action_required"
     elif later == "bad-producer-evidence":
         newer["verification"]["row_count"] = 999
     raw["materializations"].append(newer)
     _counts(raw)
+    if later == "corrupt":
+        # After the count pass, which derives health from the receipt evidence and
+        # would otherwise put this obligation back to complete.
+        raw["periods"][0].update(_health("action_required"))
     result = evaluate_reporting_ledger(await _load(raw), expected_periods=_expected(), now=NOW)
     reasons = result.obligations[0].reasons
     assert "MISSING_MATCHING_CONSUMER_RECEIPT" not in reasons
@@ -832,10 +857,10 @@ async def test_pending_adjustment_count_matches_only_the_current_leaf(accepted) 
     if not accepted:
         raw["adjustment_receipts"][0].update(status="rejected", rejection_codes=["MISMATCH"])
     _counts(raw)
-    raw["periods"][0]["pending_adjustment_count"] = int(not accepted)
+    _pending(raw["periods"][0], int(not accepted))
     result = evaluate_reporting_ledger(await _load(raw), expected_periods=_expected(), now=NOW)
     assert result.definitive is accepted
-    raw["periods"][0]["pending_adjustment_count"] = int(accepted)
+    _pending(raw["periods"][0], int(accepted))
     with pytest.raises(ReportingReconciliationError) as error:
         await _load(raw)
     assert error.value.code == "LEDGER_COUNT_MISMATCH"
