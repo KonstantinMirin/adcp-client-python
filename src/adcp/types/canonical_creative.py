@@ -109,6 +109,10 @@ from adcp.types._product_format_declaration import (
     PRODUCT_FORMAT_DECLARATION_SCHEMA,
     check_declaration_rules,
 )
+from adcp.types._targeting_compat import (
+    TargetingOverlayMutationInMaterializedJson,
+    inherited_overlay_field,
+)
 from adcp.types.base import AdCPBaseModel
 from adcp.types.domains.core.canonical_format_kind import CanonicalFormatKind
 from adcp.types.domains.core.creative_asset import (
@@ -993,6 +997,13 @@ class PackageRequest(_LegacyPackageRequest, CanonicalBoundaryModel):
         format_ids: _RemovedFormatIds = Field(default=None, init=False)
 
     creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)
+    # The generated parent carries ``TargetingOverlayMutation``. A canonical model
+    # materializes JSON in its before validator, so this subtree re-enters core JSON
+    # validation to keep native error codes and extra/missing order -- which is the
+    # only difference between the two aliases.
+    targeting_overlay: TargetingOverlayMutationInMaterializedJson = inherited_overlay_field(
+        _LegacyPackageRequest
+    )
 
     @model_validator(mode="after")
     def _validate_format_params(self) -> PackageRequest:
@@ -1008,6 +1019,10 @@ class PackageUpdate(_LegacyPackageUpdate, CanonicalBoundaryModel):
     """Canonical package update; creatives are canonical assets."""
 
     creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
+    # See PackageRequest.targeting_overlay above.
+    targeting_overlay: TargetingOverlayMutationInMaterializedJson = inherited_overlay_field(
+        _LegacyPackageUpdate
+    )
 
 
 class Package(_LegacyPackage, CanonicalBoundaryModel):

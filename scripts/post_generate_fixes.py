@@ -3481,6 +3481,70 @@ COMPATIBILITY_ANNOTATIONS: tuple[CompatibilityAnnotation, ...] = (
             "portfolio typed rather than dict-shaped."
         ),
     ),
+    # The rc.3 targeting mutation bridge, on each of the four generated mutation
+    # fields. ``adcp.types.canonical_creative`` declares the other alias on its two
+    # facades, because a canonical model materializes JSON before its fields are
+    # validated; both directions of that split were measured to change results.
+    CompatibilityAnnotation(
+        module="media_buy/package_request.py",
+        class_name="PackageRequest",
+        field="targeting_overlay",
+        expected="targeting_input.TargetingOverlayInput | None",
+        replacement="TargetingOverlayMutation",
+        imports=("from adcp.types._targeting_compat import TargetingOverlayMutation",),
+        because=(
+            "The schema's mutation shape is TargetingOverlayInput and that is what the JSON "
+            "schema advertises; the SDK additionally accepts an already-resolved "
+            "TargetingOverlay instance, so a caller passing one back does not have to "
+            "model_dump() it first. See adcp.types._targeting_compat. Annotated flattens, so "
+            "the Field(...) below is still this field's own."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/package_update.py",
+        class_name="PackageUpdate",
+        field="targeting_overlay",
+        expected="targeting_input.TargetingOverlayInput | None",
+        replacement="TargetingOverlayMutation",
+        imports=("from adcp.types._targeting_compat import TargetingOverlayMutation",),
+        because=(
+            "The schema's mutation shape is TargetingOverlayInput and that is what the JSON "
+            "schema advertises; the SDK additionally accepts an already-resolved "
+            "TargetingOverlay instance, so a caller passing one back does not have to "
+            "model_dump() it first. See adcp.types._targeting_compat. Annotated flattens, so "
+            "the Field(...) below is still this field's own."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/package_control.py",
+        class_name="PackageControl",
+        field="targeting_overlay",
+        expected="targeting_input.TargetingOverlayInput | None",
+        replacement="TargetingOverlayMutation",
+        imports=("from adcp.types._targeting_compat import TargetingOverlayMutation",),
+        because=(
+            "The schema's mutation shape is TargetingOverlayInput and that is what the JSON "
+            "schema advertises; the SDK additionally accepts an already-resolved "
+            "TargetingOverlay instance, so a caller passing one back does not have to "
+            "model_dump() it first. See adcp.types._targeting_compat. Annotated flattens, so "
+            "the Field(...) below is still this field's own."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="media_buy/product_purchase_input.py",
+        class_name="ProductPurchaseInput",
+        field="targeting_overlay",
+        expected="targeting_input.TargetingOverlayInput | None",
+        replacement="TargetingOverlayMutation",
+        imports=("from adcp.types._targeting_compat import TargetingOverlayMutation",),
+        because=(
+            "The schema's mutation shape is TargetingOverlayInput and that is what the JSON "
+            "schema advertises; the SDK additionally accepts an already-resolved "
+            "TargetingOverlay instance, so a caller passing one back does not have to "
+            "model_dump() it first. See adcp.types._targeting_compat. Annotated flattens, so "
+            "the Field(...) below is still this field's own."
+        ),
+    ),
 )
 
 

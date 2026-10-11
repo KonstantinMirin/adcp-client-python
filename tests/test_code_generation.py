@@ -1826,7 +1826,17 @@ def test_targeting_public_surface_guard_accepts_a_compatible_new_subclass(monkey
 
 
 def test_current_targeting_input_has_exactly_four_generated_request_sites():
-    """Pin schema sites and pre-patch annotations, independent of runtime widening."""
+    """Pin the schema sites, and that every one of them carries the bridge.
+
+    The generated side used to be pinned to the PRE-PATCH annotation
+    (``targeting_input.TargetingOverlayInput | None``), because the bridge was applied
+    at import time and the generated source never showed it. The bridge is now written
+    at the declaration site, so the generated source is where it is visible -- and the
+    stronger property is pinnable here: the four schema sites are the four alias sites,
+    and NO generated field carries the raw input type. A fifth schema site that the
+    declarative source does not cover would leave a raw field behind and fail the last
+    assertion, which the old spelling could not see.
+    """
     import ast
     import json
 
@@ -1870,10 +1880,11 @@ def test_current_targeting_input_has_exactly_four_generated_request_sites():
     }
 
     generated_root = root / "src/adcp/types/domains"
-    generated_sites = set()
+    bridged_sites = set()
+    raw_sites = set()
     for source in generated_root.rglob("*.py"):
         text = source.read_text()
-        if "TargetingOverlayInput" not in text:
+        if "TargetingOverlay" not in text:
             continue
         for model in ast.walk(ast.parse(text)):
             if not isinstance(model, ast.ClassDef):
@@ -1881,22 +1892,30 @@ def test_current_targeting_input_has_exactly_four_generated_request_sites():
             for field in model.body:
                 if not isinstance(field, ast.AnnAssign):
                     continue
-                if "TargetingOverlayInput" not in ast.unparse(field.annotation):
-                    continue
-                generated_sites.add(
-                    (source.relative_to(generated_root).as_posix(), model.name, field.target.id)
+                annotation = ast.unparse(field.annotation)
+                site = (
+                    source.relative_to(generated_root).as_posix(),
+                    model.name,
+                    field.target.id,
                 )
-                # Assert the whole schema shape: a nested/list/wider union
-                # must not pass merely because it still contains Input.
+                if "TargetingOverlayInput" in annotation:
+                    raw_sites.add(site)
+                if "TargetingOverlayMutation" not in annotation:
+                    continue
+                bridged_sites.add(site)
+                # Assert the whole shape: a nested or wider annotation must not pass
+                # merely because it mentions the alias somewhere.
                 assert isinstance(field.annotation, ast.Subscript)
                 assert ast.unparse(field.annotation.value) == "Annotated"
-                assert ast.unparse(field.annotation.slice.elts[0]) == (
-                    "targeting_input.TargetingOverlayInput | None"
-                )
-    assert generated_sites == {
+                assert ast.unparse(field.annotation.slice.elts[0]) == "TargetingOverlayMutation"
+    assert bridged_sites == {
         (f"media_buy/{stem.replace('-', '_')}.py", name, "targeting_overlay")
         for stem, name in expected.items()
     }
+    # The bridge is not additive: a generated field still typed with the raw input type
+    # is a mutation site the declarative source in scripts/post_generate_fixes.py does
+    # not cover, and it would be un-bridged for every caller who reaches it by nesting.
+    assert raw_sites == set()
 
 
 def test_product_type_structure():
