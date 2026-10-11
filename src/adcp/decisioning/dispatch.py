@@ -814,7 +814,6 @@ def _validation_error_to_invalid_request(method_name: str, exc: ValidationError)
             + (f" (field: {field_path!r})" if field_path else "")
         ),
         field=field_path or None,
-        recovery="correctable",
         details={"validation_errors": errors},
     )
 
@@ -1435,7 +1434,6 @@ def _coerce_params_to_platform_type(
                         + (f" (field: {field_path!r})" if field_path else "")
                     ),
                     field=field_path or None,
-                    recovery="correctable",
                 ) from exc
         break
 
@@ -1850,7 +1848,6 @@ async def _project_invocation_result(
                 f"{method_name} cannot use WorkflowHandoff because external registry "
                 "completion would bypass framework response verification; use TaskHandoff"
             ),
-            recovery="correctable",
         )
         if on_failure is not None:
             await _safe_on_failure_call(on_failure, rejection, method_name)
@@ -1905,7 +1902,6 @@ async def _project_invocation_result(
                 "instead so the framework issues the task, enforces push "
                 "ownership, and persists a pollable lifecycle."
             ),
-            recovery="correctable",
         )
         if on_failure is not None:
             await _safe_on_failure_call(on_failure, rejection, method_name)
@@ -2079,7 +2075,6 @@ async def _validate_handoff_push_ownership(
                 "push_notification_config.operation_id is required before "
                 "this request can enter an asynchronous task lifecycle"
             ),
-            recovery="correctable",
             field="push_notification_config.operation_id",
             suggestion=(
                 "Supply a stable client-generated operation_id, or omit "
@@ -2093,7 +2088,6 @@ async def _validate_handoff_push_ownership(
                 "This push-configured task has no conformant durable webhook "
                 "publisher under the AdCP 3.2 beta.5 contract"
             ),
-            recovery="correctable",
             field="push_notification_config",
             suggestion=(
                 "Omit push_notification_config and poll tasks/get, or configure "

@@ -477,20 +477,31 @@ with it two messages.
 
 ### Root class names: `title`-derived
 
-The generator names a root class from the schema's `title`. The repo reproduces that rule
-only to read it back:
+The generator names a root class from the schema's `title`, and the repo ASKS it for that
+name rather than restating the rule. `scripts/generated_names.py` owns both of the
+generator's naming rules and nothing else:
 
 ```python
-def mangle_schema_title(title: str) -> str:
-    return "".join(word.capitalize() for word in re.split(r"[^0-9a-zA-Z]+", title) if word)
+generated_root_class_name(title)     # a schema ROOT
+generated_nested_class_name(title)   # a named NESTED object
 ```
 
-Measured against all 154 task-message schemas at the pin, this reproduces the generated
-root class or union-alias name for 154 of 154. Note `str.capitalize`, which lower-cases the
-tail — that is the generator's behavior, and it is the part a filename-derived guess gets
-wrong in both directions: `Get AdCP Capabilities Request` becomes
-`GetAdcpCapabilitiesRequest`, and `list-creative-formats-request.json` does *not* become
-`ListCreativeFormatsRequest` because its title names the agent variant.
+There are two because the generator applies two: a root goes through
+`_resolve_root_model_name`, which title-cases a title that is not already a Python
+identifier and keeps one that is, so `Get AdCP Capabilities Request` becomes
+`GetAdcpCapabilitiesRequest` while `GetCreativeFeaturesSuccess` is kept verbatim; a nested
+object goes through `default_class_name_generator`, which PRESERVES an acronym, so
+`VAST Asset` becomes `VASTAsset` and not `VastAsset`. Using either rule in the other's
+position is wrong for every acronym.
+
+Use these two functions for any pass that needs a class name from a title, and do not
+re-derive a third answer — a derived name that matches nothing is silently green, and a
+consumer keying on one (a capture index, a name resolved before the branches exist) has no
+module to resolve against.
+`tests/test_generated_hierarchy.py::test_the_root_class_name_derived_from_a_title_is_the_name_the_module_declares`
+grades the root derivation against the generated tree on every run, over the 946 titled
+roots that declare a single class to compare against, with a population floor so a
+derivation that stops resolving fails instead of comparing an empty list.
 
 Nothing in the pipeline injects a `title` to steer this.
 
@@ -565,8 +576,8 @@ The property wanted is: a name refers to the same schema node until the schema c
    follows filesystem insertion order. `test_flatten_schemas_uses_stable_path_order` grades
    it.
 2. **Provenance is read, not guessed.** The generator's own `filename:` header, and
-   `mangle_schema_title` reproducing the generator's title rule for 154 of 154 task
-   messages, mean a pass that renames or marks a class finds it by what produced it.
+   `scripts/generated_names.py` asking the generator for a class name instead of restating
+   its rule, mean a pass that renames or marks a class finds it by what produced it.
 3. **The staleness check makes instability visible.** `generate_types.py --check` re-runs
    the whole pipeline into a staging tree and compares all three artifacts byte-for-byte.
    Any input-order sensitivity shows up as a dirty regeneration.
