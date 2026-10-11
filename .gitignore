@@ -91,7 +91,13 @@ profile_default/
 ipython_config.py
 
 # pyenv
-.python-version
+#   .python-version is CHECKED IN on purpose. It is not the supported matrix --
+#   `requires-python` and the CI interpreter matrix own that -- it is the single
+#   default interpreter a contributor's `make bootstrap` resolves to. Without it
+#   uv picks whatever is newest on the machine, and two checkouts of one commit
+#   then run different library code: a2a-sdk forks its event queue at
+#   `sys.version_info >= (3, 13)`, so the A2A event path is asyncio.Queue on a
+#   3.13+ tree and culsans on a 3.12 one, from the same pinned version.
 
 # pipenv
 Pipfile.lock
@@ -158,7 +164,14 @@ Thumbs.db
 
 # Environment variables
 .env
-uv.lock
+
+# uv.lock is TRACKED on purpose, and is not an environment variable -- it was
+# appended to this block by d20704d3c, a commit whose message describes three
+# unrelated test fixes. The only reasoning ever recorded here was the GitHub
+# template's own note that a lock "is generally recommended ... in version
+# control", deleted by abe2aa7b3. Untracked, every `uv sync` resolved fresh:
+# two trees from one commit got different versions, and `UV_FROZEN=1` had
+# nothing to freeze against.
 
 # Temporary schema processing directory
 .schema_temp/
