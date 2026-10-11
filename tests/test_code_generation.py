@@ -2795,6 +2795,42 @@ def _root_combinator(schema: dict) -> tuple[str, object] | None:
     return None
 
 
+def _roots_declaring_a_required_group() -> dict[str, str]:
+    """``{root class: combinator}`` for every root the reader can grade.
+
+    Derived from the bundle: a root declaring an ``anyOf``/``oneOf`` whose every
+    arm carries ``required``, whose generated module exists, and whose shape the
+    reader can read. Those are exactly the roots that must name their keyword,
+    so the test's floor is this set rather than a number from a past release.
+    """
+    from scripts import post_generate_fixes
+
+    found: dict[str, str] = {}
+    for schema_file in sorted(post_generate_fixes.SCHEMA_DIR.rglob("*.json")):
+        relative = schema_file.relative_to(post_generate_fixes.SCHEMA_DIR)
+        try:
+            schema = json.loads(schema_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(schema, dict):
+            continue
+        declared = _root_combinator(schema)
+        if declared is None:
+            continue
+        combinator, arms = declared
+        if not all(isinstance(arm, dict) and isinstance(arm.get("required"), list) for arm in arms):
+            continue
+        module = post_generate_fixes.generated_module_for(relative)
+        if not module.is_file():
+            continue
+        source = module.read_text()
+        class_name = post_generate_fixes._root_property_class(source, schema)
+        if class_name is None or post_generate_fixes.flat_root_shape(schema, relative) is None:
+            continue
+        found[class_name] = combinator
+    return found
+
+
 def test_every_root_required_group_refusal_names_its_own_schema_combinator():
     """Over the committed tree, not a fixture: each keyword matches its schema.
 
@@ -2850,17 +2886,28 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
             continue
         found[class_name] = keyword
 
-    # The floor is the anti-vacuity check: a derivation that matched nothing
-    # would pass silently. Both keywords are represented and the two roots a
-    # consumer reported are named outright -- CreativeAsset's name is now its
-    # shared shape, because the emitter split that root into arms.
-    assert len(found) >= 42, found
+    # The basis is a DERIVED property, not a watermark. It used to read
+    # `len(found) >= 42`, which was what beta.3 happened to emit -- and a
+    # watermark stops being evidence the moment the population changes, which
+    # it did: admitting roots whose constraint content lives in allOf members
+    # took the count past 150, and a bumped literal would have recorded that
+    # without grading it.
+    #
+    # The property: EVERY root declaring a required-group combinator, whose
+    # shape the reader can read, names its combinator on refusal. Computed from
+    # the bundle, so a root added by a version bump is covered without an edit
+    # and a root that loses its coverage fails here.
+    expected = _roots_declaring_a_required_group()
+    assert expected, "the derivation selected no roots at all"
+    missing = sorted(set(expected) - set(found))
+    assert not missing, (
+        f"{len(missing)} root(s) declare a required-group combinator and name no "
+        f"keyword on refusal: {missing[:8]}"
+    )
     assert set(found.values()) == {"anyOf", "oneOf"}, found
-    assert found["CreativeAsset"] == "oneOf", found
-    assert found["CreateMediaBuyRequest"] == "anyOf", found
-    # The two roots whose branches are purely requiredness, named outright
-    # because they are the ones a mechanism-shaped gate would have lost. The
-    # base takes the root's own name, so these are the plain names.
+    # Two roots whose branches are purely requiredness, named outright because
+    # they are the ones a mechanism-shaped gate would have lost: they carry no
+    # validator at all, so only the union's wrapper names their keyword.
     assert found["Catchment"] == "oneOf", found
     assert found["FrequencyCapImpressionConstraints"] == "oneOf", found
 
