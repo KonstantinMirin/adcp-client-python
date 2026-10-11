@@ -28,6 +28,7 @@ import importlib.util
 import json
 import re
 import sys
+import textwrap
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
@@ -3382,6 +3383,167 @@ def _ensure_sequence_import(content: str) -> str:
         )
 
     return "from collections.abc import Sequence\n\n" + content
+
+
+class CompatibilityAnnotation(NamedTuple):
+    """A generated field whose annotation the implementation replaces.
+
+    The replacement is a fact about the IMPLEMENTATION, not about the pinned
+    schema: the schema describes one wire shape, and the generated tree renders
+    it twice -- once per view -- or renders a closed union the spec requires a
+    consumer to keep open. Either way the field has to carry a type the
+    generator does not derive.
+
+    Declared here, as a source transform on the field's own declaration, for
+    the reason ``PIN_GAP_FIELDS`` in ``scripts/generate_types.py`` is declared
+    as a schema transform: WHERE the type is carried decides whether it works.
+    Patching the class after generation reaches only the class, and every one
+    of these fields is nested by generated source BY ITS GENERATED TYPE -- so a
+    parsed document produced the generated class and the replacement was
+    reachable only by a caller who named it. Written at the declaration site,
+    every nesting parent gets it by generation.
+
+    ``expected`` is the guard, moved from import time to generation time. The
+    runtime patch raised ``RuntimeError`` from an application import when the
+    generated field lost the shape it was written against; this refuses the
+    REGENERATION instead, which is where the shape changed.
+    """
+
+    #: Path under ``OUTPUT_DIR``, posix-spelled.
+    module: str
+    class_name: str
+    field: str
+    #: The generated annotation, matched exactly. A miss is a regeneration
+    #: failure: the field no longer has the shape the replacement was written
+    #: against.
+    expected: str
+    replacement: str
+    #: Import statements the replacement needs, each written once.
+    imports: tuple[str, ...]
+    #: Why the field diverges, cited in the generated output at the field.
+    because: str
+
+
+COMPATIBILITY_ANNOTATIONS: tuple[CompatibilityAnnotation, ...] = (
+    # ``bundled/protocol/get-adcp-capabilities-response.json`` INLINES what the
+    # canonical tree reaches by ``$ref``, so three canonical schemas are
+    # generated a second time as identity-distinct classes. A caller composing
+    # a capabilities response from public SDK objects had to round-trip them
+    # through ``model_dump()`` first, because the bundled clone is a different
+    # type with the same wire shape.
+    CompatibilityAnnotation(
+        module="bundled/protocol/get_adcp_capabilities_response.py",
+        class_name="MediaBuy",
+        field="acceptance_policy_discovery",
+        expected="AcceptancePolicyDiscovery | None",
+        replacement="_CanonicalAcceptancePolicyDiscovery | None",
+        imports=(
+            "from ...protocol.get_adcp_capabilities_response import "
+            "AcceptancePolicyDiscovery as _CanonicalAcceptancePolicyDiscovery",
+        ),
+        because=(
+            "The bundled view inlines core/acceptance-policy-discovery.json, which the "
+            "canonical view reaches by $ref, so the same wire schema is generated twice as "
+            "two classes. This capability boundary accepts the canonical class, so a typed "
+            "object composes without a model_dump() round trip."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="bundled/protocol/get_adcp_capabilities_response.py",
+        class_name="Portfolio",
+        field="publisher_domains",
+        expected="list[PublisherDomain]",
+        replacement="list[_CanonicalPublisherDomain]",
+        imports=(
+            "from ...core.canonical_product import " "PublisherDomain as _CanonicalPublisherDomain",
+        ),
+        because=(
+            "Same inlined-twice view as acceptance_policy_discovery above. This one is a "
+            "scalar root rather than an object, which is why the runtime patch this "
+            "replaced had to match the clone by class identity and not by "
+            "type[BaseModel] -- a bundled scalar root is a str subclass (#1277)."
+        ),
+    ),
+    CompatibilityAnnotation(
+        module="bundled/protocol/get_adcp_capabilities_response.py",
+        class_name="Portfolio",
+        field="primary_countries",
+        expected="list[PrimaryCountry] | None",
+        replacement="list[_CanonicalPrimaryCountry] | None",
+        imports=(
+            "from ...protocol.get_adcp_capabilities_response import "
+            "PrimaryCountry as _CanonicalPrimaryCountry",
+        ),
+        because=(
+            "Same inlined-twice view, and the two renderings do not even share a base: "
+            "the bundled clone subclasses the inlined Country enum while the canonical "
+            "class is a ScalarStr. Accepting the canonical one is what makes a composed "
+            "portfolio typed rather than dict-shaped."
+        ),
+    ),
+)
+
+
+def _ensure_module_import(content: str, statement: str) -> str:
+    """Write ``statement`` ahead of the module's first class, once.
+
+    The generated modules carry several import blocks, written by codegen and
+    by the passes above, so there is no single block to extend. Ahead of the
+    first class is after all of them and before any use.
+    """
+    if statement in content:
+        return content
+    source, replaced = re.subn(
+        r"^class ", f"{statement}\n\n\nclass ", content, count=1, flags=re.MULTILINE
+    )
+    if replaced != 1:
+        raise RuntimeError(f"no class to place {statement!r} ahead of")
+    return source
+
+
+def declare_compatibility_annotations() -> None:
+    """Write each :data:`COMPATIBILITY_ANNOTATIONS` entry at its declaration site.
+
+    Raises when an entry's ``expected`` annotation is not what the generator
+    emitted. That is the whole point of carrying it: the shape a replacement
+    was written against is asserted at the moment of the replacement, so a
+    schema refresh that reshapes the field fails the regeneration rather than
+    silently installing a type for a field that no longer has that form.
+    """
+    print("Declaring compatibility annotations at their declaration sites...")
+
+    for entry in COMPATIBILITY_ANNOTATIONS:
+        path = OUTPUT_DIR / entry.module
+        if not path.exists():
+            raise RuntimeError(f"{entry.module} does not exist; {entry.class_name} is not emitted")
+        content = path.read_text()
+        block = _find_class_field_block(content, entry.class_name, entry.field)
+        if block is None:
+            raise RuntimeError(
+                f"{entry.module}: {entry.class_name}.{entry.field} is not declared, so the "
+                "compatibility annotation has no site"
+            )
+        start, end = block
+        annotation = content[start:end]
+        if entry.expected not in annotation:
+            raise RuntimeError(
+                f"{entry.module}: {entry.class_name}.{entry.field} is generated as "
+                f"{annotation.strip()!r}, which does not contain {entry.expected!r}. The "
+                "replacement was written against a shape the field no longer has."
+            )
+        line_start = start - len(f"    {entry.field}: ")
+        citation = "".join(f"    # {line}\n" for line in textwrap.wrap(entry.because, width=92))
+        content = (
+            content[:line_start]
+            + citation
+            + content[line_start:start]
+            + annotation.replace(entry.expected, entry.replacement, 1)
+            + content[end:]
+        )
+        for statement in entry.imports:
+            content = _ensure_module_import(content, statement)
+        path.write_text(content)
+        print(f"  ✓ {entry.module}: {entry.class_name}.{entry.field} -> {entry.replacement}")
 
 
 # Matches request-type 'canceled: Literal[True] = True' emissions.
@@ -7470,20 +7632,12 @@ BRANCH_DISPATCH_IMPORT = "from adcp.types._branch_dispatch import BranchDispatch
 
 def _ensure_branch_dispatch_import(content: str) -> str:
     """Give a split module the shared dispatch mixin, once."""
-    if BRANCH_DISPATCH_IMPORT in content:
-        return content
-    return re.sub(
-        r"^class ", f"{BRANCH_DISPATCH_IMPORT}\n\n\nclass ", content, count=1, flags=re.MULTILINE
-    )
+    return _ensure_module_import(content, BRANCH_DISPATCH_IMPORT)
 
 
 def _ensure_conditions_import(content: str) -> str:
     """Give a module the vocabulary import, once."""
-    if CONDITIONS_IMPORT in content:
-        return content
-    return re.sub(
-        r"^class ", f"{CONDITIONS_IMPORT}\n\n\nclass ", content, count=1, flags=re.MULTILINE
-    )
+    return _ensure_module_import(content, CONDITIONS_IMPORT)
 
 
 def enforce_root_constraints() -> None:
@@ -7925,6 +8079,10 @@ def main(argv: list[str] | None = None) -> int:
         point_integer_fields_at_the_schema_integer_type,
         remove_imports_shadowed_by_a_local_class,
         remove_unused_pydantic_field_imports,
+        # After the import-cleanup passes, which would otherwise read the import
+        # a compatibility annotation adds as unused -- nothing had referenced the
+        # aliased name at the moment they ran.
+        declare_compatibility_annotations,
         # Last of all the class-shaping passes: every pass above edits a class
         # by name, and the shared base carries what they put on the flat one.
         emit_branch_classes,

@@ -3190,3 +3190,148 @@ def test_codegen_input_order_is_total(tmp_path, monkeypatch):
         "signals/list-request.json",
         "bundled/creative/list-request.json",
     ]
+
+
+def _capabilities_tree(root, *, publisher_annotation="list[PublisherDomain]"):
+    """A two-module stand-in for the capabilities views the bundle renders twice."""
+    bundled = root / "bundled" / "protocol"
+    bundled.mkdir(parents=True)
+    (bundled / "get_adcp_capabilities_response.py").write_text(
+        "from __future__ import annotations\n"
+        "from typing import Annotated\n"
+        "from pydantic import Field\n"
+        "from adcp.types.base import AdCPBaseModel\n"
+        "from adcp.types._scalar import ScalarStr\n"
+        "\n\n"
+        "class PublisherDomain(ScalarStr):\n"
+        "    pass\n"
+        "\n\n"
+        "class Portfolio(AdCPBaseModel):\n"
+        f"    publisher_domains: Annotated[\n        {publisher_annotation},\n"
+        '        Field(description="domains"),\n'
+        "    ]\n"
+        "    description: str | None = None\n"
+    )
+    canonical = root / "core"
+    canonical.mkdir(parents=True)
+    (canonical / "canonical_product.py").write_text(
+        "from __future__ import annotations\n"
+        "from adcp.types._scalar import ScalarStr\n"
+        "\n\n"
+        "class PublisherDomain(ScalarStr):\n"
+        "    pass\n"
+    )
+    return bundled / "get_adcp_capabilities_response.py"
+
+
+def test_compatibility_annotation_is_written_at_the_declaration_site(tmp_path, monkeypatch):
+    """The replacement lands on the field, with its citation and its import.
+
+    The point of writing it here rather than patching the class is that the
+    nesting parent is generated source naming the generated type. Graded by
+    reading the field's own declaration, which is the thing a parsed document
+    goes through.
+    """
+    from scripts import post_generate_fixes
+
+    target = _capabilities_tree(tmp_path)
+    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(
+        post_generate_fixes,
+        "COMPATIBILITY_ANNOTATIONS",
+        (
+            post_generate_fixes.CompatibilityAnnotation(
+                module="bundled/protocol/get_adcp_capabilities_response.py",
+                class_name="Portfolio",
+                field="publisher_domains",
+                expected="list[PublisherDomain]",
+                replacement="list[_CanonicalPublisherDomain]",
+                imports=(
+                    "from ...core.canonical_product import "
+                    "PublisherDomain as _CanonicalPublisherDomain",
+                ),
+                because="The bundled view inlines what the canonical view reaches by $ref.",
+            ),
+        ),
+    )
+
+    post_generate_fixes.declare_compatibility_annotations()
+
+    source = target.read_text()
+    assert "        list[_CanonicalPublisherDomain],\n" in source
+    assert "list[PublisherDomain]" not in source
+    assert (
+        "from ...core.canonical_product import PublisherDomain as _CanonicalPublisherDomain"
+        in source
+    )
+    # The citation sits on the field, ahead of its declaration, so a reader of
+    # the model sees why the type is not the one beside it.
+    citation, _, declaration = source.partition("    publisher_domains: Annotated[")
+    assert citation.endswith(
+        "    # The bundled view inlines what the canonical view reaches by $ref.\n"
+    )
+    assert declaration  # the declaration survived the insertion
+    # The field beside it is untouched: the rewrite is bounded to one block.
+    assert "    description: str | None = None\n" in source
+
+
+def test_compatibility_annotation_refuses_a_field_that_lost_its_shape(tmp_path, monkeypatch):
+    """A regeneration that reshapes the field fails here, not at import time.
+
+    The runtime patch this replaced raised ``RuntimeError`` from an application
+    import when the generated annotation moved. Moving the guard to generation
+    time only helps if it still refuses, so the same tree is run through with
+    one annotation changed and nothing else.
+    """
+    from scripts import post_generate_fixes
+
+    target = _capabilities_tree(tmp_path, publisher_annotation="list[str]")
+    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(
+        post_generate_fixes,
+        "COMPATIBILITY_ANNOTATIONS",
+        (
+            post_generate_fixes.CompatibilityAnnotation(
+                module="bundled/protocol/get_adcp_capabilities_response.py",
+                class_name="Portfolio",
+                field="publisher_domains",
+                expected="list[PublisherDomain]",
+                replacement="list[_CanonicalPublisherDomain]",
+                imports=(),
+                because="unused here",
+            ),
+        ),
+    )
+
+    before = target.read_text()
+    with pytest.raises(RuntimeError, match="which does not contain"):
+        post_generate_fixes.declare_compatibility_annotations()
+    # It refuses without writing: a partially rewritten module would be worse
+    # than no rewrite, because the next pass would read it as the real shape.
+    assert target.read_text() == before
+
+
+def test_compatibility_annotation_refuses_a_field_that_is_gone(tmp_path, monkeypatch):
+    """A renamed or deleted field has no declaration site, and says so."""
+    from scripts import post_generate_fixes
+
+    _capabilities_tree(tmp_path)
+    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(
+        post_generate_fixes,
+        "COMPATIBILITY_ANNOTATIONS",
+        (
+            post_generate_fixes.CompatibilityAnnotation(
+                module="bundled/protocol/get_adcp_capabilities_response.py",
+                class_name="Portfolio",
+                field="publisher_domain",  # singular: not the generated name
+                expected="list[PublisherDomain]",
+                replacement="list[_CanonicalPublisherDomain]",
+                imports=(),
+                because="unused here",
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="is not declared"):
+        post_generate_fixes.declare_compatibility_annotations()

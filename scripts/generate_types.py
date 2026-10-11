@@ -187,10 +187,17 @@ OPEN_VOCABULARY_SCHEMAS = {Path("core/canonical-format-kind.json")}
 #:
 #: The upstream issue is cited in the field's own ``description``, so the
 #: citation reaches the GENERATED OUTPUT and a reader of the model sees why the
-#: field is there. Each gap also has one ``DECLARED`` entry in
-#: ``tests/conformance/_schema_parity.py``, which is the sunset: that file fails
-#: on a declared divergence that no longer occurs, so the entry cannot outlive
-#: the upstream fix.
+#: field is there.
+#:
+#: The sunset is :func:`add_pin_gap_fields`'s own refusal below: it raises when
+#: the property already exists, so the first regeneration after upstream
+#: declares the field fails here. It is NOT a ``DECLARED`` entry in
+#: ``tests/conformance/_schema_parity.py``, which an earlier version of this
+#: comment claimed. That suite mutates the leaves of a synthesized payload, so
+#: it never observes a property the model declares and the schema does not --
+#: and a ``DECLARED`` predicate matching nothing is exactly what
+#: ``test_schema_model_parity.py`` fails on, so adding one would break the
+#: suite rather than guard the gap.
 PIN_GAP_FIELDS: dict[Path, tuple[dict[str, Any], ...]] = {
     # The bundled tree is an independently generated view of the same wire
     # schema: it INLINES what the canonical tree reaches by ``$ref``, so the

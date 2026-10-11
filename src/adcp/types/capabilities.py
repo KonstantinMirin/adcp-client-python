@@ -150,7 +150,17 @@ from adcp.types.domains.core.reporting_delivery_capabilities import (
 
 
 class MediaBuy(_MediaBuy):
-    """Media-buy capabilities using the canonical reporting model identity."""
+    """Media-buy capabilities using the canonical reporting model identity.
+
+    This subclass is why ``acceptance_policy_discovery`` has to be declared on
+    the generated field rather than patched onto the generated class. A
+    subclass fixes its field set at class creation, so a later patch to
+    ``_MediaBuy.model_fields`` plus ``_MediaBuy.model_rebuild(force=True)``
+    never reached here: ``tests/test_composability_invariant.py`` measured this
+    class still demanding the bundled clone while the parent had the canonical
+    one. ``COMPATIBILITY_ANNOTATIONS`` in ``scripts/post_generate_fixes.py``
+    writes it at the parent's declaration, which a subclass inherits.
+    """
 
     reporting_delivery: ReportingDeliveryCapabilities | None = None  # type: ignore[assignment]
 

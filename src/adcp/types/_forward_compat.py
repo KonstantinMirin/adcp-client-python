@@ -9,10 +9,6 @@ This module is intentionally NOT auto-generated. It lives outside
 the generated tree and is preserved across codegen runs (generate_types.py only
 wipes src/adcp/types/domains/).
 
-It also replaces identity-distinct bundled clones at public capability
-boundaries with their canonical public model classes. This keeps independently
-generated views of the same wire schema composable as typed Python objects.
-
 The rc.3 targeting mutation fields retain TargetingOverlayInput for raw data
 while accepting beta.14 TargetingOverlay instances as a compatibility bridge.
 
@@ -34,7 +30,7 @@ from collections.abc import Callable
 from copy import copy, deepcopy
 from functools import partial
 from types import GenericAlias
-from typing import Annotated, Any, cast, get_args
+from typing import Annotated, Any, cast
 
 from pydantic import (
     BaseModel,
@@ -59,22 +55,6 @@ from adcp.types.canonical_creative import CreateMediaBuyRequest as _PublicCreate
 from adcp.types.canonical_creative import PackageRequest as PublicPackageRequest
 from adcp.types.canonical_creative import PackageUpdate as PublicPackageUpdate
 from adcp.types.canonical_creative import UpdateMediaBuyRequest as _PublicUpdateMediaBuyRequest
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    AcceptancePolicyDiscovery as BundledAcceptancePolicyDiscovery,
-)
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    MediaBuy as BundledCapabilitiesMediaBuy,
-)
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    Portfolio as BundledCapabilitiesPortfolio,
-)
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    PrimaryCountry as BundledPrimaryCountry,
-)
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    PublisherDomain as BundledPublisherDomain,
-)
-from adcp.types.domains.core.canonical_product import PublisherDomain
 from adcp.types.domains.core.creative_manifest import CreativeManifest
 from adcp.types.domains.core.creative_variant import CreativeVariant
 from adcp.types.domains.core.format import Format
@@ -119,10 +99,6 @@ from adcp.types.domains.media_buy.package_control import PackageControl
 from adcp.types.domains.media_buy.package_request import PackageRequest
 from adcp.types.domains.media_buy.package_update import PackageUpdate
 from adcp.types.domains.media_buy.product_purchase_input import ProductPurchaseInput
-from adcp.types.domains.protocol.get_adcp_capabilities_response import (
-    AcceptancePolicyDiscovery,
-    PrimaryCountry,
-)
 from adcp.types.domains.trusted_match.context_match_response import (
     ContextMatchResponseRouterPublisher,
 )
@@ -257,33 +233,6 @@ def _patch_model_field(model: type[BaseModel], field_name: str, new_annotation: 
         new_fi.annotation = new_annotation
         model.model_fields[field_name] = new_fi
     model.__annotations__[field_name] = new_annotation
-
-
-def _annotation_contains(annotation: Any, expected: type) -> bool:
-    """Return whether a possibly nested annotation contains ``expected``."""
-    return annotation is expected or any(
-        _annotation_contains(arg, expected) for arg in get_args(annotation)
-    )
-
-
-def _patch_equivalent_model_field(
-    model: type[BaseModel],
-    field_name: str,
-    # A bundled clone is matched by class identity, so any class works. Not
-    # ``type[BaseModel]``: a bundled scalar root (``PublisherDomain``,
-    # ``PrimaryCountry``) is a ``str`` subclass, not a Pydantic model (#1277).
-    bundled_model: type,
-    canonical_annotation: Any,
-) -> None:
-    """Replace a bundled clone only after verifying the generated field shape."""
-    field = model.model_fields.get(field_name)
-    if field is None or not _annotation_contains(field.annotation, bundled_model):
-        actual = None if field is None else field.annotation
-        raise RuntimeError(
-            f"forward compatibility: {model.__name__}.{field_name} lost its "
-            f"bundled {bundled_model.__name__} annotation (got {actual!r})"
-        )
-    _patch_model_field(model, field_name, canonical_annotation)
 
 
 def _validate_targeting_overlay(value: Any, handler: ValidatorFunctionWrapHandler) -> Any:
@@ -448,32 +397,6 @@ def _apply_forward_compat() -> None:
 
     _patch_model_field(RepeatableAssetGroup, "assets", list[GroupFormatAssetUnion])
     cast(type[BaseModel], RepeatableAssetGroup).model_rebuild(force=True)
-
-    # Canonical schemas referenced through the bundled capabilities schema are
-    # generated a second time as identity-distinct Pydantic classes. Accept the
-    # public SDK classes at these capability boundaries so a typed object does
-    # not have to be round-tripped through model_dump() before composition.
-    _patch_equivalent_model_field(
-        BundledCapabilitiesMediaBuy,
-        "acceptance_policy_discovery",
-        BundledAcceptancePolicyDiscovery,
-        AcceptancePolicyDiscovery | None,
-    )
-    BundledCapabilitiesMediaBuy.model_rebuild(force=True)
-
-    _patch_equivalent_model_field(
-        BundledCapabilitiesPortfolio,
-        "publisher_domains",
-        BundledPublisherDomain,
-        list[PublisherDomain],
-    )
-    _patch_equivalent_model_field(
-        BundledCapabilitiesPortfolio,
-        "primary_countries",
-        BundledPrimaryCountry,
-        list[PrimaryCountry] | None,
-    )
-    BundledCapabilitiesPortfolio.model_rebuild(force=True)
 
 
 _apply_forward_compat()
