@@ -359,6 +359,19 @@ def test_every_primitive_the_vocabulary_exports_is_graded_here() -> None:
         and isinstance(value, types.FunctionType)
         and value.__module__ == c.__name__
     }
+    # Both populations are asserted non-empty BEFORE they are compared. A set
+    # equality whose sides can both go empty grades nothing on that axis, and
+    # this one has already been empty: a pytest plugin that wrapped each
+    # primitive rebound ``__module__`` to its own module, every entry failed the
+    # module test, and ``defined`` came out as ``set()``. It was caught only
+    # because ``__all__`` happened to be non-empty at the time.
+    assert defined, (
+        "the derivation found no primitives in "
+        f"{c.__name__} at all, so comparing it against __all__ would grade "
+        "nothing. Something has rebound them -- check __module__ on a few: a "
+        "wrapper that is not functools.wraps-transparent looks exactly like this"
+    )
+    assert c.__all__, "__all__ is empty, so both halves below are vacuous"
     assert defined == set(c.__all__)
     graded = {
         name
