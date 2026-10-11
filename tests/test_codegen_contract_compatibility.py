@@ -49,9 +49,9 @@ def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> Non
 
 
 def test_creative_representation_keeps_canonical_format_contract() -> None:
-    from adcp import LegacyBuildCreativeRequest
     from adcp.types import CanonicalFormatKind
     from adcp.types.domains.core.creative_representation import CreativeRepresentation
+    from adcp.types.domains.core.creative_representation_set import CreativeRepresentationSet
 
     # ``str``, not the enum: the vocabulary is open at every reference and
     # governed by a validator on the request models. Asserting membership of
@@ -96,22 +96,27 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
         "name": "Test creative",
         "representations": [{**representation, "format_kind": "unknown"}],
     }
-    # ``LegacyBuildCreativeRequest`` is a request model and it too retains the
-    # unknown kind rather than refusing it: no model in this SDK refuses a
-    # format kind, because a pinned library cannot tell a kind a seller
-    # invented from a kind defined after its pin. That is the one cost of the
-    # open vocabulary, and it is declared
-    # by name in ``tests/conformance/_schema_parity.py``'s
+    # The unknown kind is retained at a NESTED position too, so the claim is
+    # graded rather than implied: no model in this SDK refuses a format kind,
+    # because a pinned library cannot tell a kind a seller invented from a kind
+    # defined after its pin. That is the one cost of the open vocabulary, and it
+    # is declared by name in ``tests/conformance/_schema_parity.py``'s
     # ``format_kind_is_an_open_vocabulary_by_decision`` — the bundled schema
-    # still refuses this document, and the model no longer agrees. Retention is
-    # asserted at the nested position so the claim is graded rather than implied.
-    built = LegacyBuildCreativeRequest.model_validate(
-        {
-            "idempotency_key": "idem-123456789012",
-            "creative_representation_set": representation_set,
-        }
-    )
-    assert built.creative_representation_set.representations[0].format_kind == "unknown"
+    # still refuses this document, and the model no longer agrees.
+    #
+    # The carrier is ``CreativeRepresentationSet``, the representations' own
+    # parent. It used to be ``LegacyBuildCreativeRequest``, which carries SEVEN
+    # root conjuncts of its own: a representation-set build must also be
+    # ``mode: execute`` and carry ``representation_destination`` (itself a full
+    # product-format declaration), ``representation_selection_strategy`` and
+    # ``target_capability_id``, and must carry none of twenty-three other
+    # fields. The fixture satisfied none of that, so once
+    # ``root_carries_constraints`` began reading ``allOf`` MEMBERS the model
+    # refused the document — correctly. Satisfying those rules here would make
+    # the fixture an order of magnitude larger than the one field it grades,
+    # and the nesting it grades is the same either way.
+    carried = CreativeRepresentationSet.model_validate(representation_set)
+    assert carried.representations[0].format_kind == "unknown"
 
 
 def test_transformer_requires_a_canonical_or_legacy_output_declaration() -> None:
