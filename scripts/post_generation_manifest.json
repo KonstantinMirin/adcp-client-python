@@ -43,7 +43,6 @@
     "fix_unchanged_literal_defaults": true,
     "fix_optional_boolean_literal_defaults": true,
     "enforce_root_constraints": true,
-    "derive_conjunct_sensitive_defaults": true,
     "fix_reporting_request_selectors": true,
     "fix_reporting_capability_defaults": true,
     "fix_protocol_envelope_status_default": true,

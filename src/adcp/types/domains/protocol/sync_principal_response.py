@@ -27,9 +27,6 @@ from adcp.types import _conditions as _c
 from pydantic_core import PydanticCustomError
 
 
-from adcp.types.domains.enums.task_status import TaskStatus as _DerivedTaskStatus
-
-
 class Action(StrEnum):
     updated = 'updated'
     unchanged = 'unchanged'
@@ -121,35 +118,6 @@ class SyncPrincipalResponse(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope)
                 'allOf',
                 'SyncPrincipalResponse violates a constraint its schema states outside its properties (protocol/sync-principal-response.json, root conjunct 0) over kind, result, status',
             )
-        return self
-    @model_validator(mode='after')
-    def _derive_status_from_result_kind(self) -> 'SyncPrincipalResponse':
-        """Supply ``status`` from ``result.kind``, so the EMITTED document is one the schema permits.
-
-        Reads the EFFECTIVE value, not the input document:
-        ``result.kind`` is itself a defaulted
-        discriminator, so a document omitting it validates into the arm that
-        pins it. A ``mode='before'`` version of this read the raw input, saw
-        nothing, and left the escape open on exactly those documents.
-
-        It does NOT make the conjunct grade the value, and cannot. The conjunct
-        runs FIRST whatever the source order, because ``ProtocolEnvelope``
-        declares a validator of the same name and pydantic keeps the collection
-        slot of the inherited one -- measured, after a first attempt placed this
-        above the conjunct on the assumption that definition order decides. So
-        the contract here is the document that is SENT, and
-        ``tests/test_root_conjunct_defaults.py`` is what holds it: it
-        re-validates the dump against the same class.
-                """
-        # protocol/sync-principal-response.json states the same conditional as get-principal-
-        # response.json, and had the same escape. See salesagent-38fdf.
-        if 'status' in self.__pydantic_fields_set__:
-            return self
-        kind = getattr(self.result, 'kind', None)
-        if getattr(kind, 'value', kind) != 'failed':
-            return self
-        self.status = _DerivedTaskStatus('failed')
-        self.__pydantic_fields_set__.add('status')
         return self
 
 
