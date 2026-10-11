@@ -18,11 +18,21 @@ filed as an untyped extra and the document was accepted. This grades the
 property that makes that docstring true, over every root with branches, on each
 path -- so a mechanism that covers one path and not the others fails here rather
 than passing three times on the one path it covers.
+
+It also grades the ACCEPTED document, which it did not for a long time, and that
+omission is why salesagent-setka went unnoticed for 23 commits. The constructed
+path WAS in the population below -- but only under ``pytest.raises``, so a
+successful construction could not fail anything. ``Base(**data)`` returned a
+loose base whose serializer is the union of its branches, which matches no branch
+and recurses: ``model_dump(mode="json")`` raised ``Circular reference detected``.
+An instrument that can only express one outcome reports clean on the other.
 """
 
 from __future__ import annotations
 
 import sys
+from contextlib import contextmanager
+from typing import Any
 
 import pytest
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -33,6 +43,8 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 # how the first version of this file parametrised over nothing and passed.
 import adcp.types._generated  # noqa: F401
 import adcp.types.canonical_creative  # noqa: F401
+from adcp.types._branch_dispatch import BranchDispatchMixin
+from tests.conformance import _schema_parity as parity
 
 
 def _roots_with_branches() -> dict[str, type[BaseModel]]:
@@ -236,3 +248,112 @@ def test_ignoring_unknown_fields_cannot_make_a_branch_vacuously_satisfiable() ->
         # is refused rather than emptied into a branch.
         with pytest.raises(ValidationError):
             root.model_validate({"totally": "wrong", "unknown": [1, 2]})
+
+
+class _LocalDefs:
+    """A ``$ref`` resolver over one pydantic schema's own ``$defs``.
+
+    ``parity.instances`` needs a resolver; a model's ``model_json_schema()``
+    keeps every nested model under ``$defs`` and refers to it locally, so
+    resolving is a dict lookup. Reusing that synthesizer rather than writing a
+    second one keeps one owner for "a document this schema accepts".
+    """
+
+    def __init__(self, schema: dict[str, Any]) -> None:
+        self._defs = schema.get("$defs", {})
+
+    @contextmanager
+    def resolving(self, ref: str) -> Any:
+        yield self._defs[ref.rsplit("/", 1)[-1]]
+
+
+def _accepted_document(root: type[BaseModel]) -> dict[str, Any] | None:
+    """A document ``root`` accepts, synthesized from its schema, or ``None``.
+
+    Candidates come from the root's schema and then from each branch's, and the
+    MODEL is the oracle for which candidate is valid -- the same
+    synthesize-then-ask shape ``tests/conformance`` uses, rather than a
+    hand-written payload per root that would go stale against its schema.
+    """
+    for source in (root, *root._branch_models()):  # type: ignore[attr-defined]
+        schema = source.model_json_schema(mode="validation")
+        try:
+            candidates = parity.instances(schema, _LocalDefs(schema))
+        except Exception:
+            continue
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            try:
+                root.model_validate(candidate)
+            except ValidationError:
+                continue
+            return candidate
+    return None
+
+
+#: ``VerifyBrandClaimRequest`` is the one root the synthesizer cannot satisfy: its
+#: ``claim`` property is a nested object whose own requirements are stated outside
+#: its ``required`` list, so every candidate arrives as ``claim: {}`` and the
+#: required-group validator refuses it. Named rather than silently absent, and the
+#: floor below is asserted so the set cannot quietly grow.
+_WITHOUT_A_SYNTHESIZABLE_DOCUMENT = frozenset(
+    {"adcp.types.domains.brand.verify_brand_claim_request.VerifyBrandClaimRequest"}
+)
+
+
+def test_every_root_with_branches_dispatches_its_construction() -> None:
+    """The mixin's ``__new__`` is what every root resolves for construction.
+
+    Exhaustive over all 19, and it costs nothing: a root that lost the dispatch
+    -- by a subclass defining its own ``__new__``, or by the mixin's being
+    deleted -- fails here even where no document can be synthesized for it.
+    """
+    roots = _roots_with_branches()
+    assert roots, "the derivation selected no root"
+
+    for name, root in sorted(roots.items()):
+        assert root.__new__ is BranchDispatchMixin.__new__, (
+            f"{name} does not construct through the dispatch, so Base(**data) "
+            "returns the base rather than the branch"
+        )
+
+
+def test_an_accepted_document_constructs_as_a_branch_and_serializes() -> None:
+    """The other half of the constructed path: what a SUCCESS produces.
+
+    Two assertions per root, and the second is the one salesagent-setka needed.
+    A base instance is not merely loosely typed -- its serializer is the union of
+    its branches, so it cannot be serialized at all on the JSON paths.
+    """
+    graded = {
+        name: root
+        for name, root in _roots_with_branches().items()
+        if name not in _WITHOUT_A_SYNTHESIZABLE_DOCUMENT
+    }
+    # A derivation that matches nothing is green, so the floor is asserted, and
+    # the root whose crash prompted this is named rather than counted.
+    assert len(graded) >= 18, f"only {len(graded)} roots left after the exclusion"
+    assert "adcp.types.canonical_creative.CreateMediaBuyRequest" in graded
+
+    for name, root in sorted(graded.items()):
+        document = _accepted_document(root)
+        assert document is not None, (
+            f"{name}: no document could be synthesized, so this root is graded "
+            "vacuously -- add it to _WITHOUT_A_SYNTHESIZABLE_DOCUMENT with the reason"
+        )
+        branches = root._branch_models()  # type: ignore[attr-defined]
+
+        constructed = root(**document)
+        assert type(constructed) in branches, (
+            f"{name} constructed as {type(constructed).__name__}, which is not one "
+            f"of its branches -- Base(**data) is not dispatching"
+        )
+        # model_validate already resolves to a branch; asserting both agree is
+        # what makes "the root's name resolves to the branch" one property rather
+        # than two that can drift apart.
+        assert type(root.model_validate(document)) is type(constructed)
+
+        for mode in ("python", "json"):
+            constructed.model_dump(mode=mode)
+        constructed.model_dump_json()

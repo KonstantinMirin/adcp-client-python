@@ -5,11 +5,18 @@ one class per branch. The base carries THIS hook, so the root's name resolves to
 the matching branch wherever it appears -- called directly, nested in another
 model, or validated through a ``TypeAdapter``.
 
-Overriding ``model_validate`` reaches only the first of those. Pydantic
-validates a nested field and a ``TypeAdapter`` through the CORE SCHEMA, so an
-override is invisible on both paths -- and most roots with branches are nested
-object schemas, which is where the response side's override left a document
-satisfying no branch to parse as the loose base.
+Two mechanisms, because no single one reaches all four. The core-schema hook
+covers every path pydantic validates THROUGH; ``__new__`` covers ``Base(**data)``,
+which allocates the object before validation runs and so cannot be reached by a
+schema at all. For a long stretch only the hook was here, and the sentence above
+was false of its last clause: direct construction returned a loose base whose
+serializer could not serialize it.
+
+Overriding ``model_validate`` reaches only one of the four. Pydantic validates a
+nested field and a ``TypeAdapter`` through the CORE SCHEMA, so an override is
+invisible on both paths -- and most roots with branches are nested object
+schemas, which is where the response side's override left a document satisfying
+no branch to parse as the loose base.
 
 WHICH CLASS GETS THE BRANCHES' SCHEMA is decided by a fact about the class, not
 by a registration: the base is the class that DECLARES ``_branch_models``. A
@@ -33,12 +40,15 @@ a field onto a class and forcing a rebuild to make the patch take.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import GetCoreSchemaHandler, TypeAdapter, WrapValidator
 from pydantic_core import CoreSchema
 
 from adcp.types._conditions import name_the_combinator
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 __all__ = ["BranchDispatchMixin"]
 
@@ -72,6 +82,58 @@ class BranchDispatchMixin:
         were the ones that needed it least.
         """
         return "anyOf"
+
+    def __new__(cls, **data: Any) -> Any:
+        """Construct the branch the document satisfies, not the base.
+
+        The core-schema hook below covers every path pydantic validates THROUGH:
+        a nested field, a ``TypeAdapter``, ``model_validate``. It cannot cover
+        ``Base(**data)``, because by the time validation runs the object has
+        already been allocated -- ``BaseModel.__init__`` validates with
+        ``self_instance=self``, so a successful direct construction left a BASE
+        instance whose serializer is the union of its branches. That object is
+        not merely loosely typed: the union serializer matches no branch, falls
+        back to inferring a model, re-enters the same union, and recurses.
+        Measured on the canonical create request --
+        ``model_dump(mode="python")`` survives the fallback, ``mode="json"``
+        raises ``ValueError: Circular reference detected (id repeated)`` and
+        ``model_dump_json()`` raises ``PydanticSerializationError``
+        (salesagent-setka). Choosing the class is the only place that can be
+        fixed, so it is fixed here.
+
+        Gated on the same question the hook asks -- does this class DECLARE
+        ``_branch_models`` -- so a branch, and a refinement declared elsewhere,
+        construct themselves. One identity question, one place.
+
+        CEILING: direct construction validates TWICE. ``__new__`` has to choose
+        the branch before ``type.__call__`` can run that branch's ``__init__``,
+        and that ``__init__`` validates the same payload again into the object
+        returned here. It is idempotent, and ``model_validate`` remains
+        single-pass, so the cost falls on the rarer path. Removing it needs
+        pydantic to expose branch selection without building an instance.
+        """
+        if not data or "_branch_models" not in cls.__dict__:
+            # No data: ``model_construct``, ``copy.deepcopy`` and unpickling all
+            # call ``cls.__new__(cls)`` and must get a blank instance rather than
+            # a validation of ``{}``. Not the declaring class: a branch keeps its
+            # own construction, for the same reason it keeps its own schema.
+            return super().__new__(cls)
+        try:
+            branches = cls._branch_models()
+        except NameError:
+            # The branches subclass this class, so a construction attempted while
+            # the module is still executing has none to choose from yet.
+            return super().__new__(cls)
+        if not branches:
+            return super().__new__(cls)
+        # The base's own validator IS the union the hook installed, so this asks
+        # the same question the other three paths ask, with the same refusal --
+        # including the root's combinator keyword on a document satisfying no
+        # branch. Cast because the mixin is a plain class: it has no pydantic
+        # attributes of its own and is only ever mixed into a model, which is
+        # the one assumption this file makes about its host.
+        host = cast("type[BaseModel]", cls)
+        return host.__pydantic_validator__.validate_python(data)
 
     @classmethod
     def __get_pydantic_core_schema__(cls, source: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
