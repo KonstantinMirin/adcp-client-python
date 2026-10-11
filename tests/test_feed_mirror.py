@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from adcp import (
     FeedMirror,
@@ -124,6 +124,11 @@ def make_webhook(
     }
     if previous is not None:
         body["previous_wholesale_feed_version"] = previous
+    if event["event_type"].startswith("product."):
+        # core/wholesale-feed-webhook.json allOf[0]: a product fire declares the
+        # representation it carries and a non-product fire must not carry one.
+        # These payloads use ``product``/``pricing_options``, the legacy view.
+        body["product_payload_view"] = "legacy"
     return WholesaleFeedWebhook.model_validate(body)
 
 
@@ -931,8 +936,12 @@ async def test_webhook_scope_mismatch_keeps_all_layers_unchanged(envelope_scope,
             "applies_to": {"scope": payload_scope},
         },
     )
-    with pytest.raises(FeedMirrorError, match="applies_to.scope"):
-        await overlay.apply_webhook(make_webhook(event, cache_scope=envelope_scope))
+    # core/wholesale-feed-webhook.json allOf[10] and allOf[11]: the outer
+    # cache_scope and the inner applies_to.scope name the same layer, so a
+    # mismatched envelope is refused where the webhook is built and never
+    # reaches the mirror. The layers below are asserted unchanged either way.
+    with pytest.raises(ValidationError, match="applies_to"):
+        make_webhook(event, cache_scope=envelope_scope)
     assert set(public.products) == {"p1"}
     assert overlay.get_product("private") is None
     assert overlay.product_state.wholesale_feed_version is None
