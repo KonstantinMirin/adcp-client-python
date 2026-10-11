@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import itertools
 import sys
 import textwrap
 from contextlib import contextmanager
@@ -192,12 +193,21 @@ def test_no_conjunct_lets_a_defaulted_value_escape_and_then_serializes_it() -> N
 def test_the_two_repaired_responses_grade_the_status_they_emit() -> None:
     """The two escapes 38fdf fixed, named, so the repair cannot be quietly undone.
 
-    ``DERIVED_DEFAULTS`` in ``scripts/post_generate_fixes.py`` supplies ``status``
-    from ``result.kind``, which makes it SENT so the conjunct grades it. Named
-    here as well as covered by the derivation above, because the derivation
-    depends on a document being synthesizable for these two classes and a
-    schema refresh could take that away -- and then the one case anyone has
-    actually seen escape would stop being graded with nothing failing.
+    38fdf repaired these with ``DERIVED_DEFAULTS``, a ``mode='after'`` validator
+    that supplied ``status`` from ``result.kind`` so the conjunct would grade a
+    SENT value. That table is gone, because the conjunct now grades the status
+    the DOCUMENT carries whether or not the caller typed it, and a derivation
+    running after it could not be reached: both documents it existed to repair
+    are refused first (salesagent-8qela.27).
+
+    So the contract this holds is the same obligation with the other outcome.
+    ``protocol/get-principal-response.json`` permits only 'failed' or 'rejected'
+    beside a failed result, and the envelope's ergonomic default is 'completed';
+    the response therefore REFUSES the construction that leaves status to that
+    default, naming it, instead of accepting it and emitting a document the
+    schema forbids. Named as well as covered by the derivations above, because
+    both depend on documents remaining synthesizable for these two classes and a
+    schema refresh could take that away.
     """
     from adcp.types.domains.protocol.get_principal_response import GetPrincipalResponse
     from adcp.types.domains.protocol.sync_principal_response import SyncPrincipalResponse
@@ -208,20 +218,27 @@ def test_the_two_repaired_responses_grade_the_status_they_emit() -> None:
     }
     for model in (GetPrincipalResponse, SyncPrincipalResponse):
         name = model.__name__
-        # Unset: the status that reaches the wire is the one the conjunct permits.
-        derived = model.model_validate(failed)
-        assert derived.status.value == "failed", (
-            f"{name} left status at {derived.status.value!r} for a failed result; the "
-            "root conditional permits only 'failed' or 'rejected'"
-        )
-        dumped = derived.model_dump(mode="json", exclude_none=True)
-        assert dumped["status"] == "failed"
-        model.model_validate(dumped)  # the dump is a document it accepts
-
-        # Explicitly contradicting the result is still refused, which is the
-        # behaviour that was already correct and must not have been widened.
+        # Unset: the ergonomic default contradicts the result, and is refused for
+        # the value the document would carry -- not for having been left out.
+        with pytest_raises_validation(model, failed):
+            pass
+        # The same refusal with ``kind`` left to its own default, which is the
+        # escape 38fdf's before-validator attempt could not see and left open.
+        no_kind = {"result": {"errors": [{"code": "AUTH_MISSING", "message": "no"}]}}
+        with pytest_raises_validation(model, {"adcp_version": "3.2", **no_kind}):
+            pass
+        # Explicitly contradicting the result is still refused, unchanged.
         with pytest_raises_validation(model, {**failed, "status": "completed"}):
             pass
+
+        # A status the conditional permits is accepted, and its dump is a document
+        # the class accepts -- which is what makes the refusals above a contract
+        # about the value and not a class that refuses every failed result.
+        stated = model.model_validate({**failed, "status": "failed"})
+        assert stated.status.value == "failed"
+        dumped = stated.model_dump(mode="json", exclude_none=True)
+        assert dumped["status"] == "failed"
+        model.model_validate(dumped)
 
         # A result that does not fire the conditional keeps the ergonomic default.
         # The non-failing arm is DERIVED per class: the two responses do not share
@@ -230,8 +247,194 @@ def test_the_two_repaired_responses_grade_the_status_they_emit() -> None:
         other = _a_non_failing_result(model)
         kept = model.model_validate({"adcp_version": "3.2", "result": other})
         assert kept.status.value == "completed", (
-            f"{name} derived a status for result={other!r}, which does not fire the "
-            "conditional, so the ergonomic default should stand"
+            f"{name} refused result={other!r}, which does not fire the conditional, so "
+            "the ergonomic default should stand"
+        )
+
+
+def _reaching_documents(model: type[BaseModel], without: str) -> list[dict[str, Any]]:
+    """Documents that reach the arms of ``model``'s conditional, none carrying ``without``.
+
+    The synthesizer alone does not reach them, and cannot: a root
+    ``if``/``then`` is precisely the content ``datamodel-code-generator``
+    dropped, so it is absent from the model's own JSON schema and
+    ``_object_instances`` populates only what that schema marks ``required`` --
+    which, on a response whose every field is optional, is the empty document.
+    Measured: over the whole tree it reached one of the four instances the bead
+    proved and missed three.
+
+    So each field the conjunct READS is treated as a knob, since those are the
+    fields a conditional turns on, and the family is the synthesized base plus
+    every one- and two-knob combination. Two is what the proven instances need
+    (``{unchanged, wholesale_feed_version}``), and the knobs are few enough per
+    class that the pairs are cheap. Values come from the same synthesizer, per
+    property, so the arm that keys on a literal gets that literal.
+    """
+    schema = model.model_json_schema(mode="validation")
+    defs = _LocalDefs(schema)
+    try:
+        base = [d for d in parity.instances(schema, defs, budget=4) if isinstance(d, dict)][:3]
+    except Exception:
+        base = []
+    values: dict[str, Any] = {}
+    for knob in _conjunct_fields(model):
+        if knob == without or knob not in model.model_fields:
+            continue
+        prop = (schema.get("properties") or {}).get(knob)
+        if prop is None:
+            continue
+        try:
+            synthesized = parity.instances(prop, defs, budget=2)
+        except Exception:
+            continue
+        if synthesized and synthesized[0] is not None:
+            values[knob] = synthesized[0]
+
+    family = []
+    for document in base or [{}]:
+        family.append(document)
+        for size in (1, 2):
+            for combination in itertools.combinations(sorted(values), size):
+                family.append({**document, **{knob: values[knob] for knob in combination}})
+    return [document for document in family if without not in document]
+
+
+def _sent_value(model: type[BaseModel], name: str) -> Any:
+    """The field's own default, as a caller would type it."""
+    default = model.model_fields[name].default
+    return getattr(default, "value", default)
+
+
+def _dumps_the_same_unsent(instance: BaseModel, name: str) -> bool:
+    """Whether ``instance`` emits ``name`` identically with its sent-ness discarded.
+
+    The whole question. When it holds, the document the caller gets is the same
+    one either way, so a refusal that turns on having typed the value is grading
+    something the wire does not carry. When it does not, the class's serializer
+    drops the unset default -- ``GetMediaBuyDeliveryRequest`` has two such
+    fields -- the wire really is missing it, and refusing is correct.
+    """
+    unsent = instance.model_copy()
+    unsent.__pydantic_fields_set__.discard(name)
+    return unsent.model_dump(mode="json", exclude_none=True) == instance.model_dump(
+        mode="json", exclude_none=True
+    )
+
+
+def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
+    """The mirror of the escape: identical documents, and one of them refused.
+
+    A compiled conjunct asks SENT-ness, and a schema's ``required`` asks what the
+    DOCUMENT carries. Where a field's default is one the class emits, those two
+    part company: the dump carries the field whether or not the caller typed it,
+    so the schema's ``required`` is satisfied either way -- and the conjunct
+    refuses the construction that omitted it. The two documents are
+    byte-identical, which is the whole proof that the refusal grades nothing the
+    wire can express (salesagent-k37fs).
+
+    Stated as itself and not as a shape: a pair is a defect only when the class
+    REFUSES the document without the field, ACCEPTS the same document with the
+    field's own default typed, and emits the same bytes for both. Each clause
+    carries its own weight. A class that refuses for an unrelated reason refuses
+    both ways and never qualifies, so no allowlist stands in for that; and a
+    class whose serializer drops the unset default fails the third clause, which
+    is how the exception is derived rather than listed.
+
+    EVERY field with an emitted default is a candidate, not only one the conjunct
+    NAMES. ``_c.members`` names none: ``core/deadline-policy.json`` states
+    ``minProperties: 1`` and the conjunct reads ``self`` whole, so
+    ``DeadlinePolicy.business_days_only`` is invisible to the conjunct's text and
+    is one of the four instances. Narrowing to the named fields is the kind of
+    shape that looked right and selected the wrong set.
+    """
+    pairs = [
+        (module, qualname, name)
+        for (module, qualname), model in sorted(_generated_models().items())
+        if ROOT_CONJUNCT in model.__dict__
+        for name in _serializing_defaults(model, set(model.model_fields))
+    ]
+    # A derivation that matches nothing is green. Measured: 189 (class, field) pairs
+    # over 89 of the 225 classes that carry a conjunct.
+    assert len(pairs) >= 189, f"the derivation selected only {len(pairs)} (class, field) pairs"
+
+    demanded: list[str] = []
+    compared: set[tuple[str, str, str]] = set()
+    for module, qualname, name in pairs:
+        model = _generated_models()[(module, qualname)]
+        sent_value = _sent_value(model, name)
+        for document in _reaching_documents(model, name):
+            try:
+                with_field = model.model_validate({**document, name: sent_value})
+            except ValidationError:
+                continue  # not a document this class accepts, so there is no pair
+            if not _dumps_the_same_unsent(with_field, name):
+                continue  # the serializer drops it: the wire really is missing it
+            # Two spellings of ONE document. The class has to accept both.
+            compared.add((module, qualname, name))
+            try:
+                model.model_validate(document)
+            except ValidationError:
+                demanded.append(
+                    f"{module}.{qualname}: refused a document with {name} unset, accepted the "
+                    f"same document with {name}={sent_value!r}, and dumps both as "
+                    f"{with_field.model_dump(mode='json', exclude_none=True)}"
+                )
+                break
+
+    # The search has to have produced pairs, or the comparison compared nothing.
+    # This counts the pairs it actually built, not the ones that came out clean --
+    # a count of clean pairs falls as defects are found and reads as progress.
+    # Measured: 174 of the 189 pairs had one; the other 15 have no document this
+    # class accepts that carries the field, so there is no pair to grade.
+    assert len(compared) >= 174, f"only {len(compared)} pair(s) produced a document to compare"
+    assert not demanded, "\n".join(demanded)
+
+
+def test_the_proven_sent_ness_pairs_dump_identically() -> None:
+    """The four instances the bead proved, named, so the repair cannot go quiet.
+
+    Named as well as covered by the derivation above, for the reason the two
+    repaired responses are: the derivation depends on a document being reachable
+    for each class, and a schema refresh could take that away -- and then the
+    cases anyone has actually seen would stop being graded with nothing failing.
+
+    ``DeadlinePolicy`` is here because it is the one that is not a ``required``
+    at all: ``core/deadline-policy.json`` states ``minProperties: 1``, so the
+    count is what ``business_days_only``'s emitted default satisfies, and
+    ``_c.members`` had counted ``model_fields_set`` instead of the document.
+    """
+    from adcp.types.domains.core.deadline_policy import DeadlinePolicy
+    from adcp.types.domains.core.reporting_resource import ReportingResource
+    from adcp.types.domains.media_buy.get_products_response import GetProductsResponse
+    from adcp.types.domains.signals.get_signals_response import GetSignalsResponse
+
+    unchanged = {"unchanged": True, "wholesale_feed_version": "v1"}
+    proven: list[tuple[type[BaseModel], str, dict[str, Any]]] = [
+        (GetSignalsResponse, "cache_scope", unchanged),
+        (GetProductsResponse, "cache_scope", unchanged),
+        (DeadlinePolicy, "business_days_only", {}),
+        (
+            ReportingResource,
+            "manifest_version",
+            {
+                "kind": "manifest",
+                "resource_ref": "res_1",
+                "location": "https://example.test/m.json",
+                "manifest_sha256": "a" * 64,
+                "immutability": "immutable_location",
+                "expires_at": "2030-01-01T00:00:00Z",
+            },
+        ),
+    ]
+    for model, name, document in proven:
+        label = f"{model.__name__}.{name}"
+        omitted = model.model_validate(document)
+        typed = model.model_validate({**document, name: _sent_value(model, name)})
+        assert omitted.model_dump(mode="json", exclude_none=True) == typed.model_dump(
+            mode="json", exclude_none=True
+        ), f"{label}: the two documents differ, so sent-ness is not what this pair proves"
+        assert name in typed.model_dump(mode="json", exclude_none=True), (
+            f"{label}: the class no longer emits the default, so this pair proves nothing"
         )
 
 

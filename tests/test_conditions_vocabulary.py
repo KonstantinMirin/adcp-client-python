@@ -3,9 +3,9 @@
 These are the exception the design names to "no unit tests for behaviour a
 parity case can grade": the primitives are pure functions over one value, the
 parity corpus grades their COMPOSITION on real documents, and the two
-conventions they share -- presence as ``model_fields_set`` membership, and
-vacuity off-type -- are exactly where a semantic slip between a compiled
-predicate and JSON Schema would land first.
+conventions they share -- presence as what the DOCUMENT carries, and vacuity
+off-type -- are exactly where a semantic slip between a compiled predicate and
+JSON Schema would land first.
 
 Each test states the keyword the primitive carries, the satisfied case, the
 refused case, and the vacuous case. A primitive with no vacuity to state says
@@ -23,7 +23,8 @@ import uuid
 from typing import Any
 
 import pytest
-from pydantic import AnyUrl, BaseModel, ConfigDict
+from pydantic import AnyUrl, BaseModel, ConfigDict, model_serializer
+from pydantic_core.core_schema import SerializerFunctionWrapHandler
 
 from adcp.types import _conditions as c
 
@@ -36,9 +37,9 @@ class _Nested(BaseModel):
 class _Subject(BaseModel):
     """A model whose defaults are deliberately not ``None``.
 
-    That is what separates "the caller supplied this" from "this is not None":
-    ``pacing`` reads as set under an ``is None`` guard even when the document
-    never carried it.
+    ``pacing`` is what separates the three readings of presence: it is not
+    ``None``, the caller never sent it, and the document carries it anyway
+    because this class emits it. The last is the one the schema asks about.
     """
 
     packages: list[str] | None = None
@@ -47,25 +48,53 @@ class _Subject(BaseModel):
     nested: _Nested | None = None
 
 
+class _Dropping(BaseModel):
+    """A model whose serializer drops the unset default, so the wire lacks it.
+
+    The shape of ``GetMediaBuyDeliveryRequest``, which defaults two booleans and
+    pops them when unset. Here the default exists and the document does NOT
+    carry it, so presence must come out False -- which is why the primitives ask
+    the serializer instead of inspecting the default.
+    """
+
+    tier: str = "standard"
+    reason: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _drop_unset_tier(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if "tier" not in self.model_fields_set:
+            value.pop("tier", None)
+        return value
+
+
 class _Open(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     declared: int | None = None
 
 
-def test_supplied_is_membership_not_a_null_check() -> None:
+def test_supplied_is_what_the_document_carries_not_a_null_check() -> None:
     """``required``: the document carried the property.
 
-    The three cases that separate membership from every other spelling: a
-    default the caller never sent is NOT supplied even though it is not None,
-    an explicit null IS supplied, and an absent nullable field is not.
+    The cases that separate it from every other spelling: an explicit null IS
+    supplied, an absent nullable field is not, and a default the class EMITS is
+    -- because the dump carries it whether or not the caller typed it, so a
+    ``required`` over it is satisfied either way (salesagent-k37fs).
+
+    The last clause is the serializer's answer, not the default's: ``_Dropping``
+    has the same non-None default and pops it when unset, and there the document
+    really is missing it.
     """
     subject = _Subject.model_validate({"packages": ["pkg_1"], "proposal_id": None})
 
     assert c.supplied(subject, "packages")
     assert c.supplied(subject, "proposal_id"), "an explicit null is a supplied value"
-    assert not c.supplied(subject, "pacing"), "a default the caller never sent is not supplied"
+    assert c.supplied(subject, "pacing"), "a default the class emits is on the document"
     assert not c.supplied(subject, "nested")
+
+    assert not c.supplied(_Dropping(), "tier"), "a default the serializer drops is not carried"
+    assert c.supplied(_Dropping(tier="standard"), "tier"), "the same value, typed, is"
 
 
 def test_sent_is_membership_plus_the_non_null_half() -> None:
@@ -79,15 +108,16 @@ def test_sent_is_membership_plus_the_non_null_half() -> None:
     ``canceled=None`` is dropped on the way out. Reading it as present refused
     a request no seller receives.
 
-    It stays membership-based: the default the caller never sent is absent
-    because it is not in ``model_fields_set``, not because of its value.
+    It adds only that half: whether the document carries the name at all is
+    :func:`c.supplied`'s question, and a default the class emits is carried.
     """
     subject = _Subject.model_validate({"packages": ["pkg_1"], "proposal_id": None})
 
     assert c.sent(subject, "packages")
     assert not c.sent(subject, "proposal_id"), "an explicit null is not sent at a closed position"
-    assert c.supplied(subject, "proposal_id"), "and supplied still answers membership"
-    assert not c.sent(subject, "pacing"), "a default the caller never sent is not sent"
+    assert c.supplied(subject, "proposal_id"), "and supplied still answers presence"
+    assert c.sent(subject, "pacing"), "a default the class emits reaches the seller"
+    assert not c.sent(_Dropping(), "tier"), "one its serializer drops does not"
     assert not c.sent("not an object", "packages")
 
 
@@ -185,14 +215,18 @@ def test_matching_keys_grades_only_the_matching_members() -> None:
     assert c.matching_keys({"other": "text"}, "^x_", lambda value: False)
 
 
-def test_only_bounds_what_the_caller_supplied() -> None:
+def test_only_bounds_what_the_document_carries() -> None:
     """``additionalProperties: false``.
 
     The bound is on what the document carried, not on what the class declares:
     a class normally has more fields than one arm's ``properties`` names, and a
-    field the caller left out is not an additional property.
+    field the caller left out is not an additional property -- unless the class
+    emits its default, which puts it on the document and so within the bound.
     """
-    assert c.only(_Subject.model_validate({"packages": []}), ["packages", "proposal_id"])
+    assert c.only(_Subject.model_validate({"packages": []}), ["packages", "pacing"])
+    assert not c.only(_Subject.model_validate({"packages": []}), ["packages"]), (
+        "pacing's emitted default is a member the bound has to name"
+    )
     assert not c.only(_Subject.model_validate({"packages": [], "proposal_id": "p"}), ["packages"])
     assert not c.only(
         _Open.model_validate({"declared": 1, "undeclared": 2}), ["declared"]
@@ -320,9 +354,14 @@ def test_members_counts_what_the_document_carried_not_what_the_model_declares() 
     A pydantic object has no ``__len__``, so routing these two through
     :func:`c.length` sent every object down its ``TypeError`` branch and
     returned True -- the validator existed and graded nothing. The count is
-    ``model_fields_set`` plus the extras a model kept, which is the question
-    :func:`c.supplied` asks, counted instead of tested: a default the caller
-    never sent is not a member.
+    ``model_fields_set`` plus the extras a model kept plus the defaults the
+    class emits, which is the question :func:`c.supplied` asks, counted instead
+    of tested.
+
+    That third source is ``minProperties`` stated over a class with an
+    ergonomic default: ``core/deadline-policy.json`` asks for one member and
+    ``DeadlinePolicy`` emits ``business_days_only``, so the empty construction
+    carries one and the count had read nothing (salesagent-k37fs).
 
     The open-model case is here because it is where this went wrong a second
     time. pydantic records a kept extra in BOTH ``model_fields_set`` and
@@ -331,10 +370,11 @@ def test_members_counts_what_the_document_carried_not_what_the_model_declares() 
     """
     subject = _Subject.model_validate({"packages": ["pkg_1"], "proposal_id": None})
 
-    assert c.members(subject, minimum=2), "the document carried two members"
-    assert not c.members(subject, minimum=3), "and pacing's default is not a third"
-    assert c.members(subject, maximum=2)
-    assert not c.members(subject, maximum=1)
+    assert c.members(subject, minimum=3), "packages, proposal_id, and pacing's emitted default"
+    assert not c.members(subject, minimum=4)
+    assert c.members(subject, maximum=3)
+    assert not c.members(subject, maximum=2)
+    assert c.members(_Dropping(), maximum=0), "a default the serializer drops is not a member"
 
     open_subject = _Open.model_validate({"declared": 1, "undeclared": 2})
     assert c.members(open_subject, minimum=2), "an extra the model kept is a member"

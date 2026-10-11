@@ -11,14 +11,20 @@ function is a few lines, and each is graded one by one by
 Two conventions run through all of them, and both are measured rather than
 chosen.
 
-**Presence is ``model_fields_set`` membership.** ``required`` asks whether the
-document carries the property. An explicit null is a supplied value -- on an
-AdCP 3.2 mutation input it is the command to clear a stored value -- and a
-default the caller never sent is not. The alternatives were measured and both
-are wrong: an ``is None`` guard is correct only when the field's default happens
-to be ``None``, because a non-None default makes it false for an absent field
-and the check over-refuses; and an unguarded attribute read raises on absence
-and on an explicit null alike.
+**Presence is what the DOCUMENT carries.** ``required`` asks whether the document
+carries the property, so ``model_fields_set`` answers it for everything the
+caller typed -- and an explicit null is one of those, because on an AdCP 3.2
+mutation input it is the command to clear a stored value. It is not the whole
+answer, because a default the class EMITS is on the document too, and the
+document is all a seller can see: the two dumps are byte-identical, so a
+constraint whose verdict differs between them is grading something the wire
+cannot express (salesagent-k37fs). So an unset field is asked of the serializer,
+which is the only authority on what the class emits -- see :func:`_emitted`.
+
+The alternatives were measured and both are wrong: an ``is None`` guard is
+correct only when the field's default happens to be ``None``, because a non-None
+default makes it false for an absent field and the check over-refuses; and an
+unguarded attribute read raises on absence and on an explicit null alike.
 
 **Every predicate is vacuous off-type.** JSON Schema applies a keyword only to
 instances of the type it grades: ``minLength`` says nothing about a number,
@@ -40,6 +46,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from pydantic import AnyUrl, ValidationError
+from pydantic_core import PydanticUndefined
 
 __all__ = [
     "branch_title",
@@ -118,15 +125,51 @@ def _is_model(value: Any) -> bool:
     return hasattr(value, "model_fields_set")
 
 
+def _emitted(value: Any, name: str) -> bool:
+    """Whether ``value``'s own serialization carries ``name`` the caller did not set.
+
+    The serializer is ASKED rather than the default inspected, because the two
+    disagree and only the serializer is right. ``GetMediaBuyDeliveryRequest``
+    defaults ``include_window_breakdown`` to ``False`` and its wrap serializer
+    drops that field when it is unset beside a ``reporting_revision_id``: the
+    default exists, the wire does not carry it, and a constraint reading it as
+    present would accept a document the schema refuses. Inspecting the default
+    gets that case backwards; one ``model_dump`` gets it right, and gets a
+    ``default_factory`` and ``exclude_none`` right with it.
+
+    ``include`` narrows the dump to the one field, so this costs that field's
+    serialization and not the model's. Narrowing could only change an answer
+    where a serializer decides about THIS field by reading another one out of the
+    dict it was handed, so it was checked against all three wrap serializers in
+    the tree that drop a field, and the narrowed dump agrees with the full one on
+    each: two decide from ``self`` -- ``AdCPBaseModel`` reads ``event_types``, and
+    flipping it flips this answer in both directions -- and ``Scope``'s reads only
+    the key it is deciding about.
+
+    The default check ahead of it is a cost guard, not the question: a field with
+    nothing to emit is dropped by ``exclude_none`` anyway, and that is the common
+    case on every optional field. Identity rather than ``in``, because a default
+    is an arbitrary object and ``==`` against it is the caller's code.
+    """
+    fields = getattr(type(value), "model_fields", None)
+    info = fields.get(name) if fields else None
+    if info is None:
+        return False
+    if info.default_factory is None and (info.default is None or info.default is PydanticUndefined):
+        return False
+    return name in value.model_dump(mode="json", exclude_none=True, include={name})
+
+
 def supplied(value: Any, name: str) -> bool:
     """Whether the document carried ``name`` on ``value``.
 
-    A pydantic model answers from ``model_fields_set``, which holds the fields
-    the caller actually set; a mapping -- an open payload the models carry
-    through unmodelled -- answers from its keys.
+    A pydantic model answers from ``model_fields_set`` -- the fields the caller
+    actually set -- and then from its serializer, because a default the class
+    emits is carried by the document just as a supplied value is. A mapping -- an
+    open payload the models carry through unmodelled -- answers from its keys.
     """
     if _is_model(value):
-        return name in value.model_fields_set
+        return name in value.model_fields_set or _emitted(value, name)
     if isinstance(value, Mapping):
         return name in value
     return False
@@ -143,8 +186,8 @@ def sent(value: Any, name: str) -> bool:
     field is absent from what is sent, and a constraint reading it as present
     refuses a request no seller receives.
 
-    Still membership, not an ``is None`` test: a default the caller never sent
-    is absent because it is not in ``model_fields_set``, whatever its value.
+    Still presence, not an ``is None`` test: :func:`supplied` decides whether the
+    document carries the name, and this adds only the non-null half.
     """
     return supplied(value, name) and _member(value, name) is not None
 
@@ -203,12 +246,19 @@ def _named_members(value: Any) -> Iterable[str]:
     open model carrying two members read as three, so ``maxProperties: 2``
     refused a document the schema accepts. Both sources are still read, so a
     name present in only one of them still counts.
+
+    A default the class emits is a third source, for the reason :func:`supplied`
+    gives: ``core/deadline-policy.json`` states ``minProperties: 1`` and
+    ``DeadlinePolicy`` defaults ``business_days_only`` to ``False``, so the empty
+    construction dumps one member and ``_c.members`` counted none.
     """
     if isinstance(value, Mapping):
         return list(value)
     if _is_model(value):
         extras = getattr(value, "model_extra", None) or ()
-        return list(dict.fromkeys([*value.model_fields_set, *extras]))
+        unset = (name for name in type(value).model_fields if name not in value.model_fields_set)
+        emitted = [name for name in unset if _emitted(value, name)]
+        return list(dict.fromkeys([*value.model_fields_set, *extras, *emitted]))
     return ()
 
 
@@ -291,9 +341,8 @@ def members(value: Any, minimum: int | None = None, maximum: int | None = None) 
     """``minProperties``/``maxProperties``: how many members the document carried.
 
     The same question :func:`supplied` asks, counted instead of tested: a
-    model answers from ``model_fields_set`` plus its extras, a mapping from its
-    keys. A default the caller never sent is not a property of the document, for
-    the same reason it is not ``supplied``.
+    model answers from ``model_fields_set`` plus its extras plus the defaults it
+    emits, a mapping from its keys.
 
     Vacuous off its own type, like every primitive here. A ``RootModel`` does not
     reach this from a root conjunct -- ``flat_root_shape`` returns ``None`` for a
