@@ -26,9 +26,11 @@ from tests.test_reporting_frozen_read_safety import (
     _history,
     _load,
     _pages,
+    _pending,
     _request,
     _with_status,
 )
+from tests.test_reporting_reconciliation import _delivery_only_complete
 
 
 @pytest.mark.parametrize("explicit", [False, True])
@@ -58,10 +60,11 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
         raw["adjustments"].append(second)
     _counts(raw)
     owner = raw["periods"][0]
-    owner.update(reconciliation_mode="delivery_only", reconciliation_status="not_required")
+    # Leaving the consumer-receipt health behind would make the obligation report
+    # OBLIGATION_ACTION_REQUIRED instead of the adjustment condition under test.
+    owner.update(**_delivery_only_complete())
     for item in [owner, *raw["materializations"], *raw["scope"]["delivery_config_generations"]]:
         item["feed_purpose"] = "analytics"
-    owner["schedule"].update(period_anchor=owner["period"]["start"], period_timezone="UTC")
     # These counts do not apply in delivery-only mode. Adjustment evidence must
     # remain a separate condition even when the seller omits the pending count.
     for field in (
@@ -69,11 +72,11 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
         "accepted_receipt_count",
         "adjustment_receipt_count",
         "accepted_adjustment_receipt_count",
-        # ``declare_pending`` is the only thing that puts this count back, which
-        # is what makes the omitted case an omission.
+        # The accepted-receipt fixture declares it; this scenario's whole point is
+        # that the seller may omit it, so the omission has to be explicit here.
         "pending_adjustment_count",
     ):
-        owner.pop(field)
+        owner.pop(field, None)
     accepted = evidence in {"accepted", "accepted-leaf"}
     if declare_pending:
         owner["pending_adjustment_count"] = int(not accepted)
@@ -110,7 +113,6 @@ def _distinct_histories(count: int, *, distinction: str = "campaigns") -> dict[s
             receipt_count=0,
             accepted_receipt_count=0,
         )
-        owner["schedule"].update(period_anchor=owner["period"]["start"], period_timezone="UTC")
         if distinction == "campaigns":
             buys = [f"buy-{number}-a", f"buy-{number}-b"]
             for item in (owner, revision):
@@ -182,16 +184,11 @@ async def test_ownerless_revisionless_status_does_not_certify_multiple_obligatio
 
 
 @pytest.mark.parametrize("explicit", [False, True])
+# Only the owner binding: core/reporting-consumer-status.json member 0 requires the
+# owner, the revision and the observed digest on a received status, so a status
+# without its owner is not a document this walk can be handed. The owner-free
+# already-typed legacy tolerance is not reachable through the wire the walk reads.
 async def test_exact_status_binding_counts_once_even_when_logical_keys_match(explicit):
-    """A revision-only binding is not a case: the wire requires the owner.
-
-    ``core/reporting-consumer-status.json`` allOf[0] requires
-    ``reporting_obligation_id`` of a ``received`` status, so the unowned
-    parametrization this test used to carry described a page no conforming
-    seller sends. That the read refuses it is graded by
-    ``test_legacy_typed_status_without_owner_uses_exact_revision_binding``; the
-    owner binding below is the case that exists.
-    """
     raw = _distinct_histories(2)
     status = _with_status(_history())["consumer_statuses"][0]
     status["reporting_revision_id"] = raw["revisions"][0]["reporting_revision_id"]
@@ -260,9 +257,6 @@ async def test_absent_optional_count_is_diagnostic_but_contradictory_count_is_re
 ):
     raw = _history(adjustments=True)
     raw["periods"][0]["health"] = "waiting"
-    raw["periods"][0]["schedule"].update(
-        period_anchor=raw["periods"][0]["period"]["start"], period_timezone="UTC"
-    )
     actual = raw["periods"][0].pop(field)
     # These tier counts are schema-optional; missing evidence is not a false count.
     # Keep the conditional requirements for healthy/complete projections intact.
@@ -312,11 +306,10 @@ def _partly_owned_legacy_history() -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("field", "declared"),
     [
-        # A revision_count of 0 is absent: core/reporting-obligation.json
-        # allOf[5] requires at least one revision of a published obligation
-        # (allOf[1] again at a healthy or complete health), so no page carries
-        # it. The below-bound case is still graded by the three counts that
-        # follow, which the spec leaves free.
+        # No under-count for revision_count: core/reporting-obligation.json members
+        # 1 and 5 make a published, healthy obligation carry at least one revision,
+        # so zero is not a document. The lower bound is exercised by the adjustment
+        # counts below, which the schema leaves free.
         ("revision_count", 3),
         ("adjustment_count", 0),
         ("adjustment_count", 2),
@@ -369,10 +362,7 @@ async def test_pending_adjustment_count_cannot_invent_ownership_of_selected_offi
     assert not result.definitive
     assert all("AMBIGUOUS_REVISION_OWNERSHIP" in item.reasons for item in result.obligations)
     # Even ambiguous ownership cannot explain more pending rows than exist.
-    # core/reporting-obligation.json allOf[7] pins the count to 0 while the
-    # obligation reads complete, so the health moves with it; the guard under
-    # test reads neither health nor mode.
-    raw["periods"][0].update(pending_adjustment_count=2, health="waiting")
+    _pending(raw["periods"][0], 2)
     with pytest.raises(ReportingReconciliationError) as error:
         await _load_distinct(raw, explicit=False)
     assert error.value.code == "LEDGER_COUNT_MISMATCH"
