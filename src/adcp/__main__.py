@@ -448,10 +448,15 @@ async def _dispatch_tool(client: ADCPClient, tool_name: str, payload: dict[str, 
         return await method(request)
     except ValidationError as e:
         # User-friendly error for invalid payloads
-        from adcp.types.error_narrowing import document_path
+        from adcp.types.error_narrowing import document_path, narrow_union_errors
 
         error_details = []
-        for error in e.errors():
+        # Narrow first, as every other consumer of a union ValidationError
+        # does. This used `document_path` for the PATH but iterated the raw
+        # errors, so a split root's wholesale refusal ("packages is not
+        # accepted by this request shape", at no field at all) and every
+        # branch's duplicate reached the CLI alongside the real one.
+        for error in narrow_union_errors(e.errors()):
             field = ".".join(str(loc) for loc in document_path(error["loc"]))
             msg = error["msg"]
             error_details.append(f"  - {field}: {msg}")

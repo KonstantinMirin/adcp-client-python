@@ -147,13 +147,24 @@ def _split_at_variant(
     return loc[:last_variant_idx], variant, loc[last_variant_idx + 1 :]
 
 
-#: Cap on input list size. Beyond this we pass through unchanged —
-#: narrowing is a UX feature, not correctness, and an attacker
-#: submitting a request that triggers thousands of validation errors
-#: shouldn't get to amplify CPU through O(N) bucketing logic. The cap
-#: is generous enough that genuine union dumps (~30 errors for a 13-
-#: variant asset union) never hit it.
-_MAX_NARROW_INPUT_SIZE = 500
+# There is deliberately NO cap on input size.
+#
+# One was here -- 500 errors, above which the input was returned UNCHANGED --
+# on the reasoning that an attacker "shouldn't get to amplify CPU through O(N)
+# bucketing logic". Two things were wrong with it.
+#
+# It made quality degrade exactly when error volume is highest, which is when a
+# buyer can least afford a firehose: above the cap the wholesale-refusal error
+# and every branch's duplicate reached the response untouched. And the cap was
+# sized before branch classes multiplied every error by the branch count, so a
+# legitimate 501-element array produced 1019 errors and silently crossed it.
+#
+# The premise does not survive measurement either. Narrowing is linear with a
+# ~4-5us constant, flat from 300 to 150_000 errors (630ms at 150_000), so there
+# is no amplification to guard against -- and pydantic has already done strictly
+# more work to PRODUCE the errors than narrowing does to process them. A bound
+# on total validation work belongs where the errors are generated, not as a
+# correctness cliff here.
 
 
 def _asset_variant_index(loc: tuple[Any, ...]) -> int | None:
@@ -212,13 +223,6 @@ def _narrow_union_errors(
         return []
 
     errors_list = list(errors)
-    # DoS guard: don't process pathologically-large inputs. Below the
-    # cap, narrowing helps. Above it, we're either in a hostile
-    # request or a legitimately massive schema; either way, the
-    # narrowing UX win doesn't justify the CPU.
-    if len(errors_list) > _MAX_NARROW_INPUT_SIZE:
-        return errors_list
-
     # Bucket errors by (prefix_before_variant) — every error sharing
     # the same prefix is contending for the same logical slot, and
     # different errors in the same bucket are different variants of
