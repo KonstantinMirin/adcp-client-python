@@ -191,6 +191,65 @@ def test_builder_omits_field_and_issues_when_there_are_none():
     assert payload["details"]["issues"] == []
 
 
+def _handler_request_models() -> list[type]:
+    """The request models the handler classes validate ``params`` into.
+
+    Derived from the class bodies rather than listed, so a handler method
+    added later is covered. The population is asserted below.
+    """
+    import inspect
+
+    from adcp import types
+    from adcp.server.content_standards import ContentStandardsHandler
+    from adcp.server.governance import GovernanceHandler
+    from adcp.server.sponsored_intelligence import SponsoredIntelligenceHandler
+
+    found: dict[str, type] = {}
+    for handler_cls in (ContentStandardsHandler, GovernanceHandler, SponsoredIntelligenceHandler):
+        for name, member in vars(handler_cls).items():
+            if name.startswith(("_", "handle_")) or not inspect.iscoroutinefunction(member):
+                continue
+            match = re.search(r"(\w+)\.model_validate\(params\)", inspect.getsource(member))
+            if match and (model := getattr(types, match.group(1), None)) is not None:
+                found[match.group(1)] = model
+    return list(found.values())
+
+
+HANDLER_REQUEST_MODELS = _handler_request_models()
+
+
+def test_handler_request_models_were_discovered():
+    assert len(HANDLER_REQUEST_MODELS) >= 21, HANDLER_REQUEST_MODELS
+
+
+@pytest.mark.parametrize("model", HANDLER_REQUEST_MODELS, ids=lambda m: m.__name__)
+def test_no_reachable_pointer_names_a_pydantic_internal(model):
+    """A pointer must address the buyer's document, not pydantic's validators.
+
+    pydantic's ``loc`` is not a document path: for a model-level
+    ``function-after`` wrapper or a wrapped union it prefixes synthetic
+    elements naming the validator and the generated branch class, e.g.
+    ``/function-after[_require_schema_required_group(), CreateMediaBuyRequest
+    ExplicitPackagesWithFixedAllocation]/idempotency_key``, whose real
+    location is ``/idempotency_key``. ``CreateMediaBuyRequest`` does that
+    today; none of these models does, which is the only reason
+    salesagent-8qela.28 is latent rather than live.
+
+    This refuses the condition rather than filtering the symptom, so wiring a
+    wrapper-carrying model to ``invalid_request`` fails here instead of
+    shipping a pointer the buyer cannot resolve — and ``field`` now carries
+    the same path, so the blast radius grew.
+    """
+    for payload in ("x", {}, {"account": "x"}, [1]):
+        try:
+            model.model_validate(payload)
+        except ValidationError as error:
+            for issue in issues_from_validation_error(error):
+                assert "function-" not in issue.pointer, issue.pointer
+                assert "[" not in issue.pointer, issue.pointer
+                assert pointer_to_field(issue.pointer).count("['") == 0, issue.pointer
+
+
 def test_both_lanes_emit_the_same_envelope():
     """The jsonschema oracle and the pydantic projection must not disagree.
 
