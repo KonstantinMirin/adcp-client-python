@@ -8384,6 +8384,281 @@ def enforce_root_constraints() -> None:
     print(f"  {nothing_to_check} flat root(s) state only restatements of their own class")
 
 
+class _GeneratedIndex(NamedTuple):
+    """Where every generated class is defined, and how each module names the others.
+
+    A base class arrives in three spellings and the inheritance chain cannot be
+    followed without all three: ``class X(Y)`` with ``Y`` in the same module,
+    ``class X(Y)`` with ``Y`` from ``from ..core.y import Y``, and
+    ``class X(y_1.Y)`` with ``y_1`` from ``from ..core import y as y_1``.
+    """
+
+    #: module path -> {class name: its ClassDef}
+    classes: dict[Path, dict[str, ast.ClassDef]]
+    #: module path -> {local name: (defining module, class name)}
+    imported: dict[Path, dict[str, tuple[Path, str]]]
+    #: module path -> {local alias: the module it names}
+    aliases: dict[Path, dict[str, Path]]
+
+
+def _index_generated_classes() -> _GeneratedIndex:
+    """Index the generated tree so a base-class expression can be resolved."""
+    index = _GeneratedIndex({}, {}, {})
+    for py_file in sorted(OUTPUT_DIR.rglob("*.py")):
+        try:
+            tree = ast.parse(py_file.read_text())
+        except SyntaxError:
+            continue
+        index.classes[py_file] = {n.name: n for n in tree.body if isinstance(n, ast.ClassDef)}
+        index.imported[py_file] = {}
+        index.aliases[py_file] = {}
+        for node in tree.body:
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.level == 0:
+                if not (node.module or "").startswith("adcp.types.domains"):
+                    continue
+                tail = node.module.removeprefix("adcp.types.domains").strip(".")
+                package = OUTPUT_DIR / Path(*tail.split(".")) if tail else OUTPUT_DIR
+            else:
+                # ``level`` counts leading dots: 1 is this module's own package.
+                package = py_file.parent
+                for _ in range(node.level - 1):
+                    package = package.parent
+                if node.module:
+                    package = package / Path(*node.module.split("."))
+            as_module_file = package.with_suffix(".py")
+            for alias in node.names:
+                local = alias.asname or alias.name
+                sibling = package / f"{alias.name}.py"
+                if sibling.exists():
+                    index.aliases[py_file][local] = sibling
+                elif as_module_file.exists():
+                    index.imported[py_file][local] = (as_module_file, alias.name)
+    return index
+
+
+def _resolve_base(base: ast.expr, py_file: Path, index: _GeneratedIndex) -> tuple[Path, str] | None:
+    """Resolve one base-class expression to the module and name that define it."""
+    if isinstance(base, ast.Name):
+        if base.id in index.classes.get(py_file, {}):
+            return (py_file, base.id)
+        return index.imported.get(py_file, {}).get(base.id)
+    if isinstance(base, ast.Attribute) and isinstance(base.value, ast.Name):
+        module = index.aliases.get(py_file, {}).get(base.value.id)
+        if module is not None:
+            return (module, base.attr)
+    return None
+
+
+def _is_request_module(py_file: Path, index: _GeneratedIndex) -> bool:
+    """Whether this module's generated classes are a REQUEST the buyer sends.
+
+    Read from the bases the generator wrote -- ``AdcpRequest`` against
+    ``AdcpResponse`` -- rather than from the file name, so the partition is the
+    generator's own.
+
+    It matters because a default on a REQUEST field is the generated CLIENT
+    asserting something about the buyer's intent, and a default on a RESPONSE
+    field is the SELLER stating something it is the authority on.
+    ``core/opportunity-context.json`` says of ``status`` that "omission means no
+    status update and MUST NOT reopen or close the opportunity implicitly", and
+    ``media-buy/accept-proposal-request.json`` that "Success infers closed with
+    accepted_with_seller when status is omitted" -- the seller infers, so the
+    request must not assert. Neither sentence says anything about a seller
+    stating ``proposal_status`` on a response it owns.
+    """
+    return any(
+        isinstance(base, ast.Name) and base.id == "AdcpRequest"
+        for node in index.classes.get(py_file, {}).values()
+        for base in node.bases
+    )
+
+
+def _guard_firing_values(expression: ast.AST) -> set[tuple[str, object]]:
+    """``(name, value)`` for each ``self`` member a GUARD tests for equality.
+
+    The compiler renders a schema ``if``/``then``/``else`` as a conditional
+    expression, so the ``if``'s content is exactly ``IfExp.test`` and the
+    requirement it imposes is the body. Only the test matters here: a default
+    that equals a value the test compares against FIRES the conditional, while a
+    default sitting in the body SATISFIES a requirement and is the behaviour the
+    ergonomic default exists for.
+
+    Measured on the two shapes this separates:
+
+        core/opportunity-context.json   test reads status == 'closed', body
+                                        requires close_reason  -> status's
+                                        'closed' default fires it
+        core/reporting-resource.json    test reads kind == 'manifest', body
+                                        requires manifest_version -> that
+                                        default satisfies, never fires
+
+    A nested subject is skipped: ``_c.descend(package, 'x', ...)`` grades a
+    member of another class, whose own fields this pass is not looking at.
+    """
+    found: set[tuple[str, object]] = set()
+    for node in ast.walk(expression):
+        if not isinstance(node, ast.IfExp):
+            continue
+        for call in ast.walk(node.test):
+            if not (
+                isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "_c"
+                and len(call.args) == 3
+                and isinstance(call.args[0], ast.Name)
+                and call.args[0].id == "self"
+                and isinstance(call.args[1], ast.Constant)
+                and isinstance(call.args[2], ast.Lambda)
+            ):
+                continue
+            body = call.args[2].body
+            if (
+                isinstance(body, ast.Compare)
+                and len(body.ops) == 1
+                and isinstance(body.ops[0], ast.Eq)
+                and len(body.comparators) == 1
+                and isinstance(body.comparators[0], ast.Constant)
+            ):
+                found.add((call.args[1].value, body.comparators[0].value))
+    return found
+
+
+def _conjunct_guard_values(
+    py_file: Path, class_name: str, index: _GeneratedIndex
+) -> set[tuple[str, object]]:
+    """``(name, value)`` pairs any conjunct GRADING this class fires on.
+
+    Walks the base chain rather than the class alone, because the conjunct that
+    grades a subclass is usually declared on the base: the generator renders a
+    schema that PINS a member as a subclass narrowing that member, and the
+    compiled validator stays on the base (salesagent-8qela.50).
+    """
+    firing: set[tuple[str, object]] = set()
+    seen: set[tuple[Path, str]] = set()
+    pending = [(py_file, class_name)]
+    while pending:
+        key = pending.pop()
+        if key in seen:
+            continue
+        seen.add(key)
+        module, name = key
+        node = index.classes.get(module, {}).get(name)
+        if node is None:
+            continue
+        for statement in node.body:
+            if (
+                isinstance(statement, ast.FunctionDef)
+                and statement.name == ROOT_CONSTRAINT_VALIDATOR
+            ):
+                firing |= _guard_firing_values(statement)
+        for base in node.bases:
+            resolved = _resolve_base(base, module, index)
+            if resolved is not None:
+                pending.append(resolved)
+    return firing
+
+
+def _widen_literal_annotation(annotation: ast.expr) -> ast.expr:
+    """``Literal[X]`` -> ``Literal[X] | None``, inside ``Annotated`` when present."""
+    if (
+        isinstance(annotation, ast.Subscript)
+        and _subscript_base_name(annotation) == "Annotated"
+        and isinstance(annotation.slice, ast.Tuple)
+        and annotation.slice.elts
+    ):
+        inner = annotation.slice.elts[0]
+        annotation.slice.elts[0] = ast.BinOp(left=inner, op=ast.BitOr(), right=ast.Constant(None))
+        return annotation
+    return ast.BinOp(left=annotation, op=ast.BitOr(), right=ast.Constant(None))
+
+
+def widen_conjunct_read_literal_defaults() -> None:
+    """Stop a class STATING a tag that a root conjunct grading it READS.
+
+    ``inject_literal_discriminator_defaults`` gives a single-value ``Literal``
+    field that value as a default so an adopter need not type the tag. Where a
+    root conjunct READS that field the default stops being ergonomic and becomes
+    an assertion: the class emits the tag on every document, the conjunct grades
+    the document, and a conditional fires on a value the caller never sent.
+
+    Measured instance. ``media-buy/accept-proposal-request.json`` pins its
+    opportunity's ``status`` to ``closed``, so the generator emits
+    ``Opportunity(OpportunityContext)`` carrying ``status: Literal['closed'] =
+    'closed'``; ``core/opportunity-context.json`` states that a ``closed`` status
+    requires ``close_reason``; and the model therefore REFUSED
+    ``{"opportunity_id": "A"}`` -- a document its own bundled schema accepts, and
+    the one that schema's description calls the normal case: "Success infers
+    closed with accepted_with_seller when status is omitted", and of ``status``,
+    "omission means no status update and MUST NOT reopen or close the
+    opportunity implicitly". The SELLER infers the closure, so a generated client
+    must not assert it (salesagent-8qela.50).
+
+    The default is WIDENED, not dropped. Dropping it makes the field required,
+    which forbids the omission the spec requires to stay legal;
+    ``Literal['closed'] | None = None`` keeps it optional and emits nothing --
+    the transformation ``fix_canceled_literal_defaults`` and
+    ``fix_unchanged_literal_defaults`` already perform for fields they name one
+    by one. This pass names none. Its population is DERIVED from the compiled
+    conjuncts, which is why it runs after ``enforce_root_constraints`` instead of
+    teaching ``inject_literal_discriminator_defaults`` to predict them.
+    """
+    index = _index_generated_classes()
+    widened: list[str] = []
+    touched = 0
+
+    for py_file in sorted(index.classes):
+        if not _is_request_module(py_file, index):
+            continue
+        lines = py_file.read_text().split("\n")
+        edits: list[tuple[int, int, str]] = []
+        for class_name, node in index.classes[py_file].items():
+            firing = _conjunct_guard_values(py_file, class_name, index)
+            if not firing:
+                continue
+            for statement in node.body:
+                if not isinstance(statement, ast.AnnAssign):
+                    continue
+                if not isinstance(statement.target, ast.Name):
+                    continue
+                tag = _extract_single_literal_value(statement.annotation)
+                if tag is None:
+                    continue
+                if not (isinstance(statement.value, ast.Constant) and statement.value.value == tag):
+                    continue  # no default, or a default that is not the tag itself
+                if (statement.target.id, tag) not in firing:
+                    continue  # the default does not fire a conditional on this class
+                replacement = ast.AnnAssign(
+                    target=statement.target,
+                    annotation=_widen_literal_annotation(statement.annotation),
+                    value=ast.Constant(None),
+                    simple=1,
+                )
+                first = lines[statement.lineno - 1]
+                indent = " " * (len(first) - len(first.lstrip()))
+                edits.append(
+                    (statement.lineno, statement.end_lineno, indent + ast.unparse(replacement))
+                )
+                widened.append(
+                    f"{py_file.relative_to(OUTPUT_DIR)}:{class_name}.{statement.target.id}"
+                )
+        if not edits:
+            continue
+        for start, end, replacement in sorted(edits, key=lambda edit: -edit[0]):
+            lines[start - 1 : end] = [replacement]
+        py_file.write_text("\n".join(lines))
+        touched += 1
+
+    for entry in sorted(widened):
+        print(f"    widened {entry}")
+    print(
+        f"  ✓ Widened {len(widened)} conjunct-read Literal default(s) to None "
+        f"across {touched} file(s)"
+    )
+
+
 def _ensure_typing_import(content: str, *names: str) -> str:
     """Give a module a ``typing`` import for ``names``, extending or inserting."""
     try:
@@ -8741,6 +9016,12 @@ def main(argv: list[str] | None = None) -> int:
         # Last of all the class-shaping passes: every pass above edits a class
         # by name, and the shared base carries what they put on the flat one.
         emit_branch_classes,
+        # After emit_branch_classes, and after every pass that renames or
+        # re-bases a class: this one reads a class's BASE CHAIN to find the
+        # conjunct that grades it, so it has to see the final shapes. Placed
+        # right after enforce_root_constraints it found nothing -- the classes
+        # it grades are not in their final form that early.
+        widen_conjunct_read_literal_defaults,
         # After every pass that can add, rename or remove a class: the
         # ``__all__`` it writes has to name the final set.
         declare_root_schema_module_exports,

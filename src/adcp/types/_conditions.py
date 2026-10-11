@@ -251,12 +251,19 @@ def _named_members(value: Any) -> Iterable[str]:
     gives: ``core/deadline-policy.json`` states ``minProperties: 1`` and
     ``DeadlinePolicy`` defaults ``business_days_only`` to ``False``, so the empty
     construction dumps one member and ``_c.members`` counted none.
+
+    The declared fields are read through ``getattr``, the same way :func:`_emitted`
+    reads them, because :func:`_is_model` is duck-typed: a subject can carry
+    ``model_fields_set`` and declare no fields, and then :func:`supplied` answers
+    for it while an unguarded ``type(value).model_fields`` raises. Every primitive
+    has to answer for every subject the predicate admits.
     """
     if isinstance(value, Mapping):
         return list(value)
     if _is_model(value):
         extras = getattr(value, "model_extra", None) or ()
-        unset = (name for name in type(value).model_fields if name not in value.model_fields_set)
+        declared = getattr(type(value), "model_fields", None) or {}
+        unset = (name for name in declared if name not in value.model_fields_set)
         emitted = [name for name in unset if _emitted(value, name)]
         return list(dict.fromkeys([*value.model_fields_set, *extras, *emitted]))
     return ()
