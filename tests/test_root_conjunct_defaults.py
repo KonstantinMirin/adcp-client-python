@@ -76,16 +76,40 @@ def _generated_models() -> dict[tuple[str, str], type[BaseModel]]:
     return found
 
 
+def _carries_conjunct(model: type[BaseModel]) -> bool:
+    """Whether ``model`` is graded by a compiled root conjunct, inherited or its own.
+
+    The MRO, not ``model.__dict__``: a subclass INHERITS the validator, and
+    narrowing a field the inherited conjunct reads is exactly how the generator
+    spells a schema that pins a member. ``__dict__`` alone selected the 225
+    classes that DECLARE a conjunct and excluded the 238 that inherit one --
+    including ``accept_proposal_request.Opportunity``, which pins
+    ``status`` to ``Literal['closed']`` over ``OpportunityContext``'s conjunct and
+    was one of three classes refusing a document its schema accepts while this
+    file was green (salesagent-8qela.51).
+    """
+    return any(ROOT_CONJUNCT in base.__dict__ for base in model.__mro__)
+
+
 def _conjunct_fields(model: type[BaseModel]) -> set[str]:
-    """Every field name the class's own compiled conjunct reads off ``self``.
+    """Every field name a conjunct grading this class reads off ``self``.
 
     Read from the validator's source rather than from the schema, because what
     the conjunct actually asks is what decides the escape -- and ``_c.descend``
     is the primitive that is vacuous for an unsupplied field.
+
+    Every base that declares one is read, for the reason
+    :func:`_carries_conjunct` gives: the conjunct that grades a subclass is
+    frequently not written on it.
     """
-    function = model.__dict__.get(ROOT_CONJUNCT)
-    if function is None:
-        return set()
+    sources = [
+        base.__dict__[ROOT_CONJUNCT] for base in model.__mro__ if ROOT_CONJUNCT in base.__dict__
+    ]
+    return set().union(*(_fields_read_by(function) for function in sources)) if sources else set()
+
+
+def _fields_read_by(function: Any) -> set[str]:
+    """The names one compiled validator passes to a ``_c.*`` primitive on ``self``."""
     raw = getattr(function, "__func__", function)
     raw = getattr(raw, "wrapped", raw)
     try:
@@ -166,8 +190,11 @@ def test_no_conjunct_lets_a_defaulted_value_escape_and_then_serializes_it() -> N
     """
     graded, _ungraded = _exposure()
     # A derivation that matches nothing is green, so the population is asserted.
-    # Measured: 10 classes, 20 (class, field) pairs.
-    assert len(graded) >= 10, f"the derivation selected only {len(graded)} classes to grade"
+    # Measured over the classes a conjunct GRADES rather than those that declare
+    # one: 26 classes, 31 (class, field) pairs, with 16 more carrying a risky
+    # default and no synthesizable document. Keyed on ``__dict__`` it was 10
+    # classes (salesagent-8qela.51).
+    assert len(graded) >= 26, f"the derivation selected only {len(graded)} classes to grade"
 
     escapes: list[str] = []
     for module, qualname, risky in graded:
@@ -340,6 +367,21 @@ def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
     class whose serializer drops the unset default fails the third clause, which
     is how the exception is derived rather than listed.
 
+    WHAT THIS OBLIGATION DOES NOT SEE, measured, so nobody re-derives it. The
+    population now covers the classes a conjunct GRADES rather than those that
+    declare one, which added the 238 inheriting subclasses -- and the three that
+    refused a document their bundled schema accepts
+    (``{accept_proposal,buy_products,create_media_buy}_request.Opportunity.status``,
+    salesagent-8qela.50) are in it and ARE examined. They are disqualified by the
+    second clause, correctly: each refuses the document with ``status='closed'``
+    TYPED as well as unset, because what is missing is ``close_reason``, so the
+    refusal is not about sent-ness and this is not the defect stated here.
+    Their defect is a model refusing what the schema accepts, which
+    ``tests/conformance/test_schema_model_parity.py`` owns and caught. Widening
+    this population does not surface them and no clause here should be stretched
+    until it does; that would duplicate an obligation another suite already
+    grades.
+
     EVERY field with an emitted default is a candidate, not only one the conjunct
     NAMES. ``_c.members`` names none: ``core/deadline-policy.json`` states
     ``minProperties: 1`` and the conjunct reads ``self`` whole, so
@@ -350,12 +392,16 @@ def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
     pairs = [
         (module, qualname, name)
         for (module, qualname), model in sorted(_generated_models().items())
-        if ROOT_CONJUNCT in model.__dict__
+        if _carries_conjunct(model)
         for name in _serializing_defaults(model, set(model.model_fields))
     ]
-    # A derivation that matches nothing is green. Measured: 189 (class, field) pairs
-    # over 89 of the 225 classes that carry a conjunct.
-    assert len(pairs) >= 189, f"the derivation selected only {len(pairs)} (class, field) pairs"
+    # A derivation that matches nothing is green, and one whose population is
+    # narrower than the thing it grades is green over whatever it left out.
+    # Measured over the classes a conjunct GRADES -- 463, of which 225 declare one
+    # and 238 inherit one: 618 (class, field) pairs over 265 classes. Keyed on
+    # ``__dict__`` this read 189 over 89, so 429 pairs went ungraded
+    # (salesagent-8qela.51).
+    assert len(pairs) >= 618, f"the derivation selected only {len(pairs)} (class, field) pairs"
 
     demanded: list[str] = []
     compared: set[tuple[str, str, str]] = set()
@@ -384,9 +430,9 @@ def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
     # The search has to have produced pairs, or the comparison compared nothing.
     # This counts the pairs it actually built, not the ones that came out clean --
     # a count of clean pairs falls as defects are found and reads as progress.
-    # Measured: 174 of the 189 pairs had one; the other 15 have no document this
+    # Measured: 588 of the 618 pairs had one; the other 30 have no document this
     # class accepts that carries the field, so there is no pair to grade.
-    assert len(compared) >= 174, f"only {len(compared)} pair(s) produced a document to compare"
+    assert len(compared) >= 588, f"only {len(compared)} pair(s) produced a document to compare"
     assert not demanded, "\n".join(demanded)
 
 
