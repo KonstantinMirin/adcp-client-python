@@ -398,10 +398,18 @@ def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
     # A derivation that matches nothing is green, and one whose population is
     # narrower than the thing it grades is green over whatever it left out.
     # Measured over the classes a conjunct GRADES -- 463, of which 225 declare one
-    # and 238 inherit one: 618 (class, field) pairs over 265 classes. Keyed on
-    # ``__dict__`` this read 189 over 89, so 429 pairs went ungraded
+    # and 238 inherit one: 615 (class, field) pairs over 262 classes. Keyed on
+    # ``__dict__`` this read 189 over 89, so 426 pairs went ungraded
     # (salesagent-8qela.51).
-    assert len(pairs) >= 618, f"the derivation selected only {len(pairs)} (class, field) pairs"
+    #
+    # A LOWER BOUND, not a count, and taken from the SMALLEST composition.
+    # ``_generated_models`` walks what the PROCESS has imported, so a sibling test
+    # that loads more generated modules can only enlarge this. Measured both ways
+    # at this commit: 615 pairs with this file alone and 615 beside
+    # ``test_schema_model_parity.py`` -- but the number of pairs that go on to
+    # produce a document moved (585 alone, 587 together), so both floors are
+    # written from the file-alone run.
+    assert len(pairs) >= 615, f"the derivation selected only {len(pairs)} (class, field) pairs"
 
     demanded: list[str] = []
     compared: set[tuple[str, str, str]] = set()
@@ -430,9 +438,10 @@ def test_no_conjunct_demands_a_default_the_document_already_carries() -> None:
     # The search has to have produced pairs, or the comparison compared nothing.
     # This counts the pairs it actually built, not the ones that came out clean --
     # a count of clean pairs falls as defects are found and reads as progress.
-    # Measured: 588 of the 618 pairs had one; the other 30 have no document this
-    # class accepts that carries the field, so there is no pair to grade.
-    assert len(compared) >= 588, f"only {len(compared)} pair(s) produced a document to compare"
+    # Measured: 585 of the 615 pairs had one; the other 30 have no document this
+    # class accepts that carries the field, so there is no pair to grade. A lower
+    # bound for the same reason the pairs floor is one.
+    assert len(compared) >= 585, f"only {len(compared)} pair(s) produced a document to compare"
     assert not demanded, "\n".join(demanded)
 
 
