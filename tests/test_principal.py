@@ -177,7 +177,11 @@ async def test_wait_for_destinations_rejects_missing_readback() -> None:
                 "principal_id": "principal-1",
                 "principal_kind": "buyer_agent",
                 "configuration_version": "version-7",
-                "configuration": {},
+                # core/principal-state.json states minProperties 1, so ``{}`` is
+                # a document the spec refuses -- it was accepted only while that
+                # keyword was uncompiled. The member has to be one that is NOT
+                # reporting_destinations, which is the absence this test asserts.
+                "configuration": {"notification_configs": []},
             }
         }
     )
