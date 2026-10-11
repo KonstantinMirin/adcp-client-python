@@ -3125,12 +3125,19 @@ def test_root_constraints_skip_a_name_two_classes_share(tmp_path, monkeypatch):
     assert target.read_text() == module_source
 
 
-def test_root_constraints_ask_whether_the_caller_supplied_the_field(tmp_path, monkeypatch):
-    """A default is not a supplied value, and an explicit null is.
+def test_root_constraints_ask_what_the_document_carries(tmp_path, monkeypatch):
+    """An explicit null is a supplied value, and so is a default the class emits.
 
-    ``required`` asks whether the property is present. AdCP 3.2 mutation inputs
-    use an explicit null to clear a stored value, so a request whose only group
-    is ``daily_budget_cap: null`` is a request to remove the cap.
+    ``required`` asks whether the property is present on the DOCUMENT. AdCP 3.2
+    mutation inputs use an explicit null to clear a stored value, so a request
+    whose only group is ``daily_budget_cap: null`` is a request to remove the cap.
+
+    And a group over a field whose default the class EMITS is satisfied by the
+    empty construction, because that construction's dump carries the field: the
+    two documents are byte-identical and a refusal would grade ``model_fields_set``,
+    which the wire cannot express (salesagent-k37fs). Both fixtures state the same
+    schema; what separates them is whether the class emits anything for
+    ``replayed``, which is the only thing that can decide the group.
     """
     from pydantic import ValidationError
 
@@ -3143,25 +3150,40 @@ def test_root_constraints_ask_whether_the_caller_supplied_the_field(tmp_path, mo
         },
         "anyOf": [{"required": ["daily_budget_cap"]}, {"required": ["replayed"]}],
     }
-    module_source = (
-        "from __future__ import annotations\n\n"
-        "from pydantic import BaseModel\n\n\n"
-        "class BudgetControl(BaseModel):\n"
-        "    daily_budget_cap: float | None = None\n"
-        "    replayed: bool = True\n"
-    )
 
-    target = _write_required_group_fixture(tmp_path, monkeypatch, schema, module_source)
-    namespace: dict[str, object] = {}
-    exec(compile(target.read_text(), str(target), "exec"), namespace)  # noqa: S102
-    model = namespace["BudgetControl"]
+    def compiled(name: str, declaration: str):
+        module_source = (
+            "from __future__ import annotations\n\n"
+            "from pydantic import BaseModel\n\n\n"
+            "class BudgetControl(BaseModel):\n"
+            "    daily_budget_cap: float | None = None\n"
+            f"    {declaration}\n"
+        )
+        # Its own directory: the fixture helper creates the tree it writes into.
+        root = tmp_path / name
+        root.mkdir()
+        target = _write_required_group_fixture(root, monkeypatch, schema, module_source)
+        namespace: dict[str, object] = {}
+        exec(compile(target.read_text(), str(target), "exec"), namespace)  # noqa: S102
+        return namespace["BudgetControl"]
 
-    cleared = model.model_validate({"daily_budget_cap": None})
+    emitting = compiled("emitting", "replayed: bool = True")
+    cleared = emitting.model_validate({"daily_budget_cap": None})
     assert cleared.daily_budget_cap is None
-    assert model.model_validate({"replayed": True}).replayed is True
-    # `replayed` carries a default the caller never sent, so its group is unsatisfied.
+    assert emitting.model_validate({"replayed": True}).replayed is True
+    # The empty construction dumps ``replayed``, so the second group is satisfied
+    # and the two documents are the same bytes.
+    accepted = emitting.model_validate({})
+    assert accepted.model_dump(mode="json", exclude_none=True) == emitting.model_validate(
+        {"replayed": True}
+    ).model_dump(mode="json", exclude_none=True)
+
+    # The same schema over a class that emits nothing for either field: there the
+    # group really is unsatisfied, which is what gives the check teeth.
+    silent = compiled("silent", "replayed: bool | None = None")
+    assert silent.model_validate({"replayed": False}).replayed is False
     with pytest.raises(ValidationError, match="at least one of these field groups"):
-        model.model_validate({})
+        silent.model_validate({})
 
 
 def test_codegen_input_order_is_total(tmp_path, monkeypatch):
