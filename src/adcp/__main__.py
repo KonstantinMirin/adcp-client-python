@@ -448,11 +448,9 @@ async def _dispatch_tool(client: ADCPClient, tool_name: str, payload: dict[str, 
         return await method(request)
     except ValidationError as e:
         # User-friendly error for invalid payloads
-        from adcp.types.error_narrowing import document_path
-
         error_details = []
         for error in e.errors():
-            field = ".".join(str(loc) for loc in document_path(error["loc"]))
+            field = ".".join(str(loc) for loc in error["loc"])
             msg = error["msg"]
             error_details.append(f"  - {field}: {msg}")
 

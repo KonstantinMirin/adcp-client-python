@@ -38,7 +38,7 @@ from adcp.types import (
     MEDIA_BUY_LEGACY_STATUS_VALUES,
     unwrap_enum_value,
 )
-from adcp.types.error_narrowing import document_path, narrow_union_errors
+from adcp.types.error_narrowing import narrow_union_errors
 from adcp.validation._response_envelope import uses_task_status_envelope
 from adcp.validation.client_hooks import UnknownFieldPolicy, ValidationHookConfig
 from adcp.validation.envelope import DEFAULT_UNNEGOTIATED_ADCP_VERSION
@@ -3514,9 +3514,7 @@ def create_tool_caller(
                         exc_info=True,
                     )
                 first: dict[str, Any] = dict(errors_list[0]) if errors_list else {}
-                # A union member's label names a Python type, not a key the
-                # buyer sent, so it is dropped before the path is reported.
-                field_path = ".".join(str(loc) for loc in document_path(first.get("loc", ())))
+                field_path = ".".join(str(loc) for loc in first.get("loc", ()))
                 message = first.get("msg", "validation failed")
                 suggestion = (
                     f"Invalid value for field {field_path!r}: {message}"

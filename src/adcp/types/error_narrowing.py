@@ -86,29 +86,24 @@ def without_schema_labels(loc: Iterable[Any]) -> tuple[Any, ...]:
     pydantic's internal spelling of a wrapper around that member and names a
     repo-private validator; it is never useful and must not reach a buyer.
 
-    So this drops the second and keeps the first. :func:`document_path` drops
-    both, because a FIELD PATH is a path through the buyer's document and no
-    member label belongs in one.
+    So this drops the second and keeps the first.
+
+    A projection dropping BOTH lived here for a day, applied at the four places
+    that join a ``loc`` into a buyer-facing field path. It was the wrong fix and
+    is deleted: the element it was dropping came from the union a split root
+    installs, and ``_conditions.name_the_combinator`` now reports ONE branch's
+    errors with the label already gone, so there is nothing left downstream to
+    recognise. A filter there could not have been right -- it decided membership
+    by SPELLING, treating any CamelCase segment as a member label, so a
+    legitimate CamelCase key in the buyer's document would have been deleted
+    from the path, and a genuine union's variant name -- the one thing a label
+    is good for -- was deleted from one.
     """
     return tuple(
         segment
         for segment in loc
         if not (isinstance(segment, str) and _CORE_SCHEMA_LABEL.match(segment))
     )
-
-
-def document_path(loc: Iterable[Any]) -> tuple[Any, ...]:
-    """The path through the DOCUMENT that a pydantic ``loc`` points at.
-
-    A union member's label is a fact about the Python types, not a key the
-    buyer sent, so it has no place in a field path or a JSON pointer. This
-    drops those segments and keeps the rest in order.
-
-    Every projection of a ``loc`` to something a buyer reads goes through here,
-    so the two spellings of a member label are handled once rather than per
-    call site.
-    """
-    return tuple(segment for segment in loc if not _looks_like_variant_name(segment))
 
 
 def _split_at_variant(
@@ -413,7 +408,6 @@ def _pick_winning_variant(
 
 
 __all__ = [
-    "document_path",
     "without_schema_labels",
     "narrow_union_errors",
 ]

@@ -35,11 +35,14 @@ import decimal
 import ipaddress
 import pathlib
 import re
+import typing
 import uuid
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from pydantic import AnyUrl, ValidationError
+from pydantic_core import PydanticCustomError
+from pydantic_core.core_schema import ErrorType
 
 __all__ = [
     "branch_title",
@@ -105,9 +108,11 @@ _JSON_TYPES: dict[str, Callable[[Any], bool]] = {
     "object": lambda value: isinstance(value, Mapping) or _is_model(value),
     "array": lambda value: isinstance(value, (list, tuple)),
     "string": lambda value: isinstance(value, _STRING_BACKED),
-    "integer": lambda value: isinstance(value, (int, decimal.Decimal))
-    and not isinstance(value, bool)
-    and int(value) == value,
+    "integer": lambda value: (
+        isinstance(value, (int, decimal.Decimal))
+        and not isinstance(value, bool)
+        and int(value) == value
+    ),
     "number": lambda value: isinstance(value, _NUMBER_BACKED) and not isinstance(value, bool),
     "boolean": lambda value: isinstance(value, bool),
     "null": lambda value: value is None,
@@ -390,6 +395,50 @@ def branch_title(branch: type) -> str:
     return first_line[0].rstrip(".") if first_line else branch.__name__
 
 
+#: The error types ``ValidationError.from_exception_data`` resolves by name.
+#: ``ErrorType`` is the public enumeration of them; a type outside it is a
+#: ``PydanticCustomError`` a compiled validator minted, and has to be re-minted
+#: rather than named.
+_KNOWN_ERROR_TYPES = frozenset(typing.get_args(ErrorType))
+
+
+def _is_branch_requiredness(error: Any) -> bool:
+    """Whether a union error says a BRANCH's own required field is absent.
+
+    Inside a union every ``loc`` opens with the label of the choice that
+    produced it, so a branch's own root properties sit at length two and
+    anything longer is a position inside the document. A ``missing`` deeper
+    than that is content, not requiredness: an object nested three levels down
+    lacking a field ITS schema requires says this branch was reached and the
+    document is wrong inside it.
+    """
+    return error["type"] == "missing" and len(error["loc"]) == 2
+
+
+def _in_the_document(error: Any) -> Any:
+    """One union error restated with a ``loc`` that is a path in the document.
+
+    Drops the choice label positionally, which is where it always is, rather
+    than recognising it by spelling. Everything else -- the type, the context a
+    message is rendered from, the input -- is pydantic's own, so the restated
+    error is identical to the one the branch would have reported had it been
+    asked alone, in the mode the caller used.
+    """
+    detail: dict[str, Any] = {
+        "type": error["type"],
+        "loc": tuple(error["loc"][1:]),
+        "input": error["input"],
+    }
+    if error["type"] not in _KNOWN_ERROR_TYPES:
+        # A compiled validator's own refusal. Its context is already substituted
+        # into the message it rendered, so the message IS the template and there
+        # is no context left to carry.
+        detail["type"] = PydanticCustomError(error["type"], error["msg"])
+    elif error.get("ctx") is not None:
+        detail["ctx"] = error["ctx"]
+    return detail
+
+
 def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable[[Any, Any], Any]:
     """Build the wrapping validator a split root's union carries.
 
@@ -415,8 +464,28 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
     error context, so the refusal says more than a bare combinator keyword
     says. The success path is untouched: a document that satisfies a branch
     returns that branch's instance.
+
+    A REFUSAL IS THE BRANCH'S OWN, NOT THE UNION'S. A pydantic union prefixes
+    every error's ``loc`` with the label of the choice that produced it: a plain
+    model's class name, and for a branch carrying a compiled validator
+    pydantic's own schema spelling,
+    ``function-after[_require_schema_required_group(), <Branch>]``. ``loc`` is
+    read as a path through the buyer's document -- ``core/error.json`` specifies
+    ``issues[].pointer`` as an RFC 6901 pointer into the request payload -- and
+    a choice label is a fact about this package's classes, not a key the buyer
+    sent. Measured: a union of two plain models reports
+    ``('PlainA', 'packages', 0, 'geo', 0)`` for a document error at
+    ``/packages/0/geo/0``, and the same union over the same models carrying a
+    model-level validator reports
+    ``('function-after[_require_schema_required_group(), WrappedA]', ...)``. So
+    the union is the element's source and the validator only changes its
+    spelling.
+
+    So a refusal is restated as the refusal of ONE branch -- the one the
+    document meant -- with the label dropped. Nothing downstream has to
+    recognise a label, and the two spellings stop being a distinction anything
+    depends on.
     """
-    from pydantic_core import PydanticCustomError
 
     def _wrap(value: Any, handler: Any) -> Any:
         try:
@@ -427,25 +496,35 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
             per_branch: dict[str, list[dict[str, Any]]] = {}
             for error in exc.errors():
                 if not error["loc"]:
-                    return handler(value)
+                    raise
                 per_branch.setdefault(str(error["loc"][0]), []).append(dict(error))
-            # Relabel ONLY when the document satisfies no branch's requiredness.
-            # If one branch got past its required fields and failed on content,
-            # that failure is what the caller needs, and replacing it with the
-            # combinator keyword would discard the only informative error --
-            # pydantic re-wraps a raise from inside a validator, so the original
-            # is not recoverable from ``__cause__`` either.
-            if not all(
-                any(error["type"] == "missing" for error in errors)
+            # Report ONE branch's errors when the document satisfies that
+            # branch's requiredness. A branch that failed on fields IT requires
+            # was never reached; one that got past its own requiredness and
+            # failed on CONTENT is the branch the document meant, and that
+            # failure is what the caller needs -- replacing it with the
+            # combinator keyword would discard the only informative error, and
+            # merging it with the other branches' complaints would publish
+            # contradictory pointers, because branches differ by which fields
+            # they FORBID.
+            reached = [
+                errors
                 for errors in per_branch.values()
-            ):
-                raise
+                if not any(_is_branch_requiredness(error) for error in errors)
+            ]
+            if reached:
+                # CEILING: the branches are pairwise disjoint, so at most one
+                # can get past its own requiredness. If two ever did, the first
+                # in the root's own branch order is reported.
+                raise ValidationError.from_exception_data(
+                    exc.title, [_in_the_document(error) for error in reached[0]]
+                ) from exc
             absent = sorted(
                 {
-                    str(error["loc"][-1])
+                    str(error["loc"][1])
                     for errors in per_branch.values()
                     for error in errors
-                    if error["type"] == "missing" and error["loc"]
+                    if _is_branch_requiredness(error)
                 }
             )
             if not absent:
