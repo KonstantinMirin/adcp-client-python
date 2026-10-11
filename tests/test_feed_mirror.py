@@ -124,6 +124,10 @@ def make_webhook(
     }
     if previous is not None:
         body["previous_wholesale_feed_version"] = previous
+    # core/wholesale-feed-webhook.json: a product.* fire echoes the representation
+    # the subscriber negotiated, and a non-product fire carries no product view.
+    if body["notification_type"].startswith("product."):
+        body["product_payload_view"] = "legacy"
     return WholesaleFeedWebhook.model_validate(body)
 
 
@@ -920,6 +924,10 @@ async def test_webhook_scope_mismatch_keeps_all_layers_unchanged(envelope_scope,
     overlay = public.for_account(
         TypeAdapter(AccountReference).validate_python({"account_id": "acc_acme"})
     )
+    # core/wholesale-feed-webhook.json allOf members 10 and 11 tie cache_scope to
+    # the payload's applies_to.scope in both directions, so a mismatching document
+    # never validates. The mirror's own check guards an already-typed webhook, so
+    # it is reached the way the notification_type check is: by corrupting one.
     event = make_event(
         "018f0000-0000-7000-8000-000000000051",
         "product.created",
@@ -928,11 +936,13 @@ async def test_webhook_scope_mismatch_keeps_all_layers_unchanged(envelope_scope,
         {
             "product_id": "private",
             "product": make_product_dict("private"),
-            "applies_to": {"scope": payload_scope},
+            "applies_to": {"scope": envelope_scope},
         },
     )
+    webhook = make_webhook(event, cache_scope=envelope_scope)
+    object.__setattr__(webhook.event.payload.applies_to, "scope", payload_scope)
     with pytest.raises(FeedMirrorError, match="applies_to.scope"):
-        await overlay.apply_webhook(make_webhook(event, cache_scope=envelope_scope))
+        await overlay.apply_webhook(webhook)
     assert set(public.products) == {"p1"}
     assert overlay.get_product("private") is None
     assert overlay.product_state.wholesale_feed_version is None
