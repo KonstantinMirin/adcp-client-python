@@ -1,7 +1,7 @@
 """The vocabulary compiled root constraints are written in.
 
 A schema root states more than its merged ``properties``: a root
-``anyOf``/``oneOf`` over overlay arms, a root ``if``/``then``/``else``, root
+``anyOf``/``oneOf`` over overlay branches, a root ``if``/``then``/``else``, root
 ``dependencies``, a root ``not``. ``scripts/schema_constraints.py`` reads that
 content and the generator compiles it into a ``model_validator`` on the class,
 as compositions of the primitives below. Nothing here is generated; every
@@ -220,7 +220,7 @@ def matching_keys(value: Any, pattern: str, predicate: Predicate) -> bool:
 def only(value: Any, names: Sequence[str]) -> bool:
     """``additionalProperties: false``: only ``names`` were supplied.
 
-    A generated class normally declares more fields than one arm's
+    A generated class normally declares more fields than one branch's
     ``properties`` names, so this bounds what the caller supplied rather than
     what the class can hold. An extra key the model carried through (an open
     payload) counts as supplied.
@@ -307,7 +307,7 @@ def unique(value: Any) -> bool:
 def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) -> Any:
     """``not: {required: [...]}``: these keys may not reach the document sent.
 
-    A branch class types a field its arm forbids as ``None``, which is what
+    A branch class types a field its branch forbids as ``None``, which is what
     makes the combination unspellable at construction. It is not what refuses
     a raw document: the generated models are ``extra='allow'`` where their
     schemas say ``additionalProperties: true``, so pydantic would file an
@@ -338,9 +338,9 @@ def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) 
 
 
 def branch_title(branch: type) -> str:
-    """The schema title of the arm a branch class was compiled from.
+    """The schema title of the branch a branch class was compiled from.
 
-    The emitter opens each branch's docstring with the arm's ``title``, which is
+    The emitter opens each branch's docstring with the branch's ``title``, which is
     where schema-derived text rides -- no identifier is invented for it, and the
     title is the only phrase a reader can match against the schema. A branch
     with no docstring falls back to its class name, which is itself derived from

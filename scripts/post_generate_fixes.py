@@ -258,7 +258,7 @@ def _resolve_schema_ref(schema_rel: Path, ref: str) -> Path:
 
 
 def _sync_protocol_envelope_import(source: str) -> str:
-    """Keep the ProtocolEnvelope import aligned with restored response arms."""
+    """Keep the ProtocolEnvelope import aligned with restored response branches."""
     uses_protocol_envelope = "ProtocolEnvelope" in source.replace(_PROTOCOL_ENVELOPE_IMPORT, "")
     if not uses_protocol_envelope:
         return source.replace(_PROTOCOL_ENVELOPE_IMPORT, "")
@@ -1417,11 +1417,11 @@ def _dedent_continuation(segment: str, columns: int = 4) -> str:
     )
 
 
-def _union_arm_names(node: ast.expr, into: set[str]) -> None:
+def _union_branch_names(node: ast.expr, into: set[str]) -> None:
     """Collect the names a union expression joins, by their final component."""
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        _union_arm_names(node.left, into)
-        _union_arm_names(node.right, into)
+        _union_branch_names(node.left, into)
+        _union_branch_names(node.right, into)
     elif isinstance(node, ast.Name):
         into.add(node.id)
     elif isinstance(node, ast.Attribute):
@@ -1457,11 +1457,11 @@ def _plain_model_names(output_dir: Path) -> set[str]:
     return declared - excluded
 
 
-def _discriminated_arm_names(output_dir: Path) -> set[str]:
-    """Names the generated tree uses as an arm of a discriminated union.
+def _discriminated_branch_names(output_dir: Path) -> set[str]:
+    """Names the generated tree uses as an branch of a discriminated union.
 
     A wrapper named there is the one choice the parent's discriminator maps its
-    tag to. ``AssetVariant`` discriminates 21 arms on ``asset_type``, and three
+    tag to. ``AssetVariant`` discriminates 21 branches on ``asset_type``, and three
     of them — ``VastAsset``, ``DaastAsset``, ``DisplayTagAsset`` — are each a
     union of shapes that share one ``asset_type`` and differ on a second
     property. Replacing one of those with its own union inlines both shapes
@@ -1493,30 +1493,30 @@ def _discriminated_arm_names(output_dir: Path) -> set[str]:
                 and any(keyword.arg == "discriminator" for keyword in entry.keywords)
                 for entry in metadata
             ):
-                _union_arm_names(union, names)
+                _union_branch_names(union, names)
     return names
 
 
-def _field_union_arm_names(output_dir: Path) -> set[str]:
-    """Names any module's *field* unions join, when the union has two or more arms.
+def _field_union_branch_names(output_dir: Path) -> set[str]:
+    """Names any module's *field* unions join, when the union has two or more branches.
 
     The same-module guard above is not enough on its own: a composing root
-    that another module's field names as an arm of a smart (non-discriminated)
+    that another module's field names as an branch of a smart (non-discriminated)
     union — ``assets: LocalizedCreativeAsset | Assets`` in
     ``core/creative_localization.py``, where ``LocalizedCreativeAsset`` is a
     ``oneOf`` root defined in its own module — would be unwrapped, and the
-    field's union would then compare the root's arms against ``Assets``
-    directly. Pydantic's smart mode scores the successful arms (fields set,
-    exactness), so inlining can select a different arm for the same payload,
+    field's union would then compare the root's branches against ``Assets``
+    directly. Pydantic's smart mode scores the successful branches (fields set,
+    exactness), so inlining can select a different branch for the same payload,
     silently. The wrapper keeps the root one choice, as it was.
 
     Only field annotations count, and only for union roots: a single-model root
     is one class whichever way it is spelled. A module-level union *root* that names other
-    roots as arms — ``core/async-response-data.json`` composing every task
+    roots as branches — ``core/async-response-data.json`` composing every task
     response — is a union of unions by schema and was flattened before this
-    pass existed; keeping its arms wrapped would re-wrap unions adopters
+    pass existed; keeping its branches wrapped would re-wrap unions adopters
     already use unwrapped. Discriminated roots are exempt as well: a tagged
-    union nested as an arm is selected by its tag, not scored.
+    union nested as an branch is selected by its tag, not scored.
     """
     names: set[str] = set()
     for py_file in output_dir.rglob("*.py"):
@@ -1535,26 +1535,26 @@ def _field_union_arm_names(output_dir: Path) -> set[str]:
                     continue
                 # A wrapper's own ``root:`` annotation restates a root union;
                 # it is the composition this pass rewrites, not a field that
-                # scores arms.
+                # scores branches.
                 if isinstance(statement.target, ast.Name) and statement.target.id == "root":
                     continue
                 for union in ast.walk(statement.annotation):
                     if not (isinstance(union, ast.BinOp) and isinstance(union.op, ast.BitOr)):
                         continue
-                    arms: set[str] = set()
-                    _union_arm_names(union, arms)
-                    if len(arms - {"None"}) >= 2:
-                        names.update(arms)
+                    branches: set[str] = set()
+                    _union_branch_names(union, branches)
+                    if len(branches - {"None"}) >= 2:
+                        names.update(branches)
     return names
 
 
-def _module_union_arm_names(tree: ast.Module) -> set[str]:
+def _module_union_branch_names(tree: ast.Module) -> set[str]:
     """Names a union inside this module joins.
 
-    A wrapper named as an arm of another union in the same module is that
-    union's single choice, and its own arms are not siblings of the other
-    arms. Inlining it makes them siblings, and Pydantic then picks a
-    different arm for the same payload: ``AdcpAgentsAuthorization2`` groups
+    A wrapper named as an branch of another union in the same module is that
+    union's single choice, and its own branches are not siblings of the other
+    branches. Inlining it makes them siblings, and Pydantic then picks a
+    different branch for the same payload: ``AdcpAgentsAuthorization2`` groups
     14 catalog shapes under one choice of ``AdcpAgentsAuthorization``, and
     ``VastAsset`` groups two delivery shapes under one choice of
     ``AssetVariant``.
@@ -1562,7 +1562,7 @@ def _module_union_arm_names(tree: ast.Module) -> set[str]:
     names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            _union_arm_names(node, names)
+            _union_branch_names(node, names)
     return names
 
 
@@ -1612,8 +1612,8 @@ def unwrap_rootmodel_unions():
     """
     unwrapped_count = 0
     kept_count = 0
-    keep_wrapped = _discriminated_arm_names(OUTPUT_DIR)
-    field_union_arms = _field_union_arm_names(OUTPUT_DIR)
+    keep_wrapped = _discriminated_branch_names(OUTPUT_DIR)
+    field_union_branches = _field_union_branch_names(OUTPUT_DIR)
     plain_models = _plain_model_names(OUTPUT_DIR)
 
     for py_file in OUTPUT_DIR.rglob("*.py"):
@@ -1634,15 +1634,15 @@ def unwrap_rootmodel_unions():
             for spec in [_composing_root_spec(content, node)]
             if spec is not None
         ]
-        module_arms = _module_union_arm_names(tree)
+        module_branches = _module_union_branch_names(tree)
         specs = [
             spec
             for spec in candidates
             if spec.name not in keep_wrapped
-            and spec.name not in module_arms
+            and spec.name not in module_branches
             and not (
                 spec.is_union
-                and spec.name in field_union_arms
+                and spec.name in field_union_branches
                 and (spec.metadata is None or "discriminator=" not in spec.metadata)
             )
             and (spec.is_union or spec.root.split(".")[-1] in plain_models)
@@ -1682,7 +1682,7 @@ def _composing_root_source(spec: _ComposingRootSpec) -> str:
         return f"class {spec.name}({spec.root}):\n    {body}"
     if spec.metadata is None:
         # A multi-line union needs brackets of its own to stay one expression;
-        # ``Annotated[...]`` supplies them in the other arm.
+        # ``Annotated[...]`` supplies them in the other branch.
         if "\n" in spec.root:
             return f"{spec.name} = (\n    {spec.root}\n)"
         return f"{spec.name} = {spec.root}"
@@ -2188,19 +2188,19 @@ def fix_reuse_model_discriminator_bug():
 def fix_allof_merge_field_override_conflicts() -> None:
     """Collapse ``allOf``-merge classes whose bases declare conflicting fields.
 
-    JSON-Schema ``allOf`` arms that each constrain the same property make
+    JSON-Schema ``allOf`` branches that each constrain the same property make
     datamodel-codegen emit a multi-base class. ``postal-area.json``'s native
-    arm combines ``postal-country-system.json`` (a discriminated union pinning
+    branch combines ``postal-country-system.json`` (a discriminated union pinning
     ``country`` to a per-country ``Literal['US']`` and ``system`` to a
     country-local enum) with its own looser ``country: str`` /
     ``system: <full enum>`` properties::
 
-        class PostalArea411(AdCPBaseModel):              # the loose own-props arm
+        class PostalArea411(AdCPBaseModel):              # the loose own-props branch
             country: Annotated[str, ...]
             system: Annotated[PostalCodeSystem, ...]
             values: Annotated[list[str], ...]
 
-        class PostalArea41(AdCPBaseModel):               # one country arm
+        class PostalArea41(AdCPBaseModel):               # one country branch
             country: Annotated[Literal['US'], ...] = 'US'
             system: Annotated[System, ...]
 
@@ -2209,19 +2209,19 @@ def fix_allof_merge_field_override_conflicts() -> None:
             system: Annotated[PostalCodeSystem, ...]
             values: Annotated[list[str], ...]
 
-    The ``allOf`` intersection of the two arms is the *narrower* country arm:
+    The ``allOf`` intersection of the two branches is the *narrower* country branch:
     ``country`` is ``Literal['US']``, not ``str``. The codegen output is wrong
     twice over — the two bases declare ``country`` / ``system`` with
     incompatible types (``[misc]``), and the body re-states the loose type on
     top of the narrow base (``[assignment]``).
 
-    The conformant collapse: inherit only from the narrow country arm (selected
+    The conformant collapse: inherit only from the narrow country branch (selected
     by its ``Literal``-constrained shared fields), then synthesize each shared
-    field from the narrow type plus every arm's ``Annotated`` metadata and
+    field from the narrow type plus every branch's ``Annotated`` metadata and
     requiredness. Keep, as local fields, fields the dropped loose base
     contributed that the narrow base lacks (here ``values``). This matters for
-    helper arms such as ``items: Annotated[Any, Field(min_length=1)]``: choosing
-    the concrete ``list[Item]`` type must not discard the helper arm's minimum
+    helper branches such as ``items: Annotated[Any, Field(min_length=1)]``: choosing
+    the concrete ``list[Item]`` type must not discard the helper branch's minimum
     length or required status.
 
     Pattern-based and schema-agnostic: triggers only when a class's bases
@@ -2409,8 +2409,8 @@ def fix_allof_merge_field_override_conflicts() -> None:
             """Render one field carrying the intersection of all base declarations.
 
             The concrete/narrow base supplies the type. ``Annotated`` metadata
-            from every arm is retained in declaration order (with exact
-            duplicates removed), and the field is required when any arm makes
+            from every branch is retained in declaration order (with exact
+            duplicates removed), and the field is required when any branch makes
             it required. JSON Schema ``allOf`` combines these properties; none
             of them may be inferred from Python's base ordering.
             """
@@ -2438,7 +2438,7 @@ def fix_allof_merge_field_override_conflicts() -> None:
             )
             if required_any_helper:
                 # datamodel-codegen uses ``T | None = None`` for a non-null
-                # optional JSON property. A required allOf helper arm removes
+                # optional JSON property. A required allOf helper branch removes
                 # omission, so retaining that synthetic None would wrongly
                 # allow explicit JSON null for the underlying T property.
                 core_type = _without_none_type(core_type)
@@ -2461,7 +2461,7 @@ def fix_allof_merge_field_override_conflicts() -> None:
                 )
 
             # An absent AnnAssign value is a required Pydantic field. allOf
-            # requiredness is a union: one required arm makes the intersection
+            # requiredness is a union: one required branch makes the intersection
             # required even when the concrete base allowed omission.
             if any(declaration.value is None for declaration in unique_declarations):
                 default = ""
@@ -2506,7 +2506,7 @@ def fix_allof_merge_field_override_conflicts() -> None:
             # the common allOf constraint. Preserve that branch identity so
             # the emitted discriminated union retains one class per
             # discriminator value; this is a distinct generator artifact,
-            # not an ordering decision between a loose and narrow schema arm.
+            # not an ordering decision between a loose and narrow schema branch.
             literal_conflicts = [
                 field
                 for field in conflicting_fields
@@ -2519,12 +2519,12 @@ def fix_allof_merge_field_override_conflicts() -> None:
             union_branch_base = in_module_bases[0] if literal_conflicts else None
 
             # JSON Schema allOf is order-independent. Codegen's base ordering
-            # is not a semantic signal, so select the arm that actually
+            # is not a semantic signal, so select the branch that actually
             # carries the most finite constraints on the conflicting fields:
             # Literal fields or references to a local generated Enum. A
             # concrete conflicting annotation also outranks an ``Any``
-            # placeholder (the shape used by adagents minItems helper arms).
-            # If there is no unique narrow arm, stop regeneration instead of
+            # placeholder (the shape used by adagents minItems helper branches).
+            # If there is no unique narrow branch, stop regeneration instead of
             # silently widening validation based on whichever base happened
             # to sort first.
             narrow_scores = {
@@ -2557,9 +2557,9 @@ def fix_allof_merge_field_override_conflicts() -> None:
 
             keep_base = narrow_bases[0]
             kept_fields = annotations_by_class[keep_base]
-            # datamodel-codegen represents property-only constraint arms as
+            # datamodel-codegen represents property-only constraint branches as
             # ``Any`` fields. Those declarations contribute metadata and/or
-            # requiredness, while the sibling arm contributes the usable
+            # requiredness, while the sibling branch contributes the usable
             # Python type. Ordinary concrete-vs-concrete conflicts are type
             # narrowing only and need no local re-declaration.
             intersection_fields = {
@@ -2668,19 +2668,19 @@ def fix_allof_merge_field_override_conflicts() -> None:
         print("  No allOf-merge field override conflicts found")
 
 
-def fix_postal_union_arm_order() -> None:
-    """Prefer the legacy postal arm when a payload omits ``country``.
+def fix_postal_union_branch_order() -> None:
+    """Prefer the legacy postal branch when a payload omits ``country``.
 
-    The generated native arm contains country-specific models whose ``country``
-    fields have defaults. When that arm appears first, a legacy payload such as
+    The generated native branch contains country-specific models whose ``country``
+    fields have defaults. When that branch appears first, a legacy payload such as
     ``{"system": "us_zip", ...}`` is accepted as native and serializes with an
     injected ``country`` that is incompatible with the retained fused system.
-    The legacy arm forbids extra fields, so putting it first is safe: native
-    payloads with ``country`` fall through to the native arm.
+    The legacy branch forbids extra fields, so putting it first is safe: native
+    payloads with ``country`` fall through to the native branch.
     """
     target = OUTPUT_DIR / "core" / "postal_area.py"
     if not target.exists():
-        print("  postal area model not found (skipping arm-order fix)")
+        print("  postal area model not found (skipping branch-order fix)")
         return
 
     source = target.read_text()
@@ -2691,7 +2691,7 @@ def fix_postal_union_arm_order() -> None:
         target.write_text(source.replace(old, new))
         print(f"  core/postal_area.py: reordered {replacements} postal union annotation(s)")
     elif new in source:
-        print("  postal area union already prefers the legacy arm")
+        print("  postal area union already prefers the legacy branch")
     else:
         raise RuntimeError("generated postal_area.py has an unexpected outer union shape")
 
@@ -2699,9 +2699,9 @@ def fix_postal_union_arm_order() -> None:
 def fix_postal_country_system_pairing() -> None:
     """Restore postal country/system pairing dropped by model generation.
 
-    JSON Schema expresses the pairing as ``anyOf`` arms plus an open-country
-    fallback. datamodel-codegen flattens each arm's referenced postal-system
-    enum before intersecting it with the arm-local constraint, so generated
+    JSON Schema expresses the pairing as ``anyOf`` branches plus an open-country
+    fallback. datamodel-codegen flattens each branch's referenced postal-system
+    enum before intersecting it with the branch-local constraint, so generated
     Pydantic models accept combinations such as ``US`` + ``plz``. Inject one
     before-validator on the stable outer ``PostalArea`` model, deriving every
     pairing from the bundled schema rather than duplicating spec values here.
@@ -2723,8 +2723,8 @@ def fix_postal_country_system_pairing() -> None:
     fallback_systems: tuple[str, ...] | None = None
     fallback_excludes: set[str] | None = None
 
-    for arm in schema.get("anyOf", []):
-        properties = arm.get("properties", {})
+    for branch in schema.get("anyOf", []):
+        properties = branch.get("properties", {})
         country_schema = properties.get("country", {})
         system_schema = properties.get("system", {})
         countries = (
@@ -2734,7 +2734,7 @@ def fix_postal_country_system_pairing() -> None:
             [system_schema["const"]] if "const" in system_schema else system_schema.get("enum")
         )
         if not systems:
-            raise RuntimeError(f"postal pairing arm has no system constraint: {arm!r}")
+            raise RuntimeError(f"postal pairing branch has no system constraint: {branch!r}")
         normalized_systems = tuple(str(value) for value in systems)
         if countries:
             for country in countries:
@@ -2743,12 +2743,12 @@ def fix_postal_country_system_pairing() -> None:
 
         excluded = country_schema.get("not", {}).get("enum")
         if not excluded:
-            raise RuntimeError(f"postal pairing fallback has no country exclusion: {arm!r}")
+            raise RuntimeError(f"postal pairing fallback has no country exclusion: {branch!r}")
         fallback_excludes = {str(value) for value in excluded}
         fallback_systems = normalized_systems
 
     if not allowed_by_country or fallback_systems is None or fallback_excludes is None:
-        raise RuntimeError("postal-country-system schema has no complete pairing/fallback arms")
+        raise RuntimeError("postal-country-system schema has no complete pairing/fallback branches")
     if fallback_excludes != set(allowed_by_country):
         raise RuntimeError(
             "postal-country-system fallback exclusions do not match registered countries: "
@@ -3920,14 +3920,14 @@ def fix_trusted_match_runtime_validators() -> None:
                     validators_1 + "\n\nclass TmpProviderRegistration2(AdCPBaseModel):",
                     1,
                 )
-                # Arm 2 is the last class in the module, so anchor on the end
+                # Branch 2 is the last class in the module, so anchor on the end
                 # of its own body rather than on whatever follows it.
-                arm_2_end = _class_end_offset(source, "TmpProviderRegistration2")
-                if arm_2_end is None:
+                branch_2_end = _class_end_offset(source, "TmpProviderRegistration2")
+                if branch_2_end is None:
                     raise RuntimeError(
                         "generated provider_registration.py has no TmpProviderRegistration2"
                     )
-                source = source[:arm_2_end] + validators_2 + source[arm_2_end:]
+                source = source[:branch_2_end] + validators_2 + source[branch_2_end:]
                 provider_registration.write_text(source)
                 print("  trusted_match/provider_registration.py: added runtime validators")
     else:
@@ -4616,7 +4616,7 @@ def restore_format_asset_numbered_aliases() -> None:
 
 
 def restore_principal_result_aliases() -> None:
-    """Expose principal result arms by discriminator instead of numeric suffix.
+    """Expose principal result branches by discriminator instead of numeric suffix.
 
     datamodel-code-generator numbers anonymous ``result`` variants according
     to aggregate schema traversal order.  Those numbers are implementation
@@ -4671,7 +4671,7 @@ def restore_principal_result_aliases() -> None:
 
         target.write_text(
             source.rstrip()
-            + "\n\n\n# Stable aliases for anonymous result arms (selected by discriminator).\n"
+            + "\n\n\n# Stable aliases for anonymous result branches (selected by discriminator).\n"
             + "\n".join(assignments)
             + "\n"
         )
@@ -4680,6 +4680,12 @@ def restore_principal_result_aliases() -> None:
 
 def disambiguate_comply_response_arm() -> None:
     """Give the comply response's anonymous ``Arm`` enum a stable name.
+
+    Keeps the word ``arm`` while the rest of the constraint vocabulary says
+    ``branch``, because this ``Arm`` is not a combinator's branch: the
+    compliance response declares an ``arm`` PROPERTY, and the generator names
+    the enum after the wire field. Renaming it would rename a protocol name
+    and break the generated public class ``ComplyResponseArm`` with it.
 
     The request schema already generates an unrelated public ``Arm`` enum.
     Codegen 0.63 also calls the response enum ``Arm``, which trips the exact
@@ -5058,11 +5064,11 @@ def _union_with_none(annotation: str) -> str:
 
 
 def restore_response_variant_aliases() -> None:
-    """Restore numbered response arms from schema data, not hand-written payloads.
+    """Restore numbered response branches from schema data, not hand-written payloads.
 
     datamodel-code-generator currently collapses several task responses to a
     common envelope class with no task-specific fields. The SDK still exposes
-    numbered response-arm classes for ergonomic construction/parsing aliases.
+    numbered response-branch classes for ergonomic construction/parsing aliases.
     Keep those public names, but derive their fields from the JSON schemas so
     the compatibility layer cannot silently drift from protocol shape.
     """
@@ -5476,16 +5482,16 @@ def restore_response_variant_aliases() -> None:
                     return True
             return False
 
-        def emit_response_class(self, class_name: str, arm: dict[str, Any]) -> str:
-            props = arm.get("properties") or {}
-            required = set(arm.get("required") or [])
+        def emit_response_class(self, class_name: str, branch: dict[str, Any]) -> str:
+            props = branch.get("properties") or {}
+            required = set(branch.get("required") or [])
             is_submitted = (
                 props.get("status", {}).get("const") == "submitted" and "task_id" in props
             )
             # A root-level ``allOf`` applies to the whole document, so every
-            # ``oneOf`` arm of a response whose root composes
+            # ``oneOf`` branch of a response whose root composes
             # ``core/protocol-envelope.json`` carries the protocol envelope:
-            # success arms, error arms and submitted arms alike.
+            # success branches, error branches and submitted branches alike.
             inherits_protocol_envelope = is_submitted or self.root_composes_protocol_envelope
             bases = (
                 "AdcpVersionEnvelope, ProtocolEnvelope"
@@ -5505,7 +5511,7 @@ def restore_response_variant_aliases() -> None:
             } and class_name.endswith("1")
             if is_sync_media_buy_success and "status" not in props:
                 # AdCP 3.2 omits the 3.1 synchronous task-envelope status from
-                # this arm. The SDK still declares it for negotiated 3.0/3.1
+                # this branch. The SDK still declares it for negotiated 3.0/3.1
                 # compatibility and so the legacy normalizer never injects an
                 # unknown extra into ``extra='forbid'`` subclasses.
                 self.typing_imports.add("Literal")
@@ -5593,17 +5599,18 @@ def restore_response_variant_aliases() -> None:
         def render(self, schema: dict[str, Any]) -> str:
             self.root_schema = schema
             self.root_composes_protocol_envelope = self.composes_protocol_envelope(schema)
-            arms = schema.get("oneOf") or schema.get("anyOf") or []
-            if not arms:
-                arms = [schema]
-            if self.base == "BuildCreativeResponse" and len(arms) == 6:
+            branches = schema.get("oneOf") or schema.get("anyOf") or []
+            if not branches:
+                branches = [schema]
+            if self.base == "BuildCreativeResponse" and len(branches) == 6:
                 # Preserve the long-standing public numbering where
-                # Response1 is the simple success arm and Response2 is the
-                # error arm; append newer schema branches after those.
-                arms = [arms[index] for index in (0, 4, 1, 2, 3, 5)]
-            class_names = [f"{self.base}{index}" for index in range(1, len(arms) + 1)]
+                # Response1 is the simple success branch and Response2 is the
+                # error branch; append newer schema branches after those.
+                branches = [branches[index] for index in (0, 4, 1, 2, 3, 5)]
+            class_names = [f"{self.base}{index}" for index in range(1, len(branches) + 1)]
             response_classes = [
-                self.emit_response_class(name, arm) for name, arm in zip(class_names, arms)
+                self.emit_response_class(name, branch)
+                for name, branch in zip(class_names, branches)
             ]
             if self.needs_protocol_envelope:
                 self.add_import("from ..core.protocol_envelope import ProtocolEnvelope")
@@ -5657,23 +5664,23 @@ def restore_response_variant_aliases() -> None:
     for relative, base in response_specs:
         target = OUTPUT_DIR / relative
         if not target.exists():
-            print(f"  {relative} not found (skipping response arms)")
+            print(f"  {relative} not found (skipping response branches)")
             continue
         schema_rel = _schema_relative(relative)
         schema_path = SCHEMA_DIR / schema_rel
         if not schema_path.exists():
-            print(f"  {schema_rel} not found (skipping response arms)")
+            print(f"  {schema_rel} not found (skipping response branches)")
             continue
         emitter = Emitter(relative, base, schema_rel)
         new_source = emitter.render(_load_schema(schema_rel))
         if target.read_text() != new_source:
             target.write_text(new_source)
             fixed += 1
-            print(f"  {relative}: regenerated response arms from schema")
+            print(f"  {relative}: regenerated response branches from schema")
         else:
-            print(f"  {relative}: schema-derived response arms already current")
+            print(f"  {relative}: schema-derived response branches already current")
 
-    print(f"  ✓ Regenerated schema-derived response arms: {fixed}")
+    print(f"  ✓ Regenerated schema-derived response branches: {fixed}")
 
 
 def fix_comply_controller_account_optional() -> None:
@@ -5912,7 +5919,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
 """)
-        print("  brand/verify_brand_claim_response.py: restored response arms")
+        print("  brand/verify_brand_claim_response.py: restored response branches")
 
     response_schema = SCHEMA_DIR / "brand" / "verify-brand-claim-response.json"
     if (
@@ -6143,7 +6150,7 @@ class ResultEntry(RootModel[ResultEntry1 | ResultEntry2]):
     root: Annotated[
         ResultEntry1 | ResultEntry2,
         Field(
-            description='One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success arm shape.'
+            description='One entry in `results[]`. Either a per-claim success (claim_type + status + optional details/context_note) or a per-claim error (error field only). Mirrors the single-target `verify_brand_claim` response success branch shape.'
         ),
     ]
 
@@ -6406,8 +6413,8 @@ def fix_list_creatives_format_reference_xor() -> None:
     branch models.
 
     All three refusals name ``oneOf``: that is the combinator the record's
-    schema states, and a document satisfying no arm — or both — failed it.
-    ``not`` is the arm-internal clause that makes the arms disjoint, not the
+    schema states, and a document satisfying no branch — or both — failed it.
+    ``not`` is the branch-internal clause that makes the branches disjoint, not the
     keyword the record was rejected by.
     """
 
@@ -6579,11 +6586,11 @@ def strip_extra_blank_lines_at_eof() -> None:
 
 
 def fix_compliance_task_completion_response_ref() -> None:
-    """Point the completion JSON Pointer at the restored success arm.
+    """Point the completion JSON Pointer at the restored success branch.
 
     datamodel-code-generator names ``create-media-buy-response#/oneOf/0`` as
     ``Field0``. ``restore_response_variant_aliases`` replaces that generated
-    module with stable semantic arm names, where the same schema is
+    module with stable semantic branch names, where the same schema is
     ``CreateMediaBuyResponse1``.
     """
     target = OUTPUT_DIR / "compliance" / "task_completion_data.py"
@@ -6596,7 +6603,7 @@ def fix_compliance_task_completion_response_ref() -> None:
     )
     if fixed != source:
         target.write_text(fixed)
-        print("  compliance/task_completion_data.py: restored create-media-buy success arm")
+        print("  compliance/task_completion_data.py: restored create-media-buy success branch")
 
 
 def fix_product_fields_item_reference() -> None:
@@ -6674,14 +6681,14 @@ def restore_get_products_field_compatibility_enum() -> None:
 
 
 def fix_audience_evidence_attestation_subject() -> None:
-    """Keep the audience-evidence attestation subject narrowed to its resource arm.
+    """Keep the audience-evidence attestation subject narrowed to its resource branch.
 
     The schema's allOf constrains ``attestation_refs[].subject`` to the
     ``resource`` variant for the evidence snapshot. Codegen instead emits
     three overlapping RootModel unions and applies another ``type``
     discriminator around them, so every wrapper advertises ``brand``,
     ``agent``, and ``resource`` and Pydantic rejects the duplicate tags.
-    The generated merged resource arm has the required audience-evidence
+    The generated merged resource branch has the required audience-evidence
     resource type, content digest, namespace, and identifier. Its numeric
     suffix is an implementation detail that changes as schemas evolve.
     """
@@ -6714,17 +6721,17 @@ def fix_audience_evidence_attestation_subject() -> None:
     fixed = source[:class_start] + fixed_class + source[next_class + 1 :]
     if fixed != source:
         target.write_text(fixed)
-        print("  core/audience_evidence.py: narrowed attestation subject to resource arm")
+        print("  core/audience_evidence.py: narrowed attestation subject to resource branch")
 
 
 def fix_legacy_purchase_accepted_losses() -> None:
     """Restore coordinator-input constraints codegen cannot represent.
 
     The beta.5 schema expresses a non-empty enum array with ``oneOf`` plus a
-    negated empty-array arm. datamodel-code-generator interprets that negated
-    arm as an empty object model and emits ``list[AcceptedLoss] |
+    negated empty-array branch. datamodel-code-generator interprets that negated
+    branch as an empty object model and emits ``list[AcceptedLoss] |
     AcceptedLosses``. Besides accepting the wrong shape in the annotation,
-    Pydantic can raise a raw ``TypeError`` while trying the empty model arm.
+    Pydantic can raise a raw ``TypeError`` while trying the empty model branch.
     The protocol contract is simply a list, with length and enum validation.
     Codegen also drops ``uniqueItems``, ``contains``, and ``minProperties``;
     inject validators and JSON Schema metadata so this public SDK-local model
@@ -6868,8 +6875,8 @@ def preserve_request_signing_operation_strings() -> None:
 def enforce_change_term_runtime_constraints() -> None:
     """Preserve beta.9 change-right verifier constraints in Pydantic models.
 
-    datamodel-code-generator represents the constraint ``oneOf`` arms but
-    drops each arm's nested ``anyOf(required=...)`` rule, along with the
+    datamodel-code-generator represents the constraint ``oneOf`` branches but
+    drops each branch's nested ``anyOf(required=...)`` rule, along with the
     schema's ``x-adcp-validation`` cross-field assertions.  Restore those
     checks so direct Python model construction cannot create a proposal that
     the released JSON Schema or seller resolver would reject.
@@ -7296,16 +7303,16 @@ def _root_generated_class(content: str, schema: dict) -> str | None:
     and return the class as the module spells it.
 
     When no class carries that name the root did not generate one flat model —
-    the generator split it into per-arm classes behind a union alias — and a
-    group derived from one arm does not constrain another. When two classes
+    the generator split it into per-branch classes behind a union alias — and a
+    group derived from one branch does not constrain another. When two classes
     carry it, the name does not identify the root.
 
     This is the FLAT class only, and deliberately: its name is also the root's
-    name, which is what arm class names are derived from. A reader that wants
+    name, which is what branch class names are derived from. A reader that wants
     "whichever class declares the root's properties" on an already-split tree
     wants :func:`_root_property_class`, which answers the shape — asking this
     one to fall back to the shape made it return ``CreateMediaBuyRequestShape``
-    as the root's name and produced arms called
+    as the root's name and produced branches called
     ``CreateMediaBuyRequestShapeExplicitPackagesWithFixedAllocation``.
     """
     return _named_class(content, _schema_root_class_name(schema))
@@ -7336,7 +7343,7 @@ def _root_property_class(content: str, schema: dict) -> str | None:
 
     The flat class before the emitter runs, and ``<Root>Shape`` after: the
     root's own name is bound to a union then, and its properties live on the
-    shape the arms share. Both are the same declaration, which is why a reader
+    shape the branches share. Both are the same declaration, which is why a reader
     of a declaration may take either — and why a reader of the root's NAME may
     not (see :func:`_root_generated_class`).
     """
@@ -7396,9 +7403,9 @@ def flat_root_shape(schema: dict, relative_path: Path) -> DeclaredShape | None:
 
     ``None`` means the root is not flat, each for a named reason: the module was
     not generated; no single class carries the root's title, because the
-    generator split the root into per-arm classes behind a union alias; a base
+    generator split the root into per-branch classes behind a union alias; a base
     outside the package leaves the field set unknown; the root declares no
-    properties, so there is no merged shape and the arms ARE the types; or the
+    properties, so there is no merged shape and the branches ARE the types; or the
     class does not carry a property the root declares, which is a dropped field
     and belongs to whoever generated it rather than to a constraint pass.
     """
@@ -7483,7 +7490,7 @@ def enforce_root_constraints() -> None:
     """Compile what a schema root states beyond its merged ``properties``.
 
     ``datamodel-code-generator`` renders a root's ``properties`` and drops the
-    rest: a root ``anyOf``/``oneOf`` over overlay arms, a root
+    rest: a root ``anyOf``/``oneOf`` over overlay branches, a root
     ``if``/``then``/``else``, root ``dependencies``, a root ``not``. Each
     dropped keyword is a document the generated model accepts and the canonical
     schema refuses -- a ``create_media_buy`` request with packages that carry no
@@ -7493,8 +7500,8 @@ def enforce_root_constraints() -> None:
 
     ``scripts/schema_constraints.py`` reads the whole of that content into one
     record and ``scripts/compile_conditions.py`` compiles it onto the class.
-    What this pass replaced read each arm's ``required`` NAMES and discarded
-    every other keyword the arm carried, while claiming in its own docstring
+    What this pass replaced read each branch's ``required`` NAMES and discarded
+    every other keyword the branch carried, while claiming in its own docstring
     that the names "are the whole constraint for ``anyOf``" -- which was false
     for the very file that reproduced the bug.
 
@@ -7503,8 +7510,8 @@ def enforce_root_constraints() -> None:
     * A FLAT root -- one generated class over the root's merged properties --
       gets the compiled validator. That is this pass's jurisdiction, because the
       flat class is the shape whose constraint content was dropped.
-    * A root the generator already split into per-arm classes states its arms
-      as types. Its cross-arm exclusivity is carried by canonical wire
+    * A root the generator already split into per-branch classes states its branches
+      as types. Its cross-branch exclusivity is carried by canonical wire
       validation, unchanged by this pass and named in the design's coverage
       table rather than absorbed here.
     * A root whose content is entirely restatements of what the class declares
@@ -7536,7 +7543,7 @@ def enforce_root_constraints() -> None:
         constraints = read_root_constraints(
             schema,
             shape,
-            arms_render_as_classes=False,
+            branches_render_as_classes=False,
             schema_file=str(relative_path),
             resolve_document=resolve,
         )
@@ -7567,7 +7574,7 @@ def enforce_root_constraints() -> None:
     print(f"  Emitted {emitted} compiled root-constraint validator(s)")
     if already:
         print(f"  {already} class(es) already carried one")
-    print(f"  {already_typed} root(s) state their arms as types already (not flat)")
+    print(f"  {already_typed} root(s) state their branches as types already (not flat)")
     print(f"  {nothing_to_check} flat root(s) state only restatements of their own class")
 
 
@@ -7584,29 +7591,29 @@ def _ensure_typing_import(content: str, *names: str) -> str:
 
 
 def emit_branch_classes() -> None:
-    """Render a partitioning root's arms as one class each, behind a union alias.
+    """Render a partitioning root's branches as one class each, behind a union alias.
 
-    Where a root's arms partition the document space -- every arm requires
-    something, and the arms are provably pairwise disjoint under the root's own
-    conjuncts -- the arms are not a rule over one class. They are distinct
+    Where a root's branches partition the document space -- every branch requires
+    something, and the branches are provably pairwise disjoint under the root's own
+    conjuncts -- the branches are not a rule over one class. They are distinct
     types, and the flattening is what turned them into a rule. So the flat
-    class is replaced by one class per arm, the root's public name becomes a
+    class is replaced by one class per branch, the root's public name becomes a
     union over them, and the combination the old validator could only refuse at
     validation time has no spelling that type-checks.
 
-    Runs late, after every pass that edits a class by name, so each arm's class
+    Runs late, after every pass that edits a class by name, so each branch's class
     carries what those passes put on the flat class. ``enforce_root_constraints``
     deliberately leaves these roots alone: a compiled check over the whole
-    combinator, copied onto every arm, would re-ask a question the arm's own
+    combinator, copied onto every branch, would re-ask a question the branch's own
     shape has already answered.
 
-    An arm's content that its field set cannot carry -- a const one level down,
-    an overlay on an array's items -- stays a compiled check on that arm's own
+    An branch's content that its field set cannot carry -- a const one level down,
+    an overlay on an array's items -- stays a compiled check on that branch's own
     class. The refusal then still arrives from the class the caller named.
     """
     resolve = bundle_document_resolver(SCHEMA_DIR)
     emitted = 0
-    arms = 0
+    branches = 0
     repointed = 0
 
     for schema_file in sorted(SCHEMA_DIR.rglob("*.json")):
@@ -7623,7 +7630,7 @@ def emit_branch_classes() -> None:
         constraints = read_root_constraints(
             schema,
             shape,
-            arms_render_as_classes=False,
+            branches_render_as_classes=False,
             schema_file=str(relative_path),
             resolve_document=resolve,
         )
@@ -7643,10 +7650,10 @@ def emit_branch_classes() -> None:
             continue
         py_path.write_text(rewritten)
         emitted += 1
-        arms += len(plan_branches(constraints, class_name, str(relative_path), fields))
+        branches += len(plan_branches(constraints, class_name, str(relative_path), fields))
         repointed += _repoint_subclasses_across_the_tree(class_name)
 
-    print(f"  Split {emitted} partitioning root(s) into {arms} branch class(es)")
+    print(f"  Split {emitted} partitioning root(s) into {branches} branch class(es)")
     if repointed:
         print(f"  Repointed {repointed} subclass module(s) onto a split root's shared base")
 
@@ -7687,7 +7694,7 @@ def compose_branch_module(
         rewritten = _ensure_model_validator_import(rewritten)
         rewritten = _ensure_conditions_import(rewritten)
     if any(_residual_is_checked(plan) for plan in plans):
-        # The per-arm refusal names the root combinator, so the arm's module
+        # The per-branch refusal names the root combinator, so the branch's module
         # needs the error type that carries a keyword.
         rewritten = ensure_pydantic_core_import(rewritten, "PydanticCustomError")
     return rewritten
@@ -7715,7 +7722,7 @@ def _repoint_subclasses_across_the_tree(flat_class: str) -> int:
 
 
 def _residual_is_checked(plan: BranchPlan) -> bool:
-    """Whether this arm's class carries a compiled check of its own."""
+    """Whether this branch's class carries a compiled check of its own."""
     return compile_condition(plan.residual) != "True"
 
 
@@ -7768,7 +7775,7 @@ def insert_task_message_markers() -> None:
     messages = task_message_lattice.task_registry_messages(SCHEMA_DIR)
     modules = task_message_lattice.generated_module_by_schema(OUTPUT_DIR)
 
-    # (module, class) -> marker. A response arm shared by several tasks is named more
+    # (module, class) -> marker. A response branch shared by several tasks is named more
     # than once; the marker is the same, so the map de-duplicates it.
     wanted: dict[tuple[Path, str], str] = {}
     for task, kind, schema_rel in messages:
@@ -7855,7 +7862,7 @@ def main(argv: list[str] | None = None) -> int:
         fix_typed_additional_properties,
         fix_deprecated_rootmodel_fields,
         fix_constr_type_annotations,
-        fix_postal_union_arm_order,
+        fix_postal_union_branch_order,
         fix_postal_country_system_pairing,
         fix_beta3_adagents_renderer_constraints,
         unwrap_rootmodel_unions,

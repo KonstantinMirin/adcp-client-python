@@ -41,10 +41,10 @@ _REQUEST_VERSION_RESIDUE = frozenset({"creative/validate-input-request.json"})
 # The five compact media-buy responses compose ``media-buy/media-buy-commitment-response``
 # instead, which is itself envelope-free. The two proposals responses declare the version
 # via pointer refs, and the normalization in ``generate_types`` deliberately REFUSES them:
-# their submitted arm is a bare ``$ref`` to ``core/compact-task-submitted.json``, so moving
-# the stubs into a root ``allOf`` would delete the field from that arm rather than relocate
-# it (see ``_has_bare_ref_root_arm``). Normalizing them would not have changed this residue
-# anyway -- the submitted arm gains no ancestry either way, so the all-arms answer is 70/77
+# their submitted branch is a bare ``$ref`` to ``core/compact-task-submitted.json``, so moving
+# the stubs into a root ``allOf`` would delete the field from that branch rather than relocate
+# it (see ``_has_bare_ref_root_branch``). Normalizing them would not have changed this residue
+# anyway -- the submitted branch gains no ancestry either way, so the all-branches answer is 70/77
 # with or without. Upstream: adcp#7892 plus the commitment / compact-task-submitted
 # components, which is upstream ask four.
 _RESPONSE_VERSION_RESIDUE = frozenset(
@@ -110,7 +110,7 @@ def task_messages() -> list[_TaskMessage]:
 def _residue(rows: list[_TaskMessage], kind: str, ancestor: type[BaseModel]) -> frozenset[str]:
     """The schemas whose root classes do not ALL descend from ``ancestor``.
 
-    All arms, not any arm: a union whose submitted arm lacks the ancestry cannot answer
+    All branches, not any branch: a union whose submitted branch lacks the ancestry cannot answer
     the envelope question for every value the task can return, so counting it as composed
     would overstate what a caller may rely on by 2 schemas.
     """
@@ -296,7 +296,7 @@ def test_request_accessors_answer_none_for_fields_a_tool_does_not_declare() -> N
     # The manifest carries a ``format_kind``: ``core/creative-manifest.json`` declares a
     # root required group of ``format_id | format_kind``, which
     # ``enforce_root_required_groups`` now enforces on the generated class. The accessors
-    # under test are unaffected by which arm satisfies it.
+    # under test are unaffected by which branch satisfies it.
     request = ValidateInputRequest.model_validate(
         {
             "account": {"account_id": "acct-1"},
@@ -349,7 +349,7 @@ def test_version_normalization_is_a_no_op_once_upstream_composes() -> None:
     """adcp#7892 landing must make this pass inert, in either form it can land in.
 
     A clean root ``allOf`` matches neither predicate, so the schema is returned untouched
-    rather than gaining a second ``allOf`` arm. The stub-retaining form -- which draft-07
+    rather than gaining a second ``allOf`` branch. The stub-retaining form -- which draft-07
     may force on #7892 -- is also untouched, and that shape is not hypothetical: it ships
     today in ``media-buy/sync-reporting-receipts-request.json``, which already renders as
     ``SyncReportingReceiptsRequest(AdcpVersionEnvelope)``.
@@ -390,22 +390,22 @@ def test_version_normalization_is_idempotent() -> None:
     assert _normalize(once, "media-buy/example-request.json") == once
 
 
-def test_version_normalization_refuses_a_schema_whose_arm_is_a_bare_ref() -> None:
-    """Relocating the stubs must never DELETE the field from a union arm.
+def test_version_normalization_refuses_a_schema_whose_branch_is_a_bare_ref() -> None:
+    """Relocating the stubs must never DELETE the field from a union branch.
 
-    datamodel-code-generator merges a root ``properties`` into every arm it builds, but a
-    root ``allOf`` ``$ref`` becomes a base only of the arm built FROM the root object. An
-    arm that is a bare ``$ref`` elsewhere is generated from the referenced schema, so the
+    datamodel-code-generator merges a root ``properties`` into every branch it builds, but a
+    root ``allOf`` ``$ref`` becomes a base only of the branch built FROM the root object. An
+    branch that is a bare ``$ref`` elsewhere is generated from the referenced schema, so the
     composition never reaches it and dropping the stub strips the field outright.
 
     Measured when the rewrite was applied anyway: ``RefineProposalsResponse2`` went from 10
     fields to 9 and ``RequestProposalsResponse4`` from 16 to 15, both losing
     ``adcp_version`` -- and both carry ``extra: forbid``, so a seller echoing the version on
-    the submitted arm would have been REJECTED where it previously validated. The two
-    schemas are refused instead, and the all-arms ancestry is 70/77 either way because that
-    submitted arm gains no ancestry from the rewrite.
+    the submitted branch would have been REJECTED where it previously validated. The two
+    schemas are refused instead, and the all-branches ancestry is 70/77 either way because that
+    submitted branch gains no ancestry from the rewrite.
     """
-    with_ref_arm = {
+    with_ref_branch = {
         "type": "object",
         "anyOf": [
             {"required": ["results"]},
@@ -417,25 +417,25 @@ def test_version_normalization_refuses_a_schema_whose_arm_is_a_bare_ref() -> Non
             "adcp_version": {"$ref": f"{_VERSION_ENVELOPE_REF}#/properties/adcp_version"}
         },
     }
-    assert _normalize(with_ref_arm, "media-buy/example-response.json") == with_ref_arm
+    assert _normalize(with_ref_branch, "media-buy/example-response.json") == with_ref_branch
 
-    # The same schema with inline arms IS normalized: nothing is generated from elsewhere,
-    # so every arm inherits the composition.
-    inline_arms = {
+    # The same schema with inline branches IS normalized: nothing is generated from elsewhere,
+    # so every branch inherits the composition.
+    inline_branches = {
         "type": "object",
         "anyOf": [{"required": ["results"]}, {"required": ["task_id"]}],
         "properties": {
             "adcp_version": {"$ref": f"{_VERSION_ENVELOPE_REF}#/properties/adcp_version"}
         },
     }
-    assert _normalize(inline_arms, "media-buy/example-response.json") != inline_arms
+    assert _normalize(inline_branches, "media-buy/example-response.json") != inline_branches
 
 
-def test_the_two_pointer_ref_responses_keep_the_field_on_every_arm() -> None:
+def test_the_two_pointer_ref_responses_keep_the_field_on_every_branch() -> None:
     """The live consequence of the refusal above, on the generated tree.
 
-    Both arms of each proposals response still declare ``adcp_version``. If the refusal is
-    removed, the submitted arm loses it and this goes red.
+    Both branches of each proposals response still declare ``adcp_version``. If the refusal is
+    removed, the submitted branch loses it and this goes red.
     """
     from adcp.types.domains.media_buy.refine_proposals_response import (
         RefineProposalsResponse1,
@@ -445,8 +445,8 @@ def test_the_two_pointer_ref_responses_keep_the_field_on_every_arm() -> None:
         RequestProposalsResponse4,
     )
 
-    for arm in (RefineProposalsResponse1, RefineProposalsResponse2, RequestProposalsResponse4):
-        assert "adcp_version" in arm.model_fields, arm.__name__
+    for branch in (RefineProposalsResponse1, RefineProposalsResponse2, RequestProposalsResponse4):
+        assert "adcp_version" in branch.model_fields, branch.__name__
 
 
 def test_version_normalization_refuses_a_declaration_it_cannot_prove_equivalent() -> None:

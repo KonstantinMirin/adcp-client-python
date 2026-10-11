@@ -1,14 +1,14 @@
 """One reader for a schema root's constraint content.
 
 ``datamodel-code-generator`` renders a schema root's ``properties`` and drops the
-rest of what the root states: a root ``anyOf``/``oneOf`` over overlay arms, a root
+rest of what the root states: a root ``anyOf``/``oneOf`` over overlay branches, a root
 ``if``/``then``/``else``, root ``dependencies``, a root ``not``. Each dropped
 keyword is a document the generated model accepts and the canonical schema
 refuses.
 
 This module is the only code that reads that content. It produces one
 :class:`RootConstraints` record per schema root, and every consumer -- the
-validator pass, the response-arm emitter, the union-arm naming rule -- takes the
+validator pass, the response-branch emitter, the union-branch naming rule -- takes the
 record and nothing else from the node, so a second divergent reading of the same
 node has nothing to call.
 
@@ -65,7 +65,7 @@ ResolveDocument = Callable[[str], Any]
 __all__ = [
     "AllOf",
     "AnyOf",
-    "Arm",
+    "Branch",
     "bundle_document_resolver",
     "COMPILED_KEYWORDS",
     "Cond",
@@ -81,7 +81,7 @@ __all__ = [
     "Not",
     "OtherPropsSatisfy",
     "OneOf",
-    "arm_conditions",
+    "branch_conditions",
     "partitions_by_requiredness",
     "permits_null",
     "PropCount",
@@ -171,7 +171,7 @@ NON_ASSERTING_KEYS = frozenset(
         "$id",
         "$defs",
         "definitions",
-        # OpenAPI's serialization hint for a union. It selects which arm a
+        # OpenAPI's serialization hint for a union. It selects which branch a
         # document is read as; it adds no constraint of its own.
         "discriminator",
         # ``ajv``'s message override for a sibling keyword's failure. The
@@ -482,7 +482,7 @@ class NoOtherProps:
     """``additionalProperties: false``: only the named members may be supplied.
 
     The sibling ``properties`` names what may be present, and a generated class
-    normally declares more fields than one arm's ``properties`` names, so this
+    normally declares more fields than one branch's ``properties`` names, so this
     is a bound on what the caller supplied rather than on what the class can
     hold.
     """
@@ -509,7 +509,7 @@ class Undeclarable:
     An AdCP request root that forbids ``creatives`` names a key the document
     may not carry at all. A generated model has no field for it and cannot be
     given one, so the predicate is false for every instance -- which is what
-    makes the arm forbidding it satisfiable and the arm requiring it dead.
+    makes the branch forbidding it satisfiable and the branch requiring it dead.
     """
 
     name: str
@@ -586,7 +586,7 @@ class DeclaredShape:
     through ``getattr``, so the predicate reads it off the document under its
     wire name. Both were measured: ``control-media-buy-request`` is closed and
     forbids ``creatives``; ``get-reporting-status-response`` is open and its
-    nested arm names ``failure_kind``, which no field holds.
+    nested branch names ``failure_kind``, which no field holds.
     """
 
     fields: Mapping[str, str] = field(default_factory=dict)
@@ -608,8 +608,8 @@ class DeclaredShape:
         """The map a schema's own declarations imply, with identity names.
 
         Every property any part of a root declares, because the generator emits
-        one class per declaring arm and a root-level constraint may name a field
-        a sibling arm declares. Used where no generated class is available --
+        one class per declaring branch and a root-level constraint may name a field
+        a sibling branch declares. Used where no generated class is available --
         the bundle-closure test, and a nested object the parser cannot resolve
         to a class. It answers the keyword-accounting question faithfully, which
         is what the closure rule grades, and makes no claim about aliases, which
@@ -630,8 +630,8 @@ OPAQUE = DeclaredShape(opaque=True)
 
 
 @dataclass(frozen=True)
-class Arm:
-    """One arm of a schema root's ``anyOf``/``oneOf``."""
+class Branch:
+    """One branch of a schema root's ``anyOf``/``oneOf``."""
 
     pointer: str
     """``"anyOf/0"`` -- provenance, never identity."""
@@ -646,13 +646,13 @@ class Arm:
     """Identity source 3, and a constraint. Attribute names, not wire names."""
 
     declares_fields: bool
-    """``properties`` introducing new fields: a class-creating arm."""
+    """``properties`` introducing new fields: a class-creating branch."""
 
     condition: Cond
-    """The WHOLE arm as one constraint tree."""
+    """The WHOLE branch as one constraint tree."""
 
     declares_behavioral_rules: bool = False
-    """The arm carries ``x-adcp-validation``, so its cardinality is not derivable."""
+    """The branch carries ``x-adcp-validation``, so its cardinality is not derivable."""
 
 
 @dataclass(frozen=True)
@@ -660,15 +660,15 @@ class RootConstraints:
     """Everything a schema root states beyond its merged ``properties``."""
 
     combinator: Literal["anyOf", "oneOf"] | None
-    arms: tuple[Arm, ...]
+    branches: tuple[Branch, ...]
     conjuncts: tuple[Cond, ...]
     """Root ``if``/``then``/``else``, ``dependencies``, ``dependentRequired``,
-    root ``not``, and the constraint arms of a root ``allOf``."""
+    root ``not``, and the constraint branches of a root ``allOf``."""
 
     declares_behavioral_rules: bool = False
 
     def __bool__(self) -> bool:
-        return bool(self.arms or self.conjuncts)
+        return bool(self.branches or self.conjuncts)
 
 
 # --------------------------------------------------------------------------- #
@@ -677,7 +677,7 @@ class RootConstraints:
 
 
 def root_combinator(schema: Any) -> Literal["anyOf", "oneOf"] | None:
-    """Which combinator the root declares over its arms, if either.
+    """Which combinator the root declares over its branches, if either.
 
     One owner, because two emitters read it and a refusal NAMES it: the branch
     emitter puts it on the split root's wrapping validator, and the response
@@ -686,7 +686,7 @@ def root_combinator(schema: Any) -> Literal["anyOf", "oneOf"] | None:
 
     ``anyOf`` is tested first and the first match wins, which is the precedence
     the reader has always applied: a root declaring both states the stricter
-    rule in its ``oneOf``, and the arms are read from one node.
+    rule in its ``oneOf``, and the branches are read from one node.
     """
     if not isinstance(schema, dict):
         return None
@@ -771,11 +771,11 @@ def _declaration_of(node: Any) -> dict[str, Any]:
 def _declared_properties(node: Any) -> dict[str, Any]:
     """Every property name any part of one object's schema declares.
 
-    A root constraint may name a field a sibling arm declares -- an arm that
-    forbids ``errors`` is the arm whose sibling declares it -- so the set of
+    A root constraint may name a field a sibling branch declares -- an branch that
+    forbids ``errors`` is the branch whose sibling declares it -- so the set of
     names a root's constraint content may reference is the union over the
     positions that DECLARE the object: its own ``properties``, its ``allOf``
-    members' (inheritance, which the generator merges) and its arms'.
+    members' (inheritance, which the generator merges) and its branches'.
 
     A negated or conditional position declares nothing. ``not``, ``if``,
     ``then``, ``else`` and the ``dependencies`` maps are constraint content --
@@ -809,12 +809,12 @@ class _Parser:
         declared: DeclaredShape,
         resolve_document: ResolveDocument | None,
         *,
-        arms_render_as_classes: bool,
+        branches_render_as_classes: bool,
     ) -> None:
         self._file = schema_file
         self._root_shape = declared
         self._resolve_document = resolve_document
-        self._arms_render_as_classes = arms_render_as_classes
+        self._branches_render_as_classes = branches_render_as_classes
         self._schema_names: frozenset[str] = frozenset()
         self._root_names: frozenset[str] = frozenset()
         self._document: Any = {}
@@ -825,7 +825,7 @@ class _Parser:
 
     def read(self, schema: dict[str, Any]) -> RootConstraints:
         combinator: Literal["anyOf", "oneOf"] | None = None
-        arms: tuple[Arm, ...] = ()
+        branches: tuple[Branch, ...] = ()
         root_declaration = _declaration_of(schema)
         self._root_names = frozenset(root_declaration.get("properties") or {})
         self._schema_names = frozenset(_declared_properties(schema))
@@ -833,9 +833,9 @@ class _Parser:
 
         combinator = root_combinator(schema)
         if combinator is not None:
-            arms = tuple(
-                self._read_arm(arm, f"{combinator}/{index}", root_declaration)
-                for index, arm in enumerate(schema[combinator])
+            branches = tuple(
+                self._read_branch(branch, f"{combinator}/{index}", root_declaration)
+                for index, branch in enumerate(schema[combinator])
             )
 
         conjuncts: list[Cond] = []
@@ -855,7 +855,7 @@ class _Parser:
         # beside whatever else the root states -- including beside a
         # combinator: ``create-media-buy-request``'s ``allOf`` carries the
         # opportunity-implies-proposal rule and the bidding rule next to its
-        # three-arm ``anyOf``, and reading them only in the absence of a
+        # three-branch ``anyOf``, and reading them only in the absence of a
         # combinator dropped both.
         if isinstance(schema.get("allOf"), list):
             for index, member in enumerate(schema["allOf"]):
@@ -865,78 +865,78 @@ class _Parser:
 
         return RootConstraints(
             combinator=combinator,
-            arms=arms,
+            branches=branches,
             conjuncts=tuple(conjuncts),
             declares_behavioral_rules=self.behavioral,
         )
 
-    # -- arms --------------------------------------------------------------- #
+    # -- branches --------------------------------------------------------------- #
 
-    def _read_arm(self, arm: Any, pointer: str, root_declaration: dict[str, Any]) -> Arm:
-        if not isinstance(arm, dict):
-            raise UnexpressibleKeywordError(self._file, pointer, type(arm).__name__)
+    def _read_branch(self, branch: Any, pointer: str, root_declaration: dict[str, Any]) -> Branch:
+        if not isinstance(branch, dict):
+            raise UnexpressibleKeywordError(self._file, pointer, type(branch).__name__)
 
         root_properties = root_declaration.get("properties")
         root_names = set(root_properties) if isinstance(root_properties, dict) else set()
-        arm_declaration = _declaration_of(arm)
-        arm_properties = arm_declaration.get("properties")
-        arm_names = set(arm_properties) if isinstance(arm_properties, dict) else set()
-        declares_fields = bool(arm_names - root_names)
+        branch_declaration = _declaration_of(branch)
+        branch_properties = branch_declaration.get("properties")
+        branch_names = set(branch_properties) if isinstance(branch_properties, dict) else set()
+        declares_fields = bool(branch_names - root_names)
 
-        # An arm the generator renders as ITS OWN TYPE states its own
-        # declaration: a bare ``$ref`` becomes the referenced type and an arm of
+        # An branch the generator renders as ITS OWN TYPE states its own
+        # declaration: a bare ``$ref`` becomes the referenced type and an branch of
         # a different scalar type becomes that type, so a keyword restating
-        # either is already enforced. An OVERLAY arm on a FLAT root states
+        # either is already enforced. An OVERLAY branch on a FLAT root states
         # constraint content instead, and is proven against the ROOT's
-        # declaration -- one class holds the merged properties, and what the arm
+        # declaration -- one class holds the merged properties, and what the branch
         # says about a position is enforced only where the root says the same.
         #
-        # Whether an arm that introduces a property becomes a class is the one
+        # Whether an branch that introduces a property becomes a class is the one
         # part that is NOT inferable from the schema, which is why the caller
         # supplies it. Inferring it from ``declares_fields`` is what
         # ``list-account-changes-response`` measured wrong: one flat class over
-        # both arms, each arm introducing ``status``, so each arm's ``required``
+        # both branches, each branch introducing ``status``, so each branch's ``required``
         # and ``properties`` were proven restatements of themselves and the
         # model was left enforcing nothing at all.
         renders_own_shape = (
-            (declares_fields and self._arms_render_as_classes)
-            or "$ref" in arm_declaration
-            or arm_declaration.get("type", root_declaration.get("type"))
+            (declares_fields and self._branches_render_as_classes)
+            or "$ref" in branch_declaration
+            or branch_declaration.get("type", root_declaration.get("type"))
             != root_declaration.get("type")
         )
-        declaration = arm_declaration if renders_own_shape else root_declaration
+        declaration = branch_declaration if renders_own_shape else root_declaration
 
         before = self.behavioral
         self.behavioral = False
-        condition = self._node(arm, pointer, declaration, self._root_shape)
-        arm_behavioral = self.behavioral
-        self.behavioral = before or arm_behavioral
+        condition = self._node(branch, pointer, declaration, self._root_shape)
+        branch_behavioral = self.behavioral
+        self.behavioral = before or branch_behavioral
 
-        # Identity reads the names the arm requires OF THE CLASS; a name the
+        # Identity reads the names the branch requires OF THE CLASS; a name the
         # document may not carry identifies nothing.
         required = tuple(
             attribute
             for attribute in (
                 self._attribute(name, self._root_shape, pointer)
-                for name in arm.get("required", ())
+                for name in branch.get("required", ())
                 if isinstance(name, str)
             )
             if attribute is not None
         )
-        return Arm(
+        return Branch(
             pointer=pointer,
-            title=arm.get("title") if isinstance(arm.get("title"), str) else None,
-            discriminator=self._discriminator(arm),
+            title=branch.get("title") if isinstance(branch.get("title"), str) else None,
+            discriminator=self._discriminator(branch),
             required=required,
             declares_fields=declares_fields,
             condition=condition,
-            declares_behavioral_rules=arm_behavioral,
+            declares_behavioral_rules=branch_behavioral,
         )
 
     @staticmethod
-    def _discriminator(arm: dict[str, Any]) -> tuple[str, str] | None:
-        """The ``(property, const)`` pair an arm pins exactly one property to."""
-        properties = arm.get("properties")
+    def _discriminator(branch: dict[str, Any]) -> tuple[str, str] | None:
+        """The ``(property, const)`` pair an branch pins exactly one property to."""
+        properties = branch.get("properties")
         if not isinstance(properties, dict):
             return None
         pinned = [
@@ -1054,7 +1054,7 @@ class _Parser:
                 return Restated(keyword)
             if value is False:
                 # Only the sibling ``properties`` members may be supplied. A
-                # generated class normally declares more fields than one arm
+                # generated class normally declares more fields than one branch
                 # names, so this bounds what the caller supplied.
                 if "patternProperties" in node:
                     # The admissible key set is then not enumerable.
@@ -1072,7 +1072,7 @@ class _Parser:
             # their parent, so a restatement inside one is proven against the
             # parent's declaration. A predicate the declaration already
             # enforces is true of every instance, which is exactly as sound
-            # under a negation (where it makes the arm unsatisfiable) as it is
+            # under a negation (where it makes the branch unsatisfiable) as it is
             # on the positive path.
             return Not(self._node(value, here, declaration, shape))
         if keyword == "allOf":
@@ -1277,8 +1277,8 @@ class _Parser:
         A name no field holds on an OPEN object is a key the document may carry
         as an extra. Pydantic puts an extra in ``model_fields_set`` and resolves
         it through ``getattr``, so the predicate reads it under its wire name --
-        which is how ``get-reporting-status-response``'s nested arm grades
-        ``failure_kind``, a property only that arm declares and the generator
+        which is how ``get-reporting-status-response``'s nested branch grades
+        ``failure_kind``, a property only that branch declares and the generator
         renders no field for.
 
         A name no field holds on a CLOSED object is a key the document may not
@@ -1294,7 +1294,7 @@ class _Parser:
         if not shape.closed:
             return wire_name
         if at_root and wire_name in self._schema_names:
-            # Declared by an arm, no field holds it, and the document may not
+            # Declared by an branch, no field holds it, and the document may not
             # carry it either: the constraint grades a position no instance can
             # ever have. Unplaceable for the same reason a dropped root field is.
             raise UnplaceableConstraintError(self._file, pointer, wire_name)
@@ -1460,7 +1460,7 @@ def read_root_constraints(
     schema: dict[str, Any],
     declared: DeclaredShape,
     *,
-    arms_render_as_classes: bool,
+    branches_render_as_classes: bool,
     schema_file: str = "<schema>",
     resolve_document: ResolveDocument | None = None,
 ) -> RootConstraints:
@@ -1469,11 +1469,11 @@ def read_root_constraints(
     ``declared`` is the wire-to-field map of the class the generator emits for
     this root; compiled predicates name attributes, not wire names.
 
-    ``arms_render_as_classes`` says whether the generator rendered each arm that
+    ``branches_render_as_classes`` says whether the generator rendered each branch that
     introduces a property as its own class. On a FLAT root it is ``False``: one
-    class holds the merged properties, so every arm's content is constraint
-    content. On a root the generator already split into per-arm classes it is
-    ``True``, and an arm's own ``required`` and ``properties`` are then
+    class holds the merged properties, so every branch's content is constraint
+    content. On a root the generator already split into per-branch classes it is
+    ``True``, and an branch's own ``required`` and ``properties`` are then
     declarations the classes carry. Nothing in the schema distinguishes the two,
     so it is not inferred; the caller reads it off the generated module.
 
@@ -1486,7 +1486,10 @@ def read_root_constraints(
     property no class declares. Both abort generation.
     """
     return _Parser(
-        schema_file, declared, resolve_document, arms_render_as_classes=arms_render_as_classes
+        schema_file,
+        declared,
+        resolve_document,
+        branches_render_as_classes=branches_render_as_classes,
     ).read(schema)
 
 
@@ -1496,7 +1499,7 @@ def read_root_constraints(
 
 
 class UndisjointOneOfError(Exception):
-    """A root ``oneOf`` whose arms this module cannot prove pairwise disjoint.
+    """A root ``oneOf`` whose branches this module cannot prove pairwise disjoint.
 
     ``oneOf`` is exactly-one. A union renders at-least-one, so rendering an
     unproven ``oneOf`` as a union would ship anyOf-weaker semantics. Refusing
@@ -1508,7 +1511,7 @@ class UndisjointOneOfError(Exception):
         self.left = left
         self.right = right
         super().__init__(
-            f"{schema_file}: oneOf arms {left} and {right} are not provably disjoint, so "
+            f"{schema_file}: oneOf branches {left} and {right} are not provably disjoint, so "
             f"rendering them as a union would admit a document satisfying both -- which "
             f"oneOf forbids. Either the schema means anyOf, or the prover in "
             f"scripts/schema_constraints.py needs the production that separates them."
@@ -1542,13 +1545,13 @@ _TRUE: tuple[_Clause, ...] = (frozenset(),)
 _FALSE: tuple[_Clause, ...] = ()
 
 #: Past this many clauses the pair is reported unproven rather than expanded.
-#: Every arm in the pinned bundle stays three orders of magnitude under it; the
+#: Every branch in the pinned bundle stays three orders of magnitude under it; the
 #: cap exists so an adversarial future schema costs a lost proof, not a hang.
 _CLAUSE_CEILING = 2048
 
 
 class _TooBigError(Exception):
-    """The DNF of one arm exceeded :data:`_CLAUSE_CEILING`."""
+    """The DNF of one branch exceeded :data:`_CLAUSE_CEILING`."""
 
 
 def _hashable(value: Any) -> Any:
@@ -1630,7 +1633,7 @@ def _clauses(
     """One ``Cond`` in disjunctive normal form over presence and value literals.
 
     Every node kind the prover has no literal for compiles to TRUE, under
-    negation as well. That WEAKENS the arm, and a refutation of a weaker
+    negation as well. That WEAKENS the branch, and a refutation of a weaker
     conjunction refutes the stronger one, so an unmodelled kind can only cost a
     proof -- never manufacture one.
     """
@@ -1706,24 +1709,26 @@ def _clauses(
     return _TRUE
 
 
-def arm_conditions(constraints: RootConstraints) -> tuple[Cond, ...]:
-    """What a document satisfying each arm must satisfy, conjuncts included.
+def branch_conditions(constraints: RootConstraints) -> tuple[Cond, ...]:
+    """What a document satisfying each branch must satisfy, conjuncts included.
 
-    A root's conjuncts hold of every document the root accepts, so each arm's
-    real condition is the arm conjoined with them. Distributing them is what
+    A root's conjuncts hold of every document the root accepts, so each branch's
+    real condition is the branch conjoined with them. Distributing them is what
     turns three both-present bans into disjointness rather than leaving them as
-    a check beside arms that overlap without them: ``webhook-challenge-response``
-    bans ``challenge`` and ``token`` together at the root, and its two arms
+    a check beside branches that overlap without them: ``webhook-challenge-response``
+    bans ``challenge`` and ``token`` together at the root, and its two branches
     require one each.
     """
-    return tuple(_conjoin((arm.condition, *constraints.conjuncts)) for arm in constraints.arms)
+    return tuple(
+        _conjoin((branch.condition, *constraints.conjuncts)) for branch in constraints.branches
+    )
 
 
 def provably_disjoint(left: Cond, right: Cond) -> bool:
     """Whether no document can satisfy both conditions.
 
     Sound and deliberately incomplete: it decides presence and named-value
-    clashes, which is what the arms of the pinned bundle are separated by, and
+    clashes, which is what the branches of the pinned bundle are separated by, and
     reports anything else unproven.
     """
     try:
@@ -1735,15 +1740,15 @@ def provably_disjoint(left: Cond, right: Cond) -> bool:
 
 
 def partitions_by_requiredness(constraints: RootConstraints) -> bool:
-    """Whether the arms partition the document space, so each arm is a type.
+    """Whether the branches partition the document space, so each branch is a type.
 
-    Two conditions. Every arm must require something: without ``required`` an
-    arm grades only members that are present, so it is vacuously satisfiable and
+    Two conditions. Every branch must require something: without ``required`` an
+    branch grades only members that are present, so it is vacuously satisfiable and
     a document mentioning none of its fields satisfies it
-    (``postal-country-system``'s ten arms, all satisfied by a document with no
-    ``country``). And the arms must be provably pairwise disjoint, which is what
+    (``postal-country-system``'s ten branches, all satisfied by a document with no
+    ``country``). And the branches must be provably pairwise disjoint, which is what
     makes the class a parsed document comes back as schema information rather
-    than branch order (``control-media-buy-request``'s twelve arms each require
+    than branch order (``control-media-buy-request``'s twelve branches each require
     one field and permit the other eleven -- "name at least one field to
     change", one shape, where an ``isinstance`` on the returned class reads the
     order of a JSON file and nothing about the document).
@@ -1751,18 +1756,18 @@ def partitions_by_requiredness(constraints: RootConstraints) -> bool:
     The approved rule reads "partition by requiredness into DISTINCT, mutually
     exclusive field sets", and distinctness of the required sets is deliberately
     not a third condition here. Measured over the pinned bundle it decides
-    nothing -- no root has two arms with the same required set that the prover
+    nothing -- no root has two branches with the same required set that the prover
     separates -- and as a rule it would refuse a const-discriminated pair that
     requires the same group, which is a partition the design asks to emit. What
-    it was guarding is that two arms needing the same rung-3 name cannot both be
+    it was guarding is that two branches needing the same rung-3 name cannot both be
     named, and the naming rule refuses that where it arises.
     """
-    arms = constraints.arms
-    if len(arms) < 2:
+    branches = constraints.branches
+    if len(branches) < 2:
         return False
-    if any(not arm.required for arm in arms):
+    if any(not branch.required for branch in branches):
         return False
-    conditions = arm_conditions(constraints)
+    conditions = branch_conditions(constraints)
     return all(
         provably_disjoint(conditions[index], conditions[other])
         for index in range(len(conditions))

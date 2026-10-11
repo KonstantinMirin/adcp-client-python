@@ -3,13 +3,13 @@
 ``scripts/schema_constraints.py`` reads a schema root's constraint content into
 a ``Cond`` tree. This module turns one of those trees into an expression over
 ``src/adcp/types/_conditions.py``'s primitives and ordinary Python, and wraps a
-root's arms and conjuncts into the ``model_validator`` body the generator
+root's branches and conjuncts into the ``model_validator`` body the generator
 appends to the class.
 
-It invents no identifiers. Per-arm predicates are expressions inside the one
+It invents no identifiers. Per-branch predicates are expressions inside the one
 validator, every reusable part is a fixed name in the vocabulary module, and a
 lambda parameter is named after the field it binds -- so the only names the
-generator mints are class names, which come from the arm-identity rule. Titles
+generator mints are class names, which come from the branch-identity rule. Titles
 ride as schema-derived text in the refusal message and in comments.
 """
 
@@ -82,7 +82,7 @@ try:
     from schema_constraints import (
         AllOf,
         AnyOf,
-        Arm,
+        Branch,
         Cond,
         DependentRequired,
         EveryItem,
@@ -113,7 +113,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.compile_conditions`` in tes
     from scripts.schema_constraints import (  # type: ignore[assignment]
         AllOf,
         AnyOf,
-        Arm,
+        Branch,
         Cond,
         DependentRequired,
         EveryItem,
@@ -145,7 +145,7 @@ __all__ = [
     "CONDITIONS_IMPORT",
     "GROUP_MESSAGE_PREFIX",
     "ROOT_CONSTRAINT_VALIDATOR",
-    "arm_label",
+    "branch_label",
     "compile_condition",
     "named_fields",
     "render_root_validator",
@@ -162,7 +162,7 @@ CONDITIONS_IMPORT = "from adcp.types import _conditions as _c"
 ROOT_CONSTRAINT_VALIDATOR = "_require_schema_required_group"
 
 #: Two contract tests match on this wording
-#: (``tests/test_codegen_contract_compatibility.py``). The arms' schema titles
+#: (``tests/test_codegen_contract_compatibility.py``). The branches' schema titles
 #: are appended to it; changing the prefix breaks those tests for a
 #: non-behavioural reason.
 GROUP_MESSAGE_PREFIX = "requires at least one of these field groups"
@@ -188,7 +188,7 @@ def _grouped(expression: str) -> str:
     """Parenthesise an expression only where precedence needs it.
 
     A conjunction of simple membership tests reads as one; wrapping every
-    operand turns the emitted arm into brackets.
+    operand turns the emitted branch into brackets.
     """
     depth = 0
     for index, character in enumerate(expression):
@@ -216,8 +216,8 @@ def compile_condition(condition: Cond, subject: str = _SELF) -> str:  # noqa: C9
     if isinstance(condition, Undeclarable):
         # A key no field holds on a model that FORBIDS extras: pydantic refuses
         # the document before the validator runs, so the predicate is false of
-        # every instance that reaches here. Which is what makes the arm
-        # forbidding the key satisfiable and the arm requiring it dead.
+        # every instance that reaches here. Which is what makes the branch
+        # forbidding the key satisfiable and the branch requiring it dead.
         return "False"
 
     if isinstance(condition, Supplied):
@@ -238,8 +238,8 @@ def compile_condition(condition: Cond, subject: str = _SELF) -> str:  # noqa: C9
             _grouped(compile_condition(operand, subject)) for operand in condition.operands
         )
     if isinstance(condition, OneOf):
-        arms = ", ".join(compile_condition(operand, subject) for operand in condition.operands)
-        return f"[{arms}].count(True) == 1"
+        branches = ", ".join(compile_condition(operand, subject) for operand in condition.operands)
+        return f"[{branches}].count(True) == 1"
     if isinstance(condition, IfThen):
         consequent = (
             compile_condition(condition.consequent, subject)
@@ -344,18 +344,18 @@ def named_fields(condition: Cond) -> tuple[str, ...]:
     return tuple(sorted(found))
 
 
-def arm_label(arm: Arm) -> str:
-    """How an arm names itself in a refusal message.
+def branch_label(branch: Branch) -> str:
+    """How an branch names itself in a refusal message.
 
-    Schema-derived text in all three cases: the arm's own title, else the field
+    Schema-derived text in all three cases: the branch's own title, else the field
     group it requires, else its pointer. A title is both more readable than a
     synthesized field list and the thing the schema actually says.
     """
-    if arm.title:
-        return arm.title
-    if arm.required:
-        return "+".join(arm.required)
-    return arm.pointer
+    if branch.title:
+        return branch.title
+    if branch.required:
+        return "+".join(branch.required)
+    return branch.pointer
 
 
 def _wrap(expression: str, indent: str) -> str:
@@ -400,7 +400,7 @@ def render_root_validator(
     vocabulary's two-shape handling is for.
     """
     body: list[str] = []
-    if constraints.arms:
+    if constraints.branches:
         body.extend(_render_combinator(constraints, class_name, subject))
     for index, conjunct in enumerate(constraints.conjuncts):
         body.extend(_render_conjunct(conjunct, class_name, schema_file, index, subject))
@@ -429,12 +429,12 @@ def render_root_validator(
 
 
 def _render_combinator(constraints: RootConstraints, class_name: str, subject: str) -> list[str]:
-    labels = [arm_label(arm) for arm in constraints.arms]
-    # The arm's own condition, not the arm conjoined with the root's conjuncts:
+    labels = [branch_label(branch) for branch in constraints.branches]
+    # The branch's own condition, not the branch conjoined with the root's conjuncts:
     # each conjunct is rendered once below, with the refusal naming it. The
     # conjoined form is what the disjointness prover and the branch-class
-    # emitter need, where a conjunct has to distribute into an arm's shape.
-    predicates = [compile_condition(arm.condition, subject) for arm in constraints.arms]
+    # emitter need, where a conjunct has to distribute into an branch's shape.
+    predicates = [compile_condition(branch.condition, subject) for branch in constraints.branches]
 
     lines = ["        if not ("]
     for index, (label, predicate) in enumerate(zip(labels, predicates, strict=True)):
@@ -450,17 +450,17 @@ def _render_combinator(constraints: RootConstraints, class_name: str, subject: s
     # names no keyword, and the consumer then drops the issue and refuses the
     # buyer with nothing structured. This is #1435, which landed in beta.3 on
     # the function this series replaced -- the keyword is still known here,
-    # because the reader records which combinator the arms came from.
+    # because the reader records which combinator the branches came from.
     lines.append(schema_keyword_raise(constraints.combinator or "anyOf", message, indent=" " * 12))
 
-    # ``oneOf`` is exactly one, which is derivable now that each arm's
+    # ``oneOf`` is exactly one, which is derivable now that each branch's
     # predicate is its whole condition. The required-names-only reading could
     # not derive it, and that is the reason its docstring gave for not trying.
-    # An arm carrying ``x-adcp-validation`` is excepted: its cardinality
+    # An branch carrying ``x-adcp-validation`` is excepted: its cardinality
     # depends on rules declared outside the structural models' promise.
     if (
         constraints.combinator == "oneOf"
-        and len(constraints.arms) > 1
+        and len(constraints.branches) > 1
         and not constraints.declares_behavioral_rules
     ):
         satisfied = ", ".join(f"({predicate})" for predicate in predicates)

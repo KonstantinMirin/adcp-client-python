@@ -75,67 +75,69 @@ def _bundle_dir() -> Path:
 
 
 def _read(root: dict[str, Any], **kwargs: Any) -> Any:
-    # ``_arm_root``'s arms are overlays on a flat root, which is what
-    # ``arms_render_as_classes=False`` says: one class over the merged
-    # properties, so every arm keyword is constraint content.
-    kwargs.setdefault("arms_render_as_classes", False)
+    # ``_branch_root``'s branches are overlays on a flat root, which is what
+    # ``branches_render_as_classes=False`` says: one class over the merged
+    # properties, so every branch keyword is constraint content.
+    kwargs.setdefault("branches_render_as_classes", False)
     return read_root_constraints(root, DeclaredShape.from_schema(root), **kwargs)
 
 
-def _only_arm_condition(root: dict[str, Any], **kwargs: Any) -> Cond:
-    """The condition of a root whose single ``anyOf`` arm carries the keyword."""
+def _only_branch_condition(root: dict[str, Any], **kwargs: Any) -> Cond:
+    """The condition of a root whose single ``anyOf`` branch carries the keyword."""
     constraints = _read(root, **kwargs)
-    assert len(constraints.arms) == 1, root
-    return constraints.arms[0].condition
+    assert len(constraints.branches) == 1, root
+    return constraints.branches[0].condition
 
 
-def _arm_root(arm: dict[str, Any], properties: dict[str, Any] | None = None) -> dict[str, Any]:
-    """A root declaring ``properties`` whose one overlay arm is ``arm``.
+def _branch_root(
+    branch: dict[str, Any], properties: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """A root declaring ``properties`` whose one overlay branch is ``branch``.
 
-    The arm declares no new names, so it is an overlay: its keywords are
+    The branch declares no new names, so it is an overlay: its keywords are
     constraint content rather than a declaration the generator renders.
     """
     return {
         "title": "Thing",
         "type": "object",
         "properties": properties if properties is not None else {"a": {}, "b": {}},
-        "anyOf": [arm],
+        "anyOf": [branch],
     }
 
 
 #: One constructed node per claimed production, and the Cond it must compile to.
 #: The keys are exactly ``COMPILED_KEYWORDS``, enforced below.
 _PRODUCTION_FIXTURES: dict[str, tuple[dict[str, Any], Cond]] = {
-    "required": (_arm_root({"required": ["a"]}), Supplied("a")),
+    "required": (_branch_root({"required": ["a"]}), Supplied("a")),
     "properties": (
-        _arm_root({"properties": {"a": {"const": 1}}}),
+        _branch_root({"properties": {"a": {"const": 1}}}),
         PropSatisfies("a", ValueConst(1)),
     ),
-    "not": (_arm_root({"not": {"required": ["a"]}}), Not(Supplied("a"))),
+    "not": (_branch_root({"not": {"required": ["a"]}}), Not(Supplied("a"))),
     "allOf": (
-        _arm_root({"allOf": [{"required": ["a"]}, {"required": ["b"]}]}),
+        _branch_root({"allOf": [{"required": ["a"]}, {"required": ["b"]}]}),
         AllOf((Supplied("a"), Supplied("b"))),
     ),
     "anyOf": (
-        _arm_root({"anyOf": [{"required": ["a"]}, {"required": ["b"]}]}),
+        _branch_root({"anyOf": [{"required": ["a"]}, {"required": ["b"]}]}),
         AnyOf((Supplied("a"), Supplied("b"))),
     ),
     "oneOf": (
-        _arm_root({"oneOf": [{"required": ["a"]}, {"required": ["b"]}]}),
+        _branch_root({"oneOf": [{"required": ["a"]}, {"required": ["b"]}]}),
         OneOf((Supplied("a"), Supplied("b"))),
     ),
     "if": (
-        _arm_root({"if": {"required": ["a"]}, "then": {"required": ["b"]}}),
+        _branch_root({"if": {"required": ["a"]}, "then": {"required": ["b"]}}),
         IfThen(Supplied("a"), Supplied("b"), None),
     ),
     "then": (
         # A ``then`` with no sibling ``if`` asserts nothing, which is JSON
         # Schema's own reading; the production is what accounts for the key.
-        _arm_root({"then": {"required": ["a"]}, "required": ["b"]}),
+        _branch_root({"then": {"required": ["a"]}, "required": ["b"]}),
         Supplied("b"),
     ),
     "else": (
-        _arm_root(
+        _branch_root(
             {
                 "if": {"required": ["a"]},
                 "then": {"required": ["b"]},
@@ -145,95 +147,97 @@ _PRODUCTION_FIXTURES: dict[str, tuple[dict[str, Any], Cond]] = {
         IfThen(Supplied("a"), Supplied("b"), Not(Supplied("b"))),
     ),
     "dependencies": (
-        _arm_root({"dependencies": {"a": ["b"]}}),
+        _branch_root({"dependencies": {"a": ["b"]}}),
         DependentRequired("a", ("b",)),
     ),
     "dependentRequired": (
-        _arm_root({"dependentRequired": {"a": ["b"]}}),
+        _branch_root({"dependentRequired": {"a": ["b"]}}),
         DependentRequired("a", ("b",)),
     ),
     "dependentSchemas": (
-        _arm_root({"dependentSchemas": {"a": {"required": ["b"]}}}),
+        _branch_root({"dependentSchemas": {"a": {"required": ["b"]}}}),
         IfThen(Supplied("a"), Supplied("b", nullable=True), None),
     ),
     "const": (
-        _arm_root({"properties": {"a": {"const": "x"}}}),
+        _branch_root({"properties": {"a": {"const": "x"}}}),
         PropSatisfies("a", ValueConst("x")),
     ),
     "enum": (
-        _arm_root({"properties": {"a": {"enum": ["x", "y"]}}}),
+        _branch_root({"properties": {"a": {"enum": ["x", "y"]}}}),
         PropSatisfies("a", ValueEnum(("x", "y"))),
     ),
     "type": (
-        _arm_root({"properties": {"a": {"type": "string"}}}),
+        _branch_root({"properties": {"a": {"type": "string"}}}),
         PropSatisfies("a", ValueType(("string",))),
     ),
     "pattern": (
-        _arm_root({"properties": {"a": {"pattern": "^x"}}}),
+        _branch_root({"properties": {"a": {"pattern": "^x"}}}),
         PropSatisfies("a", ValuePattern("^x")),
     ),
     "minLength": (
-        _arm_root({"properties": {"a": {"minLength": 1}}}),
+        _branch_root({"properties": {"a": {"minLength": 1}}}),
         PropSatisfies("a", ValueLen(minimum=1)),
     ),
     "maxLength": (
-        _arm_root({"properties": {"a": {"maxLength": 9}}}),
+        _branch_root({"properties": {"a": {"maxLength": 9}}}),
         PropSatisfies("a", ValueLen(maximum=9)),
     ),
     "minimum": (
-        _arm_root({"properties": {"a": {"minimum": 0}}}),
+        _branch_root({"properties": {"a": {"minimum": 0}}}),
         PropSatisfies("a", ValueBounds(ge=0)),
     ),
     "maximum": (
-        _arm_root({"properties": {"a": {"maximum": 100}}}),
+        _branch_root({"properties": {"a": {"maximum": 100}}}),
         PropSatisfies("a", ValueBounds(le=100)),
     ),
     "exclusiveMinimum": (
-        _arm_root({"properties": {"a": {"exclusiveMinimum": 0}}}),
+        _branch_root({"properties": {"a": {"exclusiveMinimum": 0}}}),
         PropSatisfies("a", ValueBounds(gt=0)),
     ),
     "exclusiveMaximum": (
-        _arm_root({"properties": {"a": {"exclusiveMaximum": 1}}}),
+        _branch_root({"properties": {"a": {"exclusiveMaximum": 1}}}),
         PropSatisfies("a", ValueBounds(lt=1)),
     ),
     "minItems": (
-        _arm_root({"properties": {"a": {"minItems": 1}}}),
+        _branch_root({"properties": {"a": {"minItems": 1}}}),
         PropSatisfies("a", ValueItems(minimum=1)),
     ),
     "maxItems": (
-        _arm_root({"properties": {"a": {"maxItems": 2}}}),
+        _branch_root({"properties": {"a": {"maxItems": 2}}}),
         PropSatisfies("a", ValueItems(maximum=2)),
     ),
     "uniqueItems": (
-        _arm_root({"properties": {"a": {"uniqueItems": True}}}),
+        _branch_root({"properties": {"a": {"uniqueItems": True}}}),
         PropSatisfies("a", ValueUnique()),
     ),
     "items": (
-        _arm_root({"properties": {"a": {"items": {"required": ["b"]}}}}),
+        _branch_root({"properties": {"a": {"items": {"required": ["b"]}}}}),
         PropSatisfies("a", EveryItem(Supplied("b", nullable=True))),
     ),
     "contains": (
-        _arm_root({"properties": {"a": {"contains": {"required": ["b"]}}}}),
+        _branch_root({"properties": {"a": {"contains": {"required": ["b"]}}}}),
         PropSatisfies("a", SomeItem(Supplied("b", nullable=True))),
     ),
     "propertyNames": (
-        _arm_root({"properties": {"a": {"propertyNames": {"pattern": "^x"}}}}),
+        _branch_root({"properties": {"a": {"propertyNames": {"pattern": "^x"}}}}),
         PropSatisfies("a", KeysSatisfy(ValuePattern("^x"))),
     ),
     "patternProperties": (
-        _arm_root({"properties": {"a": {"patternProperties": {"^x": {"minimum": 1}}}}}),
+        _branch_root({"properties": {"a": {"patternProperties": {"^x": {"minimum": 1}}}}}),
         PropSatisfies("a", MatchingKeysSatisfy("^x", ValueBounds(ge=1))),
     ),
     "minProperties": (
-        _arm_root({"properties": {"a": {"minProperties": 1}}}),
+        _branch_root({"properties": {"a": {"minProperties": 1}}}),
         PropSatisfies("a", PropCount(minimum=1)),
     ),
     "maxProperties": (
-        _arm_root({"properties": {"a": {"maxProperties": 3}}}),
+        _branch_root({"properties": {"a": {"maxProperties": 3}}}),
         PropSatisfies("a", PropCount(maximum=3)),
     ),
     "additionalProperties": (
-        _arm_root({"properties": {"a": {"properties": {"b": {}}, "additionalProperties": False}}}),
+        _branch_root(
+            {"properties": {"a": {"properties": {"b": {}}, "additionalProperties": False}}}
+        ),
         PropSatisfies("a", NoOtherProps(("b",))),
     ),
     "$ref": (
@@ -263,7 +267,7 @@ def test_the_fixture_map_covers_exactly_the_claimed_grammar() -> None:
 def test_each_grammar_production_compiles_its_keyword(keyword: str) -> None:
     """One constructed node per production, compiled to the node it names."""
     root, expected = _PRODUCTION_FIXTURES[keyword]
-    assert _only_arm_condition(root) == expected
+    assert _only_branch_condition(root) == expected
 
 
 def test_additional_properties_as_a_subschema_grades_the_unnamed_members() -> None:
@@ -272,9 +276,9 @@ def test_additional_properties_as_a_subschema_grades_the_unnamed_members() -> No
     The ``false`` form is in the fixture map above; this is the production's
     other branch, and a map type has no sibling ``properties`` to exempt.
     """
-    root = _arm_root({"properties": {"a": {"additionalProperties": {"enum": ["pass", "fail"]}}}})
+    root = _branch_root({"properties": {"a": {"additionalProperties": {"enum": ["pass", "fail"]}}}})
 
-    assert _only_arm_condition(root) == PropSatisfies(
+    assert _only_branch_condition(root) == PropSatisfies(
         "a", OtherPropsSatisfy((), ValueEnum(("pass", "fail")))
     )
 
@@ -288,7 +292,7 @@ def test_presence_is_membership_not_a_null_check() -> None:
     absence and on an explicit null alike. ``Supplied`` is the grammar's only
     presence node, so no compiled predicate can spell presence the other ways.
     """
-    assert _only_arm_condition(_arm_root({"required": ["a"]})) == Supplied("a")
+    assert _only_branch_condition(_branch_root({"required": ["a"]})) == Supplied("a")
 
 
 # --------------------------------------------------------------------------- #
@@ -298,7 +302,7 @@ def test_presence_is_membership_not_a_null_check() -> None:
 
 def test_a_keyword_outside_every_named_rule_aborts_naming_file_pointer_keyword() -> None:
     """The refusal carries what a maintainer needs to grow the grammar."""
-    root = _arm_root({"unevaluatedProperties": False})
+    root = _branch_root({"unevaluatedProperties": False})
 
     with pytest.raises(UnexpressibleKeywordError) as raised:
         _read(root, schema_file="made-up/thing.json")
@@ -310,14 +314,14 @@ def test_a_keyword_outside_every_named_rule_aborts_naming_file_pointer_keyword()
 
 def test_a_constraint_naming_a_field_the_schema_declares_but_the_class_does_not_refuses() -> None:
     """A dropped field surfaces loudly instead of placing the constraint nowhere."""
-    root = _arm_root({"required": ["b"]})
+    root = _branch_root({"required": ["b"]})
     declared_without_b = DeclaredShape(fields={"a": "a"}, nested={})
 
     with pytest.raises(UnplaceableConstraintError) as raised:
         read_root_constraints(
             root,
             declared_without_b,
-            arms_render_as_classes=False,
+            branches_render_as_classes=False,
             schema_file="media-buy/thing.json",
         )
 
@@ -348,13 +352,13 @@ def test_required_reads_presence_on_the_document_that_is_sent() -> None:
         "anyOf": [{"required": ["canceled", "daily_budget_cap"]}],
     }
 
-    assert _only_arm_condition(root) == AllOf(
+    assert _only_branch_condition(root) == AllOf(
         (Supplied("canceled", nullable=False), Supplied("daily_budget_cap", nullable=True))
     )
 
 
 def test_a_required_name_a_closed_root_never_declares_is_statically_false() -> None:
-    """An AdCP root that forbids a key no arm declares is not a dropped field.
+    """An AdCP root that forbids a key no branch declares is not a dropped field.
 
     ``control-media-buy-request`` forbids ``creatives`` behind
     ``additionalProperties: false``, which the generator renders as
@@ -377,8 +381,8 @@ def test_a_required_name_a_closed_root_never_declares_is_statically_false() -> N
 def test_a_required_name_an_open_root_never_declares_is_read_off_the_document() -> None:
     """Under ``additionalProperties: true`` the key is carryable, so it is read.
 
-    ``get-reporting-status-response`` is open and its nested arm grades
-    ``failure_kind``, a property only that arm declares and the generator
+    ``get-reporting-status-response`` is open and its nested branch grades
+    ``failure_kind``, a property only that branch declares and the generator
     renders no field for. Pydantic files such a key under extras, puts it in
     ``model_fields_set`` and resolves it through ``getattr``, so the predicate
     is ordinary presence under the wire name. Calling it statically false here
@@ -422,7 +426,7 @@ def test_a_keyword_equal_to_the_declaration_is_a_proven_restatement() -> None:
         ],
     }
 
-    assert _only_arm_condition(root) == PropSatisfies(
+    assert _only_branch_condition(root) == PropSatisfies(
         "packages", EveryItem(Supplied("budget", nullable=True))
     )
 
@@ -435,34 +439,34 @@ def test_a_narrowing_of_the_declared_type_compiles_rather_than_restating() -> No
         "anyOf": [{"properties": {"a": {"type": "string", "const": "x"}}}],
     }
 
-    assert _only_arm_condition(root) == PropSatisfies("a", ValueConst("x"))
+    assert _only_branch_condition(root) == PropSatisfies("a", ValueConst("x"))
 
 
 def test_the_declared_behavioral_key_is_classified_not_compiled() -> None:
     """``x-adcp-validation`` is a contract citation, not a tolerance entry.
 
     ``docs/validation-contract.md`` puts these rules outside the structural
-    models' promise. The parser records that an arm carries them -- which is
+    models' promise. The parser records that an branch carries them -- which is
     what lets ``oneOf`` cardinality refuse rather than approximate -- and there
     is no per-schema list anywhere.
     """
-    root = _arm_root({"required": ["a"], DECLARED_BEHAVIORAL_KEY: {"verifier_constraints": {}}})
+    root = _branch_root({"required": ["a"], DECLARED_BEHAVIORAL_KEY: {"verifier_constraints": {}}})
 
     constraints = _read(root)
 
     assert constraints.declares_behavioral_rules
-    assert constraints.arms[0].declares_behavioral_rules
-    assert constraints.arms[0].condition == Supplied("a")
+    assert constraints.branches[0].declares_behavioral_rules
+    assert constraints.branches[0].condition == Supplied("a")
 
 
-def test_an_arms_own_keywords_are_proven_against_the_root_not_against_itself() -> None:
-    """A flat root's arm states constraint content, whatever it introduces.
+def test_an_branches_own_keywords_are_proven_against_the_root_not_against_itself() -> None:
+    """A flat root's branch states constraint content, whatever it introduces.
 
-    ``list-account-changes-response`` is one class over two arms, each arm
+    ``list-account-changes-response`` is one class over two branches, each branch
     introducing ``status`` with its own ``const`` and its own ``required``.
-    Reading the arm as its own class proves each of those a restatement of
+    Reading the branch as its own class proves each of those a restatement of
     itself, and the measured result was a model enforcing nothing at all from
-    either arm.
+    either branch.
     """
     root = {
         "title": "Thing",
@@ -477,16 +481,16 @@ def test_an_arms_own_keywords_are_proven_against_the_root_not_against_itself() -
     constraints = read_root_constraints(
         root,
         DeclaredShape(fields={"a": "a", "status": "status"}),
-        arms_render_as_classes=False,
+        branches_render_as_classes=False,
     )
 
-    assert constraints.arms[0].condition == AllOf(
+    assert constraints.branches[0].condition == AllOf(
         (
             PropSatisfies("status", ValueConst("completed")),
             AllOf((Supplied("status", nullable=True), Supplied("a"))),
         )
     )
-    assert constraints.arms[1].condition == AllOf(
+    assert constraints.branches[1].condition == AllOf(
         (PropSatisfies("status", ValueConst("failed")), Supplied("status", nullable=True))
     )
 
@@ -509,7 +513,7 @@ def test_a_property_named_only_in_a_negated_position_is_not_a_dropped_field() ->
     }
 
     constraints = read_root_constraints(
-        root, DeclaredShape(fields={"a": "a"}), arms_render_as_classes=False
+        root, DeclaredShape(fields={"a": "a"}), branches_render_as_classes=False
     )
 
     assert constraints.conjuncts == (
@@ -600,10 +604,10 @@ def _keys_in_constraint_content(schema: dict[str, Any]) -> Iterator[str]:
                     yield from walk(member)
 
     for combinator in ("anyOf", "oneOf"):
-        arms = schema.get(combinator)
-        if isinstance(arms, list) and arms:
-            for arm in arms:
-                yield from walk(arm)
+        branches = schema.get(combinator)
+        if isinstance(branches, list) and branches:
+            for branch in branches:
+                yield from walk(branch)
             break
     for keyword in ("if", "then", "else", "not"):
         if keyword in schema:
@@ -655,11 +659,11 @@ def test_every_root_constraint_node_in_the_bundle_parses_with_no_unaccounted_key
                 schema,
                 DeclaredShape.from_schema(schema),
                 # No generated tree is consulted here, so the shape's own
-                # reading applies: every arm that declares a property is read as
+                # reading applies: every branch that declares a property is read as
                 # its own class, which is what ``from_schema`` asserts by
-                # carrying every arm-declared name. This rule grades keyword
+                # carrying every branch-declared name. This rule grades keyword
                 # accounting, not which shape got emitted.
-                arms_render_as_classes=True,
+                branches_render_as_classes=True,
                 schema_file=name,
                 resolve_document=resolve,
             )

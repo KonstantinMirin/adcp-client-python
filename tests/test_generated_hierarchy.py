@@ -119,7 +119,7 @@ def _compositions() -> tuple[_Composition, ...]:
                 continue
             ref = entry.get("$ref")
             if not isinstance(ref, str):
-                continue  # an inline constraint arm, not a composition
+                continue  # an inline constraint branch, not a composition
             fragment = ref.split("#", 1)[1] if "#" in ref else ""
             if ref.startswith("#") or fragment not in ("", "/"):
                 # A JSON pointer names a sub-schema, which has no generated
@@ -167,7 +167,7 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     class, as an alias assignment, or both.
 
     A root with ``oneOf`` beside its ``allOf`` also emits a ``NameN`` branch
-    class per arm, and those are collected **in addition to** the bare name,
+    class per branch, and those are collected **in addition to** the bare name,
     not instead of it. That is the whole of #1136: the composition was lost on
     19 of 24 response branches while the top-level name was fine, so a resolver
     that stops at the name matching the schema file grades none of the classes
@@ -178,10 +178,10 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
     those it picks must not decide whether the branch is graded.
 
     ``N`` is the whole numeric run after the candidate, not one digit: a root
-    that fans out into ten or more arms emits ``Name10`` upward, and this tree
+    that fans out into ten or more branches emits ``Name10`` upward, and this tree
     carries 341 classes with a multi-digit suffix (``AcceptancePolicyRequirement17``,
     ``AdcpAgentsAuthorization213``). Matching a single trailing character would
-    drop those arms from the grading silently, which is the under-grading
+    drop those branches from the grading silently, which is the under-grading
     #1136 is about.
 
     Returning ``None`` rather than guessing at the last class in the file is
@@ -229,7 +229,7 @@ def _root_names(rel: Path) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
 
 
 def _resolve(rel: Path, names: tuple[str, ...]) -> tuple[type, ...]:
-    """The classes behind module-level names, with unions flattened to arms.
+    """The classes behind module-level names, with unions flattened to branches.
 
     Deduplicated: a root that fans out is reachable both as its union alias and
     as the branch classes the alias is built from, and counting a class twice
@@ -246,11 +246,13 @@ def _resolve(rel: Path, names: tuple[str, ...]) -> tuple[type, ...]:
         # carries the schema's discriminator, and the union is its first arg.
         if typing.get_origin(obj) is typing.Annotated:
             obj = typing.get_args(obj)[0]
-        arms = typing.get_args(obj)
-        assert arms, f"{_module_name(rel)}.{name} is neither a class nor a union: {obj!r}"
-        for arm in arms:
-            assert isinstance(arm, type), f"{_module_name(rel)}.{name} arm is not a class: {arm!r}"
-            found[arm] = None
+        branches = typing.get_args(obj)
+        assert branches, f"{_module_name(rel)}.{name} is neither a class nor a union: {obj!r}"
+        for branch in branches:
+            assert isinstance(
+                branch, type
+            ), f"{_module_name(rel)}.{name} arm is not a class: {branch!r}"
+            found[branch] = None
     return tuple(found)
 
 
@@ -457,7 +459,7 @@ def test_public_surface_keeps_the_composed_ancestry() -> None:
     assert checked, "no graded class is exported from adcp.types; the lookup is broken"
 
 
-def test_response_arm_aliases_keep_the_protocol_envelope() -> None:
+def test_response_branch_aliases_keep_the_protocol_envelope() -> None:
     """Every ``*SuccessResponse`` / ``*ErrorResponse`` alias is a ProtocolEnvelope.
 
     This is #1136 stated as its own assertion: ``oneOf`` response branches lost
@@ -471,27 +473,27 @@ def test_response_arm_aliases_keep_the_protocol_envelope() -> None:
     ``ProtocolEnvelope`` is named here rather than derived. Deriving it would
     mean mapping an alias name back to a schema file by convention, which is
     the guesswork the rest of this module avoids; the obligation is the same
-    for every arm of every task response, so naming it once is auditable.
+    for every branch of every task response, so naming it once is auditable.
     """
     from adcp.types import aliases
     from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
 
-    arms = sorted(
+    branches = sorted(
         name for name in aliases.__all__ if name.endswith(("SuccessResponse", "ErrorResponse"))
     )
-    assert len(arms) >= _MIN_RESPONSE_ARM_ALIASES, (
-        f"found only {len(arms)} response arm aliases, expected at least "
+    assert len(branches) >= _MIN_RESPONSE_ARM_ALIASES, (
+        f"found only {len(branches)} response arm aliases, expected at least "
         f"{_MIN_RESPONSE_ARM_ALIASES} — the alias surface has moved and this test no "
         "longer grades it"
     )
 
     lost = [
         f"adcp.types.aliases.{name} ({cls.__module__}.{cls.__name__})"
-        for name in arms
+        for name in branches
         if not issubclass(cls := getattr(aliases, name), ProtocolEnvelope)
     ]
     assert lost == [], (
-        "These response arm aliases are not ProtocolEnvelope subclasses, so the "
+        "These response branch aliases are not ProtocolEnvelope subclasses, so the "
         "root allOf composition is lost on the surface a consumer binds to — the "
         "#1136 regression:\n" + "\n".join(f"  {line}" for line in lost)
     )

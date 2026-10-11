@@ -1,22 +1,22 @@
-"""One class per arm, for a flat root whose arms partition.
+"""One class per branch, for a flat root whose branches partition.
 
 ``scripts/schema_constraints.py`` reads a root's constraint content into
-``Arm`` records and proves whether the arms partition the document space.
-Where they do, the arms are not a rule over one class -- they are distinct
+``Branch`` records and proves whether the branches partition the document space.
+Where they do, the branches are not a rule over one class -- they are distinct
 types, and the generator's flattening is what turned them into a rule. This
 module renders that.
 
-The arms are ONE type with different requiredness, not several types, and the
+The branches are ONE type with different requiredness, not several types, and the
 emission says so: a shared base per split root -- ``<Root>Shape`` -- carries the
-root's own properties, each arm subclasses it and restates only what it changes, and the
-root's public name becomes a union over the arms.
+root's own properties, each branch subclasses it and restates only what it changes, and the
+root's public name becomes a union over the branches.
 
 Measured over the eleven roots this splits, counting the properties the base
-declares against the names any arm constrains at all (requires, forbids, or
+declares against the names any branch constrains at all (requires, forbids, or
 pins): 31/5 on ``create-media-buy-request``, 21/8 on
 ``list-account-changes-response``, 17/2 on ``creative-asset``, down to 2/2 on
-``webhook-challenge-response``. No root's base is empty, and no arm constrains
-more than 7 of its root's properties -- the arms differ in which fields they
+``webhook-challenge-response``. No root's base is empty, and no branch constrains
+more than 7 of its root's properties -- the branches differ in which fields they
 require and which they forbid, not in what the fields are. So none of these
 roots is a union of unrelated classes, and a union of unrelated classes would
 also have no base to subclass, which is what the two generated classes that
@@ -24,26 +24,26 @@ subclass a split root need.
 
 What that makes unconstructible, and why it is a different claim from a check:
 
-* A field an arm forbids is typed ``None`` on that arm, so
+* A field an branch forbids is typed ``None`` on that branch, so
   ``CreateMediaBuyRequestCommittedProposalExecution(packages=[...])`` is a type
   error before anything runs. It is declared rather than omitted because the
   base declares it: omitting it on the subclass would inherit the base's
   permissive annotation.
-* An arm's required field is required on that arm's class, so omitting it is a
+* An branch's required field is required on that branch's class, so omitting it is a
   missing argument rather than a validator's refusal.
 
-What stays a check, named rather than implied: everything in an arm's condition
+What stays a check, named rather than implied: everything in an branch's condition
 that is not requiredness or absence -- a const one level down, an overlay on an
-array's items, a value bound. Those are compiled onto the arm's own class by
+array's items, a value bound. Those are compiled onto the branch's own class by
 ``scripts/compile_conditions.py``, so the refusal still arrives from the class
 the caller named, but it arrives at validation rather than at type-check time.
 
-Nothing here invents an identifier. Arm names come from
-``scripts/union_arm_names.py``'s rungs over the same ``Arm`` records, and the
+Nothing here invents an identifier. Branch names come from
+``scripts/union_branch_names.py``'s rungs over the same ``Branch`` records, and the
 shared base is the root's name plus ``Shape``.
 
 The base is PUBLIC, and its visibility FOLLOWS its root's: a shape is exported
-exactly when some public name resolves to the union over its arms, which is
+exactly when some public name resolves to the union over its branches, which is
 five of the eleven today. ``adcp.types`` never exported the other six roots, so
 a consumer cannot name those roots either. ``tests/test_branch_classes.py``
 asserts that as a set equality in both directions, which is how two errors in a
@@ -76,9 +76,9 @@ try:
         Undeclarable,
         ValueConst,
         ValueType,
-        arm_conditions,
+        branch_conditions,
     )
-    from union_arm_names import branch_class_names
+    from union_branch_names import branch_class_names
 except ModuleNotFoundError:  # Imported as ``scripts.branch_classes`` in tests.
     from scripts.compile_conditions import (  # type: ignore[assignment]
         ROOT_CONSTRAINT_VALIDATOR,
@@ -97,9 +97,9 @@ except ModuleNotFoundError:  # Imported as ``scripts.branch_classes`` in tests.
         Undeclarable,
         ValueConst,
         ValueType,
-        arm_conditions,
+        branch_conditions,
     )
-    from scripts.union_arm_names import branch_class_names  # type: ignore[assignment]
+    from scripts.union_branch_names import branch_class_names  # type: ignore[assignment]
 
 __all__ = [
     "BranchPlan",
@@ -112,13 +112,13 @@ __all__ = [
 
 @dataclass(frozen=True)
 class BranchPlan:
-    """What one arm becomes: a field set, a requiredness, and what is left over."""
+    """What one branch becomes: a field set, a requiredness, and what is left over."""
 
     name: str
     title: str | None
     pointer: str
     absent: frozenset[str]
-    """Names this arm forbids whose position the schema does NOT permit null at."""
+    """Names this branch forbids whose position the schema does NOT permit null at."""
 
     absent_nullable: frozenset[str]
     """Names it forbids at a position where a null survives to the document."""
@@ -131,7 +131,7 @@ class BranchPlan:
 def _conjunction(operands: list[Cond]) -> Cond:
     """The conjunction of what is left, without a one-element ``AllOf``."""
     if not operands:
-        return Restated("arm")
+        return Restated("branch")
     return operands[0] if len(operands) == 1 else AllOf(tuple(operands))
 
 
@@ -167,7 +167,7 @@ def _absent_names(leaf: Cond) -> tuple[Supplied, ...] | None:
         isinstance(operand, Supplied) for operand in inner.operands
     ):
         # ``not: {required: [a, b]}`` bans the PAIR, not either name. It becomes
-        # an absence only where the arm already requires one of them, which the
+        # an absence only where the branch already requires one of them, which the
         # caller resolves; here it is left to the residual check.
         return None
     return None
@@ -225,20 +225,20 @@ def _value_has_type(value: Any, names: tuple[str, ...]) -> bool:
 def plan_branches(
     constraints: RootConstraints, parent: str, schema_file: str, fields: frozenset[str]
 ) -> tuple[BranchPlan, ...]:
-    """What each arm becomes, from the records and nothing else.
+    """What each branch becomes, from the records and nothing else.
 
     ``fields`` are the attribute names the flat class declares, so a predicate
     naming a key no field holds stays in the residual check rather than being
     read as a field to drop.
     """
-    names = branch_class_names(parent, constraints.arms, schema_file)
+    names = branch_class_names(parent, constraints.branches, schema_file)
     plans: list[BranchPlan] = []
-    for arm, name, condition in zip(
-        constraints.arms, names, arm_conditions(constraints), strict=True
+    for branch, name, condition in zip(
+        constraints.branches, names, branch_conditions(constraints), strict=True
     ):
         absent: set[str] = set()
         absent_nullable: set[str] = set()
-        required: set[str] = set(arm.required)
+        required: set[str] = set(branch.required)
         literals: dict[str, Any] = {}
         residual: list[Cond] = []
         for leaf in _conjuncts(condition):
@@ -251,7 +251,7 @@ def plan_branches(
                 required.add(leaf.name)
                 continue
             if isinstance(leaf, Undeclarable):
-                # False of every instance, so an arm carrying it positively is
+                # False of every instance, so an branch carrying it positively is
                 # dead and the emitter must not pretend otherwise.
                 residual.append(leaf)
                 continue
@@ -266,8 +266,8 @@ def plan_branches(
         plans.append(
             BranchPlan(
                 name=name,
-                title=arm.title,
-                pointer=arm.pointer,
+                title=branch.title,
+                pointer=branch.pointer,
                 absent=frozenset(absent - required),
                 absent_nullable=frozenset(absent_nullable - required),
                 required=frozenset(required),
@@ -279,7 +279,7 @@ def plan_branches(
 
 
 # --------------------------------------------------------------------------- #
-# Rendering: the flat class's statements, per arm
+# Rendering: the flat class's statements, per branch
 # --------------------------------------------------------------------------- #
 
 
@@ -408,7 +408,7 @@ def render_branch_models(branch_names: Sequence[str], combinator: str) -> list[s
     function. Two bugs were found in that function while it was still one copy.
 
     Both emitters call this one renderer. The branch emitter compiles a split
-    root's branches out of the schema's arms; the response emitter adopts the
+    root's branches out of the schema's branches; the response emitter adopts the
     numbered classes ``datamodel-code-generator`` already wrote for a root the
     pre-pass leaves combined. The two arrive at a base and its subclasses by
     different routes and declare them in the same words.
@@ -448,13 +448,13 @@ def _render_base(
     branches (29 on ``create-media-buy-request``, 17 on ``creative-asset``, 2 on
     the smallest), and eight of the eleven have branches that constrain NO
     property at all -- they differ only in which fields they require and which
-    they forbid. So the faithful rendering is one base and a subclass per arm;
+    they forbid. So the faithful rendering is one base and a subclass per branch;
     a union of unrelated classes would say the branches are different types,
     which the schema does not say anywhere in this population.
 
     The body is copied verbatim, so every earlier pass's field metadata,
     validator and config lands on the base and is inherited once rather than
-    repeated per arm.
+    repeated per branch.
     """
     # The mixin is listed FIRST so its __get_pydantic_core_schema__ wins over
     # BaseModel's. model_config merges right-to-left with the right-most base
@@ -464,10 +464,10 @@ def _render_base(
     members = "\n".join(f"    ``{name}``" for name in branch_names)
     lines = [
         f"class {_base_name(flat_class)}({bases}):",
-        f'    """What every arm of {schema_file} shares.',
+        f'    """What every branch of {schema_file} shares.',
         "",
-        "    The root's own properties and requiredness. Each arm subclasses this",
-        "    and states only what it changes, so the arms are one type with",
+        "    The root's own properties and requiredness. Each branch subclasses this",
+        "    and states only what it changes, so the branches are one type with",
         "    different requiredness rather than unrelated classes:",
         "",
         members,
@@ -488,9 +488,9 @@ def _render_base(
             continue  # the flat class's own docstring, replaced above
         if isinstance(statement, ast.FunctionDef) and statement.name == ROOT_CONSTRAINT_VALIDATOR:
             # A compiled check over the WHOLE combinator, left by an earlier run
-            # of the constraint pass. On the base it would re-ask of every arm
-            # what the arm's own shape answers, and its return annotation would
-            # name the union. Each arm's residual check is emitted below instead.
+            # of the constraint pass. On the base it would re-ask of every branch
+            # what the branch's own shape answers, and its return annotation would
+            # name the union. Each branch's residual check is emitted below instead.
             continue
         lines.extend(
             f"    {line}" if line.strip() else ""
@@ -504,12 +504,12 @@ def _render_base(
 
 
 def _render_branch(plan: BranchPlan, flat: ast.ClassDef, flat_class: str, schema_file: str) -> str:
-    """One arm: only what it changes about the base.
+    """One branch: only what it changes about the base.
 
     A required field is redeclared without its default, a pinned field as the
-    ``Literal`` the arm pins it to, and a forbidden field as ``None`` -- which
+    ``Literal`` the branch pins it to, and a forbidden field as ``None`` -- which
     is what makes passing it a type error rather than a validator's refusal.
-    Everything else is inherited, so the arm's class says exactly what the arm
+    Everything else is inherited, so the branch's class says exactly what the branch
     says and nothing more.
     """
     declared = {
@@ -519,12 +519,12 @@ def _render_branch(plan: BranchPlan, flat: ast.ClassDef, flat_class: str, schema
         for name in (_field_name(statement),)
         if name is not None
     }
-    heading = plan.title or f"The {plan.pointer} arm"
+    heading = plan.title or f"The {plan.pointer} branch"
     lines = [
         f"class {plan.name}({_base_name(flat_class)}):",
         f'    """{heading}.',
         "",
-        f"    One arm of {schema_file}, stated as a shape: {plan.pointer} requires",
+        f"    One branch of {schema_file}, stated as a shape: {plan.pointer} requires",
         "    what it declares below without a default, and types what it forbids",
         "    as ``None``.",
         '    """',
@@ -550,7 +550,7 @@ def _render_branch(plan: BranchPlan, flat: ast.ClassDef, flat_class: str, schema
 
 
 def _render_field(statement: ast.AnnAssign, plan: BranchPlan) -> str:
-    """One field statement, re-annotated for this arm."""
+    """One field statement, re-annotated for this branch."""
     name = _field_name(statement)
     annotation = statement.annotation
     value = statement.value
@@ -565,13 +565,13 @@ def _render_field(statement: ast.AnnAssign, plan: BranchPlan) -> str:
 
 
 def render_absence_hook(plan: BranchPlan) -> str:
-    """The arm's forbidden keys, refused on the document as sent.
+    """The branch's forbidden keys, refused on the document as sent.
 
     Absence is a type at CONSTRUCTION -- the field is not on the class, so the
     keyword argument does not exist -- and it is this hook at WIRE VALIDATION,
     because a model configured ``extra='allow'`` would otherwise file the key
     under extras and accept a document its schema refuses. The design names
-    this as the one place the type system alone cannot carry an arm's content:
+    this as the one place the type system alone cannot carry an branch's content:
     the type system does not see raw documents.
     """
     if not (plan.absent or plan.absent_nullable):
@@ -587,10 +587,10 @@ def render_absence_hook(plan: BranchPlan) -> str:
             "    @model_validator(mode='before')",
             "    @classmethod",
             "    def _refuse_keys_this_shape_forbids(cls, data: Any) -> Any:",
-            "        # The fields this arm forbids are typed None above, which is what",
+            "        # The fields this branch forbids are typed None above, which is what",
             "        # makes the combination a type error. A raw document still needs",
             "        # this: extra='allow' files an undeclared key under extras and",
-            "        # accepts, and a declared one would arrive as a None the arm does",
+            "        # accepts, and a declared one would arrive as a None the branch does",
             "        # not forbid at a nullable position.",
             "        return _c.absent(",
             "            data, sorted(cls._ABSENT), sorted(cls._ABSENT_NULLABLE)",
@@ -600,10 +600,10 @@ def render_absence_hook(plan: BranchPlan) -> str:
 
 
 def _render_validator(plan: BranchPlan, schema_file: str, combinator: str) -> str:
-    """The arm's residual check, or the empty string when nothing is left.
+    """The branch's residual check, or the empty string when nothing is left.
 
     The refusal names the root combinator, because that is the keyword a
-    consumer puts in ``error.issues[].keyword`` -- the arm's residual is part of
+    consumer puts in ``error.issues[].keyword`` -- the branch's residual is part of
     what the root's ``anyOf``/``oneOf`` states. A bare ``ValueError`` arrives as
     ``value_error``, names no keyword, and ``core/error.json`` requires one; a
     seller reported exactly that reaching the wire for ``core/creative-asset``,
@@ -613,7 +613,7 @@ def _render_validator(plan: BranchPlan, schema_file: str, combinator: str) -> st
     if predicate == "True":
         return ""
     refusal = (
-        f"{plan.name} violates what {schema_file} states for its {plan.pointer} arm "
+        f"{plan.name} violates what {schema_file} states for its {plan.pointer} branch "
         f"beyond the fields it requires and forbids"
     )
     return "\n".join(
@@ -621,7 +621,7 @@ def _render_validator(plan: BranchPlan, schema_file: str, combinator: str) -> st
             "",
             "    @model_validator(mode='after')",
             f"    def {ROOT_CONSTRAINT_VALIDATOR}(self) -> {plan.name}:",
-            f"        # Compiled from {schema_file} {plan.pointer}: what this arm states",
+            f"        # Compiled from {schema_file} {plan.pointer}: what this branch states",
             "        # that its field set cannot carry -- a value one level down, an",
             "        # overlay on an array's items, a bound. Requiredness and absence",
             "        # are the class's own shape and are not re-checked here.",
@@ -641,7 +641,7 @@ def split_into_branch_classes(
     schema_file: str,
     fields: frozenset[str],
 ) -> str | None:
-    """Rewrite a module's flat root class into one class per arm plus a union.
+    """Rewrite a module's flat root class into one class per branch plus a union.
 
     ``None`` when the module does not hold the flat class as a plain class
     statement, which is the one shape this rewrite understands.
@@ -718,9 +718,9 @@ def split_into_branch_classes(
     return "".join(lines[:start]) + replaced + "".join(lines[end:])
 
 
-def arm_names(constraints: RootConstraints, parent: str, schema_file: str) -> Sequence[str]:
+def branch_names(constraints: RootConstraints, parent: str, schema_file: str) -> Sequence[str]:
     """The class names this module would emit, without rendering anything."""
-    return branch_class_names(parent, constraints.arms, schema_file)
+    return branch_class_names(parent, constraints.branches, schema_file)
 
 
 def repoint_subclasses_of(source: str, flat_class: str) -> str | None:
@@ -737,7 +737,7 @@ def repoint_subclasses_of(source: str, flat_class: str) -> str | None:
     The subclass is NOT a member of the union afterwards, and that is the honest
     reading: it is a different shape, with its own fields, and a consumer
     annotating the union never meant to accept it. What it does get is the
-    fields every arm shares, which is what it was reaching for by subclassing
+    fields every branch shares, which is what it was reaching for by subclassing
     the flat class.
     """
     base = _base_name(flat_class)

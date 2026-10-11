@@ -23,7 +23,7 @@ _ALLOWED_DIVERGENCES: dict[str, dict[str, str]] = json.loads(
 def _pydantic_accepts(model: Any, payload: dict[str, Any]) -> bool:
     """Whether the public name accepts the document, however it is shaped.
 
-    A root whose arms partition is a union over branch classes, which has no
+    A root whose branches partition is a union over branch classes, which has no
     ``model_validate`` of its own -- parsing a union is what a ``TypeAdapter``
     is for. Reaching for ``model_validate`` unconditionally is what stopped this
     whole module from COLLECTING, which left the series with no acceptance gate
@@ -93,9 +93,9 @@ def test_high_risk_behavioral_extension_has_targeted_runtime_validator() -> None
 
 
 #: The generated validator whose completeness this module grades. The
-#: post-processor emits it for a schema root whose ``anyOf``/``oneOf`` arms all
+#: post-processor emits it for a schema root whose ``anyOf``/``oneOf`` branches all
 #: declare ``required`` (``_root_required_groups`` in
-#: ``scripts/post_generate_fixes.py``), and it checks only that one arm's
+#: ``scripts/post_generate_fixes.py``), and it checks only that one branch's
 #: ``required`` names are present. A root conditional (``if``/``then``/``else``)
 #: gets no such validator, which is why ``get_signals`` is outside this
 #: population and its declared divergences are not graded here.
@@ -103,15 +103,15 @@ _REQUIRED_GROUP_VALIDATOR = "_require_schema_required_group"
 
 
 def _carries_required_group_validator(model: Any) -> bool:
-    """Whether the generator made this root refuse a document satisfying no arm.
+    """Whether the generator made this root refuse a document satisfying no branch.
 
     Two shapes answer yes, and the question is the same for both: does the
     generated model carry the root's combinator at all?
 
     * a flat root carries the compiled validator;
-    * a SPLIT root carries it as the arms' own shapes -- each arm requires what
-      its arm requires and types what it forbids as ``None``, and the residual
-      conditions are compiled onto each arm. So the refusal is there, it just
+    * a SPLIT root carries it as the branches' own shapes -- each branch requires what
+      its branch requires and types what it forbids as ``None``, and the residual
+      conditions are compiled onto each branch. So the refusal is there, it just
       is not spelled as one validator on one class.
 
     Asking only the first question excluded every split root from the population
@@ -124,21 +124,22 @@ def _carries_required_group_validator(model: Any) -> bool:
     if members:
         return all(
             _REQUIRED_GROUP_VALIDATOR in member.__pydantic_decorators__.model_validators
-            or _arm_shape_refuses(member)
+            or _branch_shape_refuses(member)
             for member in members
         )
     return _REQUIRED_GROUP_VALIDATOR in model.__pydantic_decorators__.model_validators
 
 
-def _arm_shape_refuses(arm: type[BaseModel]) -> bool:
-    """Whether an arm's own shape is what refuses a foreign document.
+def _branch_shape_refuses(branch: type[BaseModel]) -> bool:
+    """Whether an branch's own shape is what refuses a foreign document.
 
-    An arm requires at least one field with no default, or types at least one
-    field ``None`` to forbid it. Either makes a document from another arm
+    An branch requires at least one field with no default, or types at least one
+    field ``None`` to forbid it. Either makes a document from another branch
     unacceptable to this class without any validator running.
     """
     return any(
-        field.is_required() or field.annotation is type(None) for field in arm.model_fields.values()
+        field.is_required() or field.annotation is type(None)
+        for field in branch.model_fields.values()
     )
 
 
@@ -174,9 +175,9 @@ def test_emitted_required_group_validator_refuses_what_the_schema_refuses(
     """The emitted validator must be the whole root constraint, not part of it.
 
     ``enforce_root_required_groups`` states that a presence check over each
-    arm's ``required`` names "is the whole constraint for ``anyOf``". Where an
-    arm also carries ``not``, a nested ``allOf`` or a discriminating ``const``,
-    it is not: the model then accepts a document satisfying no arm of its own
+    branch's ``required`` names "is the whole constraint for ``anyOf``". Where an
+    branch also carries ``not``, a nested ``allOf`` or a discriminating ``const``,
+    it is not: the model then accepts a document satisfying no branch of its own
     schema, and ``model_validate`` is what a caller reads as the contract.
 
     Both verdicts are computed here rather than read off the fixture, and this

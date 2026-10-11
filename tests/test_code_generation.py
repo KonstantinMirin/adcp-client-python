@@ -108,7 +108,13 @@ def test_restore_principal_result_aliases_uses_kind_discriminators(tmp_path, mon
 
 
 def test_disambiguate_comply_response_arm_renames_class_and_references(tmp_path, monkeypatch):
-    """Fresh codegen output cannot add a generic public Arm collision."""
+    """Fresh codegen output cannot add a generic public ``Arm`` collision.
+
+    ``Arm`` keeps its name here while the rest of the constraint vocabulary
+    says "branch": the compliance response declares an ``arm`` PROPERTY, so
+    this enum is named after a wire field rather than after a combinator's
+    branch, and ``ComplyResponseArm`` is a generated public class.
+    """
     from scripts import post_generate_fixes
 
     compliance_dir = tmp_path / "compliance"
@@ -530,7 +536,7 @@ def test_nested_format_discriminator_drops_only_codegen_ambiguous_outer_hint():
     assert items["oneOf"][0]["properties"]["item_type"]["const"] == "individual"
 
 
-def test_audience_evidence_attestation_subject_uses_narrowed_resource_arm():
+def test_audience_evidence_attestation_subject_uses_narrowed_resource_branch():
     """The allOf-constrained evidence subject must build a valid Pydantic schema."""
     from adcp.types.domains.core.audience_evidence import AttestationRef
 
@@ -543,7 +549,7 @@ def test_audience_evidence_attestation_subject_uses_narrowed_resource_arm():
 
 
 def test_post_generate_legacy_purchase_losses_are_always_an_array(tmp_path, monkeypatch):
-    """The schema's negated empty array must not become an empty object arm."""
+    """The schema's negated empty array must not become an empty object branch."""
     from scripts import post_generate_fixes
 
     generated_dir = tmp_path / "domains"
@@ -802,7 +808,7 @@ def test_list_creatives_merged_model_restores_xor_and_legacy_aliases(tmp_path, m
     fixed = target.read_text()
     assert "def _validate_format_reference_xor(self) -> Creative:" in fixed
     assert "Creatives = Creative\nCreatives1 = Creative" in fixed
-    # The record's schema states the rule as a ``oneOf`` whose arms forbid each
+    # The record's schema states the rule as a ``oneOf`` whose branches forbid each
     # other, so that is the keyword the refusal names. A bare ``ValueError``
     # reaches the consumer as ``value_error`` and names no keyword at all.
     assert "from pydantic_core import PydanticCustomError" in fixed
@@ -915,7 +921,7 @@ def test_post_generate_restores_combined_get_products_field_enum(tmp_path, monke
 
 
 @pytest.mark.parametrize("catalog_field", ["properties", "placements", "collections", "signals"])
-def test_generated_adagents_rejects_null_required_catalog_arm(catalog_field):
+def test_generated_adagents_rejects_null_required_catalog_branch(catalog_field):
     from pydantic import TypeAdapter, ValidationError
 
     from adcp.types.domains.adagents import AdcpAgentsAuthorization
@@ -951,7 +957,7 @@ def test_post_generate_injects_postal_pairing_validator_idempotently(tmp_path, m
     assert "'US': ('zip', 'zip_plus_four')" in fixed
 
 
-def test_post_generate_prefers_legacy_postal_union_arm_idempotently(tmp_path, monkeypatch):
+def test_post_generate_prefers_legacy_postal_union_branch_idempotently(tmp_path, monkeypatch):
     from scripts import post_generate_fixes
 
     generated_dir = tmp_path / "domains"
@@ -965,8 +971,8 @@ def test_post_generate_prefers_legacy_postal_union_arm_idempotently(tmp_path, mo
     )
     monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", generated_dir)
 
-    post_generate_fixes.fix_postal_union_arm_order()
-    post_generate_fixes.fix_postal_union_arm_order()
+    post_generate_fixes.fix_postal_union_branch_order()
+    post_generate_fixes.fix_postal_union_branch_order()
 
     fixed = target.read_text()
     assert "PostalArea1 | PostalArea2" not in fixed
@@ -1038,7 +1044,7 @@ def test_unwrap_rootmodel_unions_keeps_value_roots_wrapped(tmp_path, monkeypatch
     assert target.read_text() == source
 
 
-def test_unwrap_rootmodel_unions_keeps_arms_of_a_discriminated_union(tmp_path, monkeypatch):
+def test_unwrap_rootmodel_unions_keeps_branches_of_a_discriminated_union(tmp_path, monkeypatch):
     """A wrapper the parent's discriminator maps a tag to keeps its wrapper.
 
     Both ``VastAsset`` shapes carry ``asset_type='vast'``, so inlining the union
@@ -1074,11 +1080,13 @@ def test_unwrap_rootmodel_unions_keeps_arms_of_a_discriminated_union(tmp_path, m
     assert "AssetVariant = Annotated[" in rewritten
 
 
-def test_unwrap_rootmodel_unions_keeps_an_arm_of_another_modules_field_union(tmp_path, monkeypatch):
-    """A composing root another module's smart union names as an arm keeps its wrapper.
+def test_unwrap_rootmodel_unions_keeps_an_branch_of_another_modules_field_union(
+    tmp_path, monkeypatch
+):
+    """A composing root another module's smart union names as an branch keeps its wrapper.
 
     ``creative_localization.assets`` is ``LocalizedCreativeAsset | Assets``; inlining
-    the root would let Pydantic's smart mode score its arms against ``Assets``
+    the root would let Pydantic's smart mode score its branches against ``Assets``
     directly and pick a different one for the same payload. A discriminated root
     is exempt (a nested tagged union is selected by its tag), and so is a root a
     union *root* composes — that flattening predates this pass.
@@ -1159,7 +1167,7 @@ def test_unwrap_rootmodel_unions_subclasses_a_single_model_root(tmp_path, monkey
 
 
 def test_unwrap_rootmodel_unions_keeps_a_root_with_a_validator(tmp_path, monkeypatch):
-    """The wrapper is the only place a cross-arm validator can live."""
+    """The wrapper is the only place a cross-branch validator can live."""
     from scripts import post_generate_fixes
 
     generated_dir = tmp_path / "domains"
@@ -1183,11 +1191,11 @@ def test_unwrap_rootmodel_unions_keeps_a_root_with_a_validator(tmp_path, monkeyp
 
 
 def test_discriminated_union_roots_report_one_tag_error():
-    """A union the schema discriminates reports the tag, not every arm.
+    """A union the schema discriminates reports the tag, not every branch.
 
     ``core/deployment.json`` and ``media-buy/list-products-response.json`` both
     declare ``discriminator``. An unwrap that drops it turns one
-    ``union_tag_invalid`` into one error per arm per mismatched field.
+    ``union_tag_invalid`` into one error per branch per mismatched field.
     """
     import pytest
     from pydantic import TypeAdapter, ValidationError
@@ -1205,8 +1213,8 @@ def test_discriminated_union_roots_report_one_tag_error():
         assert [error["type"] for error in errors] == ["union_tag_invalid"], errors
 
 
-def test_account_reference_arms_are_reachable_through_the_alias():
-    """The union alias exposes its arms wherever a field references it."""
+def test_account_reference_branches_are_reachable_through_the_alias():
+    """The union alias exposes its branches wherever a field references it."""
     import types as builtin_types
 
     from adcp.types import AccountReference, AccountReferenceById
@@ -1224,8 +1232,8 @@ def test_product_change_map_uses_valid_constrained_string_key_type():
     assert schema["propertyNames"]["minLength"] == 1
 
 
-def test_protocol_envelope_import_restored_for_response_arms():
-    """Response arms that inherit ProtocolEnvelope must keep the import."""
+def test_protocol_envelope_import_restored_for_response_branches():
+    """Response branches that inherit ProtocolEnvelope must keep the import."""
     from scripts.post_generate_fixes import _sync_protocol_envelope_import
 
     source = (
@@ -1300,7 +1308,7 @@ def test_consolidated_export_timestamp_is_stable_when_content_is_unchanged():
     )
 
 
-def test_semantic_response_aliases_resolve_to_concrete_generated_arms():
+def test_semantic_response_aliases_resolve_to_concrete_generated_branches():
     """Semantic aliases must not fall back to the whole response union."""
     from importlib import import_module
 
@@ -1352,8 +1360,8 @@ def test_semantic_response_aliases_resolve_to_concrete_generated_arms():
         assert alias is expected, f"{alias_name} no longer points at {module_name}.{class_name}"
 
 
-def test_sync_creatives_response_arm_matches_schema_creative_fields():
-    """sync_creatives response arm must expose every schema Creative field."""
+def test_sync_creatives_response_branch_matches_schema_creative_fields():
+    """sync_creatives response branch must expose every schema Creative field."""
     import json
     from pathlib import Path
 
@@ -1388,7 +1396,7 @@ def test_sync_creatives_response_arm_matches_schema_creative_fields():
             Creative.model_validate(payload)
 
 
-def test_sync_creatives_response_arm_accepts_submitted_response():
+def test_sync_creatives_response_branch_accepts_submitted_response():
     """sync_creatives schema includes a submitted async response branch."""
     from pydantic import TypeAdapter
 
@@ -1410,8 +1418,8 @@ def test_sync_creatives_response_arm_accepts_submitted_response():
     assert response.task_id == "task_123"
 
 
-def test_schema_derived_response_arms_preserve_nested_validation():
-    """Schema-derived response arms should not widen structured fields to Any."""
+def test_schema_derived_response_branches_preserve_nested_validation():
+    """Schema-derived response branches should not widen structured fields to Any."""
     from datetime import date
 
     import pytest
@@ -1493,10 +1501,10 @@ def test_schema_derived_response_arms_preserve_nested_validation():
 # both of which read the public model rather than a string in a generated file.
 
 
-def test_post_generate_sync_creatives_response_arms_match_schema_creative_fields(
+def test_post_generate_sync_creatives_response_branches_match_schema_creative_fields(
     tmp_path, monkeypatch
 ):
-    """The post-generation response arms must stay aligned with the schema."""
+    """The post-generation response branches must stay aligned with the schema."""
     import ast
     import json
     from pathlib import Path
@@ -2162,11 +2170,11 @@ def test_post_generate_required_nullable_field_stays_required_and_nullable(tmp_p
     schema_path = (
         Path("schemas") / "cache" / bundle_key / "media-buy" / "create-media-buy-response.json"
     )
-    success_arm = json.loads(schema_path.read_text())["oneOf"][0]
+    success_branch = json.loads(schema_path.read_text())["oneOf"][0]
     # Guard the premise: the fix is only meaningful while the schema keeps
     # declaring confirmed_at as required-and-nullable.
-    assert "confirmed_at" in success_arm["required"]
-    assert "null" in success_arm["properties"]["confirmed_at"]["type"]
+    assert "confirmed_at" in success_branch["required"]
+    assert "null" in success_branch["properties"]["confirmed_at"]["type"]
 
     module = ast.parse(generated_source)
     success_class = next(
@@ -2220,14 +2228,14 @@ def test_generated_create_media_buy_success_matches_schema_nullability():
     assert confirmed_at.value is None
 
 
-def _write_response_arm_fixture(
+def _write_response_branch_fixture(
     tmp_path,
     monkeypatch,
     *,
     root_all_of: list[dict],
-    arms: list[dict],
+    branches: list[dict],
 ):
-    """Drive the response-arm emitter over a synthetic account response schema.
+    """Drive the response-branch emitter over a synthetic account response schema.
 
     Only ``account/sync-accounts-response.json`` is materialized, so every other
     entry in ``response_specs`` is skipped for missing schema/target.
@@ -2257,7 +2265,7 @@ def _write_response_arm_fixture(
                 "title": "Sync Accounts Response",
                 "type": "object",
                 "allOf": root_all_of,
-                "oneOf": arms,
+                "oneOf": branches,
             }
         )
     )
@@ -2274,7 +2282,7 @@ def _write_response_arm_fixture(
     return source
 
 
-def _arm_bases(source: str, class_name: str) -> list[str]:
+def _branch_bases(source: str, class_name: str) -> list[str]:
     import ast
 
     node = next(
@@ -2314,62 +2322,62 @@ _SUBMITTED_ARM = {
     ],
     ids=["relative", "root-relative", "canonical-url"],
 )
-def test_root_all_of_protocol_envelope_reaches_every_one_of_arm(
+def test_root_all_of_protocol_envelope_reaches_every_one_of_branch(
     tmp_path, monkeypatch, protocol_envelope_ref
 ):
-    """A root ``allOf`` applies to the whole document, so every arm inherits it.
+    """A root ``allOf`` applies to the whole document, so every branch inherits it.
 
-    Regression test for #1136: only the ``status: submitted`` arm used to pick
+    Regression test for #1136: only the ``status: submitted`` branch used to pick
     up ``ProtocolEnvelope``, leaving ``status``/``replayed``/``task_id`` untyped
-    on the success and error arms of the same response.
+    on the success and error branches of the same response.
     """
-    source = _write_response_arm_fixture(
+    source = _write_response_branch_fixture(
         tmp_path,
         monkeypatch,
         root_all_of=[
             {"$ref": "../core/version-envelope.json"},
             {"$ref": protocol_envelope_ref},
         ],
-        arms=[_SUCCESS_ARM, _ERROR_ARM],
+        branches=[_SUCCESS_ARM, _ERROR_ARM],
     )
 
     assert "from ..core.protocol_envelope import ProtocolEnvelope" in source
     for class_name in ("SyncAccountsResponse1", "SyncAccountsResponse2"):
-        assert _arm_bases(source, class_name) == ["AdcpVersionEnvelope", "ProtocolEnvelope"]
+        assert _branch_bases(source, class_name) == ["AdcpVersionEnvelope", "ProtocolEnvelope"]
 
 
 def test_nested_root_all_of_protocol_envelope_is_detected(tmp_path, monkeypatch):
     """The root ``allOf`` walk descends into nested ``allOf`` groupings."""
-    source = _write_response_arm_fixture(
+    source = _write_response_branch_fixture(
         tmp_path,
         monkeypatch,
         root_all_of=[
             {"allOf": [{"$ref": "../core/protocol-envelope.json"}]},
         ],
-        arms=[_SUCCESS_ARM, _ERROR_ARM],
+        branches=[_SUCCESS_ARM, _ERROR_ARM],
     )
 
     for class_name in ("SyncAccountsResponse1", "SyncAccountsResponse2"):
-        assert _arm_bases(source, class_name) == ["AdcpVersionEnvelope", "ProtocolEnvelope"]
+        assert _branch_bases(source, class_name) == ["AdcpVersionEnvelope", "ProtocolEnvelope"]
 
 
-def test_arms_keep_version_envelope_only_without_root_protocol_envelope(tmp_path, monkeypatch):
+def test_branches_keep_version_envelope_only_without_root_protocol_envelope(tmp_path, monkeypatch):
     """The base is attached from the root schema, not sprayed unconditionally.
 
     A response whose root does not compose the protocol envelope keeps the
-    plain version envelope on its ordinary arms; the ``submitted`` arm still
+    plain version envelope on its ordinary branches; the ``submitted`` branch still
     gets ``ProtocolEnvelope`` from its own task-envelope shape.
     """
-    source = _write_response_arm_fixture(
+    source = _write_response_branch_fixture(
         tmp_path,
         monkeypatch,
         root_all_of=[{"$ref": "../core/version-envelope.json"}],
-        arms=[_SUCCESS_ARM, _ERROR_ARM, _SUBMITTED_ARM],
+        branches=[_SUCCESS_ARM, _ERROR_ARM, _SUBMITTED_ARM],
     )
 
-    assert _arm_bases(source, "SyncAccountsResponse1") == ["AdcpVersionEnvelope"]
-    assert _arm_bases(source, "SyncAccountsResponse2") == ["AdcpVersionEnvelope"]
-    assert _arm_bases(source, "SyncAccountsResponse3") == [
+    assert _branch_bases(source, "SyncAccountsResponse1") == ["AdcpVersionEnvelope"]
+    assert _branch_bases(source, "SyncAccountsResponse2") == ["AdcpVersionEnvelope"]
+    assert _branch_bases(source, "SyncAccountsResponse3") == [
         "AdcpVersionEnvelope",
         "ProtocolEnvelope",
     ]
@@ -2377,14 +2385,14 @@ def test_arms_keep_version_envelope_only_without_root_protocol_envelope(tmp_path
 
 def test_unrelated_root_all_of_ref_does_not_attach_protocol_envelope(tmp_path, monkeypatch):
     """Only ``core/protocol-envelope.json`` counts — not any ``core`` ref."""
-    source = _write_response_arm_fixture(
+    source = _write_response_branch_fixture(
         tmp_path,
         monkeypatch,
         root_all_of=[{"$ref": "../core/push-notification-config.json"}],
-        arms=[_SUCCESS_ARM],
+        branches=[_SUCCESS_ARM],
     )
 
-    assert _arm_bases(source, "SyncAccountsResponse1") == ["AdcpVersionEnvelope"]
+    assert _branch_bases(source, "SyncAccountsResponse1") == ["AdcpVersionEnvelope"]
     assert "from ..core.protocol_envelope import ProtocolEnvelope" not in source
 
 
@@ -2519,7 +2527,7 @@ def test_inline_structural_pointer_ref_rebases_same_document_fragments(tmp_path,
     assert schema == {"$ref": "/schemas/core/source.json#/$defs/shared"}
 
 
-def test_inline_structural_pointer_ref_merges_a_one_arm_all_of(tmp_path, monkeypatch):
+def test_inline_structural_pointer_ref_merges_a_one_branch_all_of(tmp_path, monkeypatch):
     """``allOf`` of one pointer merges in, keeping the selection's own keywords."""
     from scripts.generate_types import inline_structural_pointer_refs
 
@@ -2588,14 +2596,14 @@ def test_collapse_nullable_unions_rewrites_a_property_as_a_nullable_type():
     assert schema["properties"]["name"] == {"type": ["string", "null"], "minLength": 1}
 
 
-def test_collapse_nullable_unions_leaves_untyped_and_multi_arm_unions_alone():
-    """A ``$ref`` arm already yields ``T | None``; a three-arm union is not nullability."""
+def test_collapse_nullable_unions_leaves_untyped_and_multi_branch_unions_alone():
+    """A ``$ref`` branch already yields ``T | None``; a three-branch union is not nullability."""
     from scripts.generate_types import collapse_nullable_unions
 
-    ref_arm = {"anyOf": [{"$ref": "../core/thing.json"}, {"type": "null"}]}
-    three_arms = {"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "null"}]}
+    ref_branch = {"anyOf": [{"$ref": "../core/thing.json"}, {"type": "null"}]}
+    three_branches = {"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "null"}]}
     no_null = {"anyOf": [{"type": "string"}, {"type": "integer"}]}
-    schema = {"properties": {"a": ref_arm, "b": three_arms, "c": no_null}}
+    schema = {"properties": {"a": ref_branch, "b": three_branches, "c": no_null}}
     expected = copy.deepcopy(schema)
 
     collapse_nullable_unions(schema)
@@ -2671,12 +2679,12 @@ def _write_required_group_fixture(tmp_path, monkeypatch, schema, module_source):
     return target
 
 
-def test_root_constraint_validator_enforces_each_arm_in_full(tmp_path, monkeypatch):
-    """A root ``anyOf`` becomes a runtime check over each arm's WHOLE condition.
+def test_root_constraint_validator_enforces_each_branch_in_full(tmp_path, monkeypatch):
+    """A root ``anyOf`` becomes a runtime check over each branch's WHOLE condition.
 
-    Not over each arm's ``required`` names: this fixture's first arm also bans
+    Not over each branch's ``required`` names: this fixture's first branch also bans
     ``proposal_id``, and a check that read only the names accepted a document
-    carrying packages AND a proposal -- a document the arm it was credited to
+    carrying packages AND a proposal -- a document the branch it was credited to
     refuses. That reading is what this pass replaced.
     """
     from pydantic import ValidationError
@@ -2687,8 +2695,8 @@ def test_root_constraint_validator_enforces_each_arm_in_full(tmp_path, monkeypat
     fixed = target.read_text()
 
     assert "def _require_schema_required_group(self) -> BudgetPlan:" in fixed
-    # Each arm compiles to its own predicate, the arm's ``not`` included, and
-    # the arms' schema titles are the refusal's own words.
+    # Each branch compiles to its own predicate, the branch's ``not`` included, and
+    # the branches' schema titles are the refusal's own words.
     # ``sent`` is presence on the document that is SENT: every property this
     # fixture declares forbids null, so a null-valued key is dropped before the
     # request leaves and reading it as present would refuse a request no seller
@@ -2717,7 +2725,7 @@ def test_root_constraint_validator_enforces_each_arm_in_full(tmp_path, monkeypat
     # A partial group is not a group.
     with pytest.raises(ValidationError, match="at least one of these field groups"):
         model.model_validate({"account": "acct_1", "proposal_id": "prop_1"})
-    # And a document satisfying one arm's NAMES while violating its ``not`` is
+    # And a document satisfying one branch's NAMES while violating its ``not`` is
     # refused, which is the document the names-only reading accepted.
     with pytest.raises(ValidationError, match="at least one of these field groups"):
         model.model_validate({"account": "acct_1", "packages": ["pkg_1"], "proposal_id": "prop_1"})
@@ -2772,7 +2780,7 @@ def test_root_required_group_refusal_names_the_root_combinator(
 
     assert "from pydantic_core import PydanticCustomError" in fixed
     # Indentation is not the obligation: the compiled validator nests its
-    # raise inside the arm test, so the keyword is asserted without it.
+    # raise inside the branch test, so the keyword is asserted without it.
     assert re.search(rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", fixed), fixed
 
     namespace: dict[str, object] = {}
@@ -2794,7 +2802,7 @@ def test_root_required_group_refusal_names_the_root_combinator(
 def _root_combinator(schema: dict) -> tuple[str, object] | None:
     """The root combinator a schema declares, or ``None``.
 
-    Asks the constraint reader, which records which keyword the arms came from.
+    Asks the constraint reader, which records which keyword the branches came from.
     It replaced ``_root_required_groups``, whose return value this once read --
     the question is the same and the answer now comes from the whole of the
     root's content rather than from its ``required`` names alone.
@@ -2804,9 +2812,9 @@ def _root_combinator(schema: dict) -> tuple[str, object] | None:
     if not root_carries_constraints(schema):
         return None
     for combinator in ("anyOf", "oneOf"):
-        arms = schema.get(combinator)
-        if isinstance(arms, list) and arms:
-            return combinator, arms
+        branches = schema.get(combinator)
+        if isinstance(branches, list) and branches:
+            return combinator, branches
     return None
 
 
@@ -2814,7 +2822,7 @@ def _roots_declaring_a_required_group() -> dict[str, str]:
     """``{root class: combinator}`` for every root the reader can grade.
 
     Derived from the bundle: a root declaring an ``anyOf``/``oneOf`` whose every
-    arm carries ``required``, whose generated module exists, and whose shape the
+    branch carries ``required``, whose generated module exists, and whose shape the
     reader can read. Those are exactly the roots that must name their keyword,
     so the test's floor is this set rather than a number from a past release.
     """
@@ -2832,8 +2840,11 @@ def _roots_declaring_a_required_group() -> dict[str, str]:
         declared = _root_combinator(schema)
         if declared is None:
             continue
-        combinator, arms = declared
-        if not all(isinstance(arm, dict) and isinstance(arm.get("required"), list) for arm in arms):
+        combinator, branches = declared
+        if not all(
+            isinstance(branch, dict) and isinstance(branch.get("required"), list)
+            for branch in branches
+        ):
             continue
         module = post_generate_fixes.generated_module_for(relative)
         if not module.is_file():
@@ -2875,8 +2886,8 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
             continue
         source = module.read_text()
         # The class carrying the root's properties: the flat class, or the shared
-        # shape where the emitter split the root into arms. A split root's
-        # validator lives on each ARM rather than on one class, and each of
+        # shape where the emitter split the root into branches. A split root's
+        # validator lives on each BRANCH rather than on one class, and each of
         # those refusals has to name the keyword too -- which is why this asks
         # the module rather than one class name.
         class_name = post_generate_fixes._root_property_class(source, schema)
@@ -3001,10 +3012,10 @@ def test_schema_keyword_raise_refuses_a_keyword_outside_the_vocabulary():
         post_generate_fixes.schema_keyword_raise("mutuallyExclusive", "nope")
 
 
-def test_root_required_group_leaves_per_arm_models_alone(tmp_path, monkeypatch):
-    """A root the generator splits into arm classes keeps no root-wide check.
+def test_root_required_group_leaves_per_branch_models_alone(tmp_path, monkeypatch):
+    """A root the generator splits into branch classes keeps no root-wide check.
 
-    The arms ARE the types there, so their content is already enforced, and the
+    The branches ARE the types there, so their content is already enforced, and the
     union alias is not a class to attach a validator to. ``flat_root_shape``
     answers it: a root declaring no merged ``properties`` has no flat class.
     """

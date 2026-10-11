@@ -129,7 +129,7 @@ def coercion_target(cls: Any) -> tuple[Any, tuple[Any, ...]]:
     """What to patch for a type, and what has to be rebuilt afterwards.
 
     A name in the tables above can resolve to a union, because a root whose
-    schema arms partition is emitted as a shared base plus a class per arm.
+    schema branches partition is emitted as a shared base plus a class per branch.
     The derivation of what stands behind the name lives in
     ``adcp.types._split_root`` -- one owner, because the export consolidator and
     ``_forward_compat`` need the same fact.

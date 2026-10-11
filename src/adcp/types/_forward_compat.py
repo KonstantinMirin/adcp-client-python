@@ -175,8 +175,8 @@ if TYPE_CHECKING:
     class ControlMediaBuyRequest(_GeneratedControlMediaBuyRequest):
         reporting_webhook: ReportingWebhook | None = None
 
-    # One static view per arm, because the create request is a union: the field
-    # is patched onto the shared base at runtime, and every arm carries it, so
+    # One static view per branch, because the create request is a union: the field
+    # is patched onto the shared base at runtime, and every branch carries it, so
     # the static picture has to say that of each of them rather than of the
     # alias -- which cannot be subclassed.
     class CreateMediaBuyRequestExplicitPackagesWithFixedAllocation(_PublicCMBFixed):
@@ -252,7 +252,7 @@ def _manifest_readback_clone(
 
 def _normalize_readback_manifest(data: Any) -> Any:
     # Pydantic binds the generated validator proxy to a callable at runtime.
-    # The validator is declared on the shared base: the arms differ in which
+    # The validator is declared on the shared base: the branches differ in which
     # fields they require and forbid, not in how a manifest's assets normalize.
     normalize = cast(Callable[[Any], Any], shared_base(CreativeManifest)._coerce_standalone_assets)
     return normalize(data)
@@ -260,7 +260,7 @@ def _normalize_readback_manifest(data: Any) -> Any:
 
 _ReadbackCreativeManifest = _manifest_readback_clone(
     "_ReadbackCreativeManifest",
-    # The tolerant readback model is not one arm's shape -- it accepts a manifest
+    # The tolerant readback model is not one branch's shape -- it accepts a manifest
     # instance of either -- so it clones the base they share.
     shared_base(CreativeManifest),
     # No field override: ``format_kind`` is generated as ``str`` (see
@@ -290,7 +290,7 @@ _BuildReadbackCreative = _manifest_readback_clone(
     BuildCreative,
     {
         # This constraint is inside the optional union in the generated type,
-        # so it must stay on the non-None arm when replacing that annotation.
+        # so it must stay on the non-None branch when replacing that annotation.
         "variants": Annotated[GenericAlias(list, _BuildReadbackVariant), Field(min_length=1)]
         | None,
     },
@@ -355,10 +355,10 @@ def _validate_targeting_overlay(value: Any, handler: ValidatorFunctionWrapHandle
         return handler(value)
     except ValidationError as exc:
         # Raw request validation belongs to the Input schema. On failure the
-        # legacy arm repeats its errors, with synthetic class-name loc segments.
+        # legacy branch repeats its errors, with synthetic class-name loc segments.
         # Normalize at this field boundary so direct Pydantic errors, MCP, A2A,
         # and CLI all agree, including callers that never run error narrowing.
-        # Only remove the leading Input arm label; nested genuine unions retain
+        # Only remove the leading Input branch label; nested genuine unions retain
         # all of their locations and errors. Successful validation is unchanged.
         input_errors: list[InitErrorDetails] = []
         for error in exc.errors(include_url=False):
@@ -431,7 +431,7 @@ def _patch_targeting_overlay(model: type[BaseModel]) -> None:
     # Input first is essential: raw dicts keep their rc.3 mutation wrappers,
     # while existing resolved-state instances (including subclasses) retain
     # identity and internal fields without a lossy model_dump() conversion.
-    # The legacy arm is runtime-only: advertising it would widen and duplicate
+    # The legacy branch is runtime-only: advertising it would widen and duplicate
     # the mutation schema in model_json_schema() and MCP tools/list.
     _patch_model_field(
         model,
@@ -485,8 +485,8 @@ def _apply_forward_compat() -> None:
         ReportingWebhook.model_rebuild(force=True)
         # Rebuild after targeting patches too: eager parent validators must
         # capture both the reporting extension and patched package inputs.
-        # A split root contributes its base and every arm: the extension lands
-        # on the base, and an arm does not see it until the arm is rebuilt.
+        # A split root contributes its base and every branch: the extension lands
+        # on the base, and an branch does not see it until the branch is rebuilt.
         for request in (
             AcceptProposalRequest,
             BuyProductsRequest,
@@ -543,17 +543,17 @@ def _apply_forward_compat() -> None:
     # generated model. Preserve it across code generation until the schema
     # bundle catches up; negotiation must not silently discard this evidence.
     canonical_creatives_annotation: Any = bool | None
-    bundled_media_buy_features_arms = [
-        arm
-        for arm in get_args(BundledCapabilitiesMediaBuy.model_fields["features"].annotation)
-        if arm is not type(None)
+    bundled_media_buy_features_branches = [
+        branch
+        for branch in get_args(BundledCapabilitiesMediaBuy.model_fields["features"].annotation)
+        if branch is not type(None)
     ]
-    if len(bundled_media_buy_features_arms) != 1:
+    if len(bundled_media_buy_features_branches) != 1:
         raise RuntimeError(
             "forward compatibility: MediaBuy.features lost its concrete model "
-            f"(got {bundled_media_buy_features_arms!r})"
+            f"(got {bundled_media_buy_features_branches!r})"
         )
-    bundled_media_buy_features = bundled_media_buy_features_arms[0]
+    bundled_media_buy_features = bundled_media_buy_features_branches[0]
     for features_model in (MediaBuyFeatures, bundled_media_buy_features):
         features_model.model_fields["canonical_creatives"] = FieldInfo(
             annotation=canonical_creatives_annotation,

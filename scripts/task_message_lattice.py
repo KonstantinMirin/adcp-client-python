@@ -119,12 +119,12 @@ def module_top_level(tree: ast.Module) -> tuple[dict[str, ast.ClassDef], dict[st
     return classes, aliases
 
 
-def _alias_arms_expr(node: ast.expr) -> ast.expr:
+def _alias_branches_expr(node: ast.expr) -> ast.expr:
     """The type an alias names, with any ``Annotated[...]`` metadata dropped.
 
-    A composing root is emitted as ``Annotated[A | B, Field(...)]``, so the arms are
+    A composing root is emitted as ``Annotated[A | B, Field(...)]``, so the branches are
     the first subscript element and nothing else. Walking the whole expression reads
-    ``Annotated`` -- and the ``Field`` call beside it -- as union arms, and then fails
+    ``Annotated`` -- and the ``Field`` call beside it -- as union branches, and then fails
     closed on the first one because no module defines a class by that name.
     """
     while (
@@ -144,7 +144,7 @@ def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str
     """The class(es) a task message can validate into, in the module that defines them.
 
     A plain root is one class. A union root is a type alias, and the alias is not a class --
-    so the marker lands on each member arm, which is what makes
+    so the marker lands on each member branch, which is what makes
     ``isinstance(resp, AdcpResponse)`` hold for every value the task can answer with.
     Nested aliases are followed. Fails closed: a root that resolves to neither a class nor
     an alias, or an alias naming something this module does not define, is an error with
@@ -159,7 +159,9 @@ def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str
             f"class nor a type alias named {root!r}"
         )
     pending = [
-        node.id for node in ast.walk(_alias_arms_expr(aliases[root])) if isinstance(node, ast.Name)
+        node.id
+        for node in ast.walk(_alias_branches_expr(aliases[root]))
+        if isinstance(node, ast.Name)
     ]
     resolved: list[str] = []
     seen: set[str] = set()
@@ -173,16 +175,16 @@ def root_class_names(schema_rel: Path, module: Path, tree: ast.Module, root: str
         elif name in aliases:
             pending.extend(
                 node.id
-                for node in ast.walk(_alias_arms_expr(aliases[name]))
+                for node in ast.walk(_alias_branches_expr(aliases[name]))
                 if isinstance(node, ast.Name)
             )
         else:
             raise RuntimeError(
-                f"{schema_rel.as_posix()}: union arm {name!r} of {root} is not defined in "
+                f"{schema_rel.as_posix()}: union branch {name!r} of {root} is not defined in "
                 f"{module.name}; the marker pass cannot reach it (one mechanism only)"
             )
     if not resolved:
-        raise RuntimeError(f"{schema_rel.as_posix()}: {root} resolved to no arm classes")
+        raise RuntimeError(f"{schema_rel.as_posix()}: {root} resolved to no branch classes")
     return resolved
 
 
@@ -220,7 +222,7 @@ def task_message_roots(
 # --------------------------------------------------------------------------------------
 
 
-def _arms(obj: object) -> list[type]:
+def _branches(obj: object) -> list[type]:
     """A union alias's member classes, or the single class itself."""
     members = list(typing.get_args(obj)) or [obj]
     return [m for m in members if isinstance(m, type)]
@@ -230,7 +232,7 @@ def measure(schema_dir: Path, output_dir: Path, package_root: Path) -> int:
     """Print the ancestry table and return a process exit code.
 
     Ancestry means EVERY root class the message can validate into descends from the
-    ancestor -- all arms, not any arm. A union whose submitted arm lacks the envelope
+    ancestor -- all branches, not any branch. A union whose submitted branch lacks the envelope
     cannot answer the envelope question for every value the task returns, so counting it as
     composed overstates what a caller may rely on.
     """
@@ -250,7 +252,7 @@ def measure(schema_dir: Path, output_dir: Path, package_root: Path) -> int:
     for task, kind, schema_rel, module, names in rows:
         dotted = ".".join(module.relative_to(package_root).with_suffix("").parts)
         imported = importlib.import_module(dotted)
-        classes = [c for name in names for c in _arms(getattr(imported, name))]
+        classes = [c for name in names for c in _branches(getattr(imported, name))]
         resolved.append((task, kind, schema_rel.as_posix(), classes))
 
     failures = 0

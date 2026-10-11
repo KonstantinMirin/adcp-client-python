@@ -1,10 +1,10 @@
-"""The emit rule: where a root's arms partition, and where they only overlap.
+"""The emit rule: where a root's branches partition, and where they only overlap.
 
-One prover answers two questions, and both are decided from ``Arm`` records
+One prover answers two questions, and both are decided from ``Branch`` records
 rather than from a list kept here. ``provably_disjoint`` asks whether any
 document can satisfy two conditions at once; ``partitions_by_requiredness``
-asks whether a whole root's arms are therefore distinct types. A root that
-partitions is emitted as one class per arm plus a union, because the class a
+asks whether a whole root's branches are therefore distinct types. A root that
+partitions is emitted as one class per branch plus a union, because the class a
 parsed document comes back as is then schema information. A root that does not
 is emitted as one class and a compiled check, because minting a class there
 would make branch ORDER an observable class identity -- a channel the flat
@@ -26,14 +26,14 @@ import pytest
 
 from scripts.schema_constraints import (
     AnyOf,
-    Arm,
+    Branch,
     DeclaredShape,
     Not,
     PropSatisfies,
     RootConstraints,
     Supplied,
     ValueConst,
-    arm_conditions,
+    branch_conditions,
     partitions_by_requiredness,
     provably_disjoint,
     read_root_constraints,
@@ -45,7 +45,7 @@ def _read(root: dict[str, Any], shape: DeclaredShape | None = None) -> RootConst
     return read_root_constraints(
         root,
         shape if shape is not None else DeclaredShape.from_schema(root),
-        arms_render_as_classes=False,
+        branches_render_as_classes=False,
     )
 
 
@@ -54,15 +54,15 @@ def _read(root: dict[str, Any], shape: DeclaredShape | None = None) -> RootConst
 # --------------------------------------------------------------------------- #
 
 
-def test_an_arm_requiring_what_another_bans_is_disjoint() -> None:
-    """``create-media-buy``'s proposal arm bans ``packages``; two arms require it."""
+def test_an_branch_requiring_what_another_bans_is_disjoint() -> None:
+    """``create-media-buy``'s proposal branch bans ``packages``; two branches require it."""
     assert provably_disjoint(
         Supplied("packages"),
         Not(AnyOf((Supplied("packages"), Supplied("budget_allocation")))),
     )
 
 
-def test_two_arms_pinning_one_property_to_different_values_are_disjoint() -> None:
+def test_two_branches_pinning_one_property_to_different_values_are_disjoint() -> None:
     """The ``status`` discriminator, and ``budget_allocation.mode`` one level down.
 
     The value literal only ever reaches a clause alongside the presence literal
@@ -74,12 +74,12 @@ def test_two_arms_pinning_one_property_to_different_values_are_disjoint() -> Non
 
     assert not provably_disjoint(
         completed, failed
-    ), "neither arm requires status, so a document omitting it satisfies both"
+    ), "neither branch requires status, so a document omitting it satisfies both"
     assert provably_disjoint(_and(Supplied("status"), completed), _and(Supplied("status"), failed))
 
 
 def test_an_overlapping_cardinality_pair_is_not_disjoint() -> None:
-    """``control-media-buy``'s arms: require one field, permit the others."""
+    """``control-media-buy``'s branches: require one field, permit the others."""
     assert not provably_disjoint(Supplied("paused"), Supplied("name"))
 
 
@@ -94,7 +94,7 @@ def _and(*operands: Any) -> Any:
 # --------------------------------------------------------------------------- #
 
 
-def test_a_root_whose_arms_are_mutually_exclusive_partitions() -> None:
+def test_a_root_whose_branches_are_mutually_exclusive_partitions() -> None:
     root = {
         "title": "Thing",
         "type": "object",
@@ -109,12 +109,12 @@ def test_a_root_whose_arms_are_mutually_exclusive_partitions() -> None:
 
 
 def test_the_at_least_one_of_idiom_does_not_partition() -> None:
-    """Twelve arms requiring one field each and permitting the rest is one shape.
+    """Twelve branches requiring one field each and permitting the rest is one shape.
 
     ``control-media-buy-request`` spells "name at least one field to change"
     this way, because JSON Schema has no ``atLeastOneOf``. A document carrying
-    ``paused`` and ``name`` satisfies two arms, so the class a left-to-right
-    union returns is decided by the order the arms appear in a JSON file.
+    ``paused`` and ``name`` satisfies two branches, so the class a left-to-right
+    union returns is decided by the order the branches appear in a JSON file.
     """
     root = {
         "title": "Thing",
@@ -126,16 +126,16 @@ def test_the_at_least_one_of_idiom_does_not_partition() -> None:
     assert not partitions_by_requiredness(_read(root))
 
 
-def test_an_arm_with_no_required_does_not_partition() -> None:
+def test_an_branch_with_no_required_does_not_partition() -> None:
     """Requiredness is what the rule partitions BY, and disjointness is not enough.
 
     Two reasons, and the second is the one that is easy to lose. Without
-    ``required`` an arm grades only members that are present, so
-    ``postal-country-system``'s ten country arms are all satisfied by a
+    ``required`` an branch grades only members that are present, so
+    ``postal-country-system``'s ten country branches are all satisfied by a
     document carrying no ``country`` and a left-to-right union would hand back
     the US class for it -- the first root below. And even a pair the prover DOES
-    separate is refused when neither arm requires anything: the required set is
-    the arm's identity, the thing rung 3 of the naming rule spells, and an arm
+    separate is refused when neither branch requires anything: the required set is
+    the branch's identity, the thing rung 3 of the naming rule spells, and an branch
     with none names no shape.
     """
     vacuous = {
@@ -152,8 +152,8 @@ def test_an_arm_with_no_required_does_not_partition() -> None:
 
     disjoint_but_unnamed = RootConstraints(
         combinator="anyOf",
-        arms=(
-            Arm(
+        branches=(
+            Branch(
                 pointer="anyOf/0",
                 title=None,
                 discriminator=None,
@@ -161,7 +161,7 @@ def test_an_arm_with_no_required_does_not_partition() -> None:
                 declares_fields=False,
                 condition=Supplied("a"),
             ),
-            Arm(
+            Branch(
                 pointer="anyOf/1",
                 title=None,
                 discriminator=None,
@@ -174,31 +174,31 @@ def test_an_arm_with_no_required_does_not_partition() -> None:
     )
 
     assert provably_disjoint(
-        disjoint_but_unnamed.arms[0].condition, disjoint_but_unnamed.arms[1].condition
+        disjoint_but_unnamed.branches[0].condition, disjoint_but_unnamed.branches[1].condition
     )
     assert not partitions_by_requiredness(disjoint_but_unnamed)
 
 
-def test_a_root_conjunct_is_what_separates_two_otherwise_overlapping_arms() -> None:
+def test_a_root_conjunct_is_what_separates_two_otherwise_overlapping_branches() -> None:
     """``webhook-challenge-response`` bans ``challenge`` and ``token`` together.
 
-    The ban sits beside the combinator, not inside either arm, and each arm
-    requires one of the two names. Proving the arms disjoint without it would
+    The ban sits beside the combinator, not inside either branch, and each branch
+    requires one of the two names. Proving the branches disjoint without it would
     be wrong, and emitting classes without distributing it would admit a
     document carrying both.
     """
-    arms = [{"required": ["challenge"]}, {"required": ["token"]}]
+    branches = [{"required": ["challenge"]}, {"required": ["token"]}]
     overlapping = {
         "title": "Thing",
         "type": "object",
         "properties": {"challenge": {}, "token": {}},
-        "anyOf": arms,
+        "anyOf": branches,
     }
     separated = dict(overlapping, **{"not": {"required": ["challenge", "token"]}})
 
     assert not partitions_by_requiredness(_read(overlapping))
     assert partitions_by_requiredness(_read(separated))
-    assert len(arm_conditions(_read(separated))[0].operands) == 2
+    assert len(branch_conditions(_read(separated))[0].operands) == 2
 
 
 # --------------------------------------------------------------------------- #
@@ -235,7 +235,7 @@ def _flat_combinator_roots() -> list[tuple[str, RootConstraints]]:
         constraints = read_root_constraints(
             schema,
             shape,
-            arms_render_as_classes=False,
+            branches_render_as_classes=False,
             schema_file=str(relative),
             resolve_document=resolve,
         )
@@ -259,14 +259,22 @@ def test_the_population_is_not_empty(
     )
 
 
-#: The flat-root combinator schemas of the pinned bundle whose arms partition,
-#: so each arm is emitted as its own class behind a union alias. Written down
-#: because this set decides which public names the SDK has: a silent change to
+#: The flat-root combinator schemas of the pinned bundle whose branches partition,
+#: so each branch is emitted as its own class behind a union alias. Written down
+#: because this set decides which public names the SDK has -- and because it
+#: is how the two roots that declare their properties ONLY inside their
+#: branches were found. ``search-brands-response`` and
+#: ``verify-brand-claim-request`` carry no root ``properties`` of their own;
+#: the generator merges the branches' properties onto one class, and the
+#: reader did not look there, so both went unsplit while this set said
+#: eleven: a silent change to
 #: it is a silent change to the surface. The counts move with a bundle sync and
 #: are therefore re-derived rather than asserted.
 PARTITIONING_ROOTS = frozenset(
     {
         "account/list-account-changes-response.json",
+        "brand/search-brands-response.json",
+        "brand/verify-brand-claim-request.json",
         "core/audience-characteristic.json",
         "core/catchment.json",
         "core/creative-asset.json",
@@ -307,7 +315,7 @@ def test_every_partitioning_one_of_is_pairwise_disjoint(
 ) -> None:
     """``oneOf`` is exactly-one and a union is at-least-one.
 
-    Emitting a ``oneOf`` whose arms are not provably disjoint as a union would
+    Emitting a ``oneOf`` whose branches are not provably disjoint as a union would
     ship anyOf-weaker semantics, so the emitter refuses with
     ``UndisjointOneOfError``. This is the bundle's standing evidence that every
     ``oneOf`` reaching the union path clears the stronger bar, independently of
@@ -317,7 +325,7 @@ def test_every_partitioning_one_of_is_pairwise_disjoint(
     for name, constraints in flat_combinator_roots:
         if constraints.combinator != "oneOf" or name not in PARTITIONING_ROOTS:
             continue
-        conditions = arm_conditions(constraints)
+        conditions = branch_conditions(constraints)
         graded += 1
         for index, left in enumerate(conditions):
             for right in conditions[index + 1 :]:

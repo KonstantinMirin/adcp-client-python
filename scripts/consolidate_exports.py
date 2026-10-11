@@ -592,7 +592,7 @@ def generate_consolidated_exports() -> str:
     # the pre-rebind declaration, so a whole shifted window of names typed one
     # variant off what they held.
     aliases: dict[str, str] = {}
-    # AdCP renumbered the adagents authorization variants when it added an arm at
+    # AdCP renumbered the adagents authorization variants when it added an branch at
     # the front. Each historical public name keeps the shape it has always had,
     # and the root union gets its own name.
     if {"AuthorizedAgents", "AuthorizedAgents6"}.issubset(all_exports):
@@ -630,7 +630,7 @@ def generate_consolidated_exports() -> str:
     # FooResponse model. Keep the old numbered names as aliases when the
     # upstream generator no longer emits them so legacy imports continue to
     # work while resolving to the beta 3 shape.
-    response_arm_aliases = {
+    response_branch_aliases = {
         "AcquireRightsResponse1": "AcquireRightsResponse",
         "AcquireRightsResponse2": "AcquireRightsResponse",
         "AcquireRightsResponse3": "AcquireRightsResponse",
@@ -689,7 +689,7 @@ def generate_consolidated_exports() -> str:
         "ValidateContentDeliveryResponse1": "ValidateContentDeliveryResponse",
         "ValidateContentDeliveryResponse2": "ValidateContentDeliveryResponse",
     }
-    for alias, target in response_arm_aliases.items():
+    for alias, target in response_branch_aliases.items():
         if alias not in all_exports and target in all_exports:
             aliases[alias] = target
     # The beta 3 product schema is a oneOf over two concrete product shapes.
@@ -807,9 +807,9 @@ def generate_consolidated_exports() -> str:
         "from adcp.types import domains  # noqa: F401",
         "",
         "# Rebuild models that reference other models via forward refs",
-        "# A name here can be a union alias over a split root's arms, which has",
+        "# A name here can be a union alias over a split root's branches, which has",
         "# no model_rebuild of its own. classes_behind is the one derivation of",
-        "# what a name stands for: the shared base and each arm, or the model.",
+        "# what a name stands for: the shared base and each branch, or the model.",
         "from adcp.types._split_root import classes_behind",
     ]
     for t in rebuild_types:

@@ -152,19 +152,19 @@ LegacyFormatId = FormatReferenceStructuredObject
 LegacyFormatReferenceStructuredObject = FormatReferenceStructuredObject
 LegacyProductFormatDeclaration = LegacyGeneratedProductFormatDeclaration
 
-# One semantic name per ARM of every response union whose tool reaches this
+# One semantic name per BRANCH of every response union whose tool reaches this
 # surface. Not a curated subset of them (#1399): where the bare public name for
-# an arm is the canonical SUBCLASS, the generated arm itself has no public
+# an branch is the canonical SUBCLASS, the generated branch itself has no public
 # spelling at all without one of these, and a seller reading an off-the-wire
 # response can then only name it through ``adcp.types.domains.<domain>.*`` —
 # which is the private tree this release exists to retire.
 #
 # The set used to be curated, and it had five holes at once:
 # ``LegacyUpdateMediaBuySubmittedResponse`` and all three
-# ``LegacyCreateMediaBuy*Response`` arms were absent while
+# ``LegacyCreateMediaBuy*Response`` branches were absent while
 # ``LegacyUpdateMediaBuy{Success,Error}Response`` shipped, and the generator had
-# already opened a fifth by adding a fourth ``preview_creative`` arm that nobody
-# named. ``tests/test_legacy_surface_names_every_arm.py`` derives the required
+# already opened a fifth by adding a fourth ``preview_creative`` branch that nobody
+# named. ``tests/test_legacy_surface_names_every_branch.py`` derives the required
 # set from the generated response unions, so a sixth fails the build instead of
 # reaching an adopter.
 LegacyBuildCreativeSuccessResponse = LegacyBuildCreativeResponse1

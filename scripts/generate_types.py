@@ -252,7 +252,7 @@ def normalize_enum_descriptions(obj):
 # subschema, and datamodel-code-generator emits one class for it and shares it.
 # Every other pointer addresses a structural position — ``/properties/<name>``,
 # ``/items``, ``/oneOf/<n>`` — which has no name to emit, so the generator mints
-# a single-arm ``RootModel`` wrapper per referencing site instead of the type the
+# a single-branch ``RootModel`` wrapper per referencing site instead of the type the
 # pointer selects.
 _DEFINITION_POINTER_ROOTS = frozenset({"$defs", "definitions"})
 
@@ -321,7 +321,7 @@ def _names_a_class(selected: dict) -> bool:
 
     The structural-pointer defect is specific to a selection that has *no*
     class of its own — an array, a constrained scalar, a bare ``$ref`` — where
-    the generator mints a single-arm ``RootModel`` wrapper per referencing site.
+    the generator mints a single-branch ``RootModel`` wrapper per referencing site.
     A selection that is an object, an enumeration or a composition generates a
     named class in the module that owns it, and the generator resolves a
     pointer to it as that shared class: ``targeting.json#/properties/age_restriction``
@@ -391,7 +391,7 @@ def inline_structural_pointer_refs(obj, current_schema_rel_path: Path, _seen=fro
     itself, which with ``collapse_nullable_unions`` becomes ``list[str] | None`` —
     the type the pointed-to property gets in its own module.
 
-    A pointer that is the only arm of an ``allOf`` merges into the enclosing
+    A pointer that is the only branch of an ``allOf`` merges into the enclosing
     schema. ``core/catalog-selection.json`` adds ``uniqueItems`` that way and
     ``compliance/comply-test-controller-request.json`` adds a ``description``;
     leaving the selection inside the ``allOf`` loses the ``additionalProperties``
@@ -406,11 +406,13 @@ def inline_structural_pointer_refs(obj, current_schema_rel_path: Path, _seen=fro
                 # fresh ``_seen`` would re-enter a cyclic pointer.
                 return _merge_selection(obj, selected, "$ref")
 
-        arms = obj.get("allOf")
-        if isinstance(arms, list) and len(arms) == 1 and isinstance(arms[0], dict):
-            only_arm_ref = arms[0].get("$ref")
-            if isinstance(only_arm_ref, str) and len(arms[0]) == 1:
-                selected = _select_structural_pointer(only_arm_ref, current_schema_rel_path, _seen)
+        branches = obj.get("allOf")
+        if isinstance(branches, list) and len(branches) == 1 and isinstance(branches[0], dict):
+            only_branch_ref = branches[0].get("$ref")
+            if isinstance(only_branch_ref, str) and len(branches[0]) == 1:
+                selected = _select_structural_pointer(
+                    only_branch_ref, current_schema_rel_path, _seen
+                )
                 if selected is not None:
                     return _merge_selection(obj, selected, "allOf")
 
@@ -426,16 +428,16 @@ def inline_structural_pointer_refs(obj, current_schema_rel_path: Path, _seen=fro
 _NULL_ARM = {"type": "null"}
 
 
-def _as_nullable_arm(arms: list) -> dict | None:
-    """Return the non-null arm of a two-arm "S or null" union, when typed.
+def _as_nullable_branch(branches: list) -> dict | None:
+    """Return the non-null branch of a two-branch "S or null" union, when typed.
 
-    Only an arm that carries a ``type`` keyword qualifies. An arm that is a
-    ``$ref`` already produces ``T | None``, and an arm with no ``type`` has
+    Only an branch that carries a ``type`` keyword qualifies. An branch that is a
+    ``$ref`` already produces ``T | None``, and an branch with no ``type`` has
     nothing to make nullable.
     """
-    if len(arms) != 2 or arms.count(_NULL_ARM) != 1:
+    if len(branches) != 2 or branches.count(_NULL_ARM) != 1:
         return None
-    other = arms[0] if arms[1] == _NULL_ARM else arms[1]
+    other = branches[0] if branches[1] == _NULL_ARM else branches[1]
     if not isinstance(other, dict) or "$ref" in other:
         return None
     declared = other.get("type")
@@ -447,9 +449,9 @@ def _as_nullable_arm(arms: list) -> dict | None:
 
 
 def collapse_nullable_unions(obj):
-    """Spell "S or null" as a nullable ``S`` rather than a two-arm union.
+    """Spell "S or null" as a nullable ``S`` rather than a two-branch union.
 
-    datamodel-code-generator emits a named ``RootModel`` for an ``anyOf`` arm
+    datamodel-code-generator emits a named ``RootModel`` for an ``anyOf`` branch
     that declares a container or scalar ``type``, then types the field with the
     wrapper::
 
@@ -484,7 +486,7 @@ def collapse_nullable_unions(obj):
                 if not isinstance(schema, dict):
                     continue
                 for keyword in ("anyOf", "oneOf"):
-                    collapsed = _as_nullable_arm(schema.get(keyword) or [])
+                    collapsed = _as_nullable_branch(schema.get(keyword) or [])
                     if collapsed is not None:
                         siblings = {k: v for k, v in schema.items() if k != keyword}
                         schema.clear()
@@ -565,7 +567,7 @@ _DOCUMENTATION_KEYS = frozenset({"$comment", "deprecated", "description", "examp
 # the problem is a build failure rather than a silent behavior change. Measured at pin
 # 3.2.1: 8 pointer-ref task requests and 4 wire-equivalent inline declarers (1 task
 # request, 3 para-protocol). The 2 pointer-ref task RESPONSES are refused by
-# ``_has_bare_ref_root_arm`` -- rewriting them deletes a field from their submitted arm.
+# ``_has_bare_ref_root_branch`` -- rewriting them deletes a field from their submitted branch.
 _VERSION_ENVELOPE_NORMALIZED_CEILING = 12
 
 
@@ -598,13 +600,13 @@ def _without_documentation(node: Any) -> Any:
 
 def _composes_version_envelope(schema: dict) -> bool:
     """True when the schema already pulls the envelope in through a root ``allOf``."""
-    arms = schema.get("allOf")
-    if not isinstance(arms, list):
+    branches = schema.get("allOf")
+    if not isinstance(branches, list):
         return False
-    for arm in arms:
-        if not isinstance(arm, dict):
+    for branch in branches:
+        if not isinstance(branch, dict):
             continue
-        ref = arm.get("$ref")
+        ref = branch.get("$ref")
         if (
             isinstance(ref, str)
             and "#" not in ref
@@ -614,27 +616,27 @@ def _composes_version_envelope(schema: dict) -> bool:
     return False
 
 
-def _has_bare_ref_root_arm(schema: dict) -> bool:
-    """True when a root ``anyOf``/``oneOf`` arm is a bare ``$ref`` to another schema.
+def _has_bare_ref_root_branch(schema: dict) -> bool:
+    """True when a root ``anyOf``/``oneOf`` branch is a bare ``$ref`` to another schema.
 
     This is the one case where the rewrite would REMOVE a field instead of relocating it.
-    datamodel-code-generator merges the root ``properties`` into every arm it builds, but a
-    root ``allOf`` ``$ref`` becomes a base only of the arm it builds FROM the root object --
-    an arm that is a ``$ref`` elsewhere is generated from the referenced schema and the
-    root's bases never reach it. So dropping the stubs strips the field from that arm and
+    datamodel-code-generator merges the root ``properties`` into every branch it builds, but a
+    root ``allOf`` ``$ref`` becomes a base only of the branch it builds FROM the root object --
+    an branch that is a ``$ref`` elsewhere is generated from the referenced schema and the
+    root's bases never reach it. So dropping the stubs strips the field from that branch and
     the composition does not give it back.
 
     Measured: applying the rewrite anyway cost ``RefineProposalsResponse2`` and
     ``RequestProposalsResponse4`` their ``adcp_version`` outright (10 fields to 9, 16 to 15),
-    and both carry ``extra: forbid``, so a buyer echoing the version on the submitted arm
-    would have been REJECTED where it previously validated. Those two arms are
+    and both carry ``extra: forbid``, so a buyer echoing the version on the submitted branch
+    would have been REJECTED where it previously validated. Those two branches are
     ``core/compact-task-submitted.json``, which composes no envelope of its own.
     """
     for key in ("anyOf", "oneOf"):
-        arms = schema.get(key)
-        if not isinstance(arms, list):
+        branches = schema.get(key)
+        if not isinstance(branches, list):
             continue
-        if any(isinstance(arm, dict) and "$ref" in arm for arm in arms):
+        if any(isinstance(branch, dict) and "$ref" in branch for branch in branches):
             return True
     return False
 
@@ -707,8 +709,8 @@ def normalize_version_envelope_composition(schema: dict, schema_rel_path: Path) 
     }
     if not declared or _composes_version_envelope(schema):
         return schema
-    if _has_bare_ref_root_arm(schema):
-        # Relocating the stubs here would DELETE the field from the ``$ref`` arm. Refuse,
+    if _has_bare_ref_root_branch(schema):
+        # Relocating the stubs here would DELETE the field from the ``$ref`` branch. Refuse,
         # and let the schema surface in the hierarchy ratchet's residue by name.
         return schema
 
@@ -730,10 +732,10 @@ def normalize_version_envelope_composition(schema: dict, schema_rel_path: Path) 
         del properties[name]
     if not properties:
         del schema["properties"]
-    arms = schema.setdefault("allOf", [])
-    if not isinstance(arms, list):
+    branches = schema.setdefault("allOf", [])
+    if not isinstance(branches, list):
         raise ValueError(f"{schema_rel_path.as_posix()}: root allOf is not a list")
-    arms.append({"$ref": _version_envelope_ref()})
+    branches.append({"$ref": _version_envelope_ref()})
 
     global _VERSION_ENVELOPE_NORMALIZED
     _VERSION_ENVELOPE_NORMALIZED += 1
