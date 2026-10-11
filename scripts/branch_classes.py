@@ -406,6 +406,7 @@ def _render_branch_models(branch_names: Sequence[str], combinator: str) -> list[
 
     This replaced a hook emitted per root, which was eleven copies of one
     function. Two bugs were found in that function while it was still one copy.
+
     """
     listed = ",\n            ".join(branch_names)
     return [
@@ -682,7 +683,9 @@ def split_into_branch_classes(
                 "#: requires in issues[].keyword.",
                 f"{branches}: TypeAlias = Annotated[",
                 f"    {union},",
-                f"    WrapValidator(_c.name_the_combinator({combinator!r})),",
+                "    WrapValidator(",
+                f"        _c.name_the_combinator({combinator!r}, {flat_class}._branch_models())",
+                "    ),",
                 "]",
                 "",
                 "#: Parsing a union is what a TypeAdapter is for. Built once, at import.",

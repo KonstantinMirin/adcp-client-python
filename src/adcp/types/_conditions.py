@@ -42,6 +42,7 @@ from typing import Any
 from pydantic import AnyUrl, ValidationError
 
 __all__ = [
+    "branch_title",
     "name_the_combinator",
     "absent",
     "descend",
@@ -336,8 +337,28 @@ def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) 
     return data
 
 
-def name_the_combinator(keyword: str) -> Callable[[Any, Any], Any]:
+def branch_title(branch: type) -> str:
+    """The schema title of the arm a branch class was compiled from.
+
+    The emitter opens each branch's docstring with the arm's ``title``, which is
+    where schema-derived text rides -- no identifier is invented for it, and the
+    title is the only phrase a reader can match against the schema. A branch
+    with no docstring falls back to its class name, which is itself derived from
+    that title.
+    """
+    first_line = (branch.__doc__ or "").strip().splitlines()
+    return first_line[0].rstrip(".") if first_line else branch.__name__
+
+
+def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable[[Any, Any], Any]:
     """Build the wrapping validator a split root's union carries.
+
+    The refusal reads the same whether the root was SPLIT into branch classes or
+    left flat with a compiled ``_require_schema_required_group`` validator:
+    "requires at least one of these field groups: <title> | <title>". A root
+    moving from one mechanism to the other must not change what a reader sees,
+    and when the split landed this message did -- which is what
+    ``test_create_media_buy_request_requires_one_root_anyof_group`` caught.
 
     ``core/error.json`` requires every ``issues[]`` entry to carry a ``keyword``
     drawn from the JSON Schema vocabulary, and tells a consumer not to invent
@@ -389,10 +410,14 @@ def name_the_combinator(keyword: str) -> Callable[[Any, Any], Any]:
             )
             if not absent:
                 raise
+            groups = " | ".join(branch_title(branch) for branch in branches)
             raise PydanticCustomError(
                 keyword,
-                "satisfies no branch of this schema root; one of these is required: {fields}",
-                {"fields": ", ".join(absent)},
+                "requires at least one of these field groups: {groups}",
+                # The absent field names travel beside the titles in the error
+                # context, so a consumer can report which keys were missing
+                # without parsing the sentence.
+                {"groups": groups or ", ".join(absent), "fields": ", ".join(absent)},
             ) from exc
 
     return _wrap

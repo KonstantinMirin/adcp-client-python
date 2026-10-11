@@ -1121,7 +1121,7 @@ CreateMediaBuyRequestBranches: TypeAlias = Annotated[
     CreateMediaBuyRequestExplicitPackagesWithFixedAllocation
     | CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation
     | CreateMediaBuyRequestCommittedProposalExecution,
-    WrapValidator(_conditions.name_the_combinator("anyOf")),
+    WrapValidator(_conditions.name_the_combinator("anyOf", CreateMediaBuyRequest._branch_models())),
 ]
 
 #: Parsing a union is what a TypeAdapter is for. Built once, at import.

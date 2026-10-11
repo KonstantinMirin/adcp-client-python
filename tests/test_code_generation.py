@@ -2880,7 +2880,15 @@ def test_every_root_required_group_refusal_names_its_own_schema_combinator():
                 rf"raise PydanticCustomError\(\s*{re.escape(repr(keyword))},", source
             ), relative
             assert "raise ValueError(\n            '" + class_name not in source, relative
-        elif f"name_the_combinator({keyword!r})" in source:
+        elif re.search(rf"name_the_combinator\(\s*{re.escape(repr(keyword))}", source):
+            # Matched on the keyword argument alone, not on the whole call: the
+            # wrapper also takes the branches now, so an exact-text match for
+            # ``name_the_combinator('anyOf')`` silently stopped recognising two
+            # roots the moment that argument was added. What a refusal actually
+            # SAYS, on each of the four validation paths and for all nineteen
+            # roots with branches, is graded in
+            # ``tests/test_branch_dispatch_on_every_path.py``; this remains the
+            # source-level check that every such root has the mechanism at all.
             pass
         else:
             continue

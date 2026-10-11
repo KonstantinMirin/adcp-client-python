@@ -344,9 +344,13 @@ def test_name_the_combinator_names_the_keyword_and_keeps_the_fields() -> None:
     A document that satisfies no branch fails each branch at FIELD validation,
     so pydantic reports ``missing`` and nothing names the root's combinator.
     ``core/error.json`` requires a keyword drawn from the JSON Schema
-    vocabulary, so the wrapper supplies one -- and carries the absent field
-    names with it, in the message and in the error context, so the refusal says
-    more than the keyword alone.
+    vocabulary, so the wrapper supplies one -- and carries the branch TITLES in
+    the message and the absent field names beside them in the error context, so
+    the refusal says more than the keyword alone.
+
+    The sentence is the one a flat root's compiled ``_require_schema_required_group``
+    validator writes, so a root moving between the two mechanisms does not
+    change what a reader sees.
     """
     from typing import Annotated, TypeAlias
 
@@ -357,22 +361,36 @@ def test_name_the_combinator_names_the_keyword_and_keeps_the_fields() -> None:
         b: str | None = None
 
     class First(Shape):
+        """Carries a."""
+
         a: str
         b: None = None
 
     class Second(Shape):
+        """Carries b."""
+
         b: str
         a: None = None
 
-    Wrapped: TypeAlias = Annotated[First | Second, WrapValidator(c.name_the_combinator("anyOf"))]
+    Wrapped: TypeAlias = Annotated[
+        First | Second, WrapValidator(c.name_the_combinator("anyOf", (First, Second)))
+    ]
     adapter: TypeAdapter[First | Second] = TypeAdapter(Wrapped)
 
     with pytest.raises(ValidationError) as refusal:
         adapter.validate_python({})
     errors = refusal.value.errors()
     assert [error["type"] for error in errors] == ["anyOf"]
-    assert errors[0]["ctx"] == {"fields": "a, b"}
-    assert "one of these is required: a, b" in errors[0]["msg"]
+    assert errors[0]["ctx"] == {"groups": "Carries a | Carries b", "fields": "a, b"}
+    assert "requires at least one of these field groups: Carries a | Carries b" in errors[0]["msg"]
+
+    # With no branches to title, the absent field names stand in for the groups
+    # rather than leaving the sentence with an empty list. The emitters all pass
+    # the branches; a hand-written wrapper may not.
+    bare: TypeAlias = Annotated[First | Second, WrapValidator(c.name_the_combinator("anyOf"))]
+    with pytest.raises(ValidationError) as untitled:
+        TypeAdapter(bare).validate_python({})
+    assert untitled.value.errors()[0]["ctx"] == {"groups": "a, b", "fields": "a, b"}
 
     # The success path is untouched: a document that satisfies a branch comes
     # back as that branch rather than as the base.
@@ -424,3 +442,27 @@ def test_name_the_combinator_keeps_a_branchs_content_failure() -> None:
     with pytest.raises(ValidationError) as none_matched:
         adapter.validate_python({})
     assert [error["type"] for error in none_matched.value.errors()] == ["anyOf"]
+
+
+def test_branch_title_reads_the_arm_title_off_the_branchs_docstring() -> None:
+    """The one place a branch's schema-derived text lives.
+
+    The emitter opens each branch class's docstring with the arm's ``title``,
+    which is why no identifier has to be invented to carry it. A trailing period
+    is dropped because the title is interpolated mid-sentence, and a branch with
+    no docstring falls back to its class name -- which is itself derived from the
+    same title, so the sentence stays readable rather than empty.
+    """
+
+    class Titled:
+        """Explicit packages with fixed allocation.
+
+        The rest of the docstring is the emitter's explanation and is not part
+        of the title.
+        """
+
+    class Undocumented:
+        pass
+
+    assert c.branch_title(Titled) == "Explicit packages with fixed allocation"
+    assert c.branch_title(Undocumented) == "Undocumented"
