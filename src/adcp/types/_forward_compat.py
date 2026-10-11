@@ -79,7 +79,6 @@ from adcp.types.domains.core.creative_manifest import CreativeManifest
 from adcp.types.domains.core.creative_variant import CreativeVariant
 from adcp.types.domains.core.format import Format
 from adcp.types.domains.core.mcp_webhook_payload import McpWebhookPayload
-from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.types.domains.core.reporting_webhook import (
     ReportingWebhook as _GeneratedReportingWebhook,
 )
@@ -449,33 +448,6 @@ def _apply_forward_compat() -> None:
 
     _patch_model_field(RepeatableAssetGroup, "assets", list[GroupFormatAssetUnion])
     cast(type[BaseModel], RepeatableAssetGroup).model_rebuild(force=True)
-
-    # The 3.1 canonical-creatives capability was published after the bundled
-    # generated model. Preserve it across code generation until the schema
-    # bundle catches up; negotiation must not silently discard this evidence.
-    canonical_creatives_annotation: Any = bool | None
-    bundled_media_buy_features_branches = [
-        branch
-        for branch in get_args(BundledCapabilitiesMediaBuy.model_fields["features"].annotation)
-        if branch is not type(None)
-    ]
-    if len(bundled_media_buy_features_branches) != 1:
-        raise RuntimeError(
-            "forward compatibility: MediaBuy.features lost its concrete model "
-            f"(got {bundled_media_buy_features_branches!r})"
-        )
-    bundled_media_buy_features = bundled_media_buy_features_branches[0]
-    for features_model in (MediaBuyFeatures, bundled_media_buy_features):
-        features_model.model_fields["canonical_creatives"] = FieldInfo(
-            annotation=canonical_creatives_annotation,
-            default=None,
-            description=(
-                "Advertises canonical creative identity on AdCP 3.1. AdCP 3.2+ "
-                "is canonical by contract."
-            ),
-        )
-        features_model.__annotations__["canonical_creatives"] = canonical_creatives_annotation
-        features_model.model_rebuild(force=True)
 
     # Canonical schemas referenced through the bundled capabilities schema are
     # generated a second time as identity-distinct Pydantic classes. Accept the

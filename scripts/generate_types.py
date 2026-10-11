@@ -192,6 +192,38 @@ OPEN_VOCABULARY_SCHEMAS = {Path("core/canonical-format-kind.json")}
 #: on a declared divergence that no longer occurs, so the entry cannot outlive
 #: the upstream fix.
 PIN_GAP_FIELDS: dict[Path, tuple[dict[str, Any], ...]] = {
+    # The bundled tree is an independently generated view of the same wire
+    # schema: it INLINES what the canonical tree reaches by ``$ref``, so the
+    # same gap has to be declared at the inlined position too. Both entries name
+    # the same field for the same reason, and the DECLARED entry covers both.
+    Path("bundled/protocol/get-adcp-capabilities-response.json"): (
+        {
+            "pointer": "properties/media_buy/properties/features",
+            "name": "canonical_creatives",
+            "schema": {
+                "type": "boolean",
+                "description": (
+                    "Advertises canonical creative identity on AdCP 3.1. AdCP 3.2+ is "
+                    "canonical by contract. Published after the bundled capabilities "
+                    "schema; negotiation must not silently discard this evidence."
+                ),
+            },
+        },
+    ),
+    Path("core/media-buy-features.json"): (
+        {
+            "pointer": "",
+            "name": "canonical_creatives",
+            "schema": {
+                "type": "boolean",
+                "description": (
+                    "Advertises canonical creative identity on AdCP 3.1. AdCP 3.2+ is "
+                    "canonical by contract. Published after the bundled capabilities "
+                    "schema; negotiation must not silently discard this evidence."
+                ),
+            },
+        },
+    ),
     Path("core/reporting-webhook.json"): (
         {
             "pointer": "",

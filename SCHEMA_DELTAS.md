@@ -2,5 +2,5 @@
 
 ## Field changes
 
-- `core/reporting_webhook.py`
-  - `ReportingWebhook`: `+operation_id`
+- `bundled/protocol/get_adcp_capabilities_response.py`
+  - `Features1`: `+canonical_creatives`
