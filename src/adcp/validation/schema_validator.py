@@ -232,7 +232,11 @@ def pointer_to_field(pointer: str) -> str:
     ``core/error.json``: when ``issues[]`` is present, ``field`` is
     ``issues[0].pointer`` translated.
 
-    Dot notation cannot express three pointer shapes, so:
+    The target format is the lossy one, and the pin says so where it defines
+    ``issues[].pointer`` — RFC 6901 is "standardized and unambiguous on keys
+    containing ``/`` or ``~``", "differs from the legacy top-level ``field``
+    which uses JSONPath-lite", and sellers "MUST translate the format"
+    regardless. So dot notation cannot express three pointer shapes:
 
     * a segment that is not a bare identifier is bracket-quoted
       (``/a.b`` -> ``['a.b']``), which covers keys containing ``.`` and the
