@@ -17,7 +17,7 @@ from adcp.reporting.ownership import (
 )
 from adcp.types import GetReportingStatusRequest, GetReportingStatusResponse
 from adcp.types.core import TaskResult, TaskStatus
-from tests.test_reporting_reconciliation import REVISION, _obligation, _response
+from tests.test_reporting_reconciliation import REVISION, _health, _obligation, _response
 
 ARRAYS = (
     "periods",
@@ -222,7 +222,7 @@ async def test_explicit_ownership_separates_identical_scopes_and_legacy_stays_co
         successful_materialization_count=None,
         reconciliation_mode="delivery_only",
         reconciliation_status="not_required",
-        health="complete",
+        **_health("complete"),
     )
     owned = await load(pages(raw))
     result = evaluate_reporting_ledger(owned, now=datetime(2026, 9, 3, tzinfo=timezone.utc))

@@ -23,6 +23,7 @@ from tests.test_reporting_frozen_read_safety import (
     _adjustment_receipt,
     _counts,
     _expected,
+    _health,
     _history,
     _load,
     _pages,
@@ -58,7 +59,13 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
         raw["adjustments"].append(second)
     _counts(raw)
     owner = raw["periods"][0]
-    owner.update(reconciliation_mode="delivery_only", reconciliation_status="not_required")
+    # Leaving the consumer-receipt health behind would make the obligation report
+    # OBLIGATION_ACTION_REQUIRED instead of the adjustment condition under test.
+    owner.update(
+        reconciliation_mode="delivery_only",
+        reconciliation_status="not_required",
+        **_health("complete"),
+    )
     for item in [owner, *raw["materializations"], *raw["scope"]["delivery_config_generations"]]:
         item["feed_purpose"] = "analytics"
     owner["schedule"].update(period_anchor=owner["period"]["start"], period_timezone="UTC")
@@ -69,8 +76,11 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
         "accepted_receipt_count",
         "adjustment_receipt_count",
         "accepted_adjustment_receipt_count",
+        # The accepted-receipt fixture declares it; this scenario's whole point is
+        # that the seller may omit it, so the omission has to be explicit here.
+        "pending_adjustment_count",
     ):
-        owner.pop(field)
+        owner.pop(field, None)
     accepted = evidence in {"accepted", "accepted-leaf"}
     if declare_pending:
         owner["pending_adjustment_count"] = int(not accepted)

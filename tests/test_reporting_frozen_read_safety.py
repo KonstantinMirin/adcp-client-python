@@ -26,6 +26,7 @@ from tests.test_reporting_reconciliation import (
     REVISION,
     TOTALS,
     _full_finality_scope,
+    _health,
     _response,
 )
 
@@ -129,6 +130,39 @@ def _with_status(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+def _reconciled(obligation: dict[str, Any]) -> None:
+    """Derive reconciliation_status, health and issues from the receipt counts.
+
+    core/reporting-obligation.json states the tie outside its properties: a
+    consumer_receipt obligation is complete only with an accepted receipt and no
+    outstanding adjustment (member 7), is action_required with a RECEIPT_REJECTED
+    issue when every receipt was rejected (member 3), and is action_required with a
+    RECEIPT_REQUIRED issue while none has arrived (member 2). Recomputing the counts
+    without this leaves a document the schema refuses, which the reader then reports
+    as STATUS_READ_FAILED rather than as the condition under test.
+    """
+    if obligation.get("reconciliation_mode") != "consumer_receipt":
+        return
+    if obligation.get("accepted_receipt_count"):
+        pending = obligation.get("pending_adjustment_count", 0)
+        obligation.update(reconciliation_status="accepted", pending_adjustment_count=pending)
+        obligation.update(
+            _health("complete")
+            if not pending
+            else _health("action_required", code="ADJUSTMENT_RECEIPT_REQUIRED")
+        )
+    elif obligation.get("receipt_count"):
+        obligation.update(
+            reconciliation_status="rejected",
+            **_health("action_required", code="RECEIPT_REJECTED"),
+        )
+    else:
+        obligation.update(
+            reconciliation_status="pending",
+            **_health("action_required", code="RECEIPT_REQUIRED"),
+        )
+
+
 def _counts(raw: dict[str, Any]) -> None:
     """Recompute fixture counts; mutation tests deliberately run after this."""
     for obligation in raw["periods"]:
@@ -151,6 +185,7 @@ def _counts(raw: dict[str, Any]) -> None:
                 r["status"] == "accepted" for r in raw.get("adjustment_receipts", [])
             ),
         )
+        _reconciled(obligation)
     raw["pagination"] = {
         "has_more": False,
         "total_count": sum(len(raw.get(name, [])) for name in ARRAYS),
@@ -251,19 +286,22 @@ async def test_full_read_discards_incremental_omissions_and_cursor_but_keeps_pag
 
 
 async def test_health_finality_and_exact_revision_selectors_cannot_hide_history() -> None:
-    client = Pages(_pages(_history()))
-    request = _request(
-        view="revision",
-        reporting_revision_id=REVISION_ID,
-        health=["action_required"],
-        finality=["official"],
-    )
-    await load_reporting_ledger(client, request)
-    assert all(r.view.value == "periods" for r in client.requests)
-    assert all(
-        r.health is None and r.finality is None and r.reporting_revision_id is None
-        for r in client.requests
-    )
+    # No single request carries all three: media-buy/get-reporting-status-request.json
+    # states (allOf members 2 and 3) that a revision view REQUIRES
+    # reporting_revision_id and FORBIDS health and finality, while a periods view
+    # forbids reporting_revision_id. So the two selector families are asked
+    # separately, and the loader must drop each of them.
+    for changes in (
+        {"view": "revision", "reporting_revision_id": REVISION_ID},
+        {"health": ["action_required"], "finality": ["official"]},
+    ):
+        client = Pages(_pages(_history()))
+        await load_reporting_ledger(client, _request(**changes))
+        assert all(r.view.value == "periods" for r in client.requests)
+        assert all(
+            r.health is None and r.finality is None and r.reporting_revision_id is None
+            for r in client.requests
+        )
 
 
 @pytest.mark.parametrize("outside", ["horizon", "generation", "media-buy", "retention"])
@@ -849,9 +887,9 @@ async def test_mismatching_resolved_account_is_rejected_without_disclosing_it() 
 
 async def test_immutable_conflict_and_ledger_repr_do_not_expose_wire_secrets() -> None:
     raw = _history()
-    raw["materializations"][0]["resource"][
-        "location"
-    ] = f"https://user:{SECRET}@storage.example/file"
+    raw["materializations"][0]["resource"]["location"] = (
+        f"https://user:{SECRET}@storage.example/file"
+    )
     raw["receipts"][0]["reporting_receipt_id"] = SECRET
     ledger = await _load(raw)
     assert SECRET not in repr(ledger)
