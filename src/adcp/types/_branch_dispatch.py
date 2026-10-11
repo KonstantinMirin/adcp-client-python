@@ -94,5 +94,8 @@ class BranchDispatchMixin:
         union: Any = branches[0]
         for branch in branches[1:]:
             union |= branch
-        wrapped = Annotated[union, WrapValidator(name_the_combinator(cls._branch_combinator()))]
+        wrapped = Annotated[
+            union,
+            WrapValidator(name_the_combinator(cls._branch_combinator(), branches)),
+        ]
         return TypeAdapter(wrapped).core_schema

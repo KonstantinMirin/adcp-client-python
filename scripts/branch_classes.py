@@ -395,7 +395,7 @@ def _branches_name(flat_class: str) -> str:
     return f"{flat_class}Branches"
 
 
-def _render_branch_models(branch_names: Sequence[str], combinator: str) -> list[str]:
+def render_branch_models(branch_names: Sequence[str], combinator: str) -> list[str]:
     """Declare the branches, which is how the shared hook finds them.
 
     ``BranchDispatchMixin`` carries the one implementation, and the base is the
@@ -407,6 +407,11 @@ def _render_branch_models(branch_names: Sequence[str], combinator: str) -> list[
     This replaced a hook emitted per root, which was eleven copies of one
     function. Two bugs were found in that function while it was still one copy.
 
+    Both emitters call this one renderer. The branch emitter compiles a split
+    root's branches out of the schema's arms; the response emitter adopts the
+    numbered classes ``datamodel-code-generator`` already wrote for a root the
+    pre-pass leaves combined. The two arrive at a base and its subclasses by
+    different routes and declare them in the same words.
     """
     listed = ",\n            ".join(branch_names)
     return [
@@ -494,7 +499,7 @@ def _render_base(
         body += 1
     if not body:
         lines.append("    pass")
-    lines.extend(_render_branch_models(branch_names, combinator))
+    lines.extend(render_branch_models(branch_names, combinator))
     return "\n".join(lines)
 
 

@@ -90,6 +90,7 @@ __all__ = [
     "read_root_constraints",
     "Restated",
     "root_carries_constraints",
+    "root_combinator",
     "RootConstraints",
     "SomeItem",
     "Supplied",
@@ -675,6 +676,28 @@ class RootConstraints:
 # --------------------------------------------------------------------------- #
 
 
+def root_combinator(schema: Any) -> Literal["anyOf", "oneOf"] | None:
+    """Which combinator the root declares over its arms, if either.
+
+    One owner, because two emitters read it and a refusal NAMES it: the branch
+    emitter puts it on the split root's wrapping validator, and the response
+    emitter puts it on the compatibility base's. A keyword that disagreed
+    between them would be a refusal citing a keyword the schema does not use.
+
+    ``anyOf`` is tested first and the first match wins, which is the precedence
+    the reader has always applied: a root declaring both states the stricter
+    rule in its ``oneOf``, and the arms are read from one node.
+    """
+    if not isinstance(schema, dict):
+        return None
+    candidates: tuple[Literal["anyOf", "oneOf"], ...] = ("anyOf", "oneOf")
+    for candidate in candidates:
+        node = schema.get(candidate)
+        if isinstance(node, list) and node:
+            return candidate
+    return None
+
+
 def root_carries_constraints(schema: Any) -> bool:
     """Whether a schema root states anything beyond its merged ``properties``.
 
@@ -808,16 +831,12 @@ class _Parser:
         self._schema_names = frozenset(_declared_properties(schema))
         self._document = schema
 
-        candidates: tuple[Literal["anyOf", "oneOf"], ...] = ("anyOf", "oneOf")
-        for candidate in candidates:
-            node = schema.get(candidate)
-            if isinstance(node, list) and node:
-                combinator = candidate
-                arms = tuple(
-                    self._read_arm(arm, f"{candidate}/{index}", root_declaration)
-                    for index, arm in enumerate(node)
-                )
-                break
+        combinator = root_combinator(schema)
+        if combinator is not None:
+            arms = tuple(
+                self._read_arm(arm, f"{combinator}/{index}", root_declaration)
+                for index, arm in enumerate(schema[combinator])
+            )
 
         conjuncts: list[Cond] = []
         if "if" in schema:

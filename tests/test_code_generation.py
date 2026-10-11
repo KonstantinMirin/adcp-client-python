@@ -224,21 +224,36 @@ def test_post_generation_restores_codegen_contract_compatibility(tmp_path, monke
 
     for relative_path, response_name in response_specs:
         response_source = (tmp_path / relative_path).read_text()
-        dispatch_import = "from adcp.types.response_dispatch import ResponseArmDispatchMixin"
-        assert dispatch_import in response_source
+        # The same hook the split roots mix in, not a second implementation.
+        # The response side used to carry its own ``model_validate`` override;
+        # see ``tests/test_branch_dispatch_on_every_path.py`` for what that
+        # override did and did not enforce.
+        assert "from adcp.types._branch_dispatch import BranchDispatchMixin" in response_source
         assert (
-            f"class {response_name}(ResponseArmDispatchMixin, "
+            f"class {response_name}(BranchDispatchMixin, "
             "AdcpVersionEnvelope, ProtocolEnvelope):" in response_source
         )
         assert f"class {response_name}1({response_name}):" in response_source
-        arm_method = (
-            "def _response_arm_models(cls) -> tuple[type[" + response_name + "], ...]:\n"
+        branch_method = (
+            "def _branch_models(cls) -> tuple[type, ...]:\n"
+            "        # The branches subclass this class, so they are not defined while\n"
+            "        # this body is compiled. The hook resolves them on first use, after\n"
+            "        # the model_rebuild below.\n"
             "        return (\n"
             "            " + response_name + "1,\n"
             "            " + response_name + "2,\n"
             "        )"
         )
-        assert arm_method in response_source
+        assert branch_method in response_source
+        # The combinator is read off the root's schema, and every one of these
+        # five roots declares ``oneOf``.
+        assert "    def _branch_combinator(cls) -> str:" in response_source
+        assert "        return 'oneOf'" in response_source
+        # The branches are declared below the base, so the rebuild is what
+        # installs their schema.
+        assert response_source.rstrip().endswith(
+            f"{response_name}.model_rebuild(force=True)"
+        ), response_source[-200:]
         assert f"{response_name} =" not in response_source
 
 

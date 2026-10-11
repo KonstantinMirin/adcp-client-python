@@ -178,15 +178,28 @@ def _canonical_branch_pairs() -> list[tuple[type[BaseModel], type[BaseModel]]]:
     Derived from the MRO rather than listed: a canonical class refines a
     generated branch when a generated class sits in its bases and that class is
     itself a subclass of a generated split root's base. A schema refresh that
-    splits a twelfth root is covered without editing this.
+    splits a fourteenth root is covered without editing this.
+
+    The branch set comes from ``_branch_models`` -- the method the dispatch hook
+    itself consults -- not from the ``<Root>Branches`` alias. Reading the alias
+    covered only roots that export one, which excluded the five public response
+    bases: their branches are the numbered classes the generator writes, and
+    those are exported individually rather than behind a union alias. Nothing
+    canonical refines one today, so the gap was in the derivation rather than in
+    the coverage, and a derivation with a hole in it is the kind that goes stale
+    without a failure.
     """
     import adcp.types._generated as generated
-    from adcp.types._split_root import branch_members
 
     branches: set[type[BaseModel]] = set()
     for name in dir(generated):
-        members = branch_members(getattr(generated, f"{name}Branches", None))
-        branches.update(members)
+        candidate = getattr(generated, name)
+        if (
+            isinstance(candidate, type)
+            and issubclass(candidate, BaseModel)
+            and "_branch_models" in candidate.__dict__
+        ):
+            branches.update(candidate._branch_models())
 
     pairs: list[tuple[type[BaseModel], type[BaseModel]]] = []
     for name in dir(canonical_creative):

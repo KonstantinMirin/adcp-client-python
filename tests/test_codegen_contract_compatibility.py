@@ -8,41 +8,6 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 
-def test_response_dispatch_omits_newer_pydantic_keywords_at_their_defaults() -> None:
-    from adcp.types.response_dispatch import _model_validate_json_kwargs, _model_validate_kwargs
-
-    assert _model_validate_kwargs(
-        strict=None,
-        extra=None,
-        from_attributes=None,
-        context=None,
-        by_alias=None,
-        by_name=None,
-    ) == {"strict": None, "from_attributes": None, "context": None}
-    assert _model_validate_kwargs(
-        strict=True,
-        extra="forbid",
-        from_attributes=True,
-        context={"trace_id": "trace_1"},
-        by_alias=True,
-        by_name=False,
-    ) == {
-        "strict": True,
-        "extra": "forbid",
-        "from_attributes": True,
-        "context": {"trace_id": "trace_1"},
-        "by_alias": True,
-        "by_name": False,
-    }
-    assert _model_validate_json_kwargs(
-        strict=None,
-        extra=None,
-        context=None,
-        by_alias=None,
-        by_name=None,
-    ) == {"strict": None, "context": None}
-
-
 def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> None:
     from typing import get_args
 
@@ -201,6 +166,7 @@ def test_public_response_bases_remain_constructible_and_arms_remain_specific() -
     from adcp.types.domains.content_standards.update_content_standards_response import (
         UpdateContentStandardsResponse1,
     )
+    from adcp.types.validation import validate_union
     from adcp.utils.response_parser import parse_json_or_text
 
     responses = (
@@ -261,25 +227,43 @@ def test_public_response_bases_remain_constructible_and_arms_remain_specific() -
         preserved_fields,
     ) in responses:
         assert issubclass(response_base, BaseModel)
-        assert isinstance(response_base(), response_base)
         assert response_alias is response_arm
         assert issubclass(response_arm, response_base)
         assert isinstance(response_alias.model_validate(valid), response_base)
 
+        # Constructible is what the base exists for, and it stays so -- what
+        # changed is that construction validates. ``response_base()`` used to
+        # produce an empty instance of the loose base while
+        # ``response_base.model_validate({})`` refused the same document, which
+        # is the inconsistency the branch dispatch removes.
+        assert isinstance(response_base(**valid), response_base)
+        with pytest.raises(ValidationError):
+            response_base()
+
+        class Holder(BaseModel):
+            value: response_base  # type: ignore[valid-type]
+
         direct = response_base.model_validate(valid)
         direct_json = response_base.model_validate_json(json.dumps(valid))
         parsed = parse_json_or_text(valid, response_base)
-        for result in (direct, direct_json, parsed):
+        # The two paths a ``model_validate`` override could not reach. The
+        # nested one is how most of these appear in another model, and
+        # ``validate_union`` is the SDK's own helper over a ``TypeAdapter`` --
+        # the one the server framework calls on a handler's return value.
+        nested = Holder.model_validate({"value": valid}).value
+        adapted = validate_union(response_base, valid)
+        for result in (direct, direct_json, parsed, nested, adapted):
             assert type(result) is response_arm
             assert all(getattr(result, name) == value for name, value in preserved_fields.items())
-
-        empty_base = response_base()
-        assert response_base.model_validate(empty_base) is empty_base
 
         with pytest.raises(ValidationError):
             response_alias.model_validate(invalid_arm)
         with pytest.raises(ValidationError):
             response_base.model_validate(invalid_base)
+        with pytest.raises(ValidationError):
+            Holder.model_validate({"value": invalid_base})
+        with pytest.raises(ValidationError):
+            validate_union(response_base, invalid_base)
         with pytest.raises(ValueError):
             parse_json_or_text(invalid_base, response_base)
 

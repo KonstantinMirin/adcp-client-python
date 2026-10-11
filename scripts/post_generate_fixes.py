@@ -47,6 +47,7 @@ try:
     from branch_classes import (
         BranchPlan,
         plan_branches,
+        render_branch_models,
         repoint_subclasses_of,
         split_into_branch_classes,
     )
@@ -65,11 +66,13 @@ try:
         permits_null,
         read_root_constraints,
         root_carries_constraints,
+        root_combinator,
     )
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
     from scripts.branch_classes import (  # type: ignore[assignment]
         BranchPlan,
         plan_branches,
+        render_branch_models,
         repoint_subclasses_of,
         split_into_branch_classes,
     )
@@ -88,6 +91,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
         permits_null,
         read_root_constraints,
         root_carries_constraints,
+        root_combinator,
     )
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -235,9 +239,6 @@ SCHEMA_DIR = REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
 _PROTOCOL_ENVELOPE_IMPORT = "from ..core.protocol_envelope import ProtocolEnvelope\n"
 _VERSION_ENVELOPE_IMPORT = "from ..core.version_envelope import AdcpVersionEnvelope\n"
-_RESPONSE_ARM_DISPATCH_IMPORT = (
-    "from adcp.types.response_dispatch import ResponseArmDispatchMixin\n"
-)
 _STR_ENUM_MEMBER_ASSIGNMENT_IGNORE = "  # type: ignore[assignment]"
 _STR_ATTRIBUTE_NAMES = set(dir(str))
 
@@ -3992,9 +3993,7 @@ def fix_trusted_match_runtime_validators() -> None:
         print("  trusted_match/identity_match_response.py response class not found")
         return
     response_class = response_class_match.group(1)
-    source = (
-        source.rstrip()
-        + f"""
+    source = source.rstrip() + f"""
 
     @model_validator(mode='after')
     def _validate_tmpx_provider_ids(self) -> {response_class}:
@@ -4009,7 +4008,6 @@ def fix_trusted_match_runtime_validators() -> None:
             raise ValueError('tmpx_providers keys must be valid provider_id values')
         return self
 """
-    )
     identity_match_response.write_text(source.rstrip() + "\n")
     print("  trusted_match/identity_match_response.py: added runtime validators")
 
@@ -4801,9 +4799,7 @@ def restore_flattened_contract_field_types() -> None:
 
     if "@model_validator(mode='before')" not in source:
         source = ensure_pydantic_import(source, "model_validator")
-        source = (
-            source.rstrip()
-            + """
+        source = source.rstrip() + """
 
     @model_validator(mode='before')
     @classmethod
@@ -4818,7 +4814,6 @@ def restore_flattened_contract_field_types() -> None:
                 )
         return data
 """
-        )
     representation_target.write_text(source)
     print("  core/creative_representation.py: restored canonical format contract")
 
@@ -4851,9 +4846,7 @@ def enforce_transformer_output_contract() -> None:
     if "class Transformer(" not in source:
         raise RuntimeError("transformer.py: Transformer class not found")
     source = ensure_pydantic_import(source, "model_validator")
-    target.write_text(
-        source.rstrip()
-        + """
+    target.write_text(source.rstrip() + """
 
     @model_validator(mode='after')
     def _require_output_format_declaration(self) -> Transformer:
@@ -4868,20 +4861,30 @@ def enforce_transformer_output_contract() -> None:
                 'one of output_capability_ids or deprecated output_format_ids is required'
             )
         return self
-"""
-    )
+""")
     print("  core/transformer.py: enforced output declaration requirement")
 
 
 def restore_constructible_response_bases() -> None:
     """Keep selected public response names as constructible Pydantic models.
 
-    The generated numbered arms are still the schema-specific parsing surface and
-    remain available through the existing aliases.  A top-level union alias,
-    however, is not constructible and breaks callers that used the stable response
-    model API. Restore the former envelope base and make every generated arm a
-    subclass of it. The shared mixin dispatches ``Base.model_validate`` through
-    the arms, preserving both forms without losing task-specific wire fields.
+    The generated numbered branches are still the schema-specific parsing
+    surface and remain available through the existing aliases. A top-level union
+    alias, however, is not constructible and breaks callers that used the stable
+    response model API. Restore the former envelope base, make every generated
+    branch a subclass of it, and give the base the shared dispatch hook so the
+    public name resolves to the branch a document satisfies.
+
+    The base used to carry a ``model_validate`` override instead, which its own
+    docstring described as keeping the cross-field rules enforced. It did not.
+    Pydantic validates a nested field and a ``TypeAdapter`` through the CORE
+    SCHEMA, so the override was invisible on both -- and the base is
+    ``extra="allow"``, so on those paths it accepted ANY document and filed
+    every field as an untyped extra. ``validate_union``, the SDK's own public
+    helper and the one the server framework calls on a handler's return value,
+    is a ``TypeAdapter``: it accepted ``{"totally": "wrong"}`` as a
+    ``CreateContentStandardsResponse``. The hook is the same one the split
+    roots use, so one mechanism answers every path.
     """
     response_specs = (
         ("compliance/comply_test_controller_response.py", "ComplyTestControllerResponse"),
@@ -4900,31 +4903,27 @@ def restore_constructible_response_bases() -> None:
     for relative_path, base_name in response_specs:
         target = OUTPUT_DIR / relative_path
         if not target.exists():
-            print(f"  {relative_path} not found (skipping constructible response base)")
-            continue
+            # A row of this table names a PUBLIC response name this package
+            # keeps constructible, so a row the tree no longer answers is a
+            # decision gone stale, not a case to step over. It used to print a
+            # line and continue, which left the name whatever loose shape the
+            # generator gave it.
+            raise RuntimeError(f"{relative_path}: no generated module for {base_name}")
 
-        source = target.read_text()
-        if _RESPONSE_ARM_DISPATCH_IMPORT not in source:
-            future_import = "from __future__ import annotations\n\n"
-            if future_import not in source:
-                raise RuntimeError(f"{relative_path}: missing future annotations import")
-            source = source.replace(
-                future_import, future_import + _RESPONSE_ARM_DISPATCH_IMPORT + "\n", 1
-            )
+        source = _ensure_branch_dispatch_import(target.read_text())
         try:
             tree = ast.parse(source)
         except SyntaxError as exc:
             raise RuntimeError(f"{relative_path}: invalid generated Python") from exc
 
-        arms = [
+        branches = [
             node
             for node in tree.body
             if isinstance(node, ast.ClassDef)
             and re.fullmatch(rf"{re.escape(base_name)}\d+", node.name)
         ]
-        if not arms:
-            print(f"  {relative_path}: response arms not generated (skipping constructible base)")
-            continue
+        if not branches:
+            raise RuntimeError(f"{relative_path}: {base_name} generated no numbered branches")
 
         stable_base_exists = any(
             isinstance(node, ast.ClassDef) and node.name == base_name for node in tree.body
@@ -4942,45 +4941,85 @@ def restore_constructible_response_bases() -> None:
                     lines[line_number] = ""
         source = "".join(lines)
 
-        arm_names = [
-            arm.name for arm in sorted(arms, key=lambda arm: int(arm.name.removeprefix(base_name)))
+        branch_names = [
+            branch.name
+            for branch in sorted(
+                branches, key=lambda branch: int(branch.name.removeprefix(base_name))
+            )
         ]
-        for arm in arms:
-            arm_header = re.compile(rf"^class {re.escape(arm.name)}\([^\n]*\):$", re.MULTILINE)
-            source, replacements = arm_header.subn(
-                f"class {arm.name}({base_name}):", source, count=1
+        for branch in branches:
+            header = re.compile(rf"^class {re.escape(branch.name)}\([^\n]*\):$", re.MULTILINE)
+            source, replacements = header.subn(
+                f"class {branch.name}({base_name}):", source, count=1
             )
             if replacements != 1:
-                raise RuntimeError(f"{relative_path}: unable to rewrite {arm.name} base")
+                raise RuntimeError(f"{relative_path}: unable to rewrite {branch.name} base")
 
-        first_arm = min(arms, key=lambda arm: arm.lineno)
-        arm_marker = f"class {first_arm.name}("
-        first_arm_position = source.find(arm_marker)
-        if first_arm_position < 0:
-            raise RuntimeError(f"{relative_path}: unable to locate {first_arm.name}")
-        arm_list = ",\n            ".join(arm_names)
-        compatibility_base = f"""class {base_name}(ResponseArmDispatchMixin, AdcpVersionEnvelope, ProtocolEnvelope):
-    \"\"\"Constructible compatibility base for generated response arms.\"\"\"
-
-    @classmethod
-    def _response_arm_models(cls) -> tuple[type[{base_name}], ...]:
-        return (
-            {arm_list},
+        first_branch = min(branches, key=lambda branch: branch.lineno)
+        first_branch_position = source.find(f"class {first_branch.name}(")
+        if first_branch_position < 0:
+            raise RuntimeError(f"{relative_path}: unable to locate {first_branch.name}")
+        declaration = "\n".join(
+            [
+                f"class {base_name}(BranchDispatchMixin, AdcpVersionEnvelope, ProtocolEnvelope):",
+                '    """Constructible compatibility base for generated response branches."""',
+                *render_branch_models(branch_names, _response_root_combinator(relative_path)),
+            ]
         )
-
-
-"""
+        compatibility_base = f"{declaration}\n\n\n"
         if not stable_base_exists:
-            source = source[:first_arm_position] + compatibility_base + source[first_arm_position:]
+            source = (
+                source[:first_branch_position] + compatibility_base + source[first_branch_position:]
+            )
         else:
             base_marker = f"class {base_name}("
             base_position = source.find(base_marker)
             if base_position < 0:
                 raise RuntimeError(f"{relative_path}: unable to update {base_name} base")
-            source = source[:base_position] + compatibility_base + source[first_arm_position:]
+            source = source[:base_position] + compatibility_base + source[first_branch_position:]
 
+        # The branches are declared BELOW the base, so ``_branch_models`` cannot
+        # resolve them while the class body is compiled and the hook returns the
+        # base's own schema. This rebuild is what installs the union -- the same
+        # two-step the split roots use, in the module that declares the class.
+        source = f"{source.rstrip()}\n\n\n{base_name}.model_rebuild(force=True)\n"
         target.write_text(source.rstrip() + "\n")
         print(f"  {relative_path}: restored constructible {base_name} base")
+
+
+def _schema_for_generated_module() -> dict[Path, Path]:
+    """Which schema each generated module came from, keyed by module path.
+
+    The forward map is lossy -- ``generated_module_for`` replaces ``-`` with
+    ``_`` in every path part -- so the inverse is built by walking the bundle
+    rather than by undoing the substitution.
+
+    Deliberately uncached. ``SCHEMA_DIR`` is a module global that tests
+    monkeypatch, and a cache built under a synthetic bundle would answer for
+    the real one afterwards.
+    """
+    return {
+        generated_module_for(schema_file.relative_to(SCHEMA_DIR)).relative_to(
+            OUTPUT_DIR
+        ): schema_file.relative_to(SCHEMA_DIR)
+        for schema_file in sorted(SCHEMA_DIR.rglob("*.json"))
+    }
+
+
+def _response_root_combinator(relative_path: str) -> str:
+    """The keyword a refusal from this response's base will name.
+
+    Read from the root's own schema, not spelled in the table above: a hand
+    written keyword is a sentence about a schema that can stop being true, and
+    this one reaches the wire in ``issues[].keyword``.
+    """
+    schema_rel = _schema_for_generated_module().get(Path(relative_path))
+    if schema_rel is None:
+        raise RuntimeError(f"{relative_path}: no bundled schema generates this module")
+    combinator = root_combinator(json.loads((SCHEMA_DIR / schema_rel).read_text()))
+    if combinator is None:
+        raise RuntimeError(f"{schema_rel}: root declares no anyOf or oneOf over its branches")
+    return combinator
 
 
 def _schema_permits_null(schema: Any) -> bool:
@@ -5777,8 +5816,7 @@ def fix_verify_brand_claim_models() -> None:
     bulk_response = OUTPUT_DIR / "brand" / "verify_brand_claims_response.py"
 
     if request.exists() and "claim_type:" not in request.read_text():
-        request.write_text(
-            """# generated by datamodel-codegen:
+        request.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_request.json
 
 from __future__ import annotations
@@ -5810,13 +5848,11 @@ class VerifyBrandClaimRequest(AdcpVersionEnvelope):
         dict[str, Any],
         Field(description='Claim payload. Shape varies by claim_type.'),
     ]
-"""
-        )
+""")
         print("  brand/verify_brand_claim_request.py: restored claim fields")
 
     if response.exists() and "VerifyBrandClaimSuccessResponse" not in response.read_text():
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -5875,8 +5911,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored response arms")
 
     response_schema = SCHEMA_DIR / "brand" / "verify-brand-claim-response.json"
@@ -5885,8 +5920,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and response_schema.exists()
         and '"signed_response"' in response_schema.read_text()
     ):
-        response.write_text(
-            """# generated by datamodel-codegen:
+        response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claim_response.json
 
 from __future__ import annotations
@@ -6037,8 +6071,7 @@ class VerifyBrandClaimErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claim_response.py: restored signed response fields")
 
     bulk_response_schema = SCHEMA_DIR / "brand" / "verify-brand-claims-response.json"
@@ -6047,8 +6080,7 @@ VerifyBrandClaimResponse = VerifyBrandClaimSuccessResponse | VerifyBrandClaimErr
         and bulk_response_schema.exists()
         and '"signed_response"' in bulk_response_schema.read_text()
     ):
-        bulk_response.write_text(
-            """# generated by datamodel-codegen:
+        bulk_response.write_text("""# generated by datamodel-codegen:
 #   filename:  brand/verify_brand_claims_response.json
 
 from __future__ import annotations
@@ -6231,8 +6263,7 @@ class VerifyBrandClaimsErrorResponse(AdcpVersionEnvelope, ProtocolEnvelope):
 
 
 VerifyBrandClaimsResponse = VerifyBrandClaimsResponseBulk | VerifyBrandClaimsErrorResponse
-"""
-        )
+""")
         print("  brand/verify_brand_claims_response.py: restored signed response fields")
 
     if bulk_response.exists():
@@ -6764,9 +6795,7 @@ def fix_legacy_purchase_accepted_losses() -> None:
     )
     validator_marker = "    def _accepted_losses_match_schema("
     if validator_marker not in fixed and "field_validator" in fixed:
-        fixed = (
-            fixed.rstrip()
-            + """
+        fixed = fixed.rstrip() + """
 
 
     @field_validator('selected_product_ids')
@@ -6794,7 +6823,6 @@ def fix_legacy_purchase_accepted_losses() -> None:
             raise ValueError('accepted_losses must include the required compatibility losses')
         return values
 """
-        )
     if fixed != source:
         target.write_text(fixed)
         print("  media_buy/legacy_purchase_continuation_input.py: narrowed accepted_losses")
@@ -6925,9 +6953,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class MediaBuyChangeTerm(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_constraint_action" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_constraint_action(self) -> MediaBuyChangeTerm:
@@ -6947,9 +6973,7 @@ def enforce_change_term_runtime_constraints() -> None:
         if action not in allowed.get(kind, set()):
             raise ValueError('constraint kind is incompatible with action')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             term_path.write_text(source)
             print("  media_buy/change_term.py: restored constraint/action compatibility")
 
@@ -6962,9 +6986,7 @@ def enforce_change_term_runtime_constraints() -> None:
         )
         class_start = source.find("class CommercialTerms(AdCPBaseModel):")
         if class_start >= 0 and "def _validate_change_term_set" not in source[class_start:]:
-            source = (
-                source.rstrip()
-                + """
+            source = source.rstrip() + """
 
     @model_validator(mode='after')
     def _validate_change_term_set(self) -> CommercialTerms:
@@ -7013,9 +7035,7 @@ def enforce_change_term_runtime_constraints() -> None:
             ):
                 raise ValueError('change-term earliest effective time exceeds latest time')
         return self
-"""
-                + "\n"
-            )
+""" + "\n"
             terms_path.write_text(source)
             print("  media_buy/commercial_terms.py: restored change-term set invariants")
 
