@@ -778,6 +778,10 @@ async def test_all_client_methods():
                 "plan_id": "plan_123",
                 "outcome": "completed",
                 "governance_context": "ctx-abc-123-governance",
+                # A completed outcome names the check it completes and carries the
+                # seller's response (governance/report-plan-outcome-request.json).
+                "check_id": "chk_123",
+                "seller_response": {"seller_reference": "mb_123"},
             },
         ),
         (

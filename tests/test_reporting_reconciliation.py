@@ -240,14 +240,16 @@ def _health(value: str, *, code: str = "RECEIPT_REQUIRED") -> dict[str, object]:
     one return value.
 
     It owns NOTHING ELSE, and two members say so. Members 2 and 3 read
-    ``reconciliation_status`` -- a published consumer_receipt obligation that is
-    still pending is action_required whatever this returns -- and member 7
-    requires all three receipt counts, ``pending_adjustment_count`` among them,
-    once such an obligation reads healthy or complete. So a caller moving the
-    health moves those in the same update. Measured against the bundled validator
-    rather than inferred: ``_health("complete")`` over :func:`_obligation` is
-    refused on member 2, and refused on member 7 even once the status is settled.
-    :func:`_reconciled` is the one that owns the whole derivation.
+    ``reconciliation_status`` and name the code a pending or rejected receipt
+    requires, which is why ``code`` is a parameter -- a published
+    consumer_receipt obligation that is still pending is action_required
+    whatever this returns -- and member 7 requires all three receipt counts,
+    ``pending_adjustment_count`` among them, once such an obligation reads
+    healthy or complete. So a caller moving the health moves those in the same
+    update. Measured against the bundled validator rather than inferred:
+    ``_health("complete")`` over :func:`_obligation` is refused on member 2, and
+    refused on member 7 even once the status is settled. :func:`_reconciled` is
+    the one that owns the whole derivation.
     """
     closed = value in ("healthy", "complete")
     return {"health": value, "issues": [] if closed else [_issue(code)]}
