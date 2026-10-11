@@ -74,6 +74,14 @@ def _message_for(payload: object) -> str:
 
 @pytest.mark.parametrize("payload", REJECTED_PAYLOADS)
 def test_rejection_names_no_internal_class(payload):
+    """Asks: does a producer-internal name reach the peer? Nothing more.
+
+    It does NOT establish that the message is still ACTIONABLE. Those are
+    adjacent questions, and answering this one was read as answering both:
+    the projection that removed these names also removed the rule name a
+    conjunct failure carries, and only the upstream delta caught it
+    (salesagent-8qela.34). A green result here means no leak, not no loss.
+    """
     message = _message_for(payload)
     for name in INTERNAL_NAMES:
         assert name not in message, f"{name!r} reached the peer: {message}"
