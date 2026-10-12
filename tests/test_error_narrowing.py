@@ -328,7 +328,7 @@ def test_narrow_keeps_every_arm_of_a_six_hundred_way_tie() -> None:
 # rule fails the case below, and no ordering of the two satisfies both. The
 # signal both cases actually turn on is which arm's DECLARED FIELDS the
 # document carries, which the narrowing cannot see because it receives error
-# dicts and never the arm's model (salesagent-8qela.85).
+# dicts and never the arm's model (salesagent-8qela.89).
 #
 # These pin TODAY'S behaviour anyway, because the alternative was measured: with
 # no guard, a sweep over 275 generated-type items concluded the preference had
@@ -404,7 +404,7 @@ def test_the_deeper_arm_wins_when_the_arms_reach_different_depths() -> None:
 
     So the DROP asserted here is correct for this input, and the rule that
     produces it is not. Depth merely correlates with the real signal, which is
-    declared-field presence (salesagent-8qela.85). When that rule lands, this
+    declared-field presence (salesagent-8qela.89). When that rule lands, this
     test should be rewritten to assert it — deliberately, which is the whole
     reason the case is graded at all.
     """
