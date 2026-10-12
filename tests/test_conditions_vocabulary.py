@@ -529,6 +529,82 @@ def test_name_the_combinator_keeps_a_branchs_content_failure() -> None:
     assert [error["type"] for error in none_matched.value.errors()] == ["anyOf"]
 
 
+def test_a_branch_that_forbids_a_carried_key_is_not_the_branch_the_document_meant() -> None:
+    """``_c.absent`` firing is the opposite of getting past one's requiredness.
+
+    ``absent`` is a ``mode="before"`` validator, so a branch forbidding a key the
+    document carries raises AHEAD of field validation and reports no requiredness
+    error at all. The election rule used to test requiredness alone, so that
+    silence read as "this branch got past its required fields" and the branch the
+    document meant LEAST owned the refusal -- stating that a key is unacceptable
+    when it is exactly what the sibling branch requires (salesagent-klblw).
+
+    THE DOCUMENT HERE IS THE POINT. It carries ``value``, which ``Value``
+    requires and ``Range`` forbids, and omits ``dimension``, which both require.
+    An EMPTY document cannot grade this: ``absent`` never fires, so no branch is
+    elected and the keyword is named correctly either way. Any probe for this
+    defect has to satisfy one branch PARTIALLY.
+    """
+    from typing import Annotated, TypeAlias
+
+    from pydantic import BaseModel, TypeAdapter, ValidationError, WrapValidator, model_validator
+
+    class Shape(BaseModel):
+        dimension: str | None = None
+        value: int | None = None
+        range: int | None = None
+
+    class Value(Shape):
+        dimension: str
+        value: int
+
+        @model_validator(mode="before")
+        @classmethod
+        def _refuse(cls, data: Any) -> Any:
+            return c.absent(data, ["range"])
+
+    class Range(Shape):
+        dimension: str
+        range: int
+
+        @model_validator(mode="before")
+        @classmethod
+        def _refuse(cls, data: Any) -> Any:
+            return c.absent(data, ["value"])
+
+    Wrapped: TypeAlias = Annotated[Value | Range, WrapValidator(c.name_the_combinator("anyOf"))]
+    adapter: TypeAdapter[Value | Range] = TypeAdapter(Wrapped)
+
+    with pytest.raises(ValidationError) as refusal:
+        adapter.validate_python({"value": 1})
+    errors = refusal.value.errors()
+    assert [error["type"] for error in errors] == ["anyOf"], errors
+    # The sentence that used to come out is a statement about the one key the
+    # document got RIGHT, so it is named here rather than only excluded by type.
+    assert "value is not accepted" not in str(refusal.value), str(refusal.value)
+
+    # A key BOTH branches forbid leaves no field group to report, and then the
+    # forbidden-key refusal is the informative one and is kept -- with a ``loc``
+    # that is a path in the document, not pydantic's choice label.
+    class OnlyValue(Shape):
+        dimension: str
+
+        @model_validator(mode="before")
+        @classmethod
+        def _refuse(cls, data: Any) -> Any:
+            return c.absent(data, ["range"])
+
+    Both: TypeAlias = Annotated[
+        OnlyValue | OnlyValue, WrapValidator(c.name_the_combinator("anyOf"))
+    ]
+    both: TypeAdapter[OnlyValue] = TypeAdapter(Both)
+    with pytest.raises(ValidationError) as forbidden:
+        both.validate_python({"dimension": "d", "range": 1})
+    kept = forbidden.value.errors()
+    assert {error["type"] for error in kept} == {"not"}, kept
+    assert all(error["loc"] == () for error in kept), [error["loc"] for error in kept]
+
+
 def test_branch_title_reads_the_arm_title_off_the_branchs_docstring() -> None:
     """The one place a branch's schema-derived text lives.
 
