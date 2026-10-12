@@ -95,7 +95,6 @@ from pydantic import (
     ModelWrapValidatorHandler,
     PrivateAttr,
     SerializerFunctionWrapHandler,
-    TypeAdapter,
     WithJsonSchema,
     WrapValidator,
     field_validator,
@@ -1211,10 +1210,14 @@ CreateMediaBuyRequestBranches: TypeAlias = Annotated[
     WrapValidator(_conditions.name_the_combinator("anyOf", CreateMediaBuyRequest._branch_models())),
 ]
 
-#: Parsing a union is what a TypeAdapter is for. Built once, at import.
-CreateMediaBuyRequestBranchesAdapter: TypeAdapter[CreateMediaBuyRequestBranches] = TypeAdapter(
-    CreateMediaBuyRequestBranches
-)
+# No module-level ``CreateMediaBuyRequestBranchesAdapter``: a ``TypeAdapter``
+# builds its validator AT IMPORT, so it captures schema state once and shares it
+# with every test in the process, which is what
+# ``test_sdk_has_no_module_level_type_adapter_construction`` forbids. This file
+# is hand-written and carried the same declaration the generator emitted; both
+# are gone. ``CreateMediaBuyRequestBranches`` above is the public name and stays
+# reachable, and a caller who wants an adapter writes
+# ``TypeAdapter(CreateMediaBuyRequestBranches)``.
 
 # CreateMediaBuyRequest is declared above its branches, so _branch_models
 # cannot resolve them while the class body is compiled. The rebuild installs
@@ -1408,7 +1411,6 @@ __all__ = [
     "CanonicalBoundaryModel",
     "CreateMediaBuyRequest",
     "CreateMediaBuyRequestBranches",
-    "CreateMediaBuyRequestBranchesAdapter",
     "CreateMediaBuyRequestCommittedProposalExecution",
     "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
     "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",

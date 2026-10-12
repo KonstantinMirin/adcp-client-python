@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-11 17:09:59 UTC
+Generation date: 2026-10-12 03:26:03 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -209,7 +209,6 @@ if TYPE_CHECKING:
         BatchFrequency,
         CreateMediaBuyRequest,
         CreateMediaBuyRequestBranches,
-        CreateMediaBuyRequestBranchesAdapter,
         CreateMediaBuyRequestCommittedProposalExecution,
         CreateMediaBuyRequestExplicitPackagesWithFixedAllocation,
         CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation,
@@ -480,7 +479,6 @@ if TYPE_CHECKING:
         RequestProposalsRequest,
         RequestProposalsRequestAccount,
         RequestProposalsRequestBranches,
-        RequestProposalsRequestBranchesAdapter,
         RequestProposalsRequestBrand,
     )
     from adcp.types.domains.media_buy.request_proposals_response import (
@@ -737,7 +735,6 @@ _DECLARED_BY = {
         "BatchFrequency",
         "CreateMediaBuyRequest",
         "CreateMediaBuyRequestBranches",
-        "CreateMediaBuyRequestBranchesAdapter",
         "CreateMediaBuyRequestCommittedProposalExecution",
         "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
         "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",
@@ -982,7 +979,6 @@ _DECLARED_BY = {
         "RequestProposalsRequest",
         "RequestProposalsRequestAccount",
         "RequestProposalsRequestBranches",
-        "RequestProposalsRequestBranchesAdapter",
         "RequestProposalsRequestBrand",
     ),
     "media_buy.request_proposals_response": (
@@ -1198,7 +1194,6 @@ __all__ = [
     "CreateMediaBuyInputRequired",
     "CreateMediaBuyRequest",
     "CreateMediaBuyRequestBranches",
-    "CreateMediaBuyRequestBranchesAdapter",
     "CreateMediaBuyRequestCommittedProposalExecution",
     "CreateMediaBuyRequestExplicitPackagesWithFixedAllocation",
     "CreateMediaBuyRequestExplicitPackagesWithSellerOptimizedAllocation",
@@ -1387,7 +1382,6 @@ __all__ = [
     "RequestProposalsRequest",
     "RequestProposalsRequestAccount",
     "RequestProposalsRequestBranches",
-    "RequestProposalsRequestBranchesAdapter",
     "RequestProposalsRequestBrand",
     "RequestProposalsResponse",
     "RequestProposalsResponse1",

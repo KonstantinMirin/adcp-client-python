@@ -8828,7 +8828,10 @@ def compose_branch_module(
     rewritten = _ensure_conditions_import(rewritten)
     if any(plan.literals for plan in plans):
         rewritten = _ensure_typing_import(rewritten, "Literal")
-    rewritten = ensure_pydantic_import(rewritten, "TypeAdapter")
+    # No ``TypeAdapter`` import: the only thing that used it was the module-level
+    # ``<Root>BranchesAdapter``, which ``branch_classes.py`` no longer emits (see the
+    # note there). Ensuring it now would leave an unused import in every split
+    # module.
     if banned:
         rewritten = _ensure_typing_import(rewritten, "Any", "ClassVar")
     if banned or any(_residual_is_checked(plan) for plan in plans):

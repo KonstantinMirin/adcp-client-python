@@ -693,9 +693,29 @@ def split_into_branch_classes(
                 "    ),",
                 "]",
                 "",
-                "#: Parsing a union is what a TypeAdapter is for. Built once, at import.",
-                f"{branches}Adapter: TypeAdapter[{branches}] = TypeAdapter({branches})",
-                "",
+                # No module-level ``TypeAdapter`` for the union. It used to be emitted
+                # here as "Built once, at import", which is precisely what
+                # ``test_sdk_has_no_module_level_type_adapter_construction`` forbids: a
+                # ``TypeAdapter`` builds its validator AT IMPORT, so the schema state is
+                # captured once and shared by every test in the process, and that
+                # guard's subject is "no schema state may leak in from another test".
+                #
+                # Making it lazy was measured and REJECTED: with a per-module
+                # ``__getattr__`` the module-level-assignment count went 1 -> 0 and the
+                # guard went green, while importing ``adcp.types._generated`` -- which
+                # re-exports all thirteen EAGERLY -- still built them. That converts a
+                # visible violation into an invisible one.
+                #
+                # Deleted rather than relocated because nothing consumed it: over the
+                # tracked tree there were 14 declarations and 110 references, and all 96
+                # others were re-export imports or ``__all__`` strings -- zero
+                # ``validate_python``, zero ``dump_*``, in src, tests and scripts alike.
+                # None of the fourteen was reachable from ``adcp.types`` or present in
+                # its ``__all__``; they existed only inside a module whose own docstring
+                # reads "INTERNAL ... DO NOT import from this module directly". A caller
+                # who wants one writes ``TypeAdapter(XBranches)``, which is the line this
+                # was saving. The UNION alias above is untouched and the publicly
+                # reachable ones stay reachable.
                 f"# {flat_class} is declared above its branches, so _branch_models",
                 "# cannot resolve them while the class body is compiled. The rebuild is",
                 "# what installs the branches' schema -- a class's core schema is built",

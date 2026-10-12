@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-11 17:09:59 UTC
+Generation date: 2026-10-12 03:26:03 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -84,7 +84,6 @@ if TYPE_CHECKING:
         SearchBrandsError,
         SearchBrandsResponse,
         SearchBrandsResponseBranches,
-        SearchBrandsResponseBranchesAdapter,
         SearchBrandsSuccess,
         Variant,
     )
@@ -98,7 +97,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.brand.verify_brand_claim_request import (
         VerifyBrandClaimRequest,
         VerifyBrandClaimRequestBranches,
-        VerifyBrandClaimRequestBranchesAdapter,
         VerifyBrandClaimRequestVerifyParentClaim,
         VerifyBrandClaimRequestVerifyPropertyClaim,
         VerifyBrandClaimRequestVerifySubsidiaryClaim,
@@ -211,7 +209,6 @@ _DECLARED_BY = {
         "SearchBrandsError",
         "SearchBrandsResponse",
         "SearchBrandsResponseBranches",
-        "SearchBrandsResponseBranchesAdapter",
         "SearchBrandsSuccess",
         "Variant",
     ),
@@ -225,7 +222,6 @@ _DECLARED_BY = {
     "brand.verify_brand_claim_request": (
         "VerifyBrandClaimRequest",
         "VerifyBrandClaimRequestBranches",
-        "VerifyBrandClaimRequestBranchesAdapter",
         "VerifyBrandClaimRequestVerifyParentClaim",
         "VerifyBrandClaimRequestVerifyPropertyClaim",
         "VerifyBrandClaimRequestVerifySubsidiaryClaim",
@@ -346,7 +342,6 @@ __all__ = [
     "SearchBrandsRequest",
     "SearchBrandsResponse",
     "SearchBrandsResponseBranches",
-    "SearchBrandsResponseBranchesAdapter",
     "SearchBrandsSuccess",
     "Store",
     "Tone",
@@ -360,7 +355,6 @@ __all__ = [
     "VerifyBrandClaimPayload",
     "VerifyBrandClaimRequest",
     "VerifyBrandClaimRequestBranches",
-    "VerifyBrandClaimRequestBranchesAdapter",
     "VerifyBrandClaimRequestVerifyParentClaim",
     "VerifyBrandClaimRequestVerifyPropertyClaim",
     "VerifyBrandClaimRequestVerifySubsidiaryClaim",
