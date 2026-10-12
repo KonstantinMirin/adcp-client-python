@@ -16,6 +16,7 @@ ride as schema-derived text in the refusal message and in comments.
 from __future__ import annotations
 
 import keyword
+from collections.abc import Sequence
 from typing import Any
 
 #: The JSON Schema keywords an injected runtime check may name.
@@ -54,7 +55,9 @@ SCHEMA_KEYWORDS = frozenset(
 )
 
 
-def schema_keyword_raise(keyword: str, message: str, *, indent: str = " " * 8) -> str:
+def schema_keyword_raise(
+    keyword: str, message: str, *, indent: str = " " * 8, fields: Sequence[str] = ()
+) -> str:
     """Render the ``raise`` statement an injected runtime check refuses with.
 
     ``PydanticCustomError`` sets pydantic's error ``type`` to its first argument
@@ -67,13 +70,29 @@ def schema_keyword_raise(keyword: str, message: str, *, indent: str = " " * 8) -
     The caller passes the keyword the SCHEMA states, never one read off the
     message: the English is written for a human and two different keywords can
     share a phrasing.
+
+    *fields* are the field names the refusal cites, and they go in the error
+    CONTEXT rather than only in the message. The authored sentence carries them
+    too, but a consumer cannot read them out of it: the same string also names
+    the model class, which is producer-internal, so the projection that strips
+    the class name has to discard the whole sentence and render the keyword
+    alone (``adcp.validation.pydantic_errors._message``). The context is the one
+    place the names arrive structured, and the projection reads them from
+    ``ctx['fields']`` — a comma-joined string, which is the spelling
+    ``adcp.types._conditions`` already uses for its own forbidden-name refusal.
+
+    Omitted entirely when there are no names. A condition that reads no field is
+    ordinary, and ``{'fields': ''}`` would put an empty parenthetical in front of
+    the buyer where the keyword alone reads correctly.
     """
     if keyword not in SCHEMA_KEYWORDS:
         raise ValueError(f"{keyword!r} is not a JSON Schema keyword an issue may name")
+    context = f"{indent}    {{'fields': {', '.join(fields)!r}}},\n" if fields else ""
     return (
         f"{indent}raise PydanticCustomError(\n"
         f"{indent}    {keyword!r},\n"
         f"{indent}    {message!r},\n"
+        f"{context}"
         f"{indent})"
     )
 
@@ -558,9 +577,15 @@ def _render_conjunct(
     )
     # A root conjunct is an ``allOf`` member: that is the keyword a consumer
     # reads for a constraint the root states beside its combinator.
+    #
+    # ``named`` goes to the context as well as into the sentence. The sentence
+    # cannot deliver them: it also names the model class, so the projection that
+    # strips producer-internal text drops the whole string and the buyer was
+    # told "allOf composition failed" with no place to look. One derivation,
+    # both destinations (salesagent-8qela.49).
     return [
         "        if not (",
         _wrap(predicate, " " * 12),
         "        ):",
-        schema_keyword_raise("allOf", message, indent=" " * 12),
+        schema_keyword_raise("allOf", message, indent=" " * 12, fields=named),
     ]
