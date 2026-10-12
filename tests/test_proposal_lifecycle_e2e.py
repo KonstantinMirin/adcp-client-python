@@ -642,8 +642,28 @@ async def test_create_media_buy_cannot_craft_packages_beside_a_proposal(
         ],
     }
 
-    with pytest.raises(ValidationError, match="at least one of these field groups"):
+    # Asserted as the PIN states the exclusion, not as the message reads.
+    # media-buy/create-media-buy-request.json (schemas/cache/3.2, AdCP 3.2.1)
+    # states it per arm, inline: arms 0 and 1 carry
+    # ``not {"required": ["proposal_id"]}`` and arm 2 carries
+    # ``not {"anyOf": [{"required": ["packages"]}, ...]}``. So a document carrying
+    # BOTH keys fails three ``not`` clauses -- proposal_id twice, once for each
+    # explicit-packages arm, and packages once for the proposal arm. The
+    # repetition is one issue per failing ARM and not a duplicate.
+    #
+    # This asked for "at least one of these field groups" and that is the refusal
+    # for a document satisfying no arm by OMISSION; `{"buyer_ref": "b"}` earns it,
+    # with keyword ``anyOf``. This document satisfies no arm by COMMISSION, so it
+    # earns the per-arm ``not`` -- which is also the keyword
+    # core/error.json asks an implementer to report, where the combinator message
+    # on this document would have been the wrong rejection class.
+    with pytest.raises(ValidationError) as refused:
         CreateMediaBuyRequest.model_validate(cmb_req_fields)
+    entries = refused.value.errors()
+    assert {entry["type"] for entry in entries} == {"not"}, entries
+    assert {
+        key for key in ("proposal_id", "packages") for entry in entries if key in entry["msg"]
+    } == {"proposal_id", "packages"}, [entry["msg"] for entry in entries]
 
     # Dropping the packages leaves the proposal arm, which is a request a buyer
     # can send -- so the refusal above is about the combination, not the shape.
