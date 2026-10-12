@@ -43,7 +43,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from pydantic import GetCoreSchemaHandler, TypeAdapter, WrapValidator
-from pydantic_core import CoreSchema
+from pydantic_core import CoreSchema, core_schema
 
 from adcp.types._conditions import name_the_combinator
 
@@ -51,6 +51,20 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 __all__ = ["BranchDispatchMixin"]
+
+
+def _serialize_as_this_class(value: Any, handler: Any) -> Any:
+    """Serialize through the class's own model schema rather than the union.
+
+    ``handler`` here is built from the schema passed alongside this function --
+    the plain model schema the declaring class would have had -- so it terminates
+    instead of re-entering the branches' union. A BRANCH instance reaching this
+    is serialized by the base's field set, which costs nothing: the base's fields
+    are the merged union of its branches' on 14 of the 19 roots, and on the other
+    5 ``serialize_as_any=True`` dispatches on the runtime type before this is
+    consulted (measured: 52 branch-only field values, 0 lost).
+    """
+    return handler(value)
 
 
 class BranchDispatchMixin:
@@ -168,4 +182,52 @@ class BranchDispatchMixin:
             union,
             WrapValidator(name_the_combinator(cls._branch_combinator(), branches)),
         ]
-        return TypeAdapter(wrapped).core_schema
+        schema = dict(TypeAdapter(wrapped).core_schema)
+        # THE UNION IS THE VALIDATOR. It is not also the serializer, because then
+        # the class has no serializer for an instance OF ITSELF: the union's
+        # serializer matches no branch, falls back to inferring a model, looks the
+        # class up, finds this same union, and re-enters it. Measured on all
+        # nineteen roots at 3488ff9c3 -- ``model_dump(mode="json")`` and
+        # ``model_dump_json()`` raise, and ``model_dump(mode="python")`` returns
+        # the MODEL INSTANCE instead of a dict, silently (salesagent-8qela.95).
+        #
+        # ``AdCPBaseModel.model_dump`` defaults ``serialize_as_any=True``, so
+        # serialization dispatches on the RUNTIME type: for a loose base that is
+        # the base, which is why the base's own serializer is the one consulted
+        # and why it has to be able to serialize one.
+        #
+        # A loose base is reachable without validation at all -- ``model_construct``,
+        # ``copy.copy``, ``copy.deepcopy``, ``model_copy`` and an unpickled instance
+        # all produce one, which ``__new__``'s docstring above records measuring --
+        # so closing one constructor leaves four open. The serializer is the one
+        # place all five arrive.
+        #
+        # ONLY the ``serialization`` slot is set. An earlier attempt returned
+        # ``no_info_wrap_validator_function(dispatch, handler(source))``, putting
+        # the base's model schema in the SCHEMA position so a function-wrap would
+        # serialize through it. That works for serialization and is wrong: a core
+        # schema is also what the JSON schema is generated from, and it moved
+        # ``model_json_schema()`` on all nineteen roots from
+        # ``{$defs, anyOf}`` with no top-level properties to
+        # ``{$defs, properties, required}`` -- dropping the root combinator the pin
+        # states. It cost four tests (``test_root_conjunct_defaults`` and three in
+        # ``test_targeting_overlay_errors``, whose primary field moved because the
+        # issue order moved) and it walks into the open design questions on
+        # salesagent-8qela.85, .88 and .90. Keeping the union in the schema
+        # position leaves the JSON schema and every refusal exactly as they were.
+        #
+        # AND IT IS SET ON THE SCHEMA THE WRAPPER HOLDS, not on the wrapper. 17 of
+        # the 19 roots come back as a ``definitions`` node wrapping the
+        # ``function-wrap``; the other two (``VerifyBrandClaimRequest``,
+        # ``WebhookChallengeResponse``) are the ``function-wrap`` itself. A
+        # ``serialization`` key on a ``definitions`` node is not consulted, so
+        # setting it there fixed exactly those two and left 17 broken -- which is
+        # how the split was found.
+        serializer = core_schema.wrap_serializer_function_ser_schema(
+            _serialize_as_this_class, schema=handler(source)
+        )
+        if schema["type"] == "definitions":
+            schema["schema"] = {**schema["schema"], "serialization": serializer}
+        else:
+            schema["serialization"] = serializer
+        return schema
