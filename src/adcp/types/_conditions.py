@@ -506,25 +506,43 @@ def _is_branch_requiredness(error: Any) -> bool:
     return error["type"] == "missing" and len(error["loc"]) == 2
 
 
-def _refuses_the_shape(error: Any) -> bool:
-    """Whether this error says the branch was never REACHED, asked on its own.
+def _declines_the_document(error: Any, *, label_depth: int) -> bool:
+    """Whether this error says the branch was never REACHED.
 
     Two ways a branch declines the document rather than finding a fault inside
     it, and both report at the branch's own root:
 
-    * a required field of its own is absent -- ``missing`` at a ``loc`` of
-      length one;
-    * it FORBIDS a key the document carries -- ``_c.absent`` raises, which
-      arrives as a whole-document error at ``loc`` ``()``.
+    * a required field of its own is absent -- ``missing`` one level below that
+      root;
+    * it FORBIDS a key the document carries -- ``_c.absent`` raises
+      ``PydanticCustomError("not", ...)`` as a whole-document error AT that
+      root.
 
-    Measured on the create request, which has one of each: the
-    seller-optimized branch reports ``missing`` for ``total_budget`` and the
-    committed-proposal branch reports a ``value_error`` at ``()`` because it
-    forbids ``packages``. Counting only the first left TWO candidates and the
-    selection declined to choose, which is the shape of a rule that reads a
-    wholesale refusal as a content failure.
+    ``label_depth`` is the only difference between the two coordinate systems
+    this is asked in, which is why it is one function. A branch asked DIRECTLY
+    reports a document path, so its root is ``()`` and depth is 0. Inside the
+    union pydantic prefixes every ``loc`` with the choice's label, so the same
+    root is ``(label,)`` and depth is 1. Writing the rule twice is how the two
+    call sites came to disagree: the union path tested only requiredness, so a
+    branch whose ``_c.absent`` had fired read as REACHED and its refusal
+    displaced the error of the branch the document actually meant, and the
+    root's combinator keyword with it (salesagent-klblw).
+
+    THE TYPE TEST ON ``not`` IS LOAD-BEARING, and the previous rule's untyped
+    "any error at the branch's own root" is why. A branch that IS reached and
+    fails its inherited root conjunct ALSO reports at that root -- measured,
+    ``PydanticCustomError("oneOf", ...)`` at ``loc ()`` on six branches when
+    asked directly. Reading that as "declined" is backwards: the branch got
+    past its own requiredness and the conjunct is the informative failure.
+    ``_c.absent`` is the one site that raises ``not`` (``absent`` above names
+    the keyword at the raise site precisely so it is identifiable here), and a
+    conjunct raises ``allOf``/``anyOf``/``oneOf``, so the keyword separates
+    them exactly.
     """
-    return (error["type"] == "missing" and len(error["loc"]) == 1) or not error["loc"]
+    loc = error["loc"]
+    if error["type"] == "missing" and len(loc) == label_depth + 1:
+        return True
+    return error["type"] == "not" and len(loc) == label_depth
 
 
 def _errors_of_the_reached_branch(
@@ -552,7 +570,7 @@ def _errors_of_the_reached_branch(
             branch.__pydantic_validator__.validate_python(value)  # type: ignore[attr-defined]
         except ValidationError as branch_exc:
             own = branch_exc.errors()
-            if any(_refuses_the_shape(error) for error in own):
+            if any(_declines_the_document(error, label_depth=0) for error in own):
                 continue
             reached.append(Counter(tuple(error["loc"]) for error in own))
         else:
@@ -718,7 +736,7 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
             reached = [
                 errors
                 for errors in per_branch.values()
-                if not any(_is_branch_requiredness(error) for error in errors)
+                if not any(_declines_the_document(error, label_depth=1) for error in errors)
             ]
             if reached:
                 # CEILING: the branches are pairwise disjoint, so at most one
@@ -736,7 +754,28 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
                 }
             )
             if not absent:
-                raise
+                # NO branch was reached and none of them named an absent field, so
+                # there is no field group to report -- every branch declined for a
+                # key the document CARRIES. That is the forbidden-key refusal, and
+                # it is the informative one, so it is reported rather than replaced.
+                #
+                # Restated through ``_in_the_document`` rather than re-raised bare.
+                # A bare ``raise`` republishes the union's own errors, whose ``loc``
+                # still carries pydantic's choice label -- measured on the create
+                # request's both-keys document:
+                # ``loc=('function-after[_require_schema_required_group(),
+                # function-wrap[_reject_legacy_creative_identity()]]',)``. That
+                # label is a fact about this package's schema spelling, not a key
+                # the buyer sent, and ``core/error.json`` specifies
+                # ``issues[].pointer`` as a pointer into the request payload
+                # (salesagent-8qela.28). Before the reached-filter was corrected
+                # this path was unreachable for that document -- the bucket read as
+                # REACHED and went out label-stripped -- so fixing the filter is
+                # what exposed the bare raise.
+                raise ValidationError.from_exception_data(
+                    exc.title,
+                    [_in_the_document(error) for errors in per_branch.values() for error in errors],
+                ) from exc
             groups = " | ".join(branch_title(branch) for branch in branches)
             raise PydanticCustomError(
                 keyword,
