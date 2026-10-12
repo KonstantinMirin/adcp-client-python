@@ -239,12 +239,23 @@ That is the whole rule, and which side a root falls on is proved rather than cho
 
 | the root's branches | what is generated | population |
 |---|---|---|
-| partition by requiredness | one class per branch, a shared public base, the base dispatches | **13 roots, 30 branch classes** |
-| do not partition | a compiled check on the class | **203 generated modules carry one** |
+| partition by requiredness | one class per branch, a shared public base, the base dispatches | **19 declaring classes, 49 branch classes** |
+| do not partition | a compiled check on the class | **215 generated modules carry one** |
 
-Eighteen generated modules dispatch to branches: the 13 split roots, plus the five public
-response bases described below. 210 of the 1088 generated modules carry one mechanism or
-the other.
+Nineteen classes declare `_branch_models`: the split roots, the five public response bases
+described below, and the canonical create request. 43 of the 215 compiled checks refuse with
+a combinator keyword; the rest state a conjunct.
+
+Measured at `3488ff9c3` over 1083 generated modules. Count with
+`git grep -l <pattern> <commit> -- src/adcp/types/domains/` rather than `grep -r` over a
+working tree: `grep -r` matches `__pycache__/*.pyc` too and returns exactly double. The
+earlier figures here (13 roots, 30 branch classes, 203 modules) were correct when written
+and are not re-derived on a refresh, so treat any number in this file as "last measured at"
+rather than current.
+
+**What the emitted checks DO at validation time** — what a refusal reports, which branch's
+errors a caller sees, how a conditional binds, and what is not checked at all — is
+[`../schema-modifiers-and-class-checks.md`](../schema-modifiers-and-class-checks.md).
 
 `scripts/schema_constraints.py` is the one reader. It parses a root's constraint content
 into `RootConstraints` — a combinator, its `Branch` records, and the conjuncts beside it —
