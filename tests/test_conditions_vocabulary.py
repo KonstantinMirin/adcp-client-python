@@ -224,9 +224,9 @@ def test_only_bounds_what_the_document_carries() -> None:
     emits its default, which puts it on the document and so within the bound.
     """
     assert c.only(_Subject.model_validate({"packages": []}), ["packages", "pacing"])
-    assert not c.only(_Subject.model_validate({"packages": []}), ["packages"]), (
-        "pacing's emitted default is a member the bound has to name"
-    )
+    assert not c.only(
+        _Subject.model_validate({"packages": []}), ["packages"]
+    ), "pacing's emitted default is a member the bound has to name"
     assert not c.only(_Subject.model_validate({"packages": [], "proposal_id": "p"}), ["packages"])
     assert not c.only(
         _Open.model_validate({"declared": 1, "undeclared": 2}), ["declared"]
@@ -551,3 +551,137 @@ def test_branch_title_reads_the_arm_title_off_the_branchs_docstring() -> None:
 
     assert c.branch_title(Titled) == "Explicit packages with fixed allocation"
     assert c.branch_title(Undocumented) == "Undocumented"
+
+
+def _counting_fallback(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Count calls to the degenerate-label fallback without changing its answer.
+
+    Whether it FIRED is the only way to tell the two paths apart from outside:
+    both end in the same restated document error, and the labels the grouping
+    reads are gone from that result by design.
+    """
+    calls: list[int] = []
+    original = c._errors_of_the_reached_branch
+
+    def counting(value: Any, branches: Any, merged: Any) -> Any:
+        calls.append(1)
+        return original(value, branches, merged)
+
+    monkeypatch.setattr(c, "_errors_of_the_reached_branch", counting)
+    return calls
+
+
+def test_name_the_combinator_survives_degenerate_branch_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A branch's content failure survives when every label is the SAME string.
+
+    The wrapper groups a union's errors by their first ``loc`` element to decide
+    which branch the document reached. That assumes pydantic gives each choice a
+    DISTINCT label, which nobody guarantees: a branch carrying a WRAP validator
+    is spelled ``function-after[..., function-wrap[<validator>()]]`` -- a name
+    with no class in it -- so sibling branches inheriting one wrap collapse to a
+    single label and a single bucket. The bucket then holds one branch's
+    ``missing`` beside another's content failure, every candidate looks
+    unreached, and the combinator keyword displaces the informative error.
+
+    Not hypothetical: making the canonical layer's legacy-identity refusal
+    ``mode="wrap"`` did exactly this and took 23 tests in
+    ``tests/test_targeting_overlay_errors.py`` from passing to a root-level
+    ``anyOf`` where a field error belonged.
+    """
+    from typing import Annotated, TypeAlias
+
+    from pydantic import (
+        BaseModel,
+        Field,
+        TypeAdapter,
+        ValidationError,
+        WrapValidator,
+        model_validator,
+    )
+
+    calls = _counting_fallback(monkeypatch)
+
+    class Shape(BaseModel):
+        a: str | None = None
+        b: str | None = None
+
+        @model_validator(mode="wrap")
+        @classmethod
+        def _collapses_the_label(cls, value: Any, handler: Any) -> Any:
+            # Inherited by both branches, so both are spelled by THIS wrapper
+            # and neither name carries its own class.
+            return handler(value)
+
+    class First(Shape):
+        a: Annotated[str, Field(min_length=5)]
+
+    class Second(Shape):
+        b: str
+
+    Wrapped: TypeAlias = Annotated[
+        First | Second, WrapValidator(c.name_the_combinator("anyOf", (First, Second)))
+    ]
+    adapter: TypeAdapter[First | Second] = TypeAdapter(Wrapped)
+
+    # First passes requiredness and fails on the bound; Second reports b missing.
+    with pytest.raises(ValidationError) as refusal:
+        adapter.validate_python({"a": "xy"})
+
+    # The fixture really is degenerate, asserted rather than assumed: the
+    # fallback runs ONLY when one bucket covers several branches. If a future
+    # pydantic spells a wrapped choice with its class name this goes to zero and
+    # the test stops exercising the case it is named for.
+    assert calls == [1], "the fixture is no longer degenerate -- the fallback never ran"
+
+    types = {error["type"] for error in refusal.value.errors()}
+    assert "string_too_short" in types, refusal.value.errors()
+    assert "anyOf" not in types, "a branch's content failure was replaced by the keyword"
+    # And the reported path is the DOCUMENT's, with no label left on it.
+    assert [tuple(error["loc"]) for error in refusal.value.errors()] == [("a",)]
+
+    # A document satisfying no branch is still refused by the keyword.
+    with pytest.raises(ValidationError) as none_matched:
+        adapter.validate_python({})
+    assert [error["type"] for error in none_matched.value.errors()] == ["anyOf"]
+
+
+def test_the_degenerate_label_fallback_does_not_fire_when_labels_differ(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With distinct labels the grouping decides and the fallback never runs.
+
+    Asserted on whether it was CALLED, not on the result. A fallback that fired
+    unconditionally would satisfy every other test here while replacing the
+    grouping it exists to back up, so the result alone cannot tell the two
+    apart -- which is the failure mode this pair is about. Same models as the
+    sibling above, minus the wrap validator that collapses the labels.
+    """
+    from typing import Annotated, TypeAlias
+
+    from pydantic import BaseModel, Field, TypeAdapter, ValidationError, WrapValidator
+
+    calls = _counting_fallback(monkeypatch)
+
+    class Shape(BaseModel):
+        a: str | None = None
+        b: str | None = None
+
+    class First(Shape):
+        a: Annotated[str, Field(min_length=5)]
+
+    class Second(Shape):
+        b: str
+
+    Wrapped: TypeAlias = Annotated[
+        First | Second, WrapValidator(c.name_the_combinator("anyOf", (First, Second)))
+    ]
+    adapter: TypeAdapter[First | Second] = TypeAdapter(Wrapped)
+
+    with pytest.raises(ValidationError) as refusal:
+        adapter.validate_python({"a": "xy"})
+
+    assert calls == [], "the degenerate-label fallback fired where the grouping was sufficient"
+    assert "string_too_short" in {error["type"] for error in refusal.value.errors()}
+    assert [tuple(error["loc"]) for error in refusal.value.errors()] == [("a",)]
