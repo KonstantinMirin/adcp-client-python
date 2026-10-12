@@ -245,7 +245,7 @@ def invalid_request(
     from adcp.types.versioned import _schema_key_for_model_name
     from adcp.validation.pydantic_errors import issues_from_validation_error
     from adcp.validation.schema_errors import build_adcp_validation_error_payload
-    from adcp.validation.schema_validator import ValidationIssue
+    from adcp.validation.schema_validator import SchemaRuleError, ValidationIssue
 
     issues: list[ValidationIssue]
     if isinstance(error, ValidationError):
@@ -257,14 +257,25 @@ def invalid_request(
         issues = issues_from_validation_error(error, payload)
     elif request_model is not None:
         model_name = request_model.__name__
-        issues = [
-            ValidationIssue(
-                pointer="/",
-                message=str(error),
-                keyword="validation",
-                schema_path="",
-            )
-        ]
+        if isinstance(error, SchemaRuleError):
+            # The rule named its own vocabulary term and pointer, and a site that
+            # enforces two rules carries two rows. Nothing is stamped here.
+            issues = list(error.issues)
+        else:
+            # An exception this package did not raise -- `invalid_request` is public
+            # API, so an adopter can pass one -- and there is nothing to derive a
+            # keyword from. `validation` is NOT a JSON Schema vocabulary term and
+            # core/error.json says not to invent values, so this row is known to be
+            # non-conformant; it survives because the alternative is guessing a term
+            # for a rule this package cannot see. salesagent-8qela.117.
+            issues = [
+                ValidationIssue(
+                    pointer="/",
+                    message=str(error),
+                    keyword="validation",
+                    schema_path="",
+                )
+            ]
     else:
         # A caller bug, not a peer's. Loud rather than mislabelled: without
         # either source there is no tool name to put in the envelope.

@@ -67,6 +67,47 @@ class ValidationIssue:
     hint: str | None = None
 
 
+class SchemaRuleError(ValueError):
+    """A conditional invariant the generated model cannot express, refused with
+    the vocabulary term that names the rule and a pointer to the offending field.
+
+    ``core/error.json`` (AdCP 3.2.1) makes ``keyword`` required on every
+    ``issues[]`` row and describes it as "Schema keyword that rejected the
+    payload, drawn from the JSON Schema vocabulary ... Implementers SHOULD use
+    the validator's native keyword name; do not invent custom values here". Its
+    stated purpose is that an agent can "pattern-match on rejection class without
+    parsing message text". A hand-written refusal therefore carries its own term,
+    because one constant over a heterogeneous set of rules conveys no class at
+    all — it says only that something refused, which ``code`` already says.
+
+    ``pointer`` is carried for the same reason: an agent that cannot locate the
+    rejection is back to parsing the message.
+
+    A SITE THAT ENFORCES TWO RULES CARRIES TWO ISSUES. ``issues`` is an array, so
+    a refusal that is both a missing-required and a forbidden-present keeps the
+    class of each half instead of collapsing to whichever term fits worse.
+
+    ``str()`` joins the messages, so a caller that only logs the exception still
+    reads the same text it did before.
+    """
+
+    def __init__(self, *issues: ValidationIssue) -> None:
+        if not issues:
+            raise TypeError("a SchemaRuleError names at least one violated rule")
+        self.issues: tuple[ValidationIssue, ...] = issues
+        super().__init__("; ".join(issue.message for issue in issues))
+
+
+def rule(keyword: str, pointer: str, message: str) -> ValidationIssue:
+    """One violated rule, for :class:`SchemaRuleError`.
+
+    ``schema_path`` is empty: these rules live in the schema's ``if``/``then``
+    and negative intersections, which the generated model does not retain a path
+    into, and an invented path would be worse than an absent one.
+    """
+    return ValidationIssue(pointer=pointer, message=message, keyword=keyword, schema_path="")
+
+
 @dataclass(frozen=True)
 class ValidationOutcome:
     valid: bool
