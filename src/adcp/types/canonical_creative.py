@@ -880,15 +880,15 @@ class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
         # that is ``None`` -- and ``init=False`` is what removes the keyword from the
         # ``__init__`` both checkers synthesize through ``dataclass_transform``.
         #
-        # test_the_removed_field_is_hidden_from_the_type_checker CANNOT pass for this
-        # class as written, and that is a finding rather than an omission: it compares
-        # the source annotation to the ancestor's pydantic ``FieldInfo.annotation``,
-        # which normalises ``None`` to ``NoneType``. Writing ``NoneType`` satisfies the
-        # test and mypy then refuses it outright -- 'NoneType should not be used as a
-        # type, please use None instead [nonetype-type]'. So the two gates demand
-        # different spellings of the same annotation, and only a class whose ancestor
-        # annotates ``FormatReferenceStructuredObject | None`` (i.e. one bound to the
-        # generated ROOT) can satisfy both. See salesagent-8qela.70.
+        # ``None`` is the only spelling available here and it is the right one. mypy
+        # refuses the alternative outright -- 'NoneType should not be used as a type,
+        # please use None instead [nonetype-type]' -- so a gate that wanted
+        # ``NoneType`` written in the source would have demanded a different spelling
+        # of the same annotation than the type checker allows.
+        # test_the_removed_field_is_hidden_from_the_type_checker therefore compares the
+        # two sides as pydantic RESOLVES them rather than as they are written: both go
+        # through a throwaway field, which is where ``None`` becomes ``NoneType``.
+        # See salesagent-8qela.70.
         format_id: None = Field(default=None, init=False)
 
     # Nothing is declared here. The branch this subclasses requires ``format_kind``
