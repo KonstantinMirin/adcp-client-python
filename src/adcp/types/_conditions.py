@@ -43,6 +43,7 @@ import pathlib
 import re
 import typing
 import uuid
+from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
@@ -492,6 +493,78 @@ def _is_branch_requiredness(error: Any) -> bool:
     return error["type"] == "missing" and len(error["loc"]) == 2
 
 
+def _refuses_the_shape(error: Any) -> bool:
+    """Whether this error says the branch was never REACHED, asked on its own.
+
+    Two ways a branch declines the document rather than finding a fault inside
+    it, and both report at the branch's own root:
+
+    * a required field of its own is absent -- ``missing`` at a ``loc`` of
+      length one;
+    * it FORBIDS a key the document carries -- ``_c.absent`` raises, which
+      arrives as a whole-document error at ``loc`` ``()``.
+
+    Measured on the create request, which has one of each: the
+    seller-optimized branch reports ``missing`` for ``total_budget`` and the
+    committed-proposal branch reports a ``value_error`` at ``()`` because it
+    forbids ``packages``. Counting only the first left TWO candidates and the
+    selection declined to choose, which is the shape of a rule that reads a
+    wholesale refusal as a content failure.
+    """
+    return (error["type"] == "missing" and len(error["loc"]) == 1) or not error["loc"]
+
+
+def _errors_of_the_reached_branch(
+    value: Any, branches: Sequence[type], merged: list[dict[str, Any]]
+) -> list[dict[str, Any]] | None:
+    """The subset of ``merged`` belonging to the branch the document reached.
+
+    Used only when the union's labels are degenerate, so the merged list holds
+    every branch's errors under one key and there is nothing to group by. The
+    branches are asked DIRECTLY to decide which of them got past its own
+    requiredness; their own errors then identify which merged entries are that
+    branch's, matched on the error's type and its path below the label.
+
+    Selection only: what is reported is still the union's own errors, in the
+    caller's input mode. A branch asked directly reports a document path, so its
+    ``loc`` is the merged ``loc`` minus the label -- which is the match key.
+
+    Returns ``None`` when it cannot decide, and the caller then keeps the
+    ungrouped bucket: no branch was reached, two were, or a branch's direct
+    verdict disagrees with the union's. A wrong narrowing is worse than none.
+    """
+    reached: list[Counter[tuple[Any, ...]]] = []
+    for branch in branches:
+        try:
+            branch.__pydantic_validator__.validate_python(value)  # type: ignore[attr-defined]
+        except ValidationError as branch_exc:
+            own = branch_exc.errors()
+            if any(_refuses_the_shape(error) for error in own):
+                continue
+            reached.append(Counter(tuple(error["loc"]) for error in own))
+        else:
+            return None  # accepts on its own while the union refused: do not guess
+    if len(reached) != 1:
+        return None
+    # A MULTISET, not a set. Sibling branches report the SAME nested error when
+    # they share the field it is under -- two branches of the create request
+    # both validate ``packages``, so the merged list holds two identical
+    # ``string_type`` entries for one bad ``geo_countries`` element. Matching on
+    # membership kept both and the caller received the one real fault twice.
+    # Taking at most as many copies as the branch itself reported drops the
+    # sibling's duplicate and keeps a genuine repeat -- a document with a
+    # repeated JSON key does produce two errors at one path, and that is the
+    # branch's own count.
+    remaining = reached[0]
+    selected: list[dict[str, Any]] = []
+    for error in merged:
+        key = tuple(error["loc"])[1:]
+        if remaining[key] > 0:
+            remaining[key] -= 1
+            selected.append(error)
+    return selected or None
+
+
 def _in_the_document(error: Any) -> Any:
     """One union error restated with a ``loc`` that is a path in the document.
 
@@ -582,6 +655,29 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
                 if not error["loc"]:
                     raise
                 per_branch.setdefault(str(error["loc"][0]), []).append(dict(error))
+            if len(per_branch) == 1 and len(branches) > 1:
+                # DEGENERATE LABELS: the grouping above carries no information.
+                # It assumes pydantic gives each union choice a DISTINCT label,
+                # which is not a property anyone guarantees. A branch that gains
+                # a WRAP validator is spelled
+                # ``function-after[..., function-wrap[<validator>()]]`` -- a name
+                # with no class in it -- so every branch collapses to one label
+                # and one bucket. Measured: making the canonical layer's legacy
+                # refusal ``mode="wrap"`` did exactly that, all three branches of
+                # the create request arrived under one key, the bucket contained
+                # another branch's ``missing``, and the combinator refusal
+                # displaced the document error in 23 tests.
+                #
+                # So when the labels are degenerate, the branches are asked
+                # directly -- for SELECTION ONLY. The reported errors still come
+                # from the union, which is what keeps them in the caller's input
+                # mode; a branch's own errors are used to recognise WHICH of the
+                # merged errors are its.
+                selected = _errors_of_the_reached_branch(
+                    value, branches, next(iter(per_branch.values()))
+                )
+                if selected is not None:
+                    per_branch = {"": selected}
             # Report ONE branch's errors when the document satisfies that
             # branch's requiredness. A branch that failed on fields IT requires
             # was never reached; one that got past its own requiredness and
