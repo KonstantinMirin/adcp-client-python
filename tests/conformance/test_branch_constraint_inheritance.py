@@ -191,29 +191,57 @@ def _carries_compiled_check(model: type[BaseModel]) -> bool:
     )
 
 
-def _root_over_requires_a_branch_key(model: type[BaseModel]) -> bool:
-    """Whether the generated root requires a key its SCHEMA root does not.
+def _branch_keys_the_schema_root_does_not_require(model: type[BaseModel]) -> set[str]:
+    """Keys every branch requires and the SCHEMA ROOT does not — the schema side.
 
-    When every branch requires the same key the generator merges it onto the root
-    as required, so a document omitting it never reaches an after-validator --
-    which is salesagent-8qela.80, not this file's subject. Computed from the
-    pinned schema so the exemption it grants is a measurement rather than a list.
+    This is a fact about the pinned schema alone, with no reference to what was
+    generated, and it is what makes the guard below falsifiable: if no root in
+    the bundle has this shape then there is nothing for an over-requirement to be
+    measured against, and a green result would mean the derivation matched
+    nothing rather than that the generator is right.
     """
     relative = _schema_for(model)
     if relative is None:
-        return False
+        return set()
     schema = json.loads((_SCHEMA_DIR / relative).read_text())
     root_required = set(schema.get("required") or [])
+    shared_across_branches: set[str] = set()
     for keyword in ("oneOf", "anyOf"):
         branches = [b for b in schema.get(keyword) or [] if isinstance(b, dict)]
         if not branches:
             continue
-        shared = set.intersection(*(set(b.get("required") or []) for b in branches))
-        for key in shared - root_required:
-            field = model.model_fields.get(key)
-            if field is not None and field.is_required():
-                return True
-    return False
+        shared_across_branches |= set.intersection(
+            *(set(b.get("required") or []) for b in branches)
+        )
+    return shared_across_branches - root_required
+
+
+def _over_required_keys(model: type[BaseModel]) -> list[str]:
+    """Of those keys, the ones the generated CLASS marks required anyway.
+
+    When every branch requires the same key the generator merges it onto the root
+    carrying that requiredness, so the root over-requires exactly the keys its
+    branches select by -- salesagent-8qela.80. Computed from the pinned schema so
+    what it reports is a measurement rather than a list.
+    """
+    return sorted(
+        key
+        for key in _branch_keys_the_schema_root_does_not_require(model)
+        if (field := model.model_fields.get(key)) is not None and field.is_required()
+    )
+
+
+def _root_over_requires_a_branch_key(model: type[BaseModel]) -> bool:
+    """Whether the generated root requires a key its SCHEMA root does not.
+
+    Used as an EXEMPTION by the subclass-refusal test below, because such a root
+    refuses a document omitting the key by ordinary field requiredness and never
+    reaches the after-validator -- which says nothing about whether the
+    combinator was inherited, this file's actual subject. The exemption
+    disappears on its own when salesagent-8qela.80 is fixed, so no list goes
+    stale.
+    """
+    return bool(_over_required_keys(model))
 
 
 _POPULATION = _split_roots()
@@ -296,4 +324,53 @@ def test_the_compiled_check_is_emitted_widely() -> None:
         f"field-group check, expected at least {_MIN_ROOTS_CARRYING_THE_COMPILED_CHECK} — "
         "the emission in compose_branch_module has stopped reaching them, and the "
         "inheritance test above would SKIP rather than fail"
+    )
+
+
+def test_a_split_root_requires_only_what_its_schema_root_requires() -> None:
+    """The merged root must not carry its branches' requiredness.
+
+    THE DEFECT. The generator merges the branches' properties onto the root class
+    and carries their requiredness with them, so a root requires exactly the keys
+    its branches SELECT BY while its schema root requires none of them
+    (salesagent-8qela.80). Two consequences, and the second is why this is a
+    precondition rather than a tidy-up:
+
+    * a document omitting such a key fails FIELD validation, so the root's
+      after-validator never runs and the combinator refusal is masked -- which is
+      the exemption ``_root_over_requires_a_branch_key`` grants above, and the
+      reason the test it exempts cannot grade those roots at all;
+    * "which keys is this document missing that the ROOT requires" stops being
+      answerable, because the class's own requiredness no longer matches the
+      schema's. salesagent-8qela.116 needs exactly that question answered, and an
+      intersection over the branches' errors cannot answer it while this stands:
+      measured against each root's pinned ``required`` list, that derivation
+      agrees on 8 of 18 roots, and TWO of its disagreements are this defect.
+
+    THE POPULATION IS ASSERTED ON THE SCHEMA SIDE, which is what keeps a green
+    result meaningful. ``_branch_keys_the_schema_root_does_not_require`` reads the
+    pin and nothing else, so it reports the same keys before and after any
+    generator change. If it ever returns nothing for every root, this test is
+    comparing an empty set and passes while grading nothing -- so that is checked
+    first and fails loudly instead.
+    """
+    shape = {
+        name: sorted(_branch_keys_the_schema_root_does_not_require(root))
+        for name, root in _POPULATION
+    }
+    with_shape = {name: keys for name, keys in shape.items() if keys}
+    assert with_shape, (
+        "no split root in the pinned bundle has a key every branch requires and its "
+        "schema root does not, so there is nothing for an over-requirement to be "
+        "measured against and this test grades nothing — the shape has moved, not "
+        "the defect"
+    )
+
+    over = {name: _over_required_keys(root) for name, root in _POPULATION}
+    violations = {name: keys for name, keys in over.items() if keys}
+    assert not violations, (
+        "generated split root(s) require keys their schema root does not, so the "
+        "branches' requiredness has been merged onto the root: "
+        + "; ".join(f"{name} requires {keys}" for name, keys in sorted(violations.items()))
+        + f" — the schema-side shape exists for {sorted(with_shape)}"
     )
