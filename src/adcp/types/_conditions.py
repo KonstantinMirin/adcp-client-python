@@ -493,8 +493,8 @@ def _is_known(error: Any) -> bool:
     return error["type"] in _KNOWN_ERROR_TYPES and "url" in error
 
 
-def _is_branch_requiredness(error: Any) -> bool:
-    """Whether a union error says a BRANCH's own required field is absent.
+def _is_an_absent_root_key(error: Any) -> bool:
+    """Whether a union error says a key of the ROOT OBJECT is absent.
 
     Inside a union every ``loc`` opens with the label of the choice that
     produced it, so a branch's own root properties sit at length two and
@@ -502,6 +502,12 @@ def _is_branch_requiredness(error: Any) -> bool:
     than that is content, not requiredness: an object nested three levels down
     lacking a field ITS schema requires says this branch was reached and the
     document is wrong inside it.
+
+    This says WHERE, not WHY. Whether such a key is required by the SCHEMA ROOT
+    or only by the branch that reported it is a fact about the schema, not about
+    the error -- which is why the root's required set is passed in rather than
+    inferred here. This was named ``_is_branch_requiredness`` while it was read
+    as the latter.
     """
     return error["type"] == "missing" and len(error["loc"]) == 2
 
@@ -627,7 +633,11 @@ def _in_the_document(error: Any) -> Any:
     return detail
 
 
-def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable[[Any, Any], Any]:
+def name_the_combinator(
+    keyword: str,
+    branches: Sequence[type] = (),
+    root_required: frozenset[str] = frozenset(),
+) -> Callable[[Any, Any], Any]:
     """Build the wrapping validator a split root's union carries.
 
     The refusal reads the same whether the root was SPLIT into branch classes or
@@ -673,6 +683,24 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
     document meant -- with the label dropped. Nothing downstream has to
     recognise a label, and the two spellings stop being a distinction anything
     depends on.
+
+    ``root_required`` NAMES THE FIELDS THE SCHEMA ROOT REQUIRES, and without it
+    this function cannot tell the two reasons a key is absent apart. A branch
+    reports ``missing`` at the root object for a key it SELECTS BY and for a key
+    the ROOT requires alike, and the second says the document is wrong at the
+    root rather than that no branch was elected: refusing it with the combinator
+    alone puts the only issue at the document root, so ``field`` translates to
+    the empty string and is omitted, while ``core/error.json`` says a seller
+    "MUST also populate field from issues[0]" whenever ``issues`` is present
+    (salesagent-8qela.116).
+
+    It is a PARAMETER rather than something read off a branch because the
+    distinction is not derivable from the errors -- measured against each root's
+    pinned ``required`` list, "absent in every branch implies root-required"
+    agrees on 8 of 18 roots and fails in both directions. The generated base
+    declares it as ``_ROOT_REQUIRED`` and both the mixin and the emitted union
+    alias pass that one declaration; a hand-written wrapper passes nothing and
+    gets today's behaviour, exactly as it does for ``branches``.
     """
 
     def _wrap(value: Any, handler: Any) -> Any:
@@ -745,14 +773,38 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
                 raise ValidationError.from_exception_data(
                     exc.title, [_in_the_document(error) for error in reached[0]]
                 ) from exc
-            absent = sorted(
-                {
-                    str(error["loc"][1])
-                    for errors in per_branch.values()
-                    for error in errors
-                    if _is_branch_requiredness(error)
-                }
-            )
+            # One entry per absent root key, keeping the first branch's error
+            # for it: every branch reports the same ``missing`` for a key the
+            # ROOT requires, and the records are interchangeable.
+            at_the_root: dict[str, dict[str, Any]] = {}
+            for errors in per_branch.values():
+                for entry in errors:
+                    if _is_an_absent_root_key(entry):
+                        at_the_root.setdefault(str(entry["loc"][1]), entry)
+            missing_root_keys = [
+                entry for name, entry in sorted(at_the_root.items()) if name in root_required
+            ]
+            if missing_root_keys:
+                # THE DOCUMENT IS WRONG AT THE ROOT, which no branch can fix by
+                # being elected -- so this is not "no branch matched" and must
+                # not be reported as it. Those misses go out LOCATED, which is
+                # what gives ``issues[0]`` a pointer and ``field`` a value, with
+                # the combinator beside them so the keyword is not lost: the
+                # jsonschema oracle reports the same two things for the same
+                # document, and the two lanes disagreeing about WHERE a document
+                # is wrong is the defect (salesagent-8qela.116).
+                raise ValidationError.from_exception_data(
+                    exc.title,
+                    [_in_the_document(error) for error in missing_root_keys]
+                    + [
+                        _no_branch_matched(
+                            keyword,
+                            branches,
+                            [name for name in sorted(at_the_root) if name not in root_required],
+                        )
+                    ],
+                ) from exc
+            absent = sorted(at_the_root)
             if not absent:
                 # NO branch was reached and none of them named an absent field, so
                 # there is no field group to report -- every branch declined for a
@@ -776,14 +828,39 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
                     exc.title,
                     [_in_the_document(error) for errors in per_branch.values() for error in errors],
                 ) from exc
-            groups = " | ".join(branch_title(branch) for branch in branches)
-            raise PydanticCustomError(
-                keyword,
-                "requires at least one of these field groups: {groups}",
-                # The absent field names travel beside the titles in the error
-                # context, so a consumer can report which keys were missing
-                # without parsing the sentence.
-                {"groups": groups or ", ".join(absent), "fields": ", ".join(absent)},
-            ) from exc
+            raise _no_branch_matched(keyword, branches, absent)["type"] from exc
 
     return _wrap
+
+
+def _no_branch_matched(
+    keyword: str, branches: Sequence[type], absent: Sequence[str]
+) -> dict[str, Any]:
+    """The combinator refusal, as an error detail.
+
+    A detail rather than a bare ``PydanticCustomError`` because it is raised on
+    its own AND appended beside the located root-required misses, and writing
+    the sentence twice is how the two spellings would come to differ.
+
+    ``absent`` is the BRANCH-SELECTING keys only when a root-required key is
+    also absent, because a reader shown "requires at least one of these field
+    groups" alongside a list mixing the two cannot tell which keys would have
+    elected a branch. That mixing is what the refusal published before:
+    ``fields: account, brand, budget_allocation, end_time, idempotency_key,
+    start_time, total_budget`` for the create request, five root-required and
+    two branch-required in one list.
+    """
+    groups = " | ".join(branch_title(branch) for branch in branches)
+    names = ", ".join(absent)
+    return {
+        "type": PydanticCustomError(
+            keyword,
+            "requires at least one of these field groups: {groups}",
+            # The absent field names travel beside the titles in the error
+            # context, so a consumer can report which keys were missing
+            # without parsing the sentence.
+            {"groups": groups or names, "fields": names},
+        ),
+        "loc": (),
+        "input": None,
+    }

@@ -92,6 +92,7 @@ __all__ = [
     "Restated",
     "root_carries_constraints",
     "root_combinator",
+    "root_required_names",
     "RootConstraints",
     "SomeItem",
     "Supplied",
@@ -704,6 +705,21 @@ class RootConstraints:
     """Root ``if``/``then``/``else``, ``dependencies``, ``dependentRequired``,
     root ``not``, and the constraint branches of a root ``allOf``."""
 
+    root_required: frozenset[str] = frozenset()
+    """What the SCHEMA ROOT requires unconditionally. Attribute names.
+
+    The branch emitter needs this because ``datamodel-code-generator`` merges the
+    branches' properties onto one flat class and carries their requiredness with
+    them, so the merged class requires exactly the keys its branches SELECT BY
+    while the root requires none of them (salesagent-8qela.80). Reading this set
+    is what lets the shared base keep the root's requiredness and leave each
+    branch its own.
+
+    It is NOT :attr:`Branch.required` intersected: a branch may omit a key the
+    root requires, so an intersection under-requires. It is also not
+    ``schema["required"]`` alone -- see :func:`root_required_names`.
+    """
+
     declares_behavioral_rules: bool = False
 
     def __bool__(self) -> bool:
@@ -735,6 +751,56 @@ def root_combinator(schema: Any) -> Literal["anyOf", "oneOf"] | None:
         if isinstance(node, list) and node:
             return candidate
     return None
+
+
+def root_required_names(
+    schema: Any,
+    resolve_document: ResolveDocument | None = None,
+    _seen: frozenset[str] = frozenset(),
+) -> frozenset[str]:
+    """The WIRE names a schema root requires unconditionally.
+
+    One owner, because two callers compare the same two things and a
+    disagreement between them is unreadable: the branch emitter decides which
+    of the merged class's required fields to relax, and the guard that grades
+    the result decides which are over-required. A second derivation of this
+    would be a second answer.
+
+    ``schema["required"]`` IS NOT THAT SET. A root ``allOf`` is inheritance for
+    the declarative keys the generator merges, and a ``required`` inside a
+    member -- or inside the schema a member ``$ref``s -- binds exactly as the
+    root's own key does. ``account/list-account-changes-response`` declares no
+    ``required`` of its own and ``allOf``s ``core/protocol-envelope``, which
+    requires ``status``; asked against jsonschema, a document omitting
+    ``status`` fails with ``required``. So the generated class requiring it is
+    right, and a derivation reading only the root's own key calls that a defect
+    and relaxes a field the pin requires.
+
+    ``allOf`` and nothing else: a ``oneOf``/``anyOf`` branch's ``required`` is
+    what the branch SELECTS BY, and ``if``/``then`` is conditional. Over the 18
+    required fields on the 13 split-root bases at the 3.2.1 pin, this derivation
+    agrees with jsonschema on all 18 and the root's own key alone on 17.
+    """
+    if not isinstance(schema, dict):
+        return frozenset()
+    names = {name for name in schema.get("required") or () if isinstance(name, str)}
+    for member in schema.get("allOf") or ():
+        if not isinstance(member, dict):
+            continue
+        ref = member.get("$ref")
+        if isinstance(ref, str) and ref not in _seen:
+            document, fragment = (ref.split("#", 1) + [""])[:2]
+            target = resolve_document(document) if document and resolve_document else schema
+            if target is not None:
+                names |= root_required_names(
+                    _follow_pointer(target, fragment), resolve_document, _seen | {ref}
+                )
+        names |= root_required_names(
+            {key: value for key, value in member.items() if key != "$ref"},
+            resolve_document,
+            _seen,
+        )
+    return frozenset(names)
 
 
 def root_carries_constraints(schema: Any) -> bool:
@@ -935,10 +1001,21 @@ class _Parser:
             if not isinstance(compiled, Restated):
                 conjuncts.append(compiled)
 
+        # The root's own requiredness, as FIELD names. A required wire name no
+        # field holds is not a field an emitter can relax, so it drops out here
+        # rather than refusing: a dropped field is its own defect and aborting
+        # generation for it would report this one in its place.
+        root_required = frozenset(
+            attribute
+            for name in root_required_names(schema, self._resolve_document)
+            if (attribute := self._root_shape.attribute(name)) is not None
+        )
+
         return RootConstraints(
             combinator=combinator,
             branches=branches,
             conjuncts=tuple(conjuncts),
+            root_required=root_required,
             declares_behavioral_rules=self.behavioral,
         )
 
