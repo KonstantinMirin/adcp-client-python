@@ -321,20 +321,36 @@ def test_narrow_keeps_every_arm_of_a_six_hundred_way_tie() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The depth preference, pinned in BOTH directions.
+# The depth preference, pinned in both directions.
 #
-# These use models declared HERE rather than SDK types, deliberately. The
-# existing coverage of union narrowing went through generated request models,
-# and the emitter change that collapsed a split root's branches took the
-# behaviour out from under it -- 275 items could then no longer reach the
-# preference at all, and a sweep concluded it had nothing to decide. An
+# PROVISIONAL, and the docstrings say so. Depth is NOT the principle: it fails
+# a count-tied depth-differing case (salesagent-8qela.79) while a count-only
+# rule fails the case below, and no ordering of the two satisfies both. The
+# signal both cases actually turn on is which arm's DECLARED FIELDS the
+# document carries, which the narrowing cannot see because it receives error
+# dicts and never the arm's model (salesagent-8qela.85).
+#
+# These pin TODAY'S behaviour anyway, because the alternative was measured: with
+# no guard, a sweep over 275 generated-type items concluded the preference had
+# nothing to decide and it was approved for deletion. The guard exists to make
+# that deletion deliberate rather than silent, not to assert depth is right.
+#
+# Fixtures are declared here rather than taken from the SDK. The previous
+# coverage went through generated request models, and the emitter change that
+# collapsed a split root's branches took the behaviour out from under it. An
 # adopter-shaped fixture cannot go stale that way, and it is the path the
-# module's own docstring names: "Adopter code via narrow_validation_error ...
-# for adopters who construct typed models in their platform method bodies".
+# module's docstring names for adopters building typed models in platform
+# method bodies.
+#
+# One holder serves both cases, and the equal-depth case asserts its own
+# depths before narrowing — both from sdk-rootcause's 3ea04ebaf, which is the
+# better shape: one model means the pair cannot disagree about what pydantic
+# reports, and the depth assertion means a fixture that stops being a tie says
+# so instead of quietly testing something else.
 # ---------------------------------------------------------------------------
 
 
-class ArmInner(BaseModel):
+class InnerNeed(BaseModel):
     need: int
 
 
@@ -344,68 +360,60 @@ class ShallowArm(BaseModel):
 
 class DeepArm(BaseModel):
     kind: str
-    inner: ArmInner
+    inner: InnerNeed
 
 
-class ShallowArmHolder(BaseModel):
+class DepthHolder(BaseModel):
     choice: ShallowArm | DeepArm
 
 
-class TiedArmA(BaseModel):
-    value: int
-
-
-class TiedArmB(BaseModel):
-    value: int
-
-
-class TiedHolder(BaseModel):
-    choice: TiedArmA | TiedArmB
-
-
-def _errors_of(model: type[BaseModel], payload: dict[str, Any]) -> list[Any]:
+def _union_errors(model: type[BaseModel], payload: dict[str, Any]) -> list[Any]:
     with pytest.raises(ValidationError) as raised:
         model.model_validate(payload)
     return raised.value.errors(include_input=False, include_context=False, include_url=False)
 
 
-def test_equal_depth_arms_both_survive() -> None:
-    """Arms that fail at the SAME depth are not separable, so neither is dropped.
+def test_both_arms_survive_when_they_reach_the_same_depth() -> None:
+    """Equal depth is a genuine tie, and a tie keeps every arm.
 
-    The document gives no signal about which arm was meant — both declare
-    ``value`` and both reject the same way — so narrowing declines to guess.
-    This is the invariant against over-narrowing.
+    Neither arm read further than the other, so nothing in the document says
+    which was meant and narrowing must not choose. This is the invariant
+    against over-narrowing, and it holds under the depth preference because
+    depth is inert when depths are equal.
     """
-    errors = _errors_of(TiedHolder, {"choice": {"value": "not-an-int"}})
-    narrowed = narrow_union_errors(errors)
+    errors = _union_errors(DepthHolder, {"choice": {"kind": 5, "inner": {"need": 1}}})
+    depths = {len(tuple(error["loc"])) for error in errors}
+    assert depths == {3}, f"the fixture stopped being an equal-depth tie: {depths}"
 
-    assert len(narrowed) == 2
-    assert {tuple(e["loc"])[-1] for e in narrowed} == {"value"}
+    narrowed = [tuple(error["loc"]) for error in narrow_union_errors(errors)]
+
+    assert narrowed == [
+        ("choice", "ShallowArm", "kind"),
+        ("choice", "DeepArm", "kind"),
+    ], f"a tie must keep both arms, got {narrowed}"
 
 
-def test_depth_differing_arms_keep_only_the_deeper_one() -> None:
-    """Arms that reach DIFFERENT depths are separable, and the deeper one wins.
+def test_the_deeper_arm_wins_when_the_arms_reach_different_depths() -> None:
+    """Differing depths select the deeper arm, dropping the shallower one's errors.
 
-    This asserts a DROP on purpose, which is why it is spelled out: the arm
-    discarded is the one the buyer did NOT select, and keeping it would bury
-    the error they will actually hit.
+    PINS CURRENT BEHAVIOUR, NOT A PRINCIPLE. The document carries ``inner``, a
+    key only ``DeepArm`` declares, so ``DeepArm`` is the arm that was meant —
+    and depth happens to pick it. Counting errors would pick ``ShallowArm``
+    (one error against two) and report only ``kind``, hiding ``inner.need``
+    until the buyer fixed ``kind`` and resubmitted: worse than not narrowing.
 
-    The document carries ``inner``, a key only ``DeepArm`` declares, so ``DeepArm``
-    is the arm that was meant. It reports two errors (``kind`` wrong type and
-    ``inner.need`` missing) at depth 4; ``ShallowArm`` reports one (``kind``) at
-    depth 3. Counting errors would pick ``ShallowArm`` — fewest — and tell the
-    buyer only about ``kind``, hiding ``inner.need`` until they fixed ``kind``
-    and resubmitted. That is worse than not narrowing at all, and it is what
-    the depth preference exists to prevent.
-
-    Equal depth is the tie covered above; differing depth is evidence the arms
-    are not equivalent, so dropping one here does not weaken that invariant.
+    So the DROP asserted here is correct for this input, and the rule that
+    produces it is not. Depth merely correlates with the real signal, which is
+    declared-field presence (salesagent-8qela.85). When that rule lands, this
+    test should be rewritten to assert it — deliberately, which is the whole
+    reason the case is graded at all.
     """
-    errors = _errors_of(ShallowArmHolder, {"choice": {"kind": 5, "inner": {}}})
-    narrowed = narrow_union_errors(errors)
+    errors = _union_errors(DepthHolder, {"choice": {"kind": 5, "inner": {}}})
+    depths = {len(tuple(error["loc"])) for error in errors}
+    assert depths == {3, 4}, f"the fixture stopped differing in depth: {depths}"
 
-    kept_paths = {tuple(str(part) for part in e["loc"]) for e in narrowed}
-    assert all("ShallowArm" not in path for path in kept_paths), kept_paths
+    narrowed = [tuple(str(part) for part in error["loc"]) for error in narrow_union_errors(errors)]
+
+    assert all("ShallowArm" not in path for path in narrowed), narrowed
     # The error a count-based rule would have hidden.
-    assert any(path[-1] == "need" for path in kept_paths), kept_paths
-    assert len(narrowed) == 2
+    assert any(path[-1] == "need" for path in narrowed), narrowed
