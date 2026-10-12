@@ -489,6 +489,26 @@ def _legacy_creative_identity_path(
     return None
 
 
+def _shape_forbids_top_level_key(cls: type, found: str) -> bool:
+    """Does *cls*'s own shape already forbid the top-level key *found* names?
+
+    ``found`` is a path from :func:`_legacy_creative_identity_path`, so a
+    top-level key is exactly ``$.<key>`` -- anything deeper carries a further
+    ``.`` or a ``[``, and only the path-reading refusal answers for those.
+
+    ``_ABSENT`` is the generated declaration of the keys a shape forbids,
+    compiled from the schema's branch and inherited by a canonical model that
+    binds that branch. It is read rather than re-derived from field types: the
+    canonical layer DELETES a removed field from its own ``model_fields``, so the
+    resolved-annotation route cannot see it on this class at all.
+    """
+
+    key = found[2:] if found.startswith("$.") else ""
+    if not key or "." in key or "[" in key:
+        return False
+    return key in getattr(cls, "_ABSENT", frozenset())
+
+
 def _looks_like_legacy_format_tuple(schema: dict[str, Any], properties: dict[str, Any]) -> bool:
     keys = set(properties)
     title = str(schema.get("title", "")).lower()
@@ -643,13 +663,46 @@ class CanonicalBoundaryModel(AdCPBaseModel):
         reads a PATH, so it catches a legacy identity nested anywhere in the
         document; ``_ABSENT`` is top-level keys only. The generic refusal still
         answers for every other key a shape forbids.
+
+        BUT IT DOES NOT ANSWER FOR A TOP-LEVEL KEY THIS SHAPE ITSELF FORBIDS,
+        and the paragraph above is why that had to change. Where both apply the
+        two refusals ARE redundant, and preempting the shape's own one costs the
+        buyer the only thing either refusal delivers on the wire:
+
+            canonical CreativeAsset, this validator winning
+                issues[0].keyword  'validation'   -- NOT a JSON Schema keyword
+                issues[0].message  'a declared constraint on this field rejected
+                                    the value'
+            the shape's own refusal
+                issues[0].keyword  'not'          -- a Draft-7 keyword
+                issues[0].message  'not composition failed'
+
+        The remedy sentence below reaches NEITHER envelope. It is stripped on
+        purpose: ``_OPAQUE_TYPES`` in ``adcp.validation.pydantic_errors`` replaces
+        the message of any validator-raised ``ValueError``, because this SDK's
+        validators interpolate caller values into those sentences. So the
+        justification in the first paragraph -- "a buyer told a field is unusable
+        needs to be told what to use instead" -- is unsatisfied by construction
+        (salesagent-8qela.34), and what the preemption actually trades is a
+        vocabulary keyword for an invented one, against
+        ``schemas/cache/3.2/core/error.json``, which requires ``issues[].keyword``
+        and says it is "drawn from the JSON Schema vocabulary ... do not invent
+        custom values here".
+
+        So the shape's refusal OWNS a top-level key the shape forbids. Measured
+        over all fifteen (canonical model, removed name) pairs: exactly one --
+        ``CreativeAsset.format_id`` -- has a shape that also forbids the name, so
+        the other fourteen are unaffected and still get the path-reading refusal
+        below. Keeping the remedy AND the keyword needs this validator to raise a
+        structured error instead of a bare ``ValueError``; that is
+        salesagent-8qela.106 and is deliberately not done here.
         """
         found = _legacy_creative_identity_path(
             value,
             allow_root_v1_ref=cls.__adcp_format_declaration_scope__,
             format_scope=cls.__adcp_format_declaration_scope__,
         )
-        if found is not None:
+        if found is not None and not _shape_forbids_top_level_key(cls, found):
             raise ValueError(
                 f"{found} contains legacy creative identity; use an explicit Legacy* model"
             )
