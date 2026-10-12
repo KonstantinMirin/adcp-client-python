@@ -61,8 +61,8 @@ try:
         split_into_branch_classes,
     )
     from compile_conditions import (
+        COMBINATOR_FIELDS,
         CONDITIONS_IMPORT,
-        ROOT_CONSTRAINT_FIELDS,
         ROOT_CONSTRAINT_VALIDATOR,
         compile_condition,
         render_root_validator,
@@ -87,8 +87,8 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
         split_into_branch_classes,
     )
     from scripts.compile_conditions import (  # type: ignore[assignment]
+        COMBINATOR_FIELDS,
         CONDITIONS_IMPORT,
-        ROOT_CONSTRAINT_FIELDS,
         ROOT_CONSTRAINT_VALIDATOR,
         compile_condition,
         render_root_validator,
@@ -8261,6 +8261,40 @@ def _ensure_model_validator_import(content: str) -> str:
     )
 
 
+def _class_declares(content: str, class_name: str, attribute: str) -> bool:
+    """Whether ``class_name`` itself carries an annotated ``attribute``.
+
+    The sibling :func:`_class_defines` looks for a ``def``; a ClassVar is an
+    ``AnnAssign`` and that test misses it. Class-scoped for the same reason:
+    the split copies a flat class's members onto every branch, so a module-wide
+    string test answers a different question than asking the class.
+    """
+    for node in ast.parse(content).body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            return any(
+                isinstance(child, ast.AnnAssign)
+                and isinstance(child.target, ast.Name)
+                and child.target.id == attribute
+                for child in node.body
+            )
+    return False
+
+
+def _without_a_declared_combinator_fields(content: str, class_name: str, block: str) -> str:
+    """``block`` minus its ClassVar when ``class_name`` already declares one.
+
+    Both attach sites append a rendered validator block, and a split root goes
+    through both -- so ``create_media_buy_request.py`` carried two identical
+    ``_COMBINATOR_FIELDS`` lines in one class body. Harmless at runtime, since
+    the value is identical and the second assignment wins, and wrong to emit.
+    """
+    if f"{COMBINATOR_FIELDS}:" not in block or not _class_declares(
+        content, class_name, COMBINATOR_FIELDS
+    ):
+        return block
+    return "\n".join(line for line in block.splitlines() if f"{COMBINATOR_FIELDS}:" not in line)
+
+
 def _class_defines(content: str, class_name: str, function: str) -> bool:
     """Whether ``class_name`` itself defines ``function``.
 
@@ -8309,7 +8343,7 @@ def _ensure_branch_dispatch_import(content: str) -> str:
     return _ensure_module_import(content, BRANCH_DISPATCH_IMPORT)
 
 
-def _ensure_root_constraint_fields_import(content: str, block: str) -> str:
+def _ensure_combinator_fields_import(content: str, block: str) -> str:
     """``ClassVar`` for the block that declares the combinator's fields.
 
     Only when the block actually declares it. Measured: 429 modules carry a
@@ -8318,7 +8352,7 @@ def _ensure_root_constraint_fields_import(content: str, block: str) -> str:
     rendered block rather than on the constraints keeps the one condition in the
     renderer that decides whether the attribute exists at all.
     """
-    if f"{ROOT_CONSTRAINT_FIELDS}:" not in block:
+    if f"{COMBINATOR_FIELDS}:" not in block:
         return content
     return _ensure_typing_import(content, "ClassVar")
 
@@ -8403,10 +8437,11 @@ def enforce_root_constraints() -> None:
             nothing_to_check += 1
             continue
 
+        block = _without_a_declared_combinator_fields(content, class_name, block)
         content = _append_to_class_block(content, class_name, block)
         content = _ensure_model_validator_import(content)
         content = _ensure_conditions_import(content)
-        content = _ensure_root_constraint_fields_import(content, block)
+        content = _ensure_combinator_fields_import(content, block)
         # The refusal names the root combinator (#1435), so the module needs the
         # error type that carries a keyword. Dropped when this pass replaced the
         # required-names extractor the import had lived in.
@@ -8825,6 +8860,9 @@ def compose_branch_module(
     # least one group" anyway, so inheriting it costs the branches nothing.
     root_validator = render_root_validator(constraints, class_name, schema_file)
     if root_validator and not _class_defines(rewritten, class_name, ROOT_CONSTRAINT_VALIDATOR):
+        root_validator = _without_a_declared_combinator_fields(
+            rewritten, class_name, root_validator
+        )
         appended = _append_to_class_block(rewritten, class_name, root_validator)
         if appended == rewritten:
             raise RuntimeError(
@@ -8832,7 +8870,7 @@ def compose_branch_module(
                 "composed module, so its compiled constraint has nowhere to live"
             )
         rewritten = appended
-        rewritten = _ensure_root_constraint_fields_import(rewritten, root_validator)
+        rewritten = _ensure_combinator_fields_import(rewritten, root_validator)
         rewritten = _ensure_model_validator_import(rewritten)
         rewritten = ensure_pydantic_core_import(rewritten, "PydanticCustomError")
 
