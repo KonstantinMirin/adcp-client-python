@@ -54,7 +54,7 @@ from __future__ import annotations
 
 import ast
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -105,6 +105,7 @@ __all__ = [
     "BranchPlan",
     "plan_branches",
     "render_absence_hook",
+    "render_root_required",
     "repoint_subclasses_of",
     "split_into_branch_classes",
 ]
@@ -283,6 +284,31 @@ def plan_branches(
 # --------------------------------------------------------------------------- #
 
 
+def _on_the_type_half(annotation: ast.expr, change: Callable[[ast.expr], ast.expr]) -> ast.expr:
+    """Apply ``change`` to the TYPE half of an annotation, ``Annotated`` or not.
+
+    An ``Annotated[T, Field(...)]`` carries the type in its first slice element
+    and the field metadata after it, so changing the type means rebuilding the
+    subscript around a changed first element -- and every rewrite in this module
+    needs that same rebuild. :func:`_literal_annotation` keeps its own copy: for
+    an ``Annotated`` whose slice is not a tuple it falls through to the bare
+    literal rather than to the annotation unchanged, and a fallback parameter
+    invented to express a difference on an input ``Annotated`` cannot have
+    (it needs two arguments) would cost more than the copy.
+    """
+    if isinstance(annotation, ast.Subscript) and _name_of(annotation.value) == "Annotated":
+        if isinstance(annotation.slice, ast.Tuple) and annotation.slice.elts:
+            elements = list(annotation.slice.elts)
+            elements[0] = change(elements[0])
+            return ast.Subscript(
+                value=annotation.value,
+                slice=ast.Tuple(elts=elements, ctx=ast.Load()),
+                ctx=annotation.ctx,
+            )
+        return annotation
+    return change(annotation)
+
+
 def _strip_none(annotation: ast.expr) -> ast.expr:
     """``X | None`` -> ``X``, inside an ``Annotated`` too. Required means no null.
 
@@ -290,16 +316,11 @@ def _strip_none(annotation: ast.expr) -> ast.expr:
     only stripped where ``None`` is the optionality the generator added for a
     field the root did not require.
     """
-    if isinstance(annotation, ast.Subscript) and _name_of(annotation.value) == "Annotated":
-        if isinstance(annotation.slice, ast.Tuple) and annotation.slice.elts:
-            elements = list(annotation.slice.elts)
-            elements[0] = _strip_none(elements[0])
-            return ast.Subscript(
-                value=annotation.value,
-                slice=ast.Tuple(elts=elements, ctx=ast.Load()),
-                ctx=annotation.ctx,
-            )
-        return annotation
+    return _on_the_type_half(annotation, _without_none)
+
+
+def _without_none(annotation: ast.expr) -> ast.expr:
+    """``X | None`` -> ``X`` on a bare union, recursing through ``Annotated``."""
     if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
         if _is_none(annotation.right):
             return _strip_none(annotation.left)
@@ -433,6 +454,71 @@ def render_branch_models(branch_names: Sequence[str], combinator: str) -> list[s
     ]
 
 
+def _add_none(annotation: ast.expr) -> ast.expr:
+    """``X`` -> ``X | None``, inside an ``Annotated`` too. The inverse of :func:`_strip_none`.
+
+    Optionality is spelled the way ``datamodel-code-generator`` spells it for a
+    property the root does not require -- ``T | None`` annotation, ``None``
+    default -- so a relaxed field on the base is indistinguishable from one the
+    generator never merged.
+    """
+    return _on_the_type_half(annotation, _with_none)
+
+
+def _with_none(annotation: ast.expr) -> ast.expr:
+    """``X`` -> ``X | None`` on a bare type, left alone if it already admits one."""
+    if _admits_none(annotation):
+        return annotation
+    return ast.BinOp(left=annotation, op=ast.BitOr(), right=ast.Constant(value=None))
+
+
+def _admits_none(annotation: ast.expr) -> bool:
+    """Whether a union already carries ``None``, so adding it would repeat it."""
+    if _is_none(annotation):
+        return True
+    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+        return _admits_none(annotation.left) or _admits_none(annotation.right)
+    return False
+
+
+def _relax(statement: ast.AnnAssign) -> str:
+    """One required field statement, re-rendered as the optional field it is."""
+    rebuilt = ast.AnnAssign(
+        target=statement.target,
+        annotation=_add_none(statement.annotation),
+        value=ast.Constant(value=None),
+        simple=1,
+    )
+    return ast.unparse(ast.fix_missing_locations(rebuilt))
+
+
+def render_root_required(root_required: frozenset[str]) -> list[str]:
+    """The root's own required fields, declared on the base for consumers to read.
+
+    ``_ABSENT`` is the shape: the emitter already declares a per-class frozenset
+    of the keys a shape forbids, and this is the same mechanism for the keys the
+    ROOT requires. It exists because the distinction cannot be recovered
+    downstream -- a combinator refusal lists every absent field the branches
+    report, mixing root-required misses in with branch-selecting ones, and an
+    intersection over the branches' errors cannot separate them: measured
+    against each root's pinned ``required`` list that derivation agrees on 8 of
+    18 roots and fails in both directions (salesagent-8qela.116).
+
+    EVERY field the root requires, not only the ones this class declares. A
+    first version intersected with the base's own statements and lost
+    ``SearchBrandsResponse.status``, which the root requires through its
+    ``allOf`` of ``core/protocol-envelope`` and the base inherits from
+    ``ProtocolEnvelope`` without redeclaring -- so a document omitting it would
+    have had that miss read as branch-selecting, which is the defect this set
+    exists to close. Which class holds the field is not what the set is about.
+    """
+    names = ", ".join(repr(name) for name in sorted(root_required))
+    return [
+        "",
+        f"    _ROOT_REQUIRED: ClassVar[frozenset[str]] = frozenset({{{names}}})",
+    ]
+
+
 def _render_base(
     flat: ast.ClassDef,
     flat_class: str,
@@ -440,6 +526,7 @@ def _render_base(
     source: str,
     branch_names: Sequence[str],
     combinator: str,
+    root_required: frozenset[str],
 ) -> str:
     """The root's own shape: every property and everything other passes added.
 
@@ -492,15 +579,41 @@ def _render_base(
             # what the branch's own shape answers, and its return annotation would
             # name the union. Each branch's residual check is emitted below instead.
             continue
-        lines.extend(
-            f"    {line}" if line.strip() else ""
-            for line in _statement_source(statement, source).splitlines()
-        )
+        rendered = _statement_source(statement, source)
+        if _relaxes(statement, root_required):
+            # The flat class is datamodel-code-generator's MERGE of the root with
+            # its branches, and the merge carries a branch's requiredness onto the
+            # root: where every branch requires a key the root does not, the
+            # merged class requires exactly the key its branches SELECT BY
+            # (salesagent-8qela.80). A document omitting it then fails FIELD
+            # validation, so the root's own combinator check never runs and the
+            # refusal names ``missing`` instead of the keyword.
+            #
+            # So the base takes the SCHEMA ROOT's requiredness and each branch
+            # keeps its own -- which costs nothing, because every branch already
+            # redeclares the keys it requires.
+            rendered = _relax(statement)
+        lines.extend(f"    {line}" if line.strip() else "" for line in rendered.splitlines())
         body += 1
     if not body:
         lines.append("    pass")
+    lines.extend(render_root_required(root_required))
     lines.extend(render_branch_models(branch_names, combinator))
     return "\n".join(lines)
+
+
+def _relaxes(statement: ast.stmt, root_required: frozenset[str]) -> bool:
+    """Whether this statement is a required field the SCHEMA ROOT does not require.
+
+    Keyed on the statement having no default, which is how
+    ``datamodel-code-generator`` spells required, and on the name being absent
+    from the root's own required set. A ``ClassVar`` carries a value and so is
+    never a candidate.
+    """
+    if not isinstance(statement, ast.AnnAssign) or statement.value is not None:
+        return False
+    name = _field_name(statement)
+    return name is not None and name not in root_required
 
 
 def _render_branch(plan: BranchPlan, flat: ast.ClassDef, flat_class: str, schema_file: str) -> str:
@@ -663,6 +776,7 @@ def split_into_branch_classes(
             source,
             [plan.name for plan in plans],
             constraints.combinator or "anyOf",
+            constraints.root_required,
         )
     ]
     blocks.extend(
@@ -689,7 +803,8 @@ def split_into_branch_classes(
                 f"{branches}: TypeAlias = Annotated[",
                 f"    {union},",
                 "    WrapValidator(",
-                f"        _c.name_the_combinator({combinator!r}, {flat_class}._branch_models())",
+                f"        _c.name_the_combinator({combinator!r}, "
+                f"{flat_class}._branch_models(), {flat_class}._ROOT_REQUIRED)",
                 "    ),",
                 "]",
                 "",

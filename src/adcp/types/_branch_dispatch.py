@@ -40,7 +40,7 @@ a field onto a class and forcing a rebuild to make the patch take.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import GetCoreSchemaHandler, TypeAdapter, WrapValidator
 from pydantic_core import CoreSchema, core_schema
@@ -69,6 +69,20 @@ def _serialize_as_this_class(value: Any, handler: Any) -> Any:
 
 class BranchDispatchMixin:
     """Give the declaring class its branches' core schema."""
+
+    #: The fields of this class its SCHEMA ROOT requires -- as opposed to the
+    #: ones a branch requires in order to be selected. The generated base
+    #: declares its own; the default is empty so a class that mixes this in
+    #: without one says nothing rather than claiming something.
+    #:
+    #: It exists because the distinction is not recoverable downstream. A
+    #: combinator refusal carries every absent field the branches reported,
+    #: root-required and branch-selecting mixed into one list, and an
+    #: intersection over those errors cannot separate them -- measured against
+    #: each root's pinned ``required`` list, that derivation agrees on 8 of 18
+    #: roots and fails in both directions (salesagent-8qela.116). So the
+    #: generator emits it and :func:`name_the_combinator` reads it.
+    _ROOT_REQUIRED: ClassVar[frozenset[str]] = frozenset()
 
     @classmethod
     def _branch_models(cls) -> tuple[type, ...]:
@@ -180,7 +194,9 @@ class BranchDispatchMixin:
             union |= branch
         wrapped = Annotated[
             union,
-            WrapValidator(name_the_combinator(cls._branch_combinator(), branches)),
+            WrapValidator(
+                name_the_combinator(cls._branch_combinator(), branches, cls._ROOT_REQUIRED)
+            ),
         ]
         schema = dict(TypeAdapter(wrapped).core_schema)
         # THE UNION IS THE VALIDATOR. It is not also the serializer, because then

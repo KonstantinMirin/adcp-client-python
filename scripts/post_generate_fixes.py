@@ -57,6 +57,7 @@ try:
         BranchPlan,
         plan_branches,
         render_branch_models,
+        render_root_required,
         repoint_subclasses_of,
         split_into_branch_classes,
     )
@@ -77,12 +78,14 @@ try:
         read_root_constraints,
         root_carries_constraints,
         root_combinator,
+        root_required_names,
     )
 except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in tests.
     from scripts.branch_classes import (  # type: ignore[assignment]
         BranchPlan,
         plan_branches,
         render_branch_models,
+        render_root_required,
         repoint_subclasses_of,
         split_into_branch_classes,
     )
@@ -103,6 +106,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
         read_root_constraints,
         root_carries_constraints,
         root_combinator,
+        root_required_names,
     )
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -5781,6 +5785,7 @@ def restore_constructible_response_bases() -> None:
             [
                 f"class {base_name}(BranchDispatchMixin, AdcpVersionEnvelope, ProtocolEnvelope):",
                 '    """Constructible compatibility base for generated response branches."""',
+                *render_root_required(_response_root_required(relative_path)),
                 *render_branch_models(branch_names, _response_root_combinator(relative_path)),
             ]
         )
@@ -5795,6 +5800,14 @@ def restore_constructible_response_bases() -> None:
             if base_position < 0:
                 raise RuntimeError(f"{relative_path}: unable to update {base_name} base")
             source = source[:base_position] + compatibility_base + source[first_branch_position:]
+
+        # The base declares ``_ROOT_REQUIRED``, and these five modules carry no
+        # ``_ABSENT`` to have brought the annotation in already. Without it mypy
+        # reads the declaration as an INSTANCE variable overriding the mixin's
+        # class variable -- two errors per module, and a pydantic FIELD named
+        # ``_ROOT_REQUIRED`` would be a different thing from the attribute
+        # ``name_the_combinator`` reads.
+        source = _ensure_typing_import(source, "ClassVar")
 
         # The branches are declared BELOW the base, so ``_branch_models`` cannot
         # resolve them while the class body is compiled and the hook returns the
@@ -5838,6 +5851,25 @@ def _response_root_combinator(relative_path: str) -> str:
     if combinator is None:
         raise RuntimeError(f"{schema_rel}: root declares no anyOf or oneOf over its branches")
     return combinator
+
+
+def _response_root_required(relative_path: str) -> frozenset[str]:
+    """What this response's SCHEMA ROOT requires, for the compatibility base.
+
+    Read from the schema beside :func:`_response_root_combinator`, and emitted
+    through the same ``render_root_required`` the branch emitter uses, so the
+    two kinds of split root declare the set in one place and the same words.
+
+    Without it these five bases declared an empty set while their schema roots
+    require ``status`` -- which they hold through ``ProtocolEnvelope`` -- and
+    ``name_the_combinator`` would read a missing ``status`` as the key a branch
+    selects by on 5 of the 18 split roots (salesagent-8qela.116).
+    """
+    schema_rel = _schema_for_generated_module().get(Path(relative_path))
+    if schema_rel is None:
+        raise RuntimeError(f"{relative_path}: no bundled schema generates this module")
+    schema = json.loads((SCHEMA_DIR / schema_rel).read_text())
+    return root_required_names(schema, bundle_document_resolver(SCHEMA_DIR))
 
 
 def _schema_permits_null(schema: Any) -> bool:
@@ -8882,6 +8914,11 @@ def compose_branch_module(
     rewritten = ensure_pydantic_import(rewritten, "WrapValidator")
     rewritten = _ensure_branch_dispatch_import(rewritten)
     rewritten = _ensure_conditions_import(rewritten)
+    # Every split base declares ``_ROOT_REQUIRED``, unconditionally, so the
+    # annotation is needed whether or not a branch forbids a key. The ``banned``
+    # branch below also asks for it; asking here is what makes it independent of
+    # whether this bundle happens to have a root with a forbidden key.
+    rewritten = _ensure_typing_import(rewritten, "ClassVar")
     if any(plan.literals for plan in plans):
         rewritten = _ensure_typing_import(rewritten, "Literal")
     # No ``TypeAdapter`` import: the only thing that used it was the module-level

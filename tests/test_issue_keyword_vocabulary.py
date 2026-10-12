@@ -265,21 +265,33 @@ _COMPOSITION_PROBES = [
 
 
 def _composition_cases() -> list[tuple[str, str, str]]:
-    """(label, the ctx fields, the wire message) for each probe that qualifies."""
+    """(label, the ctx fields, the wire message) for each probe that qualifies.
+
+    The composition refusal is SEARCHED FOR rather than read off position zero.
+    A refusal can carry several errors and the composition is not first: a
+    document omitting fields the SCHEMA ROOT requires is refused with those
+    misses located, so that a consumer reading ``issues[0]`` gets a pointer,
+    with the composition beside them (salesagent-8qela.116). Reading
+    ``errors()[0]`` made this population empty and the rule below ungraded,
+    while every probe still produced the refusal it is about.
+    """
     from adcp.types import CreateMediaBuyRequest
 
+    composition_keywords = {"oneOf", "anyOf", "allOf", "not"}
     found: list[tuple[str, str, str]] = []
     for label, payload in _COMPOSITION_PROBES:
         try:
             CreateMediaBuyRequest.model_validate(payload)
         except ValidationError as error:
-            raw = error.errors()[0]
-            fields = (raw.get("ctx") or {}).get("fields")
-            if not fields:
-                continue
-            issues = issues_from_validation_error(error)
-            if issues and issues[0].keyword in {"oneOf", "anyOf", "allOf", "not"}:
-                found.append((label, str(fields), issues[0].message))
+            # Positionally paired: ``issues_from_validation_error`` projects one
+            # issue per pydantic error in order, so index i of each is the same
+            # refusal in two representations -- the raw context and the wire
+            # message. Measured 6:6 on each probe here.
+            for raw, issue in zip(error.errors(), issues_from_validation_error(error), strict=True):
+                fields = (raw.get("ctx") or {}).get("fields")
+                if fields and issue.keyword in composition_keywords:
+                    found.append((label, str(fields), issue.message))
+                    break
     return found
 
 
@@ -313,9 +325,9 @@ def test_a_composition_message_names_the_schemas_fields(
     ``tests/test_request_validation_no_input_echo.py``.
     """
     for name in (part.strip() for part in fields.split(",")):
-        assert name and name in message, (
-            f"{label}: the refusal cites {name!r} and the wire message does not: {message!r}"
-        )
+        assert (
+            name and name in message
+        ), f"{label}: the refusal cites {name!r} and the wire message does not: {message!r}"
     # The other half, on the same case: naming the schema's fields must not
     # become naming the peer's values. Each probe above puts SECRET in a value.
     assert SECRET not in message, f"{label}: the message echoed a payload value: {message!r}"
