@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._split_root import branch_members
 from scripts.branch_classes import (
@@ -224,9 +224,11 @@ def test_the_split_module_declares_each_branch_and_a_union_over_them() -> None:
     assert "class ThingB(Thing):" in rewritten
     assert "ThingBranches: TypeAlias = Annotated[" in rewritten
     assert "    ThingA | ThingB," in rewritten
-    assert (
-        "ThingBranchesAdapter: TypeAdapter[ThingBranches] = TypeAdapter(ThingBranches)" in rewritten
-    )
+    # No assertion that a module-level ``ThingBranchesAdapter`` is emitted: it is
+    # not, because a ``TypeAdapter`` built at import captures schema state at
+    # import, which ``test_sdk_has_no_module_level_type_adapter_construction``
+    # forbids. The union alias above is what the emitter owes a caller; building
+    # an adapter over it is one line at the call site.
     base = rewritten.split("class Thing(BranchDispatchMixin, AdCPBaseModel):")[1].split(
         "class ThingA"
     )[0]
@@ -272,9 +274,15 @@ def test_every_branch_is_a_subclass_of_one_base_so_the_union_is_one_type() -> No
     assert len(members) == 2
     assert all(issubclass(member, base) for member in members)
     assert {"a", "b", "c"} <= set(base.model_fields), "the base carries what the branches share"
-    assert namespace["ThingBranchesAdapter"].validate_python({"a": "x"}).a == "x"
+    # The adapter is built HERE rather than read out of the module, because the
+    # emitter no longer declares one at module level. The assertions are
+    # unchanged: the union parses a single-branch document into that branch and
+    # refuses one satisfying two, which is what "the union is one type" means.
+    # The adapter was only ever the instrument for asking.
+    adapter = TypeAdapter(namespace["ThingBranches"])
+    assert adapter.validate_python({"a": "x"}).a == "x"
     with pytest.raises(ValidationError):
-        namespace["ThingBranchesAdapter"].validate_python({"a": "x", "b": "y"})
+        adapter.validate_python({"a": "x", "b": "y"})
 
 
 def test_the_base_is_public_because_a_consumer_needs_to_name_it() -> None:
@@ -549,7 +557,9 @@ def test_every_branch_of_every_split_root_names_its_root() -> None:
             assert bases.get(name) == [shape], (relative, name, bases.get(name))
             branches += 1
         assert f"{root}Branches: TypeAlias" in content, relative
-        assert f"{root}BranchesAdapter: TypeAdapter[{root}Branches]" in content, relative
+        # And NOT a module-level adapter beside it -- asserted in the negative,
+        # so the emission this removed cannot come back unnoticed.
+        assert f"{root}BranchesAdapter" not in content, relative
         roots += 1
 
     assert roots >= 11, f"the prover found only {roots} split roots in the shipped tree"

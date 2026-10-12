@@ -3,88 +3,28 @@
 ## Field changes
 
 - `account/list_account_changes_response.py`
-  - `ListAccountChangesResponse`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `ListAccountChangesResponse`: `+_COMBINATOR_FIELDS`
 - `brand/search_brands_response.py`
-  - `SearchBrandsResponse`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `SearchBrandsResponse`: `+_COMBINATOR_FIELDS`
 - `brand/verify_brand_claim_request.py`
-  - `VerifyBrandClaimRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `content_standards/create_content_standards_request.py`
-  - `CreateContentStandardsRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/assets/published_post_asset.py`
-  - `PublishedPostAsset`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/attestation_reference.py`
-  - `AttestationReference`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `VerifyBrandClaimRequest`: `+_COMBINATOR_FIELDS`
 - `core/audience_characteristic.py`
-  - `AudienceCharacteristic`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/audience_member.py`
-  - `AudienceMember`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/budget_range.py`
-  - `BudgetRange`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `AudienceCharacteristic`: `+_COMBINATOR_FIELDS`
 - `core/catchment.py`
-  - `Catchment`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/collection_distribution.py`
-  - `CollectionDistribution`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `Catchment`: `+_COMBINATOR_FIELDS`
 - `core/creative_asset.py`
-  - `CreativeAsset`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `CreativeAsset`: `+_COMBINATOR_FIELDS`
 - `core/creative_manifest.py`
-  - `CreativeManifest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/demographic_age_range.py`
-  - `DemographicAgeRange`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/demographic_reporting_capability.py`
-  - `DemographicReportingCapability`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/forecast_dimension_signal.py`
-  - `SignalForecastDimension`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/forecast_range.py`
-  - `ForecastRange`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/frequency_cap.py`
-  - `FrequencyCap`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/frequency_cap_constraints.py`
-  - `FrequencyCapConstraints`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `CreativeManifest`: `+_COMBINATOR_FIELDS`
 - `core/frequency_cap_impression_constraints.py`
-  - `FrequencyCapImpressionConstraints`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `FrequencyCapImpressionConstraints`: `+_COMBINATOR_FIELDS`
 - `core/frequency_cap_interval_constraints.py`
-  - `FrequencyCapIntervalConstraints`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `FrequencyCapIntervalConstraints`: `+_COMBINATOR_FIELDS`
 - `core/get_geo_place_resolution_request.py`
-  - `GetGeographicPlaceResolutionRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/placement.py`
-  - `Placement`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/placement_definition.py`
-  - `PlacementDefinition`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/product.py`
-  - `Product`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/signal_listing.py`
-  - `SignalListing`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/transformer.py`
-  - `Transformer`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `core/user_match.py`
-  - `UserMatch`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `GetGeographicPlaceResolutionRequest`: `+_COMBINATOR_FIELDS`
 - `core/webhook_challenge_response.py`
-  - `WebhookChallengeResponse`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `creative/get_creative_delivery_request.py`
-  - `GetCreativeDeliveryRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `creative/sync_creatives_request.py`
-  - `SyncCreativesRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `governance/get_plan_audit_logs_request.py`
-  - `GetPlanAuditLogsRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/acceptance_policy_catalog.py`
-  - `AcceptancePolicyCatalog`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/buy_products_request.py`
-  - `BuyProductsRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/control_media_buy_request.py`
-  - `ControlMediaBuyRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `WebhookChallengeResponse`: `+_COMBINATOR_FIELDS`
 - `media_buy/create_media_buy_request.py`
-  - `CreateMediaBuyRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/get_reporting_status_response.py`
-  - `GetReportingStatusResponse`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/outcome_target.py`
-  - `OutcomeTarget`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/package_control.py`
-  - `PackageControl`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/proposal_budget_constraint.py`
-  - `ProposalBudgetConstraint`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `CreateMediaBuyRequest`: `+_COMBINATOR_FIELDS`
 - `media_buy/request_proposals_request.py`
-  - `RequestProposalsRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `media_buy/sync_reporting_receipts_request.py`
-  - `SyncReportingReceiptsRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
-- `sponsored_intelligence/si_send_message_request.py`
-  - `SiSendMessageRequest`: `+_COMBINATOR_FIELDS` `-_ROOT_CONSTRAINT_FIELDS`
+  - `RequestProposalsRequest`: `+_COMBINATOR_FIELDS`

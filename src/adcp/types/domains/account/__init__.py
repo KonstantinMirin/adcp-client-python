@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-11 17:09:59 UTC
+Generation date: 2026-10-12 03:26:03 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -51,7 +51,6 @@ if TYPE_CHECKING:
         Kind,
         ListAccountChangesResponse,
         ListAccountChangesResponseBranches,
-        ListAccountChangesResponseBranchesAdapter,
         ListAccountChangesResponseCompleted,
         ListAccountChangesResponseFailed,
         SourceCoverageItem,
@@ -111,7 +110,6 @@ _DECLARED_BY = {
         "Kind",
         "ListAccountChangesResponse",
         "ListAccountChangesResponseBranches",
-        "ListAccountChangesResponseBranchesAdapter",
         "ListAccountChangesResponseCompleted",
         "ListAccountChangesResponseFailed",
         "SourceCoverageItem",
@@ -183,7 +181,6 @@ __all__ = [
     "ListAccountChangesRequest",
     "ListAccountChangesResponse",
     "ListAccountChangesResponseBranches",
-    "ListAccountChangesResponseBranchesAdapter",
     "ListAccountChangesResponseCompleted",
     "ListAccountChangesResponseFailed",
     "ListAccountsRequest",

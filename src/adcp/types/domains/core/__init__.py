@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-11 17:09:59 UTC
+Generation date: 2026-10-12 03:26:03 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -357,7 +357,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.audience_characteristic import (
         AudienceCharacteristic,
         AudienceCharacteristicBranches,
-        AudienceCharacteristicBranchesAdapter,
         AudienceCharacteristicRange,
         AudienceCharacteristicValue,
     )
@@ -561,7 +560,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.catchment import (
         Catchment,
         CatchmentBranches,
-        CatchmentBranchesAdapter,
         CatchmentGeometry,
         CatchmentRadius,
         CatchmentTransportModeTravelTime,
@@ -596,7 +594,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.creative_asset import (
         CreativeAsset,
         CreativeAssetBranches,
-        CreativeAssetBranchesAdapter,
         CreativeAssetV1CreativeNamedFormatReference,
         CreativeAssetV2CreativeCanonicalFormatKind,
         Input,
@@ -620,7 +617,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.creative_manifest import (
         CreativeManifest,
         CreativeManifestBranches,
-        CreativeManifestBranchesAdapter,
         CreativeManifestCanonicalFormatManifest,
         CreativeManifestNamedFormatManifest,
     )
@@ -858,7 +854,6 @@ if TYPE_CHECKING:
         FrequencyCapImpressionConstraints,
         FrequencyCapImpressionConstraintsAllowedValues,
         FrequencyCapImpressionConstraintsBranches,
-        FrequencyCapImpressionConstraintsBranchesAdapter,
         FrequencyCapImpressionConstraintsMaximumMinimum,
     )
     from adcp.types.domains.core.frequency_cap_interval_constraints import (
@@ -866,7 +861,6 @@ if TYPE_CHECKING:
         FrequencyCapIntervalConstraints,
         FrequencyCapIntervalConstraintsAllowedIntervals,
         FrequencyCapIntervalConstraintsBranches,
-        FrequencyCapIntervalConstraintsBranchesAdapter,
         FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
     )
     from adcp.types.domains.core.frequency_cap_requirements import FrequencyCapRequirements
@@ -908,7 +902,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.get_geo_place_resolution_request import (
         GetGeographicPlaceResolutionRequest,
         GetGeographicPlaceResolutionRequestBranches,
-        GetGeographicPlaceResolutionRequestBranchesAdapter,
         GetGeographicPlaceResolutionRequestQ,
         GetGeographicPlaceResolutionRequestValue,
     )
@@ -1828,7 +1821,6 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.webhook_challenge_response import (
         WebhookChallengeResponse,
         WebhookChallengeResponseBranches,
-        WebhookChallengeResponseBranchesAdapter,
         WebhookChallengeResponseChallenge,
         WebhookChallengeResponseToken,
     )
@@ -2206,7 +2198,6 @@ _DECLARED_BY = {
     "core.audience_characteristic": (
         "AudienceCharacteristic",
         "AudienceCharacteristicBranches",
-        "AudienceCharacteristicBranchesAdapter",
         "AudienceCharacteristicRange",
         "AudienceCharacteristicValue",
     ),
@@ -2410,7 +2401,6 @@ _DECLARED_BY = {
     "core.catchment": (
         "Catchment",
         "CatchmentBranches",
-        "CatchmentBranchesAdapter",
         "CatchmentGeometry",
         "CatchmentRadius",
         "CatchmentTransportModeTravelTime",
@@ -2446,7 +2436,6 @@ _DECLARED_BY = {
     "core.creative_asset": (
         "CreativeAsset",
         "CreativeAssetBranches",
-        "CreativeAssetBranchesAdapter",
         "CreativeAssetV1CreativeNamedFormatReference",
         "CreativeAssetV2CreativeCanonicalFormatKind",
         "Input",
@@ -2483,7 +2472,6 @@ _DECLARED_BY = {
     "core.creative_manifest": (
         "CreativeManifest",
         "CreativeManifestBranches",
-        "CreativeManifestBranchesAdapter",
         "CreativeManifestCanonicalFormatManifest",
         "CreativeManifestNamedFormatManifest",
     ),
@@ -2767,7 +2755,6 @@ _DECLARED_BY = {
         "FrequencyCapImpressionConstraints",
         "FrequencyCapImpressionConstraintsAllowedValues",
         "FrequencyCapImpressionConstraintsBranches",
-        "FrequencyCapImpressionConstraintsBranchesAdapter",
         "FrequencyCapImpressionConstraintsMaximumMinimum",
     ),
     "core.frequency_cap_interval_constraints": (
@@ -2775,7 +2762,6 @@ _DECLARED_BY = {
         "FrequencyCapIntervalConstraints",
         "FrequencyCapIntervalConstraintsAllowedIntervals",
         "FrequencyCapIntervalConstraintsBranches",
-        "FrequencyCapIntervalConstraintsBranchesAdapter",
         "FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval",
     ),
     "core.frequency_cap_requirements": ("FrequencyCapRequirements",),
@@ -2823,7 +2809,6 @@ _DECLARED_BY = {
     "core.get_geo_place_resolution_request": (
         "GetGeographicPlaceResolutionRequest",
         "GetGeographicPlaceResolutionRequestBranches",
-        "GetGeographicPlaceResolutionRequestBranchesAdapter",
         "GetGeographicPlaceResolutionRequestQ",
         "GetGeographicPlaceResolutionRequestValue",
     ),
@@ -3807,7 +3792,6 @@ _DECLARED_BY = {
     "core.webhook_challenge_response": (
         "WebhookChallengeResponse",
         "WebhookChallengeResponseBranches",
-        "WebhookChallengeResponseBranchesAdapter",
         "WebhookChallengeResponseChallenge",
         "WebhookChallengeResponseToken",
     ),
@@ -4015,7 +3999,6 @@ __all__ = [
     "AudienceActivationMethods5",
     "AudienceCharacteristic",
     "AudienceCharacteristicBranches",
-    "AudienceCharacteristicBranchesAdapter",
     "AudienceCharacteristicRange",
     "AudienceCharacteristicValue",
     "AudienceEvidence",
@@ -4185,7 +4168,6 @@ __all__ = [
     "CatalogType",
     "Catchment",
     "CatchmentBranches",
-    "CatchmentBranchesAdapter",
     "CatchmentGeometry",
     "CatchmentRadius",
     "CatchmentTransportModeTravelTime",
@@ -4246,7 +4228,6 @@ __all__ = [
     "CreateMediaBuyWorking",
     "CreativeAsset",
     "CreativeAssetBranches",
-    "CreativeAssetBranchesAdapter",
     "CreativeAssetV1CreativeNamedFormatReference",
     "CreativeAssetV2CreativeCanonicalFormatKind",
     "CreativeAssets",
@@ -4263,7 +4244,6 @@ __all__ = [
     "CreativeLocalizationReadback",
     "CreativeManifest",
     "CreativeManifestBranches",
-    "CreativeManifestBranchesAdapter",
     "CreativeManifestCanonicalFormatManifest",
     "CreativeManifestNamedFormatManifest",
     "CreativeOperationFormatDeclaration",
@@ -4419,12 +4399,10 @@ __all__ = [
     "FrequencyCapImpressionConstraints",
     "FrequencyCapImpressionConstraintsAllowedValues",
     "FrequencyCapImpressionConstraintsBranches",
-    "FrequencyCapImpressionConstraintsBranchesAdapter",
     "FrequencyCapImpressionConstraintsMaximumMinimum",
     "FrequencyCapIntervalConstraints",
     "FrequencyCapIntervalConstraintsAllowedIntervals",
     "FrequencyCapIntervalConstraintsBranches",
-    "FrequencyCapIntervalConstraintsBranchesAdapter",
     "FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval",
     "FrequencyCapRequirements",
     "Freshness",
@@ -4455,7 +4433,6 @@ __all__ = [
     "GetCreativeFeaturesSubmitted",
     "GetGeographicPlaceResolutionRequest",
     "GetGeographicPlaceResolutionRequestBranches",
-    "GetGeographicPlaceResolutionRequestBranchesAdapter",
     "GetGeographicPlaceResolutionRequestQ",
     "GetGeographicPlaceResolutionRequestValue",
     "GetGeographicPlaceResolutionResponse",
@@ -5320,7 +5297,6 @@ __all__ = [
     "WebhookChallenge",
     "WebhookChallengeResponse",
     "WebhookChallengeResponseBranches",
-    "WebhookChallengeResponseBranchesAdapter",
     "WebhookChallengeResponseChallenge",
     "WebhookChallengeResponseToken",
     "WebhookResponseType",
