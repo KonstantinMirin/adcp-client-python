@@ -898,6 +898,26 @@ class CreativeAsset(_CanonicalCreativeWire, CanonicalBoundaryModel):
     after its pin — :func:`is_canonical_format_kind` is how a caller meets it.
     """
 
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        # Annotated ``None``, not ``_RemovedFormatId``. This class binds the
+        # canonical-format BRANCH, which types ``format_id`` as ``None``;
+        # ``_RemovedFormatId`` is ``FormatReferenceStructuredObject | None`` and so
+        # would WIDEN the parent, which mypy refuses and which pyright names as an
+        # override error. A redeclaration restates the parent's annotation -- here
+        # that is ``None`` -- and ``init=False`` is what removes the keyword from the
+        # ``__init__`` both checkers synthesize through ``dataclass_transform``.
+        #
+        # ``None`` is the only spelling available here and it is the right one. mypy
+        # refuses the alternative outright -- 'NoneType should not be used as a type,
+        # please use None instead [nonetype-type]' -- so a gate that wanted
+        # ``NoneType`` written in the source would have demanded a different spelling
+        # of the same annotation than the type checker allows.
+        # test_the_removed_field_is_hidden_from_the_type_checker therefore compares the
+        # two sides as pydantic RESOLVES them rather than as they are written: both go
+        # through a throwaway field, which is where ``None`` becomes ``NoneType``.
+        # See salesagent-8qela.70.
+        format_id: None = Field(default=None, init=False)
+
     # Nothing is declared here. The branch this subclasses requires ``format_kind``
     # and types ``format_id`` as ``None``, so the narrowing and the removal this
     # class used to spell by hand are the branch's own shape -- and the ``None``

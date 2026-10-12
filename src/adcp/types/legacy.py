@@ -13,6 +13,9 @@ from adcp.types._legacy_assets import (
 )
 from adcp.types.domains.core.creative_asset import CreativeAsset as LegacyCreativeAsset
 from adcp.types.domains.core.creative_filters import CreativeFilters as LegacyCreativeFilters
+from adcp.types.domains.core.creative_manifest import (
+    CreativeManifest as LegacyCreativeManifest,
+)
 from adcp.types.domains.core.format import Format as LegacyFormat
 from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
 from adcp.types.domains.core.package import Package as LegacyPackage
@@ -208,6 +211,7 @@ __all__ = [
     "LegacyCreateMediaBuySuccessResponse",
     "LegacyCreativeAsset",
     "LegacyCreativeFilters",
+    "LegacyCreativeManifest",
     "LegacyFormat",
     "LegacyFormatId",
     "LegacyFormatReferenceStructuredObject",
