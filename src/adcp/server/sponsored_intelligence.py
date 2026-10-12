@@ -64,7 +64,7 @@ class SponsoredIntelligenceHandler(ADCPHandler[TContext], Generic[TContext]):
         try:
             request = SiGetOfferingRequest.model_validate(params)
         except ValidationError as e:
-            return invalid_request(e)
+            return invalid_request(e, payload=params)
         return await self.handle_si_get_offering(request, context)
 
     async def si_initiate_session(
@@ -79,7 +79,7 @@ class SponsoredIntelligenceHandler(ADCPHandler[TContext], Generic[TContext]):
         try:
             request = SiInitiateSessionRequest.model_validate(params)
         except ValidationError as e:
-            return invalid_request(e)
+            return invalid_request(e, payload=params)
         return await self.handle_si_initiate_session(request, context)
 
     async def si_send_message(
@@ -94,7 +94,7 @@ class SponsoredIntelligenceHandler(ADCPHandler[TContext], Generic[TContext]):
         try:
             request = SiSendMessageRequest.model_validate(params)
         except ValidationError as e:
-            return invalid_request(e)
+            return invalid_request(e, payload=params)
         return await self.handle_si_send_message(request, context)
 
     async def si_terminate_session(
@@ -109,7 +109,7 @@ class SponsoredIntelligenceHandler(ADCPHandler[TContext], Generic[TContext]):
         try:
             request = SiTerminateSessionRequest.model_validate(params)
         except ValidationError as e:
-            return invalid_request(e)
+            return invalid_request(e, payload=params)
         return await self.handle_si_terminate_session(request, context)
 
     # ========================================================================

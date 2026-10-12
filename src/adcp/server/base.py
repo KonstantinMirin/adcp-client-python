@@ -214,6 +214,7 @@ def invalid_request(
     error: Exception,
     *,
     request_model: type[BaseModel] | None = None,
+    payload: Any = None,
 ) -> NotImplementedResponse:
     """The one refusal a request-validation path returns to a peer.
 
@@ -249,7 +250,11 @@ def invalid_request(
     issues: list[ValidationIssue]
     if isinstance(error, ValidationError):
         model_name = request_model.__name__ if request_model is not None else error.title
-        issues = issues_from_validation_error(error)
+        # The buyer's document, so the loc resolves against what was actually
+        # sent. Read for KEY MEMBERSHIP only -- the resolver appends elements of
+        # the loc and never anything out of the document -- which is what keeps
+        # the issue rows value-free while making the pointer resolvable.
+        issues = issues_from_validation_error(error, payload)
     elif request_model is not None:
         model_name = request_model.__name__
         issues = [
