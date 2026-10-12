@@ -124,6 +124,24 @@ from adcp.types.domains.core.creative_asset import (
 )
 from adcp.types.domains.core.creative_filters import CreativeFilters as _LegacyCreativeFilters
 from adcp.types.domains.core.creative_manifest import (
+    # The ROOT, not its canonical branch. core/creative-manifest.json requires
+    # only ['assets'] and then states a true XOR -- oneOf[0] 'Named-format
+    # manifest' requires format_id with not:{required:[format_kind]}, oneOf[1]
+    # 'Canonical-format manifest' requires format_kind with
+    # not:{required:[format_id]} -- so the root requires NEITHER key. Binding the
+    # canonical branch imported that branch's required ``format_kind`` onto the
+    # public name, which is the requiredness regression on this branch
+    # (salesagent-8qela.69): optional upstream, required here.
+    CreativeManifest as _CreativeManifestRoot,
+)
+from adcp.types.domains.core.creative_manifest import (
+    # The readback clone stays on the BRANCH, deliberately. Binding it to the root
+    # would make it validate as the root's UNION, and a ``_DeliveryCreativeManifest``
+    # INSTANCE is then an instance of neither branch class -- measured:
+    # ``test_delivery_manifest_cannot_bypass_strict_input`` went red with
+    # ``type='model_type'`` against both branches. Upstream could bind the root
+    # because upstream's root carried no BranchDispatchMixin and so was not a union.
+    # That is the mixin contract question (salesagent-8qela.82), not this change.
     CreativeManifestCanonicalFormatManifest as _CanonicalCreativeManifestWire,
 )
 from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
@@ -902,8 +920,24 @@ class Creative(_CanonicalListedCreative, CanonicalBoundaryModel):
     format_kind: str
 
 
-class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
+class CreativeManifest(_CreativeManifestRoot, CanonicalBoundaryModel):
     """Canonical manifest accepting the SDK's public standalone asset models.
+
+    Bound to the generated ROOT, which is what the public name means: the root
+    admits either branch and requires neither key. The branch classes stay
+    reachable as branches and nothing about them changes.
+
+    Safe only because salesagent-8qela.76 landed first. The root's XOR lives in
+    its core schema, which a subclass does not inherit, so rebinding alone used
+    to make this class ACCEPT a manifest carrying neither key -- a document the
+    pin refuses. With the compiled check now on the shared base the subclass
+    inherits it, and the measured table is: canonical ACCEPTS, neither REFUSES,
+    both REFUSES.
+
+    ``format_id`` is still removed at runtime by
+    ``CanonicalBoundaryModel.__pydantic_init_subclass__``, so the deprecated
+    named-format branch remains unconstructible here. That is INHERITED, true at
+    upstream too, and tracked as salesagent-8qela.70 -- deliberately not bundled.
 
     The 3.2 aggregate asset-union schema currently generates structurally
     duplicate Pydantic classes. Convert public ``ImageContent``/``UrlContent``
@@ -911,6 +945,9 @@ class CreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
     validates them. This keeps the public constructors composable without
     relaxing the on-wire discriminator checks.
     """
+
+    if TYPE_CHECKING:  # the removed field, hidden from the constructor too
+        format_id: _RemovedFormatId = Field(default=None, init=False)
 
     # ``format_id`` is typed ``None`` by the branch; see :class:`CreativeAsset`.
 
