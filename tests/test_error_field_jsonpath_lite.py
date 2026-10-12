@@ -146,15 +146,24 @@ def _issue(pointer: str) -> ValidationIssue:
 
 @pytest.mark.parametrize("pointer", AUTHORED_EDGE_CASES + REAL_POINTERS)
 def test_builder_field_is_the_translated_first_pointer(pointer):
-    """The dual-write the spec demands, asserted on the builder's output."""
+    """The dual-write the spec demands, asserted on the builder's output.
+
+    ONE RULE FOR EVERY POINTER, the root included. ``core/error.json`` conditions
+    the dual-write on the presence of ``issues``, not on the shape of the
+    pointer -- "When `issues` is present, sellers MUST also populate `field` from
+    `issues[0]` ... MUST (not SHOULD) so consumers reading `field` get
+    deterministic behavior across sellers" -- and ``field`` carries no
+    ``minLength``, so the root's empty translation is a legal value.
+
+    This used to branch: a root pointer asserted ``"field" not in payload``, on
+    the grounds that the root has no field path to name and ``field`` is not in
+    error.json's ``required`` list. Both are true and neither is the condition
+    the pin states, so that branch asserted the one thing the MUST forbids and is
+    gone rather than re-tuned (salesagent-8qela.125).
+    """
     payload = build_adcp_validation_error_payload("create_media_buy", "request", [_issue(pointer)])
-    expected = pointer_to_field(pointer)
-    if expected:
-        assert payload["field"] == expected
-        assert not payload["field"].startswith("/"), "field is still an RFC 6901 pointer"
-    else:
-        # Root: there is no field path to name, and `field` is not required.
-        assert "field" not in payload
+    assert payload["field"] == pointer_to_field(pointer)
+    assert not payload["field"].startswith("/"), "field is still an RFC 6901 pointer"
 
 
 def test_builder_emits_top_level_issues_and_recovery():
@@ -316,6 +325,28 @@ def test_both_lanes_emit_the_same_envelope():
         assert payload["issues"] == payload["details"]["issues"]
         assert payload["field"] == pointer_to_field(payload["issues"][0]["pointer"])
         assert not payload["field"].startswith("/")
+
+    # THE SUBSTANTIVE AGREEMENT, and the assertion this test exists for. The two
+    # above are about the envelope's SHAPE, and both lanes satisfy them once
+    # ``field`` is dual-written unconditionally (salesagent-8qela.125) -- while
+    # the lanes still disagree about WHERE the document is wrong: the oracle
+    # names ``/idempotency_key`` and four more located failures, the pydantic
+    # lane one entry at the document root.
+    #
+    # DO NOT DELETE THIS TO REACH GREEN. It is the only check that sees
+    # salesagent-8qela.116 -- a root-required field's absence read as
+    # branch-selecting requiredness, so no branch is ever reached and the refusal
+    # collapses to the combinator with nothing located to promote. Closing .116
+    # needs the generator to emit the root's required set; until then this is RED
+    # for a named, filed cause, which is the honest state. The docstring's
+    # warning against satisfying this test by keeping both lanes field-level
+    # applies to removing this assertion too.
+    for lane, payload in (("oracle", oracle), ("pydantic", handler)):
+        assert payload["field"], (
+            f"the {lane} lane located no failure: issues[0] is at the document "
+            f"root, so `field` is the empty string and a pre-3.1 consumer reading "
+            f"it alone learns nothing — {payload['issues']}"
+        )
 
 
 def test_version_unsupported_field_comes_from_the_translator():

@@ -118,6 +118,25 @@ def build_adcp_validation_error_payload(
     # core/error.json: when issues[] is present, `field` is issues[0].pointer
     # translated to JSONPath-lite. One translator so every lane agrees on the
     # format, VERSION_UNSUPPORTED included.
-    if first is not None and (field := pointer_to_field(first.pointer)):
-        payload["field"] = field
+    #
+    # PRESENT WHENEVER ``issues`` IS, including when the translation is the empty
+    # string. The pin's rule is mechanical and its condition is the presence of
+    # ``issues``, not the shape of the pointer: "When `issues` is present, sellers
+    # MUST also populate `field` from `issues[0]` ... MUST (not SHOULD) so
+    # consumers reading `field` get deterministic behavior across sellers".
+    # ``field`` carries no ``minLength``, so the root's empty translation is a
+    # legal value for it.
+    #
+    # This used to be gated on the translation being truthy, which omitted
+    # ``field`` whenever EVERY issue sat at the document root -- measured on four
+    # create_media_buy documents, all four. The gate's rationale was that the root
+    # has no field path to name and ``field`` is not in error.json's ``required``
+    # list; both are true and neither is the condition the pin states.
+    # Deterministic presence is the thing a pre-3.1 consumer reading ``field``
+    # alone cannot get from an absent key (salesagent-8qela.125).
+    #
+    # ``first is None`` still omits both, which is the case the pin does not
+    # reach: no ``issues`` means no MUST and nothing to translate.
+    if first is not None:
+        payload["field"] = pointer_to_field(first.pointer)
     return payload
