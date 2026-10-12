@@ -143,6 +143,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.compile_conditions`` in tes
 
 __all__ = [
     "CONDITIONS_IMPORT",
+    "ROOT_CONSTRAINT_FIELDS",
     "GROUP_MESSAGE_PREFIX",
     "ROOT_CONSTRAINT_VALIDATOR",
     "branch_label",
@@ -416,6 +417,7 @@ def render_root_validator(
     return (
         "\n".join(
             [
+                *_render_root_constraint_fields(constraints),
                 "",
                 "    @model_validator(mode='after')",
                 f"    def {ROOT_CONSTRAINT_VALIDATOR}(self) -> {class_name}:",
@@ -432,6 +434,52 @@ def render_root_validator(
         )
         + "\n"
     )
+
+
+#: The attribute a root carries naming the fields its COMBINATOR reads. Declared so a
+#: consumer that filters a model can ask the class instead of knowing the names.
+ROOT_CONSTRAINT_FIELDS = "_ROOT_CONSTRAINT_FIELDS"
+
+
+def _render_root_constraint_fields(constraints: RootConstraints) -> list[str]:
+    """The combinator's fields, declared on the class for consumers to read.
+
+    A root ``anyOf``/``oneOf`` says "at least one of these groups", so each named
+    field is INDIVIDUALLY OPTIONAL and COLLECTIVELY REQUIRED -- a distinction
+    ``model_fields[...].is_required()`` cannot express, because it is per field.
+    Any consumer deriving a keep-set from per-field requiredness therefore drops
+    one of them and produces a document the model refuses.
+
+    Measured on ``get_products``: the fields projection kept the 7 fields
+    ``Product`` requires individually, dropped ``format_options`` because it is
+    individually optional, and the re-validation then failed the root's own
+    ``sent(format_ids) or sent(format_options)`` -- ten tests, one cause
+    (salesagent-8qela.86).
+
+    THE COMBINATOR'S FIELDS ONLY, not every field the constraints read. Measured
+    on ``Product``: its 12 conjuncts read 20 of its 59 fields, so declaring all
+    of them would have a buyer asking for ``product_id`` alone receive 27 fields
+    -- it passes the suite and defeats the feature. The combinator's 2 are
+    sufficient: all ten tests pass, and the eight that already passed stay
+    passing, including the one grading that an unrequested field IS dropped.
+
+    CEILING: a conjunct can also flip on absence --
+    ``(not supplied(proposal_id)) or supplied(total_budget)`` goes false if
+    ``total_budget`` is dropped while ``proposal_id`` is kept. No root in the pin
+    pairs that shape with a filtering consumer today, and no test exhibits it.
+    The complete rule is "every field whose absence can flip a predicate", which
+    needs a polarity walk over the condition tree; this is the floor, not that.
+    """
+    fields = sorted(
+        {name for branch in constraints.branches for name in named_fields(branch.condition)}
+    )
+    if not fields:
+        return []
+    names = ", ".join(repr(name) for name in fields)
+    return [
+        "",
+        f"    {ROOT_CONSTRAINT_FIELDS}: ClassVar[frozenset[str]] = frozenset({{{names}}})",
+    ]
 
 
 def _render_combinator(constraints: RootConstraints, class_name: str, subject: str) -> list[str]:

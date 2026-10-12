@@ -62,6 +62,7 @@ try:
     )
     from compile_conditions import (
         CONDITIONS_IMPORT,
+        ROOT_CONSTRAINT_FIELDS,
         ROOT_CONSTRAINT_VALIDATOR,
         compile_condition,
         render_root_validator,
@@ -87,6 +88,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.post_generate_fixes`` in te
     )
     from scripts.compile_conditions import (  # type: ignore[assignment]
         CONDITIONS_IMPORT,
+        ROOT_CONSTRAINT_FIELDS,
         ROOT_CONSTRAINT_VALIDATOR,
         compile_condition,
         render_root_validator,
@@ -8307,6 +8309,20 @@ def _ensure_branch_dispatch_import(content: str) -> str:
     return _ensure_module_import(content, BRANCH_DISPATCH_IMPORT)
 
 
+def _ensure_root_constraint_fields_import(content: str, block: str) -> str:
+    """``ClassVar`` for the block that declares the combinator's fields.
+
+    Only when the block actually declares it. Measured: 429 modules carry a
+    compiled validator and 86 of them have a combinator, so the annotation is
+    needed in a sixth of them -- and 18 already import the name. Keying on the
+    rendered block rather than on the constraints keeps the one condition in the
+    renderer that decides whether the attribute exists at all.
+    """
+    if f"{ROOT_CONSTRAINT_FIELDS}:" not in block:
+        return content
+    return _ensure_typing_import(content, "ClassVar")
+
+
 def _ensure_conditions_import(content: str) -> str:
     """Give a module the vocabulary import, once."""
     return _ensure_module_import(content, CONDITIONS_IMPORT)
@@ -8390,6 +8406,7 @@ def enforce_root_constraints() -> None:
         content = _append_to_class_block(content, class_name, block)
         content = _ensure_model_validator_import(content)
         content = _ensure_conditions_import(content)
+        content = _ensure_root_constraint_fields_import(content, block)
         # The refusal names the root combinator (#1435), so the module needs the
         # error type that carries a keyword. Dropped when this pass replaced the
         # required-names extractor the import had lived in.
@@ -8815,6 +8832,7 @@ def compose_branch_module(
                 "composed module, so its compiled constraint has nowhere to live"
             )
         rewritten = appended
+        rewritten = _ensure_root_constraint_fields_import(rewritten, root_validator)
         rewritten = _ensure_model_validator_import(rewritten)
         rewritten = ensure_pydantic_core_import(rewritten, "PydanticCustomError")
 

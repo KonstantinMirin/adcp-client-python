@@ -2,5 +2,89 @@
 
 ## Field changes
 
-- `core/format.py`
-  - **classes added**: UnknownFormatAsset, UnknownGroupAsset
+- `account/list_account_changes_response.py`
+  - `ListAccountChangesResponse`: `+_ROOT_CONSTRAINT_FIELDS`
+- `brand/search_brands_response.py`
+  - `SearchBrandsResponse`: `+_ROOT_CONSTRAINT_FIELDS`
+- `brand/verify_brand_claim_request.py`
+  - `VerifyBrandClaimRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `content_standards/create_content_standards_request.py`
+  - `CreateContentStandardsRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/assets/published_post_asset.py`
+  - `PublishedPostAsset`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/attestation_reference.py`
+  - `AttestationReference`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/audience_characteristic.py`
+  - `AudienceCharacteristic`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/audience_member.py`
+  - `AudienceMember`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/budget_range.py`
+  - `BudgetRange`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/catchment.py`
+  - `Catchment`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/collection_distribution.py`
+  - `CollectionDistribution`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/creative_asset.py`
+  - `CreativeAsset`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/creative_manifest.py`
+  - `CreativeManifest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/demographic_age_range.py`
+  - `DemographicAgeRange`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/demographic_reporting_capability.py`
+  - `DemographicReportingCapability`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/forecast_dimension_signal.py`
+  - `SignalForecastDimension`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/forecast_range.py`
+  - `ForecastRange`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/frequency_cap.py`
+  - `FrequencyCap`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/frequency_cap_constraints.py`
+  - `FrequencyCapConstraints`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/frequency_cap_impression_constraints.py`
+  - `FrequencyCapImpressionConstraints`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/frequency_cap_interval_constraints.py`
+  - `FrequencyCapIntervalConstraints`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/get_geo_place_resolution_request.py`
+  - `GetGeographicPlaceResolutionRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/placement.py`
+  - `Placement`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/placement_definition.py`
+  - `PlacementDefinition`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/product.py`
+  - `Product`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/signal_listing.py`
+  - `SignalListing`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/transformer.py`
+  - `Transformer`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/user_match.py`
+  - `UserMatch`: `+_ROOT_CONSTRAINT_FIELDS`
+- `core/webhook_challenge_response.py`
+  - `WebhookChallengeResponse`: `+_ROOT_CONSTRAINT_FIELDS`
+- `creative/get_creative_delivery_request.py`
+  - `GetCreativeDeliveryRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `creative/sync_creatives_request.py`
+  - `SyncCreativesRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `governance/get_plan_audit_logs_request.py`
+  - `GetPlanAuditLogsRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/acceptance_policy_catalog.py`
+  - `AcceptancePolicyCatalog`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/buy_products_request.py`
+  - `BuyProductsRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/control_media_buy_request.py`
+  - `ControlMediaBuyRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/create_media_buy_request.py`
+  - `CreateMediaBuyRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/get_reporting_status_response.py`
+  - `GetReportingStatusResponse`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/outcome_target.py`
+  - `OutcomeTarget`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/package_control.py`
+  - `PackageControl`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/proposal_budget_constraint.py`
+  - `ProposalBudgetConstraint`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/request_proposals_request.py`
+  - `RequestProposalsRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `media_buy/sync_reporting_receipts_request.py`
+  - `SyncReportingReceiptsRequest`: `+_ROOT_CONSTRAINT_FIELDS`
+- `sponsored_intelligence/si_send_message_request.py`
+  - `SiSendMessageRequest`: `+_ROOT_CONSTRAINT_FIELDS`
