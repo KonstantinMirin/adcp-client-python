@@ -936,9 +936,9 @@ async def test_mismatching_resolved_account_is_rejected_without_disclosing_it() 
 
 async def test_immutable_conflict_and_ledger_repr_do_not_expose_wire_secrets() -> None:
     raw = _history()
-    raw["materializations"][0]["resource"]["location"] = (
-        f"https://user:{SECRET}@storage.example/file"
-    )
+    raw["materializations"][0]["resource"][
+        "location"
+    ] = f"https://user:{SECRET}@storage.example/file"
     raw["receipts"][0]["reporting_receipt_id"] = SECRET
     ledger = await _load(raw)
     assert SECRET not in repr(ledger)
