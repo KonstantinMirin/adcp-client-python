@@ -433,8 +433,21 @@ def absent(data: Any, names: Sequence[str], nullable_names: Sequence[str] = ()) 
         + [name for name in nullable_names if name in data]
     )
     if carried:
-        offending = ", ".join(carried)
-        raise ValueError(f"{offending} is not accepted by this request shape")
+        # The keyword is the schema construct this compiles, named at the raise
+        # site because only the raise site knows it. A bare ``ValueError``
+        # reaches pydantic as ``value_error``, which has no JSON Schema
+        # equivalent, so the projection falls back to ``validation`` -- and
+        # ``core/error.json`` requires every ``issues[]`` entry's keyword to be
+        # "drawn from the JSON Schema vocabulary", which ``error-handling.mdx``
+        # states as a MUST. The forbidden names ride in the context rather than
+        # in a sentence, the way ``name_the_combinator`` carries the absent
+        # ones, so a consumer reads them without parsing text and the wire
+        # message stays the one ``safe_message_for`` authors.
+        raise PydanticCustomError(
+            "not",
+            "{fields} is not accepted by this request shape",
+            {"fields": ", ".join(carried)},
+        )
     return data
 
 

@@ -285,9 +285,19 @@ def test_both_lanes_emit_the_same_envelope():
 
     Two routes reach ``VALIDATION_ERROR`` — the oracle through
     ``validate_request``, a handler's pydantic rejection through
-    ``invalid_request`` — and both must produce one envelope. Each is given a
-    FIELD-LEVEL rejection so the comparison is like for like; a root-level
-    rejection legitimately has no ``field``, covered by the builder tests.
+    ``invalid_request`` — and both must produce one envelope.
+
+    RED, and ledgered as salesagent-8qela.93. Ordering is not what it is
+    waiting for: the oracle names ``/idempotency_key`` and four more located
+    failures here, while the pydantic lane emits ONE entry at the document root,
+    so there is no located entry for any rule to promote. That is the branch
+    dispatch electing the branch whose ``mode="before"`` validator fired, and it
+    is fixed in ``_conditions.py``.
+
+    ``core/error.json`` requires ``field`` whenever ``issues`` is present, so
+    the lane omitting it is non-conformant rather than exercising a legitimate
+    root-level case — do not satisfy this by choosing a payload that keeps both
+    lanes field-level, which would retire the only check that sees the defect.
     """
     oracle = build_adcp_validation_error_payload(
         "create_media_buy", "request", validate_request("create_media_buy", {"packages": 1}).issues
@@ -319,3 +329,101 @@ def test_version_unsupported_field_comes_from_the_translator():
     payload = build_adcp_validation_error_payload("create_media_buy", "request", [issue])
     assert payload["code"] == "VERSION_UNSUPPORTED"
     assert payload["field"] == "adcp_version"
+
+
+#: Payloads reaching ``create_media_buy``, the one request root whose schema
+#: carries a root ``anyOf``. "Packages only" is the realistic case: a buyer
+#: omits each package's ``budget`` (arm 0 requires it) and sends a bad
+#: ``geo_countries`` element, so the pin refuses the document at the ROOT and
+#: at a field at once.
+ROOT_AND_FIELD_PAYLOADS = [
+    {
+        "adcp_version": "3.2",
+        "idempotency_key": "11111111-2222-3333-4444-555555555555",
+        "account": {"account_id": "acct_1"},
+        "brand": {"domain": "example.com"},
+        "start_time": "2026-02-01T00:00:00Z",
+        "end_time": "2026-02-28T00:00:00Z",
+        "packages": [
+            {
+                "buyer_ref": "pkg_1",
+                "product_id": "p1",
+                "pricing_option_id": "po_1",
+                "targeting_overlay": {"geo_countries": [5]},
+            }
+        ],
+    },
+    {"packages": [{"targeting_overlay": {"geo_countries": [5]}}]},
+    {"buyer_ref": 7, "packages": [{"products": [{}]}]},
+    {},
+]
+
+
+def _envelopes_with_both_kinds_of_issue() -> list[tuple[str, dict[str, object]]]:
+    """Envelopes whose issue set holds a root entry AND a located one.
+
+    Derived by running both lanes over the payloads above rather than authored,
+    so the cases are whatever the validators really produce. An entry is
+    located when its pointer translates to a JSONPath-lite field path; the
+    document root translates to the empty string, which is not one.
+    """
+    found: list[tuple[str, dict[str, object]]] = []
+    for index, payload in enumerate(ROOT_AND_FIELD_PAYLOADS):
+        lanes: list[tuple[str, list[ValidationIssue]]] = [
+            ("oracle", list(validate_request("create_media_buy", payload).issues))
+        ]
+        try:
+            CreateMediaBuyRequest.model_validate(payload)
+        except ValidationError as error:
+            lanes.append(("pydantic", issues_from_validation_error(error)))
+        for lane, issues in lanes:
+            if not issues:
+                continue
+            located = [i for i in issues if pointer_to_field(i.pointer)]
+            rooted = [i for i in issues if not pointer_to_field(i.pointer)]
+            if located and rooted:
+                found.append(
+                    (
+                        f"{lane}-{index}",
+                        build_adcp_validation_error_payload("create_media_buy", "request", issues),
+                    )
+                )
+    return found
+
+
+ROOT_AND_FIELD_ENVELOPES = _envelopes_with_both_kinds_of_issue()
+
+
+def test_a_case_with_both_kinds_of_issue_exists():
+    """Without one, the test below asserts nothing: every set would be located."""
+    assert ROOT_AND_FIELD_ENVELOPES, (
+        "no payload produced an issue set holding BOTH a root entry and a located "
+        "one, so the ordering rule is ungraded"
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "payload"), ROOT_AND_FIELD_ENVELOPES, ids=[c[0] for c in ROOT_AND_FIELD_ENVELOPES]
+)
+def test_field_comes_from_a_located_issue_whenever_one_exists(label, payload):
+    """``issues[0]`` names a field in the buyer's document, never the root.
+
+    ``core/error.json`` requires ``field`` to be ``issues[0].pointer``
+    translated, and types it as a "Field path … in JSONPath-lite format (e.g.
+    'packages[0].targeting')". The document root has no such spelling, so an
+    entry pointing at the root cannot be ``issues[0]`` without leaving ``field``
+    unpopulated — and ``field`` is graded, not advisory:
+    ``compliance/3.2.1/domains/media-buy/scenarios/refine_finalize_exclusivity.yaml``
+    checks ``field_present`` on ``adcp_error.field``.
+
+    A root entry may still APPEAR in ``issues[]``: the pin's own envelope in
+    ``protocol/calling-an-agent.mdx`` lists ``anyOf``/``oneOf`` among the legal
+    keywords and calls a union entry's ``variants[]`` "the fastest recovery
+    path". What the pin never does is put one at the document root — in its
+    example the combinator entry's pointer is ``/account``, the union-valued
+    FIELD. Only ordering is constrained here; nothing is dropped.
+    """
+    issues = payload["issues"]
+    assert pointer_to_field(issues[0]["pointer"]), issues
+    assert payload["field"] == pointer_to_field(issues[0]["pointer"])
+    assert {i["pointer"] for i in issues} == {i["pointer"] for i in payload["details"]["issues"]}

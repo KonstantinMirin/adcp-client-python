@@ -67,6 +67,26 @@ def build_adcp_validation_error_payload(
     bearer tokens / PII / prompt-injection strings from the offending
     payload back to the peer.
     """
+    # ``field`` IS ``issues[0].pointer`` translated, and ``core/error.json``
+    # types it as a "Field path ... in JSONPath-lite format (e.g.
+    # 'packages[0].targeting')". The document root has no such spelling -- it
+    # translates to the empty string -- so an entry pointing at the root cannot
+    # lead the list without leaving ``field`` unpopulated, and a present
+    # ``field`` is graded rather than advisory (``field_present`` on
+    # ``adcp_error.field`` in the pinned conformance suite's
+    # ``refine_finalize_exclusivity`` and ``proposal_finalize`` scenarios).
+    #
+    # A root entry still SHIPS. The pin's own envelope in
+    # ``protocol/calling-an-agent.mdx`` lists ``anyOf``/``oneOf`` among the
+    # legal ``issues[].keyword`` values and calls a union entry's ``variants[]``
+    # "the fastest recovery path" -- what it never does is place one at the
+    # document root, because every union it illustrates sits at a FIELD
+    # (``/account``). A split root is the case it does not cover, so only the
+    # ORDER is decided here. Stable, so each group keeps its own order --
+    # including the oracle's shallowest-first sort among located entries, which
+    # is the order the pin's example shows (``/account`` before
+    # ``/brand/domain``).
+    issues = sorted(issues, key=lambda issue: not pointer_to_field(issue.pointer))
     first = issues[0] if issues else None
     if first is not None:
         message = f"{tool} {side} failed schema validation at {first.pointer}: {first.message}"
