@@ -1,133 +1,169 @@
-"""The bundled schema's asset-type discriminators must all exist as generated classes.
+"""Every asset type the bundled schema declares must be ROUTABLE by the models.
 
-WHY THIS FILE EXISTS. One wheel shipped a bundled ``core/format.json`` declaring 21
-``asset_type`` discriminators while its generated classes modelled 14, with 12 in
-the ``repeatable_group`` arm against the schema's 21 — a codegen/schema divergence
-INSIDE A SINGLE ARTIFACT. The suite was green throughout, because nothing in it
-compared the two sides. It surfaced only when an adopter derived one side from the
-generated classes and the other from the bundled schema.
+WHY THE OBVIOUS COMPARISON IS THE WRONG ONE. The first version of this file
+compared the bundled schema's ``asset_type`` consts against the generated
+classes' ``asset_type`` defaults. That comparison passes on this tree, and it
+would have passed at EVERY upstream release point including the broken ones,
+because the generated classes always covered the vocabulary. The generated
+artifact — ``adcp/types/domains/core/format.py`` — reads 42 ``asset_type:
+Literal`` declarations (21 distinct, two arms) at v9.0.0-beta.1 through the
+beta.4 release commit. Codegen was never the defect.
 
-So the defect was not that a check failed; it was that no check existed. Both
-halves ship in the same wheel, both are derived from the same source at build
-time, and a reader of either alone cannot see them disagree.
+THE DEFECT IS A THIRD SIDE: WHAT THE MODELS ACTUALLY ROUTE. ``types/aliases.py``
+carries two HAND-WRITTEN unions, and ``types/_forward_compat.py`` patches them
+over the correct generated annotations at import. Upstream those unions carry 14
+real arms individually and 12 in-group against the schema's 21, so seven
+declared asset types (``card``, ``daast_tracker``, ``display_tag``,
+``pixel_tracker``, ``published_post``, ``vast_tracker``, ``zip``) and nine
+in-group fall through to the unknown arm. A schema-valid document deserializes as
+``UnknownFormatAsset``.
 
-THE UNION IS NESTED, which is why a casual reader returns zero. ``core/format.json``
-discriminates first on ``item_type`` (``individual`` / ``repeatable_group``) and
-only then on ``asset_type``, and the two arms nest to DIFFERENT depths — the
-``individual`` arm carries its inner ``oneOf`` at the arm's own level while
-``repeatable_group``'s sits deeper. A fixed-depth walk therefore derives the full
-set for one arm and nothing for the other, so both sides here walk the whole
-subtree rather than a known shape.
+SO THE ASSERTION IS: schema vocabulary == what ``Format.assets`` routes AFTER
+forward-compat has been applied. Not what the generated classes declare, which is
+correct and always was.
 
-BOTH POPULATIONS ARE ASSERTED NON-EMPTY, and that is not decoration: a guard whose
-population feeds a comparison reports success when the population empties. An
-empty schema side would compare cleanly against anything.
+THE PATCH IS APPLIED BY A MODULE BODY, AND WHO TRIGGERS IT IS NOT FULLY PINNED.
+``adcp.types._forward_compat`` calls ``_apply_forward_compat()`` when imported, so
+this module imports it explicitly to guarantee the patched state is the one
+graded. What is NOT established is that the explicit import is the only route:
+measured on the 9.0.0b2 wheel, the walk reads 14 routable with or without it, so
+something in the import chain already applies it there. The explicit import is
+therefore a guarantee rather than the mechanism, and a reader should not take it
+as evidence about which import arms the patch.
+
+FIRE-PROBED IN BOTH DIRECTIONS ON REAL ARTIFACTS, not on a mutation. On this
+fork it passes — schema 21, individual 21, group 21 — because ``0b8b194ab``
+generates both unions and derives the vocabulary they route by. Run against the
+``9.0.0b2+prs1435.1415.1447.1456`` wheel it FAILS, reading 14 individually and 12
+in-group and naming exactly ``card``, ``daast_tracker``, ``display_tag``,
+``pixel_tracker``, ``published_post``, ``vast_tracker``, ``zip`` (plus ``brief``
+and ``catalog`` in-group).
+
+That pair is what the first version of this file could not produce. Its probe
+renamed a const in the bundled schema and watched the comparison go red, which
+proves the comparison WORKS and says nothing about whether it is pointed at the
+defect — the first version passed on the broken wheel too.
+
+``routed_by`` is taken from the measurement in acp-branch-runs/repro, which is
+where the walk was worked out. Its schema reader is not: that one resolves
+``adcp.__file__ / "_schemas"``, which exists only in an installed wheel, so it
+cannot run from an editable checkout. The reader here goes through the SDK's own
+``_resolve_schema_root``, which prefers the packaged copy and falls back to the
+repo layout — the same bytes in either case.
+
+Refs: salesagent-8qela.168, salesagent-raqvy
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any, get_args
+import typing
+from typing import Any
 
 import pytest
 
-from adcp.types import FormatAssetUnion, RepeatableAssetGroup
+# THE IMPORT THAT ARMS THE PATCH. Not a convenience and not reorderable: without
+# it the generated annotations measure a correct 21/21 and this file grades
+# nothing. Imported for its module-body side effect, hence the noqa.
+import adcp.types._forward_compat  # noqa: F401
+from adcp.types.aliases import RepeatableAssetGroup
+from adcp.types.domains.core.format import Format
 from adcp.validation.schema_loader import _resolve_schema_root
 
 
-def _asset_type_consts(node: Any, found: set[str] | None = None) -> set[str]:
-    """Every ``asset_type`` ``const`` anywhere under ``node``.
+def _declared_by_schema(
+    doc: Any, found: set[str] | None = None, key: str | None = None
+) -> set[str]:
+    """Every ``asset_type`` ``const`` anywhere under ``doc``.
 
-    Whole-subtree rather than a fixed path: see the module docstring on the two
-    arms nesting to different depths.
+    Whole-subtree rather than a fixed path: ``core/format.json`` discriminates on
+    ``item_type`` first and ``asset_type`` second, and the two arms nest to
+    DIFFERENT depths, so a fixed-depth walk derives the full set for one arm and
+    the empty set for the other.
     """
     found = set() if found is None else found
-    if isinstance(node, dict):
-        declared = node.get("asset_type")
-        if isinstance(declared, dict) and isinstance(declared.get("const"), str):
-            found.add(declared["const"])
-        for value in node.values():
-            _asset_type_consts(value, found)
-    elif isinstance(node, list):
-        for value in node:
-            _asset_type_consts(value, found)
+    if isinstance(doc, dict):
+        if key == "asset_type" and isinstance(doc.get("const"), str):
+            found.add(doc["const"])
+        for inner_key, value in doc.items():
+            _declared_by_schema(value, found, inner_key)
+    elif isinstance(doc, list):
+        for value in doc:
+            _declared_by_schema(value, found, key)
     return found
 
 
-def _generated_asset_types(annotation: Any, found: set[str] | None = None) -> set[str]:
-    """Every ``asset_type`` field default reachable from ``annotation``.
+def _routed_by(model: type, field: str = "assets") -> set[str]:
+    """Every ``asset_type`` a value of ``model.<field>`` can deserialize into.
 
-    The discriminator lives in a pydantic FIELD DEFAULT, not in a ``Literal[...]``
-    written into a generated file — a text search over the generated module finds
-    an import of ``UrlAssetType`` and nothing else, which is how this divergence
-    reads as absent when it is present.
-
-    Descends through union members AND through model fields: a group arm reaches
-    its asset classes through a field annotation, so walking union arguments alone
-    returns the empty set for it.
+    Walks the annotation rather than the class list, because the annotation is
+    what forward-compat replaces and therefore what pydantic dispatches on.
+    ``Annotated`` is unwrapped to its first argument so a discriminated union
+    carrying field metadata is followed rather than treated as a leaf.
     """
-    found = set() if found is None else found
-    fields = getattr(annotation, "model_fields", None)
-    if fields is not None:
-        default = getattr(fields.get("asset_type"), "default", None)
-        if isinstance(default, str):
-            found.add(default)
-        for field in fields.values():
-            _generated_asset_types(field.annotation, found)
-    for argument in get_args(annotation):
-        _generated_asset_types(argument, found)
-    return found
+    out: set[str] = set()
+    stack = [model.model_fields[field].annotation]
+    while stack:
+        node = stack.pop()
+        args = typing.get_args(node)
+        if typing.get_origin(node) is typing.Annotated:
+            stack.append(args[0])
+            continue
+        if args:
+            stack.extend(args)
+            continue
+        declared = getattr(node, "model_fields", {}).get("asset_type")
+        if declared is not None and isinstance(declared.default, str):
+            out.add(declared.default)
+    return out
 
 
 @pytest.fixture(scope="module")
-def bundled_format_schema() -> dict[str, Any]:
-    """``core/format.json`` as the WHEEL ships it.
-
-    Resolved through the SDK's own ``_resolve_schema_root``, which prefers the
-    packaged ``adcp/_schemas`` copy and falls back to the repo layout, so this
-    grades the artifact an adopter installs rather than a path spelled here.
-    """
+def declared() -> set[str]:
+    """The schema's vocabulary, from the bundle the wheel ships."""
     root = _resolve_schema_root()
     assert root is not None, "no bundled schema tree resolved for the SDK's pinned version"
     path = root.core / "format.json"
     if not path.exists():
         path = root.bundled / "core" / "format.json"
     assert path.exists(), f"bundled core/format.json not found under {root.root}"
-    return json.loads(path.read_text())
+    return _declared_by_schema(json.loads(path.read_text()))
 
 
-def test_the_schema_declares_asset_types(bundled_format_schema: dict[str, Any]) -> None:
-    """The authority side is non-empty, so the comparison below grades something."""
-    assert _asset_type_consts(bundled_format_schema), (
-        "the bundled schema declared no asset_type const; the comparison would "
-        "pass against any generated set, including an empty one"
-    )
+def test_the_schema_declares_asset_types(declared: set[str]) -> None:
+    """The authority side is non-empty, so the comparisons below grade something.
 
-
-def test_the_generated_classes_declare_asset_types() -> None:
-    """The subject side is non-empty too, for the same reason in reverse."""
-    assert _generated_asset_types(FormatAssetUnion) or _generated_asset_types(
-        RepeatableAssetGroup
-    ), "no generated class carried an asset_type default; the walk found nothing to compare"
-
-
-def test_every_bundled_asset_type_has_a_generated_class(
-    bundled_format_schema: dict[str, Any],
-) -> None:
-    """The comparison the shipped wheel could not make about itself.
-
-    One direction only: the schema is the authority, so a discriminator it
-    declares MUST have a class. A generated class with no schema const would be a
-    different defect and is not asserted here, because the generator legitimately
-    models shapes the format schema does not discriminate on.
+    An empty authority compares cleanly against any subject, including an empty
+    one, so this is the assertion that makes the others mean anything.
     """
-    declared = _asset_type_consts(bundled_format_schema)
-    generated = _generated_asset_types(FormatAssetUnion) | _generated_asset_types(
-        RepeatableAssetGroup
-    )
-    missing = sorted(declared - generated)
-    assert not missing, (
-        f"{len(missing)} of {len(declared)} asset_type discriminators in the bundled "
-        f"core/format.json have no generated class: {missing}. The schema and the "
-        f"classes ship in one wheel and disagree."
+    assert declared, "the bundled schema declared no asset_type const"
+
+
+@pytest.mark.parametrize(
+    ("label", "model"),
+    [("Format.assets", Format), ("RepeatableAssetGroup.assets", RepeatableAssetGroup)],
+    ids=["individual", "repeatable_group"],
+)
+def test_the_models_route_asset_types(label: str, model: type) -> None:
+    """Each subject side is non-empty too, for the same reason in reverse."""
+    assert _routed_by(model), f"{label} routes no asset_type; the walk found nothing to compare"
+
+
+@pytest.mark.parametrize(
+    ("label", "model"),
+    [("Format.assets", Format), ("RepeatableAssetGroup.assets", RepeatableAssetGroup)],
+    ids=["individual", "repeatable_group"],
+)
+def test_every_declared_asset_type_is_routable(declared: set[str], label: str, model: type) -> None:
+    """The assertion the shipped wheel could not make about itself.
+
+    One direction: the schema is the authority, so a type it declares MUST be
+    routable. A routable type with no const would be a different question and is
+    not asserted here.
+    """
+    unroutable = sorted(declared - _routed_by(model))
+    assert not unroutable, (
+        f"{len(unroutable)} of {len(declared)} asset types the bundled "
+        f"core/format.json declares cannot be routed by {label}, so a schema-valid "
+        f"document deserializes them as UnknownFormatAsset: {unroutable}"
     )
