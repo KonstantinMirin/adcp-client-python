@@ -31,18 +31,33 @@ it is what made the other branches unreachable (salesagent-8qela.69).
 THE POPULATION IS DERIVED, and asserted non-empty before anything is compared,
 because a derivation that matches nothing passes while grading nothing.
 
-SCOPED TO REQUESTS ON PURPOSE, AND THE WIDENING IS BLOCKED RATHER THAN UNWANTED.
-The same defect exists on ``core/product.json`` (``format_options`` required by
-``Product`` and by no root), and that fix is measured but NOT graded here: its
-branch carries a ``title``, so the "purely ``required``" rule excludes it.
-Relaxing that rule to ignore annotation-only keywords (``title``,
-``description``, ``deprecated``) would admit Product — and also
-``core/creative-asset.json`` and ``core/creative-manifest.json``, whose public
-models are STILL over-required for a different reason (a oneOf branch class above
-the root in their MRO, salesagent-8qela.69). Widening now would need those two
-allowlisted, so the widening waits until they are fixed and then costs one line
-here and no allowlist. A request model refusing a legal request is the severe
-case and is covered.
+SCOPED TO REQUESTS ON PURPOSE, AND DO NOT WIDEN IT TO ALL MODELS. The comparator
+here — "the schema ROOT's ``required`` list" — assumes a public class binds that
+root. Most do. Some bind a BRANCH deliberately, and for those the root is simply
+the wrong thing to compare against.
+
+``canonical_creative.CreativeAsset`` is the worked example: it binds
+``CreativeAssetV2CreativeCanonicalFormatKind``, the canonical-format branch, so
+its required ``format_kind`` is that branch's contract and not an
+over-requirement. The design is stated in the module docstring — the
+wire-faithful models "are exposed from ``adcp.types.legacy``" while the canonical
+models exclude legacy identity — and in nothing derivable, so a sweep reading
+only schemas and ``model_fields`` cannot see it. Measured at both ends:
+CreativeAsset ``format_kind`` is required at 65626be29 AND at head, while
+CreativeManifest was optional upstream and required at head. Only the second was
+a regression (salesagent-8qela.69); the first was a false positive from exactly
+this comparator.
+
+An earlier version of this docstring said the widening was "blocked" and would
+need CreativeAsset and Creative allowlisted. That was wrong, and wrong in the
+expensive direction: it would have recorded a deliberate design as debt to be
+paid off. They are not debt. The guard stays request-scoped because a request
+model refusing a legal request is the severe case, and because widening it would
+require teaching the comparator which classes bind a branch — which is a docstring
+fact, not a derivable one.
+
+Before treating any hit from a root-comparison sweep as a defect, check what the
+public class actually BINDS, on the resolved MRO rather than the declaration.
 """
 
 from __future__ import annotations
