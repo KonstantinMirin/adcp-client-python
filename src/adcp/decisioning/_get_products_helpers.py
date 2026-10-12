@@ -16,7 +16,7 @@ regardless of the buyer's selection:
 1a. **Fields the schema root's combinator names** — ``format_ids`` and
    ``format_options``, which the root requires ONE OF. Neither is required on
    its own, so category 1 does not reach them, and dropping both produced a
-   document the schema refuses. See ``_ROOT_CONSTRAINT_PRODUCT_FIELDS``.
+   document the schema refuses. See ``_COMBINATOR_PRODUCT_FIELDS``.
 
 2. **Non-enum declared fields** — optional ``Product.model_fields`` entries
    that have no corresponding ``GetProductsField`` enum value
@@ -91,7 +91,7 @@ _REQUIRED_PRODUCT_FIELDS: frozenset[str] = frozenset(
 #: of listing them; a hand-written list is what went stale. Direct attribute
 #: access on purpose, so a regeneration that stopped emitting it fails at import
 #: rather than quietly reinstating the defect.
-_ROOT_CONSTRAINT_PRODUCT_FIELDS: frozenset[str] = Product._ROOT_CONSTRAINT_FIELDS
+_COMBINATOR_PRODUCT_FIELDS: frozenset[str] = Product._COMBINATOR_FIELDS
 
 #: Every string value in the GetProductsField enum (the buyer selection
 #: surface, 30 values).
@@ -121,10 +121,7 @@ def _project_product_fields(
     """
     requested = frozenset(f.value for f in fields)
     keep_declared = (
-        _REQUIRED_PRODUCT_FIELDS
-        | _ROOT_CONSTRAINT_PRODUCT_FIELDS
-        | requested
-        | _NON_ENUM_PRODUCT_FIELDS
+        _REQUIRED_PRODUCT_FIELDS | _COMBINATOR_PRODUCT_FIELDS | requested | _NON_ENUM_PRODUCT_FIELDS
     )
 
     if response.products is None:

@@ -143,7 +143,7 @@ except ModuleNotFoundError:  # Imported as ``scripts.compile_conditions`` in tes
 
 __all__ = [
     "CONDITIONS_IMPORT",
-    "ROOT_CONSTRAINT_FIELDS",
+    "COMBINATOR_FIELDS",
     "GROUP_MESSAGE_PREFIX",
     "ROOT_CONSTRAINT_VALIDATOR",
     "branch_label",
@@ -436,9 +436,11 @@ def render_root_validator(
     )
 
 
-#: The attribute a root carries naming the fields its COMBINATOR reads. Declared so a
-#: consumer that filters a model can ask the class instead of knowing the names.
-ROOT_CONSTRAINT_FIELDS = "_ROOT_CONSTRAINT_FIELDS"
+#: The attribute a root carries naming the fields its COMBINATOR reads. Named for the
+#: combinator specifically, NOT for root constraints in general: see
+#: :func:`_render_root_constraint_fields` for what it excludes and why the narrower
+#: name is the point rather than an abbreviation.
+COMBINATOR_FIELDS = "_COMBINATOR_FIELDS"
 
 
 def _render_root_constraint_fields(constraints: RootConstraints) -> list[str]:
@@ -463,12 +465,27 @@ def _render_root_constraint_fields(constraints: RootConstraints) -> list[str]:
     sufficient: all ten tests pass, and the eight that already passed stay
     passing, including the one grading that an unrequested field IS dropped.
 
-    CEILING: a conjunct can also flip on absence --
-    ``(not supplied(proposal_id)) or supplied(total_budget)`` goes false if
-    ``total_budget`` is dropped while ``proposal_id`` is kept. No root in the pin
-    pairs that shape with a filtering consumer today, and no test exhibits it.
-    The complete rule is "every field whose absence can flip a predicate", which
-    needs a polarity walk over the condition tree; this is the floor, not that.
+    THE NAME IS THE BOUND, and it is narrow on purpose. This is NOT the complete
+    set of fields a root constraint can require. A conjunct can also flip on
+    absence -- a disjunction with a NEGATED presence arm,
+
+        (not supplied(A)) or supplied(B)
+
+    goes false when ``B`` is dropped and ``A`` is kept. Measured on the pin: 27
+    per-domain schemas carry a presence-implication keyword (``dependencies``,
+    ``dependentRequired``, ``dependentSchemas``) -- ``core/media-buy.json`` over
+    ``accepted_proposal_id``, ``core/error.json`` over ``buyer_reason``,
+    ``core/delivery-recipient.json`` over ``cloud`` and ``region``, among others
+    -- and ``core/product.json``, the one this was built for, carries NONE. So
+    the gap is a fact about the pin and not a theoretical ceiling, and a consumer
+    reading this attribute for any of those 27 would be reading an incomplete
+    answer under a complete-sounding name.
+
+    Hence ``_COMBINATOR_FIELDS`` rather than ``_ROOT_CONSTRAINT_FIELDS``. The
+    complete rule is "every field whose absence can flip a predicate", which
+    needs a polarity walk over the condition tree; if anyone ever needs it, it
+    arrives as a SECOND attribute without changing what this one means. Nobody
+    has to discover the bound by being bitten by it.
     """
     fields = sorted(
         {name for branch in constraints.branches for name in named_fields(branch.condition)}
@@ -478,7 +495,7 @@ def _render_root_constraint_fields(constraints: RootConstraints) -> list[str]:
     names = ", ".join(repr(name) for name in fields)
     return [
         "",
-        f"    {ROOT_CONSTRAINT_FIELDS}: ClassVar[frozenset[str]] = frozenset({{{names}}})",
+        f"    {COMBINATOR_FIELDS}: ClassVar[frozenset[str]] = frozenset({{{names}}})",
     ]
 
 

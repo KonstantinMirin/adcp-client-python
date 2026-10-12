@@ -668,6 +668,21 @@ def name_the_combinator(keyword: str, branches: Sequence[type] = ()) -> Callable
                 # another branch's ``missing``, and the combinator refusal
                 # displaced the document error in 23 tests.
                 #
+                # WHICH SPELLINGS COLLAPSE, measured on the same two branches, so
+                # the next validator added to a branch can be checked against
+                # this rather than against the one case that bit us:
+                #
+                #     plain branches         ['First', 'Second']          distinct
+                #     after-validator only   ['function-after[f(), First]',
+                #                             'function-after[f(), Second]']
+                #                                                         distinct
+                #     WRAP only              ['function-wrap[f()]']       DEGENERATE
+                #     after over wrap        ['function-after[f(),
+                #                              function-wrap[f()]]']      DEGENERATE
+                #
+                # So the hazard is ANY wrap in a branch's schema, not one
+                # particular validator.
+                #
                 # So when the labels are degenerate, the branches are asked
                 # directly -- for SELECTION ONLY. The reported errors still come
                 # from the union, which is what keeps them in the caller's input
