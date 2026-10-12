@@ -42,6 +42,10 @@ from adcp.validation.pydantic_errors import issues_from_validation_error
 # would be a second answer to the same question.
 from tests.test_branch_dispatch_on_every_path import _roots_with_branches
 
+# The one definition of a value a peer could send that must never come back, so
+# this file and the echo suite grade the same string.
+from tests.test_request_validation_no_input_echo import SECRET
+
 #: Taken from the validator that implements the vocabulary rather than restated,
 #: so the set cannot drift from the thing the pin points at.
 VOCABULARY = frozenset(Draft7Validator.VALIDATORS)
@@ -228,3 +232,90 @@ def test_the_baseline_is_a_distribution_not_a_total() -> None:
         "the recorded distribution no longer sums to the measured baseline; "
         "shrink an entry rather than adjusting this number"
     )
+
+
+# ---------------------------------------------------------------------------
+# A composition refusal must name the fields, not just the keyword.
+#
+# ``allOf composition failed`` tells a buyer which RULE fired and nothing about
+# where to look. The field names are not user data -- they come from the pinned
+# schema, which is why ``safe_message_for`` has always passed a ``required``
+# failure's schema-declared key name through. The same reasoning covers a
+# composition's fields.
+#
+# The compiled validators compose those names from the schema and put them in
+# the error's context (``name_the_combinator``'s groups and fields,
+# ``absent``'s forbidden names). Until now the projection dropped the context
+# and rendered the keyword alone.
+# ---------------------------------------------------------------------------
+
+#: Documents whose refusal is a composition WITH field names in the context.
+#: Derived by running the model, not authored: each entry is kept only if the
+#: raw error actually carries ``ctx["fields"]``, so the parametrize cannot grade
+#: a case whose context is empty.
+#:
+#: Each carries the secret IN A VALUE, so the same cases that grade "the message
+#: names the schema's fields" also grade "and nothing of the instance". Naming
+#: more makes leaking more possible, so the two assertions belong on one case.
+_COMPOSITION_PROBES = [
+    ("empty document", {}),
+    ("a forbidden name", {"packages": 1, "name": SECRET}),
+    ("another forbidden name", {"proposal_id": SECRET}),
+]
+
+
+def _composition_cases() -> list[tuple[str, str, str]]:
+    """(label, the ctx fields, the wire message) for each probe that qualifies."""
+    from adcp.types import CreateMediaBuyRequest
+
+    found: list[tuple[str, str, str]] = []
+    for label, payload in _COMPOSITION_PROBES:
+        try:
+            CreateMediaBuyRequest.model_validate(payload)
+        except ValidationError as error:
+            raw = error.errors()[0]
+            fields = (raw.get("ctx") or {}).get("fields")
+            if not fields:
+                continue
+            issues = issues_from_validation_error(error)
+            if issues and issues[0].keyword in {"oneOf", "anyOf", "allOf", "not"}:
+                found.append((label, str(fields), issues[0].message))
+    return found
+
+
+COMPOSITION_CASES = _composition_cases()
+
+
+def test_a_composition_refusal_carrying_fields_exists() -> None:
+    """Without one, the test below grades nothing.
+
+    A probe whose context is empty is skipped above rather than asserted
+    against, because an empty context is a separate defect in the generator
+    (salesagent-8qela.49) and not something this check can see.
+    """
+    assert COMPOSITION_CASES, (
+        "no probe produced a composition refusal carrying ctx['fields'], so the "
+        "message-names-its-fields rule is ungraded"
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "fields", "message"), COMPOSITION_CASES, ids=[c[0] for c in COMPOSITION_CASES]
+)
+def test_a_composition_message_names_the_schemas_fields(
+    label: str, fields: str, message: str
+) -> None:
+    """Every field name the error cites reaches the wire message.
+
+    Schema-derived throughout: the generator composes these names from the
+    schema node, so carrying them is a citation rather than an echo. Nothing
+    from the instance travels -- the value-free property is graded by
+    ``tests/test_request_validation_no_input_echo.py``.
+    """
+    for name in (part.strip() for part in fields.split(",")):
+        assert name and name in message, (
+            f"{label}: the refusal cites {name!r} and the wire message does not: {message!r}"
+        )
+    # The other half, on the same case: naming the schema's fields must not
+    # become naming the peer's values. Each probe above puts SECRET in a value.
+    assert SECRET not in message, f"{label}: the message echoed a payload value: {message!r}"

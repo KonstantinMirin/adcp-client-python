@@ -28,6 +28,8 @@ from jsonschema import Draft7Validator
 from pydantic import ValidationError
 
 from adcp.validation.schema_validator import (
+    _COMPOSITION_KEYWORDS,
+    UNSET,
     ValidationIssue,
     _path_to_pointer,
     safe_message_for,
@@ -188,6 +190,15 @@ def _message(entry: dict[str, Any], keyword: str) -> str:
     if keyword == "type":
         return safe_message_for(keyword, bound=_JSON_TYPE_BY_TYPE[error_type])
     ctx = entry.get("ctx") or {}
+    if keyword in _COMPOSITION_KEYWORDS:
+        # The compiled validators compose the field names from the schema node
+        # and put them in the context -- ``name_the_combinator`` carries the
+        # branch groups' fields, ``absent`` the forbidden names. Dropping the
+        # context left the buyer "anyOf composition failed", which names the
+        # rule and not the place. A conjunct whose context is EMPTY renders as
+        # before: the generator not supplying them is a separate defect
+        # (salesagent-8qela.49) and inventing names here would be worse.
+        return safe_message_for(keyword, fields=ctx.get("fields", UNSET))
     if keyword in _BOUND_CTX_KEY:
         ctx_key = _BOUND_CTX_KEY[keyword]
         if ctx_key in ctx:

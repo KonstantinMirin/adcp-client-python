@@ -303,6 +303,12 @@ _BOUNDED_KEYWORDS = frozenset(
 )
 
 
+#: The four JSON Schema keywords whose failure is a composition rather than a
+#: single constraint. Named once: ``safe_message_for`` renders them together and
+#: both lanes ask the same question of a keyword before deriving field names.
+_COMPOSITION_KEYWORDS = frozenset({"oneOf", "anyOf", "allOf", "not"})
+
+
 class _Unset:
     """Sentinel: a fact the caller's error shape does not carry.
 
@@ -314,6 +320,20 @@ class _Unset:
 UNSET = _Unset()
 
 
+def _render_fields(fields: Any) -> str:
+    """The field names a refusal cites, as one phrase.
+
+    Accepts the comma-joined string the compiled validators put in their error
+    context and any iterable of names, so each lane hands over whatever shape it
+    already has rather than converting at the call site.
+    """
+    if isinstance(fields, str):
+        names = [part.strip() for part in fields.split(",")]
+    else:
+        names = [str(name).strip() for name in fields]
+    return ", ".join(sorted({name for name in names if name}))
+
+
 def safe_message_for(
     keyword: str,
     *,
@@ -321,6 +341,7 @@ def safe_message_for(
     bound: Any = UNSET,
     enum_size: int | None = None,
     format_name: Any = UNSET,
+    fields: Any = UNSET,
 ) -> str:
     """Value-free wording for a rejection, given only structural facts.
 
@@ -356,9 +377,61 @@ def safe_message_for(
         return f"value does not match required format ({format_name!r})"
     if keyword == "additionalProperties":
         return "unexpected property"
-    if keyword in {"oneOf", "anyOf", "allOf", "not"}:
+    if keyword in _COMPOSITION_KEYWORDS:
+        # The names a composition constrains are declared by the SCHEMA, so
+        # citing them is the same move as passing a ``required`` failure's key
+        # name through above — and it is what turns "allOf composition failed"
+        # from a rule identifier into something a buyer can act on. Nothing from
+        # the instance reaches here: each lane derives the names from a schema
+        # node or from the context the generator composed out of one.
+        if rendered := _render_fields(fields) if fields is not UNSET else "":
+            return f"{keyword} composition failed (fields: {rendered})"
         return f"{keyword} composition failed"
     return f"{keyword} constraint failed"
+
+
+def _declared_field_names(node: Any) -> tuple[str, ...]:
+    """Every property name a schema node declares, sorted.
+
+    Schema-derived and instance-free by construction: the only thing read is
+    the node, so a value the peer sent cannot reach the result. Mirrors
+    ``scripts/compile_conditions.named_fields``, which does this over the
+    generator's own condition tree -- "``agent-notification-config.json``'s
+    conditional reads ``event_types`` and ``all_authorized_accounts``, and
+    naming them is the difference between a diagnostic and a citation".
+
+    Recurses through the composition and conditional keywords, because that is
+    where the names live for the failure this serves: an ``allOf`` node's own
+    ``properties`` is usually empty and its arms carry everything.
+    """
+    found: set[str] = set()
+    seen: set[int] = set()
+
+    def walk(current: Any) -> None:
+        if isinstance(current, dict):
+            if id(current) in seen:
+                return
+            seen.add(id(current))
+            properties = current.get("properties")
+            if isinstance(properties, dict):
+                found.update(str(name) for name in properties)
+            required = current.get("required")
+            if isinstance(required, list):
+                found.update(str(name) for name in required)
+            for keyword in ("allOf", "anyOf", "oneOf", "not", "if", "then", "else", "items"):
+                walk(current.get(keyword))
+            dependencies = current.get("dependencies") or current.get("dependentRequired")
+            if isinstance(dependencies, dict):
+                found.update(str(name) for name in dependencies)
+        elif isinstance(current, list):
+            if id(current) in seen:
+                return
+            seen.add(id(current))
+            for item in current:
+                walk(item)
+
+    walk(node)
+    return tuple(sorted(found))
 
 
 def _safe_message(err: Any, keyword: str) -> str:
@@ -375,12 +448,25 @@ def _safe_message(err: Any, keyword: str) -> str:
             enum_size = len(err.validator_value)
         except TypeError:
             enum_size = 0
+    # A composition's names come off the SCHEMA, never the instance, so the
+    # oracle cites the same thing the compiled lane's context carries.
+    #
+    # The ARMS, not the enclosing node. ``err.schema`` for a root ``anyOf`` is
+    # the whole request schema, so walking it names all 31 of its properties --
+    # noise, and the inverse of a citation. ``err.validator_value`` is the
+    # composition's own operand list, which is what the generator's
+    # ``named_fields`` walks too: for the create-request root it yields the six
+    # names that distinguish the arms.
+    fields: Any = UNSET
+    if keyword in _COMPOSITION_KEYWORDS:
+        fields = _declared_field_names(getattr(err, "validator_value", None)) or UNSET
     return safe_message_for(
         keyword,
         required_message=str(err.message) if keyword == "required" else None,
         bound=err.validator_value,
         enum_size=enum_size,
         format_name=err.validator_value,
+        fields=fields,
     )
 
 
