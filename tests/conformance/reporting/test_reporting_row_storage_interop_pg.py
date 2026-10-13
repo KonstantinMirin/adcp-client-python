@@ -34,6 +34,8 @@ from . import _row_storage_interop as interop
 from ._generation_support import isolated_reporting_pool
 
 JS_SDK = os.environ.get("ADCP_JS_SDK_DIR")
+#: Set by the CI interop lane: a missing build or environment is a failure, never a skip.
+REQUIRED = os.environ.get("ADCP_REQUIRE_JS_INTEROP") == "1"
 DRIVER = Path(__file__).resolve().parents[2] / "interop" / "reporting_row_storage_js_driver.cjs"
 
 
@@ -60,10 +62,16 @@ async def setup(pool: Any, root: Path) -> tuple[PgReportingLedgerStore, Reportin
 
 
 @pytest.mark.skipif(
-    not JS_SDK or not shutil.which("node"),
+    not REQUIRED and (not JS_SDK or not shutil.which("node")),
     reason="set ADCP_JS_SDK_DIR to a built adcp-client checkout and install Node",
 )
 async def test_one_database_and_one_bucket_in_both_directions(tmp_path: Path) -> None:
+    if REQUIRED:
+        assert JS_SDK, "ADCP_REQUIRE_JS_INTEROP is set but ADCP_JS_SDK_DIR is not"
+        assert shutil.which("node"), "ADCP_REQUIRE_JS_INTEROP is set but node is not installed"
+        assert (
+            Path(JS_SDK) / "dist/lib/reporting/ledger/index.js"
+        ).is_file(), "ADCP_REQUIRE_JS_INTEROP is set but the JavaScript SDK is not built"
     root = tmp_path / "bucket"
     async with isolated_reporting_pool() as pool:
         _, storage = await setup(pool, root)
@@ -89,6 +97,21 @@ async def test_one_database_and_one_bucket_in_both_directions(tmp_path: Path) ->
         py_out = tmp_path / "python-written.json"
         py_out.write_text(json.dumps(python_written))
         await run_js("read", "--in", str(py_out), environment=environment)
+
+        # Both SDKs render {period_date} as the period start's date in its source_timezone
+        # (2026-10-01T00:00:00Z is still 2026-09-30 in America/Los_Angeles), one path segment.
+        async with pool.connection() as connection:
+            refs = [
+                row[0]
+                for row in await (
+                    await connection.execute(
+                        "SELECT object_ref FROM adcp_reporting_row_chunks"
+                        " WHERE object_ref IS NOT NULL ORDER BY object_ref"
+                    )
+                ).fetchall()
+            ]
+        assert refs and all(f"/{interop.PERIOD_DATE}/" in ref for ref in refs), refs
+        assert {ref.split("/")[0] for ref in refs} == {"adcp-rows"}
 
         # Both SDKs resolved the same binding rows: one identity digest, one namespace.
         async with pool.connection() as connection:
@@ -143,9 +166,9 @@ async def test_the_recorded_object_bytes_decompress_to_the_golden_chunks(tmp_pat
         for vector in interop.golden_vectors()
     }
     by_key = {
-        chunk["object_key"]: chunk
+        chunk["object_ref"]: chunk
         for chunk in recorded["state"]["row_chunks"]
-        if chunk["object_key"]
+        if chunk["object_ref"]
     }
     assert by_key
     for key, encoded in recorded["state"]["objects"].items():

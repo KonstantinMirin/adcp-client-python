@@ -25,7 +25,41 @@ CREATE TABLE IF NOT EXISTS adcp_reporting_period_tombstones (
     adjustment_count        INTEGER NOT NULL CHECK (adjustment_count >= 0),
     retiring_at             TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
     retired_at              TIMESTAMPTZ,
+    attempts                INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    next_attempt_at         TIMESTAMPTZ,
+    last_failure            TEXT,
     CHECK ((state = 'retired') = (retired_at IS NOT NULL))
 );
+-- A period that cannot finish (protected records, a failing provider) backs off exponentially
+-- (1 minute, doubling, capped at 6 hours) instead of occupying a candidate slot on every pass.
+-- Same column names and semantics as the JavaScript tombstones; NULL next_attempt_at means due.
+-- Earlier installs are upgraded in place, including the first Python spelling of these columns.
+ALTER TABLE adcp_reporting_period_tombstones
+    ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0);
+ALTER TABLE adcp_reporting_period_tombstones ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ;
+ALTER TABLE adcp_reporting_period_tombstones ALTER COLUMN next_attempt_at DROP NOT NULL;
+ALTER TABLE adcp_reporting_period_tombstones ALTER COLUMN next_attempt_at DROP DEFAULT;
+ALTER TABLE adcp_reporting_period_tombstones ADD COLUMN IF NOT EXISTS last_failure TEXT;
+DO $failure$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = current_schema() AND table_name = 'adcp_reporting_period_tombstones'
+       AND column_name = 'last_outcome'
+  ) THEN
+    UPDATE adcp_reporting_period_tombstones SET last_failure = last_outcome
+     WHERE last_failure IS NULL AND last_outcome IS NOT NULL;
+    ALTER TABLE adcp_reporting_period_tombstones DROP COLUMN last_outcome;
+  END IF;
+END
+$failure$;
+DROP INDEX IF EXISTS adcp_reporting_period_tombstones_due;
+CREATE INDEX IF NOT EXISTS adcp_reporting_period_tombstones_due
+    ON adcp_reporting_period_tombstones (attempts, period_end)
+    WHERE state = 'retiring';
 CREATE INDEX IF NOT EXISTS adcp_reporting_period_tombstones_account
     ON adcp_reporting_period_tombstones (account_id, delivery_config_id, period_start);
+
+-- The first Python spelling of per-intent sweep backoff, replaced by sweep_attempts and
+-- next_sweep_at on the shared write-intent table (the same columns the JavaScript SDK uses).
+DROP TABLE IF EXISTS adcp_reporting_row_sweep_backoff;

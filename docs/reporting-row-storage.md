@@ -29,6 +29,17 @@ the installed objects against `required_row_storage_schema.json` and refuses dri
 Two SDKs sharing one database must use the same `deployment_namespace`; a binding registered under another
 namespace is refused with `UNSAFE_BINDING`.
 
+**A ledger database has exactly one writer SDK.** Python and JavaScript can read each other's chunks (that is what the
+interop test proves), but mixed-SDK *writers* on one account are not supported. Each SDK serializes an account's commits
+under its own advisory lock key, so a Python append and a JavaScript append to one account can interleave: with a reader
+that orders by `seq` alone, the slower commit's lower `seq` is skipped for good. Account readers of the shared change
+feed now also read only changes older than every in-flight transaction (see the feed section), which removes that skip,
+but the two SDKs still keep separate obligations, revisions and tombstones, so the supported topology stays one writer
+SDK per database.
+
+To install everything this guide uses while developing: `pip install -e '.[dev,pg,reporting-gcs,reporting-s3,reporting-azure]'`
+(the `pg` extra provides psycopg).
+
 ## What changes
 
 - New revisions store their rows as canonical JSONL chunks: `JCS(row)` followed by `\n`, in 500-row segments
@@ -124,7 +135,7 @@ store = PgReportingLedgerStore(
                 roots={"reports": "/var/lib/adcp/rows"}
             )
         },
-        select_row_binding=lambda s: "inline" if s.canonical_byte_count < 256 * 1024 else "reports",
+        select_row_binding=lambda s: "inline" if s.content_size_bytes < 256 * 1024 else "reports",
     ),
 )
 await store.create_schema()
@@ -133,8 +144,21 @@ await store.create_schema()
 - Each chunk is one object, written create-only. An object already at a planned key is adopted only when its bytes
   decode to the exact chunk; otherwise the commit fails with `CONTENT_CONFLICT`.
 - Keys always start with `{prefix}/{namespace_key}/` and use a hashed account segment, never a raw account ID.
-  Templates may use the placeholders in `REPORTING_ROW_KEY_PLACEHOLDERS` and must include `{content_sha256}` and
-  `{chunk_index}`. Keep a retired binding configured while revisions still reference it.
+  Templates may use the placeholders in `REPORTING_ROW_KEY_PLACEHOLDERS` and must include `{content_sha256}`,
+  `{chunk_index}` **and `{revision_key}`**, so no two row sets name the same object key. This is validated when the
+  store is configured and again at readiness, failing closed with `INVALID_INPUT` (`row binding <id>: ...`). A binding's
+  identity includes its template, so a custom template without `{revision_key}` must be added under a **new** binding
+  ID. Keep the old definition configured with `read_only=True` while rows reference it: a read-only binding is exempt
+  from the requirement (its template is otherwise validated), is never selected for new writes (a write through it
+  fails with `UNSAFE_BINDING`, never `INVALID_INPUT`, which would read as bad rows), is not part of the binding
+  identity, and is still used for reads and retirement. Rows already written stay readable at their recorded
+  `object_ref`; reads never re-render a key. Keep a retired binding configured while revisions still reference it.
+- **`{period_date}` is AdCP's `YYYY-MM-DD`**: the calendar date of the period start in the period's
+  `source_timezone`, as one path segment (a period starting `2026-10-01T00:00:00Z` in `America/Los_Angeles` is
+  `2026-09-30`). It fails closed (`INVALID_INPUT`) on a missing, unknown or non-IANA timezone and never assumes UTC;
+  a period with no start renders `undated`. A rendered key is bounded at AdCP's 1024-character `object_ref`, and a
+  provider's native version at the 1024-character `native_version_ref`. The default key template is unchanged, so
+  binding identities stay valid.
 - **Upload before the ledger transaction.** `ReportingProducer` stages every object-bound revision first
   (`store.stage_revision_rows`), so a slow store never holds the account lock or a transaction. If you call
   `commit_revision` yourself for an object-bound revision, call `stage_revision_rows` first; `commit_revision`
@@ -151,10 +175,19 @@ await store.create_schema()
 - Every read verifies the stored bytes against the recorded physical digest before decompressing, then verifies
   segments and the revision binding. A missing object is `ROWS_UNAVAILABLE`; different bytes are
   `ROWS_INTEGRITY_FAILED`.
+- **The filesystem provider is for development and single-host deployments only.** It exists so tests and local runs
+  need no cloud account; it has no replication or durability story beyond the host's disk, and its native version
+  needs a filesystem with sub-second timestamps. Use a cloud provider in production.
 - The filesystem provider records each write as `inode:birth_ns:mtime_ns:size`, the format the JavaScript provider
   uses, stamping a random sub-millisecond mtime on every write. It needs a filesystem with sub-second mtime and,
   ideally, birth time (ext4, XFS, APFS, NTFS). The `write-unique-version` conformance check fails on a coarse
   filesystem, which means the filesystem is wrong, not the code.
+- A commit that adopted an object another row set created locks it and proves it unchanged inside the ledger
+  transaction without downloading it: a provider's optional `stat(ReportingRowObjectStatInputV1, context)` returns
+  the exact native version it resolved and its stored `size_bytes`, or `None`. Native versions are write-unique, so
+  the same version at the recorded size is the same bytes, which were verified when the object was uploaded or
+  adopted. A provider without `stat` falls back to reading the whole object and comparing its digest. Every bundled
+  provider implements `stat`, and the conformance suite checks it (`version-pinned-stat`).
 - Custom providers implement `ReportingRowObjectProviderV1`. Run
   `run_reporting_row_object_provider_conformance_v1(provider, location=..., prefix=...)` against a dedicated test
   prefix before using one.
@@ -274,6 +307,35 @@ stays as a small marker that makes reads answer as expired; the records are alre
 whose horizon excludes periods past retention. Versioned buckets, soft delete and retention locks are allowed as
 backstops, but a `pruned` period is not "erased" while they keep the old bytes.
 
+## Stored names follow AdCP
+
+Stored values use the names and bounds AdCP already defines (`reporting-file-manifest.json`,
+`reporting-file-entry.json`). `create_schema` (or applying `reporting_row_storage.sql`) migrates a database created
+by an earlier release in place, idempotently, under both SDKs' migration advisory locks; stop older writers first.
+
+| Before | After | Meaning |
+| --- | --- | --- |
+| `adcp_reporting_row_chunks.object_key` | `object_ref` (1 to 1024 characters) | decoded, destination-relative object key |
+| `adcp_reporting_row_chunks.native_version` | `native_version_ref` (1 to 1024 characters) | provider-native immutable version |
+| `adcp_reporting_row_chunks.physical_byte_count` | `size_bytes` | stored object size, after compression |
+| `adcp_reporting_row_chunks.byte_count` | `canonical_size_bytes` | uncompressed canonical bytes; the digest-pinned manifest value |
+| `adcp_reporting_row_sets.canonical_byte_count` | `content_size_bytes` | size of the content `content_sha256` covers (a revision's includes the envelope, so it is not the sum of its chunks) |
+| `adcp_reporting_row_sets.encoding` | `format` = `jsonl`, `algorithm` = `adcp_jcs_rows_v1` | `adcp_jcs_rows_v1` names the per-row RFC 8785 canonicalization |
+
+In Python: `ReportingRowChunkLocatorV1` has `object_ref`, `native_version_ref` and `size_bytes`; provider inputs take
+`object_ref` and `native_version_ref`; `ReportingRowBindingSelectionInputV1.content_size_bytes` replaces
+`canonical_byte_count`; `REPORTING_ROW_ENCODING_V1` is replaced by `REPORTING_ROW_FORMAT_V1` and
+`REPORTING_ROW_ALGORITHM_V1`. Manifest JSON field names (`byte_count`, `byte_offset`) are digest-pinned and did not
+change, and no digest changed: the format and algorithm tokens feed none. Open write intents record
+`{"object_ref", "native_version_ref"}`; the sweep and the reference check also read the earlier `objectKey` /
+`nativeVersion` spelling, for a writer still running during a rolling upgrade.
+
+The migration does not rewrite recorded object keys. Objects written before the upgrade keep their recorded
+`object_ref` (rendered under the old UTC `yyyy/MM/dd` layout), so reads, retention and deletes keep working; new writes
+render the new key. It refuses, naming the count and rolling back, a database that already holds a key or version
+outside AdCP's 1 to 1024 characters. `ReportingRowBindingMismatchError` (an `INVALID_INPUT`) is the typed signal that
+rows do not reproduce their committed binding; callers no longer read the message.
+
 ## Interoperability with the JavaScript SDK
 
 Both SDKs read and write the same `adcp_reporting_row_*` tables and the same canonical bytes, so chunks written by
@@ -319,7 +381,15 @@ await store.save_feed_consumer_cursor("warehouse-sink", page.cursor)  # holds ba
 await store.changes_after(account_id="acct_a", cursor=page.cursor)
 ```
 
-- **Account feeds** order by `seq`, which is gap-free because the sequence value is taken under the account lock.
+- **Account feeds** order by `seq` and truncate each page before the first change whose transaction is not below
+  every transaction still in flight (`xid >= pg_snapshot_xmin(pg_current_snapshot())`): a page is the committed prefix
+  in `seq` order and stops there, and its cursor never moves past a held-back change. `seq` is taken under the account
+  lock, but ordering does not rely on that lock. Truncation is deliberate: a plain `xid < xmin` *filter* would be
+  wrong, because `seq` order and `xid` order can differ, and it would hand out a later change while skipping an earlier
+  one it excluded. `xmin` is cluster-wide, so **any older open transaction anywhere in the database holds account pages
+  back until it ends, and an empty page can mean "caught up" or "held back"**; poll again rather than concluding
+  nothing is new. The row scan is still served by the `(account_id, seq)` index. This narrows the window for a second
+  writer but does not close it for every interleaving: one writer SDK per database remains the contract.
 - **The deployment-wide feed** (no `account_id`) orders by `(xid, seq)` and returns only changes whose transaction is
   older than every transaction still in flight, so a slow commit is never skipped. A long-running transaction delays
   this feed; it never makes it lose a record.
@@ -374,11 +444,23 @@ lock before the tombstone is written, so a late revision cannot be retired with 
 is never recreated or extended: `commit_obligation`, `commit_revision` and `commit_adjustment` refuse it with
 `PERIOD_RETIRED`.
 
-**Current limit.** Several Python extension tables (provisional observations, reconciliation records, notification
-events) are append-only by trigger and foreign key, and their guards are frozen catalog objects. A period that still has
-such records finishes phases 1 and 2, then stays `retiring` and is reported in `protected`: its row bytes are gone and
-reads answer as expired, while its records wait for the shared Core layout (persistence Stage 3), which carries
-retirement exemptions. Phase 3 deletes every record of a period or none.
+**Current limit: record deletion is effectively off for production deployments.** Several Python extension tables
+(provisional observations, reconciliation records, notification events) are append-only by trigger and foreign key, and
+their guards are frozen catalog objects. Every production period carries reconciliation records, and a reconciliation
+record *holds* its period, so retirement never even picks those periods up; a period whose protected records are
+provisional observations or notification events finishes phases 1 and 2 and then stays `retiring`, reported in
+`protected`. Either way the **row bytes are freed** (the worker schedules `prune_expired_row_sets` for exactly this),
+reads answer as expired, and the records stay. Phase 3 deletes every record of a period or none. Relaxing those guards
+is an audit-model decision for the maintainers, deliberately not made here; until it is, plan storage for the records
+themselves, which are small headers and receipts, not row bytes.
+
+Stuck periods never crowd out the rest, with the same names and numbers as the JavaScript SDK. A period that cannot
+finish records `attempts`, `next_attempt_at` and `last_failure` (a stable code, `RECORDS_PROTECTED` for protected
+records) on its tombstone and backs off: 1 minute, doubling, capped at 6 hours. Ready retries take at most half of a
+pass, rounded up, and fresh periods fill the rest; retries only backfill slots fresh periods leave empty. The result
+reports what was left alone: `protected` (this pass), `held` (expired periods a hold kept out, bounded count),
+`deferred` (retiring periods backing off, not attempted this pass) and `stuck` (periods with five or more failed
+attempts, worst first, at most 20: `(reporting_obligation_id, attempts, cause)`).
 
 Tombstones live in `adcp_reporting_period_tombstones`, created with row storage or the change feed.
 
@@ -390,14 +472,27 @@ Tombstones live in `adcp_reporting_period_tombstones`, created with row storage 
 | Store option | Operation | Bound |
 | --- | --- | --- |
 | `row_storage` | `sweep_row_write_intents` | 100 intents |
+| `row_storage` | `prune_expired_row_sets` | 20 periods |
 | `row_storage` or `change_feed` | `retire_expired_periods` | 20 periods |
 | `change_feed` | `prune_changes` | 10,000 rows |
 
-Each operation is bounded and resumable. A failing operation never stops the worker: the next interval retries it, and
-only the closed operation name (`REPORTING_MAINTENANCE_FAILED`, `intent_sweep`, `period_retirement` or
-`change_pruning`) is logged, never an exception, provider message or identifier. An operation that finishes but reports
-failed items (a binding that cannot delete, for example) is logged the same way on every pass it does, so a stuck
-binding is visible; read `causes` from the result for the stable per-item code. `period_retirement` also removes the
-row bytes of every period it retires, so `prune_expired_row_sets` is not scheduled: call it yourself only if you want
-row bytes retired earlier than whole periods. Outside the production service, call
-the same methods from your own scheduler.
+Each operation is bounded and resumable. A failing operation never stops the worker: the next interval retries it.
+Only the closed operation name and integer counters are logged, never an exception, provider message or identifier:
+
+- `REPORTING_MAINTENANCE_FAILED` (warning): the operation raised or reported failed items (a binding that cannot
+  delete, for example). Read `causes` from the result for the stable per-item code.
+- `REPORTING_MAINTENANCE_PENDING` (info): work was left in place on purpose, with the counters `protected`, `held`,
+  `deferred` and `skipped_unconfigured`. A retirement that does nothing because every period is held shows up here
+  instead of looking like a healthy idle worker.
+- `REPORTING_MAINTENANCE_STALLED` (warning): work nobody is reaching, with `overdue` (intents expired for more than
+  `overdue_after_seconds`, default 24 hours, and still unswept: a binding no host configures any more, or one that
+  keeps failing, so objects leak) and `stuck` (periods with five or more failed retirement attempts).
+
+The last pass's counters are also on `ReportingProductionSupport.maintenance_report`, per operation.
+`prune_expired_row_sets` is scheduled so row bytes are reclaimed even while a period's records stay; its only hold is
+pending materializer work. The intent sweep skips bindings this host does not configure (counted in
+`skipped_unconfigured`, unless an intent has no recorded objects, which needs no binding) and backs a failing intent
+off (`sweep_attempts` and `next_sweep_at` on the shared write-intent table, the same columns the JavaScript SDK adds:
+1 minute, doubling, capped at 6 hours; counted as `deferred`), trying never-failed intents first, so one broken binding
+cannot starve the others.
+Outside the production service, call the same methods from your own scheduler.
