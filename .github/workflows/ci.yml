@@ -17,7 +17,12 @@ on:
       - conductor/reporting-adcp-rc4-adoption
   workflow_dispatch:
 
-# Exact AdCP 3.2.1 runner; the reference matrix also retains the AdCP 3.0 floor.
+# @adcp/sdk@14.0.0 declares AdCP 3.2.1 while this SDK pins 3.2.3. Both reduce to
+# the wire precision "3.2" that `ts_adcp_version.cjs` asserts, and the 3.2.1 and
+# 3.2.3 schema trees are identical over their whole contract surface, so the
+# runner grades the pinned contract. What it cannot reach is the A2A
+# operation-resolution erratum 3.2.3 adds, which needs the vendored a2a/ vector
+# family rather than a runner bump. The reference matrix retains the AdCP 3.0 floor.
 env:
   ADCP_SDK_VERSION: "14.0.0"
 
@@ -1331,7 +1336,7 @@ jobs:
     name: AdCP storyboard runner — examples/seller_agent.py (@adcp/sdk ${{ matrix.adcp-sdk-tag }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Both the current 3.2.1 runner and the sticky 3.0 compatibility floor
+    # Both the current 14.0.0 runner and the sticky 3.0 compatibility floor
     # must pass before the aggregate required check succeeds.
     strategy:
       fail-fast: false

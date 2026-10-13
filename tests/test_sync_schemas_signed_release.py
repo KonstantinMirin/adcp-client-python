@@ -72,8 +72,17 @@ def test_audited_pin_uses_exact_source_and_certificate(published_release):
         ("3.1.27", "main", True),
         ("3.2.1", "main", True),
         ("3.2.1", "3.1.x", False),
+        # 3.2.3 is signed from the 3.2 maintenance branch, not main: its
+        # certificate SAN reads `release.yml@refs/heads/3.2.x`. The rule is the
+        # release line's OWN branch, derived from the version, so a new minor
+        # needs no new arm here — and a foreign line's branch stays refused.
+        ("3.2.3", "3.2.x", True),
+        ("3.2.3", "main", True),
+        ("3.2.3", "3.1.x", False),
+        ("3.1.27", "3.2.x", False),
         ("3.1.27", "untrusted", False),
         ("3.1.27-beta.0", "3.1.x", False),
+        ("3.2.3-rc.0", "3.2.x", False),
     ],
 )
 def test_audited_pin_binds_maintenance_identity_to_release_line(

@@ -1,7 +1,7 @@
 # How the type tree is generated
 
 Status: current. Generator pinned at `datamodel-code-generator==0.64.0`.
-Schema pin: `src/adcp/ADCP_VERSION` = `3.2.1`, which `resolve_bundle_key` collapses to the
+Schema pin: `src/adcp/ADCP_VERSION` = `3.2.3`, which `resolve_bundle_key` collapses to the
 bundle `schemas/cache/3.2`.
 
 This document is for whoever has to change the pipeline. It covers every step in order,

@@ -256,9 +256,16 @@ def load_release_pin(version: str) -> dict | None:
     release_workflow = (
         "https://github.com/adcontextprotocol/adcp/.github/workflows/release.yml@refs/heads/"
     )
+    # A stable release is signed either from main or from its own line's
+    # maintenance branch — 3.1.27 from `3.1.x`, 3.2.3 from `3.2.x`. Derive that
+    # branch from the version rather than listing one arm per line: a hand-kept
+    # list silently refuses the next maintenance release, which is how a pin
+    # move turns into a trust-policy edit. A prerelease has no maintenance
+    # branch, and a foreign line's branch is never its own.
     allowed_identities = {release_workflow + "main"}
-    if re.fullmatch(r"3\.1\.\d+", version):
-        allowed_identities.add(release_workflow + "3.1.x")
+    line = re.fullmatch(r"(\d+\.\d+)\.\d+", version)
+    if line:
+        allowed_identities.add(f"{release_workflow}{line.group(1)}.x")
     if (
         pin.get("version") != version
         or pin.get("bundle_url") != f"https://adcontextprotocol.org/protocol/{version}.tgz"
