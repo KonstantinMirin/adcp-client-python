@@ -51,6 +51,35 @@ cannot run from an editable checkout. The reader here goes through the SDK's own
 ``_resolve_schema_root``, which prefers the packaged copy and falls back to the
 repo layout — the same bytes in either case.
 
+THE SECOND DIRECTION, AND WHY THE ARM COMPARISON ABOVE IS NOT ENOUGH. Everything
+described so far compares SETS: the schema's consts against the arms the union
+carries. That caught the real defect, and the b2-wheel run above proves it. It is
+still blind in one direction, because a callable ``Discriminator`` chooses the arm
+and the vocabulary it chooses by need not be the arm set. Upstream holds that
+vocabulary in two further hand-maintained frozensets, so a fix replacing only the
+unions there changes routing not at all. This fork derives both from the same
+emitted branches, which is why it passes on both counts — but nothing was
+GRADING the second count.
+
+So ``_parses_to`` asks pydantic to deserialize one schema-valid document per
+declared type and reports the class it produced. Fire-probed as a pair, on this
+tree, by deleting ``'pixel_tracker'`` from ``_KNOWN_BASEINDIVIDUALASSET_TYPES`` in
+the generated ``core/format.py`` and leaving all 21 arms intact:
+
+    test_every_declared_asset_type_is_routable[individual]            PASSED
+    test_every_declared_asset_type_parses_to_a_typed_class[individual] FAILED
+                                                        -> ['pixel_tracker']
+
+That pair is the justification for the second direction existing: the arm
+comparison cannot see a vocabulary held outside the arms, and this can.
+
+The control is load-bearing and is its own test. An instrument that refuses every
+document reports "nothing downgraded" exactly as cleanly as one where everything
+routes, and the first two drafts of ``_DOCUMENTS`` here did refuse all 21 rows,
+control included. Removing the required ``asset_id`` from the document reproduces
+that state, and both the control and the parse assertion go red naming it, rather
+than one of them passing quietly.
+
 Refs: salesagent-8qela.168, salesagent-raqvy
 """
 
@@ -94,12 +123,22 @@ def _declared_by_schema(
 
 
 def _routed_by(model: type, field: str = "assets") -> set[str]:
-    """Every ``asset_type`` a value of ``model.<field>`` can deserialize into.
+    """Every ``asset_type`` the union on ``model.<field>`` carries an arm for.
 
     Walks the annotation rather than the class list, because the annotation is
-    what forward-compat replaces and therefore what pydantic dispatches on.
-    ``Annotated`` is unwrapped to its first argument so a discriminated union
-    carrying field metadata is followed rather than treated as a leaf.
+    what forward-compat replaces. ``Annotated`` is unwrapped to its first
+    argument so a discriminated union carrying field metadata is followed rather
+    than treated as a leaf.
+
+    THIS IS THE NECESSARY HALF, NOT THE SUFFICIENT ONE, and an earlier version of
+    this docstring claimed otherwise — that the annotation is "what pydantic
+    dispatches on". With a CALLABLE ``Discriminator`` pydantic calls the
+    discriminator first and selects an arm by the tag it returns, so a vocabulary
+    held somewhere other than the arms can route a declared type to the fallback
+    while every arm for it exists. Upstream holds exactly that: two further
+    hand-maintained frozensets feed the callable discriminator, which is why
+    replacing only the unions there changes routing not at all. An arm set alone
+    cannot see that, so ``_parses_to`` below asks a document instead.
     """
     out: set[str] = set()
     stack = [model.model_fields[field].annotation]
@@ -166,4 +205,98 @@ def test_every_declared_asset_type_is_routable(declared: set[str], label: str, m
         f"{len(unroutable)} of {len(declared)} asset types the bundled "
         f"core/format.json declares cannot be routed by {label}, so a schema-valid "
         f"document deserializes them as UnknownFormatAsset: {unroutable}"
+    )
+
+
+#: Minimal schema-valid documents, one per routing path, with the ``asset_type``
+#: left to the caller. Both shapes are lifted from the passing cases in
+#: ``test_forward_compat_assets.py`` rather than invented: a document missing
+#: ``item_type``, or carrying ``asset_id`` where a group wants ``asset_group_id``,
+#: is REFUSED, and a refusal on every row reads as "nothing downgraded".
+_DOCUMENTS: dict[str, typing.Callable[[str], tuple[type, dict[str, Any]]]] = {
+    "Format.assets": lambda asset_type: (
+        Format,
+        {
+            "format_id": {"agent_url": "https://test.example.com", "id": "parses_to"},
+            "name": "parses_to",
+            "assets": [
+                {
+                    "asset_id": "slot",
+                    "asset_type": asset_type,
+                    "item_type": "individual",
+                    "required": True,
+                }
+            ],
+        },
+    ),
+    "RepeatableAssetGroup.assets": lambda asset_type: (
+        RepeatableAssetGroup,
+        {
+            "asset_group_id": "slide",
+            "item_type": "repeatable_group",
+            "required": True,
+            "min_count": 1,
+            "max_count": 5,
+            "assets": [{"asset_id": "slot", "asset_type": asset_type, "required": True}],
+        },
+    ),
+}
+
+
+def _parses_to(label: str, asset_type: str) -> str:
+    """The class name a schema-valid document for ``asset_type`` lands in.
+
+    A refusal is returned as a value rather than raised, because "this document
+    was rejected" and "this type was downgraded" are different answers and the
+    control below has to be able to tell them apart.
+    """
+    model, document = _DOCUMENTS[label](asset_type)
+    try:
+        parsed = model.model_validate(document)
+    except Exception as error:  # noqa: BLE001 — a refusal is a result here
+        return f"<refused: {type(error).__name__}>"
+    assets = parsed.assets
+    assert assets, f"{label}: the parsed model carries no assets to inspect"
+    return type(assets[0]).__name__
+
+
+@pytest.mark.parametrize("label", sorted(_DOCUMENTS), ids=["individual", "repeatable_group"])
+def test_an_undeclared_asset_type_reaches_the_fallback(label: str) -> None:
+    """The control, and it must run before any row of the next test is believed.
+
+    An instrument that REFUSES every document reports "nothing downgraded" just
+    as cleanly as one where everything routes, so the next test's verdict is only
+    readable once this one has shown the fallback being reached on a type the
+    schema does not declare. Both of the first two drafts of ``_DOCUMENTS``
+    refused all 21 rows, control included.
+    """
+    landed = _parses_to(label, "x_future_asset_type_no_schema_declares")
+    assert "Unknown" in landed, (
+        f"{label}: an undeclared asset_type landed in {landed!r} rather than the "
+        "Unknown fallback. The document shape is wrong, so this file is measuring "
+        "acceptance and not routing — fix it before reading the parse assertions."
+    )
+
+
+@pytest.mark.parametrize("label", sorted(_DOCUMENTS), ids=["individual", "repeatable_group"])
+def test_every_declared_asset_type_parses_to_a_typed_class(declared: set[str], label: str) -> None:
+    """The sufficient half: a real document reaches its class, not just an arm.
+
+    ``test_every_declared_asset_type_is_routable`` compares arm sets, which is
+    blind to a vocabulary held outside the arms — see ``_routed_by``. This asks
+    pydantic to deserialize one document per declared type and reports the class
+    it actually produced, so a discriminator that answers ``_unknown`` ahead of a
+    present arm is a failure here and invisible there.
+    """
+    downgraded = sorted(a for a in declared if "Unknown" in _parses_to(label, a))
+    refused = sorted(a for a in declared if "refused" in _parses_to(label, a))
+    assert not refused, (
+        f"{label}: {len(refused)} of {len(declared)} declared asset types produced a "
+        f"schema-INVALID document, so they were graded on nothing: {refused}"
+    )
+    assert not downgraded, (
+        f"{label}: {len(downgraded)} of {len(declared)} asset types the bundled "
+        f"core/format.json declares deserialize to the Unknown fallback even though "
+        f"the union carries an arm for them, which means the routing vocabulary and "
+        f"the arm set disagree: {downgraded}"
     )
