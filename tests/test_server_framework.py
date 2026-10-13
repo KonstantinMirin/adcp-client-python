@@ -347,9 +347,13 @@ class TestGovernanceHandler:
                 )
 
             async def handle_report_plan_outcome(self, request, context=None):
+                # The same 3.1 rename, in the same stub: `status` became
+                # outcome_state here to free the top-level key for the envelope
+                # task-status. governance/report-plan-outcome-response.json requires
+                # outcome_id and outcome_state and declares no `status`.
                 return ReportPlanOutcomeResponse(
                     outcome_id="out_123",
-                    status="accepted",
+                    outcome_state="accepted",
                 )
 
             async def handle_get_plan_audit_logs(self, request, context=None):
