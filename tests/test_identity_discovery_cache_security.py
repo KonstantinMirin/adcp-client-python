@@ -454,9 +454,11 @@ async def test_operator_revocation_quota_evicts_only_that_operators_state():
     # state is evicted (revoked facts are kept elsewhere), never another
     # operator's, and the new origin is never locked out.
     assert await checker.status("https://buyer-3.agency.com", jwk["kid"]) == "current"
-    assert "https://buyer.other.com" in checker._checkers
-    assert sum(origin.endswith("agency.com") for origin in checker._checkers) == 2
-    assert len(checker._checkers) == 3
+    assert list(checker._checkers) == [
+        "https://buyer-1.agency.com",
+        "https://buyer.other.com",
+        "https://buyer-3.agency.com",
+    ]
 
 
 async def test_revocation_first_discovery_is_shared_and_not_cancelled_by_one_waiter():
