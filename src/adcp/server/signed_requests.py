@@ -73,6 +73,7 @@ from adcp.signing.wba import (
     WbaRevokedKeyError,
     WbaUnavailableError,
     WbaVerificationError,
+    accept_signature_value,
     check_wba_revocation,
     uses_web_bot_auth,
     verify_wba_request,
@@ -115,7 +116,14 @@ current_wba_error_projection_only: contextvars.ContextVar[bool] = contextvars.Co
 
 
 def is_wba_spend_committing(operation: str, params: Mapping[str, Any] | None = None) -> bool:
-    """Classify new spend; sellers can override ambiguous budget changes with state."""
+    """Classify spend-committing operations for the trust and revocation outage rules.
+
+    Buys, acquisitions and ``activate_signal`` commit spend; so do unknown
+    operations. ``update_media_buy`` and ``control_media_buy`` commit spend
+    unless every change is a rename, a pause or a cancellation. Sellers that
+    can compare a change with their own state (for example, a budget
+    reduction) can supply their own ``spend_classifier``.
+    """
     if operation in {
         "create_media_buy",
         "buy_products",
@@ -146,18 +154,53 @@ def is_wba_spend_committing(operation: str, params: Mapping[str, Any] | None = N
         )
     if params is None:
         return True
-    params = params or {}
-    if params.get("paused") is False or params.get("new_packages"):
+    return not _is_known_nonspend_change(params)
+
+
+# update_media_buy / control_media_buy change spend unless every change is one
+# of these. Anything else (budgets, bids, impressions, flight dates, spend
+# targets, new packages, resumes, unknown fields) counts as spend: fail closed.
+_NONSPEND_BUY_FIELDS = frozenset(
+    {
+        "media_buy_id",
+        "account",
+        "idempotency_key",
+        "context",
+        "ext",
+        "governance_context",
+        "revision",
+        "push_notification_config",
+        "reporting_webhook",
+        "adcp_major_version",
+        "adcp_version",
+        "name",
+        "cancellation_reason",
+    }
+)
+_NONSPEND_PACKAGE_FIELDS = frozenset(
+    {"package_id", "buyer_ref", "context", "ext", "cancellation_reason"}
+)
+
+
+def _is_known_nonspend_change(params: Mapping[str, Any]) -> bool:
+    """Only renames, pauses and cancellations are known not to commit spend."""
+
+    def stops(change: Mapping[str, Any], allowed: frozenset[str]) -> bool:
+        for key, value in change.items():
+            if key in {"paused", "canceled"}:
+                if value is not True:
+                    return False
+            elif key not in allowed:
+                return False
         return True
-    financial = {"budget", "total_budget", "daily_budget_cap", "budget_allocation", "bidding"}
-    if financial.intersection(params):
-        return True
-    packages = params.get("packages")
-    if not isinstance(packages, list):
+
+    if not stops({k: v for k, v in params.items() if k != "packages"}, _NONSPEND_BUY_FIELDS):
         return False
-    return any(
-        isinstance(package, Mapping)
-        and (package.get("paused") is False or bool(financial.intersection(package)))
+    packages = params.get("packages")
+    if packages is None:
+        return True
+    return isinstance(packages, list) and all(
+        isinstance(package, Mapping) and stops(package, _NONSPEND_PACKAGE_FIELDS)
         for package in packages
     )
 
@@ -270,6 +313,19 @@ class RequestSignatureVerification:
         with ``Accept-Signature``; ``"anonymous"`` serves it exactly as an
         unsigned request, except operations in ``required_for`` /
         ``protocol_methods_required_for``, which are still refused.
+    :param wba_replay_status: Status for a reused Web Bot Auth nonce: 429, as
+        the spec requires; 403 only reproduces #7894's older replay vector.
+    :param authorities: The ``host[:port]`` values this endpoint serves. A Web
+        Bot Auth request whose ``@authority`` is not among them is refused
+        before key discovery, so a signature captured at another seller
+        cannot be replayed here under that seller's ``Host``. Strongly
+        recommended for any endpoint reachable under more than one name.
+    :param rfc9421_profile: Whether this verifier also advertises the RFC 9421
+        profile. With Web Bot Auth enabled, an unsigned request to a required
+        operation is answered as the RFC 9421 profile does (401
+        ``request_signature_required``) plus ``Accept-Signature`` for Web Bot
+        Auth. Set ``False`` when only ``web-bot-auth`` is advertised: such a
+        request, and any RFC 9421 signature, gets 403 with ``Accept-Signature``.
     """
 
     signer_keys: SignerKeyResolver
@@ -291,10 +347,17 @@ class RequestSignatureVerification:
     unbound_for: frozenset[str] = frozenset({"get_adcp_capabilities", "get_principal"})
     spend_classifier: Callable[[str, Mapping[str, Any]], bool] = is_wba_spend_committing
     wba_discovery_failure: Literal["reject", "anonymous"] = "reject"
+    wba_replay_status: Literal[403, 429] = 429
+    authorities: frozenset[str] | None = None
+    rfc9421_profile: bool = True
 
     def __post_init__(self) -> None:
         if self.wba_discovery_failure not in {"reject", "anonymous"}:
             raise ValueError("wba_discovery_failure must be 'reject' or 'anonymous'")
+        if self.wba_replay_status not in {403, 429}:
+            raise ValueError("wba_replay_status must be 403 or 429")
+        if not self.rfc9421_profile and not self.enable_web_bot_auth:
+            raise ValueError("a verifier needs at least one signing profile")
         if self.enable_web_bot_auth and self.replay_store is None:
             raise ValueError("Web Bot Auth requires a replay store")
         if self.enable_web_bot_auth and not _accepts_signer_origin(self.signer_keys):
@@ -373,6 +436,11 @@ class RequestSignatureVerification:
         digest = capability.get("covers_content_digest")
         if digest is not None:
             kwargs["covers_content_digest"] = digest
+        profiles = capability.get("profiles")
+        if isinstance(profiles, (list, tuple)) and "web-bot-auth" in profiles:
+            # The experimental profile list says which profiles are offered.
+            kwargs["enable_web_bot_auth"] = True
+            kwargs["rfc9421_profile"] = "adcp/request-signing/v1" in profiles
         kwargs.update(overrides)
         return cls(signer_keys=signer_keys, **kwargs)
 
@@ -484,14 +552,21 @@ def _received_target_uri(scope: Mapping[str, Any]) -> str:
     if host is None:
         server = scope.get("server")
         if isinstance(server, (tuple, list)) and len(server) == 2:
-            host = f"{server[0]}:{server[1]}"
+            name = f"[{server[0]}]" if ":" in str(server[0]) else str(server[0])
+            host = (
+                name
+                if (scheme, server[1]) in {("https", 443), ("http", 80)}
+                else (f"{name}:{server[1]}")
+            )
         else:
             host = ""
     raw_path = scope.get("raw_path")
     if isinstance(raw_path, bytes) and raw_path:
         path = raw_path.decode("latin-1")
     else:
-        path = str(scope.get("root_path", "")) + str(scope.get("path", ""))
+        # Without raw_path the decoded path is the best available; a target
+        # that was percent-encoded then fails verification (fails closed).
+        path = str(scope.get("path", ""))
     if "?" in path:
         # Some servers keep the query in raw_path; never append it twice.
         path = path.split("?", 1)[0]
@@ -626,6 +701,15 @@ class SignedRequestVerificationMiddleware:
                     scope[_SIGNATURE_FALLBACK_SCOPE_KEY] = REQUEST_SIGNATURE_REQUIRED
                     await self._app(scope, replay, send)
                     return
+                if self._config.enable_web_bot_auth and not self._config.rfc9421_profile:
+                    # Only web-bot-auth is advertised: the WBA challenge.
+                    await self._reject_wba(
+                        scope,
+                        replay,
+                        send,
+                        WbaVerificationError("operation requires a signature"),
+                    )
+                    return
                 await self._reject(
                     send,
                     SignatureVerificationError(
@@ -633,6 +717,7 @@ class SignedRequestVerificationMiddleware:
                         step=0,
                         message=f"operation {label!r} requires a signature",
                     ),
+                    accept_signature=self._config.enable_web_bot_auth,
                 )
                 return
             if posture == "warn":
@@ -645,6 +730,15 @@ class SignedRequestVerificationMiddleware:
 
         if wba:
             await self._serve_wba(scope, replay, send, body, target, posture)
+            return
+        if not self._config.rfc9421_profile:
+            # The RFC 9421 profile is not offered here: ask for Web Bot Auth.
+            await self._reject_wba(
+                scope,
+                replay,
+                send,
+                WbaVerificationError("only the Web Bot Auth profile is accepted"),
+            )
             return
 
         try:
@@ -699,6 +793,8 @@ class SignedRequestVerificationMiddleware:
                 signer_keys=cast(WbaSignerKeyResolver, config.signer_keys),
                 replay_store=config.replay_store,
                 raw_headers=scope.get("headers"),
+                replay_status=config.wba_replay_status,
+                authorities=config.authorities,
             )
         except WbaUnavailableError as exc:
             logger.warning("web bot auth verifier outage", extra={"reason": str(exc)})
@@ -1083,15 +1179,22 @@ class SignedRequestVerificationMiddleware:
             current_wba_spend_committing.reset(spend_token)
 
     @staticmethod
-    async def _reject(send: Any, exc: SignatureVerificationError) -> None:
+    async def _reject(
+        send: Any, exc: SignatureVerificationError, *, accept_signature: bool = False
+    ) -> None:
         logger.info(
             "request signature rejected",
             extra={"reason": exc.code, "step": exc.step},
         )
+        headers = dict(unauthorized_response_headers(exc))
+        if accept_signature:
+            # A verifier advertising both profiles also tells a Web Bot Auth
+            # client how to sign (security.mdx, Coexistence).
+            headers["Accept-Signature"] = accept_signature_value()
         response = JSONResponse(
             {"error": exc.code},
             status_code=401,
-            headers=unauthorized_response_headers(exc),
+            headers=headers,
         )
 
         async def no_receive() -> dict[str, Any]:
@@ -1277,6 +1380,13 @@ def check_request_signature_verification(
         raise ValueError(
             "RequestSignatureVerification(allow_bearer_fallback=True) needs a fallback "
             "authenticator; pass serve(auth=BearerTokenAuth(...))"
+        )
+    if config.enable_web_bot_auth and config.authorities is None:
+        logger.warning(
+            "Web Bot Auth verification has no authorities configured; set "
+            "RequestSignatureVerification(authorities=...) to the host names this "
+            "endpoint serves so a signature captured at another seller cannot be "
+            "replayed here"
         )
     store = config.replay_store
     if store is None:

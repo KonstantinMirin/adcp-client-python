@@ -21,7 +21,7 @@ import json
 import secrets
 import time
 from collections import OrderedDict
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol, cast
@@ -552,7 +552,10 @@ def sign_wba_request(
         _lookup(headers, name) is not None
         for name in ("signature", "signature-input", "signature-agent")
     ):
-        raise ValueError("use a relay signer to append to an already signed request")
+        raise ValueError(
+            "request already carries signature fields; refusing to replace another "
+            "party's signature"
+        )
     from adcp.signing.signer import _validate_sf_key
 
     _validate_sf_key(label, field="label")
@@ -560,9 +563,9 @@ def sign_wba_request(
     alg = _algorithm(jwk)
     created = int(time.time()) if created is None else created
     nonce = _new_nonce() if nonce is None else nonce
-    if not 22 <= len(nonce) <= 256:
+    if not valid_wba_nonce(nonce):
         raise ValueError(
-            "nonce must carry at least 128 bits of entropy and be at most 256 characters"
+            "nonce must encode exactly 64 bytes as unpadded base64url or padded base64"
         )
     outgoing = {"Signature-Agent": str(Dictionary({label: Item(origin)}))}
     components = [Item(c) for c in ("@method", "@target-uri", "@authority")]
@@ -1052,6 +1055,8 @@ async def verify_wba_request(
     revocation_checker: Any = None,
     now: float | None = None,
     raw_headers: Sequence[tuple[bytes, bytes]] | None = None,
+    replay_status: Literal[403, 429] = 429,
+    authorities: Collection[str] | None = None,
 ) -> tuple[VerifiedSigner, ...]:
     """Verify every WBA signature and relay coverage; return established origins.
 
@@ -1065,6 +1070,11 @@ async def verify_wba_request(
     :class:`WbaDiscoveryError` subclass for an unresolvable directory), whose
     status and headers are the whole answer. A replay-store failure raises
     :class:`WbaUnavailableError`, an application-layer outage.
+
+    A replayed nonce is 429 by default; ``replay_status=403`` is a
+    compatibility switch for #7894's older replay vector. ``authorities``
+    lists the ``host[:port]`` values this endpoint serves; a request whose
+    ``@authority`` is not among them is refused before key discovery.
 
     ``revocation_checker`` is optional and belongs to the authorization
     layer. When given, :func:`check_wba_revocation` runs after verification:
@@ -1097,6 +1107,14 @@ async def verify_wba_request(
         raise WbaVerificationError("Signature-Agent requires the Web Bot Auth profile")
     if set(signatures) != set(inputs):
         raise WbaVerificationError("signature labels do not match", status=400)
+    if authorities is not None:
+        # A signature captured at another seller cannot be replayed to this
+        # endpoint under that seller's Host.
+        allowed = {_received_authority("https://" + a) for a in authorities}
+        if _received_authority(url) not in allowed:
+            raise WbaVerificationError(
+                "request authority is not served by this verifier", label=wba[0][0]
+            )
     verified: list[tuple[VerifiedSigner, str, float]] = []
     earlier: list[str] = []
     for label, member in wba:
@@ -1146,12 +1164,17 @@ async def verify_wba_request(
         except Exception as exc:
             # A resolver that cannot answer leaves the request unverified.
             raise WbaDiscoveryError("signer key resolution failed", label=label) from exc
-        if (
-            key is None
-            or canonical_origin(key.agent_url) != origin
-            or thumbprint_key_id(key.jwk) != keyid
-        ):
+        try:
+            matches = (
+                key is not None
+                and canonical_origin(key.agent_url) == origin
+                and thumbprint_key_id(key.jwk) == keyid
+            )
+        except (ValueError, TypeError, AttributeError):
+            matches = False
+        if not matches:
             raise WbaVerificationError("key absent from the named origin", label=label)
+        assert key is not None
         try:
             alg = _verify_crypto(
                 member, signatures.get(label), key.jwk, _base(method, url, headers, member)
@@ -1191,11 +1214,13 @@ async def verify_wba_request(
             )
         except Exception as exc:
             raise WbaUnavailableError("replay store unavailable") from exc
+        if claim == "replayed":
+            # A reused nonce is 429 (security.mdx, Web Bot Auth identities).
+            # replay_status=403 reproduces #7894's older negative/002 vector.
+            raise WbaVerificationError("replayed nonce", status=replay_status, label=signer.label)
         if claim != "claimed":
             raise WbaVerificationError(
-                "replayed nonce" if claim == "replayed" else "replay store capacity exceeded",
-                status=403 if claim == "replayed" else 429,
-                label=signer.label,
+                "replay store capacity exceeded", status=429, label=signer.label
             )
     try:
         parsed = parse_strict_json(body) if body.strip() else None
@@ -1300,16 +1325,20 @@ class OriginRevocationChecker:
     * ``"no_list"``: the origin answers 404/410 and no list was ever verified.
       The identity is established but cannot be bound for spend;
     * ``"stale"``: the list cannot be read or verified, is past grace, or
-      exceeds this checker's limits. Spend-committing calls fail closed in
-      the authorization layer; other calls proceed.
+      its revocations exceed this checker's fact limits. Spend-committing
+      calls fail closed in the authorization layer; other calls proceed;
+    * ``"unavailable"``: too many discoveries are in flight to check now.
+      Every bound call fails closed with ``SERVICE_UNAVAILABLE``.
 
-    Revocations learned from authenticated lists are retained for the
-    checker's lifetime and never weakened. Admission is bounded globally and
-    per operator (registrable domain; every tenant of a PSL PRIVATE hosting
-    suffix counts together). Overflow refuses the offending origin (it stays
-    ``"stale"``) rather than evicting another origin's revocations. This
-    state is in memory: public deployments must persist revocation history
-    durably, so revocations hold across restarts and replicas.
+    Revoked facts learned from authenticated lists are retained for the
+    checker's lifetime and never weakened or evicted; fact overflow refuses
+    the offending origin (it stays ``"stale"``) rather than evicting another
+    origin's revocations. Per-origin list state is a least-recently-used
+    cache of ``max_origins`` origins and ``max_origins_per_operator`` per
+    operator (a registrable domain; every tenant of a PSL PRIVATE hosting
+    suffix counts together), so a flood of origins cannot lock new origins
+    out. This state is in memory: revocations learned by one process are
+    lost on restart and are not shared across replicas.
     """
 
     def __init__(
@@ -1348,7 +1377,7 @@ class OriginRevocationChecker:
         self._revoked_facts: dict[str, set[tuple[str, str]]] = {}
         self._operator_fact_counts: dict[str, int] = {}
         self._history_fact_count = 0
-        self._checkers: dict[str, Any] = {}
+        self._checkers: OrderedDict[str, Any] = OrderedDict()
         self._pending: dict[str, asyncio.Task[Any]] = {}
         # origin -> (retry_after, served no list)
         self._failures: OrderedDict[str, tuple[float, bool]] = OrderedDict()
@@ -1379,23 +1408,19 @@ class OriginRevocationChecker:
         async with self._lock:
             checker = self._checkers.get(origin)
             task = None
-            if checker is None:
+            if checker is not None:
+                self._checkers.move_to_end(origin)
+            else:
                 failure = self._failures.get(origin)
                 if failure is not None and failure[0] > self._clock():
                     self._failures.move_to_end(origin)
                     return "no_list" if failure[1] else "stale"
                 task = self._pending.get(origin)
                 if task is None:
-                    admitted_origins = self._checkers.keys() | self._pending.keys()
-                    if len(admitted_origins) >= self._max_origins:
-                        return "stale"
-                    operator = self._operator(origin)
-                    admitted = sum(
-                        self._operator(admitted_origin) == operator
-                        for admitted_origin in admitted_origins
-                    )
-                    if admitted >= self._max_origins_per_operator:
-                        return "stale"
+                    if not self._make_room(origin):
+                        # Local backpressure (concurrent discoveries): no
+                        # bound call may act until the list can be read.
+                        return "unavailable"
                     task = asyncio.create_task(self._discover(origin))
                     task.add_done_callback(
                         lambda done: done.exception() if not done.cancelled() else None
@@ -1420,6 +1445,32 @@ class OriginRevocationChecker:
             if checker.retains_revoked_key(keyid) or self._retained(origin, keyid):
                 return "revoked"
             return "stale"
+
+    def _make_room(self, origin: str) -> bool:
+        """Admit ``origin``, evicting least-recently-used checker state if needed.
+
+        Called with the lock held. Checker state is a cache: evicting it never
+        forgets a revocation, because revoked facts are kept separately and
+        are checked first. Only concurrent discoveries can refuse admission,
+        so a flood of origins cannot lock new origins out.
+        """
+        operator = self._operator(origin)
+
+        def group(origins: Any) -> list[str]:
+            return [other for other in origins if self._operator(other) == operator]
+
+        while len(group(self._checkers)) + len(group(self._pending)) >= (
+            self._max_origins_per_operator
+        ):
+            evictable = group(self._checkers)
+            if not evictable:
+                return False
+            del self._checkers[evictable[0]]
+        while len(self._checkers) + len(self._pending) >= self._max_origins:
+            if not self._checkers:
+                return False
+            self._checkers.popitem(last=False)
+        return True
 
     @staticmethod
     def _operator(origin: str) -> str:

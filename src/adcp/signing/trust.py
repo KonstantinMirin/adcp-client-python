@@ -52,8 +52,6 @@ class TrustRecordNotFoundError(TrustRecordError):
     failure (:class:`TrustRecordUnavailableError`), never a removal.
     """
 
-    operator_domain: str | None = None
-
 
 class TrustRecordAbsentError(TrustRecordNotFoundError):
     """404/410 before any successful discovery permits configured legacy fallback."""
@@ -208,9 +206,12 @@ def _validate_trust_record(
         if origin in seen:
             raise TrustRecordError("a trust record must list one agent per origin")
         seen.add(origin)
-    for grant in document.get("grants", []):
-        if registrable_domain(grant["grantee"]) != grant["grantee"]:
-            raise TrustRecordError("grant grantee must be an exact registrable domain")
+    if not reader:
+        # Authoring: publish grantees as registrable domains. Readers compare
+        # any grantee as its registrable domain instead of rejecting it.
+        for grant in document.get("grants", []):
+            if registrable_domain(grant["grantee"]) != grant["grantee"]:
+                raise TrustRecordError("grant grantee must be an exact registrable domain")
     return dict(document)
 
 
@@ -364,7 +365,7 @@ class TrustRecordEvaluator:
         allow_private: bool = False,
         polling_interval_seconds: float = 60,
         max_records: int = 256,
-        max_history_records: int = 256,
+        max_history_records: int = 65536,
         max_history_records_per_operator: int = 64,
         max_fetches_per_host: int = 4,
         max_foreign_fetches_per_host: int = 16,
@@ -923,7 +924,8 @@ def _grant_matches(
     countries: frozenset[str],
     now: float,
 ) -> bool:
-    if grant["grantee"] != grantee or not _scope_covers(grant["scopes"], scope):
+    # Grantees compare as registrable domains under the pinned PSL snapshot.
+    if _registrable(grant["grantee"]) != grantee or not _scope_covers(grant["scopes"], scope):
         return False
     # agents[] narrows the link that reaches the signer: the signer's
     # canonical origin must be listed, or the chain ends at this link.
@@ -942,17 +944,32 @@ def _grant_matches(
     return True
 
 
-HouseResolver = Callable[[str], Awaitable[str | None]]
+@dataclass(frozen=True)
+class BrandHouse:
+    """The house a brand's verified brand.json names, and the brand's id there.
+
+    ``brand_id`` is the brand's child-brand id in the house's portfolio; grant
+    ``profiles.adcp.brands`` are checked against it. ``None`` keeps the
+    claim's own ``brand_id``.
+    """
+
+    domain: str
+    brand_id: str | None = None
+
+
+HouseResolver = Callable[[str, "str | None"], Awaitable["BrandHouse | str | None"]]
 
 
 class TrustGrantEvaluator:
     """Evaluate demand-side grants (L2 §Grants in trust.json, DR-0025).
 
-    * One record authorizes: the house's. ``resolve_house(brand_domain)``
-      returns the verified house domain the brand's brand.json names (a
-      house redirect, or a ``house_domain`` the house reciprocates); without
-      the hook, or when it returns ``None``, the brand's own domain is the
-      house. Grants in any other record are never consulted.
+    * One record authorizes: the house's. ``resolve_house(brand_domain,
+      brand_id)`` returns the verified :class:`BrandHouse` the brand's
+      brand.json names (a house redirect, or a ``house_domain`` the house
+      reciprocates), with the brand's id in the house's portfolio, or just
+      the house domain. Without the hook, or when it returns ``None``, the
+      brand's own domain is the house. Grants in any other record are never
+      consulted.
     * Domains compare as registrable domains under the pinned PSL snapshot.
       Authority is implicit when ``account.operator``, the brand's domain and
       the signer's operator share one.
@@ -1097,10 +1114,15 @@ class TrustGrantEvaluator:
         house = brand_domain
         if self._resolve_house is not None:
             try:
-                resolved = await self._resolve_house(brand_domain)
+                resolved = await self._resolve_house(brand_domain, brand_id)
             except Exception:
                 return _unavailable("brand_house_unavailable")
-            if resolved is not None:
+            if isinstance(resolved, BrandHouse):
+                house = resolved.domain
+                if resolved.brand_id is not None:
+                    # Grants name the house's child-brand ids.
+                    brand_id = resolved.brand_id
+            elif isinstance(resolved, str):
                 house = resolved
         if _registrable(house) is None:
             return _unlisted("grant_absent")
@@ -1151,11 +1173,9 @@ class TrustGrantEvaluator:
         grants = brand_record.document.get("grants", [])
         links: list[list[Mapping[str, Any]]] = []
         used_records = [signer_record, brand_record]
-        if operator == signer_operator:
-            # The house grants the signer's operator, which is account.operator.
-            links = [[g for g in grants if _grant_matches(g, grantee=signer_operator, **args)]]
-        elif operator == brand_operator:
-            # A self-operated brand (it is account.operator) whose house
+        if operator in {signer_operator, brand_operator}:
+            # The house grants the signer's operator, which is account.operator;
+            # or a self-operated brand (it is account.operator) whose house
             # grants the signer's operator directly.
             links = [[g for g in grants if _grant_matches(g, grantee=signer_operator, **args)]]
         else:
@@ -1213,6 +1233,7 @@ class TrustGrantEvaluator:
 
 
 __all__ = [
+    "BrandHouse",
     "GrantRequest",
     "EvaluatedTrustRecord",
     "GrantAuthorization",

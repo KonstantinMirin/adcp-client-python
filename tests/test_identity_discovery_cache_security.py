@@ -434,7 +434,7 @@ async def test_revocation_discovery_negative_cache_expires_and_preserves_revoked
     assert origin not in checker._failures
 
 
-async def test_operator_revocation_admission_quota_leaves_room_for_other_operators():
+async def test_operator_revocation_quota_evicts_only_that_operators_state():
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
 
@@ -449,10 +449,13 @@ async def test_operator_revocation_admission_quota_leaves_room_for_other_operato
     )
     for index in range(2):
         assert not await checker(f"https://buyer-{index}.agency.com", jwk["kid"])
-    # Over its operator's quota: refused (stale, so no spend), never a 503
-    # on the signature path, and no other origin's state is evicted.
-    assert await checker.status("https://buyer-3.agency.com", jwk["kid"]) == "stale"
     assert await checker.status("https://buyer.other.com", jwk["kid"]) == "current"
+    # Over its operator's quota: the operator's own least recently used list
+    # state is evicted (revoked facts are kept elsewhere), never another
+    # operator's, and the new origin is never locked out.
+    assert await checker.status("https://buyer-3.agency.com", jwk["kid"]) == "current"
+    assert "https://buyer.other.com" in checker._checkers
+    assert sum(origin.endswith("agency.com") for origin in checker._checkers) == 2
     assert len(checker._checkers) == 3
 
 

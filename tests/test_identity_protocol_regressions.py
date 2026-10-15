@@ -202,8 +202,11 @@ async def test_non_buying_operation_cannot_inherit_default_media_buying_scope():
         lambda account, agent: TrustGrantClaim("brand.com", "platform.com"),
     )
     buyer = BuyerAgent(agent_url=ORIGIN, display_name="Buyer", status="active")
-    with pytest.raises(AdcpError, match="explicit grant scope"):
+    with pytest.raises(AdcpError) as error:
         await gate.require_account(Account(id="existing"), buyer, operation="build_creative")
+    # The seller chose no scope: a seller-side refusal, never grant_absent.
+    assert error.value.code == "PERMISSION_DENIED"
+    assert not error.value.details
     assert not fetch_calls and not legacy_calls
 
 

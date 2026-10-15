@@ -143,6 +143,9 @@ async def test_draft_vectors(path):
             replay_store=replay,
             revocation_checker=_not_revoked,
             now=vector["reference_now"],
+            # The spec answers a reused nonce 429; #7894's older replay vector
+            # predates that and expects 403, reproduced by the compat switch.
+            replay_status=403 if "replayed-nonce" in path.name else 429,
         )
 
     expected = vector["expected_outcome"]
@@ -300,7 +303,7 @@ async def test_replay_is_per_origin_across_key_rotation():
                 now=1001,
             )
         else:
-            with pytest.raises(WbaVerificationError, match="replayed"):
+            with pytest.raises(WbaVerificationError, match="replayed") as replayed:
                 await verify_wba_request(
                     method="POST",
                     url="https://seller.example.com/mcp",
@@ -311,6 +314,9 @@ async def test_replay_is_per_origin_across_key_rotation():
                     revocation_checker=_not_revoked,
                     now=1001,
                 )
+            # A reused nonce is 429 with no re-sign challenge.
+            assert replayed.value.status == 429
+            assert "Accept-Signature" not in replayed.value.headers
 
 
 async def test_framework_requires_explicit_binding_before_dispatch():

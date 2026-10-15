@@ -1,4 +1,4 @@
-"""Signer evidence outages are discovery failures, never SERVICE_UNAVAILABLE on the signature path."""
+"""Signer evidence outages are discovery failures, never a 503 on the signature path."""
 
 from __future__ import annotations
 

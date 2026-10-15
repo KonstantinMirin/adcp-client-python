@@ -57,12 +57,16 @@ _MEDIA_BUY_DEFAULT_OPERATIONS = frozenset(
 )
 
 
-def _cached_binding_may_continue(
+def _is_non_spend(
     operation: str | None,
     params: Mapping[str, Any] | None,
     spend_committing: bool | None,
 ) -> bool:
-    """Use the transport's spend decision, with conservative direct-call defaults."""
+    """Whether ``operation`` commits no spend, so it may continue during an outage.
+
+    Uses the transport's spend decision, with conservative direct-call
+    defaults: provisioning and unknown operations count as spend.
+    """
     if operation is None or operation == "sync_accounts":
         return False
     if spend_committing is not None:
@@ -83,6 +87,16 @@ def _grant_absent(message: str) -> AdcpError:
         "PERMISSION_DENIED",
         message=message,
         details={"scope": "agent", "reason": "grant_absent"},
+        recovery="correctable",
+    )
+
+
+def _seller_claim_unavailable() -> AdcpError:
+    # PERMISSION_DENIED without details: grant_absent is reserved for a claim
+    # that no grant covers.
+    return AdcpError(
+        "PERMISSION_DENIED",
+        message="Account has no resolvable grant claim for this operation",
         recovery="correctable",
     )
 
@@ -184,21 +198,23 @@ class TrustGrantGate:
         except AdcpError:
             raise
         except Exception as exc:
-            # Missing seller-owned brand/operator state never authorizes.
-            raise _grant_absent("Account has no resolvable grant claim") from exc
+            # Missing seller-owned brand/operator state never authorizes. It is
+            # a seller-side failure, not "no grant covers the claim".
+            raise _seller_claim_unavailable() from exc
         if not isinstance(claim, TrustGrantClaim):
-            raise _grant_absent("Account has no resolvable grant claim")
+            raise _seller_claim_unavailable()
         if (
             operation is not None
             and operation not in _MEDIA_BUY_DEFAULT_OPERATIONS
             and claim.scope == "adcp:media_buying"
         ):
-            raise _grant_absent("Operation requires an explicit grant scope")
+            # The seller did not choose a scope for this operation.
+            raise _seller_claim_unavailable()
         await self.require_claim(
             claim,
             agent,
             signing_profile=signing_profile,
-            non_spend=_cached_binding_may_continue(operation, operation_params, spend_committing),
+            non_spend=_is_non_spend(operation, operation_params, spend_committing),
             wba_revocation=wba_revocation,
         )
 

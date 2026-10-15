@@ -338,9 +338,12 @@ async def test_origin_without_a_revocation_list_is_identity_established_and_unbi
                 principal_id="p",
                 bindings=OriginBindings(),
             )
-    # Once a list was verified, a later 404 is a failure to read it, never a reset.
     published[0], now[0] = True, 61
     assert await checker.status(ORIGIN, jwk["kid"]) == "current"
+    # Once a list was verified, a later 404 is a failure to read it, never a
+    # reset to "no list": past next_update plus grace the origin is stale.
+    published[0], now[0] = False, 61 + 300 + 4 * 300
+    assert await checker.status(ORIGIN, jwk["kid"]) == "stale"
 
 
 @pytest.mark.parametrize("revocation", ["no_list", "current", "stale", "unavailable"])
@@ -389,21 +392,27 @@ async def test_binding_gate_reads_the_revocation_state(revocation, operation):
 
 
 async def test_revoked_relay_key_is_refused_like_the_originator():
-    private = ed25519.Ed25519PrivateKey.generate()
-    jwk = public_directory_key(private)
+    from adcp.signing.wba import WbaRevokedKeyError, check_wba_revocation
+
+    originator, relay = (
+        VerifiedSigner(
+            kid * 43, "ed25519", label, time.time(), agent_url=origin, profile="web-bot-auth"
+        )
+        for kid, label, origin in (
+            ("o", "sig1", ORIGIN),
+            ("r", "sig2", "https://relay.example.com"),
+        )
+    )
 
     class Checker:
         async def status(self, origin, keyid):
-            return "revoked"
+            return "revoked" if keyid == relay.key_id else "current"
 
-    from adcp.signing.wba import WbaRevokedKeyError, check_wba_revocation
-
-    signer = VerifiedSigner(
-        jwk["kid"], "ed25519", "relay", time.time(), agent_url=ORIGIN, profile="web-bot-auth"
-    )
+    assert (await check_wba_revocation(Checker(), (originator,)))[0].revocation == "current"
     with pytest.raises(WbaRevokedKeyError) as revoked:
-        await check_wba_revocation(Checker(), (signer,))
+        await check_wba_revocation(Checker(), (originator, relay))
     assert revoked.value.status == 403
+    assert revoked.value.label == "sig2"
     assert not revoked.value.headers
 
 
@@ -509,7 +518,7 @@ async def test_only_the_house_record_authorizes():
         },
     }
 
-    async def house(brand_domain: str) -> str | None:
+    async def house(brand_domain: str, brand_id: str | None) -> str | None:
         return "house.com" if brand_domain == "brand.com" else None
 
     records = _grant_records(documents, fetched)
@@ -524,7 +533,7 @@ async def test_only_the_house_record_authorizes():
     )
     assert not denied.authorized and denied.reason == "grant_absent"
 
-    async def broken(brand_domain: str) -> str | None:
+    async def broken(brand_domain: str, brand_id: str | None) -> str | None:
         raise OSError("brand.json unreachable")
 
     outage = await TrustGrantEvaluator(_grant_records(documents), resolve_house=broken).check(
@@ -590,7 +599,12 @@ async def test_verifier_accepts_exactly_64_byte_nonces(nonce_bytes):
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
     body = _tool("get_products")
-    headers = _signed(private, body, created=1000, nonce=b64url_encode(b"\x07" * nonce_bytes))
+    nonce = b64url_encode(b"\x07" * nonce_bytes)
+    with pytest.raises(ValueError, match="64 bytes"):
+        _signed(private, body, created=1000, nonce=nonce)
+    valid = b64url_encode(b"\x07" * 64)
+    headers = _signed(private, body, created=1000, nonce=valid)
+    headers["Signature-Input"] = headers["Signature-Input"].replace(valid, nonce)
     with pytest.raises(WbaVerificationError, match="64 bytes"):
         await verify_wba_request(
             method="POST",
@@ -834,7 +848,7 @@ async def test_signer_never_strips_another_partys_signature_fields():
 
     private = ed25519.Ed25519PrivateKey.generate()
     existing = {"Signature-Input": 'sig0=("@method");created=1', "Signature": "sig0=:AAAA:"}
-    with pytest.raises(ValueError, match="relay signer"):
+    with pytest.raises(ValueError, match="another party"):
         sign_wba_request(
             method="POST",
             url=TARGET,
@@ -859,7 +873,7 @@ async def test_signer_never_strips_another_partys_signature_fields():
             supported=True, required_for=["get_products"], profiles=["web-bot-auth"]
         ),
     )
-    with signing_operation("get_products"), pytest.raises(ValueError, match="relay signer"):
+    with signing_operation("get_products"), pytest.raises(ValueError, match="another party"):
         await client.post(TARGET, content=b"{}", headers={**existing, "Content-Type": "x/y"})
     assert not sent
     await client.aclose()
@@ -913,27 +927,70 @@ async def test_authoritative_location_hops_never_spend_the_victims_own_budget():
     assert not records._foreign_inflight and not records._hosts_inflight
 
 
-async def test_revocation_quota_groups_private_suffix_tenants():
+async def test_revocation_admission_never_locks_new_origins_out():
+    """Checker state is an LRU cache; revoked facts survive its eviction."""
     from datetime import datetime, timezone
 
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
     start = datetime.now(timezone.utc)
+    fetches: list[str] = []
 
     async def resolve(keyid, *, signer_origin=None):
         return ResolvedSignerKey(signer_origin, jwk)
 
     async def fetch(uri, **kwargs):
-        return _signed_revocations(private, uri.partition("/.well-known")[0], start=start)
+        origin = uri.partition("/.well-known")[0]
+        fetches.append(origin)
+        revoked = [jwk["kid"]] if origin == "https://a.vercel.app" else []
+        return _signed_revocations(private, origin, start=start, revoked=revoked)
 
     checker = OriginRevocationChecker(
-        resolve, fetcher=fetch, max_origins=8, max_origins_per_operator=2
+        resolve, fetcher=fetch, max_origins=3, max_origins_per_operator=2
     )
-    for tenant in ("a", "b"):
-        assert await checker.status(f"https://{tenant}.vercel.app", jwk["kid"]) == "current"
-    # A third free tenant of the same hosting provider shares the quota.
-    assert await checker.status("https://c.vercel.app", jwk["kid"]) == "stale"
-    assert await checker.status("https://buyer.other.com", jwk["kid"]) == "current"
+    assert await checker.status("https://a.vercel.app", jwk["kid"]) == "revoked"
+    assert await checker.status("https://b.vercel.app", jwk["kid"]) == "current"
+    # A third free tenant of the same provider shares the quota group: it
+    # evicts the least recently used tenant's list state, never locks out.
+    assert await checker.status("https://c.vercel.app", jwk["kid"]) == "current"
+    assert "https://a.vercel.app" not in checker._checkers
+    # An attacker flood across operators cannot lock a new buyer out either.
+    for index in range(5):
+        status = await checker.status(f"https://buyer-{index}.example{index}.com", jwk["kid"])
+        assert status == "current"
+    assert len(checker._checkers) <= 3
+    # The evicted origin's revocation was retained, without a refetch.
+    before = len(fetches)
+    assert await checker.status("https://a.vercel.app", jwk["kid"]) == "revoked"
+    assert len(fetches) == before
+
+
+async def test_concurrent_revocation_discovery_overflow_is_unavailable():
+    from datetime import datetime, timezone
+
+    private = ed25519.Ed25519PrivateKey.generate()
+    jwk = public_directory_key(private)
+    start = datetime.now(timezone.utc)
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def resolve(keyid, *, signer_origin=None):
+        return ResolvedSignerKey(signer_origin, jwk)
+
+    async def fetch(uri, **kwargs):
+        entered.set()
+        await asyncio.wait_for(release.wait(), timeout=5)
+        return _signed_revocations(private, uri.partition("/.well-known")[0], start=start)
+
+    checker = OriginRevocationChecker(resolve, fetcher=fetch, max_origins=1)
+    pending = asyncio.create_task(checker.status(ORIGIN, jwk["kid"]))
+    try:
+        await asyncio.wait_for(entered.wait(), timeout=5)
+        # Nothing evictable while a discovery is in flight: fail every bound
+        # call closed rather than letting a revoked key act as "stale".
+        assert await checker.status("https://buyer.other.com", jwk["kid"]) == "unavailable"
+    finally:
+        release.set()
+        assert await asyncio.wait_for(pending, timeout=5) == "current"
 
 
 # ---------------------------------------------------------------------------
@@ -1173,3 +1230,204 @@ async def test_stateful_mcp_session_reads_each_requests_own_wba_signer():
         (origins[0], "principal-0"),
         (origins[1], "principal-1"),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Protocol review follow-ups
+# ---------------------------------------------------------------------------
+
+
+async def test_house_brand_id_is_checked_against_the_house_portfolio():
+    from adcp.signing.trust import BrandHouse
+
+    documents = {
+        trust_record_url(ORIGIN): {"agents": [{"url": ORIGIN, "roles": ["adcp:buying"]}]},
+        trust_record_url("house.com"): {
+            "grants": [
+                {
+                    "grantee": "platform.com",
+                    "scopes": ["adcp:media_buying"],
+                    "profiles": {"adcp": {"brands": ["nova_motors"]}},
+                }
+            ]
+        },
+    }
+    seen: list[tuple[str, str | None]] = []
+
+    async def house(brand_domain: str, brand_id: str | None) -> BrandHouse:
+        seen.append((brand_domain, brand_id))
+        return BrandHouse("house.com", brand_id="nova_motors")
+
+    result = await TrustGrantEvaluator(_grant_records(documents), resolve_house=house).check(
+        agent_origin=ORIGIN,
+        brand_domain="novamotors.com",
+        account_operator="platform.com",
+        brand_id="own_brand_id",
+    )
+    assert result.authorized
+    assert seen == [("novamotors.com", "own_brand_id")]
+
+
+async def test_grantee_compares_as_a_registrable_domain():
+    documents = {
+        trust_record_url(ORIGIN): {"agents": [{"url": ORIGIN, "roles": ["adcp:buying"]}]},
+        trust_record_url("brand.com"): {
+            "grants": [{"grantee": "ads.platform.com", "scopes": ["adcp:media_buying"]}]
+        },
+    }
+    result = await TrustGrantEvaluator(_grant_records(documents)).check(
+        agent_origin=ORIGIN, brand_domain="brand.com", account_operator="platform.com"
+    )
+    assert result.authorized
+
+
+@pytest.mark.parametrize(
+    "operation,params,spend",
+    [
+        ("update_media_buy", {"name": "label"}, False),
+        ("update_media_buy", {"paused": True}, False),
+        ("control_media_buy", {"canceled": True, "cancellation_reason": "done"}, False),
+        ("update_media_buy", {"packages": [{"package_id": "p", "paused": True}]}, False),
+        ("update_media_buy", {"end_time": "2027-01-01T00:00:00Z"}, True),
+        ("update_media_buy", {"start_time": "2026-01-01T00:00:00Z"}, True),
+        ("update_media_buy", {"pacing": "asap"}, True),
+        ("update_media_buy", {"invoice_recipient": {}}, True),
+        ("update_media_buy", {"packages": [{"package_id": "p", "impressions": 10}]}, True),
+        ("update_media_buy", {"packages": [{"package_id": "p", "bid_price": 2}]}, True),
+        ("update_media_buy", {"packages": [{"package_id": "p", "end_time": "x"}]}, True),
+        ("control_media_buy", {"packages": [{"package_id": "p", "min_spend_target": 1}]}, True),
+        ("update_media_buy", {"paused": False}, True),
+        ("update_media_buy", {"future_field": 1}, True),
+        ("update_media_buy", None, True),
+        ("activate_signal", {}, True),
+    ],
+)
+def test_spend_classification_fails_closed(operation, params, spend):
+    from adcp.server.signed_requests import is_wba_spend_committing
+
+    assert is_wba_spend_committing(operation, params) is spend
+
+
+@pytest.mark.parametrize("rfc9421_profile", [True, False])
+async def test_unsigned_required_request_gets_the_wba_challenge(rfc9421_profile):
+    private = ed25519.Ed25519PrivateKey.generate()
+    config = RequestSignatureVerification(
+        signer_keys=StaticSignerKeys({ORIGIN: {"keys": [public_directory_key(private)]}}),
+        enable_web_bot_auth=True,
+        wba_revocation_checker=_not_revoked,
+        required_for=frozenset({"create_media_buy"}),
+        rfc9421_profile=rfc9421_profile,
+    )
+    app, seen = _recording_app(config)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app)) as client:
+        response = await client.post(
+            TARGET, content=_tool("create_media_buy"), headers={"Content-Type": "application/json"}
+        )
+    assert not seen
+    assert 'tag="web-bot-auth"' in response.headers["Accept-Signature"]
+    if rfc9421_profile:
+        # Both profiles advertised: answered as the RFC 9421 profile does.
+        assert response.status_code == 401
+        assert "request_signature_required" in response.headers["WWW-Authenticate"]
+    else:
+        assert response.status_code == 403
+        assert response.json() == GENERIC_AUTHENTICATION_ERROR
+
+
+async def test_wba_only_verifier_refuses_rfc9421_signatures_with_the_wba_challenge():
+    from adcp.signing import generate_signing_keypair, load_private_key_pem
+
+    pem, jwk = generate_signing_keypair(kid="legacy-key")
+    config = RequestSignatureVerification(
+        signer_keys=StaticSignerKeys({ORIGIN: {"keys": [jwk]}}),
+        enable_web_bot_auth=True,
+        wba_revocation_checker=_not_revoked,
+        rfc9421_profile=False,
+    )
+    app, seen = _recording_app(config)
+    body = _tool("get_products")
+    signed = sign_request(
+        method="POST",
+        url=TARGET,
+        headers={"Content-Type": "application/json"},
+        body=body,
+        private_key=load_private_key_pem(pem),
+        key_id="legacy-key",
+        alg="ed25519",
+        signing_profile_version="3.2",
+    )
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app)) as client:
+        response = await client.post(
+            TARGET,
+            content=body,
+            headers={"Content-Type": "application/json", **signed.as_dict()},
+        )
+    assert response.status_code == 403
+    assert "Accept-Signature" in response.headers
+    assert not seen
+
+
+def test_capability_profiles_select_the_offered_profiles():
+    keys = DiscoveredSignerKeys()
+    both = RequestSignatureVerification.from_capability(
+        {"profiles": ["adcp/request-signing/v1", "web-bot-auth"]}, signer_keys=keys
+    )
+    assert both.enable_web_bot_auth and both.rfc9421_profile
+    only = RequestSignatureVerification.from_capability(
+        {"profiles": ["web-bot-auth"]}, signer_keys=keys
+    )
+    assert only.enable_web_bot_auth and not only.rfc9421_profile
+
+
+@pytest.mark.parametrize("host", ["seller.example.com", "other-seller.example.com"])
+async def test_authorities_refuse_a_signature_captured_for_another_host(host):
+    private = ed25519.Ed25519PrivateKey.generate()
+    config = RequestSignatureVerification(
+        signer_keys=StaticSignerKeys({ORIGIN: {"keys": [public_directory_key(private)]}}),
+        enable_web_bot_auth=True,
+        wba_revocation_checker=_not_revoked,
+        authorities=frozenset({"seller.example.com"}),
+    )
+    app, seen = _recording_app(config)
+    url = f"https://{host}/mcp"
+    body = _tool("get_principal")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app)) as client:
+        response = await client.post(url, content=body, headers=_signed(private, body, url=url))
+    if host == "seller.example.com":
+        assert response.status_code == 200, response.text
+    else:
+        assert response.status_code == 403
+        assert response.json() == GENERIC_AUTHENTICATION_ERROR
+        assert not seen
+
+
+def test_wba_without_authorities_warns_at_boot(caplog):
+    from adcp.server.signed_requests import check_request_signature_verification
+
+    config = RequestSignatureVerification(
+        signer_keys=DiscoveredSignerKeys(), enable_web_bot_auth=True
+    )
+    with caplog.at_level("WARNING"):
+        check_request_signature_verification(config)
+    assert "authorities" in caplog.text
+
+
+async def test_replayed_wba_nonce_is_429_without_a_challenge():
+    private = ed25519.Ed25519PrivateKey.generate()
+    jwk = public_directory_key(private)
+    body = _tool("get_products")
+    headers = _signed(private, body, created=1000)
+    options = {
+        "method": "POST",
+        "url": TARGET,
+        "headers": headers,
+        "body": body,
+        "signer_keys": StaticSignerKeys({ORIGIN: {"keys": [jwk]}}),
+        "replay_store": InMemoryReplayStore(),
+        "now": 1001,
+    }
+    await verify_wba_request(**options)
+    with pytest.raises(WbaVerificationError, match="replayed") as replayed:
+        await verify_wba_request(**options)
+    assert replayed.value.status == 429
+    assert not replayed.value.headers
