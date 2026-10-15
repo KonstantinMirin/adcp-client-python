@@ -59,8 +59,9 @@ DIRECTORY_PATH = "/.well-known/http-message-signatures-directory"
 DIRECTORY_MEDIA_TYPE = "application/http-message-signatures-directory+json"
 ALG_RSA_PSS_SHA512 = "rsa-pss-sha512"
 
-#: A Web Bot Auth nonce is 64 random bytes (architecture draft §4.2.2), the
-#: length Cloudflare's ``web-bot-auth`` verifier requires.
+#: The signer's nonce is 64 random bytes (RECOMMENDED by the architecture
+#: draft §4.2.2, and required by Cloudflare's ``web-bot-auth`` verifier). The
+#: verifier accepts any 22-256 character nonce (see :func:`valid_wba_nonce`).
 WBA_NONCE_BYTES = 64
 #: Seconds :func:`sign_key_directory` backdates ``created`` by, so a
 #: verifier whose clock is slightly behind still accepts a fresh directory.
@@ -103,11 +104,12 @@ def _new_nonce() -> str:
     return b64url_encode(secrets.token_bytes(WBA_NONCE_BYTES))
 
 
-def valid_wba_nonce(nonce: object) -> bool:
+def is_64_byte_nonce(nonce: object) -> bool:
     """Whether ``nonce`` encodes exactly 64 bytes, canonically.
 
-    Accepts unpadded base64url and padded standard base64, the two encodings
-    the architecture draft and Cloudflare's ``web-bot-auth`` library use.
+    The architecture draft (§4.2.2) RECOMMENDS 64 random bytes, as unpadded
+    base64url or padded standard base64, and Cloudflare's ``web-bot-auth``
+    verifier requires it. This SDK's signer always sends one.
     """
     if type(nonce) is not str or not nonce.isascii():
         return False
@@ -125,6 +127,21 @@ def valid_wba_nonce(nonce: object) -> bool:
         # Not standard base64 either; only a decoded candidate can match.
         pass
     return any(len(raw) == WBA_NONCE_BYTES and encoded == nonce for raw, encoded in candidates)
+
+
+def valid_wba_nonce(nonce: object) -> bool:
+    """Whether a received nonce is acceptable: 22 to 256 printable characters.
+
+    64 bytes is RECOMMENDED for signers (architecture draft §4.2.2), and
+    httpsig-02 adds no nonce requirement, so a compliant signer may send a
+    shorter nonce. The 22-character floor keeps at least 128 bits of entropy
+    in a base64 encoding.
+    """
+    return (
+        type(nonce) is str
+        and 22 <= len(nonce) <= 256
+        and all(0x21 <= ord(c) <= 0x7E for c in nonce)
+    )
 
 
 class WbaVerificationError(ValueError):
@@ -567,7 +584,7 @@ def sign_wba_request(
     nonce = _new_nonce() if nonce is None else nonce
     if not valid_wba_nonce(nonce):
         raise ValueError(
-            "nonce must encode exactly 64 bytes as unpadded base64url or padded base64"
+            "nonce must carry at least 128 bits of entropy and be at most 256 characters"
         )
     outgoing = {"Signature-Agent": str(Dictionary({label: Item(origin)}))}
     components = [Item(c) for c in ("@method", "@target-uri", "@authority")]
@@ -1123,7 +1140,7 @@ async def verify_wba_request(
         _window(member, now=now, label=label)
         nonce = member.params.get("nonce")
         if not valid_wba_nonce(nonce):
-            raise WbaVerificationError("missing nonce, or not 64 bytes", label=label)
+            raise WbaVerificationError("missing or invalid nonce", label=label)
         nonce = cast(str, nonce)
         agent = agents.get(label)
         if (
@@ -1305,6 +1322,7 @@ __all__ = [
     "sign_wba_request",
     "thumbprint_key_id",
     "uses_web_bot_auth",
+    "is_64_byte_nonce",
     "valid_wba_nonce",
     "verify_directory_response",
     "verify_wba_request",

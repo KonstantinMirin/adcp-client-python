@@ -398,6 +398,10 @@ except ImportError:  # pragma: no cover — exercised by the [pg] extra tests
                 "`poetry add 'adcp[pg]'`)."
             )
 
+    # Resolve like the real class, so the public-API snapshot does not depend
+    # on whether the optional extra is installed.
+    PgReplayStore.__module__ = "adcp.signing.pg.replay_store"
+
 
 __all__ = [
     "GrantRequest",

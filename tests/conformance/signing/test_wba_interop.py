@@ -26,6 +26,7 @@ from adcp.signing.wba import (
     _algorithm,
     _base,
     _verify_crypto,
+    is_64_byte_nonce,
     public_directory_key,
     sign_key_directory,
     sign_wba_request,
@@ -105,7 +106,7 @@ def test_cloudflare_padded_base64_nonce_is_64_bytes():
     fixture = json.loads((ROOT / "cloudflare-signed-body-request.json").read_text())
     member = _parse_dictionary(fixture["request"]["headers"]["signature-input"])["sig1"]
     nonce = member.params["nonce"]
-    assert nonce.endswith("==") and valid_wba_nonce(nonce)
+    assert nonce.endswith("==") and is_64_byte_nonce(nonce) and valid_wba_nonce(nonce)
 
 
 @pytest.mark.parametrize("path", ["/mcp", "/a%7Eb/mcp/"])
@@ -132,7 +133,7 @@ async def test_python_signed_requests_verify_with_the_target_uri_as_sent(path):
     )
     member = _parse_dictionary(headers["Signature-Input"])["sig1"]
     # Default nonce: 64 random bytes, unpadded base64url.
-    assert len(member.params["nonce"]) == 86 and valid_wba_nonce(member.params["nonce"])
+    assert len(member.params["nonce"]) == 86 and is_64_byte_nonce(member.params["nonce"])
     base = _base("POST", url, {k.lower(): v for k, v in headers.items()}, member).decode()
     assert f'"@target-uri": {url}\n' in base
     assert '"@authority": seller.example.com\n' in base
@@ -209,7 +210,7 @@ def test_rsa_pss_appendix_e_vector():
     jwk = _rsa_jwk(public)
     assert thumbprint_key_id(jwk) == "oD0HwocPBSfpNy5W3bpJeyFGY_IQ_YpqxSjQ3Yd-CLA"
     assert _algorithm(jwk) == ALG_RSA_PSS_SHA512
-    assert valid_wba_nonce(APPENDIX_E_NONCE), "padded standard base64 of 64 bytes"
+    assert is_64_byte_nonce(APPENDIX_E_NONCE), "padded standard base64 of 64 bytes"
     member = _parse_dictionary(APPENDIX_E_INPUT)["sig2"]
     signature = _parse_dictionary(APPENDIX_E_SIGNATURE)["sig2"]
     headers = {"signature-agent": 'agent2="https://signature-agent.test"'}

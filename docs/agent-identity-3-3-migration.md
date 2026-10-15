@@ -23,7 +23,7 @@ signing = SigningConfig(
 # Pass signing=signing to ADCPClient or install_signing_event_hook.
 ```
 
-`agent_origin` explicitly selects Web Bot Auth, sets and covers the structured `Signature-Agent` member, uses `tag="web-bot-auth"`, and uses standard Base64 signatures regardless of the legacy wire encoding. The signer derives the algorithm from the public key, generates a 64-byte random nonce (unpadded base64url, which Cloudflare's `web-bot-auth` verifier requires; a caller-supplied `nonce` must also encode exactly 64 bytes), and binds every nonempty body with its digest. `@target-uri` covers the URI the request is sent to, unchanged: percent-encoding such as `/a%7Eb/mcp/` is signed as sent (RFC 9421 §2.2.2). The canonical origin is used only for the `Signature-Agent` identity. A request that already carries signature fields is refused rather than stripped; the signer never drops another party's signature.
+`agent_origin` explicitly selects Web Bot Auth, sets and covers the structured `Signature-Agent` member, uses `tag="web-bot-auth"`, and uses standard Base64 signatures regardless of the legacy wire encoding. The signer derives the algorithm from the public key, generates a 64-byte random nonce (unpadded base64url; RECOMMENDED by the architecture draft §4.2.2 and required by Cloudflare's `web-bot-auth` verifier). A caller-supplied `nonce` may be any 22 to 256 characters, the range verifiers accept, and binds every nonempty body with its digest. `@target-uri` covers the URI the request is sent to, unchanged: percent-encoding such as `/a%7Eb/mcp/` is signed as sent (RFC 9421 §2.2.2). The canonical origin is used only for the `Signature-Agent` identity. A request that already carries signature fields is refused rather than stripped; the signer never drops another party's signature.
 
 Automatic signing also requires `web-bot-auth` in the seller's `request_signing.profiles`; omission advertises legacy support only. An unsupported configured profile raises before sending and never silently downgrades. Keep header emission opt-in until all counterparties tolerate the additional covered component.
 
@@ -77,7 +77,7 @@ A presented `Signature-Agent` or `web-bot-auth` tag selects WBA exclusively, inc
 Verification and authorization are separate layers, as in the other SDKs.
 
 - **Verification** (`verify_wba_request`) needs only the key directory and a replay store. It reads no revocation list and no trust record, and grants no authority, so it can also run in front of the server. `revocation_checker` is optional there; when given, the revocation check runs after verification.
-- **Authorization** runs after it: revocation (`check_wba_revocation`), then the binding, re-evaluated against the operator's trust record, then grants.
+- **Authorization** runs after it: revocation (`check_wba_revocation`), then one injected `WbaAuthorizer` (`adcp.server.wba_authorization`), an async `(signer, operation, params) -> principal | None` that raises an `AdcpError` for an authorization outcome. The middleware never reads a binding or a trust record itself. The default, `OriginBindingGate`, is built from `origin_bindings`, `trust_records`, `binding_role` and `spend_classifier`; pass `RequestSignatureVerification(wba_authorizer=...)` to keep binding and trust evaluation in your application. Grants run later, in the account gate.
 
 ### Errors are split by layer
 
@@ -97,7 +97,7 @@ Duplicate structured-field parameters, dictionary labels, and `Signature-Agent` 
 
 ### Interop
 
-- Nonces must encode exactly 64 bytes, as unpadded base64url or padded standard base64 (Cloudflare's rule).
+- The verifier accepts any nonce of 22 to 256 printable characters (at least 128 bits in base64): 64 bytes is RECOMMENDED for signers, and httpsig-02 adds no nonce requirement, so a compliant signer may send fewer. This SDK's signer always sends 64 bytes, which Cloudflare's verifier requires.
 - `@target-uri` is the target URI as received, built from the request line (`raw_path` and query string), so percent-encoding is preserved. `@authority` is that URI's authority, lowercased with any default port removed (RFC 9421 §2.2.3).
 - RSA keys verify with `rsa-pss-sha512` (2048 to 8192 bits, odd exponent).
 - `tests/conformance/vectors/wba-interop/` vendors adcp-client's Cloudflare interop fixtures with provenance; the SDK verifies both the Cloudflare-signed and the adcp-client-signed requests and directories.
@@ -231,11 +231,11 @@ Use `ADCPClient(..., experimental_agent_identity=True)` or the equivalent multi-
 
 Onboarding posture is advisory. Sellers still implement requirements, applications and billing policy. Evaluate the verified origin's trust record and required role with `records.check_listing(...)` when applying an `open` policy, before provisioning access.
 
-RFC 9421 configuration emits a `DeprecationWarning` and continues to work through 3.x. `async_resolve_agent`, `verify_from_agent_url`, BrandJsonJwksResolver and governance/rights/document JWS verification retain their existing chain until AdCP 3.4. Roll back opt-in signing only for origins that have not been bound; rolling a bound origin back to RFC 9421 requires explicit seller migration.
+AdCP 3.3 deprecates the RFC 9421 profile; it keeps working through 3.x. `SigningConfig` and `RequestSignatureVerification` emit a `DeprecationWarning` for it only once the SDK advertises 3.3 (`COMPATIBLE_ADCP_VERSIONS`), so legacy constructions stay quiet while 3.3 is not served. `async_resolve_agent`, `verify_from_agent_url`, BrandJsonJwksResolver and governance/rights/document JWS verification retain their existing chain until AdCP 3.4. Roll back opt-in signing only for origins that have not been bound; rolling a bound origin back to RFC 9421 requires explicit seller migration.
 
 ## Differences from the other SDKs
 
-- **Nonce acceptance.** The verifier accepts exactly 64-byte nonces, as Go does. The TypeScript verifier keeps a 16-byte floor.
+- **Nonce acceptance.** The verifier accepts 22 to 256 characters (a 128-bit floor). TypeScript keeps a 16-byte floor; Go currently requires exactly 64 bytes and is being changed to accept a range.
 - **Signed directories with an unsigned key.** Only keys with a verified signature are usable (draft directory-05). Go accepts every key in a signed directory; TypeScript refuses the directory.
 - **Discovery capacity.** A local discovery-limit refusal is a 429, as in TypeScript. Go treats it as a discovery failure.
 - **Directory created skew.** Directory signatures tolerate 60 seconds of `created` skew, as in TypeScript; Go allows none. All SDKs backdate `created` when publishing.
@@ -252,12 +252,16 @@ The experimental identity surface changed incompatibly with the previous preview
 - `verify_wba_request(revocation_checker=...)` is optional; `OriginRevocationChecker.status()` replaces the boolean call, which now raises for undecidable states.
 - `TrustGrantGate(max_denials=..., max_claims_per_operator=...)` are gone; `require_claim(allow_cached_binding_on_outage=)` is `non_spend=`; `require_account(bound_wba_identity=)` is gone and `wba_revocation=` is new.
 - `TrustRecordEvaluator.bind` requires `signer.revocation == "current"`.
+- `RequestSignatureVerification.spend_classifier` receives `None` when the arguments cannot be read; the binding logic moved from the middleware into `OriginBindingGate`.
 - Standalone `SignedRequestVerificationMiddleware` authorization errors are the AdCP envelope with 403/503, no longer 401 `{"error": "unauthenticated"}`.
 - `adcp.types.experimental_identity.BuyerOnboardingMode` is removed (its values are gone); the buyer posture uses `AgentOnboardingMode`.
 - The delisted-origin task-control exception, and its A2A owner marker, are removed.
 
+`adcp.signing` and `adcp.types.experimental_identity` are now part of the public-API snapshot (`tests/fixtures/public_api_snapshot.json`), so additions and removals there are reviewed.
+
 ## Not covered yet
 
 - The final 3.3 schema bundle and the P7 trust-record and grant-chain conformance vectors are upstream release dependencies; re-pin and rerun conformance when they land.
+- Konstantin Mirin's follow-ups in #1511 that remain open: building the profile on the `http-message-signatures` library (and moving from `http-sfv` to `http-sf`), which would also retire the WBA signature-base builder and the strict structured-field pre-scan, and accepting the legacy sf-string `Signature-Agent`.
 - Durable stores: bindings and replay state are pluggable; authority history and revocation history are in memory with no pluggable store yet (Go and TypeScript have one). Public deployments need durable versions of all four.
 - The directory cache is evictable by unauthenticated traffic naming many origins (as in Go); eviction only forces a refetch, but a signer whose directory is down at that moment loses its stale-copy continuation.

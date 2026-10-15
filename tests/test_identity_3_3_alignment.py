@@ -251,10 +251,7 @@ async def test_unresolvable_directory_is_unverified_under_local_policy(policy, o
 async def test_wba_request_to_a_seller_without_wba_is_refused_without_a_challenge():
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
-    with pytest.warns(DeprecationWarning):
-        config = RequestSignatureVerification(
-            signer_keys=StaticSignerKeys({ORIGIN: {"keys": [jwk]}})
-        )
+    config = RequestSignatureVerification(signer_keys=StaticSignerKeys({ORIGIN: {"keys": [jwk]}}))
     app, seen = _recording_app(config)
     body = _tool("get_products")
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app)) as client:
@@ -594,27 +591,53 @@ async def test_grant_domains_compare_as_registrable_domains():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("nonce_bytes", [32, 63, 65])
-async def test_verifier_accepts_exactly_64_byte_nonces(nonce_bytes):
+@pytest.mark.parametrize(
+    "nonce,accepted",
+    [
+        (b64url_encode(b"\x07" * 15), False),  # 20 characters
+        (b64url_encode(b"\x07" * 16), True),  # 22 characters, the 128-bit floor
+        (b64url_encode(b"\x07" * 32), True),
+        (b64url_encode(b"\x07" * 64), True),
+        ("A" * 256, True),
+        ("A" * 257, False),
+        ("A" * 21, False),
+    ],
+)
+async def test_verifier_accepts_22_to_256_character_nonces(nonce, accepted):
+    """64 bytes is RECOMMENDED for signers; a compliant signer may send fewer."""
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
     body = _tool("get_products")
-    nonce = b64url_encode(b"\x07" * nonce_bytes)
-    with pytest.raises(ValueError, match="64 bytes"):
-        _signed(private, body, created=1000, nonce=nonce)
-    valid = b64url_encode(b"\x07" * 64)
-    headers = _signed(private, body, created=1000, nonce=valid)
-    headers["Signature-Input"] = headers["Signature-Input"].replace(valid, nonce)
-    with pytest.raises(WbaVerificationError, match="64 bytes"):
-        await verify_wba_request(
-            method="POST",
-            url=TARGET,
-            headers=headers,
-            body=body,
-            signer_keys=StaticSignerKeys({ORIGIN: {"keys": [jwk]}}),
-            replay_store=InMemoryReplayStore(),
-            now=1001,
-        )
+    if not accepted:
+        with pytest.raises(ValueError, match="128 bits"):
+            _signed(private, body, created=1000, nonce=nonce)
+        valid = "B" * 86
+        headers = _signed(private, body, created=1000, nonce=valid)
+        headers["Signature-Input"] = headers["Signature-Input"].replace(valid, nonce)
+    else:
+        headers = _signed(private, body, created=1000, nonce=nonce)
+    options = {
+        "method": "POST",
+        "url": TARGET,
+        "headers": headers,
+        "body": body,
+        "signer_keys": StaticSignerKeys({ORIGIN: {"keys": [jwk]}}),
+        "replay_store": InMemoryReplayStore(),
+        "now": 1001,
+    }
+    if accepted:
+        (signer,) = await verify_wba_request(**options)
+        assert signer.agent_url == ORIGIN
+    else:
+        with pytest.raises(WbaVerificationError, match="nonce"):
+            await verify_wba_request(**options)
+
+
+def test_signer_defaults_to_a_64_byte_nonce():
+    from adcp.signing.wba import is_64_byte_nonce
+
+    headers = _signed(ed25519.Ed25519PrivateKey.generate(), _tool("get_products"))
+    assert is_64_byte_nonce(_member(headers["Signature-Input"]).params["nonce"])
 
 
 def test_received_target_uri_keeps_percent_encoding_and_query():
@@ -1431,3 +1454,106 @@ async def test_replayed_wba_nonce_is_429_without_a_challenge():
         await verify_wba_request(**options)
     assert replayed.value.status == 429
     assert not replayed.value.headers
+
+
+def test_rfc9421_deprecation_warns_only_once_33_is_advertised(monkeypatch):
+    import warnings
+
+    from adcp.signing import SigningConfig, generate_signing_keypair, load_private_key_pem
+
+    pem, jwk = generate_signing_keypair(kid="legacy-key")
+    keys = StaticSignerKeys({ORIGIN: {"keys": [jwk]}})
+
+    def build() -> list[warnings.WarningMessage]:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            RequestSignatureVerification(signer_keys=keys)
+            SigningConfig(private_key=load_private_key_pem(pem), key_id="legacy-key")
+        return [w for w in caught if issubclass(w.category, DeprecationWarning)]
+
+    assert not build()
+    monkeypatch.setattr("adcp._version.COMPATIBLE_ADCP_VERSIONS", ("3.2", "3.3"))
+    assert len(build()) == 2
+
+
+# ---------------------------------------------------------------------------
+# #1511: the authorization seam
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("outcome", ["principal", "unbound", "denied", "outage", "crash"])
+async def test_injected_authorizer_decides_authority_for_verified_origins(outcome):
+    from adcp.server.wba_authorization import OriginBindingGate, WbaAuthorizer
+
+    private = ed25519.Ed25519PrivateKey.generate()
+    calls: list[tuple[str | None, str, Any]] = []
+
+    class Authorizer:
+        async def __call__(self, signer, operation, params):
+            calls.append((signer.agent_url, operation, params))
+            if outcome == "principal":
+                return "principal-9"
+            if outcome == "denied":
+                raise AdcpError("PERMISSION_DENIED", message="no", recovery="correctable")
+            if outcome == "outage":
+                raise AdcpError("SERVICE_UNAVAILABLE", message="later", recovery="transient")
+            if outcome == "crash":
+                raise RuntimeError("bug")
+            return None
+
+    assert isinstance(Authorizer(), WbaAuthorizer)
+    config = RequestSignatureVerification(
+        signer_keys=StaticSignerKeys({ORIGIN: {"keys": [public_directory_key(private)]}}),
+        enable_web_bot_auth=True,
+        wba_revocation_checker=_not_revoked,
+        wba_authorizer=Authorizer(),
+        unbound_for=frozenset({"get_media_buys"}),
+    )
+    assert not isinstance(config.effective_wba_authorizer, OriginBindingGate)
+    app, seen = _recording_app(config)
+    body = _tool("get_media_buys", {"media_buy_id": "mb"})
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app)) as client:
+        response = await client.post(TARGET, content=body, headers=_signed(private, body))
+    assert calls == [(ORIGIN, "get_media_buys", {"media_buy_id": "mb"})]
+    assert "Accept-Signature" not in response.headers
+    if outcome in {"principal", "unbound"}:
+        assert seen[0].principal_id == ("principal-9" if outcome == "principal" else None)
+        return
+    error = response.json()["structuredContent"]["adcp_error"]
+    assert error["code"] == ("SERVICE_UNAVAILABLE" if outcome == "outage" else "PERMISSION_DENIED")
+    assert not seen
+
+
+def test_default_authorizer_is_the_binding_gate_built_from_config():
+    from adcp.server.wba_authorization import OriginBindingGate
+
+    bindings = OriginBindings()
+    records = TrustRecordEvaluator()
+    config = RequestSignatureVerification(
+        signer_keys=DiscoveredSignerKeys(),
+        enable_web_bot_auth=True,
+        origin_bindings=bindings,
+        trust_records=records,
+        binding_role="adcp:sales",
+    )
+    assert config.wba_authorizer is None
+    gate = config.effective_wba_authorizer
+    assert isinstance(gate, OriginBindingGate)
+    assert gate.bindings is bindings and gate.records is records and gate.role == "adcp:sales"
+
+
+async def test_binding_gate_classifies_unreadable_arguments_as_spend():
+    from adcp.server.wba_authorization import OriginBindingGate
+
+    bindings = OriginBindings()
+    bindings.bind(ORIGIN, "principal-1")
+
+    async def offline(url, *, allow_private=False):
+        raise OSError("offline")
+
+    gate = OriginBindingGate(bindings, TrustRecordEvaluator(fetcher=offline))
+    signer = VerifiedSigner(
+        "k" * 43, "ed25519", "sig1", 0, agent_url=ORIGIN, profile="web-bot-auth", revocation="stale"
+    )
+    with pytest.raises(AdcpError, match="SERVICE_UNAVAILABLE"):
+        await gate(signer, "update_media_buy", None)

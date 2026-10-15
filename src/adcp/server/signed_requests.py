@@ -82,6 +82,7 @@ from adcp.signing.wba import (
 if TYPE_CHECKING:
     from adcp.decisioning.types import AdcpError
     from adcp.server.base import ToolContext
+    from adcp.server.wba_authorization import WbaAuthorizer
     from adcp.signing.signer_keys import ResolvedSignerKey, SignerKeyResolver
     from adcp.signing.trust import TrustRecordEvaluator
     from adcp.signing.verifier import CoversDigestPolicy, SigningProfileVersion
@@ -298,6 +299,13 @@ class RequestSignatureVerification:
     :param trust_records: Operator membership evaluator used when authorizing
         an existing WBA binding. Defaults to ``TrustRecordEvaluator``. Its
         cache bounds binding freshness; it never participates in key discovery.
+    :param wba_authorizer: The authorization seam for verified Web Bot Auth
+        origins: an async ``(signer, operation, params) -> principal | None``
+        (:class:`~adcp.server.wba_authorization.WbaAuthorizer`). Defaults to
+        :class:`~adcp.server.wba_authorization.OriginBindingGate` built from
+        ``origin_bindings``, ``trust_records``, ``binding_role`` and
+        ``spend_classifier``. Supply your own to keep binding and trust
+        evaluation in your application.
     :param unbound_for: Operations an identity-established caller may call
         with its verified identity attached. Any other operation is served
         exactly as an anonymous request (no verified signer), so the caller
@@ -345,7 +353,11 @@ class RequestSignatureVerification:
     trust_records: TrustRecordEvaluator | None = None
     binding_role: str = "adcp:buying"
     unbound_for: frozenset[str] = frozenset({"get_adcp_capabilities", "get_principal"})
-    spend_classifier: Callable[[str, Mapping[str, Any]], bool] = is_wba_spend_committing
+    spend_classifier: Callable[[str, Mapping[str, Any] | None], bool] = is_wba_spend_committing
+    wba_authorizer: WbaAuthorizer | None = None
+    _default_wba_authorizer: WbaAuthorizer | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
     wba_discovery_failure: Literal["reject", "anonymous"] = "reject"
     wba_replay_status: Literal[403, 429] = 429
     authorities: frozenset[str] | None = None
@@ -376,7 +388,24 @@ class RequestSignatureVerification:
             from adcp.signing.trust import TrustRecordEvaluator
 
             object.__setattr__(self, "trust_records", TrustRecordEvaluator())
-        if not self.enable_web_bot_auth:
+        if self.enable_web_bot_auth and self.wba_authorizer is None:
+            from adcp.server.wba_authorization import OriginBindingGate
+
+            # Derived, not stored in wba_authorizer, so dataclasses.replace
+            # with new bindings or trust records rebuilds it.
+            object.__setattr__(
+                self,
+                "_default_wba_authorizer",
+                OriginBindingGate(
+                    self.origin_bindings,
+                    self.trust_records,
+                    role=self.binding_role,
+                    spend_classifier=self.spend_classifier,
+                ),
+            )
+        from adcp.signing._profile_deprecation import rfc9421_deprecation_active
+
+        if not self.enable_web_bot_auth and rfc9421_deprecation_active():
             warnings.warn(
                 "RFC 9421-profile verification is deprecated in AdCP 3.3 and remains "
                 "supported through 3.x; enable_web_bot_auth opts into the experimental profile.",
@@ -399,6 +428,11 @@ class RequestSignatureVerification:
                 "'tools/call' cannot be listed as a protocol method; list the AdCP "
                 "operation (its params.name) in required_for / warn_for instead"
             )
+
+    @property
+    def effective_wba_authorizer(self) -> WbaAuthorizer | None:
+        """The configured :class:`WbaAuthorizer`, or the default binding gate."""
+        return self.wba_authorizer or self._default_wba_authorizer
 
     @classmethod
     def from_capability(
@@ -953,97 +987,45 @@ class SignedRequestVerificationMiddleware:
     async def _authorize_wba_binding(
         self, signer: VerifiedSigner, operation: str
     ) -> tuple[str | None, AdcpError | None]:
-        """Turn a verified origin into its bound principal, or ``None``.
+        """Ask the configured :class:`WbaAuthorizer` for the signer's principal."""
+        from adcp.decisioning.types import AdcpError
 
-        An unbound origin is identity-established. A bound origin needs a
-        revocation list and a current listing:
-
-        * revocation ``"current"`` proceeds; ``"stale"`` fails spend with
-          ``SERVICE_UNAVAILABLE`` and lets other calls proceed;
-          ``"unavailable"`` (the revocation store) fails every call; no list
-          or no check leaves the origin identity-established;
-        * the operator's trust record, re-evaluated on every request through
-          the evaluator's cache. Listed: the principal. Delisted (the last
-          record read does not list it, or the operator never published
-          one): identity-established, with no exception; the binding is kept,
-          so the origin still cannot downgrade to RFC 9421. Unreadable (a
-          404 after a read included): spend fails with
-          ``SERVICE_UNAVAILABLE``; other calls continue under the binding
-          within the evaluator's outage-continuation bound, then also fail.
-        """
-        from adcp.signing.canonical import canonical_origin
-
-        config = self._config
-        if config.origin_bindings is None or signer.agent_url is None:
+        authorizer = self._config.effective_wba_authorizer
+        if authorizer is None:
             return None, None
-        origin = canonical_origin(signer.agent_url)
         try:
-            principal = await config.origin_bindings(origin)
+            return await authorizer(signer, operation, self._operation_params(signer)), None
+        except AdcpError as error:
+            return None, error
         except Exception:
-            logger.exception("origin binding lookup failed")
-            return None, _service_unavailable("Origin binding lookup is temporarily unavailable")
-        if principal is None:
-            return None, None
-        spend = self._is_spend_committing(signer, operation)
-        if signer.revocation == "stale":
-            if spend:
-                return None, _service_unavailable(
-                    "Origin revocation status is temporarily unavailable"
-                )
-        elif signer.revocation == "unavailable":
-            return None, _service_unavailable("Origin revocation status is temporarily unavailable")
-        elif signer.revocation != "current":
-            # No revocation list, or no check: never acts for its principal.
-            return None, None
-        if config.trust_records is None:
-            return None, _service_unavailable("Origin binding evaluation is unavailable")
-        listing = await config.trust_records.check_listing(origin, role=config.binding_role)
-        if listing.record is not None:
-            # A newer read of the owner's record (by any origin or claim), or
-            # the record's deadline passing, supersedes this evaluation.
-            from adcp.signing.trust import TrustRecordError, TrustRecordMatchError
-
-            try:
-                await config.trust_records.validate_snapshots(
-                    (listing.record,), origin_or_domain=origin, role=config.binding_role
-                )
-            except TrustRecordMatchError:
-                return None, None
-            except TrustRecordError:
-                return None, _service_unavailable(
-                    "Operator trust record is temporarily unavailable"
-                )
-        if listing.status == "listed":
-            return principal, None
-        if listing.status == "unlisted":
-            logger.info(
-                "bound origin is not listed by its operator",
-                extra={"reason": type(listing.error).__name__},
+            logger.exception("Web Bot Auth authorizer failed")
+            return None, AdcpError(
+                "PERMISSION_DENIED",
+                message="Signer origin is not authorized",
+                recovery="correctable",
             )
-            return None, None
-        if spend or not listing.within_grace:
-            return None, _service_unavailable("Operator trust record is temporarily unavailable")
-        return principal, None
+
+    def _operation_params(self, signer: VerifiedSigner) -> Mapping[str, Any] | None:
+        """The operation's arguments from the verified body; ``None`` if unreadable."""
+        payload = signer.parsed_body
+        if not isinstance(payload, Mapping):
+            return {}
+        if self._transport == "mcp":
+            envelope = payload.get("params")
+            arguments = envelope.get("arguments") if isinstance(envelope, Mapping) else None
+            return arguments if isinstance(arguments, Mapping) else {}
+        from adcp.server.a2a_server import parse_a2a_jsonrpc_skill
+
+        try:
+            _skill, arguments = parse_a2a_jsonrpc_skill(dict(payload), self._message_parser)
+        except Exception:
+            # Unreadable arguments classify as spend (fail closed).
+            return None
+        return arguments if isinstance(arguments, Mapping) else {}
 
     def _is_spend_committing(self, signer: VerifiedSigner, operation: str) -> bool:
-        payload = signer.parsed_body
-        params: Mapping[str, Any] = {}
-        if isinstance(payload, Mapping):
-            if self._transport == "mcp":
-                envelope = payload.get("params")
-                arguments = envelope.get("arguments") if isinstance(envelope, Mapping) else None
-                if isinstance(arguments, Mapping):
-                    params = arguments
-            else:
-                from adcp.server.a2a_server import parse_a2a_jsonrpc_skill
-
-                try:
-                    _skill, arguments = parse_a2a_jsonrpc_skill(dict(payload), self._message_parser)
-                except Exception:
-                    return True
-                if isinstance(arguments, Mapping):
-                    params = arguments
-        return self._config.spend_classifier(operation, params)
+        params = self._operation_params(signer)
+        return self._config.spend_classifier(operation, params if params is not None else None)
 
     @staticmethod
     async def _reject_wba(scope: Any, receive: Any, send: Any, exc: WbaVerificationError) -> None:
