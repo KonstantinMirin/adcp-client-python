@@ -116,11 +116,13 @@ def valid_wba_nonce(nonce: object) -> bool:
         raw = base64.urlsafe_b64decode(nonce + "=" * (-len(nonce) % 4))
         candidates.append((raw, b64url_encode(raw)))
     except (binascii.Error, ValueError):
+        # Not base64url; the standard-base64 form is tried next.
         pass
     try:
         raw = base64.b64decode(nonce, validate=True)
         candidates.append((raw, base64.b64encode(raw).decode("ascii")))
     except (binascii.Error, ValueError):
+        # Not standard base64 either; only a decoded candidate can match.
         pass
     return any(len(raw) == WBA_NONCE_BYTES and encoded == nonce for raw, encoded in candidates)
 
@@ -1275,7 +1277,8 @@ async def check_wba_revocation(
 class WbaRevocationStatusChecker(Protocol):
     """Report a WBA key's state in its origin's signed revocation list."""
 
-    async def status(self, origin: str, keyid: str) -> WbaRevocationStatus: ...
+    async def status(self, origin: str, keyid: str) -> WbaRevocationStatus:
+        raise NotImplementedError("report the key's revocation state")
 
 
 __all__ = [
