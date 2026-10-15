@@ -243,6 +243,8 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
         "ADCPError",
         "ADCPFeatureUnsupportedError",
         "ADCPProtocolError",
+        "ADCPResponseEncodingError",
+        "ADCPResponseTooLargeError",
         "ADCPSigningRequiredError",
         "ADCPTaskError",
         "ADCPTimeoutError",
@@ -787,6 +789,7 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
     ),
     "adcp.types.core": (
         "AgentConfig",
+        "DEFAULT_MAX_RESPONSE_BYTES",
         "Member",
         "Policy",
         "PolicyExemplar",
@@ -1134,6 +1137,7 @@ __all__ = [
     "validate_capabilities",
     # Core types
     "AgentConfig",
+    "DEFAULT_MAX_RESPONSE_BYTES",
     "Member",
     "Policy",
     "PolicyExemplar",
@@ -1595,6 +1599,8 @@ __all__ = [
     "ADCPAuthenticationError",
     "ADCPTimeoutError",
     "ADCPProtocolError",
+    "ADCPResponseEncodingError",
+    "ADCPResponseTooLargeError",
     "ADCPTaskError",
     "ADCPToolNotFoundError",
     "ADCPSigningRequiredError",
@@ -1852,6 +1858,8 @@ if TYPE_CHECKING:
         AdcpErrorInfo,
         ADCPFeatureUnsupportedError,
         ADCPProtocolError,
+        ADCPResponseEncodingError,
+        ADCPResponseTooLargeError,
         ADCPSigningRequiredError,
         ADCPTaskError,
         ADCPTimeoutError,
@@ -2480,6 +2488,7 @@ if TYPE_CHECKING:
         ValidateContentDeliverySuccessResponse,
     )
     from adcp.types.core import (
+        DEFAULT_MAX_RESPONSE_BYTES,
         AgentConfig,
         Member,
         Policy,

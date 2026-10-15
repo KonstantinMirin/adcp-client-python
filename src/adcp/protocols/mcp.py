@@ -67,10 +67,20 @@ _ALL_HTTP_STATUS_ERROR_TYPES: tuple[type[BaseException], ...] = (
 import json
 
 from adcp import _idempotency
+from adcp._response_limit import (
+    DEFAULT_MAX_RESPONSE_BYTES,
+    ResponseLimitPolicy,
+    find_response_limit_error,
+    install_response_limit,
+    resolve_max_response_bytes,
+)
 from adcp.compat.reporting_version import assert_reporting_request_supported
 from adcp.exceptions import (
     ADCPAuthenticationError,
     ADCPConnectionError,
+    ADCPError,
+    ADCPResponseEncodingError,
+    ADCPResponseTooLargeError,
     ADCPTimeoutError,
     IdempotencyConflictError,
     IdempotencyExpiredError,
@@ -87,16 +97,43 @@ from adcp.validation.client_hooks import (
 )
 from adcp.validation.schema_validator import SchemaValidationError, format_issues
 
-# Spec-defined limits from docs/building/implementation/mcp-response-extraction.mdx
-# and docs/building/implementation/transport-errors.mdx.
-_MAX_TEXT_SIZE_BYTES = 1_048_576  # 1MB cap on text items before JSON.parse
-
 # MCP replays the sender's context in its HTTP writer task. A mutable holder
 # keeps HTTP diagnostics scoped to the awaiting call, including concurrent
 # callers sharing a session. The response hook itself must never raise.
 _MCP_HTTP_AUTH_ERRORS: ContextVar[list[ADCPAuthenticationError] | None] = ContextVar(
     "mcp_http_auth_errors", default=None
 )
+
+# Same holder trick for response-budget rejections. The limiter raises inside
+# MCP's HTTP writer task, where anyio rewraps the failure into an
+# ExceptionGroup and the awaiting request is cancelled along with the task
+# group; the list carries the typed error back to the awaiting call.
+_MCP_HTTP_BUDGET_ERRORS: ContextVar[list[ADCPError] | None] = ContextVar(
+    "mcp_http_budget_errors", default=None
+)
+_BUDGET_ERRORS = (ADCPResponseTooLargeError, ADCPResponseEncodingError)
+
+
+def _uncancel_current_task() -> None:
+    """Balance a ``CancelledError`` this module swallows.
+
+    MCP's writer task group cancels the awaiting request when the limiter
+    aborts a body. Converting that into the typed rejection means the
+    cancellation stops here, so the task's cancellation count has to come back
+    down or a later ``asyncio.timeout`` on the same task misreads it.
+    """
+    try:
+        task = asyncio.current_task()
+    except RuntimeError:  # pragma: no cover - no running loop
+        return
+    if task is None:
+        return
+    # Python 3.11+; on 3.10 there is no cancellation count to balance.
+    uncancel = getattr(task, "uncancel", None)
+    cancelling = getattr(task, "cancelling", None)
+    if uncancel is not None and cancelling is not None and cancelling():
+        uncancel()
+
 
 MCPHttpxClientFactory = Callable[..., Any]
 """Factory returning an MCP-compatible async HTTP client.
@@ -106,12 +143,19 @@ The callable must accept ``headers=``, ``timeout=``, ``auth=``,
 client must expose ``follow_redirects``, ``trust_env``, and ``event_hooks``
 like :class:`httpx2.AsyncClient` so the adapter can enforce its transport
 security and compose RFC 9421 signing hooks.
+
+Return an actual :class:`httpx2.AsyncClient` (or a subclass) to keep
+``AgentConfig.max_response_bytes`` in force: the budget is installed by
+wrapping the client's transport, which this SDK can only do on the real
+client type. A duck-typed stand-in still works, but its responses are not
+capped and a warning says so at construction time.
 """
 
 
 def _make_hardened_mcp_http_factory(
     request_hooks: Sequence[Callable[[Any], Awaitable[None]]] = (),
     response_hooks: Sequence[Callable[[Any], Awaitable[None]]] = (),
+    response_limit: ResponseLimitPolicy | None = None,
 ) -> Callable[..., Any]:
     """Build an MCP HTTP client factory with fail-closed network defaults."""
 
@@ -139,7 +183,10 @@ def _make_hardened_mcp_http_factory(
             kwargs["headers"] = headers
         if auth is not None:
             kwargs["auth"] = auth
-        return _mcp_httpx.AsyncClient(**kwargs)
+        client = _mcp_httpx.AsyncClient(**kwargs)
+        if response_limit is not None:
+            install_response_limit(client, httpx_module=_mcp_httpx, policy=response_limit)
+        return client
 
     return factory
 
@@ -234,6 +281,7 @@ def _make_custom_mcp_http_factory(
     custom_factory: MCPHttpxClientFactory,
     request_hooks: Sequence[Callable[[Any], Awaitable[None]]] = (),
     response_hooks: Sequence[Callable[[Any], Awaitable[None]]] = (),
+    response_limit: ResponseLimitPolicy | None = None,
 ) -> MCPHttpxClientFactory:
     """Wrap an adopter factory with mandatory MCP transport invariants."""
 
@@ -287,6 +335,17 @@ def _make_custom_mcp_http_factory(
                     ]
                 else:
                     installed_hooks.extend(additions)
+        if response_limit is not None:
+            # After _reject_foreign_httpx_transport: the generation check has
+            # to see the adopter's own transport, not our wrapper. Not
+            # `required` — an adopter may return a duck-typed client that this
+            # SDK cannot reach into, and that client is theirs to bound.
+            install_response_limit(
+                client,
+                httpx_module=_mcp_httpx,
+                policy=response_limit,
+                required=False,
+            )
         return client
 
     return factory
@@ -365,6 +424,24 @@ def _text_of(item: Any) -> str | None:
     return text if isinstance(text, str) and text else None
 
 
+#: How much server text may appear in a diagnostic. Attacker-controlled bytes
+#: that have passed no hygiene reach logs and, in an agentic buyer, a model
+#: context window — spec §Response Size Bounds (6) asks for a per-field limit
+#: there, separate from the byte cap on the response as a whole.
+_MAX_DIAGNOSTIC_TEXT = 512
+
+
+def _content_summary(result: Any) -> str:
+    """A bounded description of ``content[]`` for an error message."""
+    content = getattr(result, "content", None)
+    if content is None:
+        return "none"
+    rendered = repr(content)
+    if len(rendered) <= _MAX_DIAGNOSTIC_TEXT:
+        return rendered
+    return f"{rendered[:_MAX_DIAGNOSTIC_TEXT]}… ({len(rendered)} chars total)"
+
+
 def _result_is_error(result: Any) -> bool:
     return bool(getattr(result, "isError", getattr(result, "is_error", False)))
 
@@ -373,20 +450,96 @@ def _result_structured_content(result: Any) -> Any:
     return getattr(result, "structuredContent", getattr(result, "structured_content", None))
 
 
-def extract_adcp_success(result: Any) -> dict[str, Any] | None:
+def _assert_text_within_budget(
+    text: str,
+    *,
+    limit: int | None,
+    agent_id: str | None,
+    agent_uri: str | None,
+) -> None:
+    """Bound one ``content[].text`` item before it reaches ``json.loads``.
+
+    The bound is the configured per-call budget, not a tighter figure of its
+    own. AdCP spec §MCP Response Extraction / Size Limits
+    (docs/building/by-layer/L0/mcp-response-extraction.mdx) is explicit about
+    why: for a server that answers with ``content[].text`` and no
+    ``structuredContent``, that item *is* the whole response, so a sub-limit
+    here would silently become the effective call cap. This SDK shipped a
+    fixed 1 MiB, which made 1 MiB the real limit for every text-fallback
+    server no matter what ``max_response_bytes`` said.
+
+    Oversize raises rather than skipping. A skipped item leaves extraction to
+    report "no structured data found", which the caller cannot tell from a
+    server that genuinely sent none — spec §Response Size Bounds (7) requires
+    the distinct error instead.
+
+    On both HTTP transports the streaming budget has already bounded the whole
+    body, which makes this bound unreachable there. It is live for a session
+    the caller injected via :meth:`~adcp.ADCPClient.from_mcp_client` — whose
+    transport this SDK does not own — and for anyone calling these extractors
+    on a result obtained some other way.
+
+    Note the asymmetry that follows. ``structuredContent`` arrives already
+    parsed by the MCP SDK, so its allocation happened before any SDK code ran
+    and no post-hoc check can undo it. The spec's extraction algorithm bounds
+    ``content[].text`` for exactly that reason: it is the one payload this
+    layer sees before decoding it.
+    """
+    if limit is None:
+        return
+    # UTF-8 is 1 to 4 bytes per character, which brackets the answer from both
+    # sides without encoding anything. Under a quarter of the budget cannot
+    # exceed it; over the budget in characters already does, and `received`
+    # reads "at least", so the character count is a true lower bound.
+    # Encoding is the last resort, and only for a string already known to be
+    # within a factor of four — this guard must never allocate a multiple of
+    # the budget it is defending.
+    if len(text) <= limit // 4:
+        return
+    if len(text) > limit:
+        raise ADCPResponseTooLargeError(
+            limit=limit,
+            received=len(text),
+            agent_id=agent_id,
+            agent_uri=agent_uri,
+        )
+    size = len(text.encode("utf-8", "surrogatepass"))
+    if size <= limit:
+        return
+    raise ADCPResponseTooLargeError(
+        limit=limit,
+        received=size,
+        agent_id=agent_id,
+        agent_uri=agent_uri,
+    )
+
+
+def extract_adcp_success(
+    result: Any,
+    *,
+    max_response_bytes: int | None = DEFAULT_MAX_RESPONSE_BYTES,
+    agent_id: str | None = None,
+    agent_uri: str | None = None,
+) -> dict[str, Any] | None:
     """Extract AdCP success response data from an MCP tool result.
 
     Implements the normative algorithm from AdCP spec §MCP Response Extraction
-    (docs/building/implementation/mcp-response-extraction.mdx):
+    (docs/building/by-layer/L0/mcp-response-extraction.mdx):
 
     1. If ``isError`` is truthy, return ``None`` — error extraction is a
        separate path.
     2. ``structuredContent`` — if present and a non-array object that is NOT
        an ``adcp_error``-only payload, return it.
     3. Text fallback — iterate ``content[]`` in order; for each ``type='text'``
-       item within the 1MB size limit, ``json.loads`` and return the result
-       if it is a non-array object that is NOT ``adcp_error``-only.
+       item, enforce ``max_response_bytes``, then ``json.loads`` and return
+       the result if it is a non-array object that is NOT ``adcp_error``-only.
     4. No structured data found — return ``None``.
+
+    ``max_response_bytes`` is the same per-call budget the transport enforces
+    — see :func:`_assert_text_within_budget` for why it must not be tighter.
+    ``None`` disables it, matching ``AgentConfig.max_response_bytes``.
+
+    :raises ADCPResponseTooLargeError: a text item exceeds the budget.
     """
     if _result_is_error(result):
         return None
@@ -397,8 +550,11 @@ def extract_adcp_success(result: Any) -> dict[str, Any] | None:
 
     for item in getattr(result, "content", None) or []:
         text = _text_of(item)
-        if text is None or len(text) > _MAX_TEXT_SIZE_BYTES:
+        if text is None:
             continue
+        _assert_text_within_budget(
+            text, limit=max_response_bytes, agent_id=agent_id, agent_uri=agent_uri
+        )
         try:
             parsed = json.loads(text)
         except (json.JSONDecodeError, ValueError):
@@ -408,12 +564,20 @@ def extract_adcp_success(result: Any) -> dict[str, Any] | None:
     return None
 
 
-def extract_adcp_error(result: Any) -> dict[str, Any] | None:
+def extract_adcp_error(
+    result: Any,
+    *,
+    max_response_bytes: int | None = DEFAULT_MAX_RESPONSE_BYTES,
+    agent_id: str | None = None,
+    agent_uri: str | None = None,
+) -> dict[str, Any] | None:
     """Extract and validate an AdCP ``adcp_error`` object from an MCP result.
 
     Implements AdCP spec §Client Detection Order (MCP paths 1 + 5) from
-    docs/building/implementation/transport-errors.mdx. Only applies when
+    docs/building/operating/transport-errors.mdx. Only applies when
     ``isError`` is truthy. Returns a validated error object or ``None``.
+
+    :raises ADCPResponseTooLargeError: a text item exceeds the budget.
     """
     if not _result_is_error(result):
         return None
@@ -426,12 +590,14 @@ def extract_adcp_error(result: Any) -> dict[str, Any] | None:
 
     for item in getattr(result, "content", None) or []:
         text = _text_of(item)
-        # Apply the same 1MB pre-parse cap as the success path to prevent a
-        # malicious server returning ``isError=true`` plus a giant payload from
-        # forcing a multi-MB json.loads into memory before the 4KB validation
-        # would reject it.
-        if text is None or len(text) > _MAX_TEXT_SIZE_BYTES:
+        if text is None:
             continue
+        # Same budget as the success path. A server answering ``isError=true``
+        # with a giant payload is the same allocation primitive, and the 4 KiB
+        # `adcp_error` cap only applies after json.loads has already run.
+        _assert_text_within_budget(
+            text, limit=max_response_bytes, agent_id=agent_id, agent_uri=agent_uri
+        )
         try:
             parsed = json.loads(text)
         except (json.JSONDecodeError, ValueError):
@@ -465,6 +631,14 @@ class MCPAdapter(ProtocolAdapter):
         # True when the session was injected by ADCPClient.from_mcp_client().
         # Caller owns the lifecycle — close() is a no-op on injected adapters.
         self._session_is_injected: bool = False
+        # One-shot so an agent configured without a response budget says so
+        # once, not on every call.
+        self._warned_unbounded_responses: bool = False
+        # Collects budget rejections raised during the current session setup,
+        # where there is no per-call holder to put them in. Replaced on every
+        # connect attempt so a dying session's background stream cannot leak a
+        # stale rejection into the next one.
+        self._connect_budget_errors: list[ADCPError] = []
 
     def _inject_session(self, session: ClientSession) -> None:
         """Pre-wire a caller-owned session, bypassing URL-based connection.
@@ -501,6 +675,123 @@ class MCPAdapter(ProtocolAdapter):
             urls_to_try.extend([f"{base}/mcp", f"{base}/mcp/"])
         return urls_to_try
 
+    def _record_budget_error(self, sink: list[ADCPError], error: ADCPError) -> None:
+        """Stash a budget rejection so the awaiting call can re-raise it typed.
+
+        Mirrors ``capture_auth_response``: a per-call holder collects it when a
+        tool call is in flight. Otherwise it belongs to the session setup that
+        built this client, which reads ``sink`` as it unwinds — or to the
+        standalone server-push stream, whose failures MCP swallows in a
+        background task. Log either way, so a rejection nobody is waiting on is
+        still visible to an operator.
+        """
+        call_errors = _MCP_HTTP_BUDGET_ERRORS.get()
+        if call_errors is not None:
+            call_errors.append(error)
+            return
+        sink.append(error)
+        logger.warning(
+            "Response budget rejected an MCP response for agent %s outside a tool call: %s",
+            self.agent_config.id,
+            error.message,
+        )
+
+    async def _budget_error_for(
+        self, exc: BaseException, recorded: Sequence[ADCPError]
+    ) -> ADCPError | None:
+        """Return the budget rejection behind ``exc``, tearing down the session.
+
+        The limiter raises inside MCP's writer task, which takes down the anyio
+        task group the awaiting request is parked on — so the caller sees a
+        bare ``CancelledError`` with no link to the real cause, and the session
+        is unusable afterwards. Only a *recorded* rejection is converted, so an
+        ordinary cancellation (task deadline, caller shutdown) is untouched.
+        """
+        budget_error = recorded[-1] if recorded else find_response_limit_error(exc)
+        if budget_error is None:
+            return None
+        if isinstance(exc, asyncio.CancelledError):
+            _uncancel_current_task()
+        try:
+            await self._cleanup_failed_connection("after a rejected MCP response")
+        except (Exception, asyncio.CancelledError) as cleanup_error:  # noqa: BLE001
+            # Cleanup runs while a cancellation may still be unwinding, so the
+            # re-delivered CancelledError is caught too — it must never replace
+            # the rejection the caller needs to see. Interpreter-level exits
+            # (KeyboardInterrupt, SystemExit, GeneratorExit) still propagate.
+            logger.debug("MCP session cleanup failed after a budget rejection: %s", cleanup_error)
+        return budget_error
+
+    async def _session_request(self, operation: Callable[[], Awaitable[Any]], what: str) -> Any:
+        """Run a non-tool session request under the response budget holder.
+
+        ``tools/list`` and the capability handshake carry agent-controlled
+        payloads just like a tool call does, so they need the same conversion
+        from MCP's cancellation back into the typed rejection.
+        """
+        budget_errors: list[ADCPError] = []
+        token = _MCP_HTTP_BUDGET_ERRORS.set(budget_errors)
+        try:
+            result = await operation()
+        except (Exception, asyncio.CancelledError) as exc:
+            budget_error = await self._budget_error_for(exc, budget_errors)
+            if budget_error is not None:
+                raise budget_error from exc
+            raise
+        finally:
+            _MCP_HTTP_BUDGET_ERRORS.reset(token)
+        if budget_errors:
+            raise budget_errors[-1]
+        logger.debug("MCP %s completed within the response budget", what)
+        return result
+
+    def _extraction_budget(self) -> int | None:
+        """The budget the ``content[].text`` extractors enforce.
+
+        The same number the transport enforces, resolved per call so a
+        ``TaskOptions`` override reaches the post-parse check too. (The
+        transport deliberately withholds that override from the
+        session-lifetime SSE stream — see :meth:`_response_limit_policy`.
+        Text arriving over that stream is still bounded here by the per-call
+        number, which is never looser than the one the transport applied.)
+
+        ``None`` means the agent has no bound at all, post-parse or streaming.
+        Spec §Response Size Bounds (8) asks that calls made without one be
+        logged, so say it once per agent rather than silently.
+        """
+        budget = resolve_max_response_bytes(self.agent_config.max_response_bytes)
+        if budget is None and not self._warned_unbounded_responses:
+            self._warned_unbounded_responses = True
+            logger.warning(
+                "Agent %s runs with max_response_bytes=None: its responses are "
+                "read unbounded, with no streaming or post-parse limit.",
+                self.agent_config.id,
+            )
+        return budget
+
+    def _response_limit_policy(self) -> ResponseLimitPolicy:
+        """Budget every MCP response body against the agent's configured cap.
+
+        The sink is created per policy, i.e. per connect attempt, so a stream
+        still unwinding from a previous session reports into that session's
+        list rather than failing the reconnect in progress.
+        """
+        sink: list[ADCPError] = []
+        self._connect_budget_errors = sink
+
+        def limit_provider(long_lived: bool) -> int | None:
+            configured = self.agent_config.max_response_bytes
+            # A per-call override must not reach the session-lifetime stream;
+            # see ResponseLimitPolicy.
+            return configured if long_lived else resolve_max_response_bytes(configured)
+
+        return ResponseLimitPolicy(
+            limit_provider=limit_provider,
+            agent_id=self.agent_config.id,
+            agent_uri=self.agent_config.agent_uri,
+            report=lambda error: self._record_budget_error(sink, error),
+        )
+
     def _streamable_http_client_factory(
         self,
         response_hooks: Sequence[Callable[[Any], Awaitable[None]]] = (),
@@ -511,13 +802,15 @@ class MCPAdapter(ProtocolAdapter):
             for hook in (self.tracing_request_hook, self.signing_request_hook)
             if hook is not None
         )
+        response_limit = self._response_limit_policy()
         if self._httpx_client_factory is not None:
             return _make_custom_mcp_http_factory(
                 self._httpx_client_factory,
                 request_hooks,
                 response_hooks,
+                response_limit,
             )
-        return _make_hardened_mcp_http_factory(request_hooks, response_hooks)
+        return _make_hardened_mcp_http_factory(request_hooks, response_hooks, response_limit)
 
     def current_mcp_session_id(self) -> str | None:
         """Return the current SDK-managed MCP Streamable HTTP session id."""
@@ -603,7 +896,8 @@ class MCPAdapter(ProtocolAdapter):
             and ("cancel scope" in exc_str or "async context" in exc_str)
         ) or (
             # HTTP errors during cleanup (if httpx is available)
-            HTTPX_AVAILABLE and isinstance(exc, _ALL_HTTP_STATUS_ERROR_TYPES)
+            HTTPX_AVAILABLE
+            and isinstance(exc, _ALL_HTTP_STATUS_ERROR_TYPES)
         )
 
         if is_known_cleanup_error:
@@ -709,15 +1003,19 @@ class MCPAdapter(ProtocolAdapter):
                             else ()
                         )
                         # Use SSE transport (legacy, but widely supported)
+                        sse_response_limit = self._response_limit_policy()
                         sse_http_factory = (
                             _make_custom_mcp_http_factory(
                                 self._httpx_client_factory,
                                 sse_request_hooks,
                                 (capture_auth_response,),
+                                sse_response_limit,
                             )
                             if self._httpx_client_factory is not None
                             else _make_hardened_mcp_http_factory(
-                                sse_request_hooks, (capture_auth_response,)
+                                sse_request_hooks,
+                                (capture_auth_response,),
+                                sse_response_limit,
                             )
                         )
                         read, write = await self._exit_stack.enter_async_context(
@@ -757,6 +1055,21 @@ class MCPAdapter(ProtocolAdapter):
                     last_error = e
                     # Clean up the exit stack on failure to avoid resource leaks
                     await self._cleanup_failed_connection("during connection attempt")
+
+                    # An agent whose handshake alone blows the byte budget is
+                    # not a wrong-URL probe; report it as itself and stop.
+                    # Checked before the cancellation branch below, because a
+                    # limiter abort inside MCP's writer task is delivered to
+                    # this await *as* a CancelledError.
+                    budget_error = (
+                        self._connect_budget_errors[-1]
+                        if self._connect_budget_errors
+                        else find_response_limit_error(e)
+                    )
+                    if budget_error is not None:
+                        if isinstance(e, asyncio.CancelledError):
+                            _uncancel_current_task()
+                        raise budget_error from e
 
                     # A task-level deadline and caller cancellation both use
                     # CancelledError to abort discovery. Never reinterpret it
@@ -907,6 +1220,8 @@ class MCPAdapter(ProtocolAdapter):
             signing_token = _signing_operation.set(tool_name)
             auth_errors: list[ADCPAuthenticationError] = []
             auth_token = _MCP_HTTP_AUTH_ERRORS.set(auth_errors)
+            budget_errors: list[ADCPError] = []
+            budget_token = _MCP_HTTP_BUDGET_ERRORS.set(budget_errors)
             try:
                 # Call the tool using MCP client session
                 mark_task_dispatched(
@@ -924,13 +1239,24 @@ class MCPAdapter(ProtocolAdapter):
                         params,
                         meta=cast("RequestParamsMeta", trace_meta),
                     )
-            except Exception as exc:
-                if auth_errors:
+            except (Exception, asyncio.CancelledError) as exc:
+                # CancelledError is listed because that is how a limiter abort
+                # reaches this await: it raises inside MCP's writer task, which
+                # tears down the anyio task group the request is parked on.
+                # Only a recorded rejection is converted, so an ordinary
+                # cancellation (task deadline, shutdown) propagates untouched.
+                budget_error = await self._budget_error_for(exc, budget_errors)
+                if budget_error is not None:
+                    raise budget_error from exc
+                if isinstance(exc, Exception) and auth_errors:
                     raise auth_errors[-1] from exc
                 raise
             finally:
+                _MCP_HTTP_BUDGET_ERRORS.reset(budget_token)
                 _MCP_HTTP_AUTH_ERRORS.reset(auth_token)
                 _signing_operation.reset(signing_token)
+            if budget_errors:
+                raise budget_errors[-1]
             if auth_errors:
                 raise auth_errors[-1]
 
@@ -952,7 +1278,12 @@ class MCPAdapter(ProtocolAdapter):
             # Order. Extract the adcp_error object from structuredContent first,
             # then from text fallback — whichever is present.
             if is_error:
-                adcp_error = extract_adcp_error(result)
+                adcp_error = extract_adcp_error(
+                    result,
+                    max_response_bytes=self._extraction_budget(),
+                    agent_id=self.agent_config.id,
+                    agent_uri=self.agent_config.agent_uri,
+                )
                 # Raise typed idempotency exceptions before building a generic
                 # TaskResult(failed), so callers that catch them distinctly
                 # don't lose the signal.
@@ -999,13 +1330,18 @@ class MCPAdapter(ProtocolAdapter):
             # Algorithm: prefer structuredContent (MCP 2025-03-26+), fall back
             # to JSON-parsing content[].text for older servers (including the
             # AdCP reference training agent).
-            data_to_return = extract_adcp_success(result)
+            data_to_return = extract_adcp_success(
+                result,
+                max_response_bytes=self._extraction_budget(),
+                agent_id=self.agent_config.id,
+                agent_uri=self.agent_config.agent_uri,
+            )
             if data_to_return is None:
                 raise ValueError(
                     f"MCP tool {tool_name} returned no structured AdCP data. "
                     f"Neither structuredContent nor content[].text yielded a "
                     f"parseable non-adcp_error JSON object. "
-                    f"Got content: {result.content if hasattr(result, 'content') else 'none'}"
+                    f"Got content: {_content_summary(result)}"
                 )
 
             if self.agent_config.debug and start_time:
@@ -1070,11 +1406,17 @@ class MCPAdapter(ProtocolAdapter):
             )
             return _idempotency.annotate_result(task_result, idempotency_key)
 
-        except (IdempotencyConflictError, IdempotencyExpiredError):
+        except (IdempotencyConflictError, IdempotencyExpiredError, *_BUDGET_ERRORS):
             # Propagate typed idempotency errors — callers MUST handle these
-            # distinctly (mint fresh key / reconcile state). Other ADCPError
-            # subclasses (connection, timeout) continue to be converted to
-            # TaskResult(failed) below, preserving the existing contract.
+            # distinctly (mint fresh key / reconcile state). A budget rejection
+            # is propagated for the same reason: it is a local policy decision
+            # about untrusted input, not an agent-reported task failure, and
+            # collapsing it into TaskResult(failed) would hide a
+            # memory-exhaustion attempt behind an ordinary error string.
+            # `_BUDGET_ERRORS` rather than one of them, so the typed surface
+            # does not diverge by protocol or by which coding the peer used.
+            # Other ADCPError subclasses (connection, timeout) continue to be
+            # converted to TaskResult(failed) below, preserving the contract.
             raise
         except Exception as e:
             if self.agent_config.debug and start_time:
@@ -1228,7 +1570,7 @@ class MCPAdapter(ProtocolAdapter):
     async def list_tools(self) -> list[str]:
         """List available tools from MCP agent."""
         session = await self._get_session()
-        result = await session.list_tools()
+        result = await self._session_request(session.list_tools, "tools/list")
         return [tool.name for tool in result.tools]
 
     async def get_agent_info(self) -> dict[str, Any]:
@@ -1252,12 +1594,15 @@ class MCPAdapter(ProtocolAdapter):
             "protocol": "mcp",
         }
 
-        # Get available tools
+        # Get available tools. A budget rejection is not a "this agent has no
+        # tools" answer, so it propagates instead of being logged away.
         try:
-            tools_result = await session.list_tools()
+            tools_result = await self._session_request(session.list_tools, "tools/list")
             tool_names = [tool.name for tool in tools_result.tools]
             if tool_names:
                 info["tools"] = tool_names
+        except _BUDGET_ERRORS:
+            raise
         except Exception as e:
             logger.warning(f"Failed to list tools for {self.agent_config.id}: {e}")
 
@@ -1314,13 +1659,22 @@ class MCPAdapter(ProtocolAdapter):
             if self.signing_request_hook is not None:
                 event_hooks["request"] = [self.signing_request_hook]
 
+            close_response_limit = self._response_limit_policy()
+
             def client_factory(**kwargs: Any) -> Any:
-                return _httpx.AsyncClient(
-                    **kwargs,
-                    timeout=timeout,
-                    follow_redirects=False,
-                    trust_env=False,
-                    event_hooks=event_hooks,
+                # This path runs on httpx (not httpx2): it is a plain DELETE
+                # outside the MCP session, but the peer's reply is still
+                # untrusted and gets the same budget.
+                return install_response_limit(
+                    _httpx.AsyncClient(
+                        **kwargs,
+                        timeout=timeout,
+                        follow_redirects=False,
+                        trust_env=False,
+                        event_hooks=event_hooks,
+                    ),
+                    httpx_module=_httpx,
+                    policy=close_response_limit,
                 )
 
             redirect_error_type = HTTPStatusError

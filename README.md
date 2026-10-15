@@ -41,6 +41,7 @@ This README serves both sides of an AdCP integration. Jump to what you're doing:
   - [Signed webhooks: sender quickstart](#signed-webhooks-sender-quickstart)
   - [Debug Mode](#debug-mode)
   - [Resource Management](#resource-management)
+  - [Response size limits](#response-size-limits)
   - [Error Handling](#error-handling)
   - [Idempotency and retries](#idempotency-and-retries)
   - [Building a seller: idempotency middleware](#building-a-seller-idempotency-middleware)
@@ -949,6 +950,77 @@ Multi-agent fan-out intentionally does not yet accept it because one timeout
 exception cannot safely represent several sellers' independent mutation
 outcomes and idempotency keys.
 
+### Response size limits
+
+Agent responses are untrusted input. Every MCP and A2A response the SDK's own
+transports read is capped at **4 MiB by default** — tool calls, `tools/list`,
+discovery, the A2A agent card, and SSE streams alike. The budget is enforced
+*while the body is read*: a declared `Content-Length` over the cap is refused
+before the first body byte, and the running total of **decoded** bytes aborts
+the read the moment it passes the cap. SSE streams are capped per event, so a
+peer cannot slip a large payload past the budget by replying with
+`Content-Type: text/event-stream`, and a per-call response also carries a
+cumulative cap.
+
+Two scopes are deliberately different. MCP's session-lifetime server-push
+stream (the standalone `GET` SSE channel, and the whole legacy
+`mcp_transport="sse"` channel) is capped **per event only** — a cumulative cap
+there would be a session total, not a per-call cap, and would fail a healthy
+long session. `ADCPClient.from_mcp_client()` sessions get no *streaming*
+cap — the caller owns that transport, so counting bytes as they arrive is the
+caller's job — but the `content[].text` bound below still applies, and on
+that path it is the only one. Pass `max_response_bytes=` to
+`from_mcp_client()` to raise or remove it.
+
+An oversized response raises `ADCPResponseTooLargeError` — it is never silently
+truncated:
+
+```python
+from adcp import ADCPResponseTooLargeError
+
+try:
+    result = await client.get_products(request)
+except ADCPResponseTooLargeError as error:
+    print(error.limit, error.received, error.per_event, error.declared)
+```
+
+Raise the budget for an agent with a legitimately large catalog, or override a
+single call:
+
+```python
+from adcp import AgentConfig, DEFAULT_MAX_RESPONSE_BYTES, Protocol, TaskOptions
+
+config = AgentConfig(
+    id="big-catalog-seller",
+    agent_uri="https://agent.example.com",
+    protocol=Protocol.MCP,
+    max_response_bytes=32 * 1024 * 1024,   # per agent
+)
+
+result = await client.get_products(
+    request,
+    options=TaskOptions(max_response_bytes=16 * 1024 * 1024),   # per call
+)
+```
+
+The same budget bounds the MCP text-fallback path. For a server that answers
+with `content[].text` and no `structuredContent`, that one item is the whole
+response, so bounding it at anything tighter would silently become the real
+call cap — the SDK used to apply a fixed 1 MiB there. An over-budget text item
+raises rather than being skipped, so it cannot be mistaken for an agent that
+sent no structured data.
+
+Prefer asking the agent to paginate over raising the cap. `max_response_bytes=None`
+on `AgentConfig` removes the budget entirely and is not recommended for agents
+you do not control. Because the decoded size has to be measurable before it is
+expanded, the SDK requests only `gzip`/`deflate` and raises
+`ADCPResponseEncodingError` (an `ADCPProtocolError`) for a response that comes
+back in another content coding.
+
+In a multi-agent fan-out the rejection is contained to the offending agent: it
+becomes that agent's `TaskResult(FAILED)` rather than aborting the batch, so
+one oversized reply cannot discard every other agent's results.
+
 ### Optional OpenTelemetry tracing
 
 AdCP client calls create one OpenTelemetry `CLIENT` span when an application
@@ -997,6 +1069,8 @@ from adcp.exceptions import (
     ADCPAuthenticationError, # Auth failed (401, 403)
     ADCPTimeoutError,        # Request timed out
     ADCPProtocolError,       # Invalid response format
+    ADCPResponseTooLargeError,  # Response over max_response_bytes
+    ADCPResponseEncodingError,  # Response in an unmeasurable content coding
     ADCPToolNotFoundError,   # Tool not found
     ADCPWebhookSignatureError  # Invalid webhook signature
 )

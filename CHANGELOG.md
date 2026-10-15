@@ -20,6 +20,36 @@
 
 ### Features
 
+* **client:** Agent responses are capped at 4 MiB by default on every MCP and
+  A2A call path — tool calls, `tools/list`, discovery, the A2A agent card, and
+  SSE streams. The budget is enforced while the body is read: an over-cap
+  `Content-Length` is refused before the first body byte, decoded (not wire)
+  bytes are counted as they arrive, and SSE is capped per event as well as
+  cumulatively per call. An oversized response raises the new
+  `ADCPResponseTooLargeError` and is never truncated. **This is a behavior
+  change for adopters with very large catalogs:** raise
+  `AgentConfig.max_response_bytes` for that agent, override one call with
+  `TaskOptions(max_response_bytes=...)`, or set
+  `AgentConfig.max_response_bytes=None` to opt out entirely. So the decoded
+  size stays measurable, the SDK now requests only `gzip`/`deflate` and raises
+  the new `ADCPResponseEncodingError` for a response in another content coding.
+  MCP's session-lifetime server-push stream is capped per event only, and
+  `ADCPClient.from_mcp_client()` sessions are not capped (the caller owns that
+  transport). In a multi-agent fan-out an over-cap reply becomes that agent's
+  failed `TaskResult` instead of aborting the batch.
+  The MCP text-fallback bound follows the same budget: a fixed 1 MiB cap on
+  `content[].text` used to be the effective call limit for any server that
+  answers with text and no `structuredContent`. **`extract_adcp_success` and
+  `extract_adcp_error` now raise `ADCPResponseTooLargeError` where they
+  previously returned `None`**, and an over-cap text item surfaces as that
+  raised error rather than as `TaskResult(FAILED, "no structured AdCP
+  data")` — or, when a later item happened to parse, rather than silently
+  vanishing from a call that then succeeded. Both functions take
+  `max_response_bytes` (4 MiB default) if you call them directly.
+  `ADCPClient.from_mcp_client()` takes it too: an injected session has no
+  streaming budget, so this is its only response-size bound. Refs #1503,
+  adcontextprotocol/adcp#8190, adcontextprotocol/adcp#8200.
+
 * **auth:** `BearerTokenAuth.resolve_principal` supports sync/async non-bearer
   principal resolution on MCP and A2A using the same metadata-only `AuthRequest`.
   Supplied credential headers always select bearer auth; invalid credentials
