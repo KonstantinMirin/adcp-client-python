@@ -28,9 +28,18 @@ from typing import Any, Literal, Protocol, cast
 from urllib.parse import urlsplit
 
 import httpx
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from http_message_signatures import (
+    HTTPMessageSignaturesException,
+    HTTPMessageSigner,
+    HTTPMessageVerifier,
+    HTTPSignatureComponentResolver,
+    HTTPSignatureKeyResolver,
+    InvalidSignature,
+)
+from http_message_signatures.algorithms import ECDSA_P256_SHA256, ED25519, RSA_PSS_SHA512
+from http_message_signatures.structures import CaseInsensitiveDict
 from http_sfv.dictionary import Dictionary
 from http_sfv.item import InnerList, Item
 
@@ -39,13 +48,7 @@ from adcp.signing._header_precheck import strict_header_precheck
 from adcp.signing._strict_json import StrictJsonError, parse_strict_json
 from adcp.signing._structured_fields import dictionary_has_parameter, reject_dictionary_duplicates
 from adcp.signing.canonical import _lookup, canonical_origin
-from adcp.signing.crypto import (
-    b64url_decode,
-    b64url_encode,
-    public_key_from_jwk,
-    sign_signature_base,
-    verify_signature,
-)
+from adcp.signing.crypto import b64url_decode, b64url_encode, public_key_from_jwk
 from adcp.signing.digest import compute_content_digest_sha256, content_digest_matches
 from adcp.signing.jwks import SSRFValidationError, validate_uri_static
 from adcp.signing.publisher_pins import jwk_thumbprint
@@ -390,38 +393,168 @@ def _algorithm(jwk: Mapping[str, Any]) -> str:
     return alg
 
 
+#: RFC 9421 §3.3 algorithm identifiers the profile admits, each implemented by
+#: ``http-message-signatures`` (PSS salt length 64, ECDSA as fixed-length r||s).
+_ALGORITHMS = {
+    "ed25519": ED25519,
+    "ecdsa-p256-sha256": ECDSA_P256_SHA256,
+    ALG_RSA_PSS_SHA512: RSA_PSS_SHA512,
+}
+
+
+def _public_key(alg: str, jwk: Mapping[str, Any]) -> Any:
+    if alg == ALG_RSA_PSS_SHA512:
+        return _rsa_public_key(jwk)
+    return public_key_from_jwk(dict(jwk))
+
+
 def _sign(alg: str, private_key: WbaPrivateKey, base: bytes) -> bytes:
-    if alg == ALG_RSA_PSS_SHA512:
-        if not isinstance(private_key, rsa.RSAPrivateKey):
-            raise ValueError("alg/private_key mismatch: expected an RSA key")
-        return private_key.sign(
-            base,
-            padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=64),
-            hashes.SHA512(),
-        )
-    if isinstance(private_key, rsa.RSAPrivateKey):
-        raise ValueError("alg/private_key mismatch: RSA keys sign with rsa-pss-sha512")
-    return sign_signature_base(alg=alg, private_key=private_key, signature_base=base)
+    if (alg == ALG_RSA_PSS_SHA512) != isinstance(private_key, rsa.RSAPrivateKey):
+        raise ValueError("alg/private_key mismatch: RSA keys sign with rsa-pss-sha512 only")
+    return bytes(_ALGORITHMS[alg](private_key=private_key).sign(base))
 
 
-def _verify(alg: str, jwk: Mapping[str, Any], base: bytes, signature: bytes) -> bool:
-    if alg == ALG_RSA_PSS_SHA512:
-        try:
-            _rsa_public_key(jwk).verify(
-                signature,
-                base,
-                padding.PSS(mgf=padding.MGF1(hashes.SHA512()), salt_length=64),
-                hashes.SHA512(),
+@dataclass
+class _Request:
+    """The request shape ``http-message-signatures`` reads: method, url, headers."""
+
+    method: str
+    url: str
+    headers: CaseInsensitiveDict
+
+
+@dataclass
+class _Response:
+    """A response and the request it answers (RFC 9421 §2.4 ``;req``)."""
+
+    status_code: int
+    url: str
+    headers: CaseInsensitiveDict
+    request: _Request
+
+
+def _message(
+    method: str, url: str, headers: Mapping[str, str], *, directory_response: bool
+) -> _Request | _Response:
+    request = _Request(method, url, CaseInsensitiveDict(headers))
+    if not directory_response:
+        return request
+    return _Response(200, url, request.headers, _Request(method, url, CaseInsensitiveDict()))
+
+
+class _WbaComponentResolver(HTTPSignatureComponentResolver):
+    """Resolve the profile's covered components.
+
+    Adds what the library's default resolver lacks: the RFC 9421 §2.1.2 ``key``
+    parameter (a Dictionary member, ``"signature-agent";key="sig1"``) and §2.4
+    ``req`` on a response (``"@authority";req``, pyauth/http-message-signatures#29).
+    ``@target-uri`` and ``@authority`` take the profile's §2.2.2/§2.2.3 values.
+    Profile checks that must answer 400 raise :class:`WbaVerificationError`;
+    the library wraps them, and :func:`_verify_crypto` unwraps them.
+    """
+
+    derived_component_names = {"@method", "@target-uri", "@authority"}
+
+    def resolve(self, component_node: Any) -> str:
+        name = component_node.value
+        if type(name) is not str:
+            raise WbaVerificationError("component must be a string", status=400)
+        params = dict(component_node.params)
+        if name.startswith("@"):
+            expected = (
+                {"req": True} if self.message_type == "response" and name == "@authority" else {}
             )
-            return True
-        except InvalidSignature:
-            return False
-    return verify_signature(
-        alg=alg,
-        public_key=public_key_from_jwk(dict(jwk)),
-        signature_base=base,
-        signature=signature,
+            if params != expected:
+                raise WbaVerificationError("unsupported derived component parameters")
+            if name not in self.derived_component_names:
+                raise WbaVerificationError("unsupported derived component")
+            if params:
+                return type(self)(self.message.request).get_authority()
+            return str(super().resolve(component_node))
+        if name != name.lower():
+            raise WbaVerificationError("covered field names must be lowercase")
+        raw = self.headers.get(name)
+        if raw is None:
+            raise WbaVerificationError("missing covered field")
+        if any(c in raw for c in "\r\n\x00"):
+            raise WbaVerificationError("covered field carries a control character", status=400)
+        if not params:
+            return raw.strip(" \t")
+        if set(params) != {"key"} or type(params["key"]) is not str:
+            raise WbaVerificationError("unsupported field component parameters")
+        dictionary = _dictionary(raw)
+        if params["key"] not in dictionary:
+            raise WbaVerificationError("missing covered dictionary member")
+        return str(dictionary[params["key"]])
+
+    def get_target_uri(self) -> str:
+        return _target_uri(self.url)
+
+    def get_authority(self) -> str:
+        return _received_authority(self.url)
+
+
+class _OneKey(HTTPSignatureKeyResolver):
+    """The key the profile already resolved by origin and thumbprint."""
+
+    def __init__(self, key: Any) -> None:
+        self._key = key
+
+    def resolve_public_key(self, key_id: str) -> Any:
+        return self._key
+
+    def resolve_private_key(self, key_id: str) -> Any:
+        return self._key
+
+
+class _Verifier(HTTPMessageVerifier):
+    """The library's verifier with the profile's own window check in charge.
+
+    :func:`_window` has already judged ``created``/``expires`` against the
+    caller's ``now`` (the library reads the wall clock and allows 5s of skew).
+    """
+
+    def validate_created_and_expires(self, sig_input: Any, max_age: Any = None) -> None:
+        return None
+
+
+#: The order the profile's vectors write signature parameters in. Any order
+#: is valid RFC 9421 (§2.3) and a verifier reads the order from the wire; the
+#: signer fixes it only so its output reproduces the vectors byte for byte.
+_PARAMETER_ORDER = ("created", "expires", "nonce", "keyid", "alg", "tag")
+
+
+class _Signer(HTTPMessageSigner):
+    """The library's signer, writing parameters in the profile's order.
+
+    ``sign`` fixes its own order (created, keyid, alg, expires, nonce, tag);
+    the one place it can still be changed is the parameter mapping handed to
+    the base builder. Verification never passes through here: a verifier must
+    keep the order it received.
+    """
+
+    def _build_signature_base(
+        self, message: Any, *, covered_component_ids: Any, signature_params: Any
+    ) -> Any:
+        ordered = {
+            name: signature_params[name] for name in _PARAMETER_ORDER if name in signature_params
+        }
+        ordered.update(signature_params)
+        return super()._build_signature_base(
+            message, covered_component_ids=covered_component_ids, signature_params=ordered
+        )
+
+
+def _handler(alg: str, key: Any, cls: type = _Signer) -> Any:
+    return cls(
+        signature_algorithm=_ALGORITHMS[alg],
+        key_resolver=_OneKey(key),
+        component_resolver_class=_WbaComponentResolver,
     )
+
+
+def _utc(timestamp: int) -> datetime:
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def _received_authority(url: str) -> str:
@@ -460,50 +593,21 @@ def _base(
     *,
     directory_response: bool = False,
 ) -> bytes:
-    """Build the RFC 9421 §2.5 signature base for ``member``.
+    """The RFC 9421 §2.5 signature base for ``member``, built by the library.
 
-    ``url`` is the target URI as sent or received. ``@target-uri`` is that
-    string unchanged; ``@authority`` is its normalized authority. The
-    canonical origin applies only to the ``Signature-Agent`` identity.
+    Kept for the test suite's hand-assembled fixtures only; the signing and
+    verifying paths hand the library the message and never see the base.
+    Reaches two private library methods, which is why it should not outlive
+    the fixtures that call it.
     """
-    lines: list[str] = []
-    for component in member:
-        name = component.value
-        if type(name) is not str:
-            raise WbaVerificationError("component must be a string", status=400)
-        params = component.params
-        if name.startswith("@"):
-            expected = {"req": True} if directory_response and name == "@authority" else {}
-            if dict(params) != expected:
-                raise WbaVerificationError("unsupported derived component parameters")
-            if name == "@method":
-                value = method.upper()
-            elif name == "@target-uri":
-                value = _target_uri(url)
-            elif name == "@authority":
-                value = _received_authority(url)
-            else:
-                raise WbaVerificationError("unsupported derived component")
-        else:
-            if name != name.lower():
-                raise WbaVerificationError("covered field names must be lowercase")
-            raw = _lookup(headers, name)
-            if raw is None:
-                raise WbaVerificationError("missing covered field")
-            if any(c in raw for c in "\r\n\x00"):
-                raise WbaVerificationError("covered field carries a control character", status=400)
-            if params:
-                if set(params) != {"key"} or type(params["key"]) is not str:
-                    raise WbaVerificationError("unsupported field component parameters")
-                dictionary = _dictionary(raw)
-                if params["key"] not in dictionary:
-                    raise WbaVerificationError("missing covered dictionary member")
-                value = str(dictionary[params["key"]])
-            else:
-                value = raw.strip(" \t")
-        lines.append(f"{component}: {value}")
-    lines.append(f'"@signature-params": {member}')
-    return "\n".join(lines).encode("utf-8")
+    signer = _handler("ed25519", None, HTTPMessageSigner)  # as given: never reordered
+    covered = signer._parse_covered_component_ids([str(component) for component in member])
+    base, _, _ = signer._build_signature_base(
+        _message(method, url, headers, directory_response=directory_response),
+        covered_component_ids=covered,
+        signature_params=dict(member.params),
+    )
+    return str(base).encode("utf-8")
 
 
 def _window(member: InnerList, *, now: float, directory: bool = False, label: str = "sig1") -> None:
@@ -527,7 +631,22 @@ def _window(member: InnerList, *, now: float, directory: bool = False, label: st
         raise WbaVerificationError("missing thumbprint keyid", label=label)
 
 
-def _verify_crypto(member: InnerList, signature: Any, jwk: Mapping[str, Any], base: bytes) -> str:
+def _verify_crypto(
+    member: InnerList,
+    signature: Any,
+    jwk: Mapping[str, Any],
+    message: _Request | _Response,
+    *,
+    label: str,
+    tag: str,
+) -> str:
+    """Verify ``label`` on ``message`` with the library; return the algorithm.
+
+    The library re-reads ``Signature-Input`` and ``Signature`` from the
+    message, builds the base through :class:`_WbaComponentResolver`, and
+    checks the signature with the key's algorithm. ``member`` is the already
+    parsed input, consulted only for the profile's alg/key agreement.
+    """
     alg = _algorithm(jwk)
     declared = member.params.get("alg", alg)
     if type(declared) is not str or declared != alg:
@@ -535,11 +654,17 @@ def _verify_crypto(member: InnerList, signature: Any, jwk: Mapping[str, Any], ba
     if not isinstance(signature, Item) or not isinstance(signature.value, bytes):
         raise WbaVerificationError("signature must be sf-binary", status=400)
     try:
-        valid = _verify(alg, jwk, base, signature.value)
+        key = _public_key(alg, jwk)
     except (ValueError, KeyError, TypeError) as exc:
         raise WbaVerificationError("invalid directory key") from exc
-    if not valid:
-        raise WbaVerificationError("signature did not verify")
+    try:
+        _handler(alg, key, _Verifier).verify(message, expect_tag=tag, expect_label=label)
+    except (InvalidSignature, HTTPMessageSignaturesException) as exc:
+        cause = exc.__cause__
+        if isinstance(cause, WbaVerificationError):
+            # A profile refusal raised inside the resolver keeps its status.
+            raise cause from exc
+        raise WbaVerificationError("signature did not verify") from exc
     return alg
 
 
@@ -587,41 +712,28 @@ def sign_wba_request(
             "nonce must carry at least 128 bits of entropy and be at most 256 characters"
         )
     outgoing = {"Signature-Agent": str(Dictionary({label: Item(origin)}))}
-    components = [Item(c) for c in ("@method", "@target-uri", "@authority")]
+    components = ["@method", "@target-uri", "@authority"]
     if body:
         if _lookup(headers, "content-type") is None:
             raise ValueError("body-bearing WBA requests require Content-Type")
         outgoing["Content-Digest"] = compute_content_digest_sha256(body)
-        components.extend(Item(c) for c in ("content-type", "content-digest"))
-    agent = Item("signature-agent")
-    agent.params["key"] = label
-    components.append(agent)
-    member = InnerList(list(components))
-    member.params.update(
-        {
-            "created": created,
-            "expires": created + expires_in_seconds,
-            "nonce": nonce,
-            "keyid": jwk["kid"],
-            "alg": alg,
-            "tag": WBA_TAG,
-        }
+        components.extend(("content-type", "content-digest"))
+    components.append(f'"signature-agent";key="{label}"')
+    if (alg == ALG_RSA_PSS_SHA512) != isinstance(private_key, rsa.RSAPrivateKey):
+        raise ValueError("alg/private_key mismatch: RSA keys sign with rsa-pss-sha512 only")
+    message = _Request(method, url, CaseInsensitiveDict({**headers, **outgoing}))
+    _handler(alg, private_key).sign(
+        message,
+        key_id=jwk["kid"],
+        created=_utc(created),
+        expires=_utc(created + expires_in_seconds),
+        nonce=nonce,
+        label=label,
+        tag=WBA_TAG,
+        covered_component_ids=components,
     )
-    signature = _sign(
-        alg,
-        private_key,
-        _base(
-            method,
-            url,
-            {
-                **{k.lower(): v for k, v in headers.items()},
-                **{k.lower(): v for k, v in outgoing.items()},
-            },
-            member,
-        ),
-    )
-    outgoing["Signature-Input"] = str(Dictionary({label: member}))
-    outgoing["Signature"] = str(Dictionary({label: Item(signature)}))
+    outgoing["Signature-Input"] = message.headers["Signature-Input"]
+    outgoing["Signature"] = message.headers["Signature"]
     return outgoing
 
 
@@ -722,9 +834,9 @@ def _verify_directory(
             member,
             signatures.get(label),
             keys[keyid],
-            _base(
-                "GET", origin + DIRECTORY_PATH, response.headers, member, directory_response=True
-            ),
+            _message("GET", origin + DIRECTORY_PATH, response.headers, directory_response=True),
+            label=label,
+            tag=DIRECTORY_TAG,
         )
         signed[keyid] = keys[keyid]
         earliest = min(earliest, float(member.params["expires"]))
@@ -778,31 +890,24 @@ def sign_key_directory(
         created, expires = now - DIRECTORY_SKEW_ALLOWANCE_SECONDS, now + expires_in_seconds
     else:
         expires = created + expires_in_seconds
-    inputs, signatures = Dictionary(), Dictionary()
+    message = _message("GET", origin + DIRECTORY_PATH, headers, directory_response=True)
     for number, (key, jwk) in enumerate(zip(private_keys, keys), 1):
-        authority = Item("@authority")
-        authority.params["req"] = True
-        member = InnerList([authority, Item("content-digest")])
-        alg = _algorithm(jwk)
-        member.params.update(
-            {
-                "created": created,
-                "expires": expires,
-                "keyid": jwk["kid"],
-                "alg": alg,
-                "tag": DIRECTORY_TAG,
-            }
+        _handler(_algorithm(jwk), key).sign(
+            message,
+            key_id=jwk["kid"],
+            created=_utc(created),
+            expires=_utc(expires),
+            label=f"key{number}",
+            tag=DIRECTORY_TAG,
+            covered_component_ids=['"@authority";req', "content-digest"],
+            append_if_signature_exists=True,
         )
-        label = f"key{number}"
-        inputs[label] = member
-        signatures[label] = Item(
-            _sign(
-                alg,
-                key,
-                _base("GET", origin + DIRECTORY_PATH, headers, member, directory_response=True),
-            )
-        )
-    headers.update({"Signature-Input": str(inputs), "Signature": str(signatures)})
+    headers.update(
+        {
+            "Signature-Input": message.headers["Signature-Input"],
+            "Signature": message.headers["Signature"],
+        }
+    )
     return DirectoryResponse(body=body, headers=headers)
 
 
@@ -1196,7 +1301,12 @@ async def verify_wba_request(
         assert key is not None
         try:
             alg = _verify_crypto(
-                member, signatures.get(label), key.jwk, _base(method, url, headers, member)
+                member,
+                signatures.get(label),
+                key.jwk,
+                _message(method, url, headers, directory_response=False),
+                label=label,
+                tag=WBA_TAG,
             )
         except WbaVerificationError as exc:
             exc.label = label

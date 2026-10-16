@@ -20,11 +20,13 @@ from http_sfv.dictionary import Dictionary
 from adcp.signing import InMemoryReplayStore
 from adcp.signing.wba import (
     ALG_RSA_PSS_SHA512,
+    WBA_TAG,
     DirectoryResponse,
     DiscoveredSignerKeys,
     WbaVerificationError,
     _algorithm,
     _base,
+    _message,
     _verify_crypto,
     is_64_byte_nonce,
     public_directory_key,
@@ -220,10 +222,19 @@ def test_rsa_pss_appendix_e_vector():
         '"signature-agent";key="agent2": "https://signature-agent.test"\n'
         f'"@signature-params": {APPENDIX_E_INPUT.removeprefix("sig2=")}'
     )
-    assert _verify_crypto(member, signature, jwk, base) == ALG_RSA_PSS_SHA512
-    tampered = base.replace(b"example.com", b"example.net", 1)
+    headers.update({"signature-input": APPENDIX_E_INPUT, "signature": APPENDIX_E_SIGNATURE})
+
+    def message(url: str):
+        return _message("GET", url, headers, directory_response=False)
+
+    verified = _verify_crypto(
+        member, signature, jwk, message("https://example.com/"), label="sig2", tag=WBA_TAG
+    )
+    assert verified == ALG_RSA_PSS_SHA512
     with pytest.raises(WbaVerificationError, match="did not verify"):
-        _verify_crypto(member, signature, jwk, tampered)
+        _verify_crypto(
+            member, signature, jwk, message("https://example.net/"), label="sig2", tag=WBA_TAG
+        )
 
 
 async def test_rsa_pss_identity_round_trip_and_key_bounds():
