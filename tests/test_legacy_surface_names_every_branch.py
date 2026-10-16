@@ -233,3 +233,45 @@ def test_every_branch_of_a_response_on_the_legacy_surface_is_publicly_nameable(
         f"adcp.types.domains — which is the tree 9.0 retires. Add "
         f"Legacy{tool}<Branch>Response in src/adcp/types/legacy.py (#1399)"
     )
+
+
+# ---------------------------------------------------------------------------
+# The two Legacy* surfaces carry the same names
+# ---------------------------------------------------------------------------
+
+_ALIASES = importlib.import_module("adcp.types.aliases")
+_LEGACY_MODULE = importlib.import_module("adcp.types.legacy")
+
+
+def _legacy_names(module: object) -> frozenset[str]:
+    return frozenset(name for name in dir(module) if name.startswith("Legacy"))
+
+
+def test_the_two_legacy_surfaces_are_not_empty() -> None:
+    """Keeps the obligation below from going quiet, the way its siblings do."""
+    assert len(_legacy_names(_ALIASES)) > 15
+    assert len(_legacy_names(_LEGACY_MODULE)) > 40
+
+
+def test_every_legacy_name_in_aliases_is_reachable_from_the_legacy_module() -> None:
+    """``adcp.types.legacy`` is the module its own docstring offers for migration.
+
+    Both modules carry ``Legacy*`` names and the test above proves neither is
+    empty, so the question is whether they agree. A name present on one and
+    absent from the other means an adopter following the module docstring
+    ("these aliases exist for migration, conformance tooling, and AdCP 3.0/3.1
+    wire adapters") cannot reach a type that the flat ``adcp.types`` surface
+    does expose — reachable, but not where they were told to look.
+
+    Derived from ``aliases`` rather than listed, so a name added there without a
+    counterpart here fails rather than silently splitting the surface again. The
+    reverse direction is deliberately not asserted: ``legacy`` carries the
+    generated wire classes wholesale and is expected to be the larger set.
+    """
+    missing = sorted(_legacy_names(_ALIASES) - _legacy_names(_LEGACY_MODULE))
+
+    assert missing == [], (
+        f"{len(missing)} Legacy* name(s) are on adcp.types.aliases but not on "
+        f"adcp.types.legacy: {missing}. Re-export them from legacy.py so both "
+        f"spellings of the migration surface agree."
+    )

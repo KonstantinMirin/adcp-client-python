@@ -25,6 +25,9 @@ from adcp.types.domains.core.product_filters import ProductFilters as LegacyProd
 from adcp.types.domains.core.product_format_declaration import (
     ProductFormatDeclaration as LegacyGeneratedProductFormatDeclaration,
 )
+from adcp.types.domains.core.proposal import (
+    TotalBudgetGuidance as LegacyProposalTotalBudgetGuidance,
+)
 from adcp.types.domains.creative.get_creative_delivery_response import (
     GetCreativeDeliveryResponse as LegacyGetCreativeDeliveryResponse,
 )
@@ -170,6 +173,13 @@ LegacyProductFormatDeclaration = LegacyGeneratedProductFormatDeclaration
 # named. ``tests/test_legacy_surface_names_every_branch.py`` derives the required
 # set from the generated response unions, so a sixth fails the build instead of
 # reaching an adopter.
+#
+# That guard grades ``adcp.types``, which is a WIDER surface than this module:
+# all three ``LegacyUpdateMediaBuy*Response`` names reached it from
+# ``aliases.py`` while this module carried none of them, so the guard was green
+# and this file was still missing them. The three below close that, and
+# ``test_every_legacy_name_in_aliases_is_reachable_from_the_legacy_module``
+# derives the obligation from ``aliases`` so the two surfaces cannot split again.
 LegacyBuildCreativeSuccessResponse = LegacyBuildCreativeResponse1
 LegacyBuildCreativeErrorResponse = LegacyBuildCreativeResponse2
 LegacyBuildCreativeSubmittedResponse = LegacyBuildCreativeResponse6
@@ -180,6 +190,9 @@ LegacyPreviewCreativeSingleResponse = LegacyPreviewCreativeResponse1
 LegacyPreviewCreativeBatchResponse = LegacyPreviewCreativeResponse2
 LegacyPreviewCreativeVariantResponse = LegacyPreviewCreativeResponse3
 LegacyPreviewCreativeSubmittedResponse = LegacyPreviewCreativeResponse4
+LegacyUpdateMediaBuySuccessResponse = LegacyUpdateMediaBuyResponse1
+LegacyUpdateMediaBuyErrorResponse = LegacyUpdateMediaBuyResponse2
+LegacyUpdateMediaBuySubmittedResponse = LegacyUpdateMediaBuyResponse3
 
 __all__ = [
     "infer_asset_type",
@@ -241,11 +254,15 @@ __all__ = [
     "LegacyProduct",
     "LegacyProductFilters",
     "LegacyProductFormatDeclaration",
+    "LegacyProposalTotalBudgetGuidance",
     "LegacySyncCreativesRequest",
     "LegacySyncCreativesResponse",
+    "LegacyUpdateMediaBuyErrorResponse",
     "LegacyUpdateMediaBuyRequest",
     "LegacyUpdateMediaBuyResponse",
     "LegacyUpdateMediaBuyResponse1",
     "LegacyUpdateMediaBuyResponse2",
     "LegacyUpdateMediaBuyResponse3",
+    "LegacyUpdateMediaBuySubmittedResponse",
+    "LegacyUpdateMediaBuySuccessResponse",
 ]
