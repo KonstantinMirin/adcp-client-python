@@ -32,7 +32,6 @@ import os
 import re
 import subprocess
 import sys
-from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -40,26 +39,23 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _FIXTURE_DIR = _REPO_ROOT / "tests" / "type_checks"
 
-#: Measured at d518308ea: ``mypy --strict tests/type_checks/`` reports exactly one
-#: error, ``creative_asset_binding.py:82``, which asserts the readback manifest's
-#: ``format_kind`` is ``str | None``. Clearing it needs ``_DeliveryCreativeManifest``
-#: bound to the generated root, and binding it there makes it validate as the root's
-#: UNION so a ``_DeliveryCreativeManifest`` instance is an instance of neither branch
-#: class — measured, ``test_delivery_manifest_cannot_bypass_strict_input`` goes red
-#: with ``type='model_type'``. That is the BranchDispatchMixin contract question,
-#: tracked as salesagent-8qela.82.
+#: THE CEILING IS GONE, AND THERE IS NOTHING TO RAISE. It used to read 1, for
+#: ``creative_asset_binding.py:82`` asserting the readback manifest's ``format_kind``
+#: is ``str | None`` while ``_DeliveryCreativeManifest`` was bound to the manifest
+#: root's canonical-format ARM, where that field is required ``str``.
 #:
-#: SHRINK-ONLY. This is the ratcheting-counter pattern this repo already uses, not an
-#: allowlist of names: raising it admits a new, unexamined error, which is the exact
-#: failure this file exists to catch. Lower it when salesagent-8qela.82 lands; never
-#: raise it.
-_MAX_STRICT_ERRORS = 1  # FIXME(#2255-adjacent): see salesagent-8qela.82
-
-#: The file the single permitted error lives in. Pinned alongside the count because a
-#: count alone would let a DIFFERENT error hide under the ceiling — a number is only
-#: evidence for its own scope.
-_EXPECTED_RESIDUAL_FILE = "creative_asset_binding.py"
-
+#: The note that stood here said clearing it "makes it validate as the root's UNION",
+#: and that was wrong on the mechanism: ``BranchDispatchMixin`` hands the branches'
+#: union only to the class that DECLARES ``_branch_models``, so a refinement declared
+#: in ``adcp.types.canonical_creative`` gets its own plain shape either way. The real
+#: cost was narrower — a root-bound readback instance is an instance of neither arm,
+#: so revalidating it THROUGH the generated root refuses it as ``model_type`` — and it
+#: was a cost worth paying, because arm-binding refused ``oneOf[0]`` documents the pin
+#: permits on a delivery row. Both are now settled in the readback suite, so the
+#: residual is fixed rather than tolerated and the count is zero.
+#:
+#: Do not reintroduce a ceiling. An error in these fixtures is a public type-contract
+#: change: fix the type or update the fixture and say why in the commit.
 _ERROR_LINE = re.compile(r"^(?P<path>[^:]+):(?P<line>\d+): error: (?P<message>.*)$")
 
 
@@ -121,25 +117,18 @@ def test_the_adopter_fixtures_typecheck_under_strict(
     This is the assertion c045fe617 needed and did not have. A change to a public
     field's type or requiredness that leaves a fixture asserting the old shape
     fails here, in the suite, rather than in a Makefile target nobody invoked.
+
+    ANY error, in any fixture. There is no ceiling and no permitted residual: the
+    one that used to be here (``creative_asset_binding.py:82``) is fixed, and the
+    CI step this mirrors — ``mypy --strict tests/type_checks/ ...`` on the 3.12
+    leg — tolerates nothing either, so a ceiling here could only hide something
+    that reddens there.
     """
-    unexpected = [e for e in strict_errors if e[0] != _EXPECTED_RESIDUAL_FILE]
-    assert unexpected == [], (
-        "mypy --strict reports errors in adopter fixtures other than the one known "
-        f"residual in {_EXPECTED_RESIDUAL_FILE}:\n"
-        + "\n".join(f"  {name}:{line}: {message}" for name, line, message in unexpected)
+    assert strict_errors == [], (
+        "mypy --strict reports errors in the adopter type-check fixtures:\n"
+        + "\n".join(f"  {name}:{line}: {message}" for name, line, message in strict_errors)
         + "\n\nThese fixtures encode what a consumer of the published types may "
         "assume. If a public type changed on purpose, update the fixture AND say in "
         "the commit why the assertion it carried is now stale. If it changed by "
         "accident, this is the regression."
-    )
-    assert len(strict_errors) <= _MAX_STRICT_ERRORS, (
-        f"mypy --strict reports {len(strict_errors)} errors in the adopter fixtures, "
-        f"over the shrink-only ceiling of {_MAX_STRICT_ERRORS}:\n"
-        + "\n".join(f"  {name}:{line}: {message}" for name, line, message in strict_errors)
-        + f"\n\nThe ceiling exists for one residual in {_EXPECTED_RESIDUAL_FILE} "
-        "(salesagent-8qela.82). Do not raise it — a higher ceiling admits an "
-        "unexamined error, which is what this file exists to prevent."
-    )
-    assert Counter(name for name, _, _ in strict_errors)[_EXPECTED_RESIDUAL_FILE] == len(
-        strict_errors
     )

@@ -136,17 +136,15 @@ from adcp.types.domains.core.creative_manifest import (
     # canonical branch imported that branch's required ``format_kind`` onto the
     # public name, which is the requiredness regression on this branch
     # (salesagent-8qela.69): optional upstream, required here.
+    #
+    # BOTH manifest refinements below bind this: the public input manifest and the
+    # readback manifest on a delivery row. The pin reaches both through the same
+    # ``$ref`` to this root -- core/creative-variant.json for the input manifest,
+    # core/get-creative-delivery-response.json for the readback one -- so neither
+    # may narrow to one arm. The readback name carried the canonical arm until
+    # ``_DeliveryCreativeManifest`` below, and that is the SAME requiredness
+    # regression, one name over.
     CreativeManifest as _CreativeManifestRoot,
-)
-from adcp.types.domains.core.creative_manifest import (
-    # The readback clone stays on the BRANCH, deliberately. Binding it to the root
-    # would make it validate as the root's UNION, and a ``_DeliveryCreativeManifest``
-    # INSTANCE is then an instance of neither branch class -- measured:
-    # ``test_delivery_manifest_cannot_bypass_strict_input`` went red with
-    # ``type='model_type'`` against both branches. Upstream could bind the root
-    # because upstream's root carried no BranchDispatchMixin and so was not a union.
-    # That is the mixin contract question (salesagent-8qela.82), not this change.
-    CreativeManifestCanonicalFormatManifest as _CanonicalCreativeManifestWire,
 )
 from adcp.types.domains.core.creative_variant import CreativeVariant as _LegacyCreativeVariant
 from adcp.types.domains.core.macro_resolution_capability import MacroProcessingCapability
@@ -1174,13 +1172,54 @@ class CreativeVariant(_LegacyCreativeVariant, CanonicalBoundaryModel):
     manifest: CreativeManifest | None = None
 
 
-class _DeliveryCreativeManifest(_CanonicalCreativeManifestWire, CanonicalBoundaryModel):
+class _DeliveryCreativeManifest(_CreativeManifestRoot, CanonicalBoundaryModel):
     """The buyer's manifest, read back off a delivery row.
 
+    **It binds the ROOT, the same node :class:`CreativeManifest` binds.**
+    ``core/get-creative-delivery-response.json`` reaches this field through
+    ``$ref .../core/creative-manifest.json``, and ``core/creative-variant.json``
+    reaches the INPUT manifest through the same ``$ref``. One schema node refined
+    twice, so the two refinements owe a document the same verdict.
+
+    They did not give it. This class used to bind
+    ``CreativeManifestCanonicalFormatManifest`` — oneOf[1] — where ``format_kind``
+    is ``required``, while :class:`CreativeManifest` binds the root, whose
+    ``required`` is ``['assets']``. Measured, the disagreement was in two places
+    and neither was the vocabulary:
+
+    * STATICALLY, ``format_kind`` read ``str`` here and ``str | None`` there.
+      That is the ``mypy --strict`` error ``creative_asset_binding.py:82``
+      carried, and the ratchet in ``tests/test_type_check_fixtures.py`` that
+      held it is retired with this change.
+    * IN THE REFUSAL, on ``{"assets": {}}``: the root-bound class names the
+      root's combinator (``type='oneOf'``), the arm-bound one reported a
+      ``missing`` field and never reached the combinator.
+      ``core/error.json`` requires an issue to carry a JSON Schema keyword and
+      ``missing`` is not one.
+
+    Binding the root RELAXES NOTHING at runtime. The root's ``oneOf`` is enforced
+    by the root's own conjunct validator, not by
+    :class:`~adcp.types._branch_dispatch.BranchDispatchMixin`'s branch union —
+    the mixin hands the union only to the class that DECLARES ``_branch_models``,
+    and a refinement declared here does not. Measured against the input manifest
+    on all three documents: canonical arm accepted by both, neither-arm refused
+    ``oneOf`` by both, both-arms refused ``value_error`` by both
+    (``test_readback_manifest_grades_a_document_exactly_as_the_input_manifest``).
+
+    The one behavior it does move is on
+    ``test_delivery_manifest_cannot_bypass_strict_input``: an instance of this
+    class is an instance of the root and of NEITHER arm, so revalidating the
+    INSTANCE through the generated root's union is refused as ``model_type``
+    where it used to be taken. That refusal is the obligation #1241 asked for,
+    and it now holds uniformly on all four (response model x input class) pairs
+    instead of three — a strengthening, which is why the test's conditional
+    collapsed rather than being relaxed.
+
     It redeclares nothing about the format-kind vocabulary. ``format_kind`` is
-    ``str`` here and on :class:`CreativeManifest`, neither refuses a value, and
-    the ``_StrictFormatKind`` mixin that used to be the only difference between
-    the two is deleted. **This class is not a tolerant variant of anything.**
+    ``str | None`` here and on :class:`CreativeManifest`, inherited from the root
+    in both cases, neither refuses a value, and the ``_StrictFormatKind`` mixin
+    that used to be the only difference between the two is deleted. **This class
+    is not a tolerant variant of anything.**
 
     **The one reason it survives** is ``_normalize_readback`` below, and
     specifically its first line: the canonical models are real SUBCLASSES of
