@@ -19,7 +19,7 @@ from adcp.signing import (
     verify_request_signature,
     verify_wba_request,
 )
-from adcp.signing._structured_fields import reject_dictionary_duplicates
+from adcp.signing._rfc9421 import parse_dictionary as reject_dictionary_duplicates
 from adcp.signing.canonical import parse_signature_input_header
 from adcp.signing.crypto import extract_signature_bytes
 from adcp.signing.wba import WbaVerificationError, _dictionary, uses_web_bot_auth
