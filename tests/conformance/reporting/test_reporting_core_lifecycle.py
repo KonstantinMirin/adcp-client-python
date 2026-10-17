@@ -1517,7 +1517,7 @@ async def test_a_later_successful_read_supersedes_with_received(
         ledger,
         client,
         now=boundary + timedelta(hours=2),
-        obligations=[_obligation_wire(ledger, obligation)],
+        obligations=[_obligation_wire(ledger, obligation, revision)],
         readings={obligation.reporting_obligation_id: reading},
         revisions={revision.reporting_revision_id: _revision_wire(revision, obligation)},
         current_statuses=await _caller_statuses(ledger),
@@ -1569,7 +1569,7 @@ async def test_a_failed_read_posts_unreadable_with_a_failure_code(
         ledger,
         client,
         now=period.expected_at + RECOVERY_WINDOW,
-        obligations=[_obligation_wire(ledger, obligation)],
+        obligations=[_obligation_wire(ledger, obligation, revision)],
         readings={
             obligation.reporting_obligation_id: ReportingContentReading(
                 reporting_revision_id=revision.reporting_revision_id,
@@ -1622,7 +1622,7 @@ async def test_a_contract_violation_posts_content_mismatch_with_its_code(
         ledger,
         client,
         now=period.expected_at + RECOVERY_WINDOW,
-        obligations=[_obligation_wire(ledger, obligation)],
+        obligations=[_obligation_wire(ledger, obligation, revision)],
         # The pinned definition promises `conversions`; the revision does not
         # carry it, which is a contract fact -- not a count dispute.
         definition=ReportingPinnedDefinition(metric_names=("impressions", "spend", "conversions")),
@@ -1700,11 +1700,22 @@ async def test_a_rejected_statement_is_surfaced_not_raised(
         outcome.raise_for_failures()
 
 
-def _obligation_wire(ledger: PgReportingLedgerStore, obligation: Any) -> Any:
+def _obligation_wire(ledger: PgReportingLedgerStore, obligation: Any, revision: Any = None) -> Any:
     """The seller's own obligation, as the wire model the planner consumes.
 
     Round-tripped through ``get_reporting_status`` rather than hand-built, so
     the planner is fed exactly what a buyer would read.
+
+    The obligation's own revision is passed rather than an empty sequence, and
+    it has to be: ``_obligation_to_wire`` derives ``revision_count`` as
+    ``len(revisions)``, and ``core/reporting-obligation.json`` forbids a
+    published or healthy obligation that reports none --
+    ``allOf/1/then/properties/revision_count/minimum`` (health in
+    {healthy, complete}) and ``allOf/5/then/properties/revision_count/minimum``
+    (production_status published) both require at least 1. Validating the old
+    ``revisions=()`` payload against the pin with ``jsonschema`` raises at
+    exactly those two paths, so the empty sequence contradicted the
+    ``health="healthy", production_status="published"`` this helper declares.
     """
     del ledger
     from adcp.reporting.ledger.status import _obligation_to_wire
@@ -1712,7 +1723,7 @@ def _obligation_wire(ledger: PgReportingLedgerStore, obligation: Any) -> Any:
 
     payload = _obligation_to_wire(
         obligation,
-        revisions=(),
+        revisions=() if revision is None else (revision,),
         health="healthy",
         production_status="published",
         issues=(),

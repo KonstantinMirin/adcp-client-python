@@ -106,8 +106,10 @@ def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_
     * an instance is accepted or refused by ordinary pydantic class rules, not
       by anything about the vocabulary — the canonical response nests a
       subclass of the generated manifest, so the instance revalidates and
-      passes; the legacy response nests a ``_forward_compat`` clone that
-      inherits from nothing, so it is refused as ``model_type``.
+      passes; the legacy response nests a read-back clone -- ``READBACK_CLONES``
+      in ``scripts/post_generate_fixes.py``, built by ``adcp.types._readback``
+      and emitted beside the class it copies -- which inherits from nothing, so
+      it is refused as ``model_type``.
 
     Deciding which kinds to accept is the caller's, through
     ``adcp.types.is_canonical_format_kind``, and
@@ -242,13 +244,16 @@ def test_delivery_keeps_optional_manifest_and_kind_defaults(model):
     payload = delivery_payload()
     variants = payload["creatives"][0]["variants"]
     variants[0].pop("manifest")
-    # Was ``variants[1]["manifest"].pop("format_kind")``. Dropping the key leaves a
-    # manifest with neither ``format_id`` nor ``format_kind``, which
-    # core/creative-manifest.json's root oneOf forbids and #1368's
-    # enforce_root_required_groups now holds at runtime. An explicit null is the
-    # schema-valid way to state the same thing: the group is keyed on the field being
-    # present, not on it being non-null.
-    variants[1]["manifest"]["format_kind"] = None
     response = model.model_validate(payload)
     assert response.creatives[0].variants[0].manifest is None
-    assert response.creatives[0].variants[1].manifest.format_kind is None
+
+    # The kind's optionality is read off the declaration. It used to be shown by
+    # setting ``format_kind`` to ``None`` on the manifest that IS present, under
+    # the claim that "the group is keyed on the field being present, not on it
+    # being non-null" -- which the bundled schema refuses twice over:
+    # ``format_kind`` is an enum of strings, so a null is not a value it takes,
+    # and the client drops a null-valued key, so the document SENT names neither
+    # arm of ``core/creative-manifest.json``'s root ``oneOf``.
+    assert response.creatives[0].variants[1].manifest.format_kind == FUTURE_KIND
+    assert not CreativeManifest.model_fields["format_kind"].is_required()
+    assert CreativeManifest.model_fields["format_kind"].default is None
