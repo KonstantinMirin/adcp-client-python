@@ -1089,14 +1089,14 @@ def issue_governance_authorization(
     try:
         key = _jose_key(alg, private_key)
         # Sorted header members and the canonical claims bytes keep the token
-        # byte-identical to the profile's compact JSON; joserfc signs it.
+        # as before for an ASCII kid (joserfc escapes non-ASCII in the header).
         return jws.serialize_compact(
             dict(sorted(header.items())),
             _compact_json(claims),
             key,
             registry=_governance_jws_registry(alg),
         )
-    except JoseError as exc:
+    except (JoseError, TypeError, ValueError) as exc:
         raise ValueError(f"governance signing key cannot sign {alg}: {exc}") from exc
 
 

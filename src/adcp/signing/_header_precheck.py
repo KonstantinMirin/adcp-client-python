@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from adcp.signing._rfc9421 import parse_dictionary, translate_legacy_binary
+from adcp.signing._rfc9421 import DuplicateFieldError, parse_dictionary, translate_legacy_binary
 from adcp.signing.canonical import (
     TargetUriMalformedError,
     _split_or_reject,
@@ -87,6 +87,16 @@ def strict_header_precheck(
     raises a different code.
     """
     pairs = _header_pairs(headers=headers, raw_headers=raw_headers)
+
+    names = [name for name, _ in _header_pairs(headers=headers, raw_headers=None)]
+    for name in _SINGLE_LINE_SIGNED_HEADERS | {"signature-agent"}:
+        if names.count(name) > 1:
+            # A mapping can hold two spellings of one name (``Content-Digest``
+            # and ``content-digest``); which one a reader takes is arbitrary.
+            return (
+                f"{name!r} appears under more than one spelling; a repeated signed "
+                "field is ambiguous and MUST be rejected rather than folded"
+            )
 
     if raw_headers is not None:
         seen: set[str] = set()
@@ -175,15 +185,15 @@ def _dictionary_reason(value: str, header_name: str) -> str | None:
     try:
         try:
             parse_dictionary(value)
-        except ValueError as exc:
-            if "duplicate" in str(exc):
-                raise
+        except DuplicateFieldError:
+            raise
+        except ValueError:
             # The AdCP 3.0/3.1 Base64URL byte-sequence spelling is the
             # decoder's call (3.2 refuses it there, still at step 1), not an
             # ambiguity: judge the field with those tokens translated.
             parse_dictionary(translate_legacy_binary(value))
     except ValueError as exc:
-        if "duplicate" in str(exc):
+        if isinstance(exc, DuplicateFieldError):
             return (
                 f"{header_name} carries a {exc}; RFC 8941 §3.2 requires rejecting rather "
                 "than resolving, since resolving lets a repeated key downgrade what was signed"

@@ -219,8 +219,8 @@ def sign_request(
 
         if not isinstance(private_key, ed25519.Ed25519PrivateKey):
             raise ValueError(
-                "Web Bot Auth signs with ed25519 or rsa-pss-sha512; ES256 is an AdCP "
-                "RFC 9421 profile algorithm only"
+                "Web Bot Auth here takes an Ed25519 key (sign RSA keys with "
+                "sign_wba_request); ES256 is an AdCP RFC 9421 profile algorithm only"
             )
         if key_id != public_directory_key(private_key)["kid"]:
             raise ValueError("Web Bot Auth key_id must be the public key's RFC 7638 thumbprint")

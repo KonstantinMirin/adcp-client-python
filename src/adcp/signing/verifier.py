@@ -466,6 +466,7 @@ def verify_request_signature(
             alg=alg,
             public_key=public_key,
             resolver=_rfc9421.AdcpComponentResolver,
+            window_checked=True,  # step 5
             parameters=tuple(parsed.params),
         )
     except _rfc9421.SignatureBaseError as exc:

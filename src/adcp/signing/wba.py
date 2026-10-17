@@ -496,8 +496,8 @@ def _verify_crypto(
     declared = params.get("alg", alg)
     if type(declared) is not str or declared != alg:
         raise WbaVerificationError("signature algorithm does not match key")
-    if not isinstance(signature, tuple) or not isinstance(signature[0], bytes):
-        raise WbaVerificationError("signature must be sf-binary", status=400)
+    if not isinstance(signature, tuple) or not isinstance(signature[0], bytes) or signature[1]:
+        raise WbaVerificationError("signature must be a bare sf-binary", status=400)
     try:
         public_key = _public_key(alg, jwk)
     except (ValueError, KeyError, TypeError) as exc:
@@ -510,6 +510,7 @@ def _verify_crypto(
             alg=alg,
             public_key=public_key,
             resolver=_WbaComponentResolver,
+            window_checked=True,  # every caller ran _window first
             parameters=tuple(params),
         )
     except _rfc9421.SignatureBaseError as exc:
@@ -1267,7 +1268,9 @@ class WbaGovernanceError(ValueError):
 
 def _governance_registry(alg: str) -> Any:
     from joserfc.jws import JWSRegistry
+    from joserfc.registry import HeaderParameter, is_bool
 
+    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
     from adcp.signing.jws import _AdcpJwsRegistry, _Ed25519EdDSA
 
     class _Registry(_AdcpJwsRegistry):
@@ -1277,7 +1280,15 @@ def _governance_registry(alg: str) -> Any:
             "PS512": JWSRegistry.algorithms["PS512"],
         }
 
-    return _Registry(algorithms=[alg], strict_check_header=False)
+    # The action-binding claim markers are the only crit extensions.
+    return _Registry(
+        header_registry={
+            name: HeaderParameter(f"AdCP critical claim marker: {name}", is_bool)
+            for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
+        },
+        algorithms=[alg],
+        strict_check_header=False,
+    )
 
 
 async def verify_wba_governance_issuer(
@@ -1337,12 +1348,21 @@ async def verify_wba_governance_issuer(
         raise fail("governance_token_invalid", "governance token alg not allowed")
     if header.get("typ") != WBA_GOVERNANCE_TYP:
         raise fail("governance_token_invalid", "governance token typ mismatch")
+    _check_critical_markers(header, claims, fail)
     try:
         issuer = _https_origin(str(claims.get("iss", "")))
     except ValueError as exc:
         raise fail("governance_token_invalid", "governance token iss is not an origin") from exc
     if issuer != claims.get("iss") or header.get("jku") != issuer + DIRECTORY_PATH:
         raise fail("governance_key_unknown", "jku is not the iss origin's key directory")
+    try:
+        authorized = {_https_origin(origin) for origin in governance_agents}
+    except ValueError as exc:
+        raise ValueError("governance_agents must be HTTPS origins") from exc
+    # Checked before key discovery, so a token cannot make the verifier fetch
+    # a directory from an origin that is not the buyer's governance agent.
+    if issuer not in authorized:
+        raise fail("governance_issuer_not_authorized", "iss is not the buyer's governance agent")
     kid = header.get("kid")
     if not isinstance(kid, str) or not kid:
         raise fail("governance_key_unknown", "governance token kid is missing")
@@ -1380,13 +1400,31 @@ async def verify_wba_governance_issuer(
         raise fail("governance_token_expired", "governance token expired")
     if issued > now + clock_skew_seconds:
         raise fail("governance_token_not_yet_valid", "governance token issued in the future")
-    try:
-        authorized = {_https_origin(origin) for origin in governance_agents}
-    except ValueError as exc:
-        raise ValueError("governance_agents must be HTTPS origins") from exc
-    if issuer not in authorized:
-        raise fail("governance_issuer_not_authorized", "iss is not the buyer's governance agent")
     return issuer
+
+
+def _check_critical_markers(
+    header: Mapping[str, Any], claims: Mapping[str, Any], fail: Callable[[str, str], Exception]
+) -> None:
+    """Security.mdx checklist step 4: each action-binding marker, crit entry and claim together."""
+    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
+
+    critical = header.get("crit", [])
+    if (
+        not isinstance(critical, list)
+        or any(not isinstance(name, str) for name in critical)
+        or len(set(critical)) != len(critical)
+        or any(name not in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS for name in critical)
+    ):
+        raise fail("governance_token_invalid", "invalid governance JWS crit header")
+    for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
+        if (name in claims) != (name in critical and header.get(name) is True):
+            raise fail("governance_token_invalid", f"{name} claim and critical marker must match")
+    if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
+        raise fail(
+            "governance_token_invalid",
+            "authorized_task and authorized_payload_hash must appear together",
+        )
 
 
 class WbaRevocationStatusChecker(Protocol):

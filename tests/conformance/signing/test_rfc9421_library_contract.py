@@ -165,3 +165,66 @@ def test_http_sf_reports_every_duplicate():
         on_duplicate_key=lambda key, context: calls.append((key, context)),
     )
     assert calls == [("a", "dictionary"), ("p", "parameter"), ("q", "parameter")]
+
+
+def test_http_sf_primitives_the_profile_selection_walk_uses():
+    """``dictionary_has_parameter`` walks members with these http-sf functions."""
+    from http_sf.bare_item import parse_bare_item
+    from http_sf.item import parse_item
+    from http_sf.state import ParserState
+    from http_sf.util import discard_http_ows, discard_ows, parse_key
+
+    state = ParserState(b'  sig1=("a";k=1);tag="x"')
+    discard_ows(state)
+    discard_http_ows(state)
+    assert parse_key(state) == "sig1"
+    state.cursor += 2  # "=("
+    assert parse_item(state) == ("a", {"k": 1})
+    state.cursor += 2  # ");"
+    assert parse_key(state) == "tag"
+    state.cursor += 1
+    assert parse_bare_item(state) == "x"
+    assert _rfc9421.dictionary_has_parameter(
+        '\tsig1=("a");tag="web-bot-auth";nonce="x', "tag", "web-bot-auth"
+    )
+
+
+def test_req_must_be_a_true_flag():
+    response = _rfc9421.Response(200, _rfc9421.Request("GET", "https://example.com/"))
+    for identifier in ('"@authority";req=?0', '"@authority";req=1'):
+        with pytest.raises(ValueError, match="boolean flag"):
+            _rfc9421.build_base(
+                response,
+                covered_component_ids=[identifier],
+                params={},
+                resolver=_rfc9421.ComponentResolver,
+            )
+    with pytest.raises(ValueError, match="only applies to a response"):
+        _rfc9421.build_base(
+            _rfc9421.Request("GET", "https://example.com/"),
+            covered_component_ids=['"@authority";req'],
+            params={},
+            resolver=_rfc9421.ComponentResolver,
+        )
+
+
+def test_first_spelling_of_a_header_wins_as_in_lookup():
+    from adcp.signing.canonical import _lookup
+
+    headers = {"Content-Digest": "first", "content-digest": "second"}
+    assert _rfc9421.Request("GET", "https://example.com/", headers).headers[
+        "content-digest"
+    ] == _lookup(headers, "content-digest")
+
+
+def test_verify_requires_the_caller_to_have_checked_the_window():
+    with pytest.raises(ValueError, match="window"):
+        _rfc9421.verify(
+            _rfc9421.Request("GET", "https://example.com/"),
+            label="sig1",
+            tag="t",
+            alg="ed25519",
+            public_key=None,
+            resolver=_rfc9421.ComponentResolver,
+            window_checked=False,
+        )

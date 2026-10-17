@@ -945,3 +945,80 @@ async def test_framework_checks_origin_revocations_by_default(
         # A current list, or a stale one for a non-spend call, proceeds.
         assert response.status_code == 200, response.text
         assert dispatched == [True]
+
+
+def _governance_token(key, header_extra=None, claims_extra=None, *, iss=None):
+    from joserfc import jws as jose_jws
+    from joserfc.jwk import OKPKey
+
+    from adcp.signing.wba import _governance_registry
+
+    identity = iss or KEYS["1XlJ3EIte7bPOEqKQtKrKNTNy5hywTyrwFXWrMbXKqE"]["identity"]
+    header = {
+        "alg": "EdDSA",
+        "typ": "adcp-gov+jws",
+        "jku": identity + "/.well-known/http-message-signatures-directory",
+        "kid": "1XlJ3EIte7bPOEqKQtKrKNTNy5hywTyrwFXWrMbXKqE",
+        **(header_extra or {}),
+    }
+    claims = {"iss": identity, "aud": "https://seller-7k3q.com/mcp/", "iat": 1000, "exp": 1600}
+    claims.update(claims_extra or {})
+    private = private_key_from_jwk(
+        KEYS["1XlJ3EIte7bPOEqKQtKrKNTNy5hywTyrwFXWrMbXKqE"], d_field="_private_d_for_test_only"
+    )
+    return jose_jws.serialize_compact(
+        header,
+        json.dumps(claims).encode(),
+        OKPKey.import_key(private),
+        registry=_governance_registry("EdDSA"),
+    )
+
+
+@pytest.mark.parametrize("markers", ["matched", "claim_without_marker", "task_without_hash"])
+async def test_governance_action_binding_markers(markers):
+    """Action-authorizing tokens carry crit markers (security.mdx checklist step 4)."""
+    from adcp.signing.wba import WbaGovernanceError, verify_wba_governance_issuer
+
+    vector = json.loads((ROOT / "governance/001-governance-token.json").read_text())
+    binding = {"authorized_task": "create_media_buy", "authorized_payload_hash": "h"}
+    header = {"crit": list(binding), **{name: True for name in binding}}
+    if markers == "claim_without_marker":
+        header = {}
+    claims = dict(binding)
+    if markers == "task_without_hash":
+        header = {"crit": ["authorized_task"], "authorized_task": True}
+        claims = {"authorized_task": "create_media_buy"}
+    token = _governance_token(None, header, claims)
+
+    async def verify():
+        return await verify_wba_governance_issuer(
+            token,
+            signer_keys=_vector_resolver(vector),
+            governance_agents=vector["role_listing"]["adcp:governance"],
+            now=1100,
+        )
+
+    if markers == "matched":
+        assert await verify() == "https://governance-7k3q.com"
+        return
+    with pytest.raises(WbaGovernanceError) as caught:
+        await verify()
+    assert caught.value.code == "governance_token_invalid"
+
+
+async def test_governance_issuer_is_checked_before_key_discovery():
+    from adcp.signing.wba import WbaGovernanceError, verify_wba_governance_issuer
+
+    token = _governance_token(None, iss="https://buyer-7k3q.com")
+
+    async def resolve(keyid, *, signer_origin=None):
+        pytest.fail("an unlisted issuer must not trigger key discovery")
+
+    with pytest.raises(WbaGovernanceError) as caught:
+        await verify_wba_governance_issuer(
+            token,
+            signer_keys=resolve,
+            governance_agents=["https://governance-7k3q.com"],
+            now=1100,
+        )
+    assert caught.value.code == "governance_issuer_not_authorized"

@@ -99,7 +99,7 @@ Duplicate structured-field parameters, dictionary labels, and `Signature-Agent` 
 
 ### Interop
 
-- **One signature.** A request carries exactly one `web-bot-auth` signature and exactly one `Signature-Agent` member, keyed to that signature's label. Relays are gone: an intermediary that signs is the signer, and whether it may act for another party is an authorization question, not a second signature. `verify_wba_request` still returns a tuple, now always of one signer.
+- **One signature.** A request carries exactly one `web-bot-auth` signature and exactly one `Signature-Agent` member, keyed to that signature's label. Relays are gone: an intermediary that signs is the signer, and whether it may act for another party is an authorization question, not a second signature. `verify_wba_request` still returns a tuple, now always of one signer. `Signature-Agent` is read as a Structured Fields Dictionary only; the older bare sf-string form is not part of the final profile.
 - **Nonce.** The nonce encodes exactly 64 bytes. The profile spells it as unpadded base64url; padded standard base64 of 64 bytes is also accepted, because Cloudflare's `web-bot-auth` signer and the draft's Appendix E vectors send it. The page has no shorter-nonce exception for `required_for` operations or reads.
 - `@target-uri` is the target URI as received, built from the request line (`raw_path` and query string), so percent-encoding is preserved. `@authority` is that URI's authority, lowercased with any default port removed (RFC 9421 §2.2.3).
 - RSA keys verify with `rsa-pss-sha512` (2048 to 8192 bits, odd exponent).
@@ -277,6 +277,5 @@ From the earlier alignment:
 ## Not covered yet
 
 - The final 3.3 schema bundle and the P7 trust-record and grant-chain conformance vectors are upstream release dependencies; re-pin and rerun conformance when they land.
-- Accepting the legacy sf-string `Signature-Agent` (a #1511 follow-up).
 - Durable stores: bindings and replay state are pluggable; authority history and revocation history are in memory with no pluggable store yet (Go and TypeScript have one). Public deployments need durable versions of all four.
 - The directory cache is evictable by unauthenticated traffic naming many origins (as in Go); eviction only forces a refetch, but a signer whose directory is down at that moment loses its stale-copy continuation.

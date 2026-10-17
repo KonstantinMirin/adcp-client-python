@@ -129,7 +129,9 @@ def build_signature_base(
     ``http-message-signatures`` builds the base: lines joined with a single
     LF, no trailing newline, components in ``Signature-Input`` order, then
     ``@signature-params``. :class:`AdcpComponentResolver` supplies the AdCP
-    ``@target-uri`` and ``@authority`` canonicalization.
+    ``@target-uri`` and ``@authority`` canonicalization. The base comes from
+    ``parsed.components`` and ``parsed.params`` (in order); ``raw_value`` is
+    not consulted, so ``@signature-params`` is the RFC 8941 serialization.
     """
     from adcp.signing._rfc9421 import AdcpComponentResolver, Request, build_base
 

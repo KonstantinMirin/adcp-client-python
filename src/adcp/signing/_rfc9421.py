@@ -80,9 +80,13 @@ _EQUALS, _SEMICOLON, _COMMA = ord("="), ord(";"), ord(",")
 _PAREN_OPEN, _PAREN_CLOSE = ord("("), ord(")")
 
 
+class DuplicateFieldError(ValueError):
+    """A Structured Field repeats a dictionary key or a parameter."""
+
+
 def _refuse_duplicate(key: str, context: str) -> None:
     where = "dictionary member" if context == "dictionary" else "parameter"
-    raise ValueError(f"duplicate Structured Field {where} {key!r}")
+    raise DuplicateFieldError(f"duplicate Structured Field {where} {key!r}")
 
 
 def parse_dictionary(value: str) -> dict[str, Any]:
@@ -138,7 +142,7 @@ def dictionary_has_parameter(value: str, name: str, expected: str) -> bool:
     # Non-ASCII cannot be RFC 8941; "?" stands in for it so the walk stops there.
     state = ParserState(value.encode("ascii", "replace"))
     try:
-        discard_ows(state)
+        discard_http_ows(state)
         while state.has_data():
             parse_key(state)
             if state.has_data() and state.data[state.cursor] == _EQUALS:
@@ -184,28 +188,22 @@ _BASE64_ONLY = frozenset("+/")
 _LEGACY_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=-_")
 
 
-def legacy_binary_tokens(value: str) -> list[tuple[str | None, str]]:
-    """Every ``:...:`` byte-sequence token outside sf-strings, with its member key.
+def _binary_spans(value: str) -> list[tuple[int, int, str | None]]:
+    """``(start, end, owner)`` of every ``:...:`` token outside sf-strings.
 
-    AdCP 3.0 and 3.1 emitted ``Signature`` and ``Content-Digest`` values in
-    unpadded Base64URL. No RFC 8941 parser accepts that alphabet (section
-    3.3.5 is standard Base64), so the legacy profiles translate those tokens
-    before parsing. This walker only finds the tokens; the translated field
-    is then parsed strictly by http-sf. The key is the top-level dictionary
-    key the token is the value of, or ``None`` for a token in a parameter.
+    ``value[start:end]`` is the token between its colons. ``owner`` is the
+    top-level dictionary key the token is the value of, or ``None`` for a
+    token in a parameter.
     """
-    tokens: list[tuple[str | None, str]] = []
-    index, length = 0, len(value)
-    key_start = 0
+    spans: list[tuple[int, int, str | None]] = []
+    index, length, key_start = 0, len(value), 0
     while index < length:
         char = value[index]
         if char == '"':
             index += 1
             while index < length and value[index] != '"':
                 index += 2 if value[index] == "\\" else 1
-            index += 1
-            continue
-        if char == ":":
+        elif char == ":":
             end = value.find(":", index + 1)
             if end < 0:
                 break
@@ -213,52 +211,47 @@ def legacy_binary_tokens(value: str) -> list[tuple[str | None, str]]:
             if index > 0 and value[index - 1] == "=":
                 candidate = value[key_start : index - 1].strip()
                 owner = candidate if candidate and ";" not in candidate else None
-            tokens.append((owner, value[index + 1 : end]))
-            index = end + 1
-            continue
-        if char == ",":
+            spans.append((index + 1, end, owner))
+            index = end
+        elif char == ",":
             key_start = index + 1
         index += 1
-    return tokens
+    return spans
+
+
+def legacy_binary_tokens(value: str) -> list[tuple[str | None, str]]:
+    """Every byte-sequence token outside sf-strings, with the member key it belongs to.
+
+    AdCP 3.0 and 3.1 emitted ``Signature`` and ``Content-Digest`` values in
+    unpadded Base64URL. No RFC 8941 parser accepts that alphabet (section
+    3.3.5 is standard Base64), so the legacy profiles look at, and translate,
+    those tokens before the strict http-sf parse.
+    """
+    return [(owner, value[start:end]) for start, end, owner in _binary_spans(value)]
 
 
 def translate_legacy_binary(value: str) -> str:
     """Rewrite Base64URL ``:...:`` tokens as RFC 8941 standard Base64.
 
-    A token in standard Base64 is left alone, so a field already in RFC 8941
-    form parses unchanged. Only the legacy profiles call this.
+    Only a token made of Base64 characters that decodes is rewritten; a token
+    already in standard Base64 is left alone, so a field in RFC 8941 form
+    parses unchanged, and anything else is left for the strict parse to
+    refuse. Only the legacy profiles call this.
     """
-    out: list[str] = []
-    index, length = 0, len(value)
-    while index < length:
-        char = value[index]
-        if char == '"':
-            start = index
-            index += 1
-            while index < length and value[index] != '"':
-                index += 2 if value[index] == "\\" else 1
-            index += 1
-            out.append(value[start:index])
-            continue
-        if char == ":":
-            end = value.find(":", index + 1)
-            if end < 0:
-                out.append(value[index:])
-                break
-            token = value[index + 1 : end]
-            if set(token) <= _LEGACY_ALPHABET and (_BASE64URL_ONLY & set(token) or len(token) % 4):
-                standard = token.replace("-", "+").replace("_", "/").rstrip("=")
-                try:
-                    raw = base64.b64decode(standard + "=" * (-len(standard) % 4), validate=True)
-                    token = base64.b64encode(raw).decode("ascii")
-                except (binascii.Error, ValueError):
-                    # Not Base64 in either alphabet: the strict parse refuses it.
-                    pass
-            out.append(f":{token}:")
-            index = end + 1
-            continue
-        out.append(char)
-        index += 1
+    out, cursor = [], 0
+    for start, end, _owner in _binary_spans(value):
+        token = value[start:end]
+        if set(token) <= _LEGACY_ALPHABET and (_BASE64URL_ONLY & set(token) or len(token) % 4):
+            standard = token.replace("-", "+").replace("_", "/").rstrip("=")
+            try:
+                raw = base64.b64decode(standard + "=" * (-len(standard) % 4), validate=True)
+                token = base64.b64encode(raw).decode("ascii")
+            except (binascii.Error, ValueError):
+                # Not Base64 in either alphabet: the strict parse refuses it.
+                pass
+        out.append(value[cursor:start] + token)
+        cursor = end
+    out.append(value[cursor:])
     return "".join(out)
 
 
@@ -286,7 +279,20 @@ class Request:
     headers: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.headers = CaseInsensitiveDict(dict(self.headers))
+        self.headers = _first_wins(self.headers)
+
+
+def _first_wins(headers: Mapping[str, str]) -> Any:
+    """Case-insensitive headers where the first spelling of a name wins.
+
+    The same rule as ``canonical._lookup``, which the profiles use for their
+    own checks, so the library and the profile never read two different
+    values for one name (``Content-Digest`` beside ``content-digest``).
+    """
+    folded: dict[str, str] = {}
+    for name, value in headers.items():
+        folded.setdefault(name.lower(), value)
+    return CaseInsensitiveDict(folded)
 
 
 @dataclass
@@ -298,7 +304,7 @@ class Response:
     headers: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.headers = CaseInsensitiveDict(dict(self.headers))
+        self.headers = _first_wins(self.headers)
 
     @property
     def url(self) -> str:
@@ -345,7 +351,9 @@ class ComponentResolver(HTTPSignatureComponentResolver):
             raise ComponentError("a covered component name must be an sf-string", status=400)
         if name != name.lower():
             raise ComponentError("covered component names must be lowercase")
-        if params.pop("req", False) is True:
+        if "req" in params:
+            if params.pop("req") is not True:
+                raise ComponentError("the req parameter is a boolean flag")
             if not isinstance(self.message, Response):
                 raise ComponentError("the req parameter only applies to a response")
             request_resolver = type(self)(self.message.request)
@@ -588,6 +596,7 @@ def verify(
     alg: str,
     public_key: Any,
     resolver: type[ComponentResolver],
+    window_checked: bool,
     parameters: Sequence[str] = (),
 ) -> Mapping[str, str]:
     """Verify ``label`` with ``HTTPMessageVerifier``; return the covered components.
@@ -597,7 +606,12 @@ def verify(
     the library confirms the signature names the same ``alg``. Raises
     :class:`SignatureBaseError` when a component does not resolve and
     :class:`SignatureMismatchError` when the signature does not verify.
+
+    ``window_checked`` must be true: :class:`ProfileVerifier` does not check
+    ``created``/``expires``, so the caller states it already has.
     """
+    if window_checked is not True:
+        raise ValueError("check the signature window before verifying")
     verifier = ProfileVerifier(
         signature_algorithm=ALGORITHMS[alg],
         key_resolver=_Key(public_key=public_key),
@@ -631,6 +645,7 @@ __all__ = [
     "AdcpComponentResolver",
     "ComponentError",
     "ComponentResolver",
+    "DuplicateFieldError",
     "ProfileSigner",
     "ProfileVerifier",
     "Request",

@@ -223,9 +223,13 @@ def extract_signature_bytes(
         members = parse_dictionary(translate_legacy_binary(signature_header))
     if label not in members:
         raise KeyError(f"label not found in Signature header: {label}")
-    value, _params = members[label]
+    value, params = members[label]
     if not isinstance(value, bytes):
         raise ValueError(f"Signature value for {label!r} is not an sf-binary")
+    if params:
+        # RFC 9421 §4.2 defines no Signature member parameters; unsigned
+        # extras are refused rather than ignored.
+        raise ValueError(f"Signature value for {label!r} carries parameters")
     return value
 
 
