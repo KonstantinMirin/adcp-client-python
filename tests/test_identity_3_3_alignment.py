@@ -822,6 +822,24 @@ def test_directory_media_type_is_the_wba_one(media_type):
         )
 
 
+def test_every_directory_signature_member_is_a_byte_sequence():
+    """RFC 9421 section 4.2 holds for a member the verifier ignores too."""
+    from dataclasses import replace
+
+    ed_key = ed25519.Ed25519PrivateKey.generate()
+    rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    response = _directory_signed_by([ed_key, rsa_key])
+    assert verify_directory_response(ORIGIN, response, now=1001)
+    # key2 is the RSA key's member: its signature is not read.
+    signature = response.headers["Signature"].split(", key2=")[0] + ", key2=token"
+    with pytest.raises(WbaVerificationError, match="malformed signature field member"):
+        verify_directory_response(
+            ORIGIN,
+            replace(response, headers={**response.headers, "Signature": signature}),
+            now=1001,
+        )
+
+
 def test_directory_signatures_require_the_exact_component_identifiers():
     signed = ed25519.Ed25519PrivateKey.generate()
     assert verify_directory_response(ORIGIN, _directory_signed_by([signed]), now=1001)

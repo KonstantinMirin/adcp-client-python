@@ -894,6 +894,50 @@ async def test_signature_agent_member_type_must_be_directory(parameter, verifies
 
 
 @pytest.mark.parametrize(
+    ("cdn_input", "cdn_signature", "verifies"),
+    [
+        ('("@method" "@authority");tag="cdn-edge"', ":AAAA:", True),
+        ('("@method" "@authority");tag="cdn-edge"', "edge-token", False),
+        ('("@method" "@authority");tag="cdn-edge"', '"edge"', False),
+        ('("@method" "@authority");tag="cdn-edge"', ":AAAA:;x=1", False),
+        ('("@method" "@authority");tag="cdn-edge"', "(1 2)", False),
+        ('edge-token;tag="cdn-edge"', ":AAAA:", False),
+        ("edge-token", ":AAAA:", False),
+    ],
+)
+async def test_every_signature_field_member_is_well_formed(cdn_input, cdn_signature, verifies):
+    """RFC 9421 sections 4.1 and 4.2: the shape of every member, read or not.
+
+    Each ``Signature-Input`` member is an inner list, and each ``Signature``
+    member a Byte Sequence with no parameters. A member with another tag is
+    not read, but the fields still parse: a malformed member is 400.
+    """
+    headers, verify = _sign_vector_request()
+    appended = {
+        **headers,
+        "Signature-Input": f"{headers['Signature-Input']}, cdn={cdn_input}",
+        "Signature": f"{headers['Signature']}, cdn={cdn_signature}",
+    }
+    if verifies:
+        (signer,) = await verify(appended)
+        assert signer.agent_url == "https://buyer-7k3q.com"
+        return
+    with pytest.raises(WbaVerificationError, match="malformed signature field member") as caught:
+        await verify(appended)
+    assert caught.value.status == 400
+
+
+@pytest.mark.parametrize("field", ["Signature-Input", "Signature"])
+async def test_a_malformed_web_bot_auth_member_is_400(field):
+    """The signature's own member, malformed, is a malformed field: 400."""
+    headers, verify = _sign_vector_request()
+    malformed = {"Signature-Input": 'sig1=token;tag="web-bot-auth"', "Signature": "sig1=token"}
+    with pytest.raises(WbaVerificationError, match="malformed signature field member") as caught:
+        await verify({**headers, field: malformed[field]})
+    assert caught.value.status == 400
+
+
+@pytest.mark.parametrize(
     ("revocation_state", "operation"),
     [
         ("clear", "sync_accounts"),

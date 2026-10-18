@@ -206,7 +206,6 @@ def test_rsa_pss_appendix_e_vector_is_not_a_web_bot_auth_signature():
         f'"@signature-params": {APPENDIX_E_INPUT.removeprefix("sig2=")}'
     )
     _components, params = parse_dictionary(APPENDIX_E_INPUT)["sig2"]
-    signature = parse_dictionary(APPENDIX_E_SIGNATURE)["sig2"]
     message = Request("GET", "https://example.com/", headers)
     with pytest.raises(WbaVerificationError, match="unsupported directory key"):
-        _verify_crypto(message, label="sig2", params=params, signature=signature, jwk=jwk)
+        _verify_crypto(message, label="sig2", params=params, jwk=jwk)

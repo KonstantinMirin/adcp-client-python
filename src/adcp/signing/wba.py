@@ -249,6 +249,19 @@ def _dictionary(value: str | None, *, missing_status: int = 400) -> dict[str, An
         raise WbaVerificationError(f"malformed signature field: {exc}", status=400) from exc
 
 
+def _check_signature_members(inputs: Mapping[str, Any], signatures: Mapping[str, Any]) -> None:
+    """RFC 9421 sections 4.1 and 4.2: the shape of every member, read or not.
+
+    Each ``Signature-Input`` member is an inner list, and each ``Signature``
+    member a Byte Sequence with no parameters. A member another party added
+    is not read, but a malformed one makes the field malformed: 400.
+    """
+    if not all(_rfc9421.is_inner_list(member) for member in inputs.values()) or any(
+        type(value) is not bytes or params for value, params in signatures.values()
+    ):
+        raise WbaVerificationError("malformed signature field member", status=400)
+
+
 def uses_web_bot_auth(headers: Mapping[str, str]) -> bool:
     """Select WBA from either marker; never fall back after a WBA failure."""
     if _lookup(headers, "signature-agent") is not None:
@@ -423,20 +436,18 @@ def _verify_crypto(
     *,
     label: str,
     params: Mapping[str, Any],
-    signature: Any,
     jwk: Mapping[str, Any],
 ) -> str:
     """Verify ``label`` with ``http-message-signatures``; return the algorithm.
 
     The algorithm comes from the key (:func:`_algorithm`), and the signature's
-    ``alg`` must name the same one.
+    ``alg`` must name the same one. The caller checked the fields' shape
+    (:func:`_check_signature_members`).
     """
     alg = _algorithm(jwk)
     # Every signature names its algorithm (Profile rules); none is inferred.
     if params.get("alg") != alg:
         raise WbaVerificationError("signature algorithm is absent or does not match key")
-    if not isinstance(signature, tuple) or not isinstance(signature[0], bytes) or signature[1]:
-        raise WbaVerificationError("signature must be a bare sf-binary", status=400)
     try:
         public_key = public_key_from_jwk(dict(jwk))
     except (ValueError, KeyError, TypeError) as exc:
@@ -625,6 +636,7 @@ def _verify_directory(
     signatures = _dictionary(raw_signatures)
     if set(signatures) != set(inputs):
         raise WbaVerificationError("directory signature labels differ")
+    _check_signature_members(inputs, signatures)
     message = _rfc9421.Response(
         status_code=response.status,
         request=_rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH),
@@ -650,9 +662,7 @@ def _verify_directory(
         keyid = params["keyid"]
         if keyid not in keys or keyid in signed:
             raise WbaVerificationError("directory signature key is absent or repeated")
-        _verify_crypto(
-            message, label=label, params=params, signature=signatures.get(label), jwk=keys[keyid]
-        )
+        _verify_crypto(message, label=label, params=params, jwk=keys[keyid])
         signed[keyid] = keys[keyid]
         earliest = min(earliest, float(params["expires"]))
     # One signature per key (Appendix B.1): every usable key proves possession.
@@ -1038,15 +1048,13 @@ async def verify_wba_request(
     # parse is a 400.
     inputs = _dictionary(_lookup(headers, "signature-input"), missing_status=403)
     signatures = _dictionary(_lookup(headers, "signature"), missing_status=403)
+    # A malformed member is a malformed field, before any member is selected.
+    _check_signature_members(inputs, signatures)
     raw_agent = _lookup(headers, "signature-agent")
     # Selection by tag alone leaves the Signature-Agent member absent, which
     # fails the signature with 403 below.
     agents = _dictionary(raw_agent) if raw_agent is not None else {}
-    wba = [
-        (label, member)
-        for label, member in inputs.items()
-        if _rfc9421.is_inner_list(member) and member[1].get("tag") == WBA_TAG
-    ]
+    wba = [(label, member) for label, member in inputs.items() if member[1].get("tag") == WBA_TAG]
     if not wba:
         raise WbaVerificationError("Signature-Agent requires the Web Bot Auth profile")
     if set(signatures) != set(inputs):
@@ -1114,9 +1122,7 @@ async def verify_wba_request(
     assert key is not None
     message = _rfc9421.Request(method=method, url=url, headers=dict(headers))
     try:
-        alg = _verify_crypto(
-            message, label=label, params=params, signature=signatures.get(label), jwk=key.jwk
-        )
+        alg = _verify_crypto(message, label=label, params=params, jwk=key.jwk)
     except WbaVerificationError as exc:
         exc.label = label
         raise
