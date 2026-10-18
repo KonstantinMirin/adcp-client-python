@@ -4,7 +4,7 @@ The SDK writes no RFC 9421 or RFC 8941 grammar of its own:
 
 * ``http-message-signatures`` builds every signature base, assembles
   ``Signature-Input``, and signs and verifies with its algorithm classes
-  (``ed25519``, ``ecdsa-p256-sha256`` and ``rsa-pss-sha512``).
+  (``ed25519`` and ``ecdsa-p256-sha256``).
 * ``http-sf`` parses and serializes Structured Fields, and reports a
   duplicate dictionary key or parameter through ``on_duplicate_key`` so the
   SDK can refuse it instead of keeping the last value.
@@ -54,7 +54,6 @@ from http_message_signatures import (
 from http_message_signatures.algorithms import (
     ECDSA_P256_SHA256,
     ED25519,
-    RSA_PSS_SHA512,
     HTTPSignatureAlgorithm,
 )
 from http_message_signatures.exceptions import HTTPMessageSignaturesException
@@ -68,7 +67,7 @@ from http_sf.util import discard_http_ows, discard_ows, parse_key
 #: RFC 9421 algorithm names mapped to the library's algorithm classes. Each
 #: profile narrows this to its own allow-list before anything reaches it.
 ALGORITHMS: dict[str, type[HTTPSignatureAlgorithm]] = {
-    algorithm.algorithm_id: algorithm for algorithm in (ED25519, ECDSA_P256_SHA256, RSA_PSS_SHA512)
+    algorithm.algorithm_id: algorithm for algorithm in (ED25519, ECDSA_P256_SHA256)
 }
 
 
