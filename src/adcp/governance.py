@@ -1145,26 +1145,11 @@ async def verify_governance_authorization(
     alg = header.get("alg")
     if alg not in {"EdDSA", "ES256"} or header.get("typ") != GOVERNANCE_AUTHORIZATION_TYP:
         return reject("governance_token_invalid", "unsupported governance JWS alg or typ")
-    critical = header.get("crit")
-    if (
-        not isinstance(critical, list)
-        or any(not isinstance(name, str) for name in critical)
-        or len(set(critical)) != len(critical)
-        or any(name not in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS for name in critical)
-    ):
+    if "crit" not in header:
         return reject("governance_token_invalid", "invalid governance JWS crit header")
-    for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
-        has_claim = name in claims
-        has_marker = name in critical and header.get(name) is True
-        if has_claim != has_marker:
-            return reject(
-                "governance_token_invalid", f"{name} claim and critical marker must match"
-            )
-    if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
-        return reject(
-            "governance_token_invalid",
-            "authorized_task and authorized_payload_hash must appear together",
-        )
+    critical_failure = critical_claims_failure(header, claims)
+    if critical_failure is not None:
+        return reject("governance_token_invalid", critical_failure)
     try:
         expected_issuer = canonicalize_target_uri(expected_issuer)
         issuer = claims.get("iss")
@@ -1437,6 +1422,38 @@ def _finite_number(value: object) -> bool:
         and isinstance(value, (int, float))
         and math.isfinite(float(value))
     )
+
+
+def critical_claims_failure(header: Mapping[str, Any], claims: Mapping[str, Any]) -> str | None:
+    """Check each action-binding claim against its ``crit`` entry and marker.
+
+    Security.mdx checklist step 4, shared by this module's verifier and the
+    Web Bot Auth issuer check (``wba.verify_wba_governance_issuer``).
+    joserfc's ``crit`` check (``JWSRegistry.check_header``) refuses a
+    ``crit`` that is not a list of registered names, and a marker that is
+    missing (RFC 7515 section 4.1.11) or not a boolean. The SDK
+    adds what joserfc leaves open: a repeated entry, a claim present exactly
+    when its marker is ``true``, and ``authorized_task`` with
+    ``authorized_payload_hash``. Returns the failure reason, or ``None``.
+    """
+    critical = header.get("crit", [])
+    markers = {
+        name: header[name] for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS if name in header
+    }
+    try:
+        _governance_jws_registry("EdDSA").check_header(
+            {"alg": "EdDSA", "crit": critical, **markers}
+        )
+    except (JoseError, TypeError):
+        return "invalid governance JWS crit header"
+    if len(set(critical)) != len(critical):
+        return "invalid governance JWS crit header"
+    for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
+        if (name in claims) != (name in critical and markers.get(name) is True):
+            return f"{name} claim and critical marker must match"
+    if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
+        return "authorized_task and authorized_payload_hash must appear together"
+    return None
 
 
 def _governance_jws_registry(alg: str) -> JWSRegistry:

@@ -1314,7 +1314,11 @@ async def verify_wba_governance_issuer(
         raise fail("governance_token_invalid", "governance token alg not allowed")
     if header.get("typ") != WBA_GOVERNANCE_TYP:
         raise fail("governance_token_invalid", "governance token typ mismatch")
-    _check_critical_markers(header, claims, fail)
+    from adcp.governance import critical_claims_failure
+
+    critical_failure = critical_claims_failure(header, claims)
+    if critical_failure is not None:
+        raise fail("governance_token_invalid", critical_failure)
     try:
         issuer = _https_origin(str(claims.get("iss", "")))
     except ValueError as exc:
@@ -1365,30 +1369,6 @@ async def verify_wba_governance_issuer(
     if issued > now + clock_skew_seconds:
         raise fail("governance_token_not_yet_valid", "governance token issued in the future")
     return issuer
-
-
-def _check_critical_markers(
-    header: Mapping[str, Any], claims: Mapping[str, Any], fail: Callable[[str, str], Exception]
-) -> None:
-    """Security.mdx checklist step 4: each action-binding marker, crit entry and claim together."""
-    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-
-    critical = header.get("crit", [])
-    if (
-        not isinstance(critical, list)
-        or any(not isinstance(name, str) for name in critical)
-        or len(set(critical)) != len(critical)
-        or any(name not in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS for name in critical)
-    ):
-        raise fail("governance_token_invalid", "invalid governance JWS crit header")
-    for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
-        if (name in claims) != (name in critical and header.get(name) is True):
-            raise fail("governance_token_invalid", f"{name} claim and critical marker must match")
-    if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
-        raise fail(
-            "governance_token_invalid",
-            "authorized_task and authorized_payload_hash must appear together",
-        )
 
 
 class WbaRevocationStatusChecker(Protocol):
