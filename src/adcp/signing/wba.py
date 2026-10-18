@@ -1271,9 +1271,13 @@ async def verify_wba_governance_issuer(
     from joserfc import jws as jose_jws
     from joserfc.errors import BadSignatureError, JoseError
     from joserfc.jwk import OKPKey
-    from joserfc.util import urlsafe_b64decode
 
-    from adcp.governance import _governance_jws_registry
+    from adcp.governance import (
+        _decode_json_segment,
+        _governance_jws_registry,
+        critical_claims_failure,
+    )
+    from adcp.signing.jws import JwsMalformedError, parse_compact_jws
 
     def fail(code: str, reason: str) -> WbaGovernanceError:
         return WbaGovernanceError(code, reason)
@@ -1281,23 +1285,18 @@ async def verify_wba_governance_issuer(
     now = time.time() if now is None else now
     if not isinstance(token, str) or not token or len(token) > 16384:
         raise fail("governance_token_invalid", "governance token is missing or too large")
+    # The splitter and segment parser of the AdCP 3.2 governance verifier.
     try:
-        compact = jose_jws.extract_compact(
-            token.encode("ascii"), registry=_governance_jws_registry("EdDSA")
-        )
-        header = parse_strict_json(urlsafe_b64decode(compact.segments["header"]))
-        claims = parse_strict_json(compact.payload)
-    except (JoseError, StrictJsonError, UnicodeError, ValueError) as exc:
+        b64_header, b64_payload, _signature = parse_compact_jws(token)
+        header = _decode_json_segment(b64_header)
+        claims = _decode_json_segment(b64_payload)
+    except (JwsMalformedError, ValueError) as exc:
         raise fail("governance_token_invalid", "governance token is not a compact JWS") from exc
-    if not isinstance(header, dict) or not isinstance(claims, dict):
-        raise fail("governance_token_invalid", "governance token header or claims not an object")
     alg = header.get("alg")
     if type(alg) is not str or alg not in _GOVERNANCE_JWS_ALGS[ALG_ED25519]:
         raise fail("governance_token_invalid", "governance token alg not allowed")
     if header.get("typ") != WBA_GOVERNANCE_TYP:
         raise fail("governance_token_invalid", "governance token typ mismatch")
-    from adcp.governance import critical_claims_failure
-
     critical_failure = critical_claims_failure(header, claims)
     if critical_failure is not None:
         raise fail("governance_token_invalid", critical_failure)
