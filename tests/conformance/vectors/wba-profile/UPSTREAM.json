@@ -1,7 +1,7 @@
 {
   "repository": "adcontextprotocol/adcp",
   "pull_request": 7894,
-  "commit": "49b3a3157e55a7ec37816908ec28a2e25057fd89",
+  "commit": "2546cf5f449d6f30f2f4ff5fb27433ddf3986167",
   "path": "static/compliance/source/test-vectors/wba-profile/",
   "vendored_on": "2026-10-18",
   "renamed": {
@@ -18,6 +18,6 @@
     "negative/006-two-signatures.json": "87cb93e1f9bc4fba2eadb0df7832d51c9edf2d0add02aab5cee8265b9d7f1661",
     "positive/001-single-signer-request.json": "213b69f5f029c6da37abbc4dafff0f89e7604c5a6a4acca59b8c9df4a3d88e25",
     "positive/002-signed-directory-response.json": "b07b0a947d943225c29fcb819008d080ca83f209d56be785a1a7b15f15e82dbe",
-    "scenarios.json": "858737d50bd24da316f628cd05e70e8f73e3103414009c59b135151a356b5903"
+    "scenarios.json": "7dd4722ea5de263620ba18b910ae77b171b831a80d0fc62bdbbe13cf208af530"
   }
 }
