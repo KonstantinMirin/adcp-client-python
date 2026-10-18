@@ -190,3 +190,32 @@ def test_jwk_members_are_strict_base64url(spoil) -> None:
         public_key_from_jwk({**jwk, "x": spoil(jwk["x"])})
     with pytest.raises(ValueError):
         b64url_decode(spoil(jwk["x"]))
+
+
+@pytest.mark.parametrize("kid", ["test-ed25519-2026", "test-es256-2026"])
+def test_public_key_is_read_from_the_public_members(kid: str) -> None:
+    """A ``d`` beside the public members never chooses the verification key.
+
+    A ``kid`` or a publisher pin names a key by its RFC 7638 thumbprint, which
+    covers ``x`` (and ``y``) only. A key taken from ``d`` would verify a
+    signature that the named key never made.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+
+    from adcp.signing.crypto import b64url_encode
+
+    jwk = {k: v for k, v in KEYS[kid].items() if not k.startswith("_")}
+    other: ed25519.Ed25519PrivateKey | ec.EllipticCurvePrivateKey
+    if jwk["kty"] == "OKP":
+        other = ed25519.Ed25519PrivateKey.generate()
+        other_d = other.private_bytes_raw()
+    else:
+        other = ec.generate_private_key(ec.SECP256R1())
+        other_d = other.private_numbers().private_value.to_bytes(32, "big")
+    raw = serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    expected = public_key_from_jwk(jwk).public_bytes(*raw)
+
+    key = public_key_from_jwk({**jwk, "d": b64url_encode(other_d)})
+
+    assert key.public_bytes(*raw) == expected

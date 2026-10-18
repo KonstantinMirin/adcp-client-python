@@ -39,6 +39,10 @@ ALLOWED_ALGS: frozenset[str] = frozenset({ALG_ED25519, ALG_ES256})
 # the same number, so the length is checked here.
 _P256_MEMBER_BYTES = 32
 
+# RFC 7518 sections 6.2.2, 6.3.2 and 6.4.1: the members only a private or
+# symmetric key carries.
+_PRIVATE_JWK_MEMBERS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
+
 
 def b64url_decode(s: str) -> bytes:
     """Decode RFC 7515 base64url with ``joserfc``: no padding, one spelling.
@@ -97,12 +101,16 @@ def load_private_key_pem(pem: bytes, *, password: bytes | None = None) -> Privat
     return key
 
 
-def import_jwk(jwk: dict[str, Any]) -> OKPKey | ECKey:
+def import_jwk(jwk: dict[str, Any], *, private: bool = False) -> OKPKey | ECKey:
     """Import an Ed25519 or P-256 JWK with ``joserfc``.
 
     ``joserfc`` decodes the members strictly and checks the key. An unusable
-    JWK raises ``ValueError``.
+    JWK raises ``ValueError``. Unless ``private``, the private members are
+    dropped first: ``joserfc`` derives the public key from a ``d`` it is
+    given, and a ``kid`` or pin names the key by a thumbprint over ``x``.
     """
+    if not private:
+        jwk = {name: value for name, value in jwk.items() if name not in _PRIVATE_JWK_MEMBERS}
     kty = jwk.get("kty")
     crv = jwk.get("crv")
     key_type: type[OKPKey] | type[ECKey]
@@ -137,7 +145,7 @@ def private_key_from_jwk(jwk: dict[str, Any], *, d_field: str = "d") -> PrivateK
     """
     if d_field not in jwk:
         raise ValueError(f"JWK has no private member {d_field!r}")
-    private = import_jwk({**jwk, "d": jwk[d_field]}).private_key
+    private = import_jwk({**jwk, "d": jwk[d_field]}, private=True).private_key
     return cast(PrivateKey, private)
 
 

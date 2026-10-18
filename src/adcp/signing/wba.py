@@ -44,7 +44,13 @@ from adcp.signing._bounded_http import async_read_limited_bytes
 from adcp.signing._header_precheck import strict_header_precheck
 from adcp.signing._strict_json import StrictJsonError, parse_strict_json
 from adcp.signing.canonical import _lookup, canonical_origin
-from adcp.signing.crypto import b64url_decode, b64url_encode, import_jwk, public_key_from_jwk
+from adcp.signing.crypto import (
+    _PRIVATE_JWK_MEMBERS,
+    b64url_decode,
+    b64url_encode,
+    import_jwk,
+    public_key_from_jwk,
+)
 from adcp.signing.digest import compute_content_digest_sha256, content_digest_matches
 from adcp.signing.jwks import SSRFValidationError, validate_uri_static
 from adcp.signing.publisher_pins import jwk_thumbprint
@@ -77,7 +83,6 @@ _DIRECTORY_CACHE_SECONDS = 300
 _DISCOVERY_NEGATIVE_SECONDS = 60
 _DIRECTORY_CREATED_SKEW_SECONDS = 60
 _REQUEST_SKEW_SECONDS = 60
-_PRIVATE_JWK_MEMBERS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k", "oth"})
 _REQUEST_COMPONENTS = ("@method", "@target-uri", "@authority")
 _BODY_COMPONENTS = ("content-type", "content-digest")
 

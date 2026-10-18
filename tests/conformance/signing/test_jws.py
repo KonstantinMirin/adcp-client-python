@@ -339,6 +339,18 @@ def test_reject_non_json_payload() -> None:
         verify_jws_document(token, jwks_resolver=_resolver_for(jwk), expected_typ=EXPECTED_TYP)
 
 
+def test_reject_signature_by_a_private_member_beside_the_key() -> None:
+    """The resolved key is its public members; a ``d`` naming another key never verifies."""
+    jwk, _key = _ed25519_jwk_and_key()
+    other = ed25519.Ed25519PrivateKey.generate()
+    header = {"alg": "EdDSA", "kid": jwk["kid"], "typ": EXPECTED_TYP}
+    token = _sign_compact(header, PAYLOAD_JSON, jws_alg="EdDSA", private_key=other)
+    carrying = {**jwk, "d": b64url_encode(other.private_bytes_raw())}
+
+    with pytest.raises(JwsSignatureInvalidError):
+        verify_jws_document(token, jwks_resolver=_resolver_for(carrying), expected_typ=EXPECTED_TYP)
+
+
 def test_verify_jws_document_rejects_non_string_non_dict() -> None:
     with pytest.raises(JwsMalformedError, match="compact string or JSON"):
         verify_jws_document(
