@@ -146,6 +146,11 @@ def validate_commit(sha: str) -> None:
     validate_message(message, commit_sha=sha)
 
 
+# Branches a policy-checked PR may target: main, and the next draft-spec line
+# (see RELEASING.md). Pushes are only checked on main.
+PR_BASES = frozenset({"main", "next"})
+
+
 def event_context() -> tuple[str, str, dict[str, Any]]:
     require(os.environ["GITHUB_REPOSITORY"] == REPOSITORY, "wrong policy repository")
     target = os.environ["GITHUB_SHA"]
@@ -162,7 +167,7 @@ def event_context() -> tuple[str, str, dict[str, Any]]:
         require(kind == "pull_request", "unsupported policy event")
         pr = event["pull_request"]
         require(pr["base"]["repo"]["full_name"] == REPOSITORY, "wrong PR repository")
-        require(pr["base"]["ref"] == "main", "PR must target main")
+        require(pr["base"]["ref"] in PR_BASES, "PR must target main or next")
         require(
             os.environ["GITHUB_REF"] == f"refs/pull/{pr['number']}/merge",
             "policy must check the PR merge ref",
@@ -232,8 +237,8 @@ def author_agreement(pr: dict[str, Any], signers: dict[int, dict[str, Any]]) -> 
     return {"author_id": identifier, "agreement": entry["created_at"]}
 
 
-def validate_pr(pr: dict[str, Any]) -> None:
-    require(pr["base"]["ref"] == "main", "contribution targets another branch")
+def validate_pr(pr: dict[str, Any], bases: frozenset[str] = frozenset({"main"})) -> None:
+    require(pr["base"]["ref"] in bases, "contribution targets another branch")
     require(pr["base"]["repo"]["full_name"] == REPOSITORY, "foreign contribution repository")
 
 
@@ -259,7 +264,7 @@ def ipr(api: GitHub, kind: str, target: str, event: dict[str, Any]) -> dict[str,
     else:
         expected = event["pull_request"]
         pr = api.repo(f"pulls/{expected['number']}")
-        validate_pr(pr)
+        validate_pr(pr, PR_BASES)
         require(pr["head"]["sha"] == expected["head"]["sha"], "PR head changed during policy check")
         require(pr["state"] == "open" and not pr["merged"], "PR is no longer open")
         contributions.append(
