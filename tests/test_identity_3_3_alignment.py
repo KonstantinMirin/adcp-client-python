@@ -11,12 +11,14 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 import pytest
 from asgi_lifespan import LifespanManager
-from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from joserfc.jwk import ECKey, OKPKey, RSAKey
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -672,8 +674,13 @@ def test_unsigned_directories_are_refused_and_keys_are_found_by_thumbprint():
     private = ed25519.Ed25519PrivateKey.generate()
     jwk = public_directory_key(private)
     without_kid = {k: v for k, v in jwk.items() if k != "kid"}
-    for media_type in ("application/json", "application/jwk-set+json", DIRECTORY_MEDIA_TYPE):
-        with pytest.raises(WbaVerificationError, match="not signed"):
+    with pytest.raises(WbaVerificationError, match="not signed"):
+        verify_directory_response(
+            ORIGIN, _unsigned_directory(without_kid, media_type=DIRECTORY_MEDIA_TYPE), now=1000
+        )
+    # WBA section 5.5.1: no other media type is a directory.
+    for media_type in ("application/json", "application/jwk-set+json"):
+        with pytest.raises(WbaVerificationError, match="invalid key directory response"):
             verify_directory_response(
                 ORIGIN, _unsigned_directory(without_kid, media_type=media_type), now=1000
             )
@@ -692,51 +699,140 @@ def test_unsigned_directories_are_refused_and_keys_are_found_by_thumbprint():
         )
 
 
-def _partly_signed_directory(signed_key, unsigned_key, *, components=None, created=1000):
+def _public_jwk(private_key):
+    key_type = {
+        ed25519.Ed25519PrivateKey: OKPKey,
+        ec.EllipticCurvePrivateKey: ECKey,
+        rsa.RSAPrivateKey: RSAKey,
+    }
+    imported = next(kind for base, kind in key_type.items() if isinstance(private_key, base))
+    key = imported.import_key(private_key)
+    return {**key.as_dict(private=False), "kid": key.thumbprint()}
+
+
+def _directory_signed_by(
+    signers,
+    *,
+    unsigned=(),
+    media_type=DIRECTORY_MEDIA_TYPE,
+    components=('"@authority";req', '"content-digest"'),
+):
+    """A directory at ``ORIGIN`` that each of ``signers`` signs (Appendix B.1).
+
+    The library signs it directly, so a key the SDK does not sign with still
+    signs here. ``unsigned`` keys are listed without a signature.
+    """
+    from http_message_signatures import HTTPMessageSigner
+    from http_message_signatures.algorithms import ECDSA_P256_SHA256, ED25519, RSA_PSS_SHA512
+
     from adcp.signing import _rfc9421
 
-    jwks = [public_directory_key(signed_key), public_directory_key(unsigned_key)]
-    body = json.dumps({"keys": jwks}).encode()
-    headers = {
-        "Content-Type": DIRECTORY_MEDIA_TYPE,
-        "Content-Digest": compute_content_digest_sha256(body),
-    }
-    signature_input, signature = _rfc9421.sign(
-        _rfc9421.Response(200, _rfc9421.Request("GET", ORIGIN + DIRECTORY_PATH), dict(headers)),
-        alg="ed25519",
-        private_key=signed_key,
-        key_id=jwks[0]["kid"],
-        label="key1",
-        created=created,
-        expires=created + 3600,
-        nonce=None,
-        tag="http-message-signatures-directory",
-        covered_component_ids=components or ['"@authority";req', '"content-digest"'],
-        resolver=_WbaComponentResolver,
+    keys = [_public_jwk(key) for key in signers]
+    body = json.dumps({"keys": keys + [_public_jwk(key) for key in unsigned]}).encode()
+    message = _rfc9421.Response(
+        status_code=200,
+        request=_rfc9421.Request("GET", ORIGIN + DIRECTORY_PATH),
+        headers={"Content-Type": media_type, "Content-Digest": compute_content_digest_sha256(body)},
     )
-    headers.update({"Signature-Input": signature_input, "Signature": signature})
-    return DirectoryResponse(body, headers), jwks
+    algorithms = {"OKP": ED25519, "EC": ECDSA_P256_SHA256, "RSA": RSA_PSS_SHA512}
+    for number, (private_key, jwk) in enumerate(zip(signers, keys), 1):
+        HTTPMessageSigner(
+            signature_algorithm=algorithms[jwk["kty"]],
+            key_resolver=_rfc9421._Key(private_key=private_key),
+            component_resolver_class=_WbaComponentResolver,
+        ).sign(
+            message,
+            key_id=jwk["kid"],
+            created=datetime.fromtimestamp(1000, timezone.utc),
+            expires=datetime.fromtimestamp(4600, timezone.utc),
+            label=f"key{number}",
+            tag="http-message-signatures-directory",
+            covered_component_ids=list(components),
+            append_if_signature_exists=True,
+        )
+    return DirectoryResponse(body=body, headers=dict(message.headers))
 
 
-def test_signed_directory_indexes_only_keys_with_a_verified_signature():
+@pytest.mark.parametrize("kind", ["P-256", "RSA"])
+def test_only_ed25519_signs_web_bot_auth(kind):
+    """The profile's one algorithm is ed25519 (wba-profile.mdx, Profile rules).
+
+    ES256 stays on the AdCP RFC 9421 profile, and RSA-PSS is not a WBA algorithm.
+    """
+    key = (
+        ec.generate_private_key(ec.SECP256R1())
+        if kind == "P-256"
+        else rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    )
+    with pytest.raises(ValueError, match="Ed25519"):
+        public_directory_key(key)
+    with pytest.raises(ValueError, match="Ed25519"):
+        sign_key_directory(agent_origin=ORIGIN, private_keys=[key], created=1000)
+    with pytest.raises(ValueError, match="Ed25519"):
+        sign_wba_request(
+            method="POST",
+            url="https://seller.com/mcp",
+            headers={"Content-Type": "application/json"},
+            body=b"{}",
+            private_key=key,
+            agent_origin=ORIGIN,
+            created=1000,
+        )
+    # A directory signed only by such a key holds no Web Bot Auth key.
+    with pytest.raises(WbaVerificationError, match="no usable key"):
+        verify_directory_response(ORIGIN, _directory_signed_by([key]), now=1001)
+
+
+def test_directory_ignores_unusable_keys_and_their_signatures():
+    """An unusable key and the signature it makes are ignored (RFC 7517 section 5).
+
+    A directory shared with other HTTP Message Signatures uses holds keys of
+    other types, and each of them signs it (Appendix B.1).
+    """
+    ed_key = ed25519.Ed25519PrivateKey.generate()
+    others = [
+        ec.generate_private_key(ec.SECP256R1()),
+        rsa.generate_private_key(public_exponent=65537, key_size=2048),
+    ]
+    for response in (
+        _directory_signed_by([ed_key, *others]),
+        _directory_signed_by([ed_key], unsigned=others),
+    ):
+        keys = verify_directory_response(ORIGIN, response, now=1001)
+        assert list(keys) == [public_directory_key(ed_key)["kid"]]
+
+
+def test_every_usable_directory_key_signs():
+    """A usable key that does not sign refuses the directory: one signature per key."""
     signed, unsigned = (ed25519.Ed25519PrivateKey.generate() for _ in range(2))
-    response, jwks = _partly_signed_directory(signed, unsigned)
-    keys = verify_directory_response(ORIGIN, response, now=1001)
-    assert list(keys) == [jwks[0]["kid"]]
+    response = _directory_signed_by([signed], unsigned=[unsigned])
+    with pytest.raises(WbaVerificationError, match="did not sign"):
+        verify_directory_response(ORIGIN, response, now=1001)
+
+
+@pytest.mark.parametrize("media_type", ["application/json", "application/jwk-set+json"])
+def test_directory_media_type_is_the_wba_one(media_type):
+    """WBA section 5.5.1: a directory is served as the directory media type."""
+    key = ed25519.Ed25519PrivateKey.generate()
+    accepted = _directory_signed_by([key], media_type=f"{DIRECTORY_MEDIA_TYPE}; charset=utf-8")
+    assert verify_directory_response(ORIGIN, accepted, now=1001)
+    with pytest.raises(WbaVerificationError, match="invalid key directory response"):
+        verify_directory_response(
+            ORIGIN, _directory_signed_by([key], media_type=media_type), now=1001
+        )
 
 
 def test_directory_signatures_require_the_exact_component_identifiers():
-    signed, unsigned = (ed25519.Ed25519PrivateKey.generate() for _ in range(2))
+    signed = ed25519.Ed25519PrivateKey.generate()
+    assert verify_directory_response(ORIGIN, _directory_signed_by([signed]), now=1001)
     for components in (
         ['"@authority"', '"content-digest"'],
         ['"@authority"'],
         ['"@authority";req', '"content-digest";key="sha-256"'],
     ):
-        with pytest.raises(WbaVerificationError):
+        with pytest.raises(WbaVerificationError, match="bind authority and digest"):
             verify_directory_response(
-                ORIGIN,
-                _partly_signed_directory(signed, unsigned, components=components)[0],
-                now=1001,
+                ORIGIN, _directory_signed_by([signed], components=components), now=1001
             )
 
 

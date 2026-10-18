@@ -29,6 +29,7 @@ from adcp.signing import (
     SigningConfig,
     StaticSignerKeys,
     WbaVerificationError,
+    _rfc9421,
     canonical_origin,
     public_directory_key,
     sign_key_directory,
@@ -628,43 +629,53 @@ async def test_wba_discovery_never_falls_back_to_legacy_keys():
         await resolver(jwk["kid"], signer_origin="https://legacy.com")
 
 
-async def test_es256_is_not_a_web_bot_auth_algorithm():
-    """The profile allows ed25519 and rsa-pss-sha512; ES256 stays on RFC 9421."""
-    from cryptography.hazmat.primitives.asymmetric import ec
+async def test_signature_without_alg_is_refused(monkeypatch):
+    """Every signature names ``alg``, and it must match the key (Profile rules)."""
+    sign = _rfc9421.ProfileSigner.sign
 
-    from adcp.signing.crypto import b64url_encode
+    def sign_without_alg(self, message, **kwargs):
+        return sign(self, message, **kwargs, include_alg=False)
 
-    ed_key, ec_key = ed25519.Ed25519PrivateKey.generate(), ec.generate_private_key(ec.SECP256R1())
-    with pytest.raises(ValueError, match="Ed25519 and RSA"):
-        sign_key_directory(agent_origin="https://buyer.com", private_keys=[ec_key], created=1000)
-    with pytest.raises(ValueError, match="Ed25519 and RSA"):
-        sign_wba_request(
+    key = ed25519.Ed25519PrivateKey.generate()
+    signed_directory = sign_key_directory(
+        agent_origin="https://buyer.com", private_keys=[key], created=1000
+    )
+    headers = {"Content-Type": "application/json"}
+    with monkeypatch.context() as patched:
+        patched.setattr(_rfc9421.ProfileSigner, "sign", sign_without_alg)
+        headers.update(
+            sign_wba_request(
+                method="POST",
+                url="https://seller.com/mcp",
+                headers=headers,
+                body=b"{}",
+                private_key=key,
+                agent_origin="https://buyer.com",
+                created=1000,
+            )
+        )
+        directory = sign_key_directory(
+            agent_origin="https://buyer.com", private_keys=[key], created=1000
+        )
+    assert "alg=" not in headers["Signature-Input"]
+    assert "alg=" not in directory.headers["Signature-Input"]
+    with pytest.raises(WbaVerificationError, match="algorithm"):
+        verify_directory_response("https://buyer.com", directory, now=1001)
+
+    async def fetch(url, *, allow_private=False):
+        return signed_directory
+
+    with pytest.raises(WbaVerificationError, match="algorithm") as refused:
+        await verify_wba_request(
             method="POST",
             url="https://seller.com/mcp",
-            headers={"Content-Type": "application/json"},
+            headers=headers,
             body=b"{}",
-            private_key=ec_key,
-            agent_origin="https://buyer.com",
-            created=1000,
+            signer_keys=DiscoveredSignerKeys(fetcher=fetch, clock=lambda: 1001),
+            replay_store=InMemoryReplayStore(),
+            now=1001,
         )
-    # A directory may list a P-256 key for another use; it is skipped, and the
-    # signed Ed25519 key is the only one returned.
-    response = sign_key_directory(
-        agent_origin="https://buyer.com", private_keys=[ed_key], created=1000
-    )
-    numbers = ec_key.public_key().public_numbers()
-    p256 = {
-        "kty": "EC",
-        "crv": "P-256",
-        "x": b64url_encode(numbers.x.to_bytes(32, "big")),
-        "y": b64url_encode(numbers.y.to_bytes(32, "big")),
-    }
-    with pytest.raises(WbaVerificationError, match="unsupported directory key"):
-        from adcp.signing.wba import _algorithm
-
-        _algorithm(p256)
-    keys = verify_directory_response("https://buyer.com", response, now=1001)
-    assert list(keys) == [public_directory_key(ed_key)["kid"]]
+    assert refused.value.status == 403
 
 
 async def test_unsigned_directory_is_refused():
