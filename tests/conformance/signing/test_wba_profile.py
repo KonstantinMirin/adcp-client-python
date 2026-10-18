@@ -796,8 +796,13 @@ async def test_one_signer_and_64_byte_nonce(change):
     assert "Accept-Signature" in caught.value.headers
 
 
-async def test_short_received_nonce_is_a_challenge():
-    """A nonce shorter than 64 bytes fails the profile: 403 with Accept-Signature."""
+def _sign_vector_request(*, nonce="A" * 86, signature_agent=None):
+    """The positive/001 request, re-signed by the library with ``nonce``.
+
+    ``signature_agent`` replaces the covered Signature-Agent field before
+    signing, so a shape the SDK signer never emits still carries a valid
+    signature.
+    """
     from adcp.signing import _rfc9421
     from adcp.signing.wba import _WbaComponentResolver
 
@@ -805,8 +810,11 @@ async def test_short_received_nonce_is_a_challenge():
     private = private_key_from_jwk(key, d_field="_private_d_for_test_only")
     vector = json.loads((ROOT / "positive/001-single-signer-request.json").read_text())
     request = vector["request"]
-    headers = {k: v for k, v in request["headers"].items() if not k.startswith("Signature-I")}
-    headers = {k: v for k, v in headers.items() if k != "Signature"}
+    headers = {
+        k: v for k, v in request["headers"].items() if k not in {"Signature-Input", "Signature"}
+    }
+    if signature_agent is not None:
+        headers["Signature-Agent"] = signature_agent
     signature_input, signature = _rfc9421.sign(
         _rfc9421.Request(request["method"], request["url"], dict(headers)),
         alg="ed25519",
@@ -815,7 +823,7 @@ async def test_short_received_nonce_is_a_challenge():
         label="sig1",
         created=1790841600,
         expires=1790841900,
-        nonce="A" * 22,
+        nonce=nonce,
         tag="web-bot-auth",
         covered_component_ids=[
             '"@method"',
@@ -828,8 +836,9 @@ async def test_short_received_nonce_is_a_challenge():
         resolver=_WbaComponentResolver,
     )
     headers.update({"Signature-Input": signature_input, "Signature": signature})
-    with pytest.raises(WbaVerificationError, match="nonce") as caught:
-        await verify_wba_request(
+
+    async def verify(headers=headers):
+        return await verify_wba_request(
             method=request["method"],
             url=request["url"],
             headers=headers,
@@ -838,6 +847,48 @@ async def test_short_received_nonce_is_a_challenge():
             replay_store=InMemoryReplayStore(),
             now=vector["reference_now"],
         )
+
+    return headers, verify
+
+
+async def test_short_received_nonce_is_a_challenge():
+    """A nonce shorter than 64 bytes fails the profile: 403 with Accept-Signature."""
+    _headers, verify = _sign_vector_request()
+    (signer,) = await verify()
+    assert signer.agent_url == "https://buyer-7k3q.com"
+    _headers, verify = _sign_vector_request(nonce="A" * 22)
+    with pytest.raises(WbaVerificationError, match="nonce") as caught:
+        await verify()
+    assert caught.value.status == 403
+    assert "Accept-Signature" in caught.value.headers
+
+
+@pytest.mark.parametrize(
+    ("parameter", "verifies"),
+    [
+        ("type=directory", True),
+        ('type="directory"', True),
+        ("type=jwks_uri", False),
+        ('type="jwks_uri"', False),
+        ("type=cimd", False),
+    ],
+)
+async def test_signature_agent_member_type_must_be_directory(parameter, verifies):
+    """A ``type`` other than ``directory`` makes the verifier ignore the member.
+
+    ``directory`` is the -00 section 5.2.1 type, as a Token or as a String,
+    as Cloudflare's parser reads it. An ignored member leaves the signature
+    without a member keyed to its label: 403 with Accept-Signature.
+    """
+    _headers, verify = _sign_vector_request(
+        signature_agent=f'sig1="https://buyer-7k3q.com";{parameter}'
+    )
+    if verifies:
+        (signer,) = await verify()
+        assert signer.agent_url == "https://buyer-7k3q.com"
+        return
+    with pytest.raises(WbaVerificationError, match="Signature-Agent member") as caught:
+        await verify()
     assert caught.value.status == 403
     assert "Accept-Signature" in caught.value.headers
 
