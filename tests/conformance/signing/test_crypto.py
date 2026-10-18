@@ -11,6 +11,7 @@ base from each positive vector, and:
 from __future__ import annotations
 
 import json
+import string
 from pathlib import Path
 
 import pytest
@@ -159,5 +160,33 @@ def test_jwk_with_wrong_length_x_rejected() -> None:
         "crv": "Ed25519",
         "x": b64url_encode(b"\x00" * 31),  # too short
     }
-    with pytest.raises(ValueError, match="length"):
+    with pytest.raises(ValueError, match="32 bytes"):
         public_key_from_jwk(bad)
+
+
+_B64URL = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
+
+
+@pytest.mark.parametrize(
+    "spoil",
+    [
+        lambda x: x[:10] + "!!" + x[10:],  # characters outside the alphabet
+        lambda x: x + "=",  # padding
+        lambda x: x[:-1] + _B64URL[_B64URL.index(x[-1]) ^ 1],  # same bytes, non-zero pad bits
+    ],
+    ids=["alphabet", "padding", "trailing-bits"],
+)
+def test_jwk_members_are_strict_base64url(spoil) -> None:
+    """RFC 7515 section 2 base64url: no padding, no other characters, one spelling.
+
+    Verifier step 8 decodes the signer's JWK with ``public_key_from_jwk``, so a
+    lenient decoder would accept a key whose members a strict verifier refuses.
+    """
+    from adcp.signing.crypto import b64url_decode
+
+    jwk = {k: v for k, v in KEYS["test-ed25519-2026"].items() if not k.startswith("_")}
+    assert public_key_from_jwk(jwk)
+    with pytest.raises(ValueError):
+        public_key_from_jwk({**jwk, "x": spoil(jwk["x"])})
+    with pytest.raises(ValueError):
+        b64url_decode(spoil(jwk["x"]))

@@ -35,10 +35,10 @@ from pydantic import BaseModel
 from adcp._version import resolve_adcp_version
 from adcp.signing.brand_jwks import BrandJsonResolverError, _pick_agent
 from adcp.signing.canonical import canonicalize_target_uri
-from adcp.signing.crypto import b64url_decode, b64url_encode
+from adcp.signing.crypto import b64url_decode, b64url_encode, import_jwk
 from adcp.signing.etld import host_from
 from adcp.signing.jwks import AsyncCachingJwksResolver, AsyncJwksResolver, JwksResolver
-from adcp.signing.jws import _AdcpJwsRegistry, _import_jwk
+from adcp.signing.jws import _AdcpJwsRegistry
 from adcp.signing.replay import ReplayStore, supports_atomic_claim
 from adcp.types import CheckGovernanceRequest, ReportPlanOutcomeRequest
 
@@ -211,9 +211,9 @@ class GovernanceReplayStoreAdapter:
         if not supports_atomic_claim(replay_store):
             raise TypeError("governance replay protection requires an atomic replay store")
         self._store = replay_store
-        self._bindings: dict[tuple[str, str, str], tuple[float, GovernanceReplayBinding | None]] = (
-            {}
-        )
+        self._bindings: dict[
+            tuple[str, str, str], tuple[float, GovernanceReplayBinding | None]
+        ] = {}
         self._binding_lock = threading.RLock()
         self._claims_since_sweep = 0
 
@@ -1201,7 +1201,7 @@ async def verify_governance_authorization(
     try:
         jws.deserialize_compact(
             token,
-            _import_jwk(_public_jwk(jwk)),
+            import_jwk(_public_jwk(jwk)),
             registry=_governance_jws_registry(alg),
         )
         verified = True
@@ -1462,7 +1462,7 @@ def _governance_jws_registry(alg: str) -> JWSRegistry:
 def _jose_key(alg: str, key: Any) -> OKPKey | ECKey:
     """Import a cryptography private key object for ``alg`` into joserfc.
 
-    Public keys go through ``jws._import_jwk``, which also enforces the
+    Public keys go through ``crypto.import_jwk``, which also enforces the
     RFC 7518 P-256 coordinate length joserfc leaves open.
     """
     if alg == "EdDSA":
