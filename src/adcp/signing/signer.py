@@ -357,7 +357,7 @@ async def async_sign_request(
     signature = await provider.sign(base)
     return _signed_headers(
         prepared,
-        signature_input=f"{label}={member}",
+        signature_input=_rfc9421.signature_input_field(label, member),
         signature=signature,
         label=label,
         signing_profile_version=signing_profile_version,

@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import binascii
 import json
 import secrets
 import time
@@ -37,15 +36,15 @@ from typing import Any, Literal, Protocol, cast
 from urllib.parse import urlsplit
 
 import httpx
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+from joserfc.jwk import OKPKey
 
 from adcp.signing import _rfc9421
 from adcp.signing._bounded_http import async_read_limited_bytes
 from adcp.signing._header_precheck import strict_header_precheck
 from adcp.signing._strict_json import StrictJsonError, parse_strict_json
 from adcp.signing.canonical import _lookup, canonical_origin
-from adcp.signing.crypto import b64url_decode, b64url_encode, public_key_from_jwk
+from adcp.signing.crypto import b64url_decode, b64url_encode, import_jwk, public_key_from_jwk
 from adcp.signing.digest import compute_content_digest_sha256, content_digest_matches
 from adcp.signing.jwks import SSRFValidationError, validate_uri_static
 from adcp.signing.publisher_pins import jwk_thumbprint
@@ -114,20 +113,17 @@ def is_64_byte_nonce(nonce: object) -> bool:
     """
     if type(nonce) is not str or not nonce.isascii():
         return False
-    candidates: list[tuple[bytes, str]] = []
     try:
-        raw = base64.urlsafe_b64decode(nonce + "=" * (-len(nonce) % 4))
-        candidates.append((raw, b64url_encode(raw)))
-    except (binascii.Error, ValueError):
+        # Unpadded base64url, decoded strictly (one spelling per value).
+        return len(b64url_decode(nonce)) == WBA_NONCE_BYTES
+    except ValueError:
         # Not base64url; the standard-base64 form is tried next.
         pass
     try:
         raw = base64.b64decode(nonce, validate=True)
-        candidates.append((raw, base64.b64encode(raw).decode("ascii")))
-    except (binascii.Error, ValueError):
-        # Not standard base64 either; only a decoded candidate can match.
-        pass
-    return any(len(raw) == WBA_NONCE_BYTES and encoded == nonce for raw, encoded in candidates)
+    except ValueError:
+        return False
+    return len(raw) == WBA_NONCE_BYTES and base64.b64encode(raw).decode("ascii") == nonce
 
 
 def valid_wba_nonce(nonce: object) -> bool:
@@ -285,10 +281,10 @@ def _https_origin(url: str) -> str:
 
 def thumbprint_key_id(jwk: Mapping[str, Any]) -> str:
     """Return the RFC 7638 thumbprint (``joserfc``) for supported public key material."""
-    digest = jwk_thumbprint(jwk)
-    if digest is None:
+    thumbprint = jwk_thumbprint(jwk)
+    if thumbprint is None:
         raise ValueError("incomplete public JWK")
-    return b64url_encode(digest)
+    return thumbprint
 
 
 WbaPrivateKey = ed25519.Ed25519PrivateKey
@@ -301,25 +297,8 @@ def public_directory_key(private_key: WbaPrivateKey) -> dict[str, Any]:
     """
     if not isinstance(private_key, ed25519.Ed25519PrivateKey):
         raise ValueError("Web Bot Auth signs with Ed25519 keys only")
-    public = private_key.public_key()
-    jwk: dict[str, Any] = {
-        "kty": "OKP",
-        "crv": "Ed25519",
-        "x": b64url_encode(
-            public.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
-        ),
-    }
-    jwk.update({"kid": thumbprint_key_id(jwk), "use": "sig"})
-    return jwk
-
-
-def _canonical_b64url(value: object) -> bool:
-    if type(value) is not str or not value or not value.isascii():
-        return False
-    try:
-        return b64url_encode(b64url_decode(value)) == value
-    except (binascii.Error, ValueError):
-        return False
+    key = OKPKey.import_key(private_key)
+    return {**key.as_dict(private=False), "kid": key.thumbprint(), "use": "sig"}
 
 
 def _algorithm(jwk: Mapping[str, Any]) -> str:
@@ -335,9 +314,11 @@ def _algorithm(jwk: Mapping[str, Any]) -> str:
         or _PRIVATE_JWK_MEMBERS & set(jwk)
     ):
         raise WbaVerificationError("unsupported directory key")
-    # One key, one thumbprint: key members must be canonical base64url.
-    if not _canonical_b64url(jwk.get("x")):
-        raise WbaVerificationError("directory key member is not canonical base64url")
+    # One key, one thumbprint: joserfc refuses a non-canonical x.
+    try:
+        import_jwk({name: jwk.get(name) for name in ("kty", "crv", "x")})
+    except ValueError as exc:
+        raise WbaVerificationError("invalid directory key member") from exc
     if jwk.get("alg") not in {None, "EdDSA"}:
         raise WbaVerificationError("directory key algorithm mismatch")
     if "key_ops" in jwk and (
@@ -728,12 +709,15 @@ def sign_key_directory(
         created, expires = now - DIRECTORY_SKEW_ALLOWANCE_SECONDS, now + expires_in_seconds
     else:
         expires = created + expires_in_seconds
-    request = _rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH)
-    inputs: list[str] = []
-    signatures: list[str] = []
+    message = _rfc9421.Response(
+        status_code=200,
+        request=_rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH),
+        headers=dict(headers),
+    )
     for number, (key, jwk) in enumerate(zip(private_keys, keys), 1):
+        # Each key adds its own member to the same two fields.
         signature_input, signature = _rfc9421.sign(
-            _rfc9421.Response(status_code=200, request=request, headers=dict(headers)),
+            message,
             alg=_algorithm(jwk),
             private_key=key,
             key_id=jwk["kid"],
@@ -744,10 +728,9 @@ def sign_key_directory(
             tag=DIRECTORY_TAG,
             covered_component_ids=['"@authority";req', '"content-digest"'],
             resolver=_WbaComponentResolver,
+            append=True,
         )
-        inputs.append(signature_input)
-        signatures.append(signature)
-    headers.update({"Signature-Input": ", ".join(inputs), "Signature": ", ".join(signatures)})
+    headers.update({"Signature-Input": signature_input, "Signature": signature})
     return DirectoryResponse(body=body, headers=headers)
 
 

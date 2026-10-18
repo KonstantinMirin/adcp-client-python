@@ -8,36 +8,34 @@ from typing import Any
 
 from joserfc.errors import JoseError
 from joserfc.jwk import ECKey, OKPKey, RSAKey
-from joserfc.util import urlsafe_b64decode
 
 PublisherPins = Mapping[str, Sequence[Mapping[str, Any]] | None]
 
-#: The public members RFC 7638 hashes, per key type. A key missing one (or
-#: carrying a non-string one) has no thumbprint and matches nothing.
-_THUMBPRINT_MEMBERS: dict[
-    str, tuple[type[OKPKey] | type[ECKey] | type[RSAKey], tuple[str, ...]]
-] = {
-    "OKP": (OKPKey, ("crv", "x")),
-    "EC": (ECKey, ("crv", "x", "y")),
-    "RSA": (RSAKey, ("e", "n")),
+_KEY_TYPES: dict[str, type[OKPKey] | type[ECKey] | type[RSAKey]] = {
+    "OKP": OKPKey,
+    "EC": ECKey,
+    "RSA": RSAKey,
 }
 
 
-def jwk_thumbprint(key: Mapping[str, Any]) -> bytes | None:
-    """Return the RFC 7638 digest (``joserfc``); incomplete public keys match nothing.
+def jwk_thumbprint(key: Mapping[str, Any]) -> str | None:
+    """Return the RFC 7638 thumbprint (``joserfc``); incomplete public keys match nothing.
 
-    Only the public members go to ``joserfc``: a pin or directory entry is a
-    public key, and the thumbprint never depends on anything else.
+    Only the members RFC 7638 hashes (the key type's required members in
+    ``joserfc``) go to ``joserfc``: a pin or directory entry is a public key,
+    and the thumbprint never depends on anything else. ``joserfc`` refuses a
+    key missing one of them or carrying a malformed one.
     """
-    shape = _THUMBPRINT_MEMBERS.get(str(key.get("kty")))
-    if shape is None:
+    key_type = _KEY_TYPES.get(str(key.get("kty")))
+    if key_type is None:
         return None
-    key_type, members = shape
-    if any(not isinstance(key.get(m), str) or not key[m] for m in members):
-        return None
+    public = {
+        name: key[name]
+        for name, member in key_type.value_registry.items()
+        if member.required and name in key
+    }
     try:
-        imported = key_type.import_key({"kty": key["kty"], **{m: key[m] for m in members}})
-        return urlsafe_b64decode(imported.thumbprint().encode("ascii"))
+        return key_type.import_key({"kty": key["kty"], **public}).thumbprint()
     except (JoseError, ValueError, TypeError):
         return None
 

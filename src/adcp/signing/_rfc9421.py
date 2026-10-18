@@ -117,6 +117,21 @@ def serialize(value: Any) -> str:
     return http_sf.ser(value)
 
 
+def signature_input_field(label: str, member: str) -> str:
+    """A ``Signature-Input`` value holding one member, serialized by http-sf.
+
+    ``member`` is that member's own serialization, the ``@signature-params``
+    value. Raises ``ValueError`` when ``label`` is not an RFC 8941 key.
+    """
+    try:
+        parsed = http_sf.parse(member.encode("ascii"), tltype="list")
+    except (http_sf.StructuredFieldError, ValueError) as exc:
+        raise ValueError(f"malformed signature parameters: {exc}") from exc
+    if not isinstance(parsed, list) or len(parsed) != 1:
+        raise ValueError("signature parameters are not one member")
+    return serialize({label: parsed[0]})
+
+
 def component_identifier(item: Any) -> str:
     """The serialized component identifier, e.g. ``"signature-agent";key="sig1"``."""
     return ser_item(item)
@@ -491,11 +506,13 @@ def sign(
     tag: str,
     covered_component_ids: Sequence[str],
     resolver: type[ComponentResolver],
+    append: bool = False,
 ) -> tuple[str, str]:
     """Sign ``message`` with ``HTTPMessageSigner.sign``; return the two fields.
 
     Returns ``(Signature-Input, Signature)``. ``Signature`` is RFC 8941
-    standard Base64; a legacy profile re-encodes it.
+    standard Base64; a legacy profile re-encodes it. With ``append``, a
+    signature already on ``message`` stays, and this one is added beside it.
     """
     signer = ProfileSigner(
         signature_algorithm=ALGORITHMS[alg],
@@ -512,6 +529,7 @@ def sign(
             label=label,
             tag=tag,
             covered_component_ids=covered_component_ids,
+            append_if_signature_exists=append,
         )
     except ComponentError as exc:
         raise ValueError(exc.reason) from exc

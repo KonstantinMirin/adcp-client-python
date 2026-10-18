@@ -454,7 +454,7 @@ def verify_request_signature(
         url=url,
         headers={
             **{k: v for k, v in headers.items() if k.lower() not in _SIGNATURE_FIELDS},
-            "Signature-Input": f"{options.label}={parsed.raw_value}",
+            "Signature-Input": _rfc9421.signature_input_field(options.label, parsed.raw_value),
             "Signature": format_signature_header(sig_bytes, label=options.label),
         },
     )
@@ -875,9 +875,7 @@ def _check_key_purpose(
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_KEY_PURPOSE_INVALID,
             step=8,
-            message=(
-                f"JWK.adcp_use {jwk.get('adcp_use')!r} not in " f"{sorted(allowed_adcp_uses)!r}"
-            ),
+            message=(f"JWK.adcp_use {jwk.get('adcp_use')!r} not in {sorted(allowed_adcp_uses)!r}"),
         )
     try:
         jwk_alg = alg_for_jwk(dict(jwk))
