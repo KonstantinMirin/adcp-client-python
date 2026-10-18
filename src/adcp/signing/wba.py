@@ -1093,6 +1093,10 @@ async def verify_wba_request(
         origin = _https_origin(agent[0])
     except ValueError as exc:
         raise WbaVerificationError("invalid signer origin", label=label) from exc
+    # The value is the serialized origin itself, compared as a string: a
+    # spelling that only normalizes to an origin names no origin.
+    if agent[0] != origin:
+        raise WbaVerificationError("signer origin is not in canonical form", label=label)
     covered = [_rfc9421.component_identifier(item) for item in items]
     required = {_rfc9421.component_identifier((name, {})) for name in _REQUEST_COMPONENTS}
     required.add(_rfc9421.component_identifier(("signature-agent", {"key": label})))

@@ -837,13 +837,13 @@ def _sign_vector_request(*, nonce="A" * 86, signature_agent=None):
     )
     headers.update({"Signature-Input": signature_input, "Signature": signature})
 
-    async def verify(headers=headers):
+    async def verify(headers=headers, signer_keys=None):
         return await verify_wba_request(
             method=request["method"],
             url=request["url"],
             headers=headers,
             body=request["body"].encode(),
-            signer_keys=_vector_resolver(vector),
+            signer_keys=signer_keys or _vector_resolver(vector),
             replay_store=InMemoryReplayStore(),
             now=vector["reference_now"],
         )
@@ -861,6 +861,57 @@ async def test_short_received_nonce_is_a_challenge():
         await verify()
     assert caught.value.status == 403
     assert "Accept-Signature" in caught.value.headers
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "http://buyer-7k3q.com",
+        "https://buyer-7k3q.com/agents/a",
+        "https://buyer-7k3q.com/",
+        "https://BUYER-7k3q.com",
+        "https://buyer-7k3q.com:443",
+        "https://buyer-7k3q.com?x=1",
+        "https://buyer-7k3q.com#f",
+        "https://agent@buyer-7k3q.com",
+    ],
+)
+async def test_signature_agent_is_exactly_the_canonical_https_origin(value):
+    """The member value is the serialized https origin, compared as a string.
+
+    A lowercase host, no default port, no trailing ``/``, and no path, query,
+    fragment, or userinfo. Anything else is 403 before key discovery, even
+    when the origin it normalizes to serves the key.
+    """
+    headers, verify = _sign_vector_request()
+    assert headers["Signature-Agent"] == 'sig1="https://buyer-7k3q.com"'
+    (signer,) = await verify()
+    assert signer.agent_url == "https://buyer-7k3q.com"
+    fetched = []
+
+    async def record(keyid, *, signer_origin=None):
+        fetched.append(signer_origin)
+
+    _headers, verify = _sign_vector_request(signature_agent=f'sig1="{value}"')
+    with pytest.raises(WbaVerificationError, match="origin") as caught:
+        await verify(signer_keys=record)
+    assert caught.value.status == 403
+    assert "Accept-Signature" in caught.value.headers
+    assert fetched == []
+
+
+def test_signer_sends_the_canonical_origin():
+    key = KEYS["6WsKMCObba49V3uN0vIENnk1BKAk7c9zjBJcWKyQ9_I"]
+    headers = sign_wba_request(
+        method="GET",
+        url="https://seller-7k3q.com/mcp/",
+        headers={},
+        body=b"",
+        private_key=private_key_from_jwk(key, d_field="_private_d_for_test_only"),
+        agent_origin="https://BUYER-7k3q.com:443/",
+        created=1790841600,
+    )
+    assert headers["Signature-Agent"] == 'sig1="https://buyer-7k3q.com"'
 
 
 @pytest.mark.parametrize(
