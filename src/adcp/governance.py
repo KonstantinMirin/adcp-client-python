@@ -1432,9 +1432,10 @@ def critical_claims_failure(header: Mapping[str, Any], claims: Mapping[str, Any]
     joserfc's ``crit`` check (``JWSRegistry.check_header``) refuses a
     ``crit`` that is not a list of registered names, and a marker that is
     missing (RFC 7515 section 4.1.11) or not a boolean. The SDK
-    adds what joserfc leaves open: a repeated entry, a claim present exactly
-    when its marker is ``true``, and ``authorized_task`` with
-    ``authorized_payload_hash``. Returns the failure reason, or ``None``.
+    adds what joserfc leaves open: a repeated entry, each marker, its
+    ``crit`` entry, and its claim appearing together with the marker
+    ``true``, and ``authorized_task`` with ``authorized_payload_hash``.
+    Returns the failure reason, or ``None``.
     """
     critical = header.get("crit", [])
     markers = {
@@ -1449,7 +1450,8 @@ def critical_claims_failure(header: Mapping[str, Any], claims: Mapping[str, Any]
     if len(set(critical)) != len(critical):
         return "invalid governance JWS crit header"
     for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
-        if (name in claims) != (name in critical and markers.get(name) is True):
+        together = (name in claims) == (name in critical) == (name in markers)
+        if not together or markers.get(name, True) is not True:
             return f"{name} claim and critical marker must match"
     if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
         return "authorized_task and authorized_payload_hash must appear together"
