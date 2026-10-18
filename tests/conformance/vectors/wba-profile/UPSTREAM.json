@@ -8,9 +8,6 @@
     "README.md": "UPSTREAM-README.md"
   },
   "sha256": {
-    "governance/001-governance-token.json": "8e3a53bb9fa52b376d242ba67e0a86246af2fb97b44a9407212f65e506ed213b",
-    "governance/002-governance-token-key-not-in-issuer-directory.json": "8559d3aab6a1db4f2e8afe6d81f36a6e2e54b262464d6179ee04d6846ec9d557",
-    "governance/003-governance-token-from-non-governance-agent.json": "cbf328b7b7fe63df938da84ab86a94310f3ea9c232da99323cc32fbcee29e65b",
     "keys.json": "08637bc288547315e6ce72e895d18ff5f3ab20a5f24375a15d0ebda43a993b3c",
     "negative/001-missing-nonce.json": "12a60d6067c347976f2ec1769c2078c07f049f490a17c3da602898b4fdc8c3ad",
     "negative/002-replayed-nonce.json": "7471d84d3aca75a196439b80c9a605230601c5495464daf6da6d7f9baeed1971",
