@@ -123,3 +123,31 @@ async def test_governance_issuer_is_checked_before_key_discovery():
             now=1100,
         )
     assert caught.value.code == "governance_issuer_not_authorized"
+
+
+async def test_governance_alg_outside_the_profile_is_refused_before_key_discovery():
+    """Only Ed25519 signs under the profile, so a PS512 token never reaches discovery."""
+    from adcp.signing.crypto import b64url_encode
+
+    identity = KEYS[GOVERNANCE_KID]["identity"]
+    header = {
+        "alg": "PS512",
+        "typ": "adcp-gov+jws",
+        "jku": identity + "/.well-known/http-message-signatures-directory",
+        "kid": GOVERNANCE_KID,
+    }
+    claims = {"iss": identity, "aud": "https://seller-7k3q.com/mcp/", "iat": 1000, "exp": 1600}
+    token = ".".join(
+        b64url_encode(part)
+        for part in (json.dumps(header).encode(), json.dumps(claims).encode(), b"\x00" * 256)
+    )
+
+    async def resolve(keyid, *, signer_origin=None):
+        pytest.fail("a token alg the profile doesn't sign with must not trigger key discovery")
+
+    with pytest.raises(WbaGovernanceError) as caught:
+        await verify_wba_governance_issuer(
+            token, signer_keys=resolve, governance_agents=[identity], now=1100
+        )
+    assert caught.value.code == "governance_token_invalid"
+    assert caught.value.reason == "governance token alg not allowed"
