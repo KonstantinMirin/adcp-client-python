@@ -129,7 +129,14 @@ async def test_sender_to_receiver_happy_path() -> None:
 async def test_retry_with_same_idempotency_key_dedupes() -> None:
     """The whole reason WebhookDeliveryResult exposes idempotency_key: so the
     retry call reuses it and the receiver dedupes correctly. Without this,
-    every retry processes as a fresh event."""
+    every retry processes as a fresh event.
+
+    The key binds the payload, so the retry repeats the first call's
+    ``timestamp``: a fresh one makes a different body under the same key,
+    which the receiver refuses with 409."""
+    from datetime import datetime, timezone
+
+    sent_at = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
     app, _ = _build_receiver_app()
     async with _build_sender(app) as sender:
         first = await sender.send_mcp(
@@ -138,6 +145,7 @@ async def test_retry_with_same_idempotency_key_dedupes() -> None:
             operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
+            timestamp=sent_at,
         )
         # Simulate caller deciding to retry (e.g., if first had been non-2xx).
         retry = await sender.send_mcp(
@@ -146,6 +154,7 @@ async def test_retry_with_same_idempotency_key_dedupes() -> None:
             operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
+            timestamp=sent_at,
             idempotency_key=first.idempotency_key,
         )
 
