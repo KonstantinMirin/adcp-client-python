@@ -14,8 +14,10 @@ whole story is broken. Covers:
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
@@ -629,7 +631,9 @@ async def test_owned_client_ignores_https_proxy_env() -> None:
             # delivery path. The last writer wins; the per-request call
             # is the one we care about.
             captured_kwargs.update(kwargs)
-            self._response = MagicMock(status_code=200, headers={}, content=b"{}")
+            self._response = MagicMock(
+                status_code=200, headers={}, content=b"{}", is_stream_consumed=True
+            )
 
         async def __aenter__(self) -> _FakeAsyncClient:
             return self
@@ -640,8 +644,10 @@ async def test_owned_client_ignores_https_proxy_env() -> None:
         async def aclose(self) -> None:
             return None
 
-        async def post(self, *_args: Any, **_kwargs: Any) -> Any:
-            return self._response
+        # The sender posts with ``client.stream`` to bound the response body.
+        @contextlib.asynccontextmanager
+        async def stream(self, *_args: Any, **_kwargs: Any) -> AsyncIterator[Any]:
+            yield self._response
 
     # Set HTTPS_PROXY pointing at an unreachable address. With
     # trust_env=True (the httpx default), this would override the
