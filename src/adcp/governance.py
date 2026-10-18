@@ -33,12 +33,13 @@ from joserfc.registry import HeaderParameter, is_bool
 from pydantic import BaseModel
 
 from adcp._version import resolve_adcp_version
+from adcp.signing._strict_json import parse_strict_json
 from adcp.signing.brand_jwks import BrandJsonResolverError, _pick_agent
 from adcp.signing.canonical import canonicalize_target_uri
 from adcp.signing.crypto import b64url_decode, b64url_encode, import_jwk
 from adcp.signing.etld import host_from
 from adcp.signing.jwks import AsyncCachingJwksResolver, AsyncJwksResolver, JwksResolver
-from adcp.signing.jws import _AdcpJwsRegistry
+from adcp.signing.jws import JwsMalformedError, _AdcpJwsRegistry, parse_compact_jws
 from adcp.signing.replay import ReplayStore, supports_atomic_claim
 from adcp.types import CheckGovernanceRequest, ReportPlanOutcomeRequest
 
@@ -65,7 +66,6 @@ GovernanceAuthorizationErrorCode = Literal[
 ]
 GovernanceReplayResult = Literal["ok", "conflict", "replayed", "rate_abuse"]
 
-_COMPACT_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 _CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
 
 
@@ -941,12 +941,10 @@ def read_governance_authorization_issuer(token: object) -> str | None:
     """
     if not isinstance(token, str) or not token or len(token) > GOVERNANCE_MAX_TOKEN_BYTES:
         return None
-    parts = _compact_segments(token)
-    if parts is None:
-        return None
     try:
-        claims = _decode_json_segment(parts[1])
-    except (TypeError, ValueError):
+        _header, payload, _signature = parse_compact_jws(token)
+        claims = _decode_json_segment(payload)
+    except (JwsMalformedError, TypeError, ValueError):
         return None
     issuer = claims.get("iss")
     if not isinstance(issuer, str):
@@ -1135,15 +1133,13 @@ async def verify_governance_authorization(
         return reject("governance_token_invalid", str(exc))
     if not isinstance(token, str) or not token or len(token) > GOVERNANCE_MAX_TOKEN_BYTES:
         return reject("governance_token_invalid", "governance_context is missing or too large")
-    parts = _compact_segments(token)
-    if parts is None:
+    try:
+        b64_header, b64_payload, _signature = parse_compact_jws(token)
+    except JwsMalformedError:
         return reject("governance_token_invalid", "governance_context is not a compact JWS")
     try:
-        header = _decode_json_segment(parts[0])
-        claims = _decode_json_segment(parts[1])
-        signature = b64url_decode(parts[2])
-        if b64url_encode(signature) != parts[2]:
-            raise ValueError("non-canonical signature base64url")
+        header = _decode_json_segment(b64_header)
+        claims = _decode_json_segment(b64_payload)
     except (TypeError, ValueError):
         return reject("governance_token_invalid", "governance_context contains invalid JSON")
     alg = header.get("alg")
@@ -1477,26 +1473,6 @@ def _public_jwk(jwk: Mapping[str, Any]) -> dict[str, Any]:
     return {name: jwk[name] for name in ("kty", "crv", "x", "y") if name in jwk}
 
 
-def _compact_segments(token: str) -> tuple[str, str, str] | None:
-    """Split a compact JWS with ``joserfc.jws.extract_compact``, or ``None``."""
-    if token.count(".") != 2 or any(
-        _COMPACT_SEGMENT_RE.fullmatch(part) is None for part in token.split(".")
-    ):
-        return None
-    try:
-        compact = jws.extract_compact(
-            token.encode("ascii"), registry=_AdcpJwsRegistry(strict_check_header=False)
-        )
-    except (JoseError, ValueError):
-        return None
-    segments = compact.segments
-    return (
-        segments["header"].decode("ascii"),
-        segments["payload"].decode("ascii"),
-        segments["signature"].decode("ascii"),
-    )
-
-
 def _compact_json(value: object) -> bytes:
     return json.dumps(
         value,
@@ -1508,26 +1484,8 @@ def _compact_json(value: object) -> bytes:
 
 
 def _decode_json_segment(segment: str) -> dict[str, Any]:
-    raw = b64url_decode(segment)
-    if b64url_encode(raw) != segment:
-        raise ValueError("non-canonical base64url")
-
-    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError("duplicate JSON object member")
-            result[key] = value
-        return result
-
-    def reject_constant(value: str) -> None:
-        raise ValueError(f"non-finite JSON number: {value}")
-
-    value = json.loads(
-        raw.decode("utf-8"),
-        object_pairs_hook=unique_object,
-        parse_constant=reject_constant,
-    )
+    """A strict JSON object from a base64url JWS segment (``ValueError`` otherwise)."""
+    value = parse_strict_json(b64url_decode(segment))
     if not isinstance(value, dict):
         raise ValueError("JWS segment is not a JSON object")
     return value
