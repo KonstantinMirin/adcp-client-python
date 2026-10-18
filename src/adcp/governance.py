@@ -211,9 +211,9 @@ class GovernanceReplayStoreAdapter:
         if not supports_atomic_claim(replay_store):
             raise TypeError("governance replay protection requires an atomic replay store")
         self._store = replay_store
-        self._bindings: dict[
-            tuple[str, str, str], tuple[float, GovernanceReplayBinding | None]
-        ] = {}
+        self._bindings: dict[tuple[str, str, str], tuple[float, GovernanceReplayBinding | None]] = (
+            {}
+        )
         self._binding_lock = threading.RLock()
         self._claims_since_sweep = 0
 
