@@ -58,7 +58,7 @@ def _governance_token(header_extra=None, claims_extra=None, *, iss=None):
     from joserfc import jws as jose_jws
     from joserfc.jwk import OKPKey
 
-    from adcp.signing.wba import _governance_registry
+    from adcp.governance import _governance_jws_registry
 
     identity = iss or KEYS[GOVERNANCE_KID]["identity"]
     header = {
@@ -75,7 +75,7 @@ def _governance_token(header_extra=None, claims_extra=None, *, iss=None):
         header,
         json.dumps(claims).encode(),
         OKPKey.import_key(private),
-        registry=_governance_registry("EdDSA"),
+        registry=_governance_jws_registry("EdDSA"),
     )
 
 

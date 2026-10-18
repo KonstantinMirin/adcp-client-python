@@ -97,6 +97,10 @@ class _Ed25519EdDSA(EdDSAAlgorithm):
 class _AdcpJwsRegistry(JWSRegistry):
     """joserfc registry that knows only the AdCP profile algorithms.
 
+    ``Ed25519`` is RFC 9864's fully specified name for ``EdDSA`` over
+    Ed25519, which a Web Bot Auth governance token may carry. Each caller
+    narrows the registry to its own allow-list (``algorithms=``).
+
     The size caps are lifted. The fetch layer already bounds the document
     (``max_body_bytes``, 1 MiB by default and configurable). joserfc's
     smaller default caps (512-byte header, 128 kB payload) would reject
@@ -106,6 +110,7 @@ class _AdcpJwsRegistry(JWSRegistry):
     algorithms: dict[str, JWSAlgModel] = {
         "EdDSA": _Ed25519EdDSA(),
         "ES256": ESAlgorithm("ES256", "P-256", 256),
+        "Ed25519": JWSRegistry.algorithms["Ed25519"],
     }
     recommended: list[str] = []
     max_header_length = sys.maxsize

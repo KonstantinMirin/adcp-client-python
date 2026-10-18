@@ -1459,6 +1459,9 @@ def critical_claims_failure(header: Mapping[str, Any], claims: Mapping[str, Any]
 def _governance_jws_registry(alg: str) -> JWSRegistry:
     """The AdCP JWS registry (``jws._AdcpJwsRegistry``) for one governance ``alg``.
 
+    Both governance verifiers use it: this module's and the Web Bot Auth
+    issuer check (``wba.verify_wba_governance_issuer``).
+
     The critical claim markers are registered as boolean protected-header
     parameters, so joserfc's ``crit`` check accepts exactly those.
     """

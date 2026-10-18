@@ -1232,31 +1232,6 @@ class WbaGovernanceError(ValueError):
         self.reason = reason
 
 
-def _governance_registry(alg: str) -> Any:
-    from joserfc.jws import JWSRegistry
-    from joserfc.registry import HeaderParameter, is_bool
-
-    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-    from adcp.signing.jws import _AdcpJwsRegistry, _Ed25519EdDSA
-
-    class _Registry(_AdcpJwsRegistry):
-        algorithms = {
-            "EdDSA": _Ed25519EdDSA(),
-            "Ed25519": JWSRegistry.algorithms["Ed25519"],
-            "PS512": JWSRegistry.algorithms["PS512"],
-        }
-
-    # The action-binding claim markers are the only crit extensions.
-    return _Registry(
-        header_registry={
-            name: HeaderParameter(f"AdCP critical claim marker: {name}", is_bool)
-            for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-        },
-        algorithms=[alg],
-        strict_check_header=False,
-    )
-
-
 async def verify_wba_governance_issuer(
     token: object,
     *,
@@ -1293,6 +1268,8 @@ async def verify_wba_governance_issuer(
     from joserfc.jwk import OKPKey
     from joserfc.util import urlsafe_b64decode
 
+    from adcp.governance import _governance_jws_registry
+
     def fail(code: str, reason: str) -> WbaGovernanceError:
         return WbaGovernanceError(code, reason)
 
@@ -1301,7 +1278,7 @@ async def verify_wba_governance_issuer(
         raise fail("governance_token_invalid", "governance token is missing or too large")
     try:
         compact = jose_jws.extract_compact(
-            token.encode("ascii"), registry=_governance_registry("EdDSA")
+            token.encode("ascii"), registry=_governance_jws_registry("EdDSA")
         )
         header = parse_strict_json(urlsafe_b64decode(compact.segments["header"]))
         claims = parse_strict_json(compact.payload)
@@ -1356,7 +1333,7 @@ async def verify_wba_governance_issuer(
     public = {name: value for name, value in key.jwk.items() if name not in {"kid", "alg"}}
     try:
         jose_key = OKPKey.import_key(public)
-        jose_jws.deserialize_compact(token, jose_key, registry=_governance_registry(str(alg)))
+        jose_jws.deserialize_compact(token, jose_key, registry=_governance_jws_registry(str(alg)))
     except BadSignatureError as exc:
         raise fail("governance_token_invalid", "governance token signature invalid") from exc
     except JoseError as exc:
