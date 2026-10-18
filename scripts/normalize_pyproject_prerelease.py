@@ -28,9 +28,15 @@ _PEP440_LABELS = {
     "rc": "rc",
 }
 _REPOSITORY = "adcontextprotocol/adcp-client-python"
+# Release Please head branches, by the branch each release line targets.
+# ``main`` cuts the current major; ``next`` cuts draft-spec pre-releases
+# (see RELEASING.md).
 _RELEASE_BRANCHES = {
-    "release-please--branches--main",
-    "release-please--branches--main--components--adcp",
+    target: {
+        f"release-please--branches--{target}",
+        f"release-please--branches--{target}--components--adcp",
+    }
+    for target in ("main", "next")
 }
 
 
@@ -103,8 +109,16 @@ def _github(path: str, token: str, *, body: dict[str, Any] | None = None) -> Any
         return json.load(response)
 
 
-def normalize_release_prs(prs: list[dict[str, Any]], token: str) -> None:
-    """Normalize the one Release Please PR with the App credential that opened it."""
+def normalize_release_prs(
+    prs: list[dict[str, Any]], token: str, target_branch: str = "main"
+) -> None:
+    """Normalize the one Release Please PR with the App credential that opened it.
+
+    ``target_branch`` is the release line whose workflow opened the PR; the PR
+    must target that branch from that line's Release Please branch.
+    """
+    if target_branch not in _RELEASE_BRANCHES:
+        raise ValueError("unexpected release target branch")
     if len(prs) > 1:
         raise ValueError("expected at most one release PR")
     for proposed in prs:
@@ -112,10 +126,10 @@ def normalize_release_prs(prs: list[dict[str, Any]], token: str) -> None:
         pr = _github(f"pulls/{number}", token)
         branch = pr["head"]["ref"]
         if (
-            pr["base"]["ref"] != "main"
+            pr["base"]["ref"] != target_branch
             or pr["base"]["repo"]["full_name"] != _REPOSITORY
             or pr["head"]["repo"]["full_name"] != _REPOSITORY
-            or branch not in _RELEASE_BRANCHES
+            or branch not in _RELEASE_BRANCHES[target_branch]
         ):
             raise ValueError("unexpected release PR identity")
         original = _github(
@@ -148,11 +162,19 @@ def main() -> int:
         help="Path to pyproject.toml.",
     )
     parser.add_argument("--release-prs", action="store_true", help="Normalize Release Please PRs")
+    parser.add_argument(
+        "--target-branch",
+        default="main",
+        choices=sorted(_RELEASE_BRANCHES),
+        help="Release line whose Release Please PR is normalized (default: main).",
+    )
     args = parser.parse_args()
 
     if args.release_prs:
         normalize_release_prs(
-            json.loads(os.environ["PROPOSAL_PRS"] or "[]"), os.environ["GH_TOKEN"]
+            json.loads(os.environ["PROPOSAL_PRS"] or "[]"),
+            os.environ["GH_TOKEN"],
+            args.target_branch,
         )
         return 0
 

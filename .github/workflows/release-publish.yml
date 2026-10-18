@@ -1,5 +1,10 @@
 name: Release publish
 
+# Publishes releases from main and from the next draft-spec line. Each line's
+# Release Please workflow dispatches this file with --ref set to its branch,
+# and the build waits for that branch's CI at the release commit. Keep the
+# workflow file name: PyPI Trusted Publishing is bound to it.
+
 on:
   workflow_dispatch:
     inputs:
@@ -20,7 +25,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next'
     runs-on: ubuntu-24.04
     # Allow the 85-minute main CI lane plus queueing and distribution builds.
     timeout-minutes: 120
@@ -34,7 +39,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
-      - name: Wait for successful main CI at the release commit
+      - name: Wait for successful branch CI at the release commit
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ inputs.release_sha }}
@@ -45,13 +50,13 @@ jobs:
           git merge-base --is-ancestor "$RELEASE_SHA" HEAD
           for attempt in {1..220}; do
             if gh run list --workflow CI --event push --commit "$RELEASE_SHA" --json headSha,headBranch,status,conclusion --limit 20 |
-              jq -e --arg sha "$RELEASE_SHA" 'any(.[]; .headSha == $sha and .headBranch == "main" and .status == "completed" and .conclusion == "success")'; then
+              jq -e --arg sha "$RELEASE_SHA" --arg branch "$GITHUB_REF_NAME" 'any(.[]; .headSha == $sha and .headBranch == $branch and .status == "completed" and .conclusion == "success")'; then
               git checkout --detach "$RELEASE_SHA"
               exit 0
             fi
             sleep 30
           done
-          echo 'Main CI did not pass for the release commit' >&2
+          echo "$GITHUB_REF_NAME CI did not pass for the release commit" >&2
           exit 1
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
