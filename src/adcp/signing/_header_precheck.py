@@ -35,7 +35,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from adcp.signing._structured_fields import reject_dictionary_duplicates
 from adcp.signing.canonical import (
     TargetUriMalformedError,
     _split_or_reject,
@@ -71,7 +70,6 @@ _SINGLE_VALUE_HEADERS = frozenset({"content-type"})
 _DICTIONARY_HEADERS = {
     "signature": "Signature",
     "signature-input": "Signature-Input",
-    "signature-agent": "Signature-Agent",
     "content-digest": "Content-Digest",
 }
 
@@ -111,10 +109,6 @@ def strict_header_precheck(
             reason = _duplicate_dictionary_key_reason(value, header_name)
             if reason is not None:
                 return reason
-            try:
-                reject_dictionary_duplicates(value)
-            except ValueError as exc:
-                return f"{header_name} is malformed: {exc}"
 
     return None
 
