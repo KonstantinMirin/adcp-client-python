@@ -109,6 +109,7 @@ async def test_sender_to_receiver_happy_path() -> None:
         result = await sender.send_mcp(
             url="http://test/webhooks/adcp",
             task_id="task_sender_e2e",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
             result={"media_buy_id": "mb_1"},
@@ -132,6 +133,7 @@ async def test_retry_with_same_idempotency_key_dedupes() -> None:
         first = await sender.send_mcp(
             url="http://test/webhooks/adcp",
             task_id="task_retry",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
         )
@@ -139,6 +141,7 @@ async def test_retry_with_same_idempotency_key_dedupes() -> None:
         retry = await sender.send_mcp(
             url=first.url,
             task_id="task_retry",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
             idempotency_key=first.idempotency_key,
@@ -163,6 +166,7 @@ async def test_extra_headers_cannot_override_signature_bindings() -> None:
             await sender.send_mcp(
                 url="http://test/webhooks/adcp",
                 task_id="t",
+                operation_id="op_test",
                 task_type="create_media_buy",
                 status="completed",
                 extra_headers={"Signature": "attacker-controlled"},
@@ -171,6 +175,7 @@ async def test_extra_headers_cannot_override_signature_bindings() -> None:
             await sender.send_mcp(
                 url="http://test/webhooks/adcp",
                 task_id="t",
+                operation_id="op_test",
                 task_type="create_media_buy",
                 status="completed",
                 extra_headers={"Content-Digest": "forged"},
@@ -318,6 +323,7 @@ async def test_sent_body_equals_signed_body_equals_received_body() -> None:
         result = await sender.send_mcp(
             url="http://test/webhooks/adcp/capture",
             task_id="task_byte_identity",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
             result={"media_buy_id": "mb_bytes"},
@@ -338,6 +344,7 @@ async def test_resend_replays_identical_bytes_with_fresh_signature() -> None:
         first = await sender.send_mcp(
             url="http://test/webhooks/adcp",
             task_id="task_resend",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
             result={"media_buy_id": "mb_resend"},
@@ -374,6 +381,7 @@ async def test_extra_header_case_insensitive_rejection() -> None:
                 await sender.send_mcp(
                     url="http://test/webhooks/adcp",
                     task_id="t",
+                    operation_id="op_test",
                     task_type="create_media_buy",
                     status="completed",
                     extra_headers={bad: "attacker"},
@@ -397,6 +405,7 @@ async def test_receiver_rejects_when_sender_key_wrong() -> None:
         result = await sender.send_mcp(
             url="http://test/webhooks/adcp",
             task_id="t",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
         )
@@ -419,6 +428,7 @@ async def test_owned_client_rejects_loopback_destination() -> None:
             await sender.send_mcp(
                 url="https://127.0.0.1/webhooks/adcp",
                 task_id="task_ssrf",
+                operation_id="op_test",
                 task_type="create_media_buy",
                 status="completed",
             )
@@ -451,6 +461,7 @@ async def test_owned_client_rejects_disallowed_port_when_hardening_configured() 
                 await sender.send_mcp(
                     url="https://example.com:6379/webhooks/adcp",
                     task_id="task_port",
+                    operation_id="op_test",
                     task_type="create_media_buy",
                     status="completed",
                 )
@@ -538,6 +549,7 @@ async def test_owned_client_default_allows_non_standard_ports() -> None:
             result = await sender.send_mcp(
                 url="http://test:9443/webhooks/adcp",
                 task_id="task_nonstd",
+                operation_id="op_test",
                 task_type="create_media_buy",
                 status="completed",
             )
@@ -575,6 +587,7 @@ async def test_operator_supplied_client_bypasses_ssrf_guard() -> None:
         result = await sender.send_mcp(
             url="http://test/webhooks/adcp",
             task_id="task_op_trust",
+            operation_id="op_test",
             task_type="create_media_buy",
             status="completed",
         )
@@ -643,6 +656,7 @@ async def test_owned_client_ignores_https_proxy_env() -> None:
                     await sender.send_mcp(
                         url="https://buyer.example.com/webhooks/adcp",
                         task_id="task_proxy",
+                        operation_id="op_test",
                         task_type="create_media_buy",
                         status="completed",
                     )
@@ -698,6 +712,7 @@ async def test_owned_client_rejects_hostile_url_before_signing() -> None:
             await sender.send_mcp(
                 url="https://127.0.0.1/webhooks/adcp",
                 task_id="task_no_sign",
+                operation_id="op_test",
                 task_type="create_media_buy",
                 status="completed",
             )
