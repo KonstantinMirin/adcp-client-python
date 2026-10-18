@@ -699,7 +699,7 @@ def test_unsigned_directories_are_refused_and_keys_are_found_by_thumbprint():
         )
 
 
-def _public_jwk(private_key):
+def _public_jwk(private_key, *, private=False):
     key_type = {
         ed25519.Ed25519PrivateKey: OKPKey,
         ec.EllipticCurvePrivateKey: ECKey,
@@ -707,27 +707,29 @@ def _public_jwk(private_key):
     }
     imported = next(kind for base, kind in key_type.items() if isinstance(private_key, base))
     key = imported.import_key(private_key)
-    return {**key.as_dict(private=False), "kid": key.thumbprint()}
+    return {**key.as_dict(private=private), "kid": key.thumbprint()}
 
 
 def _directory_signed_by(
     signers,
     *,
     unsigned=(),
+    published_private=(),
     media_type=DIRECTORY_MEDIA_TYPE,
     components=('"@authority";req', '"content-digest"'),
 ):
     """A directory at ``ORIGIN`` that each of ``signers`` signs (Appendix B.1).
 
     The library signs it directly, so a key the SDK does not sign with still
-    signs here. ``unsigned`` keys are listed without a signature.
+    signs here. ``unsigned`` keys are listed without a signature, and the
+    signers in ``published_private`` are listed with their private members.
     """
     from http_message_signatures import HTTPMessageSigner
     from http_message_signatures.algorithms import ECDSA_P256_SHA256, ED25519, RSA_PSS_SHA512
 
     from adcp.signing import _rfc9421
 
-    keys = [_public_jwk(key) for key in signers]
+    keys = [_public_jwk(key, private=key in published_private) for key in signers]
     body = json.dumps({"keys": keys + [_public_jwk(key) for key in unsigned]}).encode()
     message = _rfc9421.Response(
         status_code=200,
@@ -800,6 +802,27 @@ def test_directory_ignores_unusable_keys_and_their_signatures():
     ):
         keys = verify_directory_response(ORIGIN, response, now=1001)
         assert list(keys) == [public_directory_key(ed_key)["kid"]]
+
+
+@pytest.mark.parametrize("kind", ["P-256", "RSA", "Ed25519"])
+def test_a_directory_publishing_private_key_material_is_refused(kind):
+    """A key published with ``d`` fails the directory, whether or not the profile can use it.
+
+    The scan runs before unusable keys are skipped. Each directory here also
+    holds a usable Ed25519 key that signs, so skipping the key with ``d``
+    instead would verify the directory.
+    """
+    usable = ed25519.Ed25519PrivateKey.generate()
+    exposed = {
+        "P-256": lambda: ec.generate_private_key(ec.SECP256R1()),
+        "RSA": lambda: rsa.generate_private_key(public_exponent=65537, key_size=2048),
+        "Ed25519": ed25519.Ed25519PrivateKey.generate,
+    }[kind]()
+    directory = _directory_signed_by([usable, exposed], published_private=[exposed])
+    assert "d" in json.loads(directory.body)["keys"][1]
+
+    with pytest.raises(WbaVerificationError, match="private key material"):
+        verify_directory_response(ORIGIN, directory, now=1001)
 
 
 def test_every_usable_directory_key_signs():
