@@ -382,7 +382,7 @@ jobs:
       # adcontextprotocol/adcp commit that carries tests/wba-interop and the wba-profile
       # vectors: the head of adcontextprotocol/adcp#8298. Pin its merge commit once it
       # merges, and a release tag once one carries the harness.
-      ADCP_REF: "a7708e41fbcf0da84273a988c519b25a14b41dbc"
+      ADCP_REF: "6bf069b61f8bb921983b6fbabd2cfce0962fefb8"
     steps:
       - uses: actions/checkout@v6
         with:
