@@ -28,7 +28,8 @@ extension points:
 
 The signer subclass reaches ``_build_signature_base`` only for the async
 (:class:`~adcp.signing.SigningProvider`) path, where the base must exist
-before an awaited signature. ``tests/conformance/signing/test_rfc9421_library_contract.py``
+before an awaited signature; pyauth/http-message-signatures#31 asks for a
+public call. ``tests/conformance/signing/test_rfc9421_library_contract.py``
 pins the library shapes this module relies on.
 """
 
@@ -447,7 +448,8 @@ class ProfileSigner(HTTPMessageSigner):
     (:class:`~adcp.signing.SigningProvider`) path awaits the signature, so it
     needs the base first, and the public ``build_signature_base`` helper
     returns one. Both reuse the library's own base builder through its
-    protected subclass hooks; the contract test pins them.
+    protected subclass hooks; the contract test pins them. Drop the hooks
+    once a release carries pyauth/http-message-signatures#31.
     """
 
     def base(
