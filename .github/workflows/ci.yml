@@ -366,6 +366,73 @@ jobs:
           python -m pytest -n0 -p no:cacheprovider -v -ra \
             tests/conformance/reporting/test_reporting_row_storage_interop_pg.py
 
+  wba-interop:
+    needs: changes
+    if: needs.changes.outputs.run_tests == 'true'
+    name: Web Bot Auth interop with the Cloudflare reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    # PURPOSE: the SDK's Web Bot Auth signer and verifier must interoperate with standard WBA.
+    # The AdCP harness (adcp/tests/wba-interop) grades tests/wba_interop/adapter.py against
+    # Cloudflare's web-bot-auth, pinned exactly in the harness lockfile, in both directions:
+    # the reference signs and the SDK verifies, and the SDK signs and the reference verifies.
+    env:
+      # adcontextprotocol/adcp commit that carries tests/wba-interop and the wba-profile
+      # vectors: the head of adcontextprotocol/adcp#8298. Pin its merge commit once it
+      # merges, and a release tag once one carries the harness.
+      ADCP_REF: "a7708e41fbcf0da84273a988c519b25a14b41dbc"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the AdCP harness at ADCP_REF
+        uses: actions/checkout@v6
+        with:
+          repository: adcontextprotocol/adcp
+          ref: ${{ env.ADCP_REF }}
+          path: adcp
+          filter: blob:none
+          sparse-checkout: |
+            tests/wba-interop
+            static/compliance/source/test-vectors/wba-profile
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.8"
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+          cache-suffix: "3.12"
+          prune-cache: true
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          # The harness's package.json requires Node 24.
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: adcp/tests/wba-interop/package-lock.json
+      - name: Install the harness
+        run: npm ci --prefix adcp/tests/wba-interop --ignore-scripts
+      - name: Run the harness against the SDK adapter
+        run: |
+          node adcp/tests/wba-interop/run.mjs \
+            --adapter "uv run python tests/wba_interop/adapter.py" \
+            --vectors adcp/static/compliance/source/test-vectors/wba-profile \
+            --junit wba-interop.xml
+      - name: Preserve the harness report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wba-interop-${{ github.run_attempt }}
+          retention-days: 7
+          path: wba-interop.xml
+          if-no-files-found: error
+
   pg-conformance-required-gate:
     name: Postgres conformance tests (Postgres 16)
     runs-on: ubuntu-latest
