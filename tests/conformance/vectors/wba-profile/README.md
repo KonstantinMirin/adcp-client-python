@@ -1,8 +1,8 @@
 # Web Bot Auth profile vectors
 
 Copied without modification from adcontextprotocol/adcp PR #7894, commit
-`f311e1b567c55c1d0689b2b7fd9b4a35e9ba91fe`,
-`static/compliance/source/test-vectors/wba-profile/`, on 2026-10-18. The
+`e59294701d733b0ea2a004a2f0c091c8eccdcaae`,
+`static/compliance/source/test-vectors/wba-profile/`, on 2026-10-19. The
 upstream `README.md` is vendored as `UPSTREAM-README.md`. `UPSTREAM.json`
 records each file's SHA-256, and
 `tests/conformance/signing/test_wba_profile.py` checks them.

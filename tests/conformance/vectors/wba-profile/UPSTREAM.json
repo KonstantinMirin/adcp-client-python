@@ -1,9 +1,9 @@
 {
   "repository": "adcontextprotocol/adcp",
   "pull_request": 7894,
-  "commit": "f311e1b567c55c1d0689b2b7fd9b4a35e9ba91fe",
+  "commit": "e59294701d733b0ea2a004a2f0c091c8eccdcaae",
   "path": "static/compliance/source/test-vectors/wba-profile/",
-  "vendored_on": "2026-10-18",
+  "vendored_on": "2026-10-19",
   "renamed": {
     "README.md": "UPSTREAM-README.md"
   },
@@ -18,6 +18,6 @@
     "negative/006-two-signatures.json": "87cb93e1f9bc4fba2eadb0df7832d51c9edf2d0add02aab5cee8265b9d7f1661",
     "positive/001-single-signer-request.json": "213b69f5f029c6da37abbc4dafff0f89e7604c5a6a4acca59b8c9df4a3d88e25",
     "positive/002-signed-directory-response.json": "b07b0a947d943225c29fcb819008d080ca83f209d56be785a1a7b15f15e82dbe",
-    "scenarios.json": "1e35ed32fc68801fc72c9e923eb7f7dbf9ba43745256ea360a548147a7feb47a"
+    "scenarios.json": "0327f40cf31de2dc6cf975d9643a999aee68a225817dd0d409b81a6f92a868e2"
   }
 }

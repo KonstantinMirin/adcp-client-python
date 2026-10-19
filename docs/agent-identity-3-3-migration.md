@@ -1,6 +1,6 @@
 # Experimental AdCP 3.3 agent identity
 
-This SDK supports an opt-in preview of issue [#1500](https://github.com/adcontextprotocol/adcp-client-python/issues/1500). The Web Bot Auth wire profile follows `wba-profile.mdx` in adcontextprotocol/adcp#7894 at `f311e1b5` (vectors in `tests/conformance/vectors/wba-profile/`, provenance in its `UPSTREAM.json`); the identity schemas are pinned to the commits in `src/adcp/signing/_identity_schemas/UPSTREAM.json`. Both may change before the protocol release. The stable wire pin and `COMPATIBLE_ADCP_VERSIONS` do not advertise 3.3 yet.
+This SDK supports an opt-in preview of issue [#1500](https://github.com/adcontextprotocol/adcp-client-python/issues/1500). The Web Bot Auth wire profile follows `wba-profile.mdx` in adcontextprotocol/adcp#7894 at `e5929470` (vectors in `tests/conformance/vectors/wba-profile/`, provenance in its `UPSTREAM.json`); the identity schemas are pinned to the commits in `src/adcp/signing/_identity_schemas/UPSTREAM.json`. Both may change before the protocol release. The stable wire pin and `COMPATIBLE_ADCP_VERSIONS` do not advertise 3.3 yet.
 
 The behavior below follows the final spec decisions (adcontextprotocol/adcp#8162, #8168, #8169, #8170) and matches the Go (`adcp-go`) and TypeScript (`@adcp/sdk/identity-3.3`) SDKs, except where [Differences from the other SDKs](#differences-from-the-other-sdks) says otherwise.
 
