@@ -1145,7 +1145,11 @@ async def verify_governance_authorization(
     except (TypeError, ValueError):
         return reject("governance_token_invalid", "governance_context contains invalid JSON")
     alg = header.get("alg")
-    if alg not in {"EdDSA", "ES256"} or header.get("typ") != GOVERNANCE_AUTHORIZATION_TYP:
+    if (
+        type(alg) is not str
+        or alg not in {"EdDSA", "ES256"}
+        or header.get("typ") != GOVERNANCE_AUTHORIZATION_TYP
+    ):
         return reject("governance_token_invalid", "unsupported governance JWS alg or typ")
     critical = header.get("crit")
     if (

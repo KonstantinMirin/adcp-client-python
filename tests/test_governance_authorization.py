@@ -705,3 +705,13 @@ async def test_critical_marker_crit_entry_and_claim_appear_together(
     assert not result.ok
     assert result.error == "governance_token_invalid"
     assert result.message == "authorized_commitment claim and critical marker must match"
+
+
+@pytest.mark.parametrize("alg", [["EdDSA"], {"EdDSA": True}], ids=["list", "object"])
+@pytest.mark.asyncio
+async def test_a_non_string_alg_is_an_invalid_token(alg: object) -> None:
+    """A header ``alg`` that isn't a string is ``governance_token_invalid``, not a TypeError."""
+    result = await _verify_signed_vector({"alg": alg})
+
+    assert not result.ok
+    assert result.error == "governance_token_invalid"
