@@ -750,12 +750,14 @@ def _directory_signed_by(
     published_private=(),
     media_type=DIRECTORY_MEDIA_TYPE,
     components=('"@authority";req', '"content-digest"'),
+    entries=(),
 ):
     """A directory at ``ORIGIN`` that each of ``signers`` signs (Appendix B.1).
 
     The library signs it directly, so a key the SDK does not sign with still
     signs here. ``unsigned`` keys are listed without a signature, and the
     signers in ``published_private`` are listed with their private members.
+    ``entries`` are listed as given, unsigned.
     """
     from http_message_signatures import HTTPMessageSigner
     from http_message_signatures.algorithms import ECDSA_P256_SHA256, ED25519, RSA_PSS_SHA512
@@ -763,7 +765,8 @@ def _directory_signed_by(
     from adcp.signing import _rfc9421
 
     keys = [_public_jwk(key, private=key in published_private) for key in signers]
-    body = json.dumps({"keys": keys + [_public_jwk(key) for key in unsigned]}).encode()
+    listed = keys + [_public_jwk(key) for key in unsigned] + list(entries)
+    body = json.dumps({"keys": listed}).encode()
     message = _rfc9421.Response(
         status_code=200,
         request=_rfc9421.Request("GET", ORIGIN + DIRECTORY_PATH),
@@ -856,6 +859,22 @@ def test_a_directory_publishing_private_key_material_is_refused(kind):
 
     with pytest.raises(WbaVerificationError, match="private key material"):
         verify_directory_response(ORIGIN, directory, now=1001)
+
+
+@pytest.mark.parametrize("name", ["D", "P", "Q"])
+def test_a_private_member_refuses_the_directory_whatever_its_case(name):
+    """The private-member scan ignores case (the #8298 D14c case spells ``D``).
+
+    JWK member names are case-sensitive (RFC 7517 section 4), so ``D`` is not
+    ``d``. A directory that publishes a private scalar under any spelling is
+    refused all the same, before its entries are read.
+    """
+    usable = ed25519.Ed25519PrivateKey.generate()
+    other = ec.generate_private_key(ec.SECP256R1())
+    entry = {**_public_jwk(other), name: _public_jwk(other, private=True)["d"]}
+
+    with pytest.raises(WbaVerificationError, match="private key material"):
+        verify_directory_response(ORIGIN, _directory_signed_by([usable], entries=[entry]), now=1001)
 
 
 def test_every_usable_directory_key_signs():
