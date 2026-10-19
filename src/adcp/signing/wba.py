@@ -1292,7 +1292,7 @@ async def verify_wba_governance_issuer(
     if not isinstance(header, dict) or not isinstance(claims, dict):
         raise fail("governance_token_invalid", "governance token header or claims not an object")
     alg = header.get("alg")
-    if alg not in _GOVERNANCE_JWS_ALGS[ALG_ED25519]:
+    if type(alg) is not str or alg not in _GOVERNANCE_JWS_ALGS[ALG_ED25519]:
         raise fail("governance_token_invalid", "governance token alg not allowed")
     if header.get("typ") != WBA_GOVERNANCE_TYP:
         raise fail("governance_token_invalid", "governance token typ mismatch")

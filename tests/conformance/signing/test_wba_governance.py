@@ -151,3 +151,31 @@ async def test_governance_alg_outside_the_profile_is_refused_before_key_discover
         )
     assert caught.value.code == "governance_token_invalid"
     assert caught.value.reason == "governance token alg not allowed"
+
+
+@pytest.mark.parametrize("alg", [["EdDSA"], {"EdDSA": True}], ids=["list", "object"])
+async def test_a_non_string_governance_alg_is_an_invalid_token(alg):
+    """A header ``alg`` that isn't a string raises WbaGovernanceError, not TypeError."""
+    from adcp.signing.crypto import b64url_encode
+
+    identity = KEYS[GOVERNANCE_KID]["identity"]
+    header = {
+        "alg": alg,
+        "typ": "adcp-gov+jws",
+        "jku": identity + "/.well-known/http-message-signatures-directory",
+        "kid": GOVERNANCE_KID,
+    }
+    claims = {"iss": identity, "iat": 1000, "exp": 1600}
+    token = ".".join(
+        b64url_encode(part)
+        for part in (json.dumps(header).encode(), json.dumps(claims).encode(), b"\x00" * 64)
+    )
+
+    async def resolve(keyid, *, signer_origin=None):
+        pytest.fail("a malformed alg must not trigger key discovery")
+
+    with pytest.raises(WbaGovernanceError) as caught:
+        await verify_wba_governance_issuer(
+            token, signer_keys=resolve, governance_agents=[identity], now=1100
+        )
+    assert caught.value.code == "governance_token_invalid"
