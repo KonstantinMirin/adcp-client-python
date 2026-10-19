@@ -478,17 +478,20 @@ _MALFORMED_HOSTS = ["::1", "[::1", "[fe80::1%25eth0]", ":443", "user@"]
 @pytest.mark.asyncio
 @pytest.mark.parametrize("host", _MALFORMED_HOSTS)
 @pytest.mark.parametrize("leg", sorted(_LEGS))
-async def test_malformed_host_rejected_at_step_1_on_both_legs(leg: str, host: str) -> None:
+async def test_malformed_host_rejected_as_target_uri_malformed_on_both_legs(
+    leg: str, host: str
+) -> None:
     """With the Host policy disabled, the verifier is what refuses the shape.
 
     ``request.url`` does not carry these authorities over from the header, so
-    only the step-1 precheck over the raw ``Host`` header sees them.
+    only the verifier's target-URI precheck over the raw ``Host`` header sees
+    them. The AdCP 3.2.4 corpus grades them ``request_target_uri_malformed``.
     """
     handler = _Recording()
     app = _app_without_host_policy(handler)
     path, raw, headers = _signed_for_leg(leg)
     response = await _post(app, path, raw, {**headers, "host": host})
-    _assert_rejected(response, "request_signature_header_malformed")
+    _assert_rejected(response, "request_target_uri_malformed")
     assert handler.contexts == []
 
 
@@ -969,16 +972,13 @@ def test_decisioning_serve_warns_when_required_signatures_are_unenforced() -> No
     with pytest.warns(UserWarning, match="not verifying request signatures"):
         _configure_request_signature_verification(_platform(capability), None, None, {})
 
-    # Configuration itself emits the intentional 3.3 profile deprecation;
-    # the composition helper must emit no unenforced-signature warning.
-    verification = _config()
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         _configure_request_signature_verification(
             _platform(capability),
             None,
             None,
-            {"request_signature_verification": verification},
+            {"request_signature_verification": _config()},
         )
 
 
