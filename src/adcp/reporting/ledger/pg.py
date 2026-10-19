@@ -428,7 +428,9 @@ class PgReportingLedgerStore:
 
         Account feeds order by ``seq``; the deployment-wide feed orders by ``(xid, seq)``
         below the reading snapshot's ``xmin``. A cursor older than the retained history
-        raises ``ReportingChangeCursorExpiredError``. Requires ``change_feed=True``.
+        raises ``ReportingChangeCursorExpiredError``, and so does a read with no cursor when a
+        prune commits while the page is being read (the horizon is read again after the page).
+        Requires ``change_feed=True``.
         """
         from adcp.reporting.ledger.change_feed import changes_after
 
@@ -436,11 +438,31 @@ class PgReportingLedgerStore:
             self, cursor=cursor, account_id=account_id, kinds=kinds, limit=limit
         )
 
-    async def save_feed_consumer_cursor(self, name: str, cursor: str) -> None:
-        """Register a named consumer's position, holding back pruning and retirement."""
+    async def save_feed_consumer_cursor(
+        self,
+        name: str,
+        cursor: str,
+        *,
+        refresh_unchanged: bool = True,
+        rewind: bool = False,
+    ) -> bool:
+        """Register a named consumer's position, holding back pruning and retirement.
+
+        Forward-only within a feed scope: a cursor behind the saved one is ignored and the
+        call returns ``False``. Pass ``rewind=True`` to move the position back deliberately.
+        See :func:`adcp.reporting.ledger.change_feed.save_feed_consumer_cursor`.
+        """
         from adcp.reporting.ledger.change_feed import save_feed_consumer_cursor
 
-        await save_feed_consumer_cursor(self, name, cursor)
+        return await save_feed_consumer_cursor(
+            self, name, cursor, refresh_unchanged=refresh_unchanged, rewind=rewind
+        )
+
+    async def remove_feed_consumer(self, name: str) -> bool:
+        """Unregister a consumer so it stops holding back pruning; ``True`` if it was registered."""
+        from adcp.reporting.ledger.change_feed import remove_feed_consumer
+
+        return await remove_feed_consumer(self, name)
 
     async def prune_changes(
         self,
