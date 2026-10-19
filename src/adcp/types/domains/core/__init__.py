@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-16 22:14:49 UTC
+Generation date: 2026-10-19 19:56:36 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -1309,7 +1309,7 @@ if TYPE_CHECKING:
     from adcp.types.domains.core.property_tag import PropertyTag
     from adcp.types.domains.core.proposal import Proposal
     from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
-    from adcp.types.domains.core.provenance import VerifyAgent18
+    from adcp.types.domains.core.provenance import VerifyAgent10
     from adcp.types.domains.core.publisher_property_selector import (
         PublisherPropertySelector,
         PublisherPropertySelector1,
@@ -3244,7 +3244,7 @@ _DECLARED_BY = {
     "core.property_tag": ("PropertyTag",),
     "core.proposal": ("Proposal",),
     "core.protocol_envelope": ("ProtocolEnvelope",),
-    "core.provenance": ("VerifyAgent18",),
+    "core.provenance": ("VerifyAgent10",),
     "core.publisher_property_selector": (
         "PublisherPropertySelector",
         "PublisherPropertySelector1",
@@ -5281,7 +5281,7 @@ __all__ = [
     "VerificationTokenMode",
     "VerifiedAttestationDigest",
     "VerifyAgent1",
-    "VerifyAgent18",
+    "VerifyAgent10",
     "VideoAssetRequirements",
     "Viewability1",
     "ViewableRate",

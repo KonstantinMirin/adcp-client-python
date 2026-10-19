@@ -18,7 +18,7 @@ each other, which Python handles -- into a package-level one that made all
 16 modules under ``formats/canonical/`` unimportable on their own.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-16 22:14:49 UTC
+Generation date: 2026-10-19 19:56:36 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -178,9 +178,9 @@ if TYPE_CHECKING:
         PrincipalReadFailedResult,
         PrincipalRecognizedResult,
         PrincipalUnconfiguredResult,
-        Result6,
-        Result7,
-        Result9,
+        Result2,
+        Result3,
+        Result5,
     )
     from adcp.types.domains.protocol.get_task_status_request import GetTaskStatusRequest
     from adcp.types.domains.protocol.get_task_status_response import (
@@ -220,8 +220,8 @@ if TYPE_CHECKING:
         PrincipalAppliedResult,
         PrincipalSyncFailedResult,
         PrincipalValidatedResult,
-        Result17,
-        Result19,
+        Result13,
+        Result15,
         SyncPrincipalResponse,
     )
 
@@ -382,9 +382,9 @@ _DECLARED_BY = {
         "PrincipalReadFailedResult",
         "PrincipalRecognizedResult",
         "PrincipalUnconfiguredResult",
-        "Result6",
-        "Result7",
-        "Result9",
+        "Result2",
+        "Result3",
+        "Result5",
     ),
     "protocol.get_task_status_request": ("GetTaskStatusRequest",),
     "protocol.get_task_status_response": (
@@ -420,8 +420,8 @@ _DECLARED_BY = {
         "PrincipalAppliedResult",
         "PrincipalSyncFailedResult",
         "PrincipalValidatedResult",
-        "Result17",
-        "Result19",
+        "Result13",
+        "Result15",
         "SyncPrincipalResponse",
     ),
 }
@@ -566,11 +566,11 @@ __all__ = [
     "RequiredForItem",
     "Requirement",
     "ResourceType",
-    "Result17",
-    "Result19",
-    "Result6",
-    "Result7",
-    "Result9",
+    "Result13",
+    "Result15",
+    "Result2",
+    "Result3",
+    "Result5",
     "RightsAttestations",
     "Route",
     "RuntimeAttestations",
