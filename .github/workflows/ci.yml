@@ -2,10 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, python-adcp-sdk-setup]
+    # next is the draft-spec line (AdCP 3.3 today); it merges into main when
+    # the spec is ratified. See RELEASING.md.
+    branches: [main, python-adcp-sdk-setup, next]
   pull_request:
     branches:
       - main
+      - next
       - conductor/reporting-webhook-activity-1168b
       - conductor/reporting-status-notifications-1168c
       - conductor/1167b1-materializer-contracts

@@ -382,6 +382,23 @@ def test_pr_policy_uses_live_numeric_author_and_exact_head(history: list[str]) -
         policies.ipr(api, "pull_request", "a" * 40, event)
 
 
+@pytest.mark.parametrize(("base", "accepted"), [("next", True), ("release/8.x", False)])
+def test_pr_policy_accepts_the_next_draft_spec_line_only(
+    history: list[str], base: str, accepted: bool
+) -> None:
+    api = PolicyAPI(history)
+    pr = api.data["pulls/1174"]
+    pr.update(merged=False, merged_at=None, state="open")
+    pr["base"]["ref"] = base
+    event = {"pull_request": copy.deepcopy(pr)}
+    if accepted:
+        result = policies.ipr(api, "pull_request", "a" * 40, event)
+        assert result["contributions"][0]["author_id"] == 7
+    else:
+        with pytest.raises(ReleaseRejectedError, match="targets another branch"):
+            policies.ipr(api, "pull_request", "a" * 40, event)
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -463,7 +480,12 @@ def test_main_ci_cannot_be_superseded_by_a_different_release_commit() -> None:
     )
     gate = publisher["jobs"]["build"]["steps"][1]["run"]
     assert '--commit "$RELEASE_SHA"' in gate
-    assert '.headSha == $sha and .headBranch == "main"' in gate
+    # main and next each publish from their own branch's CI at the release commit.
+    assert publisher["jobs"]["build"]["if"] == (
+        "github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next'"
+    )
+    assert '--arg branch "$GITHUB_REF_NAME"' in gate
+    assert ".headSha == $sha and .headBranch == $branch" in gate
     assert 'git checkout --detach "$RELEASE_SHA"' in gate
 
 

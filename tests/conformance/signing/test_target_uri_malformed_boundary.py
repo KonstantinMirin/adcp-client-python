@@ -198,3 +198,88 @@ def test_webhook_verifier_retags_target_uri_malformed_without_map_warning(
         "the request-family code must be present in REQUEST_TO_WEBHOOK_CODE; "
         f"the retag fell through to the unknown-code branch: {unmapped}"
     )
+
+
+class _RecordingReplayStore:
+    """A replay store that records every call, so a test can assert none happened."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def seen(self, keyid: str, nonce: str) -> bool:
+        self.calls.append("seen")
+        return False
+
+    def remember(self, keyid: str, nonce: str, ttl_seconds: float) -> bool:
+        self.calls.append("remember")
+        return True
+
+    def at_capacity(self, keyid: str) -> bool:
+        self.calls.append("at_capacity")
+        return False
+
+
+@pytest.mark.parametrize("host", ["fe80::1", "[::1", "sellér.example.com"])
+@pytest.mark.parametrize("use_raw_headers", [False, True])
+def test_request_verifier_prechecks_wire_host_before_key_lookup_and_replay(
+    host: str, use_raw_headers: bool
+) -> None:
+    """The AdCP 3.2.4 target-URI precheck runs on the wire ``Host``, statelessly.
+
+    The URL is well formed and the signature over it is valid; only the ``Host``
+    header carries a malformed authority. Signature-base construction never reads
+    ``Host``, so ``target_uri_precheck`` in ``verify_request_signature`` is the only
+    code that can refuse this request. It must refuse it as
+    ``request_target_uri_malformed`` at step 6 before the key resolver or the replay
+    store is consulted. A merge that drops the precheck's import or call site makes
+    this request verify.
+    """
+    headers = {**_signed_request_headers(), "Host": host}
+    raw_headers = (
+        [(name.lower().encode("latin-1"), value.encode("utf-8")) for name, value in headers.items()]
+        if use_raw_headers
+        else None
+    )
+    resolved: list[str] = []
+    resolver = StaticJwksResolver({"keys": [REQUEST_ED25519]})
+
+    def recording_resolver(keyid: str) -> dict[str, object] | None:
+        resolved.append(keyid)
+        return resolver(keyid)
+
+    replay_store = _RecordingReplayStore()
+    options = VerifyOptions(
+        now=float(CREATED),
+        capability=VerifierCapability(covers_content_digest="either"),
+        operation="create_media_buy",
+        jwks_resolver=recording_resolver,
+        replay_store=replay_store,
+    )
+
+    with pytest.raises(SignatureVerificationError) as exc_info:
+        verify_request_signature(
+            method="POST",
+            url=SIGNED_URL,
+            headers=headers,
+            body=BODY,
+            options=options,
+            raw_headers=raw_headers,
+        )
+
+    assert exc_info.value.code == REQUEST_TARGET_URI_MALFORMED
+    assert exc_info.value.step == 6
+    assert resolved == []
+    assert replay_store.calls == []
+
+
+def test_request_verifier_accepts_a_well_formed_host_that_differs_from_the_url() -> None:
+    """Only malformed shapes are judged: a proxy's well-formed ``Host`` still verifies."""
+    headers = {**_signed_request_headers(), "Host": "internal.proxy.example:8443"}
+
+    verify_request_signature(
+        method="POST",
+        url=SIGNED_URL,
+        headers=headers,
+        body=BODY,
+        options=_request_verify_options(),
+    )
