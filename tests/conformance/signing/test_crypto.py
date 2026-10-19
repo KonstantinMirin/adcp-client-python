@@ -171,10 +171,11 @@ _B64URL = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
     "spoil",
     [
         lambda x: x[:10] + "!!" + x[10:],  # characters outside the alphabet
+        lambda x: x[:10] + "+/" + x[12:],  # the standard alphabet
         lambda x: x + "=",  # padding
         lambda x: x[:-1] + _B64URL[_B64URL.index(x[-1]) ^ 1],  # same bytes, non-zero pad bits
     ],
-    ids=["alphabet", "padding", "trailing-bits"],
+    ids=["alphabet", "standard-alphabet", "padding", "trailing-bits"],
 )
 def test_jwk_members_are_strict_base64url(spoil) -> None:
     """RFC 7515 section 2 base64url: no padding, no other characters, one spelling.
