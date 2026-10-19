@@ -29,7 +29,7 @@ signing = SigningConfig(
 
 Automatic signing also requires `web-bot-auth` in the seller's `request_signing.profiles`; omission advertises legacy support only. An unsupported configured profile raises before sending and never silently downgrades. Keep header emission opt-in until all counterparties tolerate the additional covered component.
 
-Web Bot Auth signs with `ed25519`, the profile's one algorithm. `sign_wba_request`, `public_directory_key` and `sign_key_directory` accept Ed25519 keys only. ES256 (P-256) stays on the AdCP RFC 9421 profile: a P-256 or RSA key is refused for Web Bot Auth, and such a key in someone's directory is ignored, with its signature. Every signature names `alg`; a signature without it is refused.
+Web Bot Auth signs with `ed25519`, the profile's one algorithm, following the current #7894 page (`5c3876073f`). The working group hasn't recorded a decision on that page; if it restores another algorithm, this SDK follows it. `sign_wba_request`, `public_directory_key` and `sign_key_directory` accept Ed25519 keys only. ES256 (P-256) stays on the AdCP RFC 9421 profile: a P-256 or RSA key is refused for Web Bot Auth, and such a key in someone's directory is ignored, with its signature. Every signature names `alg`; a signature without it is refused.
 
 Serve the key directory at `/.well-known/http-message-signatures-directory` on that origin. The profile requires it signed (WBA Appendix B.1); verifiers refuse an unsigned directory:
 
