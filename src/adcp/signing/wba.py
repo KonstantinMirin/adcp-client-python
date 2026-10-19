@@ -364,30 +364,6 @@ def _received_authority(url: str) -> str:
     return authority
 
 
-class _WbaComponentResolver(_rfc9421.ComponentResolver):
-    """Web Bot Auth components: the target URI as received, not canonicalized.
-
-    ``@target-uri`` is the URI exactly as sent or received (RFC 9421
-    §2.2.2), percent-encoding included; ``@authority`` is its normalized
-    authority. The AdCP origin canonicalization identifies the signer only.
-    """
-
-    def get_target_uri(self) -> str:
-        url = self.url
-        if any(ord(c) <= 0x20 or ord(c) == 0x7F for c in url) or not url.isascii():
-            raise _rfc9421.ComponentError("request URL is not a valid target URI", status=400)
-        parts = urlsplit(url)
-        if parts.scheme.lower() not in {"http", "https"} or not parts.netloc or parts.fragment:
-            raise _rfc9421.ComponentError("request URL is not an absolute target URI")
-        return url
-
-    def get_authority(self) -> str:
-        try:
-            return _received_authority(self.url)
-        except WbaVerificationError as exc:
-            raise _rfc9421.ComponentError(exc.reason) from exc
-
-
 def _signature_base(
     label: str, method: str, url: str, headers: Mapping[str, str], *, response: bool = False
 ) -> bytes:
@@ -410,7 +386,6 @@ def _signature_base(
         message,
         covered_component_ids=[_rfc9421.component_identifier(item) for item in items],
         params=params,
-        resolver=_WbaComponentResolver,
     )
 
 
@@ -464,7 +439,6 @@ def _verify_crypto(
             tag=str(params["tag"]),
             alg=alg,
             public_key=public_key,
-            resolver=_WbaComponentResolver,
             window_checked=True,  # every caller ran _window first
             parameters=tuple(params),
         )
@@ -549,7 +523,6 @@ def sign_wba_request(
         nonce=nonce,
         tag=WBA_TAG,
         covered_component_ids=covered,
-        resolver=_WbaComponentResolver,
     )
     outgoing["Signature-Input"] = signature_input
     outgoing["Signature"] = signature
@@ -742,7 +715,6 @@ def sign_key_directory(
             nonce=None,
             tag=DIRECTORY_TAG,
             covered_component_ids=['"@authority";req', '"content-digest"'],
-            resolver=_WbaComponentResolver,
             append=True,
         )
     headers.update({"Signature-Input": signature_input, "Signature": signature})

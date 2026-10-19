@@ -28,7 +28,7 @@ from cryptography.hazmat.primitives.asymmetric import ed25519
 from http_message_signatures.exceptions import HTTPMessageSignaturesException
 
 from adcp.signing import _rfc9421
-from adcp.signing.canonical import _lookup
+from adcp.signing.canonical import _lookup, signing_message
 from adcp.signing.constants import (
     DEFAULT_EXPIRES_IN_SECONDS,
     DEFAULT_TAG,
@@ -142,7 +142,7 @@ def _prepare_request(
         outgoing_headers["Content-Digest"] = content_digest_value
         components.append("content-digest")
     return _PreparedRequest(
-        message=_rfc9421.Request(method=method, url=url, headers=outgoing_headers),
+        message=signing_message(method, url, outgoing_headers),
         covered_component_ids=tuple(
             _rfc9421.component_identifier((name, {})) for name in components
         ),
@@ -278,7 +278,6 @@ def sign_request(
         nonce=prepared.nonce,
         tag=tag,
         covered_component_ids=prepared.covered_component_ids,
-        resolver=_rfc9421.AdcpComponentResolver,
     )
     return _signed_headers(
         prepared,
@@ -341,23 +340,24 @@ async def async_sign_request(
         tag=tag,
         label=label,
     )
-    # The same base and parameters HTTPMessageSigner.sign produces, so the
-    # headers match sign_request byte for byte.
-    base, member = _rfc9421.signature_base(
+    # HTTPMessageSigner.prepare and apply, the library's two halves of sign,
+    # so the headers match sign_request byte for byte.
+    to_sign = _rfc9421.prepare(
         prepared.message,
         alg=alg,
         key_id=key_id,
+        label=label,
         created=prepared.created,
         expires=prepared.expires,
         nonce=prepared.nonce,
         tag=tag,
         covered_component_ids=prepared.covered_component_ids,
-        resolver=_rfc9421.AdcpComponentResolver,
     )
-    signature = await provider.sign(base)
+    signature = await provider.sign(to_sign.signature_base)
+    signature_input, _ = _rfc9421.apply(prepared.message, to_sign, signature, alg=alg)
     return _signed_headers(
         prepared,
-        signature_input=_rfc9421.signature_input_field(label, member),
+        signature_input=signature_input,
         signature=signature,
         label=label,
         signing_profile_version=signing_profile_version,

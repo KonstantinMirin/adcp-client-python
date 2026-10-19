@@ -69,7 +69,6 @@ from adcp.signing.wba import (
     OriginRevocationChecker,
     WbaDiscoveryError,
     WbaVerificationError,
-    _WbaComponentResolver,
     sign_key_directory,
     verify_directory_response,
     verify_wba_request,
@@ -777,7 +776,6 @@ def _directory_signed_by(
         HTTPMessageSigner(
             signature_algorithm=algorithms[jwk["kty"]],
             key_resolver=_rfc9421._Key(private_key=private_key),
-            component_resolver_class=_WbaComponentResolver,
         ).sign(
             message,
             key_id=jwk["kid"],
@@ -916,16 +914,27 @@ def test_every_directory_signature_member_is_a_byte_sequence():
 
 
 def test_directory_signatures_require_the_exact_component_identifiers():
+    from dataclasses import replace
+
     signed = ed25519.Ed25519PrivateKey.generate()
-    assert verify_directory_response(ORIGIN, _directory_signed_by([signed]), now=1001)
+    directory = _directory_signed_by([signed])
+    assert verify_directory_response(ORIGIN, directory, now=1001)
+    covered = '("@authority";req "content-digest")'
+    assert covered in directory.headers["Signature-Input"]
+    # A bare "@authority" in a response signature is not RFC 9421 (section
+    # 2.4), so no library signs it; the refusal comes before verification,
+    # so the Signature-Input alone is changed.
     for components in (
-        ['"@authority"', '"content-digest"'],
-        ['"@authority"'],
-        ['"@authority";req', '"content-digest";key="sha-256"'],
+        '("@authority" "content-digest")',
+        '("@authority")',
+        '("@authority";req "content-digest";key="sha-256")',
     ):
+        changed = directory.headers["Signature-Input"].replace(covered, components)
         with pytest.raises(WbaVerificationError, match="bind authority and digest"):
             verify_directory_response(
-                ORIGIN, _directory_signed_by([signed], components=components), now=1001
+                ORIGIN,
+                replace(directory, headers={**directory.headers, "Signature-Input": changed}),
+                now=1001,
             )
 
 

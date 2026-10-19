@@ -358,6 +358,8 @@ These `adcp.signing` functions decode keys more strictly than they did in 9.x:
 
 A key published with padded or standard-alphabet base64 no longer verifies, so check that your JWKS and `adagents.json` entries use unpadded base64url. Code that matched error text, or compared `jwk_thumbprint` with digest bytes, needs updating.
 
+Signing and verification use `http-message-signatures` 2.1, which parses the URL per RFC 3986, so a URL with a raw `{`, `}`, or `|` in its query can't be signed: percent-encode it. `httpx` encodes those characters when they come through `params=`, but not when they are written into the URL.
+
 ## Related
 
 - [`adcp.signing.install_signing_event_hook`](../src/adcp/signing/client.py) — buyer-side preset for adapters not using `ADCPClient`.

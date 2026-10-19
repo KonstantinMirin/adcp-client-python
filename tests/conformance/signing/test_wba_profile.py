@@ -606,7 +606,9 @@ async def test_wba_discovery_never_falls_back_to_legacy_keys():
 
 async def test_signature_without_alg_is_refused(monkeypatch):
     """Every signature names ``alg``, and it must match the key (Profile rules)."""
-    sign = _rfc9421.ProfileSigner.sign
+    from http_message_signatures import HTTPMessageSigner
+
+    sign = HTTPMessageSigner.sign
 
     def sign_without_alg(self, message, **kwargs):
         return sign(self, message, **kwargs, include_alg=False)
@@ -617,7 +619,7 @@ async def test_signature_without_alg_is_refused(monkeypatch):
     )
     headers = {"Content-Type": "application/json"}
     with monkeypatch.context() as patched:
-        patched.setattr(_rfc9421.ProfileSigner, "sign", sign_without_alg)
+        patched.setattr(HTTPMessageSigner, "sign", sign_without_alg)
         headers.update(
             sign_wba_request(
                 method="POST",
@@ -779,7 +781,6 @@ def _sign_vector_request(*, nonce="A" * 86, signature_agent=None):
     signature.
     """
     from adcp.signing import _rfc9421
-    from adcp.signing.wba import _WbaComponentResolver
 
     key = KEYS["6WsKMCObba49V3uN0vIENnk1BKAk7c9zjBJcWKyQ9_I"]
     private = private_key_from_jwk(key, d_field="_private_d_for_test_only")
@@ -808,7 +809,6 @@ def _sign_vector_request(*, nonce="A" * 86, signature_agent=None):
             '"content-digest"',
             '"signature-agent";key="sig1"',
         ],
-        resolver=_WbaComponentResolver,
     )
     headers.update({"Signature-Input": signature_input, "Signature": signature})
 
