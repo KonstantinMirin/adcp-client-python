@@ -294,6 +294,39 @@ def _signed_revocations(private, origin, *, start, revoked=()):
     return FetchResult(f"{protected}.{encoded}.{signature}", etag=None)
 
 
+@pytest.mark.parametrize("alg", ["ES256", "Ed25519"])
+async def test_a_revocation_list_is_eddsa_only(alg):
+    """An origin's revocation list under Web Bot Auth is an EdDSA JWS only.
+
+    A list with any other ``alg`` is refused before its key is resolved, so it
+    never verifies and the origin's state is ``"stale"``.
+    """
+    from datetime import timedelta
+
+    private = ed25519.Ed25519PrivateKey.generate()
+    jwk = public_directory_key(private)
+    start = datetime.now(timezone.utc)
+    resolved = []
+
+    async def resolve(keyid, *, signer_origin=None):
+        resolved.append(keyid)
+        return ResolvedSignerKey(signer_origin, jwk)
+
+    async def fetch(uri, **kwargs):
+        signed = _signed_revocations(private, ORIGIN, start=start)
+        _, payload, signature = signed.body.split(".")
+        protected = b64url_encode(
+            json.dumps({"alg": alg, "kid": jwk["kid"], "typ": "adcp-gov-revocation+jws"}).encode()
+        )
+        return FetchResult(f"{protected}.{payload}.{signature}", etag=None)
+
+    checker = OriginRevocationChecker(
+        resolve, fetcher=fetch, clock=lambda: 0.0, wall_clock=lambda: start + timedelta(seconds=1)
+    )
+    assert await checker.status(ORIGIN, jwk["kid"]) == "stale"
+    assert resolved == []
+
+
 async def test_origin_without_a_revocation_list_is_identity_established_and_unbindable():
     from datetime import datetime, timedelta, timezone
 

@@ -56,6 +56,7 @@ from adcp.signing.jwks import (
     JwksResolver,
 )
 from adcp.signing.jws import (
+    ALLOWED_JWS_ALGS,
     JwsError,
     averify_jws_document,
     verify_jws_document,
@@ -930,6 +931,9 @@ class AsyncCachingRevocationChecker(_CheckerState):
       verifying tasks that all miss on the first verification fire
       exactly one fetch. (The sync class is documented single-threaded;
       async concurrency is the typical case.)
+    * ``allowed_algs`` narrows the list's JWS ``alg`` below
+      :data:`adcp.signing.jws.ALLOWED_JWS_ALGS`, for a profile that signs
+      with fewer algorithms.
 
     Wire it into :class:`adcp.signing.VerifyOptions.revocation_checker`
     only if you have an async verifier pipeline — the sync
@@ -948,6 +952,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         history_admission: Callable[[RevocationList], bool] | None = None,
+        allowed_algs: frozenset[str] = ALLOWED_JWS_ALGS,
     ) -> None:
         if clock is time.time:
             raise ValueError(
@@ -969,6 +974,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
         self._clock = clock
         self._wall_clock = wall_clock
         self._history_admission = history_admission
+        self._allowed_algs = allowed_algs
         self._init_state()
         # Eager lock construction: lazy-init was racy (two tasks both
         # seeing self._lock is None construct separate Locks and skip
@@ -988,6 +994,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
         clock: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         history_admission: Callable[[RevocationList], bool] | None = None,
+        allowed_algs: frozenset[str] = ALLOWED_JWS_ALGS,
     ) -> AsyncCachingRevocationChecker:
         """Async variant of :meth:`CachingRevocationChecker.from_issuer_origin`."""
         normalized = _normalize_issuer(origin)
@@ -1001,6 +1008,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
             clock=clock,
             wall_clock=wall_clock,
             history_admission=history_admission,
+            allowed_algs=allowed_algs,
         )
 
     async def aprime(self) -> None:
@@ -1125,6 +1133,7 @@ class AsyncCachingRevocationChecker(_CheckerState):
                 result.body,
                 jwks_resolver=self._jwks_resolver,
                 expected_typ=REVOCATION_LIST_TYP,
+                allowed_algs=self._allowed_algs,
             )
         except JwsError as exc:
             raise RevocationListSignatureError(

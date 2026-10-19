@@ -1601,6 +1601,8 @@ class OriginRevocationChecker:
                 clock=self._clock,
                 wall_clock=self._wall_clock,
                 history_admission=self._admit_revocations,
+                # The profile's revocation-list JWS is EdDSA only.
+                allowed_algs=frozenset({"EdDSA"}),
             )
             # Authenticated revocations are permanent history. A 404 or
             # transport failure with no signed evidence consumes no slot.
