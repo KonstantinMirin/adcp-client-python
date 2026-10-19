@@ -137,16 +137,35 @@ def public_key_from_jwk(jwk: dict[str, Any]) -> PublicKey:
 
 
 def private_key_from_jwk(jwk: dict[str, Any], *, d_field: str = "d") -> PrivateKey:
-    """Reconstruct a private key from its JWK (see :func:`import_jwk`).
+    """Reconstruct an Ed25519 or P-256 private key from its JWK's ``d``.
 
     `d_field` lets callers read from a non-standard scalar field — the AdCP test
     vectors store the private half under `_private_d_for_test_only` to signal
     that the keys are not production-grade.
+
+    The public members are optional. When ``x`` (or ``y``) is present, it must
+    be the public key of ``d``, so a JWK that pairs ``d`` with another key's
+    ``x`` raises ``ValueError`` here rather than failing at the receiver.
     """
-    if d_field not in jwk:
+    d = jwk.get(d_field)
+    if not isinstance(d, str):
         raise ValueError(f"JWK has no private member {d_field!r}")
-    private = import_jwk({**jwk, "d": jwk[d_field]}, private=True).private_key
-    return cast(PrivateKey, private)
+    kty, crv = jwk.get("kty"), jwk.get("crv")
+    scalar = b64url_decode(d)
+    if len(scalar) != 32:
+        raise ValueError(f"{kty}/{crv} JWK {d_field} must be 32 bytes")
+    key: PrivateKey
+    if kty == "OKP" and crv == "Ed25519":
+        key = ed25519.Ed25519PrivateKey.from_private_bytes(scalar)
+        public = OKPKey.import_key(key).as_dict(private=False)
+    elif kty == "EC" and crv == "P-256":
+        key = ec.derive_private_key(int.from_bytes(scalar, "big"), ec.SECP256R1())
+        public = ECKey.import_key(key).as_dict(private=False)
+    else:
+        raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
+    if any(name in jwk and jwk[name] != public[name] for name in ("x", "y") if name in public):
+        raise ValueError(f"JWK public members are not the public key of {d_field}")
+    return key
 
 
 def alg_for_jwk(jwk: dict[str, Any]) -> str:

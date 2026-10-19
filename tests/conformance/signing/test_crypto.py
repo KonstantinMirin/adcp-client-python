@@ -219,3 +219,41 @@ def test_public_key_is_read_from_the_public_members(kid: str) -> None:
     key = public_key_from_jwk({**jwk, "d": b64url_encode(other_d)})
 
     assert key.public_bytes(*raw) == expected
+
+
+_KEY_TYPES = [("OKP", "Ed25519"), ("EC", "P-256")]
+
+
+def _generate(kty: str, crv: str):
+    from joserfc.jwk import ECKey, OKPKey
+
+    return (OKPKey if kty == "OKP" else ECKey).generate_key(crv, private=True)
+
+
+def _public_members(private_key, kty: str) -> dict:
+    from joserfc.jwk import ECKey, OKPKey
+
+    return (OKPKey if kty == "OKP" else ECKey).import_key(private_key).as_dict(private=False)
+
+
+@pytest.mark.parametrize(("kty", "crv"), _KEY_TYPES)
+def test_a_private_jwk_needs_only_d(kty, crv) -> None:
+    """``private_key_from_jwk`` reads ``d``; the public members are optional."""
+    key = _generate(kty, crv)
+    d_only = {"kty": kty, "crv": crv, "d": key.as_dict(private=True)["d"]}
+
+    assert _public_members(private_key_from_jwk(d_only), kty) == key.as_dict(private=False)
+
+
+@pytest.mark.parametrize(("kty", "crv"), _KEY_TYPES)
+def test_a_private_jwk_whose_public_members_name_another_key_is_refused(kty, crv) -> None:
+    """A JWK's ``x`` (and ``y``) must be the public key of its ``d``.
+
+    Otherwise the sender signs with ``d`` while its JWK names another key, and
+    the mistake surfaces only at the receiver.
+    """
+    key, other = _generate(kty, crv), _generate(kty, crv)
+    mixed = {**key.as_dict(private=False), "d": other.as_dict(private=True)["d"]}
+
+    with pytest.raises(ValueError, match="public key"):
+        private_key_from_jwk(mixed)
