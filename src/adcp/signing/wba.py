@@ -773,13 +773,8 @@ async def fetch_key_directory(url: str, *, allow_private: bool = False) -> Direc
             async with client.stream(
                 "GET",
                 url,
-                headers={
-                    "Accept": (
-                        f"{DIRECTORY_MEDIA_TYPE}, application/jwk-set+json;q=0.9, "
-                        "application/json;q=0.8"
-                    ),
-                    "Accept-Encoding": "identity",
-                },
+                # The only media type _verify_directory accepts (WBA section 5.5.1).
+                headers={"Accept": DIRECTORY_MEDIA_TYPE, "Accept-Encoding": "identity"},
             ) as response:
                 return DirectoryResponse(
                     status=response.status_code,

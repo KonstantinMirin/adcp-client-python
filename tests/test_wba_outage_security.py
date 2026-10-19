@@ -20,6 +20,7 @@ from adcp.signing.revocation_fetcher import (
 )
 from adcp.signing.signer_keys import ResolvedSignerKey
 from adcp.signing.wba import (
+    DIRECTORY_MEDIA_TYPE,
     DirectoryResponse,
     DiscoveredSignerKeys,
     OriginRevocationChecker,
@@ -31,6 +32,28 @@ from adcp.signing.wba import (
 )
 
 ORIGIN = "https://buyer.platform.com"
+
+
+async def test_directory_fetch_asks_for_the_directory_media_type_only(monkeypatch):
+    """WBA section 5.5.1: the verifier accepts only the directory media type.
+
+    Offering any other type lets a server that negotiates content choose a
+    response the verifier then refuses.
+    """
+    requests = []
+
+    def serve(request):
+        requests.append(request)
+        return httpx.Response(200, content=b"{}")
+
+    transport = httpx.MockTransport(serve)
+    monkeypatch.setattr(
+        "adcp.signing.ip_pinned_transport.build_async_ip_pinned_transport",
+        lambda *args, **kwargs: transport,
+    )
+    await fetch_key_directory(ORIGIN + "/.well-known/http-message-signatures-directory")
+    (request,) = requests
+    assert request.headers["Accept"] == DIRECTORY_MEDIA_TYPE
 
 
 @pytest.mark.parametrize("status", [302, 401, 500, 404, 410])
