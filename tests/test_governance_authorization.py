@@ -618,3 +618,58 @@ def test_stateless_governance_applicability(
     task: str, payload: dict[str, Any], expected: bool | None
 ) -> None:
     assert stateless_governance_applicability(task, payload) is expected
+
+
+@pytest.mark.parametrize(
+    ("header", "claims", "reason"),
+    [
+        ({"crit": []}, {}, None),
+        ({"crit": ["authorized_task"], "authorized_task": True}, {}, "claim"),
+        ({"crit": ["authorized_commitment"]}, {}, "crit header"),
+        ({"crit": ["authorized_commitment"], "authorized_commitment": "yes"}, {}, "crit header"),
+        ({"crit": ["authorized_commitment", "authorized_commitment"]}, {}, "crit header"),
+        ({"crit": ["unregistered"], "unregistered": True}, {}, "crit header"),
+        ({"crit": "authorized_commitment"}, {}, "crit header"),
+        (
+            {"crit": ["authorized_commitment"] * 2, "authorized_commitment": True},
+            {"authorized_commitment": {}},
+            "crit header",
+        ),
+    ],
+)
+def test_critical_claims_follow_rfc_7515_crit_rules(header, claims, reason):
+    """RFC 7515 section 4.1.11: every crit name occurs in the header.
+
+    A crit entry whose marker is absent or not a boolean is refused even when
+    its claim is absent too.
+    """
+    from adcp.governance import critical_claims_failure
+
+    failure = critical_claims_failure(header, claims)
+    if reason is None:
+        assert failure is None
+    else:
+        assert failure is not None and reason in failure
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        {"crit": ["authorized_commitment"], "authorized_commitment": False},
+        {"crit": [], "authorized_commitment": True},
+        {"crit": [], "authorized_commitment": False},
+    ],
+    ids=["crit-entry-and-false-marker", "marker-alone", "false-marker-alone"],
+)
+def test_critical_marker_crit_entry_and_claim_appear_together(header):
+    """security.mdx checklist step 4: marker, crit entry, and claim appear together.
+
+    "Verifiers MUST also reject when the critical marker and its corresponding
+    claim do not appear together" (security.mdx, AdCP 3.2.1 to 3.2.3). Each
+    header here carries a marker for a claim the payload doesn't have.
+    """
+    from adcp.governance import critical_claims_failure
+
+    failure = critical_claims_failure(header, {})
+
+    assert failure == "authorized_commitment claim and critical marker must match"

@@ -4,39 +4,40 @@ The SDK writes no RFC 9421 or RFC 8941 grammar of its own:
 
 * ``http-message-signatures`` builds every signature base, assembles
   ``Signature-Input``, and signs and verifies with its algorithm classes
-  (``ed25519``, ``ecdsa-p256-sha256`` and ``rsa-pss-sha512``).
+  (``ed25519`` and ``ecdsa-p256-sha256``).
 * ``http-sf`` parses and serializes Structured Fields, and reports a
   duplicate dictionary key or parameter through ``on_duplicate_key`` so the
   SDK can refuse it instead of keeping the last value.
 
 What stays here is profile policy, expressed through the library's public
-extension points:
+API:
 
-* :class:`ComponentResolver` is the ``component_resolver_class`` the signer
-  and verifier take. It supplies the RFC 9421 ``;key`` (section 2.1.2) and
-  ``;req`` (section 2.4) component parameters, which
-  ``http-message-signatures`` 2.0.1 does not implement yet
-  (pyauth/http-message-signatures#29; the fix is pyauth#30). Once a release
-  with that fix is out, the ``key``/``req`` branches here can go.
-* Its subclasses decide what ``@target-uri`` and ``@authority`` mean: the AdCP
-  RFC 9421 profile canonicalizes the URL
-  (:class:`AdcpComponentResolver`), while Web Bot Auth covers the target URI
-  as received (:class:`ReceivedComponentResolver`).
+* Every profile resolves components with the library's
+  ``HTTPSignatureComponentResolver``, which implements the RFC 9421 ``;key``
+  (section 2.1.2) and ``;req`` (section 2.4) component parameters. The AdCP
+  RFC 9421 profile hands the library its canonical target URI
+  (:func:`adcp.signing.canonical.canonicalize_target_uri`), so ``@target-uri``
+  and ``@authority`` are the AdCP values; Web Bot Auth hands it the target
+  URI as received.
 * :class:`ProfileVerifier` turns off the library's own wall-clock window
   check, because every profile checks its window against an injected clock
   with its own error codes.
+* :func:`prepare` and :func:`apply` are ``HTTPMessageSigner.prepare`` and
+  ``apply``, for the async (:class:`~adcp.signing.SigningProvider`) path,
+  where the signature is awaited.
 
-The signer subclass reaches ``_build_signature_base`` only for the async
-(:class:`~adcp.signing.SigningProvider`) path, where the base must exist
-before an awaited signature. ``tests/conformance/signing/test_rfc9421_library_contract.py``
-pins the library shapes this module relies on.
+:func:`build_base` reaches the library's protected ``_build_signature_base``,
+because the library has no public call that builds a base for parameters the
+caller supplies in their own order.
+``tests/conformance/signing/test_rfc9421_library_contract.py`` pins the
+library shapes this module relies on.
 """
 
 from __future__ import annotations
 
 import base64
 import binascii
-from collections import OrderedDict, UserString
+from collections import UserString
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -53,11 +54,10 @@ from http_message_signatures import (
 from http_message_signatures.algorithms import (
     ECDSA_P256_SHA256,
     ED25519,
-    RSA_PSS_SHA512,
     HTTPSignatureAlgorithm,
 )
 from http_message_signatures.exceptions import HTTPMessageSignaturesException
-from http_message_signatures.structures import CaseInsensitiveDict
+from http_message_signatures.structures import CaseInsensitiveDict, PreparedSignature
 from http_sf.bare_item import parse_bare_item
 from http_sf.innerlist import ser_item_or_inner_list
 from http_sf.item import parse_item, ser_item
@@ -67,7 +67,7 @@ from http_sf.util import discard_http_ows, discard_ows, parse_key
 #: RFC 9421 algorithm names mapped to the library's algorithm classes. Each
 #: profile narrows this to its own allow-list before anything reaches it.
 ALGORITHMS: dict[str, type[HTTPSignatureAlgorithm]] = {
-    algorithm.algorithm_id: algorithm for algorithm in (ED25519, ECDSA_P256_SHA256, RSA_PSS_SHA512)
+    algorithm.algorithm_id: algorithm for algorithm in (ED25519, ECDSA_P256_SHA256)
 }
 
 
@@ -115,6 +115,21 @@ def parse_dictionary(value: str) -> dict[str, Any]:
 def serialize(value: Any) -> str:
     """Serialize a Structured Field value (an http-sf structure)."""
     return http_sf.ser(value)
+
+
+def signature_input_field(label: str, member: str) -> str:
+    """A ``Signature-Input`` value holding one member, serialized by http-sf.
+
+    ``member`` is that member's own serialization, the ``@signature-params``
+    value. Raises ``ValueError`` when ``label`` is not an RFC 8941 key.
+    """
+    try:
+        parsed = http_sf.parse(member.encode("ascii"), tltype="list")
+    except (http_sf.StructuredFieldError, ValueError) as exc:
+        raise ValueError(f"malformed signature parameters: {exc}") from exc
+    if not isinstance(parsed, list) or len(parsed) != 1:
+        raise ValueError("signature parameters are not one member")
+    return serialize({label: parsed[0]})
 
 
 def component_identifier(item: Any) -> str:
@@ -306,105 +321,6 @@ class Response:
     def __post_init__(self) -> None:
         self.headers = _first_wins(self.headers)
 
-    @property
-    def url(self) -> str:
-        return self.request.url
-
-
-class ComponentError(HTTPMessageSignaturesException):
-    """A covered component this profile cannot resolve.
-
-    Raised by the resolvers so a verifier can tell a component that does not
-    resolve (a malformed request) from a signature that does not verify.
-    ``status`` is the Web Bot Auth status for the failure.
-    """
-
-    def __init__(self, reason: str, *, status: int = 403) -> None:
-        super().__init__(reason)
-        self.reason = reason
-        self.status = status
-
-
-class ComponentResolver(HTTPSignatureComponentResolver):
-    """The ``component_resolver_class`` every SDK signer and verifier uses.
-
-    Adds what the profiles need on top of the library resolver:
-
-    * ``;key="<member>"`` on a covered Dictionary field resolves to that
-      member's serialization (RFC 9421 section 2.1.2);
-    * ``;req`` on a response resolves the component from the request it
-      answers (section 2.4);
-    * a covered field's value is trimmed of surrounding whitespace (section
-      2.1) and refused when it carries a line break or NUL;
-    * only the derived components in :attr:`derived_component_names` resolve.
-
-    pyauth/http-message-signatures#30 moves ``key`` and ``req`` into the
-    library; drop those branches once a release carries it.
-    """
-
-    derived_component_names = {"@method", "@target-uri", "@authority"}
-
-    def resolve(self, component_node: Any) -> str:
-        name = component_node.value
-        params = dict(component_node.params)
-        if type(name) is not str:
-            raise ComponentError("a covered component name must be an sf-string", status=400)
-        if name != name.lower():
-            raise ComponentError("covered component names must be lowercase")
-        if "req" in params:
-            if params.pop("req") is not True:
-                raise ComponentError("the req parameter is a boolean flag")
-            if not isinstance(self.message, Response):
-                raise ComponentError("the req parameter only applies to a response")
-            request_resolver = type(self)(self.message.request)
-            return request_resolver._resolve(name, params)
-        return self._resolve(name, params)
-
-    def _resolve(self, name: str, params: dict[str, Any]) -> str:
-        if name.startswith("@"):
-            if params:
-                raise ComponentError("unsupported derived component parameters")
-            if name not in self.derived_component_names:
-                raise ComponentError(f"unsupported derived component {name}")
-            value: str = getattr(self, "get_" + name[1:].replace("-", "_"))()
-            return value
-        raw = self.headers.get(name)
-        if raw is None:
-            raise ComponentError(f"covered field {name!r} is missing")
-        if any(c in raw for c in "\r\n\x00"):
-            raise ComponentError("a covered field carries a control character", status=400)
-        if not params:
-            return str(raw).strip(" \t")
-        member_key = params.pop("key", None)
-        if params or type(member_key) is not str:
-            raise ComponentError("unsupported field component parameters")
-        try:
-            dictionary = parse_dictionary(raw)
-        except ValueError as exc:
-            raise ComponentError(f"covered field {name!r} is malformed", status=400) from exc
-        if member_key not in dictionary:
-            raise ComponentError(f"covered dictionary member {member_key!r} is missing")
-        return ser_item_or_inner_list(dictionary[member_key])
-
-
-class AdcpComponentResolver(ComponentResolver):
-    """The AdCP RFC 9421 profile: ``@target-uri`` and ``@authority`` canonicalized.
-
-    The canonicalization is the AdCP URL algorithm in
-    :mod:`adcp.signing.canonical`. Its ``TargetUriMalformedError`` propagates
-    so the verifier reports ``request_target_uri_malformed``.
-    """
-
-    def get_target_uri(self) -> str:
-        from adcp.signing.canonical import canonicalize_target_uri
-
-        return canonicalize_target_uri(self.url)
-
-    def get_authority(self) -> str:
-        from adcp.signing.canonical import canonicalize_authority
-
-        return canonicalize_authority(self.url)
-
 
 # ---------------------------------------------------------------------------
 # Signing and verification on the library
@@ -425,29 +341,11 @@ class _Key(HTTPSignatureKeyResolver):
         return self._public_key
 
 
-class ProfileSigner(HTTPMessageSigner):
-    """``HTTPMessageSigner`` that can also hand out a signature base.
-
-    ``HTTPMessageSigner.sign`` signs in one step. The async
-    (:class:`~adcp.signing.SigningProvider`) path awaits the signature, so it
-    needs the base first, and the public ``build_signature_base`` helper
-    returns one. Both reuse the library's own base builder through its
-    protected subclass hooks; the contract test pins them.
-    """
-
-    def base(
-        self,
-        message: Request | Response,
-        *,
-        covered_component_ids: Sequence[str],
-        params: Mapping[str, Any],
-    ) -> tuple[bytes, str]:
-        base, node, _ = self._build_signature_base(
-            message,
-            covered_component_ids=self._parse_covered_component_ids(covered_component_ids),
-            signature_params=dict(params),
-        )
-        return base.encode("utf-8"), str(node)
+def _signer(alg: str, private_key: Any = None) -> HTTPMessageSigner:
+    return HTTPMessageSigner(
+        signature_algorithm=ALGORITHMS[alg],
+        key_resolver=_Key(private_key=private_key) if private_key is not None else None,
+    )
 
 
 def build_base(
@@ -455,23 +353,39 @@ def build_base(
     *,
     covered_component_ids: Sequence[str],
     params: Mapping[str, Any],
-    resolver: type[ComponentResolver],
 ) -> bytes:
     """The RFC 9421 signature base for these components and parameters.
 
     ``params`` are serialized in the order given. A component that does not
-    resolve raises ``ValueError`` (an AdCP canonicalization failure keeps its
-    own ``ValueError`` subclass).
+    resolve raises ``ValueError``.
     """
-    handler = ProfileSigner(
-        signature_algorithm=ED25519, key_resolver=_Key(), component_resolver_class=resolver
-    )
+    signer = _signer(ED25519.algorithm_id)
     try:
-        return handler.base(message, covered_component_ids=covered_component_ids, params=params)[0]
-    except ComponentError as exc:
-        raise ValueError(exc.reason) from exc
+        base, _, _ = signer._build_signature_base(
+            message,
+            covered_component_ids=signer._parse_covered_component_ids(covered_component_ids),
+            signature_params=dict(params),
+        )
     except HTTPMessageSignaturesException as exc:
         raise ValueError(str(exc)) from exc
+    return str(base).encode("utf-8")
+
+
+def _check_signable(message: Request | Response) -> None:
+    """Refuse a request the library can't resolve, and say how to fix its URL.
+
+    The library parses the URL strictly (RFC 3986). A raw ``{``, ``}``, or
+    ``|`` in a query is not a URI character, so the caller percent-encodes
+    it, as ``httpx`` does for ``params=``.
+    """
+    try:
+        HTTPSignatureComponentResolver(message)
+    except HTTPMessageSignaturesException as exc:
+        raise ValueError(
+            f"cannot sign this request: {exc}. Percent-encode every character RFC 3986 "
+            "doesn't allow in a URL, such as a raw '{', '}', or '|' in the query "
+            "(httpx params= encodes them)"
+        ) from exc
 
 
 def _timestamp(seconds: int) -> datetime:
@@ -490,20 +404,52 @@ def sign(
     nonce: str | None,
     tag: str,
     covered_component_ids: Sequence[str],
-    resolver: type[ComponentResolver],
+    append: bool = False,
 ) -> tuple[str, str]:
     """Sign ``message`` with ``HTTPMessageSigner.sign``; return the two fields.
 
     Returns ``(Signature-Input, Signature)``. ``Signature`` is RFC 8941
-    standard Base64; a legacy profile re-encodes it.
+    standard Base64; a legacy profile re-encodes it. With ``append``, a
+    signature already on ``message`` stays, and this one is added beside it.
     """
-    signer = ProfileSigner(
-        signature_algorithm=ALGORITHMS[alg],
-        key_resolver=_Key(private_key=private_key),
-        component_resolver_class=resolver,
-    )
+    _check_signable(message)
     try:
-        signer.sign(
+        _signer(alg, private_key).sign(
+            message,
+            key_id=key_id,
+            created=_timestamp(created),
+            expires=_timestamp(expires) if expires is not None else None,
+            nonce=nonce,
+            label=label,
+            tag=tag,
+            covered_component_ids=covered_component_ids,
+            append_if_signature_exists=append,
+        )
+    except HTTPMessageSignaturesException as exc:
+        raise ValueError(str(exc)) from exc
+    return message.headers["Signature-Input"], message.headers["Signature"]
+
+
+def prepare(
+    message: Request | Response,
+    *,
+    alg: str,
+    key_id: str,
+    label: str,
+    created: int,
+    expires: int | None,
+    nonce: str | None,
+    tag: str,
+    covered_component_ids: Sequence[str],
+) -> PreparedSignature:
+    """``HTTPMessageSigner.prepare``: what :func:`sign` would sign, unsigned.
+
+    The signature over ``signature_base`` goes to :func:`apply`. Used where
+    the signature itself is awaited.
+    """
+    _check_signable(message)
+    try:
+        return _signer(alg).prepare(
             message,
             key_id=key_id,
             created=_timestamp(created),
@@ -513,51 +459,19 @@ def sign(
             tag=tag,
             covered_component_ids=covered_component_ids,
         )
-    except ComponentError as exc:
-        raise ValueError(exc.reason) from exc
+    except HTTPMessageSignaturesException as exc:
+        raise ValueError(str(exc)) from exc
+
+
+def apply(
+    message: Request | Response, prepared: PreparedSignature, signature: bytes, *, alg: str
+) -> tuple[str, str]:
+    """``HTTPMessageSigner.apply``: put ``signature`` on ``message``; return the two fields."""
+    try:
+        _signer(alg).apply(message, prepared, signature)
     except HTTPMessageSignaturesException as exc:
         raise ValueError(str(exc)) from exc
     return message.headers["Signature-Input"], message.headers["Signature"]
-
-
-def signature_base(
-    message: Request | Response,
-    *,
-    alg: str,
-    key_id: str,
-    created: int,
-    expires: int | None,
-    nonce: str | None,
-    tag: str,
-    covered_component_ids: Sequence[str],
-    resolver: type[ComponentResolver],
-) -> tuple[bytes, str]:
-    """The base :func:`sign` would sign, and the serialized parameters.
-
-    Parameters are added in the order ``HTTPMessageSigner.sign`` adds them,
-    so a signature over this base is byte-identical to one :func:`sign`
-    produces. Used where the signature itself is awaited.
-    """
-    params: dict[str, Any] = OrderedDict()
-    params["created"] = created
-    params["keyid"] = key_id
-    params["alg"] = ALGORITHMS[alg].algorithm_id
-    if expires is not None:
-        params["expires"] = expires
-    if nonce:
-        params["nonce"] = nonce
-    params["tag"] = tag
-    handler = ProfileSigner(
-        signature_algorithm=ALGORITHMS[alg],
-        key_resolver=_Key(),
-        component_resolver_class=resolver,
-    )
-    try:
-        return handler.base(message, covered_component_ids=covered_component_ids, params=params)
-    except ComponentError as exc:
-        raise ValueError(exc.reason) from exc
-    except HTTPMessageSignaturesException as exc:
-        raise ValueError(str(exc)) from exc
 
 
 class ProfileVerifier(HTTPMessageVerifier):
@@ -595,7 +509,6 @@ def verify(
     tag: str,
     alg: str,
     public_key: Any,
-    resolver: type[ComponentResolver],
     window_checked: bool,
     parameters: Sequence[str] = (),
 ) -> Mapping[str, str]:
@@ -604,7 +517,7 @@ def verify(
     ``message.headers`` must carry the ``Signature-Input`` and ``Signature``
     fields to verify. ``alg`` and ``public_key`` are the profile's choice;
     the library confirms the signature names the same ``alg``. Raises
-    :class:`SignatureBaseError` when a component does not resolve and
+    :class:`SignatureBaseError` when the signature base can't be built and
     :class:`SignatureMismatchError` when the signature does not verify.
 
     ``window_checked`` must be true: :class:`ProfileVerifier` does not check
@@ -612,46 +525,45 @@ def verify(
     """
     if window_checked is not True:
         raise ValueError("check the signature window before verifying")
+    try:
+        # A key that doesn't fit the algorithm can't verify this signature;
+        # refusing it here leaves the library's errors to the base and the
+        # signature.
+        ALGORITHMS[alg](public_key=public_key)
+    except HTTPMessageSignaturesException as exc:
+        raise SignatureMismatchError(str(exc)) from exc
     verifier = ProfileVerifier(
         signature_algorithm=ALGORITHMS[alg],
         key_resolver=_Key(public_key=public_key),
-        component_resolver_class=resolver,
     )
-    verifier.signature_metadata_parameters = (
-        HTTPMessageVerifier.signature_metadata_parameters | set(parameters)
+    # The profile has already decided which parameters it accepts.
+    setattr(  # a per-verifier value of the library class variable
+        verifier,
+        "signature_metadata_parameters",
+        HTTPMessageVerifier.signature_metadata_parameters | set(parameters),
     )
     try:
         (result,) = verifier.verify(message, expect_tag=tag, expect_label=label)
     except InvalidSignature as exc:
         cause = exc.__cause__
-        if isinstance(cause, ComponentError):
-            raise SignatureBaseError(cause.reason, status=cause.status, cause=cause) from exc
-        if cause is not None and not isinstance(cause, HTTPMessageSignaturesException):
-            # A crypto failure is cryptography's InvalidSignature. Anything
-            # else (an AdCP canonicalization error, say) came from the base.
-            from cryptography.exceptions import InvalidSignature as CryptoInvalidSignature
+        from cryptography.exceptions import InvalidSignature as CryptoInvalidSignature
 
-            if not isinstance(cause, CryptoInvalidSignature):
-                raise SignatureBaseError(str(cause), cause=cause) from exc
+        if cause is not None and not isinstance(cause, CryptoInvalidSignature):
+            # The library could not build the signature base.
+            raise SignatureBaseError(str(cause), cause=cause) from exc
         raise SignatureMismatchError("signature did not verify") from exc
-    except HTTPMessageSignaturesException as exc:
-        # The key does not fit the algorithm: it cannot verify this signature.
-        raise SignatureMismatchError(str(exc)) from exc
     return dict(result.covered_components)
 
 
 __all__ = [
     "ALGORITHMS",
-    "AdcpComponentResolver",
-    "ComponentError",
-    "ComponentResolver",
     "DuplicateFieldError",
-    "ProfileSigner",
     "ProfileVerifier",
     "Request",
     "Response",
     "SignatureBaseError",
     "SignatureMismatchError",
+    "apply",
     "build_base",
     "component_identifier",
     "dictionary_has_parameter",
@@ -659,10 +571,10 @@ __all__ = [
     "legacy_binary_tokens",
     "mixes_base64_alphabets",
     "parse_dictionary",
+    "prepare",
     "ser_item_or_inner_list",
     "serialize",
     "sign",
-    "signature_base",
     "translate_legacy_binary",
     "verify",
 ]

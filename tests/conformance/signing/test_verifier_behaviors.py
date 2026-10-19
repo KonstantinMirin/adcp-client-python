@@ -77,35 +77,61 @@ def _options(
 # ---- 1e: downstream ValueError/KeyError wrapping ----
 
 
-def test_unsupported_derived_component_wraps_as_header_malformed() -> None:
-    # Craft Signature-Input declaring @path, which the AdCP profile does not
-    # support — build_signature_base raises ValueError. The verifier must wrap
-    # that as REQUEST_SIGNATURE_HEADER_MALFORMED rather than bubbling it up.
+def test_an_extra_covered_derived_component_verifies() -> None:
+    """A signature may cover a derived component beyond the required three.
+
+    The AdCP 3.2 checklist (security.mdx step 6) requires ``@method``,
+    ``@target-uri``, and ``@authority``, plus the body components, and
+    refuses nothing extra. ``http-message-signatures`` resolves ``@path``,
+    so a real signature that covers it verifies.
+    """
+    from datetime import datetime, timezone
+
+    from http_message_signatures import HTTPMessageSigner, HTTPSignatureKeyResolver
+    from http_message_signatures.algorithms import ED25519
+
+    from adcp.signing.canonical import signing_message
+    from adcp.signing.digest import compute_content_digest_sha256
+
+    class Key(HTTPSignatureKeyResolver):
+        def resolve_private_key(self, key_id):
+            return private_key_from_jwk(ED25519_KEY, d_field="_private_d_for_test_only")
+
     url = "https://seller.example.com/adcp/create_media_buy"
     created = 1776520800
-    expires = created + 300
-    sig_input = (
-        '("@method" "@target-uri" "@authority" "@path");'
-        f"created={created};expires={expires};"
-        'nonce="a";keyid="test-ed25519-2026";alg="ed25519";'
-        'tag="adcp/request-signing/v1"'
-    )
-    # No Content-Type header — @path is the only novel component so it reaches
-    # build_signature_base (step 6) before component-set checks short-circuit.
+    body = b"{}"
     headers = {
-        "Signature-Input": f"sig1={sig_input}",
-        "Signature": "sig1=:AAAA:",
+        "Content-Type": "application/json",
+        "Content-Digest": compute_content_digest_sha256(body),
     }
-    with pytest.raises(SignatureVerificationError) as exc:
-        verify_request_signature(
-            method="POST",
-            url=url,
-            headers=headers,
-            body=b"{}",
-            options=_options(),
-        )
-    assert exc.value.code == REQUEST_SIGNATURE_HEADER_MALFORMED
-    assert exc.value.step == 6
+    message = signing_message("POST", url, headers)
+    HTTPMessageSigner(signature_algorithm=ED25519, key_resolver=Key()).sign(
+        message,
+        key_id="test-ed25519-2026",
+        created=datetime.fromtimestamp(created, timezone.utc),
+        expires=datetime.fromtimestamp(created + 300, timezone.utc),
+        nonce="KXYnfEfJ0PBRZXQyVXfVQA",
+        label="sig1",
+        tag="adcp/request-signing/v1",
+        covered_component_ids=(
+            "@method",
+            "@target-uri",
+            "@authority",
+            "@path",
+            "content-type",
+            "content-digest",
+        ),
+    )
+    assert '"@path"' in message.headers["Signature-Input"]
+
+    signer = verify_request_signature(
+        method="POST",
+        url=url,
+        headers={**headers, **{k: message.headers[k] for k in ("Signature-Input", "Signature")}},
+        body=body,
+        options=_options(now=created),
+    )
+    assert signer.key_id == "test-ed25519-2026"
 
 
 def test_missing_covered_header_wraps_as_header_malformed() -> None:

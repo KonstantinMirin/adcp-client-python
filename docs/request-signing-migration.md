@@ -345,6 +345,21 @@ Two ways across:
 
 The same function is the identifier comparer for `adagents.json` `authorized_agents[].url`, `brand.json` `agents[].url`, TMP `seller_agent.agent_url`, `format-id.agent_url` and the governance issuer. There the change is strictly more permissive: `https://agent.example.com` and `https://agent.example.com/` now compare equal, where before a publisher who registered the first did not match a caller who arrived as the second, and the refusal named authorization rather than canonicalization. No registration needs editing, and no pair that matched before stops matching.
 
+## 7. Upgrading to strict JWK and base64url decoding
+
+These `adcp.signing` functions decode keys more strictly than they did in 9.x:
+
+| Function | Change |
+| --- | --- |
+| `b64url_decode` | Accepts only RFC 7515 base64url: the URL-safe alphabet, no padding, and the one spelling `b64url_encode` produces. Padding, `+` or `/`, other characters, and non-zero trailing bits raise `ValueError`. |
+| `public_key_from_jwk` | Decodes the members with `joserfc` and reads the public members only. Apart from the strict decoding above, it refuses the same keys, but the `ValueError` text changes, for example from `Ed25519 JWK x has length 3, expected 32` to `unusable OKP/Ed25519 JWK: ...`. |
+| `private_key_from_jwk` | Reads `d` alone, so a `d`-only JWK still loads. When `x` (or `y`) is present and isn't the public key of `d`, it raises `ValueError` instead of returning the key that `d` names. |
+| `publisher_pins.jwk_thumbprint` | Returns the RFC 7638 thumbprint as its base64url `str`, not the digest `bytes`. |
+
+A key published with padded or standard-alphabet base64 no longer verifies, so check that your JWKS and `adagents.json` entries use unpadded base64url. Code that matched error text, or compared `jwk_thumbprint` with digest bytes, needs updating.
+
+Signing and verification use `http-message-signatures` 2.1, which parses the URL per RFC 3986, so a URL with a raw `{`, `}`, or `|` in its query can't be signed: percent-encode it. `httpx` encodes those characters when they come through `params=`, but not when they are written into the URL.
+
 ## Related
 
 - [`adcp.signing.install_signing_event_hook`](../src/adcp/signing/client.py) — buyer-side preset for adapters not using `ADCPClient`.

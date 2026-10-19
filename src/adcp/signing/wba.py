@@ -11,7 +11,7 @@ Web Bot Auth statuses and headers (DR-0023): 400, 403 with or without
 
 The profile is adcontextprotocol/adcp#7894 (``wba-profile.mdx``): one
 ``web-bot-auth`` signature and one ``Signature-Agent`` member per request,
-``ed25519`` or ``rsa-pss-sha512``, a 64-byte nonce on every request, and key
+``ed25519`` keys only, a 64-byte nonce on every request, and key
 directories signed per WBA Appendix B.1. RFC 9421 itself comes from
 ``http-message-signatures`` (signature bases, signing, verification) and
 ``http-sf`` (Structured Fields); this module keeps the profile rules.
@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import binascii
 import json
 import secrets
 import time
@@ -37,15 +36,21 @@ from typing import Any, Literal, Protocol, cast
 from urllib.parse import urlsplit
 
 import httpx
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from joserfc.jwk import OKPKey
 
 from adcp.signing import _rfc9421
 from adcp.signing._bounded_http import async_read_limited_bytes
 from adcp.signing._header_precheck import strict_header_precheck
 from adcp.signing._strict_json import StrictJsonError, parse_strict_json
 from adcp.signing.canonical import _lookup, canonical_origin
-from adcp.signing.crypto import b64url_decode, b64url_encode, public_key_from_jwk
+from adcp.signing.crypto import (
+    _PRIVATE_JWK_MEMBERS,
+    b64url_decode,
+    b64url_encode,
+    import_jwk,
+    public_key_from_jwk,
+)
 from adcp.signing.digest import compute_content_digest_sha256, content_digest_matches
 from adcp.signing.jwks import SSRFValidationError, validate_uri_static
 from adcp.signing.publisher_pins import jwk_thumbprint
@@ -58,10 +63,9 @@ DIRECTORY_TAG = "http-message-signatures-directory"
 DIRECTORY_PATH = "/.well-known/http-message-signatures-directory"
 DIRECTORY_MEDIA_TYPE = "application/http-message-signatures-directory+json"
 ALG_ED25519 = "ed25519"
-ALG_RSA_PSS_SHA512 = "rsa-pss-sha512"
 #: The algorithms the profile allows (``wba-profile.mdx``, Profile rules).
 #: ES256 is an AdCP RFC 9421 profile algorithm only.
-WBA_ALGORITHMS: frozenset[str] = frozenset({ALG_ED25519, ALG_RSA_PSS_SHA512})
+WBA_ALGORITHMS: frozenset[str] = frozenset({ALG_ED25519})
 
 #: Every signed request carries a nonce of exactly 64 random bytes
 #: (``wba-profile.mdx``, Profile rules; the architecture draft §4.2.2).
@@ -73,17 +77,12 @@ DIRECTORY_SKEW_ALLOWANCE_SECONDS = 300
 #: (WBA §6.10), counted from the last successful fetch.
 DEFAULT_DIRECTORY_MAX_STALE_SECONDS = 86400
 
-_DIRECTORY_MEDIA_TYPES = frozenset(
-    {DIRECTORY_MEDIA_TYPE, "application/jwk-set+json", "application/json"}
-)
 _DIRECTORY_MAX_BYTES = 256 * 1024
 _DIRECTORY_MAX_KEYS = 100
 _DIRECTORY_CACHE_SECONDS = 300
 _DISCOVERY_NEGATIVE_SECONDS = 60
 _DIRECTORY_CREATED_SKEW_SECONDS = 60
 _REQUEST_SKEW_SECONDS = 60
-_RSA_MIN_BITS, _RSA_MAX_BITS = 2048, 8192
-_PRIVATE_JWK_MEMBERS = frozenset({"d", "p", "q", "dp", "dq", "qi", "k", "oth"})
 _REQUEST_COMPONENTS = ("@method", "@target-uri", "@authority")
 _BODY_COMPONENTS = ("content-type", "content-digest")
 
@@ -119,20 +118,17 @@ def is_64_byte_nonce(nonce: object) -> bool:
     """
     if type(nonce) is not str or not nonce.isascii():
         return False
-    candidates: list[tuple[bytes, str]] = []
     try:
-        raw = base64.urlsafe_b64decode(nonce + "=" * (-len(nonce) % 4))
-        candidates.append((raw, b64url_encode(raw)))
-    except (binascii.Error, ValueError):
+        # Unpadded base64url, decoded strictly (one spelling per value).
+        return len(b64url_decode(nonce)) == WBA_NONCE_BYTES
+    except ValueError:
         # Not base64url; the standard-base64 form is tried next.
         pass
     try:
         raw = base64.b64decode(nonce, validate=True)
-        candidates.append((raw, base64.b64encode(raw).decode("ascii")))
-    except (binascii.Error, ValueError):
-        # Not standard base64 either; only a decoded candidate can match.
-        pass
-    return any(len(raw) == WBA_NONCE_BYTES and encoded == nonce for raw, encoded in candidates)
+    except ValueError:
+        return False
+    return len(raw) == WBA_NONCE_BYTES and base64.b64encode(raw).decode("ascii") == nonce
 
 
 def valid_wba_nonce(nonce: object) -> bool:
@@ -258,6 +254,19 @@ def _dictionary(value: str | None, *, missing_status: int = 400) -> dict[str, An
         raise WbaVerificationError(f"malformed signature field: {exc}", status=400) from exc
 
 
+def _check_signature_members(inputs: Mapping[str, Any], signatures: Mapping[str, Any]) -> None:
+    """RFC 9421 sections 4.1 and 4.2: the shape of every member, read or not.
+
+    Each ``Signature-Input`` member is an inner list, and each ``Signature``
+    member a Byte Sequence with no parameters. A member another party added
+    is not read, but a malformed one makes the field malformed: 400.
+    """
+    if not all(_rfc9421.is_inner_list(member) for member in inputs.values()) or any(
+        type(value) is not bytes or params for value, params in signatures.values()
+    ):
+        raise WbaVerificationError("malformed signature field member", status=400)
+
+
 def uses_web_bot_auth(headers: Mapping[str, str]) -> bool:
     """Select WBA from either marker; never fall back after a WBA failure."""
     if _lookup(headers, "signature-agent") is not None:
@@ -290,103 +299,51 @@ def _https_origin(url: str) -> str:
 
 def thumbprint_key_id(jwk: Mapping[str, Any]) -> str:
     """Return the RFC 7638 thumbprint (``joserfc``) for supported public key material."""
-    digest = jwk_thumbprint(jwk)
-    if digest is None:
+    thumbprint = jwk_thumbprint(jwk)
+    if thumbprint is None:
         raise ValueError("incomplete public JWK")
-    return b64url_encode(digest)
+    return thumbprint
 
 
-def _int_member(value: int) -> str:
-    return b64url_encode(value.to_bytes((value.bit_length() + 7) // 8, "big"))
-
-
-WbaPrivateKey = ed25519.Ed25519PrivateKey | rsa.RSAPrivateKey
+WbaPrivateKey = ed25519.Ed25519PrivateKey
 
 
 def public_directory_key(private_key: WbaPrivateKey) -> dict[str, Any]:
     """Export a WBA public JWK, with a thumbprint kid and no purpose claim.
 
-    Ed25519 and RSA (2048 to 8192 bits, used with ``rsa-pss-sha512``) keys
-    are supported: the profile's two algorithms.
+    The profile's one algorithm is ``ed25519``, so only Ed25519 keys export.
     """
-    public = private_key.public_key()
-    jwk: dict[str, Any]
-    if isinstance(public, ed25519.Ed25519PublicKey):
-        jwk = {
-            "kty": "OKP",
-            "crv": "Ed25519",
-            "x": b64url_encode(
-                public.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
-            ),
-        }
-    elif isinstance(public, rsa.RSAPublicKey):
-        rsa_numbers = public.public_numbers()
-        if not _RSA_MIN_BITS <= public.key_size <= _RSA_MAX_BITS:
-            raise ValueError("Web Bot Auth RSA keys must be 2048 to 8192 bits")
-        jwk = {"kty": "RSA", "n": _int_member(rsa_numbers.n), "e": _int_member(rsa_numbers.e)}
-    else:
-        raise ValueError("Web Bot Auth supports Ed25519 and RSA keys")
-    jwk.update({"kid": thumbprint_key_id(jwk), "use": "sig"})
-    return jwk
-
-
-def _canonical_b64url(value: object) -> bool:
-    if type(value) is not str or not value or not value.isascii():
-        return False
-    try:
-        return b64url_encode(b64url_decode(value)) == value
-    except (binascii.Error, ValueError):
-        return False
-
-
-def _rsa_public_key(jwk: Mapping[str, Any]) -> rsa.RSAPublicKey:
-    modulus = b64url_decode(str(jwk.get("n", "")))
-    exponent = b64url_decode(str(jwk.get("e", "")))
-    if not modulus or modulus[0] == 0 or not exponent or len(exponent) > 4 or exponent[0] == 0:
-        raise ValueError("invalid RSA key members")
-    n = int.from_bytes(modulus, "big")
-    e = int.from_bytes(exponent, "big")
-    if not _RSA_MIN_BITS <= n.bit_length() <= _RSA_MAX_BITS:
-        raise ValueError("RSA modulus size not allowed")
-    if e < 3 or e > 2**31 - 1 or e % 2 == 0:
-        raise ValueError("RSA exponent not allowed")
-    return rsa.RSAPublicNumbers(e, n).public_key()
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError("Web Bot Auth signs with Ed25519 keys only")
+    key = OKPKey.import_key(private_key)
+    return {**key.as_dict(private=False), "kid": key.thumbprint(), "use": "sig"}
 
 
 def _algorithm(jwk: Mapping[str, Any]) -> str:
     """Derive the signature algorithm and check the key may verify.
 
-    Only the profile's algorithms qualify: an Ed25519 key signs ``ed25519``
-    and an RSA key ``rsa-pss-sha512``. Any other key (P-256 included) is not
-    a Web Bot Auth key.
+    The profile's one algorithm qualifies: an Ed25519 key signs ``ed25519``.
+    Any other key (P-256 and RSA included) is not a Web Bot Auth key.
     """
     shape = (str(jwk.get("kty")), str(jwk.get("crv")))
-    alg = {("OKP", "Ed25519"): ALG_ED25519, ("RSA", "None"): ALG_RSA_PSS_SHA512}.get(shape)
-    if alg is None or jwk.get("use", "sig") != "sig" or _PRIVATE_JWK_MEMBERS & set(jwk):
+    if (
+        shape != ("OKP", "Ed25519")
+        or jwk.get("use", "sig") != "sig"
+        or _PRIVATE_JWK_MEMBERS & set(jwk)
+    ):
         raise WbaVerificationError("unsupported directory key")
-    # One key, one thumbprint: key members must be canonical base64url.
-    for member in ("x", "n", "e"):
-        if member in jwk and not _canonical_b64url(jwk[member]):
-            raise WbaVerificationError("directory key member is not canonical base64url")
-    if alg == ALG_RSA_PSS_SHA512:
-        try:
-            _rsa_public_key(jwk)
-        except (ValueError, TypeError) as exc:
-            raise WbaVerificationError("unsupported RSA directory key") from exc
-    jws_alg = {ALG_ED25519: "EdDSA", ALG_RSA_PSS_SHA512: "PS512"}[alg]
-    if jwk.get("alg") not in {None, jws_alg}:
+    # One key, one thumbprint: joserfc refuses a non-canonical x.
+    try:
+        import_jwk({name: jwk.get(name) for name in ("kty", "crv", "x")})
+    except ValueError as exc:
+        raise WbaVerificationError("invalid directory key member") from exc
+    if jwk.get("alg") not in {None, "EdDSA"}:
         raise WbaVerificationError("directory key algorithm mismatch")
     if "key_ops" in jwk and (
         not isinstance(jwk["key_ops"], list) or "verify" not in jwk["key_ops"]
     ):
         raise WbaVerificationError("directory key cannot verify")
-    return alg
-
-
-def _public_key(alg: str, jwk: Mapping[str, Any]) -> Any:
-    if alg == ALG_RSA_PSS_SHA512:
-        return _rsa_public_key(jwk)
-    return public_key_from_jwk(dict(jwk))
+    return ALG_ED25519
 
 
 def _received_authority(url: str) -> str:
@@ -405,30 +362,6 @@ def _received_authority(url: str) -> str:
     if not authority:
         raise WbaVerificationError("request URL has no authority")
     return authority
-
-
-class _WbaComponentResolver(_rfc9421.ComponentResolver):
-    """Web Bot Auth components: the target URI as received, not canonicalized.
-
-    ``@target-uri`` is the URI exactly as sent or received (RFC 9421
-    §2.2.2), percent-encoding included; ``@authority`` is its normalized
-    authority. The AdCP origin canonicalization identifies the signer only.
-    """
-
-    def get_target_uri(self) -> str:
-        url = self.url
-        if any(ord(c) <= 0x20 or ord(c) == 0x7F for c in url) or not url.isascii():
-            raise _rfc9421.ComponentError("request URL is not a valid target URI", status=400)
-        parts = urlsplit(url)
-        if parts.scheme.lower() not in {"http", "https"} or not parts.netloc or parts.fragment:
-            raise _rfc9421.ComponentError("request URL is not an absolute target URI")
-        return url
-
-    def get_authority(self) -> str:
-        try:
-            return _received_authority(self.url)
-        except WbaVerificationError as exc:
-            raise _rfc9421.ComponentError(exc.reason) from exc
 
 
 def _signature_base(
@@ -453,7 +386,6 @@ def _signature_base(
         message,
         covered_component_ids=[_rfc9421.component_identifier(item) for item in items],
         params=params,
-        resolver=_WbaComponentResolver,
     )
 
 
@@ -484,22 +416,20 @@ def _verify_crypto(
     *,
     label: str,
     params: Mapping[str, Any],
-    signature: Any,
     jwk: Mapping[str, Any],
 ) -> str:
     """Verify ``label`` with ``http-message-signatures``; return the algorithm.
 
     The algorithm comes from the key (:func:`_algorithm`), and the signature's
-    ``alg`` must name the same one.
+    ``alg`` must name the same one. The caller checked the fields' shape
+    (:func:`_check_signature_members`).
     """
     alg = _algorithm(jwk)
-    declared = params.get("alg", alg)
-    if type(declared) is not str or declared != alg:
-        raise WbaVerificationError("signature algorithm does not match key")
-    if not isinstance(signature, tuple) or not isinstance(signature[0], bytes) or signature[1]:
-        raise WbaVerificationError("signature must be a bare sf-binary", status=400)
+    # Every signature names its algorithm (Profile rules); none is inferred.
+    if params.get("alg") != alg:
+        raise WbaVerificationError("signature algorithm is absent or does not match key")
     try:
-        public_key = _public_key(alg, jwk)
+        public_key = public_key_from_jwk(dict(jwk))
     except (ValueError, KeyError, TypeError) as exc:
         raise WbaVerificationError("invalid directory key") from exc
     try:
@@ -509,7 +439,6 @@ def _verify_crypto(
             tag=str(params["tag"]),
             alg=alg,
             public_key=public_key,
-            resolver=_WbaComponentResolver,
             window_checked=True,  # every caller ran _window first
             parameters=tuple(params),
         )
@@ -594,7 +523,6 @@ def sign_wba_request(
         nonce=nonce,
         tag=WBA_TAG,
         covered_component_ids=covered,
-        resolver=_WbaComponentResolver,
     )
     outgoing["Signature-Input"] = signature_input
     outgoing["Signature"] = signature
@@ -617,7 +545,8 @@ class _VerifiedDirectory:
     signatures_expire: float
 
 
-def _parse_directory_keys(body: bytes) -> dict[str, dict[str, Any]]:
+def _parse_directory_keys(body: bytes) -> tuple[dict[str, dict[str, Any]], set[str]]:
+    """Index the usable keys by thumbprint; also return the unusable keys' thumbprints."""
     try:
         document = parse_strict_json(body)
     except StrictJsonError as exc:
@@ -626,6 +555,7 @@ def _parse_directory_keys(body: bytes) -> dict[str, dict[str, Any]]:
     if not isinstance(keys, list) or not 1 <= len(keys) <= _DIRECTORY_MAX_KEYS:
         raise WbaVerificationError("invalid directory key count")
     index: dict[str, dict[str, Any]] = {}
+    ignored: set[str] = set()
     for jwk in keys:
         if not isinstance(jwk, dict):
             raise WbaVerificationError("directory entry is not an object")
@@ -640,8 +570,13 @@ def _parse_directory_keys(body: bytes) -> dict[str, dict[str, Any]]:
             _algorithm(jwk)
             thumbprint = thumbprint_key_id(jwk)
         except (WbaVerificationError, ValueError):
-            # A plain JWK Set may hold keys for other uses: skip what the
-            # profile cannot verify with.
+            # A directory may hold keys for other uses: skip what the profile
+            # cannot verify with (RFC 7517 section 5), and remember it so its
+            # signature is skipped too.
+            try:
+                ignored.add(thumbprint_key_id(jwk))
+            except ValueError:
+                pass  # No thumbprint, so no signature can name it.
             continue
         if thumbprint in index:
             raise WbaVerificationError("directory repeats a key")
@@ -650,7 +585,7 @@ def _parse_directory_keys(body: bytes) -> dict[str, dict[str, Any]]:
         index[thumbprint] = {**jwk, "kid": thumbprint}
     if not index:
         raise WbaVerificationError("directory holds no usable key")
-    return index
+    return index, ignored
 
 
 def _verify_directory(
@@ -658,9 +593,10 @@ def _verify_directory(
 ) -> _VerifiedDirectory:
     origin = _https_origin(origin)
     media_type = (_lookup(response.headers, "content-type") or "").split(";", 1)[0]
+    # WBA section 5.5.1: a directory is served as the directory media type.
     if (
         response.status != 200
-        or media_type.strip().lower() not in _DIRECTORY_MEDIA_TYPES
+        or media_type.strip().lower() != DIRECTORY_MEDIA_TYPE
         or len(response.body) > _DIRECTORY_MAX_BYTES
     ):
         raise WbaVerificationError("invalid key directory response")
@@ -673,11 +609,12 @@ def _verify_directory(
     # The digest covers the exact bytes served, a UTF-8 BOM included.
     if digest is None or not content_digest_matches(digest, response.body):
         raise WbaVerificationError("directory digest mismatch")
-    keys = _parse_directory_keys(response.body)
+    keys, ignored = _parse_directory_keys(response.body)
     inputs = _dictionary(raw_inputs)
     signatures = _dictionary(raw_signatures)
     if set(signatures) != set(inputs):
         raise WbaVerificationError("directory signature labels differ")
+    _check_signature_members(inputs, signatures)
     message = _rfc9421.Response(
         status_code=response.status,
         request=_rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH),
@@ -686,9 +623,14 @@ def _verify_directory(
     signed: dict[str, dict[str, Any]] = {}
     earliest = float("inf")
     for label, member in inputs.items():
-        if not _rfc9421.is_inner_list(member) or member[1].get("tag") != DIRECTORY_TAG:
+        if not _rfc9421.is_inner_list(member):
             raise WbaVerificationError("invalid directory signature profile")
         items, params = member
+        if params.get("keyid") in ignored:
+            # The signature of a key the profile cannot use is not read.
+            continue
+        if params.get("tag") != DIRECTORY_TAG:
+            raise WbaVerificationError("invalid directory signature profile")
         _window(params, now=now, directory=True, label=label)
         covered = {_rfc9421.component_identifier(item) for item in items}
         # Exact identifiers: a "content-digest" member or a bare @authority
@@ -698,13 +640,12 @@ def _verify_directory(
         keyid = params["keyid"]
         if keyid not in keys or keyid in signed:
             raise WbaVerificationError("directory signature key is absent or repeated")
-        _verify_crypto(
-            message, label=label, params=params, signature=signatures.get(label), jwk=keys[keyid]
-        )
+        _verify_crypto(message, label=label, params=params, jwk=keys[keyid])
         signed[keyid] = keys[keyid]
         earliest = min(earliest, float(params["expires"]))
-    # Only keys carrying a verified possession proof are usable; an unsigned
-    # key alongside them is ignored.
+    # One signature per key (Appendix B.1): every usable key proves possession.
+    if signed.keys() != keys.keys():
+        raise WbaVerificationError("a usable directory key did not sign")
     return _VerifiedDirectory(signed, earliest)
 
 
@@ -713,11 +654,13 @@ def verify_directory_response(
 ) -> dict[str, dict[str, Any]]:
     """Validate a key directory served at ``origin``; return keys by thumbprint.
 
-    The response must be signed per WBA Appendix B.1, as the profile
-    requires: every signature must verify with a key the directory holds,
-    cover ``"@authority";req`` and ``"content-digest"``, and only the keys
-    those signatures prove are returned. An unsigned directory is refused.
-    Every key is indexed by its RFC 7638 thumbprint (a ``kid`` is optional).
+    The response must be served as :data:`DIRECTORY_MEDIA_TYPE` and signed
+    per WBA Appendix B.1, as the profile requires: every key the profile can
+    use signs it, and each of those signatures verifies and covers
+    ``"@authority";req`` and ``"content-digest"``. A key the profile cannot
+    use (P-256 or RSA, for example) is ignored, and so is its signature. An
+    unsigned directory is refused. Every key is indexed by its RFC 7638
+    thumbprint (a ``kid`` is optional).
     """
     return _verify_directory(origin, response, now=now).keys
 
@@ -754,12 +697,15 @@ def sign_key_directory(
         created, expires = now - DIRECTORY_SKEW_ALLOWANCE_SECONDS, now + expires_in_seconds
     else:
         expires = created + expires_in_seconds
-    request = _rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH)
-    inputs: list[str] = []
-    signatures: list[str] = []
+    message = _rfc9421.Response(
+        status_code=200,
+        request=_rfc9421.Request(method="GET", url=origin + DIRECTORY_PATH),
+        headers=dict(headers),
+    )
     for number, (key, jwk) in enumerate(zip(private_keys, keys), 1):
+        # Each key adds its own member to the same two fields.
         signature_input, signature = _rfc9421.sign(
-            _rfc9421.Response(status_code=200, request=request, headers=dict(headers)),
+            message,
             alg=_algorithm(jwk),
             private_key=key,
             key_id=jwk["kid"],
@@ -769,11 +715,9 @@ def sign_key_directory(
             nonce=None,
             tag=DIRECTORY_TAG,
             covered_component_ids=['"@authority";req', '"content-digest"'],
-            resolver=_WbaComponentResolver,
+            append=True,
         )
-        inputs.append(signature_input)
-        signatures.append(signature)
-    headers.update({"Signature-Input": ", ".join(inputs), "Signature": ", ".join(signatures)})
+    headers.update({"Signature-Input": signature_input, "Signature": signature})
     return DirectoryResponse(body=body, headers=headers)
 
 
@@ -801,13 +745,8 @@ async def fetch_key_directory(url: str, *, allow_private: bool = False) -> Direc
             async with client.stream(
                 "GET",
                 url,
-                headers={
-                    "Accept": (
-                        f"{DIRECTORY_MEDIA_TYPE}, application/jwk-set+json;q=0.9, "
-                        "application/json;q=0.8"
-                    ),
-                    "Accept-Encoding": "identity",
-                },
+                # The only media type _verify_directory accepts (WBA section 5.5.1).
+                headers={"Accept": DIRECTORY_MEDIA_TYPE, "Accept-Encoding": "identity"},
             ) as response:
                 return DirectoryResponse(
                     status=response.status_code,
@@ -1081,15 +1020,13 @@ async def verify_wba_request(
     # parse is a 400.
     inputs = _dictionary(_lookup(headers, "signature-input"), missing_status=403)
     signatures = _dictionary(_lookup(headers, "signature"), missing_status=403)
+    # A malformed member is a malformed field, before any member is selected.
+    _check_signature_members(inputs, signatures)
     raw_agent = _lookup(headers, "signature-agent")
     # Selection by tag alone leaves the Signature-Agent member absent, which
     # fails the signature with 403 below.
     agents = _dictionary(raw_agent) if raw_agent is not None else {}
-    wba = [
-        (label, member)
-        for label, member in inputs.items()
-        if _rfc9421.is_inner_list(member) and member[1].get("tag") == WBA_TAG
-    ]
+    wba = [(label, member) for label, member in inputs.items() if member[1].get("tag") == WBA_TAG]
     if not wba:
         raise WbaVerificationError("Signature-Agent requires the Web Bot Auth profile")
     if set(signatures) != set(inputs):
@@ -1128,6 +1065,10 @@ async def verify_wba_request(
         origin = _https_origin(agent[0])
     except ValueError as exc:
         raise WbaVerificationError("invalid signer origin", label=label) from exc
+    # The value is the serialized origin itself, compared as a string: a
+    # spelling that only normalizes to an origin names no origin.
+    if agent[0] != origin:
+        raise WbaVerificationError("signer origin is not in canonical form", label=label)
     covered = [_rfc9421.component_identifier(item) for item in items]
     required = {_rfc9421.component_identifier((name, {})) for name in _REQUEST_COMPONENTS}
     required.add(_rfc9421.component_identifier(("signature-agent", {"key": label})))
@@ -1157,9 +1098,7 @@ async def verify_wba_request(
     assert key is not None
     message = _rfc9421.Request(method=method, url=url, headers=dict(headers))
     try:
-        alg = _verify_crypto(
-            message, label=label, params=params, signature=signatures.get(label), jwk=key.jwk
-        )
+        alg = _verify_crypto(message, label=label, params=params, jwk=key.jwk)
     except WbaVerificationError as exc:
         exc.label = label
         raise
@@ -1249,7 +1188,6 @@ WBA_GOVERNANCE_TYP = "adcp-gov+jws"
 #: fully specified name for ``EdDSA`` over Ed25519.
 _GOVERNANCE_JWS_ALGS: dict[str, frozenset[str]] = {
     ALG_ED25519: frozenset({"EdDSA", "Ed25519"}),
-    ALG_RSA_PSS_SHA512: frozenset({"PS512"}),
 }
 
 
@@ -1264,31 +1202,6 @@ class WbaGovernanceError(ValueError):
         super().__init__(f"{code}: {reason}")
         self.code = code
         self.reason = reason
-
-
-def _governance_registry(alg: str) -> Any:
-    from joserfc.jws import JWSRegistry
-    from joserfc.registry import HeaderParameter, is_bool
-
-    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-    from adcp.signing.jws import _AdcpJwsRegistry, _Ed25519EdDSA
-
-    class _Registry(_AdcpJwsRegistry):
-        algorithms = {
-            "EdDSA": _Ed25519EdDSA(),
-            "Ed25519": JWSRegistry.algorithms["Ed25519"],
-            "PS512": JWSRegistry.algorithms["PS512"],
-        }
-
-    # The action-binding claim markers are the only crit extensions.
-    return _Registry(
-        header_registry={
-            name: HeaderParameter(f"AdCP critical claim marker: {name}", is_bool)
-            for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-        },
-        algorithms=[alg],
-        strict_check_header=False,
-    )
 
 
 async def verify_wba_governance_issuer(
@@ -1324,8 +1237,14 @@ async def verify_wba_governance_issuer(
     """
     from joserfc import jws as jose_jws
     from joserfc.errors import BadSignatureError, JoseError
-    from joserfc.jwk import OKPKey, RSAKey
-    from joserfc.util import urlsafe_b64decode
+    from joserfc.jwk import OKPKey
+
+    from adcp.governance import (
+        _decode_json_segment,
+        _governance_jws_registry,
+        critical_claims_failure,
+    )
+    from adcp.signing.jws import JwsMalformedError, parse_compact_jws
 
     def fail(code: str, reason: str) -> WbaGovernanceError:
         return WbaGovernanceError(code, reason)
@@ -1333,22 +1252,21 @@ async def verify_wba_governance_issuer(
     now = time.time() if now is None else now
     if not isinstance(token, str) or not token or len(token) > 16384:
         raise fail("governance_token_invalid", "governance token is missing or too large")
+    # The splitter and segment parser of the AdCP 3.2 governance verifier.
     try:
-        compact = jose_jws.extract_compact(
-            token.encode("ascii"), registry=_governance_registry("EdDSA")
-        )
-        header = parse_strict_json(urlsafe_b64decode(compact.segments["header"]))
-        claims = parse_strict_json(compact.payload)
-    except (JoseError, StrictJsonError, UnicodeError, ValueError) as exc:
+        b64_header, b64_payload, _signature = parse_compact_jws(token)
+        header = _decode_json_segment(b64_header)
+        claims = _decode_json_segment(b64_payload)
+    except (JwsMalformedError, ValueError) as exc:
         raise fail("governance_token_invalid", "governance token is not a compact JWS") from exc
-    if not isinstance(header, dict) or not isinstance(claims, dict):
-        raise fail("governance_token_invalid", "governance token header or claims not an object")
     alg = header.get("alg")
-    if alg not in {"EdDSA", "Ed25519", "PS512"}:
+    if type(alg) is not str or alg not in _GOVERNANCE_JWS_ALGS[ALG_ED25519]:
         raise fail("governance_token_invalid", "governance token alg not allowed")
     if header.get("typ") != WBA_GOVERNANCE_TYP:
         raise fail("governance_token_invalid", "governance token typ mismatch")
-    _check_critical_markers(header, claims, fail)
+    critical_failure = critical_claims_failure(header, claims)
+    if critical_failure is not None:
+        raise fail("governance_token_invalid", critical_failure)
     try:
         issuer = _https_origin(str(claims.get("iss", "")))
     except ValueError as exc:
@@ -1385,10 +1303,8 @@ async def verify_wba_governance_issuer(
         raise fail("governance_token_invalid", "governance token alg does not match the key")
     public = {name: value for name, value in key.jwk.items() if name not in {"kid", "alg"}}
     try:
-        jose_key = (
-            OKPKey.import_key(public) if key_alg == ALG_ED25519 else RSAKey.import_key(public)
-        )
-        jose_jws.deserialize_compact(token, jose_key, registry=_governance_registry(str(alg)))
+        jose_key = OKPKey.import_key(public)
+        jose_jws.deserialize_compact(token, jose_key, registry=_governance_jws_registry(str(alg)))
     except BadSignatureError as exc:
         raise fail("governance_token_invalid", "governance token signature invalid") from exc
     except JoseError as exc:
@@ -1403,30 +1319,6 @@ async def verify_wba_governance_issuer(
     return issuer
 
 
-def _check_critical_markers(
-    header: Mapping[str, Any], claims: Mapping[str, Any], fail: Callable[[str, str], Exception]
-) -> None:
-    """Security.mdx checklist step 4: each action-binding marker, crit entry and claim together."""
-    from adcp.governance import GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS
-
-    critical = header.get("crit", [])
-    if (
-        not isinstance(critical, list)
-        or any(not isinstance(name, str) for name in critical)
-        or len(set(critical)) != len(critical)
-        or any(name not in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS for name in critical)
-    ):
-        raise fail("governance_token_invalid", "invalid governance JWS crit header")
-    for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
-        if (name in claims) != (name in critical and header.get(name) is True):
-            raise fail("governance_token_invalid", f"{name} claim and critical marker must match")
-    if ("authorized_task" in claims) != ("authorized_payload_hash" in claims):
-        raise fail(
-            "governance_token_invalid",
-            "authorized_task and authorized_payload_hash must appear together",
-        )
-
-
 class WbaRevocationStatusChecker(Protocol):
     """Report a WBA key's state in its origin's signed revocation list."""
 
@@ -1436,7 +1328,6 @@ class WbaRevocationStatusChecker(Protocol):
 
 __all__ = [
     "ALG_ED25519",
-    "ALG_RSA_PSS_SHA512",
     "DEFAULT_DIRECTORY_MAX_STALE_SECONDS",
     "DIRECTORY_MEDIA_TYPE",
     "DIRECTORY_SKEW_ALLOWANCE_SECONDS",
@@ -1682,6 +1573,8 @@ class OriginRevocationChecker:
                 clock=self._clock,
                 wall_clock=self._wall_clock,
                 history_admission=self._admit_revocations,
+                # The profile's revocation-list JWS is EdDSA only.
+                allowed_algs=frozenset({"EdDSA"}),
             )
             # Authenticated revocations are permanent history. A 404 or
             # transport failure with no signed evidence consumes no slot.

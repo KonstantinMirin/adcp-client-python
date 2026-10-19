@@ -140,16 +140,15 @@ dependencies = [
     "idna>=3.18,<4",
     # RFC 9421 HTTP Message Signatures for every signing profile
     # (``adcp.signing._rfc9421``): signature bases, ``Signature-Input``
-    # assembly, and the ed25519 / ecdsa-p256-sha256 / rsa-pss-sha512
-    # algorithms. The SDK supplies a ``component_resolver_class`` and reaches
-    # two protected subclass hooks (``_build_signature_base``,
+    # assembly, the ;key and ;req component parameters, prepare/apply for an
+    # awaited signature, and the ed25519 / ecdsa-p256-sha256 algorithms. 2.1
+    # is the floor: it resolves ;key and ;req (pyauth#30) and adds
+    # prepare/apply (pyauth#31). The diagnostic base builder reaches two
+    # protected hooks (``_build_signature_base``,
     # ``_parse_covered_component_ids``); the upper bound and
     # tests/conformance/signing/test_rfc9421_library_contract.py guard them.
-    # 2.1.0 (2026-10-19) rewrote the component resolver (it no longer exposes
-    # ``url``, and it resolves ``;key`` and ``;req`` itself), so this layer is
-    # capped below it until the SDK moves to 2.1 (#1537 carries that move).
     # Apache-2.0, depends only on cryptography.
-    "http-message-signatures>=2.0.1,<2.1",
+    "http-message-signatures>=2.1.0,<3",
     # RFC 8941 / RFC 9651 Structured Fields (successor to the archived
     # http-sfv). 1.4.0 is the tested floor; ``on_duplicate_key`` lets the SDK
     # refuse a duplicate dictionary key or parameter instead of keeping the

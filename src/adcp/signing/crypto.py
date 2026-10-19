@@ -15,13 +15,15 @@ Encrypted PEM support (passphrase-protected private keys) is tracked in #191.
 
 from __future__ import annotations
 
-import base64
-from typing import Any
+from typing import Any, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from http_message_signatures.exceptions import HTTPMessageSignaturesException
+from joserfc.errors import JoseError
+from joserfc.jwk import ECKey, OKPKey
+from joserfc.util import urlsafe_b64decode, urlsafe_b64encode
 
 from adcp.signing._rfc9421 import ALGORITHMS, parse_dictionary, serialize, translate_legacy_binary
 
@@ -32,20 +34,28 @@ ALG_ED25519 = "ed25519"
 ALG_ES256 = "ecdsa-p256-sha256"
 ALLOWED_ALGS: frozenset[str] = frozenset({ALG_ED25519, ALG_ES256})
 
-# Ed25519 raw public-key and ECDSA-P-256 coordinate lengths (both 32 bytes).
-# Defensive byte-length check before the library's on-curve validation.
-_RAW_KEY_BYTES = 32
+# RFC 7518 section 6.2.1.2: a P-256 coordinate (and section 6.2.2.1, the
+# private scalar) is exactly 32 bytes. joserfc accepts a shorter spelling of
+# the same number, so the length is checked here.
+_P256_MEMBER_BYTES = 32
+
+# RFC 7518 sections 6.2.2, 6.3.2 and 6.4.1: the members only a private or
+# symmetric key carries.
+_PRIVATE_JWK_MEMBERS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 def b64url_decode(s: str) -> bytes:
-    """Decode base64url, tolerating missing padding."""
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + pad)
+    """Decode RFC 7515 base64url with ``joserfc``: no padding, one spelling.
+
+    Characters outside the URL-safe alphabet, padding, and non-zero trailing
+    bits raise ``ValueError``.
+    """
+    return urlsafe_b64decode(s.encode("ascii"))
 
 
 def b64url_encode(b: bytes) -> str:
-    """Encode bytes as base64url without padding."""
-    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
+    """Encode bytes as base64url without padding (``joserfc``)."""
+    return urlsafe_b64encode(b).decode("ascii")
 
 
 def load_private_key_pem(pem: bytes, *, password: bytes | None = None) -> PrivateKey:
@@ -86,68 +96,76 @@ def load_private_key_pem(pem: bytes, *, password: bytes | None = None) -> Privat
         )
     if isinstance(key, ec.EllipticCurvePrivateKey) and not isinstance(key.curve, ec.SECP256R1):
         raise ValueError(
-            f"EC key curve {key.curve.name} is not supported — only "
-            f"P-256 (SECP256R1) is allowed"
+            f"EC key curve {key.curve.name} is not supported — only P-256 (SECP256R1) is allowed"
         )
     return key
 
 
-def public_key_from_jwk(jwk: dict[str, Any]) -> PublicKey:
-    """Reconstruct a public key from its JWK."""
+def import_jwk(jwk: dict[str, Any], *, private: bool = False) -> OKPKey | ECKey:
+    """Import an Ed25519 or P-256 JWK with ``joserfc``.
+
+    ``joserfc`` decodes the members strictly and checks the key. An unusable
+    JWK raises ``ValueError``. Unless ``private``, the private members are
+    dropped first: ``joserfc`` derives the public key from a ``d`` it is
+    given, and a ``kid`` or pin names the key by a thumbprint over ``x``.
+    """
+    if not private:
+        jwk = {name: value for name, value in jwk.items() if name not in _PRIVATE_JWK_MEMBERS}
     kty = jwk.get("kty")
     crv = jwk.get("crv")
+    key_type: type[OKPKey] | type[ECKey]
     if kty == "OKP" and crv == "Ed25519":
-        x_raw = b64url_decode(jwk["x"])
-        if len(x_raw) != _RAW_KEY_BYTES:
-            raise ValueError(f"Ed25519 JWK x has length {len(x_raw)}, expected {_RAW_KEY_BYTES}")
-        return ed25519.Ed25519PublicKey.from_public_bytes(x_raw)
-    if kty == "EC" and crv == "P-256":
-        x_raw = b64url_decode(jwk["x"])
-        y_raw = b64url_decode(jwk["y"])
-        if len(x_raw) != _RAW_KEY_BYTES or len(y_raw) != _RAW_KEY_BYTES:
-            raise ValueError(
-                f"P-256 JWK x/y must be {_RAW_KEY_BYTES} bytes each, "
-                f"got x={len(x_raw)} y={len(y_raw)}"
-            )
-        x = int.from_bytes(x_raw, "big")
-        y = int.from_bytes(y_raw, "big")
-        return ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1()).public_key()
-    raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
+        key_type = OKPKey
+    elif kty == "EC" and crv == "P-256":
+        key_type = ECKey
+    else:
+        raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
+    try:
+        if key_type is ECKey:
+            for name in ("x", "y", "d") if "d" in jwk else ("x", "y"):
+                member = jwk.get(name)
+                if not isinstance(member, str) or len(b64url_decode(member)) != _P256_MEMBER_BYTES:
+                    raise ValueError(f"P-256 JWK {name} must be {_P256_MEMBER_BYTES} bytes")
+        return key_type.import_key(jwk)
+    except (JoseError, ValueError, TypeError, KeyError) as exc:
+        raise ValueError(f"unusable {kty}/{crv} JWK: {exc}") from exc
+
+
+def public_key_from_jwk(jwk: dict[str, Any]) -> PublicKey:
+    """Reconstruct a public key from its JWK (see :func:`import_jwk`)."""
+    return cast(PublicKey, import_jwk(jwk).public_key)
 
 
 def private_key_from_jwk(jwk: dict[str, Any], *, d_field: str = "d") -> PrivateKey:
-    """Reconstruct a private key from its JWK.
+    """Reconstruct an Ed25519 or P-256 private key from its JWK's ``d``.
 
     `d_field` lets callers read from a non-standard scalar field — the AdCP test
     vectors store the private half under `_private_d_for_test_only` to signal
     that the keys are not production-grade.
+
+    The public members are optional. When ``x`` (or ``y``) is present, it must
+    be the public key of ``d``, so a JWK that pairs ``d`` with another key's
+    ``x`` raises ``ValueError`` here rather than failing at the receiver.
     """
-    kty = jwk.get("kty")
-    crv = jwk.get("crv")
+    d = jwk.get(d_field)
+    if not isinstance(d, str):
+        raise ValueError(f"JWK has no private member {d_field!r}")
+    kty, crv = jwk.get("kty"), jwk.get("crv")
+    scalar = b64url_decode(d)
+    if len(scalar) != 32:
+        raise ValueError(f"{kty}/{crv} JWK {d_field} must be 32 bytes")
+    key: PrivateKey
     if kty == "OKP" and crv == "Ed25519":
-        d_raw = b64url_decode(jwk[d_field])
-        if len(d_raw) != _RAW_KEY_BYTES:
-            raise ValueError(f"Ed25519 JWK d has length {len(d_raw)}, expected {_RAW_KEY_BYTES}")
-        return ed25519.Ed25519PrivateKey.from_private_bytes(d_raw)
-    if kty == "EC" and crv == "P-256":
-        d_raw = b64url_decode(jwk[d_field])
-        x_raw = b64url_decode(jwk["x"])
-        y_raw = b64url_decode(jwk["y"])
-        if (
-            len(d_raw) != _RAW_KEY_BYTES
-            or len(x_raw) != _RAW_KEY_BYTES
-            or len(y_raw) != _RAW_KEY_BYTES
-        ):
-            raise ValueError(
-                f"P-256 JWK d/x/y must be {_RAW_KEY_BYTES} bytes each, "
-                f"got d={len(d_raw)} x={len(x_raw)} y={len(y_raw)}"
-            )
-        d = int.from_bytes(d_raw, "big")
-        x = int.from_bytes(x_raw, "big")
-        y = int.from_bytes(y_raw, "big")
-        pub = ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1())
-        return ec.EllipticCurvePrivateNumbers(d, pub).private_key()
-    raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
+        key = ed25519.Ed25519PrivateKey.from_private_bytes(scalar)
+        public = OKPKey.import_key(key).as_dict(private=False)
+    elif kty == "EC" and crv == "P-256":
+        key = ec.derive_private_key(int.from_bytes(scalar, "big"), ec.SECP256R1())
+        public = ECKey.import_key(key).as_dict(private=False)
+    else:
+        raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
+    if any(name in jwk and jwk[name] != public[name] for name in ("x", "y") if name in public):
+        raise ValueError(f"JWK public members are not the public key of {d_field}")
+    return key
 
 
 def alg_for_jwk(jwk: dict[str, Any]) -> str:

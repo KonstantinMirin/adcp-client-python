@@ -11,6 +11,7 @@ base from each positive vector, and:
 from __future__ import annotations
 
 import json
+import string
 from pathlib import Path
 
 import pytest
@@ -159,5 +160,100 @@ def test_jwk_with_wrong_length_x_rejected() -> None:
         "crv": "Ed25519",
         "x": b64url_encode(b"\x00" * 31),  # too short
     }
-    with pytest.raises(ValueError, match="length"):
+    with pytest.raises(ValueError, match="32 bytes"):
         public_key_from_jwk(bad)
+
+
+_B64URL = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"
+
+
+@pytest.mark.parametrize(
+    "spoil",
+    [
+        lambda x: x[:10] + "!!" + x[10:],  # characters outside the alphabet
+        lambda x: x + "=",  # padding
+        lambda x: x[:-1] + _B64URL[_B64URL.index(x[-1]) ^ 1],  # same bytes, non-zero pad bits
+    ],
+    ids=["alphabet", "padding", "trailing-bits"],
+)
+def test_jwk_members_are_strict_base64url(spoil) -> None:
+    """RFC 7515 section 2 base64url: no padding, no other characters, one spelling.
+
+    Verifier step 8 decodes the signer's JWK with ``public_key_from_jwk``, so a
+    lenient decoder would accept a key whose members a strict verifier refuses.
+    """
+    from adcp.signing.crypto import b64url_decode
+
+    jwk = {k: v for k, v in KEYS["test-ed25519-2026"].items() if not k.startswith("_")}
+    assert public_key_from_jwk(jwk)
+    with pytest.raises(ValueError):
+        public_key_from_jwk({**jwk, "x": spoil(jwk["x"])})
+    with pytest.raises(ValueError):
+        b64url_decode(spoil(jwk["x"]))
+
+
+@pytest.mark.parametrize("kid", ["test-ed25519-2026", "test-es256-2026"])
+def test_public_key_is_read_from_the_public_members(kid: str) -> None:
+    """A ``d`` beside the public members never chooses the verification key.
+
+    A ``kid`` or a publisher pin names a key by its RFC 7638 thumbprint, which
+    covers ``x`` (and ``y``) only. A key taken from ``d`` would verify a
+    signature that the named key never made.
+    """
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+
+    from adcp.signing.crypto import b64url_encode
+
+    jwk = {k: v for k, v in KEYS[kid].items() if not k.startswith("_")}
+    other: ed25519.Ed25519PrivateKey | ec.EllipticCurvePrivateKey
+    if jwk["kty"] == "OKP":
+        other = ed25519.Ed25519PrivateKey.generate()
+        other_d = other.private_bytes_raw()
+    else:
+        other = ec.generate_private_key(ec.SECP256R1())
+        other_d = other.private_numbers().private_value.to_bytes(32, "big")
+    raw = serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    expected = public_key_from_jwk(jwk).public_bytes(*raw)
+
+    key = public_key_from_jwk({**jwk, "d": b64url_encode(other_d)})
+
+    assert key.public_bytes(*raw) == expected
+
+
+_KEY_TYPES = [("OKP", "Ed25519"), ("EC", "P-256")]
+
+
+def _generate(kty: str, crv: str):
+    from joserfc.jwk import ECKey, OKPKey
+
+    return (OKPKey if kty == "OKP" else ECKey).generate_key(crv, private=True)
+
+
+def _public_members(private_key, kty: str) -> dict:
+    from joserfc.jwk import ECKey, OKPKey
+
+    return (OKPKey if kty == "OKP" else ECKey).import_key(private_key).as_dict(private=False)
+
+
+@pytest.mark.parametrize(("kty", "crv"), _KEY_TYPES)
+def test_a_private_jwk_needs_only_d(kty, crv) -> None:
+    """``private_key_from_jwk`` reads ``d``; the public members are optional."""
+    key = _generate(kty, crv)
+    d_only = {"kty": kty, "crv": crv, "d": key.as_dict(private=True)["d"]}
+
+    assert _public_members(private_key_from_jwk(d_only), kty) == key.as_dict(private=False)
+
+
+@pytest.mark.parametrize(("kty", "crv"), _KEY_TYPES)
+def test_a_private_jwk_whose_public_members_name_another_key_is_refused(kty, crv) -> None:
+    """A JWK's ``x`` (and ``y``) must be the public key of its ``d``.
+
+    Otherwise the sender signs with ``d`` while its JWK names another key, and
+    the mistake surfaces only at the receiver.
+    """
+    key, other = _generate(kty, crv), _generate(kty, crv)
+    mixed = {**key.as_dict(private=False), "d": other.as_dict(private=True)["d"]}
+
+    with pytest.raises(ValueError, match="public key"):
+        private_key_from_jwk(mixed)

@@ -26,6 +26,7 @@ RELEASE_BRANCHES = {
 JOB_GROUPS = {
     "test": "run_tests",
     "schema-check": "run_tests",
+    "wba-interop": "run_tests",
     "pg-conformance": "run_postgres",
     "pg-reporting-status": "run_postgres",
     "pg-reporting-materializer": "run_postgres",

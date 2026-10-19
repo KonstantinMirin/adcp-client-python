@@ -28,6 +28,7 @@ from adcp.signing.canonical import (
     TargetUriMalformedError,
     _lookup,
     parse_signature_input_header,
+    signing_message,
 )
 from adcp.signing.constants import (
     ADCP_USE_REQUEST,
@@ -462,15 +463,29 @@ def verify_request_signature(
     # selected label is handed over alone, re-serialized, with its signature
     # in RFC 8941 form, so the other labels the profile ignores (and the
     # 3.0/3.1 Base64URL spelling) never reach the library.
-    message = _rfc9421.Request(
-        method=method,
-        url=url,
-        headers={
-            **{k: v for k, v in headers.items() if k.lower() not in _SIGNATURE_FIELDS},
-            "Signature-Input": f"{options.label}={parsed.raw_value}",
-            "Signature": format_signature_header(sig_bytes, label=options.label),
-        },
-    )
+    try:
+        message = signing_message(
+            method,
+            url,
+            {
+                **{k: v for k, v in headers.items() if k.lower() not in _SIGNATURE_FIELDS},
+                "Signature-Input": _rfc9421.signature_input_field(options.label, parsed.raw_value),
+                "Signature": format_signature_header(sig_bytes, label=options.label),
+            },
+        )
+    except TargetUriMalformedError as exc:
+        # A malformed authority keeps its own code (step 6 of the
+        # canonicalization rules), not request_signature_header_malformed.
+        # test_target_uri_malformed_boundary.py guards the distinction.
+        raise SignatureVerificationError(
+            exc.code, step=6, message=f"signature base construction failed: {exc}"
+        ) from exc
+    except ValueError as exc:
+        raise SignatureVerificationError(
+            REQUEST_SIGNATURE_HEADER_MALFORMED,
+            step=6,
+            message=f"signature base construction failed: {exc}",
+        ) from exc
     try:
         _rfc9421.verify(
             message,
@@ -478,20 +493,10 @@ def verify_request_signature(
             tag=str(parsed.params["tag"]),
             alg=alg,
             public_key=public_key,
-            resolver=_rfc9421.AdcpComponentResolver,
             window_checked=True,  # step 5
             parameters=tuple(parsed.params),
         )
     except _rfc9421.SignatureBaseError as exc:
-        if isinstance(exc.cause, TargetUriMalformedError):
-            # A malformed authority keeps its own code (step 6 of the
-            # canonicalization rules), not request_signature_header_malformed.
-            # test_target_uri_malformed_boundary.py guards the distinction.
-            raise SignatureVerificationError(
-                exc.cause.code,
-                step=6,
-                message=f"signature base construction failed: {exc.cause}",
-            ) from exc
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_HEADER_MALFORMED,
             step=6,
@@ -888,9 +893,7 @@ def _check_key_purpose(
         raise SignatureVerificationError(
             REQUEST_SIGNATURE_KEY_PURPOSE_INVALID,
             step=8,
-            message=(
-                f"JWK.adcp_use {jwk.get('adcp_use')!r} not in " f"{sorted(allowed_adcp_uses)!r}"
-            ),
+            message=(f"JWK.adcp_use {jwk.get('adcp_use')!r} not in {sorted(allowed_adcp_uses)!r}"),
         )
     try:
         jwk_alg = alg_for_jwk(dict(jwk))

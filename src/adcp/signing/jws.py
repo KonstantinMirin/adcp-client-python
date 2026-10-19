@@ -37,12 +37,12 @@ from joserfc.errors import (
     UnsupportedKeyAlgorithmError,
 )
 from joserfc.jwa import EdDSAAlgorithm, ESAlgorithm, JWSAlgModel
-from joserfc.jwk import ECKey, OKPKey
+from joserfc.jwk import OKPKey
 from joserfc.jws import JWSRegistry
-from joserfc.util import urlsafe_b64decode, urlsafe_b64encode
+from joserfc.util import urlsafe_b64encode
 
 from adcp.signing._strict_json import StrictJsonError, parse_strict_json
-from adcp.signing.crypto import ALG_ED25519, ALG_ES256
+from adcp.signing.crypto import ALG_ED25519, ALG_ES256, b64url_decode, import_jwk
 from adcp.signing.jwks import AsyncJwksResolver, JwksResolver
 
 # JWS (RFC 7518) alg names mapped to the RFC 9421 names the rest of the SDK
@@ -52,9 +52,6 @@ JWS_ALG_TO_INTERNAL: dict[str, str] = {
     "ES256": ALG_ES256,
 }
 ALLOWED_JWS_ALGS: frozenset[str] = frozenset(JWS_ALG_TO_INTERNAL.keys())
-
-# RFC 7518 section 6.2.1.2: a P-256 coordinate is exactly 32 bytes.
-_P256_COORDINATE_BYTES = 32
 
 
 class JwsError(Exception):
@@ -100,6 +97,10 @@ class _Ed25519EdDSA(EdDSAAlgorithm):
 class _AdcpJwsRegistry(JWSRegistry):
     """joserfc registry that knows only the AdCP profile algorithms.
 
+    ``Ed25519`` is RFC 9864's fully specified name for ``EdDSA`` over
+    Ed25519, which a Web Bot Auth governance token may carry. Each caller
+    narrows the registry to its own allow-list (``algorithms=``).
+
     The size caps are lifted. The fetch layer already bounds the document
     (``max_body_bytes``, 1 MiB by default and configurable). joserfc's
     smaller default caps (512-byte header, 128 kB payload) would reject
@@ -109,16 +110,12 @@ class _AdcpJwsRegistry(JWSRegistry):
     algorithms: dict[str, JWSAlgModel] = {
         "EdDSA": _Ed25519EdDSA(),
         "ES256": ESAlgorithm("ES256", "P-256", 256),
+        "Ed25519": JWSRegistry.algorithms["Ed25519"],
     }
     recommended: list[str] = []
     max_header_length = sys.maxsize
     max_payload_length = sys.maxsize
     max_signature_length = sys.maxsize
-
-
-def _b64url_decode(segment: str) -> bytes:
-    """RFC 7515 base64url: URL-safe alphabet, no padding, canonical tail bits."""
-    return urlsafe_b64decode(segment.encode("ascii"))
 
 
 def _decode_json_object(raw: bytes, what: str) -> dict[str, Any]:
@@ -170,7 +167,7 @@ def parse_compact_jws(token: str) -> tuple[str, str, bytes]:
             f"compact JWS protected header is not valid base64url JSON: {exc}"
         ) from exc
     try:
-        signature = _b64url_decode(compact.segments["signature"].decode("ascii"))
+        signature = b64url_decode(compact.segments["signature"].decode("ascii"))
     except ValueError as exc:
         raise JwsMalformedError(f"compact JWS signature is not valid base64url: {exc}") from exc
     return (
@@ -198,8 +195,7 @@ def parse_general_json_jws(doc: dict[str, Any]) -> tuple[str, str, bytes]:
         raise JwsMalformedError("JWS general JSON 'signatures' must be a non-empty array")
     if len(signatures) > 1:
         raise JwsMalformedError(
-            "JWS general JSON 'signatures' with multiple entries is not supported for "
-            "this profile"
+            "JWS general JSON 'signatures' with multiple entries is not supported for this profile"
         )
     entry = signatures[0]
     if not isinstance(entry, dict):
@@ -227,7 +223,7 @@ def _validate_header(
     CPU.
     """
     try:
-        raw = _b64url_decode(b64_protected)
+        raw = b64url_decode(b64_protected)
     except ValueError as exc:
         raise JwsMalformedError(f"protected header is not valid base64url: {exc}") from exc
     header = _decode_json_object(raw, "protected header")
@@ -253,33 +249,6 @@ def _validate_header(
     return alg, kid
 
 
-def _import_jwk(jwk: dict[str, Any]) -> OKPKey | ECKey:
-    """Import the resolved JWK as an Ed25519 or P-256 public key.
-
-    An unusable JWK raises ``ValueError``, not a :class:`JwsError`. That is the
-    exception the verifier raised before joserfc, so callers see no change.
-    """
-    kty = jwk.get("kty")
-    crv = jwk.get("crv")
-    try:
-        if kty == "OKP" and crv == "Ed25519":
-            return OKPKey.import_key(jwk)
-        if kty == "EC" and crv == "P-256":
-            # joserfc accepts a P-256 coordinate with leading zero bytes.
-            # RFC 7518 section 6.2.1.2 fixes the length, so check it here.
-            for name in ("x", "y"):
-                coordinate = jwk.get(name)
-                if (
-                    not isinstance(coordinate, str)
-                    or len(_b64url_decode(coordinate)) != _P256_COORDINATE_BYTES
-                ):
-                    raise ValueError(f"P-256 JWK {name} must be {_P256_COORDINATE_BYTES} bytes")
-            return ECKey.import_key(jwk)
-    except (JoseError, ValueError, TypeError, KeyError) as exc:
-        raise ValueError(f"unusable {kty}/{crv} JWK: {exc}") from exc
-    raise ValueError(f"unsupported JWK kty/crv: {kty}/{crv}")
-
-
 def _verify_signature_and_decode_payload(
     *,
     b64_protected: str,
@@ -295,7 +264,7 @@ def _verify_signature_and_decode_payload(
     The header and payload segments go to joserfc exactly as received, so the
     signing input is the wire bytes.
     """
-    key = _import_jwk(jwk)
+    key = import_jwk(jwk)
     b64_signature = urlsafe_b64encode(signature).decode("ascii")
     token = f"{b64_protected}.{b64_payload}.{b64_signature}"
     registry = _AdcpJwsRegistry(algorithms=allowed_algs, strict_check_header=False)

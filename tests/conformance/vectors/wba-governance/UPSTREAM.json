@@ -1,0 +1,19 @@
+{
+  "repository": "adcontextprotocol/adcp",
+  "pull_request": 7894,
+  "commit": "e24eeb090c4365707641099cbbb45f9945c6d6e0",
+  "path": "static/compliance/source/test-vectors/wba-profile/",
+  "vendored_on": "2026-10-16",
+  "renamed": {
+    "governance/001-governance-token.json": "001-governance-token.json",
+    "governance/002-governance-token-key-not-in-issuer-directory.json": "002-governance-token-key-not-in-issuer-directory.json",
+    "governance/003-governance-token-from-non-governance-agent.json": "003-governance-token-from-non-governance-agent.json"
+  },
+  "$comment": "The Web Bot Auth profile vectors at adcp 49b3a315 no longer carry these governance vectors. They grade verify_wba_governance_issuer, an AdCP-layer check after WBA verification, until the R4 erratum publishes its own vectors.",
+  "sha256": {
+    "001-governance-token.json": "8e3a53bb9fa52b376d242ba67e0a86246af2fb97b44a9407212f65e506ed213b",
+    "002-governance-token-key-not-in-issuer-directory.json": "8559d3aab6a1db4f2e8afe6d81f36a6e2e54b262464d6179ee04d6846ec9d557",
+    "003-governance-token-from-non-governance-agent.json": "cbf328b7b7fe63df938da84ab86a94310f3ea9c232da99323cc32fbcee29e65b",
+    "keys.json": "08637bc288547315e6ce72e895d18ff5f3ab20a5f24375a15d0ebda43a993b3c"
+  }
+}

@@ -10,9 +10,8 @@ A-labels, and the malformed-authority rejections.
 RFC 9421 itself (the ``Signature-Input`` grammar and the signature base)
 comes from ``http-message-signatures`` and ``http-sf``;
 :func:`parse_signature_input_header` and :func:`build_signature_base` are
-the public entry points onto them, and
-:class:`adcp.signing._rfc9421.AdcpComponentResolver` plugs the
-canonicalization below into the library.
+the public entry points onto them, and :func:`signing_message` hands the
+library a request whose URL is already the canonical target URI.
 """
 
 from __future__ import annotations
@@ -25,6 +24,7 @@ import idna
 
 from adcp.signing._idna_canonicalize import canonicalize_host
 from adcp.signing._rfc9421 import (
+    Request,
     component_identifier,
     is_inner_list,
     parse_dictionary,
@@ -128,20 +128,29 @@ def build_signature_base(
 
     ``http-message-signatures`` builds the base: lines joined with a single
     LF, no trailing newline, components in ``Signature-Input`` order, then
-    ``@signature-params``. :class:`AdcpComponentResolver` supplies the AdCP
-    ``@target-uri`` and ``@authority`` canonicalization. The base comes from
+    ``@signature-params``, over :func:`signing_message`. The base comes from
     ``parsed.components`` and ``parsed.params`` (in order); ``raw_value`` is
     not consulted, so ``@signature-params`` is the RFC 8941 serialization.
     """
-    from adcp.signing._rfc9421 import AdcpComponentResolver, Request, build_base
+    from adcp.signing._rfc9421 import build_base
 
     base = build_base(
-        Request(method=method, url=url, headers=dict(headers)),
+        signing_message(method, url, headers),
         covered_component_ids=[component_identifier((name, {})) for name in parsed.components],
         params=parsed.params,
-        resolver=AdcpComponentResolver,
     )
     return base.decode("utf-8")
+
+
+def signing_message(method: str, url: str, headers: Mapping[str, str]) -> Request:
+    """The request the AdCP profile signs: its URL is the canonical target URI.
+
+    ``http-message-signatures`` derives ``@target-uri`` and ``@authority``
+    from the URL it is given, so handing it the canonical target URI makes
+    them the AdCP values. Raises :class:`TargetUriMalformedError` for a URL
+    the profile rejects.
+    """
+    return Request(method=method, url=canonicalize_target_uri(url), headers=dict(headers))
 
 
 def canonicalize_target_uri(url: str) -> str:
