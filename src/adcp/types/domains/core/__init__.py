@@ -10,7 +10,7 @@ A type this domain declares in more than one schema is not here: import
 Nothing here is renamed.
 
 Auto-generated from the generated domain tree. DO NOT EDIT MANUALLY.
-Generation date: 2026-10-13 11:29:51 UTC
+Generation date: 2026-10-19 19:54:10 UTC
 """
 
 # ruff: noqa: E501, I001
@@ -1226,7 +1226,7 @@ from adcp.types.domains.core.property_ref import PropertyReference
 from adcp.types.domains.core.property_tag import PropertyTag
 from adcp.types.domains.core.proposal import Proposal
 from adcp.types.domains.core.protocol_envelope import ProtocolEnvelope
-from adcp.types.domains.core.provenance import VerifyAgent18
+from adcp.types.domains.core.provenance import VerifyAgent10
 from adcp.types.domains.core.publisher_property_selector import (
     PublisherPropertySelector,
     PublisherPropertySelector1,
@@ -3166,7 +3166,7 @@ __all__ = [
     "VerificationTokenMode",
     "VerifiedAttestationDigest",
     "VerifyAgent1",
-    "VerifyAgent18",
+    "VerifyAgent10",
     "VideoAssetRequirements",
     "Viewability1",
     "ViewableRate",

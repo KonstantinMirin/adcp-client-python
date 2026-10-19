@@ -12,10 +12,14 @@ order. The JavaScript SDK writes the same table, so a host reads one feed.
 * Cursors are opaque, versioned and stable across restarts, processes and SDKs. A cursor
   older than the retained history raises :class:`ReportingChangeCursorExpiredError`; the
   consumer then resynchronizes from ``list_current_revisions`` and resumes from the
-  cursor that read returns.
+  cursor that read returns. The horizon is read again after the page, so a prune that
+  commits mid-read raises the same error (for a cursorless read too) instead of returning
+  a page that skipped the pruned changes.
 * A named consumer registered with ``save_feed_consumer_cursor`` holds back change pruning
   (and period retirement) until it has passed those changes, up to ``max_feed_hold_days``
-  after its last update, so a dead consumer cannot block retention indefinitely.
+  after its last update, so a dead consumer cannot block retention indefinitely. Its
+  checkpoint is forward-only within a feed scope; ``rewind=True`` replays deliberately and
+  ``remove_feed_consumer`` unregisters it.
 
 These are host APIs, not buyer surfaces. Buyers keep the protocol's ``changes_checkpoint``
 and ``changes_after``, which project from ``reporting_ledger_changes`` until the shared
@@ -46,6 +50,7 @@ __all__ = [
     "decode_reporting_change_cursor_v1",
     "encode_reporting_change_cursor_v1",
     "prune_changes",
+    "remove_feed_consumer",
     "save_feed_consumer_cursor",
 ]
 
@@ -163,6 +168,39 @@ def _page_query(*, account: bool) -> str:
     )
 
 
+async def _read_horizon(connection: Any, account_id: str | None) -> tuple[str, str]:
+    """The pruned horizon ``(xid, seq)`` in this feed's order; ``xid`` is ``"0"`` for accounts."""
+    if account_id is not None:
+        row = await (
+            await connection.execute(
+                "SELECT pruned_through_seq::text FROM adcp_reporting_change_account_horizon"
+                " WHERE account_id = %s",
+                (account_id,),
+            )
+        ).fetchone()
+        return "0", (row[0] if row else "0")
+    row = await (
+        await connection.execute(
+            "SELECT pruned_through_xid::text, pruned_through_seq::text"
+            " FROM adcp_reporting_change_horizon WHERE singleton"
+        )
+    ).fetchone()
+    return (row[0], row[1]) if row else ("0", "0")
+
+
+def _assert_retained(
+    account_id: str | None, position: tuple[str, str], horizon: tuple[str, str]
+) -> None:
+    """Raise unless ``position`` ``(xid, seq)`` is at or past the pruned ``horizon``."""
+    behind = (
+        int(horizon[1]) > int(position[1])
+        if account_id is not None
+        else (int(horizon[0]), int(horizon[1])) > (int(position[0]), int(position[1]))
+    )
+    if behind:
+        raise ReportingChangeCursorExpiredError()
+
+
 async def changes_after(
     store: PgReportingLedgerStore,
     *,
@@ -171,7 +209,14 @@ async def changes_after(
     kinds: Sequence[ReportingChangeKindV1] | None = None,
     limit: int = 500,
 ) -> ReportingChangesPageV1:
-    """Read the host change feed. Omit ``cursor`` to start at the oldest retained change."""
+    """Read the host change feed. Omit ``cursor`` to start at the oldest retained change.
+
+    Raises :class:`ReportingChangeCursorExpiredError` (``code == "CURSOR_EXPIRED"``) when the
+    starting position is older than the retained history. A read **without** a ``cursor`` can
+    raise it too: the pruned horizon is read again after the page, so a prune that commits
+    mid-read rejects the page instead of returning one that silently skips the pruned changes.
+    Retrying starts from the new, later horizon.
+    """
     _require_feed(store)
     _positive(limit, "limit", 10_000)
     if kinds is not None and any(kind not in _KINDS for kind in kinds):
@@ -181,32 +226,11 @@ async def changes_after(
     async with store._pool.connection() as connection:
         # The pruned horizon in this feed's own order. A supplied cursor below it may have
         # missed a pruned change and fails closed; a consumer with no cursor begins at it.
-        if account_id is not None:
-            row = await (
-                await connection.execute(
-                    "SELECT pruned_through_seq::text FROM adcp_reporting_change_account_horizon"
-                    " WHERE account_id = %s",
-                    (account_id,),
-                )
-            ).fetchone()
-            horizon_seq, horizon_xid = (row[0] if row else "0"), "0"
-        else:
-            row = await (
-                await connection.execute(
-                    "SELECT pruned_through_xid::text, pruned_through_seq::text"
-                    " FROM adcp_reporting_change_horizon WHERE singleton"
-                )
-            ).fetchone()
-            horizon_xid, horizon_seq = (row[0], row[1]) if row else ("0", "0")
+        horizon_xid, horizon_seq = await _read_horizon(connection, account_id)
         if decoded is not None:
-            behind = (
-                int(horizon_seq) > int(decoded["seq"])
-                if account_id is not None
-                else (int(horizon_xid), int(horizon_seq))
-                > (int(decoded["xid"]), int(decoded["seq"]))
+            _assert_retained(
+                account_id, (decoded.get("xid", "0"), decoded["seq"]), (horizon_xid, horizon_seq)
             )
-            if behind:
-                raise ReportingChangeCursorExpiredError()
         position_seq = decoded["seq"] if decoded else horizon_seq
         position_xid = decoded.get("xid", "0") if decoded else horizon_xid
         query = _page_query(account=account_id is not None)
@@ -215,6 +239,15 @@ async def changes_after(
         else:
             params = (position_xid, position_seq, selected, selected, limit)
         rows = await (await connection.execute(query, params)).fetchall()
+        # Pruning can commit between the horizon read and the page read, and a prune deletes rows
+        # and advances the horizon in one transaction. Read the horizon again, as a new statement
+        # after the page, and compare it with the position this page started from: a page read
+        # after such a prune lacks the pruned changes, and handing out a cursor past them would
+        # skip them silently. This covers a read with no cursor too. Retrying starts from the
+        # new, later horizon. A prune that commits after this read cannot have affected the page.
+        _assert_retained(
+            account_id, (position_xid, position_seq), await _read_horizon(connection, account_id)
+        )
     if account_id is not None:
         # The account feed orders by ``seq``, which equals commit order only while every writer
         # takes the account lock before ``nextval``. Defense in depth for a writer that does not:
@@ -242,11 +275,37 @@ async def changes_after(
     return ReportingChangesPageV1(records, next_cursor)
 
 
-async def save_feed_consumer_cursor(store: PgReportingLedgerStore, name: str, cursor: str) -> None:
+async def save_feed_consumer_cursor(
+    store: PgReportingLedgerStore,
+    name: str,
+    cursor: str,
+    *,
+    refresh_unchanged: bool = True,
+    rewind: bool = False,
+) -> bool:
     """Record a named durable consumer's position in its own feed order.
 
     A registered consumer holds back change pruning and period retirement until it has
     passed those changes, until ``max_feed_hold_days`` after its last update.
+
+    Checkpoints are forward-only within a feed scope: a cursor behind the saved one is
+    ignored, so a delayed or repeated acknowledgment cannot pull the retention hold back or
+    make the consumer reprocess changes. Account consumers compare ``seq``; deployment
+    consumers compare ``(xid, seq)``. Returns ``True`` when the checkpoint was written and
+    ``False`` when it was ignored (behind the saved position, or equal with
+    ``refresh_unchanged=False``).
+
+    To rewind a consumer deliberately, for example to replay changes, pass ``rewind=True``:
+    the saved position and retention hold then move to ``cursor`` and the write always
+    applies. The cursor is not checked against the retention horizon, so it must still be
+    inside the retained history or the next read raises
+    :class:`ReportingChangeCursorExpiredError`. Any change of ``account_id`` (account to
+    deployment, deployment to account, or between accounts) replaces the position. The scope
+    is read from the cursor itself, so pass only cursors your own code obtained from
+    :func:`changes_after`, never ones supplied by an untrusted caller.
+
+    ``refresh_unchanged=False`` recovers an acknowledgment without renewing the retention
+    hold when its position has not advanced.
     """
     _require_feed(store)
     if not isinstance(name, str) or not _CONSUMER_NAME.match(name):
@@ -259,16 +318,59 @@ async def save_feed_consumer_cursor(store: PgReportingLedgerStore, name: str, cu
     if account is not None and not isinstance(account, str):
         raise ValueError("feed consumer cursor is invalid")
     decoded = decode_reporting_change_cursor_v1(cursor, account)
+    # One atomic upsert: the WHERE of DO UPDATE is re-evaluated against the latest committed
+    # row version under the row lock, so concurrent writers cannot interleave a stale position
+    # over a newer one. No row is returned when the update is skipped.
     async with store._pool.connection() as connection:
-        await connection.execute(
+        result = await connection.execute(
             "INSERT INTO adcp_reporting_feed_consumers"
             " (consumer_name, account_id, cursor_xid, cursor_seq)"
-            " VALUES (%s, %s, %s::text::xid8, %s::bigint)"
+            " VALUES (%(name)s, %(account)s, %(xid)s::text::xid8, %(seq)s::bigint)"
             " ON CONFLICT (consumer_name) DO UPDATE"
             "   SET account_id = EXCLUDED.account_id, cursor_xid = EXCLUDED.cursor_xid,"
-            "       cursor_seq = EXCLUDED.cursor_seq, updated_at = clock_timestamp()",
-            (name, account, decoded.get("xid") if account is None else None, decoded["seq"]),
+            "       cursor_seq = EXCLUDED.cursor_seq, updated_at = clock_timestamp()"
+            " WHERE %(rewind)s::boolean"
+            "    OR adcp_reporting_feed_consumers.account_id IS DISTINCT FROM EXCLUDED.account_id"
+            "    OR CASE WHEN EXCLUDED.account_id IS NULL"
+            "       THEN (adcp_reporting_feed_consumers.cursor_xid,"
+            "             adcp_reporting_feed_consumers.cursor_seq)"
+            "            < (EXCLUDED.cursor_xid, EXCLUDED.cursor_seq)"
+            "         OR (%(refresh)s::boolean AND"
+            "             (adcp_reporting_feed_consumers.cursor_xid,"
+            "              adcp_reporting_feed_consumers.cursor_seq)"
+            "            = (EXCLUDED.cursor_xid, EXCLUDED.cursor_seq))"
+            "       ELSE adcp_reporting_feed_consumers.cursor_seq < EXCLUDED.cursor_seq"
+            "         OR (%(refresh)s::boolean"
+            "             AND adcp_reporting_feed_consumers.cursor_seq = EXCLUDED.cursor_seq) END"
+            " RETURNING consumer_name",
+            {
+                "name": name,
+                "account": account,
+                "xid": decoded.get("xid") if account is None else None,
+                "seq": decoded["seq"],
+                "refresh": refresh_unchanged,
+                "rewind": rewind,
+            },
         )
+        return await result.fetchone() is not None
+
+
+async def remove_feed_consumer(store: PgReportingLedgerStore, name: str) -> bool:
+    """Unregister a durable consumer so it stops holding back pruning and period retention.
+
+    Returns ``True`` when a registration was removed. Saving a cursor under the same name
+    registers it again.
+    """
+    _require_feed(store)
+    if not isinstance(name, str) or not _CONSUMER_NAME.match(name):
+        raise ValueError("feed consumer name is invalid")
+    async with store._pool.connection() as connection:
+        result = await connection.execute(
+            "DELETE FROM adcp_reporting_feed_consumers WHERE consumer_name = %s"
+            " RETURNING consumer_name",
+            (name,),
+        )
+        return await result.fetchone() is not None
 
 
 async def prune_changes(

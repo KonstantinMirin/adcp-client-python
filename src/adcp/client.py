@@ -26,6 +26,11 @@ if TYPE_CHECKING:
     from mcp import ClientSession
 
 from adcp._null_clear import preserve_explicit_nulls
+from adcp._response_limit import (
+    DEFAULT_MAX_RESPONSE_BYTES,
+    reset_call_max_response_bytes,
+    set_call_max_response_bytes,
+)
 from adcp._version import resolve_adcp_version
 from adcp.accounts import (
     ACCOUNT_POLICIES,
@@ -52,6 +57,8 @@ from adcp.compat.legacy import LEGACY_ADAPTER_VERSIONS
 from adcp.exceptions import (
     ACCOUNT_ERROR_CODE_MAP,
     ADCPError,
+    ADCPResponseEncodingError,
+    ADCPResponseTooLargeError,
     ADCPTimeoutError,
     ADCPWebhookSignatureError,
     classify_task_error,
@@ -73,6 +80,7 @@ from adcp.observability import (
     set_request_trace_headers,
     set_task_result_attributes,
 )
+from adcp.property_lists import ProductPropertyPolicy
 from adcp.protocols.a2a import A2AAdapter
 from adcp.protocols.base import ProtocolAdapter
 from adcp.protocols.mcp import MCPAdapter, MCPHttpxClientFactory
@@ -518,6 +526,20 @@ def _task_options_method(
                 else:
                     call_kwargs["request"] = prepared
             result = await method(*cast(Any, positional), **cast(Any, call_kwargs))
+            if (
+                isinstance(result, TaskResult)
+                and client.product_property_policy is not None
+                and task_name in {"get_products", "list_products"}
+                and method_name not in {"execute_task", "execute_task_legacy"}
+            ):
+                result = cast(
+                    R,
+                    await client.product_property_policy.apply(
+                        request,
+                        result,
+                        seller_url=client.agent_config.agent_uri,
+                    ),
+                )
             if isinstance(result, TaskResult):
                 if method_name not in {"execute_task", "execute_task_legacy"}:
                     await _account_bookkeeping(
@@ -697,12 +719,16 @@ class ADCPClient:
         account_policy: AccountPolicy | None = None,
         account_storage: AccountStorage | None = None,
         raise_account_errors: bool | None = None,
+        product_property_policy: ProductPropertyPolicy | None = None,
     ):
         """
         Initialize ADCP client for a single agent.
 
         Args:
             agent_config: Agent configuration
+            product_property_policy: Optional buyer-side property-list check;
+                filters or flags seller products and reports unjudgeable inventory
+                in TaskResult.metadata. Disabled by default.
             webhook_url_template: Template for webhook URLs with {agent_id},
                 {task_type}, {operation_id}
             webhook_secret: Shared secret for the deprecated HMAC-SHA256 webhook
@@ -890,6 +916,7 @@ class ADCPClient:
         self.validate_features = validate_features
         self.strict_idempotency = strict_idempotency
         self.signing = signing
+        self.product_property_policy = product_property_policy
         if httpx_client_factory is not None and not callable(httpx_client_factory):
             raise TypeError("httpx_client_factory must be callable")
         if httpx_client_factory is not None and agent_config.protocol != Protocol.MCP:
@@ -1189,6 +1216,7 @@ class ADCPClient:
         capabilities_ttl: float = 3600.0,
         validate_features: bool = False,
         strict_idempotency: bool = False,
+        max_response_bytes: int | None = DEFAULT_MAX_RESPONSE_BYTES,
     ) -> ADCPClient:
         """Create an ADCPClient wrapping a pre-connected MCP ClientSession.
 
@@ -1203,6 +1231,16 @@ class ADCPClient:
             responsible for closing it. Code that relies on ``async with
             ADCPClient.from_mcp_client(...) as c:`` to clean up the session
             will leak the session.
+
+            The **streaming** half of ``max_response_bytes`` does not apply:
+            that budget is enforced in the transport under a client this SDK
+            builds, and an injected session brings its own, so bounding bytes
+            as they arrive is the caller's to do. The post-parse half does
+            apply — an oversized ``content[].text`` item still raises
+            :class:`~adcp.exceptions.ADCPResponseTooLargeError` before
+            ``json.loads`` — and on this path it is the only bound there is.
+            Set ``max_response_bytes`` here to raise or (with ``None``)
+            remove it.
 
             Webhook delivery and ``on_activity`` callbacks are **not wired**
             on the in-process path — there is no HTTP transport for the
@@ -1255,6 +1293,9 @@ class ADCPClient:
                 declarations (same as ``__init__``).
             capabilities_ttl: TTL for the capability cache in seconds
                 (same as ``__init__``).
+            max_response_bytes: Budget for the ``content[].text`` extraction
+                bound, the only response-size bound that applies to an
+                injected session. ``None`` removes it.
 
         Returns:
             A fully configured ``ADCPClient`` backed by the injected session.
@@ -1266,6 +1307,7 @@ class ADCPClient:
             # not to route to a real host. Self-documenting in error messages.
             agent_uri="http://in-process.invalid",
             protocol=Protocol.MCP,
+            max_response_bytes=max_response_bytes,
         )
         instance = cls(
             config,
@@ -1517,6 +1559,14 @@ class ADCPClient:
             task_name=task_name,
         )
         token = _set_task_execution(state)
+        # The response budget rides a ContextVar rather than the adapter:
+        # MCP and A2A both hold pooled, long-lived HTTP clients, so the
+        # limiter has to read the override at request time.
+        limit_token = (
+            set_call_max_response_bytes(options.max_response_bytes)
+            if options.max_response_bytes is not None
+            else None
+        )
         try:
             if options.timeout is None:
                 return await awaitable_factory()
@@ -1540,6 +1590,8 @@ class ADCPClient:
                     recovery=state.mutation_recovery,
                 ) from exc
         finally:
+            if limit_token is not None:
+                reset_call_max_response_bytes(limit_token)
             _reset_task_execution(token)
 
     def _task_operation_id(self) -> str:
@@ -6623,6 +6675,37 @@ class ADCPClient:
             )
 
 
+async def _gather_agent_results(*calls: Any) -> list[Any]:
+    """Fan out to every agent, containing one agent's budget rejection.
+
+    A response over ``max_response_bytes`` propagates as
+    :class:`~adcp.exceptions.ADCPResponseTooLargeError` instead of becoming a
+    ``TaskResult(failed)`` — the right contract for a single-agent call, where
+    a local policy decision about untrusted input should not look like an
+    agent-reported task failure. In a fan-out it is the wrong one: it is the
+    only failure a *remote* agent can trigger that escapes its own slot, so one
+    hostile seller padding a reply could discard every honest seller's results.
+    Convert it back into that agent's failed result here. Everything else keeps
+    ``asyncio.gather``'s abort-on-first-exception behavior.
+    """
+    settled = await asyncio.gather(*calls, return_exceptions=True)
+    results: list[Any] = []
+    for outcome in settled:
+        if isinstance(outcome, (ADCPResponseTooLargeError, ADCPResponseEncodingError)):
+            results.append(
+                TaskResult[Any](
+                    status=TaskStatus.FAILED,
+                    error=outcome.message,
+                    success=False,
+                )
+            )
+        elif isinstance(outcome, BaseException):
+            raise outcome
+        else:
+            results.append(outcome)
+    return results
+
+
 class ADCPMultiAgentClient:
     """Client for managing multiple AdCP agents."""
 
@@ -6639,12 +6722,15 @@ class ADCPMultiAgentClient:
         canonical_format_legacy_resolver: CanonicalFormatLegacyResolver | None = None,
         allow_unauthenticated_webhooks: bool | Mapping[str, bool] = False,
         httpx_client_factory: MCPHttpxClientFactory | None = None,
+        product_property_policy: ProductPropertyPolicy | None = None,
     ):
         """
         Initialize multi-agent client.
 
         Args:
             agents: List of agent configurations
+            product_property_policy: Optional property-list policy forwarded to
+                each per-agent client.
             webhook_url_template: Template for webhook URLs
             webhook_secret: Shared secret for the deprecated HMAC-SHA256 webhook
                 fallback. Configure only for registrations that explicitly
@@ -6722,6 +6808,7 @@ class ADCPMultiAgentClient:
                     webhook_secret=webhook_secret,
                     on_activity=on_activity,
                     signing=signing,
+                    product_property_policy=product_property_policy,
                     httpx_client_factory=(
                         httpx_client_factory if agent.protocol == Protocol.MCP else None
                     ),
@@ -6742,6 +6829,7 @@ class ADCPMultiAgentClient:
                     webhook_secret=webhook_secret,
                     on_activity=on_activity,
                     signing=signing,
+                    product_property_policy=product_property_policy,
                     httpx_client_factory=(
                         httpx_client_factory if agent.protocol == Protocol.MCP else None
                     ),
@@ -6814,18 +6902,16 @@ class ADCPMultiAgentClient:
         Returns:
             List of TaskResults containing GetProductsResponse for each agent
         """
-        import asyncio
 
         tasks = [agent.get_products(request) for agent in self.agents.values()]
-        return await asyncio.gather(*tasks)
+        return await _gather_agent_results(*tasks)
 
     async def list_products(
         self, request: ListProductsRequest
     ) -> list[TaskResult[ListProductsResponse]]:
         """Execute compact product discovery across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.list_products(request) for agent in self.agents.values())
         )
 
@@ -6833,9 +6919,8 @@ class ADCPMultiAgentClient:
         self, request: RequestProposalsRequest
     ) -> list[TaskResult[RequestProposalsResponse]]:
         """Request proposals from all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.request_proposals(request) for agent in self.agents.values())
         )
 
@@ -6843,9 +6928,8 @@ class ADCPMultiAgentClient:
         self, request: RefineProposalsRequest
     ) -> list[TaskResult[RefineProposalsResponse]]:
         """Refine proposals across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.refine_proposals(request) for agent in self.agents.values())
         )
 
@@ -6853,9 +6937,8 @@ class ADCPMultiAgentClient:
         self, request: DeclineProposalsRequest
     ) -> list[TaskResult[DeclineProposalsResponse]]:
         """Decline proposals across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.decline_proposals(request) for agent in self.agents.values())
         )
 
@@ -6863,9 +6946,8 @@ class ADCPMultiAgentClient:
         self, request: BuyProductsRequest
     ) -> list[TaskResult[BuyProductsResponse]]:
         """Commit direct purchases across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.buy_products(request) for agent in self.agents.values())
         )
 
@@ -6873,9 +6955,8 @@ class ADCPMultiAgentClient:
         self, request: AcceptProposalRequest
     ) -> list[TaskResult[AcceptProposalResponse]]:
         """Accept proposals across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.accept_proposal(request) for agent in self.agents.values())
         )
 
@@ -6883,9 +6964,8 @@ class ADCPMultiAgentClient:
         self, request: ControlMediaBuyRequest
     ) -> list[TaskResult[ControlMediaBuyResponse]]:
         """Control media buys across all agents."""
-        import asyncio
 
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.control_media_buy(request) for agent in self.agents.values())
         )
 
@@ -6894,18 +6974,14 @@ class ADCPMultiAgentClient:
     ) -> list[TaskResult[LegacyGetProductsResponse]]:
         """Execute the explicit raw discovery adapter across all agents."""
 
-        import asyncio
-
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.get_products_legacy(request) for agent in self.agents.values())
         )
 
     async def execute_task(self, task_name: str, request: BaseModel) -> list[TaskResult[Any]]:
         """Execute a canonical task across all configured agents."""
 
-        import asyncio
-
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.execute_task(task_name, request) for agent in self.agents.values())
         )
 
@@ -6914,9 +6990,7 @@ class ADCPMultiAgentClient:
     ) -> list[TaskResult[Any]]:
         """Execute an explicit raw task adapter across all configured agents."""
 
-        import asyncio
-
-        return await asyncio.gather(
+        return await _gather_agent_results(
             *(agent.execute_task_legacy(task_name, request) for agent in self.agents.values())
         )
 
