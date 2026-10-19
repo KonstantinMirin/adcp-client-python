@@ -348,7 +348,6 @@ async def maybe_apply_property_list_filter(
             raise AdcpError(
                 "SERVICE_UNAVAILABLE",
                 message="Product property expansion failed",
-                recovery="transient",
             )
         filtered = [
             product for product, item in zip(candidates, assessments) if item.status == "match"
