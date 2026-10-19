@@ -1156,9 +1156,10 @@ async def verify_governance_authorization(
     ):
         return reject("governance_token_invalid", "invalid governance JWS crit header")
     for name in GOVERNANCE_AUTHORIZATION_CRITICAL_CLAIMS:
-        has_claim = name in claims
-        has_marker = name in critical and header.get(name) is True
-        if has_claim != has_marker:
+        # security.mdx checklist step 4: the marker, its crit entry, and its
+        # claim appear together, and the marker is true.
+        together = (name in claims) == (name in critical) == (name in header)
+        if not together or header.get(name, True) is not True:
             return reject(
                 "governance_token_invalid", f"{name} claim and critical marker must match"
             )
