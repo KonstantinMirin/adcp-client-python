@@ -40,9 +40,19 @@ _RAW_KEY_BYTES = 32
 
 
 def b64url_decode(s: str) -> bytes:
-    """Decode base64url, tolerating missing padding."""
-    pad = "=" * (-len(s) % 4)
-    return base64.urlsafe_b64decode(s + pad)
+    """Decode RFC 7515 base64url: the URL-safe alphabet, no padding, one spelling.
+
+    RFC 4648 section 3.3 requires refusing characters outside the alphabet,
+    so padding, ``+``, ``/``, and any other character raise ``ValueError``,
+    and so do non-zero trailing bits (section 3.5), which would give the same
+    bytes a second spelling.
+    """
+    if "=" in s or "+" in s or "/" in s:
+        raise ValueError("not unpadded base64url")
+    raw = base64.b64decode(s + "=" * (-len(s) % 4), altchars=b"-_", validate=True)
+    if b64url_encode(raw) != s:
+        raise ValueError("non-canonical base64url")
+    return raw
 
 
 def b64url_encode(b: bytes) -> str:
