@@ -209,3 +209,36 @@ def test_rsa_pss_appendix_e_vector_is_not_a_web_bot_auth_signature():
     message = Request("GET", "https://example.com/", headers)
     with pytest.raises(WbaVerificationError, match="unsupported directory key"):
         _verify_crypto(message, label="sig2", params=params, jwk=jwk)
+
+
+@pytest.mark.parametrize(
+    ("error", "refusal"),
+    [
+        (WbaVerificationError("refused", status=403), True),
+        (ValueError("the SDK refuses to sign"), True),
+        (TypeError("a bug in the SDK"), False),
+        (KeyError("request"), False),
+    ],
+    ids=["verification-refusal", "signing-refusal", "type-error", "key-error"],
+)
+async def test_the_interop_adapter_reports_only_sdk_refusals(monkeypatch, error, refusal):
+    """The harness grades a refusal; any other exception crashes the adapter.
+
+    ``WbaVerificationError`` and ``ValueError`` are how the SDK refuses. Any
+    other exception is a defect, so the adapter lets it propagate instead of
+    reporting it as ``ok: false``, which the harness would grade as a correct
+    refusal.
+    """
+    from tests.wba_interop import adapter
+
+    async def operation(op):
+        raise error
+
+    monkeypatch.setitem(adapter.OPERATIONS, "probe", operation)
+    if refusal:
+        result = await adapter.run({"op": "probe"})
+        assert result["ok"] is False
+        assert result["error"] == str(error)
+        return
+    with pytest.raises(type(error)):
+        await adapter.run({"op": "probe"})

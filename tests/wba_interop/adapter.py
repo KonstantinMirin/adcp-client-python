@@ -25,7 +25,10 @@ Operations (``PROTOCOL.md`` in the harness):
 
 A failure is ``{"ok": false, "status": ..., "rule": ..., "error": ...}``. The
 status is the one the SDK answers with; an error that carries no HTTP status
-(the SDK refusing to sign, for example) reports ``0``.
+(the SDK refusing to sign, for example) reports ``0``. Only the SDK's refusals
+are failures: ``WbaVerificationError``, and the ``ValueError`` it raises when
+it refuses to sign. Any other exception is a defect, and it crashes the
+adapter rather than reading as a refusal.
 
 Run it as ``uv run python tests/wba_interop/adapter.py``.
 """
@@ -60,7 +63,7 @@ def _private_key(jwk: Mapping[str, Any]) -> Any:
     return JWKRegistry.import_key(dict(jwk)).private_key
 
 
-def _failure(exc: Exception) -> Result:
+def _failure(exc: ValueError) -> Result:
     return {
         "ok": False,
         "status": getattr(exc, "status", 0),
@@ -145,8 +148,8 @@ OPERATIONS: dict[str, Callable[[Mapping[str, Any]], Awaitable[Result]]] = {
 async def run(op: Mapping[str, Any]) -> Result:
     try:
         return await OPERATIONS[op["op"]](op)
-    except Exception as exc:
-        # The harness grades the refusal itself, so every SDK error is a result.
+    except ValueError as exc:  # WbaVerificationError is a ValueError
+        # The harness grades the refusal itself, so a refusal is a result.
         return _failure(exc)
 
 
