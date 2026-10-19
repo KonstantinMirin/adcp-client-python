@@ -20,7 +20,13 @@ def test_worktree_version_matches_normalized_release_manifest() -> None:
     )
     assert project_section is not None
     manifest = json.loads((ROOT / ".release-please-manifest.json").read_text())
-    assert project_section.group(1) == pep440_prerelease(manifest["."])
+    expected = {pep440_prerelease(manifest["."])}
+    # On the next draft-spec line, pyproject.toml carries next's own release
+    # version once next has released; until then it still carries main's.
+    next_manifest = ROOT / ".release-please-manifest.next.json"
+    if next_manifest.exists():
+        expected.add(pep440_prerelease(json.loads(next_manifest.read_text())["."]))
+    assert project_section.group(1) in expected
 
 
 def test_release_please_keeps_sdk_9_on_the_beta_channel() -> None:
@@ -35,3 +41,27 @@ def test_release_please_keeps_sdk_9_on_the_beta_channel() -> None:
     assert package["versioning"] == "prerelease"
     assert package["prerelease-type"] == "beta"
     assert package["prerelease"] is True
+
+
+def test_release_please_keeps_next_on_the_alpha_channel() -> None:
+    """The next draft-spec line releases only ``10.0.0-alpha.N`` pre-releases.
+
+    The adopting commit on next ends with ``Release-As: 10.0.0-alpha.0``;
+    later commits increment the alpha number. next's workflow uses its own
+    config and manifest so that merging main into next never changes them.
+    """
+    config_path = ROOT / "release-please-config.next.json"
+    if not config_path.exists():
+        return  # main does not carry next's release configuration.
+    config = json.loads(config_path.read_text())
+    package = config["packages"]["."]
+    assert package["versioning"] == "prerelease"
+    assert package["prerelease-type"] == "alpha"
+    assert package["prerelease"] is True
+    assert package["changelog-path"] != "CHANGELOG.md"
+    workflow = (ROOT / ".github/workflows/release-please-next.yml").read_text()
+    assert "target-branch: next" in workflow
+    assert "config-file: release-please-config.next.json" in workflow
+    assert "manifest-file: .release-please-manifest.next.json" in workflow
+    assert "--target-branch next" in workflow
+    assert "release-publish.yml --ref next" in workflow

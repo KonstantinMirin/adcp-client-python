@@ -98,3 +98,65 @@ def test_release_pr_normalization_refuses_foreign_pr(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(normalizer, "_github", github)
     with pytest.raises(ValueError, match="unexpected release PR identity"):
         normalizer.normalize_release_prs([{"number": 42}], "app-token")
+
+
+def test_release_pr_normalization_accepts_the_next_release_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict | None]] = []
+    branch = "release-please--branches--next--components--adcp"
+
+    def github(path: str, token: str, *, body: dict | None = None) -> dict:
+        calls.append((path, body))
+        if path == "pulls/7":
+            return {
+                "base": {"ref": "next", "repo": {"full_name": normalizer._REPOSITORY}},
+                "head": {"ref": branch, "repo": {"full_name": normalizer._REPOSITORY}},
+            }
+        if path.startswith("contents/pyproject.toml?ref="):
+            return {
+                "content": base64.b64encode(b'[project]\nversion = "10.0.0-alpha.0"\n').decode(),
+                "sha": "blob",
+            }
+        return {}
+
+    monkeypatch.setattr(normalizer, "_github", github)
+    normalizer.normalize_release_prs([{"number": 7}], "app-token", "next")
+    assert calls[-1] == (
+        "contents/pyproject.toml",
+        {
+            "message": "chore: normalize prerelease version to PEP 440",
+            "content": base64.b64encode(b'[project]\nversion = "10.0.0a0"\n').decode(),
+            "sha": "blob",
+            "branch": branch,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("target", "base", "head"),
+    [
+        # main's workflow must not normalize a next release PR, and vice versa.
+        ("main", "next", "release-please--branches--next--components--adcp"),
+        ("next", "main", "release-please--branches--main--components--adcp"),
+        # A next-targeted PR from main's release branch is not next's release PR.
+        ("next", "next", "release-please--branches--main--components--adcp"),
+    ],
+)
+def test_release_pr_normalization_refuses_cross_line_prs(
+    monkeypatch: pytest.MonkeyPatch, target: str, base: str, head: str
+) -> None:
+    def github(path: str, token: str, *, body: dict | None = None) -> dict:
+        return {
+            "base": {"ref": base, "repo": {"full_name": normalizer._REPOSITORY}},
+            "head": {"ref": head, "repo": {"full_name": normalizer._REPOSITORY}},
+        }
+
+    monkeypatch.setattr(normalizer, "_github", github)
+    with pytest.raises(ValueError, match="unexpected release PR identity"):
+        normalizer.normalize_release_prs([{"number": 42}], "app-token", target)
+
+
+def test_release_pr_normalization_refuses_unknown_target_branch() -> None:
+    with pytest.raises(ValueError, match="unexpected release target branch"):
+        normalizer.normalize_release_prs([], "app-token", "release/8.x")
