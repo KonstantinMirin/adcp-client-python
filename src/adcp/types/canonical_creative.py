@@ -1219,8 +1219,7 @@ UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2 | Upd
 class SyncCreativesRequest(_LegacySyncCreativesRequest, CanonicalBoundaryModel):
     """Canonical creative sync request; creatives are canonical assets."""
 
-    # Requiredness is version-specific: AdCP 3.2 permits assignment-only syncs.
-    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
+    creatives: list[CreativeAsset] | None = _inherit(_LegacySyncCreativesRequest, "creatives")  # type: ignore[assignment]
 
 
 class ListCreativesRequest(_LegacyListCreativesRequest, CanonicalBoundaryModel):
