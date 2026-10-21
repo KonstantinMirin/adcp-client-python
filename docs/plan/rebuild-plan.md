@@ -84,44 +84,24 @@ principle that forces it.
   refuses the DOCUMENT, by name and pointer, and it is counted (§5). P1, P5. Identical
   nodes (same content, two URIs) are one node — both authorities already say so (audit
   F4, `.19`); this is the only dedup, and it is by content equality, not by shape.
-- **D4 — the schema is the single authority for acceptance; `strict_validate` is the entry
-  point.** An optional property renders plain **`T | None = None`**. No `refuse_null`, no
-  `Absent` alias, no per-field validator. Acceptance is decided by
-  `AdCPBaseModel.strict_validate(payload)`, which validates the payload against the
-  document's own JSON Schema **and then** constructs through `model_validate` — so a
-  caller gets both the schema's verdict and a fully constructed model from one call.
+- **D4 — the schema decides acceptance; `strict_validate` is the entry point.** An optional
+  renders plain **`T | None = None`**. No `refuse_null`, no `Absent` alias, no per-field
+  validator. `AdCPBaseModel.strict_validate(payload)` validates against the document's own
+  schema, then constructs — one call, both the verdict and a model.
 
-  Three things follow, and each one is why this is the rendering rather than P12's:
+  Why, not P12's rendering: the schema already refuses `null` on `{"type": "string"}`, so a
+  validator re-implements it; the serialization fast path stays on across ~7,000 annotations
+  instead of being spent; and nesting is covered, because the schema check precedes
+  construction. **The harness grades `strict_validate`, not `model_validate`** — grading the
+  constructor grades a constructor, not an accepted set, and it is why step 1's bespoke
+  52-property nullability instrument is deleted rather than carried (`harness.steps()` has no
+  nullability step, so `check_pair` can never reach this obligation).
 
-  - **The schema already refuses `null` on `{"type": "string"}`.** A hand-written
-    `AfterValidator` re-implements, in Python, a fact the document states exactly. One
-    authority, not two.
-  - **pydantic's serialization fast path stays on.** P12's rendering disables it across
-    ~7,000 annotations; that cost is not incurred rather than accepted.
-  - **Nesting is covered.** `strict_validate` checks the whole payload against the whole
-    schema *before* constructing, so an inner `null` is refused even though children are
-    built by pydantic.
-
-  **This supersedes P12's rendering prescription, and P12 is not wrong — it is scoped to an
-  architecture this plan does not use.** P12 reasons that "a model that collapses them into
-  one accepts documents the schema refuses", which holds when the model is the *only* gate.
-  It does not consider a two-layer entry point where the schema is the gate. P12's
-  *obligation* — an optional property is absent or valid, never null — is unchanged and is
-  met at `strict_validate`. Only the place the obligation is discharged moves.
-
-  **The harness grades `strict_validate`, not `model_validate`.** That is the other half of
-  this decision and it is not optional: grading `model_validate` grades a constructor, not
-  the accepted set. It also closes a hole measured in step 1 — `harness.steps()` has no
-  nullability step, so `check_pair` can never mutate a value to `null`; with the schema as
-  the gate there is nothing to mutate, and the bespoke 52-property nullability instrument
-  step 1 built is deleted rather than carried.
-
-  `model_validate` remains public because pydantic exposes it and we cannot remove it. It
-  constructs **without consulting the schema**, and `AdCPBaseModel`'s docstring must say so
-  in those words.
-
-  Defect D1-a (a typeless property refusing null) is fixed by the typeless → `Any` row of
-  D2, as before.
+  **Supersedes P12's rendering, not its obligation.** P12 assumes the model is the only gate;
+  here the schema is. `model_validate` stays public — pydantic exposes it — so
+  `AdCPBaseModel`'s docstring says it constructs **without consulting the schema**.
+  Enforced by `tests/test_d4_no_per_field_null_validator.py`. Defect D1-a is still fixed by
+  D2's typeless → `Any` row.
 - **D5 — rules are after-validators, hand-written once.** `src/adcp/types/_runtime.py`
   carries `RequiredGroups` (`anyOf`/`oneOf`/`not` over `required`), `ConditionalRequired`,
   `PropertyCount`, `UniqueItems`, `Dependencies`, each a dataclass plus one
