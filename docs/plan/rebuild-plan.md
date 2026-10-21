@@ -84,14 +84,44 @@ principle that forces it.
   refuses the DOCUMENT, by name and pointer, and it is counted (§5). P1, P5. Identical
   nodes (same content, two URIs) are one node — both authorities already say so (audit
   F4, `.19`); this is the only dedup, and it is by content equality, not by shape.
-- **D4 — optional is absent or valid, never null (P12).** An optional property renders
-  `Annotated[T | None, AfterValidator(refuse_null)] = None` through one shared alias in
-  `src/adcp/types/_base.py`; `T | None` without the validator only where the schema admits
-  null (`type` lists `"null"`, or the property declares no `type`). **This overrides the old
-  plan's "accept an explicit null" decision**: P12 is binding and the plan is not. The cost
-  P12 names — the after-validator on ~7,000 annotations disables pydantic's serialization
-  fast path — is accepted. Defect D1-a (a typeless property refusing null) is fixed by the
-  typeless → `Any` row of D2, not by dropping the validator.
+- **D4 — the schema is the single authority for acceptance; `strict_validate` is the entry
+  point.** An optional property renders plain **`T | None = None`**. No `refuse_null`, no
+  `Absent` alias, no per-field validator. Acceptance is decided by
+  `AdCPBaseModel.strict_validate(payload)`, which validates the payload against the
+  document's own JSON Schema **and then** constructs through `model_validate` — so a
+  caller gets both the schema's verdict and a fully constructed model from one call.
+
+  Three things follow, and each one is why this is the rendering rather than P12's:
+
+  - **The schema already refuses `null` on `{"type": "string"}`.** A hand-written
+    `AfterValidator` re-implements, in Python, a fact the document states exactly. One
+    authority, not two.
+  - **pydantic's serialization fast path stays on.** P12's rendering disables it across
+    ~7,000 annotations; that cost is not incurred rather than accepted.
+  - **Nesting is covered.** `strict_validate` checks the whole payload against the whole
+    schema *before* constructing, so an inner `null` is refused even though children are
+    built by pydantic.
+
+  **This supersedes P12's rendering prescription, and P12 is not wrong — it is scoped to an
+  architecture this plan does not use.** P12 reasons that "a model that collapses them into
+  one accepts documents the schema refuses", which holds when the model is the *only* gate.
+  It does not consider a two-layer entry point where the schema is the gate. P12's
+  *obligation* — an optional property is absent or valid, never null — is unchanged and is
+  met at `strict_validate`. Only the place the obligation is discharged moves.
+
+  **The harness grades `strict_validate`, not `model_validate`.** That is the other half of
+  this decision and it is not optional: grading `model_validate` grades a constructor, not
+  the accepted set. It also closes a hole measured in step 1 — `harness.steps()` has no
+  nullability step, so `check_pair` can never mutate a value to `null`; with the schema as
+  the gate there is nothing to mutate, and the bespoke 52-property nullability instrument
+  step 1 built is deleted rather than carried.
+
+  `model_validate` remains public because pydantic exposes it and we cannot remove it. It
+  constructs **without consulting the schema**, and `AdCPBaseModel`'s docstring must say so
+  in those words.
+
+  Defect D1-a (a typeless property refusing null) is fixed by the typeless → `Any` row of
+  D2, as before.
 - **D5 — rules are after-validators, hand-written once.** `src/adcp/types/_runtime.py`
   carries `RequiredGroups` (`anyOf`/`oneOf`/`not` over `required`), `ConditionalRequired`,
   `PropertyCount`, `UniqueItems`, `Dependencies`, each a dataclass plus one
@@ -137,7 +167,7 @@ dispatch table.
 | 7 | **Rules**: `not`, `if`/`then`/`else`, `dependencies`, `min`/`maxProperties`, `uniqueItems` → class-level tuples read by `_runtime.py`'s after-validator; a property declared only under `then`/`else` gets an optional field typed from that declaration (the 59 conditional-only nodes) | control: `core/canvas-constraint.json` (`maximum` inside `if`/`then` — 1 triple); `media-buy/change-term.json` keeps transcribing `x-adcp-validation` and is **not** graded by the harness (the inventory says why); `uniqueItems` needs its own instrument because `harness.steps()` does not step it — add the keyword to `steps()` in this step so the 198 documents are graded | 270 documents with a conditional or `not`, 198 with `uniqueItems`, 27 with `dependencies`; **ΔN ≈ +150** (documents refused at 4/5 for an unlowered keyword) | Every rule is data on the class plus one validator in `_runtime.py`; adding a rule kind adds a tuple, renames nothing. | P3, P11, P12 | **yes** — `codegen/lower/rules.py` + `_runtime.py` |
 | 8 | **The whole population**: `python -m codegen.emit --bundle … --all` emits every portable document or refuses it by name and reason; an `mcp/`/`bundled/` projection becomes a binding-table row to its `projection_of` target and is never emitted or graded on its own (the inventory's 83 false rows) | `src/adcp/types/_schemas/**` complete; `docs/probes/emit/<run>/grade.jsonl` from the existing forked, budgeted runner over all N; `N + refused == 1,054` asserted; the binding table `document → module:Symbol, kind` written by the emitter (it knows, so it emits) | **N → ≥ 1,000**; the residue is a list of documents each with a keyword or a pointer | This step adds no rule; it loops. A refusal here is a step 3–7 gap and goes back to that lane. | P5, P7, P10 | after 3–7 |
 | 9 | **Public surface from the binding table**: `adcp/types/__init__.py` and `adcp/types/<domain>/__init__.py` generated, PEP 562 lazy as today; the build refuses a root name bound to two different nodes (P8); `Warning` never takes the bare slot (P6) | `from adcp.types import PaginationRequest` and `from adcp.types.core import PaginationRequest` are the same object; a collision is a build failure naming both nodes; the 5 module collisions the table reported are measured again here — identical nodes collapse (D3), the rest refuse | all N | P8's refusal is designed to fire; its fix is a title upstream or a D3 clause, never a rename table. | P5, P6, P8 | after 8; parallel with 10 |
-| 10 | **`fast_validate` / `validate_exact`** on `AdCPBaseModel`, backed by the binding table and the resolved cache; a schema refusal raises pydantic's `ValidationError` with the keyword as `type` through `PydanticCustomError` | `PaginationRequest.validate_exact({"max_results": 0})` raises with `type == "minimum"`; one test per keyword family | all N | The class → document link is emitted in step 8, so this reads a fact and derives nothing new. | P5, P10 | after 8; parallel with 9 |
+| 10 | **`strict_validate` on `AdCPBaseModel`** — validate the payload against the document's own schema, then construct through `model_validate`; a schema refusal raises pydantic's `ValidationError` with the keyword as `type` through `PydanticCustomError`. **This is where D4's obligation is discharged, so it is not an add-on**: step 1 already builds the minimum of it, because the harness grades through it from step 1 onward. This step completes it over all N and over every keyword family. | `PaginationRequest.strict_validate({"max_results": 0})` raises with `type == "minimum"`; `strict_validate({"cursor": None})` raises with `type == "type"` (the null case P12 names, discharged by the schema rather than a per-field validator); one test per keyword family; `model_validate` is documented as constructing WITHOUT consulting the schema | all N | The class → document link is emitted in step 8, so this reads a fact and derives nothing new. D4 fixes the two-layer shape before step 1, so no later step can move it. | P3, P5, P10, P12 | after 8; parallel with 9 |
 | 11 | **Closeout**: P9 derivation wired; `make validate-generated` byte compare; `datamodel-code-generator` removed from `pyproject.toml` and the pin comment with it; `adapter_adcp.py`'s old-tree reading (`TREE`, `DOMAINS`, the `# filename:` header parse) deleted; parked modules deleted if unimported | `grep -r datamodel_code_generator codegen/ src/ tests/ pyproject.toml` is empty; `tox` green; the 9 narrowing rows and 12 widening triples re-run through `derive_defect_inventory.py` against the NEW tree and report 0 | — | — | P7, P9, P10, P13 | last |
 
 **Order is by risk.** Step 1 is first because it is the one that could still invalidate the
@@ -151,8 +181,9 @@ by being applied to naming before anything emitted: "one node, one class" became
 needs a name" (`NEEDS_A_NAME` wider than the plan), and "refuse what you cannot derive"
 became "refuse the document for a node that should never have been a class". D2 settles both
 by deciding class-or-annotation BEFORE asking for a name; a refusal is then rare (8
-documents) and each one is a missing title, which is the bundle's defect to fix. P12 overrides
-a recorded decision of the old plan (D4). P5 removes the protocol-marker bases rather than
+documents) and each one is a missing title, which is the bundle's defect to fix. D4 moves P12's obligation from a per-field
+validator to `strict_validate`: P12's reasoning assumes the model is the only gate, and this
+plan makes the schema the gate. The obligation is unchanged; where it is discharged moves. P5 removes the protocol-marker bases rather than
 re-deriving them (D6).
 
 ## 4. Out of scope, and why
