@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import AnyUrl, ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PropertyListReference(AdCPBaseModel):
@@ -15,7 +15,7 @@ class PropertyListReference(AdCPBaseModel):
 
     agent_url: AnyUrl
     list_id: Annotated[str, Field(min_length=1)]
-    auth_token: Absent[str] = None
+    auth_token: str | None = None
 
 
 __all__ = ["PropertyListReference"]

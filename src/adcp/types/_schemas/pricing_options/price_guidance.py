@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PriceGuidance(AdCPBaseModel):
@@ -13,10 +13,10 @@ class PriceGuidance(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    p25: Absent[Annotated[float, Field(ge=0)]] = None
-    p50: Absent[Annotated[float, Field(ge=0)]] = None
-    p75: Absent[Annotated[float, Field(ge=0)]] = None
-    p90: Absent[Annotated[float, Field(ge=0)]] = None
+    p25: Annotated[float, Field(ge=0)] | None = None
+    p50: Annotated[float, Field(ge=0)] | None = None
+    p75: Annotated[float, Field(ge=0)] | None = None
+    p90: Annotated[float, Field(ge=0)] | None = None
 
 
 __all__ = ["PriceGuidance"]

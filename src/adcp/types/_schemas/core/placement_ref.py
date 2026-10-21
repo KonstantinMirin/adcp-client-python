@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PlacementReference(AdCPBaseModel):
@@ -13,7 +13,7 @@ class PlacementReference(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    publisher_domain: Absent[Annotated[str, Field(pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')]] = None
+    publisher_domain: Annotated[str, Field(pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')] | None = None
     placement_id: str
 
 

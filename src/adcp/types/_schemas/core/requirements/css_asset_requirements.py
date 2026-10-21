@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class CSSAssetRequirements(AdCPBaseModel):
@@ -13,7 +13,7 @@ class CSSAssetRequirements(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    max_file_size_kb: Absent[Annotated[int, Field(ge=1)]] = None
+    max_file_size_kb: Annotated[int, Field(ge=1)] | None = None
 
 
 __all__ = ["CSSAssetRequirements"]

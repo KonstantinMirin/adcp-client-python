@@ -29,5 +29,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# The binding table is not documentation of the build: `strict_validate` reads it
+# at runtime to find the document that decides acceptance (D4). A wheel without
+# it imports and then raises on the first validation, which is the one failure
+# mode a test run from the source tree cannot see.
+[tool.setuptools.package-data]
+"adcp.types._schemas" = ["_bindings.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

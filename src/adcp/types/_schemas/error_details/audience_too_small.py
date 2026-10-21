@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class AudienceTooSmallDetails(AdCPBaseModel):
@@ -11,8 +11,8 @@ class AudienceTooSmallDetails(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    minimum_size: Absent[float] = None
-    current_size: Absent[float] = None
+    minimum_size: float | None = None
+    current_size: float | None = None
 
 
 __all__ = ["AudienceTooSmallDetails"]

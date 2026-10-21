@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import AnyUrl, ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class SellerAgentReference(AdCPBaseModel):
@@ -14,7 +14,7 @@ class SellerAgentReference(AdCPBaseModel):
     model_config = ConfigDict(extra="forbid")
 
     agent_url: AnyUrl
-    id: Absent[Annotated[str, Field(min_length=1, pattern='^[a-zA-Z0-9_-]+$')]] = None
+    id: Annotated[str, Field(min_length=1, pattern='^[a-zA-Z0-9_-]+$')] | None = None
 
 
 __all__ = ["SellerAgentReference"]

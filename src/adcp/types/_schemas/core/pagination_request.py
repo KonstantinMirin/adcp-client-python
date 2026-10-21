@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PaginationRequest(AdCPBaseModel):
@@ -13,8 +13,8 @@ class PaginationRequest(AdCPBaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    max_results: Absent[Annotated[int, Field(ge=1, le=100)]] = None
-    cursor: Absent[str] = None
+    max_results: Annotated[int, Field(ge=1, le=100)] | None = None
+    cursor: str | None = None
 
 
 __all__ = ["PaginationRequest"]

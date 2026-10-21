@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class MaterialDeadline(AdCPBaseModel):
@@ -15,7 +15,7 @@ class MaterialDeadline(AdCPBaseModel):
 
     stage: str
     due_at: datetime
-    label: Absent[str] = None
+    label: str | None = None
 
 
 __all__ = ["MaterialDeadline"]

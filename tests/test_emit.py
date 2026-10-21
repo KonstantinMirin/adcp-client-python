@@ -21,10 +21,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
 
 from codegen import adapter, bundle, emit
-from codegen.harness import check_pair, violated_keywords
+from codegen.harness import check_pair
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -70,37 +69,6 @@ def test_every_binding_is_graded_green_in_both_directions(document: str) -> None
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     bad = [(r.keyword, r.pointer, r.outcome, r.counterexample, r.harness) for r in rep.refuses]
     assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
-
-
-def test_an_optional_property_is_absent_or_valid_never_null() -> None:
-    """D4 and P12, which ``check_pair`` does not reach.
-
-    ``steps()`` has no nullability step -- it rewrites a constraint keyword, and
-    "an optional property accepts an explicit null" is a widening of ``type``,
-    not of a constraint.  So a model rendering ``str | None = None`` for a
-    property declared ``{"type": "string"}`` is wider than its document and the
-    harness reports it green.  This is the instrument for that half, and it is
-    derived from the document the same way: the property set comes from the
-    schema, the control is that the document refuses the null ON ``type``, and
-    the obligation is that the model refuses it AT that property.
-    """
-    graded = 0
-    for pair in adapter.pairs(BUNDLE, TREE):
-        required = pair.schema.get("required", [])
-        for key, sub in pair.schema["properties"].items():
-            kind = sub.get("type")
-            if key in required or kind is None or kind == "null" or isinstance(kind, list):
-                continue  # required, or a schema that ADMITS the null (D4's other arm)
-            instance = {key: None}
-            assert "type" in violated_keywords(pair.schema, instance), (pair.name, key)
-            with pytest.raises(ValidationError) as caught:
-                TypeAdapter(pair.model).validate_python(instance)
-            locs = [e["loc"] for e in caught.value.errors()]
-            assert (key,) in locs, (pair.name, key, locs)
-            graded += 1
-    # Non-empty, and no hand-written floor: a floor records what the bundle held
-    # the day it was typed, so it detects change rather than wrongness (P10).
-    assert graded, "no optional non-nullable property was graded"
 
 
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:

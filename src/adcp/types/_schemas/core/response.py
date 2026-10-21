@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class ProtocolResponse(AdCPBaseModel):
@@ -14,7 +14,7 @@ class ProtocolResponse(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     message: str
-    context_id: Absent[str] = None
+    context_id: str | None = None
     data: Any = None
 
 

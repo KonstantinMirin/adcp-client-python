@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import AnyUrl, ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PlacementEvidence(AdCPBaseModel):
@@ -15,10 +15,10 @@ class PlacementEvidence(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     url: AnyUrl
-    captured_at: Absent[datetime] = None
-    latitude: Absent[Annotated[float, Field(ge=-90, le=90)]] = None
-    longitude: Absent[Annotated[float, Field(ge=-180, le=180)]] = None
-    notes: Absent[str] = None
+    captured_at: datetime | None = None
+    latitude: Annotated[float, Field(ge=-90, le=90)] | None = None
+    longitude: Annotated[float, Field(ge=-180, le=180)] | None = None
+    notes: str | None = None
 
 
 __all__ = ["PlacementEvidence"]

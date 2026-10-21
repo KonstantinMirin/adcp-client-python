@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class MeasurementWindow(AdCPBaseModel):
@@ -14,10 +14,10 @@ class MeasurementWindow(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     window_id: Annotated[str, Field(max_length=50)]
-    description: Absent[Annotated[str, Field(max_length=500)]] = None
+    description: Annotated[str, Field(max_length=500)] | None = None
     duration_days: Annotated[int, Field(ge=0)]
-    expected_availability_days: Absent[Annotated[int, Field(ge=0)]] = None
-    is_guarantee_basis: Absent[bool] = None
+    expected_availability_days: Annotated[int, Field(ge=0)] | None = None
+    is_guarantee_basis: bool | None = None
 
 
 __all__ = ["MeasurementWindow"]

@@ -1,4 +1,4 @@
-"""The two hand-written pieces every emitted schema module imports.
+"""The one hand-written piece every emitted schema module imports.
 
 Hand-written, and small on purpose: everything else in ``_schemas/`` is a
 function of a bundle document.
@@ -11,50 +11,90 @@ there the two accepted sets agree: the schema admits the unknown key and so does
 the model.  One retains it and one drops it, which is not a question about what
 is accepted.
 
-``Absent`` is D4 and P12: an optional property is absent or valid, never null.
-``required`` governs presence and ``type`` governs value, so a property declared
-``{"type": "string"}`` refuses an explicit ``null`` whether or not it is
-required.  One annotated alias carries both facts --
+Acceptance is decided by ``strict_validate``, which validates a payload against
+the DOCUMENT'S OWN JSON Schema and only then constructs through
+``model_validate``.  One call, both answers: the verdict is the schema's and the
+value is pydantic's.
 
-    omitted        -> accepted, the attribute is None, absent from model_fields_set
-    explicit null  -> REFUSED
-    a value        -> accepted
-    read type      -> T | None
+``model_validate`` stays public, because pydantic exposes it and it cannot be
+removed.  It constructs **without** consulting the schema.  Everything the
+schema states and the annotation does not -- a ``minimum`` on a field pydantic
+sees only as ``int``, an explicit ``null`` for a property declared
+``{"type": "string"}``, a key the document forbids -- is invisible to it.  A
+caller that wants the document's accepted set calls ``strict_validate``; a
+caller that already knows its payload conforms, or that is rebuilding a value
+this library produced, calls ``model_validate`` and takes the constructor.
 
-The ``None`` arm stays in the annotation because the attribute holds ``None``
-for an omitted key, so ``x.field is None`` is live code meaning "not supplied";
-an annotation that denied it would make every correct guard unreachable.
+So an optional property renders plain ``T | None = None`` (D4), and there is no
+per-field validator refusing the null.  ``required`` governs presence and
+``type`` governs value, which is the distinction the schema already draws and
+the schema half already enforces: a validator re-stating it in Python would
+re-implement a fact the document states exactly, on every one of the bundle's
+~7,000 property annotations, and would cost pydantic's serialization fast path
+to do it.  The ``None`` arm of the annotation is live either way, because the
+attribute holds ``None`` for an omitted key, so ``x.field is None`` means "not
+supplied".
 
-It must be an ``AfterValidator``.  A validator placed before the declared type
-forces pydantic-core to materialize parsed JSON as Python objects, which
-collapses a repeated JSON key anywhere under an optional property and loses a
-refusal the buyer should see.  An ``AfterValidator`` runs on the already-parsed
-value and carries none of that.  Neither validator runs for an absent key:
-pydantic does not validate a default, which is exactly the presence/value
-distinction the schema draws.
-
-A property whose schema ADMITS null -- ``type`` absent, or ``type`` listing
-``"null"`` -- does not use this alias.  It renders ``T | None`` plainly, because
-there the schema does accept the null and P3 is what binds.
+``docs/plan/rebuild-plan.md`` D4 carries the decision and the reasoning;
+``tests/test_d4_no_per_field_null_validator.py`` refuses the retired rendering
+structurally.
 """
 
 from __future__ import annotations
 
-from typing import Annotated, TypeVar
+import functools
+import json
+from importlib import resources
+from typing import Any, TypeVar
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+import jsonschema
+from pydantic import BaseModel, ConfigDict
+from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
 
-T = TypeVar("T")
+#: The emitted binding table, and the package it lands in.  The emitter writes
+#: one row per document it lowered -- the module, the symbol, and the document
+#: itself -- so a class can find the schema it was generated from with nothing
+#: but its own name, and the bundle (124 MB, and a version in its path) is a
+#: build-time input rather than a runtime dependency.
+#:
+#: This is the one place a schema comes from.  Reading any other tree is how a
+#: previous attempt came to grade 1,602 documents while generating nothing, so
+#: there is deliberately no second lookup and no fallback: a class with no row
+#: here has no schema, and ``strict_validate`` refuses rather than quietly
+#: becoming ``model_validate``.
+_BINDINGS = ("adcp.types._schemas", "_bindings.json")
+
+ModelT = TypeVar("ModelT", bound="AdCPBaseModel")
 
 
-def refuse_null(value: T) -> T:
-    """Refuse an explicitly supplied ``null`` for a property whose type forbids it."""
-    if value is None:
-        raise ValueError("expected the property to be absent or valid, not null")
-    return value
+@functools.lru_cache(maxsize=1)
+def _documents() -> dict[tuple[str, str], tuple[str, dict]]:
+    """``(module, symbol)`` -> ``(document path, document)``, read once.
+
+    KNOWN CEILING: the whole table is parsed to validate against one document.
+    At this step's N that is 34 rows and ~50 KB; over the bundle's 1,054 it
+    would be read once and held, which is the point at which the emitter should
+    write one schema file per module and this row should name it instead.
+    """
+    package, name = _BINDINGS
+    table = json.loads(resources.files(package).joinpath(name).read_text())
+    return {
+        (row["module"], row["symbol"]): (document, row["schema"])
+        for document, row in table.items()
+    }
 
 
-Absent = Annotated[T | None, AfterValidator(refuse_null)]
+def _document_of(model: type[BaseModel]) -> tuple[str, dict]:
+    key = (model.__module__, model.__qualname__)
+    try:
+        return _documents()[key]
+    except KeyError:
+        raise LookupError(
+            f"{key[0]}.{key[1]} is bound to no document in {_BINDINGS[0]}/{_BINDINGS[1]}: "
+            "strict_validate has no schema to decide acceptance against. A nested class "
+            "is a subschema and not a document; accepting the payload anyway would be "
+            "model_validate under another name."
+        ) from None
 
 
 class AdCPBaseModel(BaseModel):
@@ -67,3 +107,46 @@ class AdCPBaseModel(BaseModel):
     #: document's.  Choosing the other engine would be this model deciding that a
     #: pattern the schema admits is unrepresentable.
     model_config = ConfigDict(extra="ignore", regex_engine="python-re")
+
+    @classmethod
+    def strict_validate(cls: type[ModelT], payload: Any) -> ModelT:
+        """Validate ``payload`` against this class's own document, then construct.
+
+        The schema decides acceptance and pydantic builds the value.  A schema
+        refusal raises pydantic's ``ValidationError``, with the JSON Schema
+        KEYWORD that bit as the error ``type`` and the instance pointer as its
+        ``loc``, so a caller reads one error shape whichever half refused.  The
+        keyword is carried through ``PydanticCustomError``, which is the only way
+        a name from another vocabulary reaches ``errors()[0]["type"]``.
+
+        The schema check runs over the WHOLE payload before anything is
+        constructed, which is what covers nesting: pydantic builds children, and
+        an inner value the document refuses never reaches it.
+        """
+        _, schema = _document_of(cls)
+        validator = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+        errors = sorted(
+            validator(schema).iter_errors(payload),
+            key=lambda e: [str(p) for p in e.absolute_path],
+        )
+        if errors:
+            raise ValidationError.from_exception_data(
+                cls.__name__,
+                [
+                    InitErrorDetails(
+                        type=PydanticCustomError(
+                            e.validator if isinstance(e.validator, str) else "schema",
+                            # A fixed template with the text in the context: a
+                            # jsonschema message carries braces of its own
+                            # ("{'a': 1} is not of type 'string'") and a message
+                            # used AS the template would be read as placeholders.
+                            "{detail}",
+                            {"detail": e.message},
+                        ),
+                        loc=tuple(e.absolute_path),
+                        input=e.instance,
+                    )
+                    for e in errors
+                ],
+            )
+        return cls.model_validate(payload)

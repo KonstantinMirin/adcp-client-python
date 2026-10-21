@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class TruncationSentinelTruncation(AdCPBaseModel):
@@ -14,8 +14,8 @@ class TruncationSentinelTruncation(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     original_size_bytes: Annotated[int, Field(ge=0)]
-    preview: Absent[str] = None
-    preview_format: Absent[str] = None
+    preview: str | None = None
+    preview_format: str | None = None
 
 
 class TruncationSentinel(AdCPBaseModel):

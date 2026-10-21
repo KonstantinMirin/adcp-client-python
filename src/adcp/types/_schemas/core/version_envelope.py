@@ -5,14 +5,14 @@ from typing import Annotated
 
 from pydantic import Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class AdCPVersionEnvelope(AdCPBaseModel):
     "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself."
 
-    adcp_version: Absent[Annotated[str, Field(pattern='^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$')]] = None
-    adcp_major_version: Absent[Annotated[int, Field(ge=1, le=99)]] = None
+    adcp_version: Annotated[str, Field(pattern='^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$')] | None = None
+    adcp_major_version: Annotated[int, Field(ge=1, le=99)] | None = None
 
 
 __all__ = ["AdCPVersionEnvelope"]

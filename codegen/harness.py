@@ -15,7 +15,9 @@ generator or model package.  Its whole input is:
                   ``harness`` imports nothing beyond its four libraries and
                   stdlib, so the choice belongs to the caller.
   * ``model``   - anything ``pydantic.TypeAdapter`` accepts: a BaseModel subclass,
-                  a RootModel, an Enum, a bare annotation, a union alias.
+                  a RootModel, an Enum, a bare annotation, a union alias.  A
+                  model carrying a ``strict_validate`` is offered the instance
+                  through it; see ``accepting``.
 
 It answers two questions about that pair:
 
@@ -151,6 +153,29 @@ def resolve(schema: dict, *, store: Mapping[str, Any], base_uri: str = "") -> di
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
     return from_schema(schema, custom_formats=dict(custom_formats))
+
+
+def accepting(model: Any) -> Callable[[Any], Any]:
+    """The one way an instance is offered to the model under grading.
+
+    A model that declares its own ``strict_validate`` is graded THROUGH it.  Both
+    directions ask what a model ACCEPTS, and a constructor is not an accepted
+    set: ``TypeAdapter(...).validate_python`` asks only what the annotations
+    carry, so everything a document states and an annotation does not -- a
+    ``minimum`` behind a bare ``int``, an explicit ``null`` for a property
+    declared ``{"type": "string"}`` -- is admitted, and the model is graded green
+    for being wider than its schema.
+
+    A model with no such method is graded through ``TypeAdapter``, because this
+    module's input is anything ``TypeAdapter`` accepts and an Enum or a bare
+    annotation has no entry point of its own.  That fallback is therefore a hole
+    for any model that SHOULD have one, and this module cannot tell which those
+    are -- it knows no package.  The caller that does must refuse it:
+    ``codegen.adapter`` requires every binding's class to carry
+    ``strict_validate`` before a pair is built.
+    """
+    strict = getattr(model, "strict_validate", None)
+    return strict if callable(strict) else TypeAdapter(model).validate_python
 
 
 def conforms(schema: dict, instance: Any, *, validator_cls=None) -> bool | None:
@@ -622,14 +647,14 @@ def check_accepts(
 ) -> AcceptsResult:
     """Direction 1: every instance the schema admits, the model admits."""
     res = AcceptsResult()
-    adapter = TypeAdapter(model)
+    accept = accepting(model)
     cf = dict(custom_formats)
     seen: list[Any] = []
 
     def body(instance: Any) -> None:
         res.examples += 1
         seen.append(instance)
-        adapter.validate_python(instance)
+        accept(instance)
 
     try:
         run = given(instance=strategy(schema, cf))(body)
@@ -668,9 +693,27 @@ def check_refuses(
 
     ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
     for why the default is on and why it touches only the generated-from document.
+
+    WHAT A GREEN RESULT CAN NO LONGER DISTINGUISH: for a model offered the
+    instance through its own ``strict_validate`` (see ``accepting``), the refusal
+    is implied by the control.  ``violated_keywords`` asks the original document
+    which keyword bit, and a ``strict_validate`` validating against that same
+    document with the same library must then refuse -- so a pass says the entry
+    point's accepted set is the document's, which is the obligation, and does not
+    say whether the annotations underneath would have refused too.
+
+    MEASURED, so that it is not assumed either way: with the schema half of
+    ``strict_validate`` disabled, all 34 of this step's pairs stay green in both
+    directions.  The annotations alone refuse every instance ``steps()`` can
+    produce, because every keyword it steps (``minimum``, ``maximum``,
+    ``required``, ``additionalProperties``) is one the emitter carries into the
+    model.  The schema half is load-bearing for what ``steps()`` cannot produce
+    -- D4's nullability widening is the one this step has -- and redundant for
+    the rest.  Direction 1 is still where a model NARROWER than its document
+    fails, and there the two halves are not interchangeable.
     """
     res = RefusesResult(keyword=step.keyword, pointer=step.pointer, describe=step.describe)
-    adapter = TypeAdapter(model)
+    accept = accepting(model)
     cf = dict(custom_formats)
     validator_cls = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
 
@@ -683,7 +726,7 @@ def check_refuses(
         for k in bit:
             res.violated[k] = res.violated.get(k, 0) + 1
         try:
-            adapter.validate_python(instance)
+            accept(instance)
         except ValidationError as e:
             res.refused += 1
             t = e.errors()[0]["type"]
