@@ -1539,16 +1539,8 @@ UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2 | Upd
 class SyncCreativesRequest(_LegacySyncCreativesRequest, CanonicalBoundaryModel):
     """Canonical creative sync request; creatives are canonical assets."""
 
-    # Optional, matching ``PackageRequest.creatives`` above and the generated parent:
-    # creative/sync-creatives-request.json requires only [idempotency_key, account] at
-    # the root and ``creatives`` only inside an untitled ``anyOf`` branch. Requiring it
-    # here made the SDK refuse a schema-valid sync_creatives request that takes the
-    # other branch -- a request model, so this was a refusal and not a typing
-    # inconvenience. Narrowing the item type to the canonical asset is the part that
-    # was correct.
-    creatives: list[CreativeAsset] | None = Field(  # type: ignore[assignment]
-        default=None, min_length=1
-    )
+    # Requiredness is version-specific: AdCP 3.2 permits assignment-only syncs.
+    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
 
 
 class ListCreativesRequest(_LegacyListCreativesRequest, CanonicalBoundaryModel):

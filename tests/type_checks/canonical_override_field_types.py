@@ -83,10 +83,6 @@ def create_media_buy_response1_packages(response: CreateMediaBuyResponse1) -> li
 
 
 def sync_creatives_request_creatives(request: SyncCreativesRequest) -> list[str]:
-    # Optional: creative/sync-creatives-request.json requires only
-    # [idempotency_key, account] at its root and offers creatives | assignments |
-    # assignment_operations as anyOf branches, so a legal request may carry
-    # another one (salesagent-8qela.69).
     assert_type(request.creatives, list[CreativeAsset] | None)
     return [asset.creative_id for asset in request.creatives or []]
 
