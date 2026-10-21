@@ -1,0 +1,138 @@
+{
+  "core/agent-signing-key.json": {
+    "module": "adcp.types._schemas.core.agent_signing_key",
+    "symbol": "AgentSigningKey"
+  },
+  "core/canonical-projection-slot-override.json": {
+    "module": "adcp.types._schemas.core.canonical_projection_slot_override",
+    "symbol": "CanonicalProjectionSlotOverride"
+  },
+  "core/catalog-item-availability-ref.json": {
+    "module": "adcp.types._schemas.core.catalog_item_availability_ref",
+    "symbol": "CatalogItemAvailabilityReference"
+  },
+  "core/collection-list-ref.json": {
+    "module": "adcp.types._schemas.core.collection_list_ref",
+    "symbol": "CollectionListReference"
+  },
+  "core/collection-ref.json": {
+    "module": "adcp.types._schemas.core.collection_ref",
+    "symbol": "CollectionReference"
+  },
+  "core/creative-consumption.json": {
+    "module": "adcp.types._schemas.core.creative_consumption",
+    "symbol": "CreativeConsumption"
+  },
+  "core/date-range.json": {
+    "module": "adcp.types._schemas.core.date_range",
+    "symbol": "DateRange"
+  },
+  "core/datetime-range.json": {
+    "module": "adcp.types._schemas.core.datetime_range",
+    "symbol": "DatetimeRange"
+  },
+  "core/delivery-provider.json": {
+    "module": "adcp.types._schemas.core.delivery_provider",
+    "symbol": "DeliveryProvider"
+  },
+  "core/indicator-scope.json": {
+    "module": "adcp.types._schemas.core.indicator_scope",
+    "symbol": "IndicatorScope"
+  },
+  "core/limited-series.json": {
+    "module": "adcp.types._schemas.core.limited_series",
+    "symbol": "LimitedSeries"
+  },
+  "core/material-deadline.json": {
+    "module": "adcp.types._schemas.core.material_deadline",
+    "symbol": "MaterialDeadline"
+  },
+  "core/measurement-window.json": {
+    "module": "adcp.types._schemas.core.measurement_window",
+    "symbol": "MeasurementWindow"
+  },
+  "core/operator-unit.json": {
+    "module": "adcp.types._schemas.core.operator_unit",
+    "symbol": "OperatorUnit"
+  },
+  "core/pagination-request.json": {
+    "module": "adcp.types._schemas.core.pagination_request",
+    "symbol": "PaginationRequest"
+  },
+  "core/pagination-response.json": {
+    "module": "adcp.types._schemas.core.pagination_response",
+    "symbol": "PaginationResponse"
+  },
+  "core/placement-evidence.json": {
+    "module": "adcp.types._schemas.core.placement_evidence",
+    "symbol": "PlacementEvidence"
+  },
+  "core/placement-ref.json": {
+    "module": "adcp.types._schemas.core.placement_ref",
+    "symbol": "PlacementReference"
+  },
+  "core/platform-extension-ref.json": {
+    "module": "adcp.types._schemas.core.platform_extension_ref",
+    "symbol": "PlatformExtensionReference"
+  },
+  "core/product-identity.json": {
+    "module": "adcp.types._schemas.core.product_identity",
+    "symbol": "ProductIdentity"
+  },
+  "core/property-list-ref.json": {
+    "module": "adcp.types._schemas.core.property_list_ref",
+    "symbol": "PropertyListReference"
+  },
+  "core/requirements/css-asset-requirements.json": {
+    "module": "adcp.types._schemas.core.requirements.css_asset_requirements",
+    "symbol": "CSSAssetRequirements"
+  },
+  "core/requirements/markdown-asset-requirements.json": {
+    "module": "adcp.types._schemas.core.requirements.markdown_asset_requirements",
+    "symbol": "MarkdownAssetRequirements"
+  },
+  "core/response.json": {
+    "module": "adcp.types._schemas.core.response",
+    "symbol": "ProtocolResponse"
+  },
+  "core/seller-agent-ref.json": {
+    "module": "adcp.types._schemas.core.seller_agent_ref",
+    "symbol": "SellerAgentReference"
+  },
+  "core/sla-window.json": {
+    "module": "adcp.types._schemas.core.sla_window",
+    "symbol": "SLAWindow"
+  },
+  "core/truncation-sentinel.json": {
+    "module": "adcp.types._schemas.core.truncation_sentinel",
+    "symbol": "TruncationSentinel"
+  },
+  "core/version-envelope.json": {
+    "module": "adcp.types._schemas.core.version_envelope",
+    "symbol": "AdCPVersionEnvelope"
+  },
+  "error-details/audience-too-small.json": {
+    "module": "adcp.types._schemas.error_details.audience_too_small",
+    "symbol": "AudienceTooSmallDetails"
+  },
+  "error-details/budget-too-low.json": {
+    "module": "adcp.types._schemas.error_details.budget_too_low",
+    "symbol": "BudgetTooLowDetails"
+  },
+  "media-buy/acceptance-policy-profile-ref.json": {
+    "module": "adcp.types._schemas.media_buy.acceptance_policy_profile_ref",
+    "symbol": "RegistryAcceptancePolicyProfileReference"
+  },
+  "pricing-options/price-guidance.json": {
+    "module": "adcp.types._schemas.pricing_options.price_guidance",
+    "symbol": "PriceGuidance"
+  },
+  "property/property-feature.json": {
+    "module": "adcp.types._schemas.property.property_feature",
+    "symbol": "PropertyFeature"
+  },
+  "trusted-match/tmpx-chunk.json": {
+    "module": "adcp.types._schemas.trusted_match.tmpx_chunk",
+    "symbol": "TMPXChunk"
+  }
+}
