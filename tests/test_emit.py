@@ -21,6 +21,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from codegen import adapter, bundle, emit
 from codegen.harness import check_pair
@@ -69,6 +70,38 @@ def test_every_binding_is_graded_green_in_both_directions(document: str) -> None
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     bad = [(r.keyword, r.pointer, r.outcome, r.counterexample, r.harness) for r in rep.refuses]
     assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
+
+
+def test_strict_validate_decides_acceptance_against_the_document() -> None:
+    """D4, in the place step 1's 52-property nullability instrument used to sit.
+
+    That instrument asserted the MODEL refuses an explicit null at every optional
+    non-nullable property, and it had to be per-property because the RENDERING
+    was: each annotation carried its own validator, so a missing wrap on one
+    property was invisible.  The rendering is now plain ``T | None = None`` and
+    the refusal is one function reading the document, so the 52 sites collapse to
+    one mechanism and asserting it 52 times would be asserting it with 52 inputs.
+
+    What nothing else in this file reaches: that the schema half of
+    ``strict_validate`` runs at all, and that the keyword it refuses on is the
+    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- ``steps()`` has
+    no nullability step, and a model graded through ``strict_validate`` refuses
+    whatever the control already says the document refuses.  Measured: with the
+    schema check deleted from ``strict_validate``, this is the only test in the
+    suite that goes red.
+    """
+    model = {p.name: p for p in adapter.pairs(BUNDLE, TREE)}["core/pagination-request.json"].model
+
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"cursor": None})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("type", ("cursor",))]
+
+    # ``minimum: 1`` is in the annotation too, as ``Field(ge=1)``, so the second
+    # half is the keyword MAPPING: pydantic's own name for it is
+    # ``greater_than_equal`` and the document's is ``minimum``.
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"max_results": 0})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("minimum", ("max_results",))]
 
 
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:

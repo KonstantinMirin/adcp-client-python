@@ -35,9 +35,7 @@ to do it.  The ``None`` arm of the annotation is live either way, because the
 attribute holds ``None`` for an omitted key, so ``x.field is None`` means "not
 supplied".
 
-``docs/plan/rebuild-plan.md`` D4 carries the decision and the reasoning;
-``tests/test_d4_no_per_field_null_validator.py`` refuses the retired rendering
-structurally.
+``docs/plan/rebuild-plan.md`` D4 carries the decision and the reasoning.
 """
 
 from __future__ import annotations
