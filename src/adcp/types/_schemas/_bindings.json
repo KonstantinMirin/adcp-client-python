@@ -57,6 +57,25 @@
     },
     "symbol": "AgentSigningKey"
   },
+  "core/brand-id.json": {
+    "module": "adcp.types._schemas.core.brand_id",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Identifier for a brand within a house portfolio. Must be lowercase alphanumeric with underscores only. The house chooses this identifier.",
+      "examples": [
+        "tide",
+        "cheerios",
+        "air_jordan",
+        "nike",
+        "pampers"
+      ],
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Brand ID",
+      "type": "string",
+      "x-entity": "advertiser_brand"
+    },
+    "symbol": "BrandID"
+  },
   "core/canonical-projection-slot-override.json": {
     "module": "adcp.types._schemas.core.canonical_projection_slot_override",
     "schema": {
@@ -229,6 +248,19 @@
     },
     "symbol": "CreativeConsumption"
   },
+  "core/creative-revision-id.json": {
+    "module": "adcp.types._schemas.core.creative_revision_id",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Buyer-assigned identity for one immutable input-content state of a durable creative. Scoped to the parent creative_id. Seller transcoding, normalization, and delivery representations do not change this identity.",
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Creative Revision ID",
+      "type": "string",
+      "x-entity": "creative_revision"
+    },
+    "symbol": "CreativeRevisionID"
+  },
   "core/date-range.json": {
     "module": "adcp.types._schemas.core.date_range",
     "schema": {
@@ -329,6 +361,52 @@
       "type": "object"
     },
     "symbol": "IndicatorScope"
+  },
+  "core/installment-ref.json": {
+    "module": "adcp.types._schemas.core.installment_ref",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Canonical reference to one installment within a publisher-scoped collection. Installment IDs are collection-scoped, so identity is the tuple (collection_ref, installment_id).",
+      "properties": {
+        "collection_ref": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Canonical reference to a collection. Collection IDs are scoped to the adagents.json at publisher_domain, so both fields participate in identity.",
+          "properties": {
+            "collection_id": {
+              "description": "Collection ID from the publisher's adagents.json collection catalog.",
+              "minLength": 1,
+              "type": "string",
+              "x-entity": "collection"
+            },
+            "publisher_domain": {
+              "description": "Domain where the adagents.json declaring this collection is hosted.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "collection_id",
+            "publisher_domain"
+          ],
+          "title": "Collection Reference",
+          "type": "object"
+        },
+        "installment_id": {
+          "description": "Installment ID within the referenced collection.",
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "installment"
+        }
+      },
+      "required": [
+        "collection_ref",
+        "installment_id"
+      ],
+      "title": "Installment Reference",
+      "type": "object"
+    },
+    "symbol": "InstallmentReference"
   },
   "core/limited-series.json": {
     "module": "adcp.types._schemas.core.limited_series",
@@ -451,6 +529,67 @@
       "type": "object"
     },
     "symbol": "MeasurementWindow"
+  },
+  "core/operator-identity.json": {
+    "module": "adcp.types._schemas.core.operator_identity",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "The buyer-desired operator portion of an advertiser account identity. The operator domain identifies the entity operating for the brand; operator_unit identifies that operator's internal buying context. Buyers that already administer the account control unit metadata and identity within the current operator. Changing the operator domain is an inter-entity handoff that requires seller-mediated approval by the current account authority, the brand, and the destination operator. When used as a sync_accounts settings-update value, this object is a complete desired replacement: omitting operator_unit removes the current unit rather than preserving it.",
+      "properties": {
+        "operator": {
+          "description": "Domain of the entity operating on the brand's behalf. When the brand operates directly, this is the brand's domain.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string",
+          "x-entity": "operator"
+        },
+        "operator_unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Optional operator-owned business unit, agency seat, or platform account. Its id participates in account identity; name is mutable display metadata. Omission from a complete desired replacement means the account should have no operator unit.",
+          "examples": [
+            {
+              "id": "234284238",
+              "name": "Nova EMEA"
+            },
+            {
+              "id": "benelux-seat",
+              "name": "Nova Benelux"
+            }
+          ],
+          "maxProperties": 2,
+          "properties": {
+            "id": {
+              "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
+              "maxLength": 255,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            "name": {
+              "description": "Human-readable seat or business-unit name, such as Nova EMEA. This label may change and is not part of the natural account key.",
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "Operator Unit",
+          "type": "object",
+          "x-entity": "operator_unit"
+        }
+      },
+      "required": [
+        "operator"
+      ],
+      "title": "Operator Identity",
+      "type": "object"
+    },
+    "symbol": "OperatorIdentity"
   },
   "core/operator-unit.json": {
     "module": "adcp.types._schemas.core.operator_unit",
@@ -689,6 +828,24 @@
     },
     "symbol": "ProductIdentity"
   },
+  "core/property-id.json": {
+    "module": "adcp.types._schemas.core.property_id",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Identifier for a publisher property. Must be lowercase alphanumeric with underscores only.",
+      "examples": [
+        "cnn_ctv_app",
+        "homepage",
+        "mobile_ios",
+        "instagram"
+      ],
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Property ID",
+      "type": "string",
+      "x-entity": "property"
+    },
+    "symbol": "PropertyID"
+  },
   "core/property-list-ref.json": {
     "module": "adcp.types._schemas.core.property_list_ref",
     "schema": {
@@ -720,6 +877,68 @@
       "type": "object"
     },
     "symbol": "PropertyListReference"
+  },
+  "core/property-ref.json": {
+    "module": "adcp.types._schemas.core.property_ref",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": true,
+      "description": "Canonical reference to a publisher property. Property IDs are scoped to the adagents.json at publisher_domain, so both fields participate in identity.",
+      "properties": {
+        "property_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Property ID from the publisher's adagents.json property catalog.",
+          "examples": [
+            "cnn_ctv_app",
+            "homepage",
+            "mobile_ios",
+            "instagram"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Property ID",
+          "type": "string",
+          "x-entity": "property"
+        },
+        "publisher_domain": {
+          "description": "Domain where the adagents.json declaring this property is hosted.",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "publisher_domain",
+        "property_id"
+      ],
+      "title": "Property Reference",
+      "type": "object"
+    },
+    "symbol": "PropertyReference"
+  },
+  "core/reporting-file-object-ref.json": {
+    "module": "adcp.types._schemas.core.reporting_file_object_ref",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting File Object Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "symbol": "ReportingFileObjectReference"
+  },
+  "core/reporting-native-version-ref.json": {
+    "module": "adcp.types._schemas.core.reporting_native_version_ref",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Credential-free, decoded provider-native immutable version reference, such as an S3 VersionId, GCS generation, table version, transaction, snapshot, manifest generation, job, or run. This is not URI-encoded or concatenated into an object_ref; URI-encode it only when constructing a provider request. The 1024-character limit accommodates a provider value of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.",
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Reporting Native Version Reference",
+      "type": "string",
+      "x-status": "experimental"
+    },
+    "symbol": "ReportingNativeVersionReference"
   },
   "core/requirements/css-asset-requirements.json": {
     "module": "adcp.types._schemas.core.requirements.css_asset_requirements",
@@ -960,6 +1179,37 @@
       "type": "object"
     },
     "symbol": "BudgetTooLowDetails"
+  },
+  "error-details/creative-revision-content-mismatch.json": {
+    "module": "adcp.types._schemas.error_details.creative_revision_content_mismatch",
+    "schema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "description": "Typed details for CREATIVE_REVISION_CONTENT_MISMATCH. Identifies the scoped revision without echoing creative content or seller-side fingerprints.",
+      "properties": {
+        "creative_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "creative"
+        },
+        "revision_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Buyer-assigned identity for one immutable input-content state of a durable creative. Scoped to the parent creative_id. Seller transcoding, normalization, and delivery representations do not change this identity.",
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Creative Revision ID",
+          "type": "string",
+          "x-entity": "creative_revision"
+        }
+      },
+      "required": [
+        "creative_id",
+        "revision_id"
+      ],
+      "title": "Creative Revision Content Mismatch Details",
+      "type": "object"
+    },
+    "symbol": "CreativeRevisionContentMismatchDetails"
   },
   "media-buy/acceptance-policy-profile-ref.json": {
     "module": "adcp.types._schemas.media_buy.acceptance_policy_profile_ref",

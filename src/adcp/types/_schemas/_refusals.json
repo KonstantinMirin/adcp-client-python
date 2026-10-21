@@ -4,10 +4,65 @@
     "keyword": "type",
     "pointer": "/properties/component"
   },
+  "a2ui/surface.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/components"
+  },
   "a2ui/user-action.json": {
     "detail": "an object node with no properties is a mapping, step 6",
     "keyword": "type",
     "pointer": "/properties/action/properties/context"
+  },
+  "aao/agent-publishers.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "definitions",
+    "pointer": "/"
+  },
+  "brand/revocation-notification.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/revoked_uses"
+  },
+  "brand/rights-pricing-option.json": {
+    "detail": "its target enums/pricing-model.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/model"
+  },
+  "brand/rights-terms.json": {
+    "detail": "its target enums/rights-billing-period.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/period"
+  },
+  "brand/search-brands-request.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/industries"
+  },
+  "collection/collection-list-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/event"
+  },
+  "collection/collection-list.json": {
+    "detail": "its target core/account-ref.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/account"
+  },
+  "compliance/get-creative-features-completion.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/account-ref.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
+    "pointer": "/"
+  },
+  "core/account-status-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
   },
   "core/ad-inventory-config.json": {
     "detail": "an array node is step 6",
@@ -19,15 +74,360 @@
     "keyword": "const",
     "pointer": "/properties/kty"
   },
+  "core/agent-reporting-destination-state.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/app-item.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/platform"
+  },
+  "core/assets/audio-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/css-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/html-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/image-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/javascript-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/markdown-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/published-post-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
+  },
+  "core/assets/text-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/video-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/assets/zip-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/asset_type"
+  },
+  "core/async-response-refs/creative/get-creative-features-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "core/async-response-refs/creative/sync-creatives-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/creative/sync-creatives-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/async-response-refs/creative/sync-creatives-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/media-buy/build-creative-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/media-buy/build-creative-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/async-response-refs/media-buy/build-creative-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/media-buy/create-media-buy-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/media-buy/create-media-buy-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/async-response-refs/media-buy/create-media-buy-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/media-buy/get-products-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/media-buy/get-products-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "core/async-response-refs/media-buy/get-products-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/media-buy/sync-catalogs-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/media-buy/sync-catalogs-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/async-response-refs/media-buy/sync-catalogs-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/media-buy/update-media-buy-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "core/async-response-refs/media-buy/update-media-buy-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "core/async-response-refs/media-buy/update-media-buy-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/async-response-refs/signals/get-signals-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "core/async-response-refs/signals/get-signals-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/attestation-evaluation.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/audience-evidence-pin.json": {
+    "detail": "its target core/ext.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/ext"
+  },
+  "core/authorized-agent-base.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/signing_keys"
+  },
+  "core/bidding-policy-capability.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "definitions",
+    "pointer": "/"
+  },
+  "core/brand-key.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/countries"
+  },
+  "core/brand-ref.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/countries"
+  },
+  "core/business-entity.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/contacts"
+  },
+  "core/cancellation-policy.json": {
+    "detail": "its target core/duration.json is refused: /properties/unit: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/notice_period"
+  },
+  "core/canonical-account-ref.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
+    "pointer": "/"
+  },
+  "core/canonical-audience-evidence-selection.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/decision_use"
+  },
+  "core/canonical-audience-evidence.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/canonical-delivery-forecast.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/points"
+  },
+  "core/canonical-forecast-vendor-metric-value.json": {
+    "detail": "its target core/brand-key.json is refused: /properties/countries: type: an array node is step 6",
+    "keyword": "$ref",
+    "pointer": "/properties/vendor"
+  },
+  "core/canonical-format-kind.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "core/canonical-format-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/canonical-media-buy-action-fields.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/task"
+  },
+  "core/canonical-media-buy-features.json": {
+    "detail": "its target core/bidding-policy-capability.json is refused: /: definitions: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/bidding_policy"
+  },
+  "core/canonical-metric-qualifier.json": {
+    "detail": "its target enums/viewability-standard.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/viewability_standard"
+  },
+  "core/canonical-performance-standard.json": {
+    "detail": "its target enums/performance-standard-metric.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/metric"
+  },
+  "core/canonical-pricing-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/canonical-product-action.json": {
+    "detail": "its target enums/canonical-media-buy-action.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/action"
+  },
+  "core/canonical-projection-ref.json": {
+    "detail": "its target core/canonical-format-kind.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/kind"
+  },
+  "core/capabilities-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
+  },
+  "core/catalog-field-mapping.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/catalog-item-availability-update.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
   "core/catalog-item-reference-not-found-error.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "const",
     "pointer": "/properties/code"
   },
+  "core/catalog.json": {
+    "detail": "its target enums/catalog-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/type"
+  },
   "core/collection-selector.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/collection_ids"
+  },
+  "core/compact-task-input-required.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/errors"
+  },
+  "core/compact-task-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "core/content-rating.json": {
+    "detail": "its target enums/content-rating-system.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/system"
+  },
+  "core/context.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
+    "pointer": "/"
+  },
+  "core/creative-assignment.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/creative-filters.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/accounts"
+  },
+  "core/creative-locale-policy.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/accepted_language_ranges"
+  },
+  "core/creative-operation-format-declaration.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/creative-policy.json": {
+    "detail": "its target enums/co-branding-requirement.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/co_branding"
+  },
+  "core/creative-representation-set.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/representations"
   },
   "core/creative-variable.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
@@ -39,6 +439,41 @@
     "keyword": "minProperties",
     "pointer": "/"
   },
+  "core/delivery-breakdown-controls.json": {
+    "detail": "its target enums/sort-metric.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/sort_by"
+  },
+  "core/delivery-forecast.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/points"
+  },
+  "core/delivery-recipient.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/demographic-age-range.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
+  },
+  "core/demographic-predicate.json": {
+    "detail": "its target core/demographic-age-range.json is refused: /: anyOf: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/age"
+  },
+  "core/demographic-targeting-resolution.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/destination-item.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/destination_type"
+  },
   "core/diagnostic-issue.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
@@ -49,9 +484,34 @@
     "keyword": "enum",
     "pointer": "/properties/unit"
   },
+  "core/education-item.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/degree_type"
+  },
   "core/error.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/event-custom-data.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/content_ids"
+  },
+  "core/event-source-health.json": {
+    "detail": "its target enums/assessment-status.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/status"
+  },
+  "core/event-surface.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/category"
+  },
+  "core/ext.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
     "pointer": "/"
   },
   "core/feature-requirement.json": {
@@ -59,30 +519,245 @@
     "keyword": "type",
     "pointer": "/properties/allowed_values"
   },
+  "core/flight-item.json": {
+    "detail": "its target core/price.json is refused: /properties/period: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/price"
+  },
+  "core/forecast-dimension-audience.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kind"
+  },
+  "core/forecast-dimension-device-platform.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kind"
+  },
+  "core/forecast-dimension-device-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kind"
+  },
+  "core/forecast-dimension-placement.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kind"
+  },
+  "core/forecast-dimension-signal.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
   "core/forecast-dimension-time.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "const",
     "pointer": "/properties/kind"
+  },
+  "core/forecast-vendor-metric-value.json": {
+    "detail": "its target core/brand-ref.json is refused: /properties/countries: type: an array node is step 6",
+    "keyword": "$ref",
+    "pointer": "/properties/vendor"
   },
   "core/format-id.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "dependencies",
     "pointer": "/"
   },
+  "core/frequency-cap-constraints.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
+  },
+  "core/frequency-cap-impression-constraints.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "oneOf",
+    "pointer": "/"
+  },
+  "core/frequency-cap-interval-constraints.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "if",
+    "pointer": "/"
+  },
+  "core/frequency-cap-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/mutable_fields"
+  },
+  "core/generation-credential.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/uses"
+  },
+  "core/geo-metro.json": {
+    "detail": "its target enums/metro-system.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/system"
+  },
+  "core/geo-place-area.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/geo-place-catalog-capability.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/supported_versions"
+  },
+  "core/geo-place-catalog-entry.json": {
+    "detail": "its target core/geo-place-type.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/place_type"
+  },
   "core/geo-place-resolver.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/auth"
+  },
+  "core/geo-place-type.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
+    "pointer": "/"
+  },
+  "core/geo-region-support.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/countries"
+  },
+  "core/get-geo-place-resolution-request.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
+  },
+  "core/get-geo-place-resolution-response.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/hotel-item.json": {
+    "detail": "its target core/price.json is refused: /properties/period: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/price"
+  },
+  "core/identifier.json": {
+    "detail": "its target enums/identifier-types.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/type"
+  },
+  "core/indicator-bearing.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/indicator.json": {
+    "detail": "its target enums/indicator-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/type"
+  },
+  "core/indicators-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/industry-identifier.json": {
+    "detail": "its target enums/creative-identifier-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/type"
   },
   "core/insertion-order.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/terms/properties/payment_terms"
   },
+  "core/installment-deadlines.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/"
+  },
+  "core/job-item.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/employment_type"
+  },
+  "core/keyword-target.json": {
+    "detail": "its target enums/match-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/match_type"
+  },
+  "core/measurement-readiness.json": {
+    "detail": "its target enums/assessment-status.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/status"
+  },
+  "core/media-buy-available-action-id.json": {
+    "detail": "this step emits an object root with properties, or a scalar root",
+    "keyword": "type",
+    "pointer": "/"
+  },
+  "core/media-buy-available-action.json": {
+    "detail": "its target core/media-buy-available-action-id.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/action"
+  },
+  "core/media-buy-support-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/media-buy-support.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/negative-keyword.json": {
+    "detail": "its target enums/match-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/match_type"
+  },
+  "core/opportunity-context.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/outcome-target-cost-per.json": {
+    "detail": "its target enums/outcome-target-cost-strength.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/strength"
+  },
   "core/overlay.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "minProperties",
     "pointer": "/properties/visual"
+  },
+  "core/package-signal-targeting-group.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/operator"
+  },
+  "core/package-signal-targeting-groups.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/operator"
+  },
+  "core/package-targeting-resolution.json": {
+    "detail": "its target core/demographic-targeting-resolution.json is refused: /: allOf: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/demographics"
+  },
+  "core/performance-feedback-assertion.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/performance-standard.json": {
+    "detail": "its target enums/performance-standard-metric.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/metric"
+  },
+  "core/postal-country-system.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
   },
   "core/presentation-ref.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
@@ -104,6 +779,56 @@
     "keyword": "enum",
     "pointer": "/properties/period"
   },
+  "core/principal-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
+  },
+  "core/principal-declarations-state.json": {
+    "detail": "its target core/principal-declarations.json is refused: /properties/async_adcp_versions: type: an array node is step 6",
+    "keyword": "$ref",
+    "pointer": "/properties/declared"
+  },
+  "core/principal-declarations.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/async_adcp_versions"
+  },
+  "core/principal-state.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/"
+  },
+  "core/product-allocation.json": {
+    "detail": "its target enums/pacing.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/pacing"
+  },
+  "core/product-allowed-action.json": {
+    "detail": "its target core/media-buy-available-action-id.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/action"
+  },
+  "core/product-format-declaration.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/product-targeting-resolution.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/modifications"
+  },
+  "core/protocol-envelope.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "core/real-estate-item.json": {
+    "detail": "its target core/price.json is refused: /properties/period: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/price"
+  },
   "core/reference-asset.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
@@ -114,30 +839,160 @@
     "keyword": "const",
     "pointer": "/properties/runtime"
   },
+  "core/registry-feed-response.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/events"
+  },
+  "core/reporting-adjustment-receipt.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-adjustment.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason_code"
+  },
   "core/reporting-canonical-content-digest.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "const",
     "pointer": "/properties/algorithm"
+  },
+  "core/reporting-canonicalization-contract.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "definitions",
+    "pointer": "/"
+  },
+  "core/reporting-delivery-capabilities.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-delivery-config-state.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-delivery-ready-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
+  },
+  "core/reporting-file-entry.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/partition"
+  },
+  "core/reporting-file-manifest.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/manifest_version"
+  },
+  "core/reporting-ledger-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-materialization.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-obligation.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-receipt.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-reliability-statistics.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-resource.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-revision.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-schedule-offering.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-schedule.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-status-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/reporting-status-issue.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/representation-destination.json": {
+    "detail": "its target core/product-format-declaration.json is refused: /: allOf: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/format_option"
   },
   "core/representation-rejection.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/code"
   },
+  "core/representation-selection.json": {
+    "detail": "its target enums/representation-selection-strategy.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/strategy"
+  },
   "core/requirements/audio-asset-requirements.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/formats"
+  },
+  "core/requirements/catalog-requirements.json": {
+    "detail": "its target enums/catalog-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/catalog_type"
+  },
+  "core/requirements/daast-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
   },
   "core/requirements/html-asset-requirements.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/sandbox"
   },
+  "core/requirements/image-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "if",
+    "pointer": "/"
+  },
   "core/requirements/javascript-asset-requirements.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/module_type"
+  },
+  "core/requirements/offering-asset-constraint.json": {
+    "detail": "its target enums/asset-content-type.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/asset_type"
   },
   "core/requirements/text-asset-requirements.json": {
     "detail": "an array node is step 6",
@@ -149,29 +1004,324 @@
     "keyword": "enum",
     "pointer": "/properties/role"
   },
+  "core/requirements/vast-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "core/requirements/video-asset-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/containers"
+  },
   "core/requirements/webhook-asset-requirements.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/methods"
+  },
+  "core/response-payload-jws-envelope.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "definitions",
+    "pointer": "/"
+  },
+  "core/signal-filters.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/catalog_types"
+  },
+  "core/signal-listing.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
   },
   "core/signal-selection-group-rule.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/targeting_mode"
   },
+  "core/signal-targeting-rules.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/resolution_model"
+  },
+  "core/special.json": {
+    "detail": "its target enums/special-category.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/category"
+  },
+  "core/spot-reporting-capability.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/available_metrics"
+  },
+  "core/store-item.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/catchments"
+  },
+  "core/talent.json": {
+    "detail": "its target enums/talent-role.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/role"
+  },
+  "core/targeting.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/tracker-execution-contract.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/honored"
+  },
+  "core/vast-media-file-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/delivery_methods"
+  },
+  "core/vehicle-item.json": {
+    "detail": "its target core/price.json is refused: /properties/period: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/price"
+  },
+  "core/vendor-metric-optimization-supported-metric.json": {
+    "detail": "its target core/brand-ref.json is refused: /properties/countries: type: an array node is step 6",
+    "keyword": "$ref",
+    "pointer": "/properties/vendor"
+  },
+  "core/vendor-metric-optimization.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/supported_metrics"
+  },
+  "core/verification-token-claims.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "definitions",
+    "pointer": "/"
+  },
+  "core/warning.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "core/webhook-activity-record.json": {
+    "detail": "a multi-type node (['string', 'null']) is step 6",
+    "keyword": "type",
+    "pointer": "/properties/completed_at"
+  },
+  "core/webhook-challenge.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/type"
+  },
+  "core/wholesale-feed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "creative/audit-observation.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/code"
+  },
+  "creative/creative-assignment-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
+  },
+  "creative/creative-feature-result.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "oneOf",
+    "pointer": "/properties/value"
+  },
+  "creative/creative-purged-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/notification_type"
+  },
+  "creative/get-creative-features-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "creative/get-creative-features-terminal-success.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "creative/sync-creatives-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "creative/sync-creatives-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "creative/sync-creatives-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "creative/validate-input-request.json": {
+    "detail": "its target core/account-ref.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/account"
+  },
+  "creative/validate-input-result.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
   "creative/video-brief.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/segments"
+  },
+  "enums/assessment-status.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/asset-content-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/billing-party.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/canonical-media-buy-action.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/catalog-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/co-branding-requirement.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/content-rating-system.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/creative-identifier-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/identifier-types.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/indicator-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/match-type.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/metro-system.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/outcome-target-cost-strength.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/pacing.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/performance-standard-metric.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/pricing-model.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/representation-selection-strategy.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/rights-billing-period.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/sort-metric.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/special-category.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/talent-role.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "enums/viewability-standard.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/"
+  },
+  "error-details/account-moved.json": {
+    "detail": "its target core/canonical-account-ref.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/current_account"
   },
   "error-details/account-setup-required.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/setup_steps"
   },
+  "error-details/action-not-allowed.json": {
+    "detail": "its target core/media-buy-available-action-id.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/attempted_action"
+  },
   "error-details/agent-permission-denied.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "const",
+    "pointer": "/properties/scope"
+  },
+  "error-details/authorization-required.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/required_connections"
+  },
+  "error-details/billing-not-permitted-for-agent.json": {
+    "detail": "its target enums/billing-party.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/rejected_billing"
+  },
+  "error-details/billing-not-supported.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
     "pointer": "/properties/scope"
   },
   "error-details/conflict.json": {
@@ -184,6 +1334,16 @@
     "keyword": "type",
     "pointer": "/properties/reasons"
   },
+  "error-details/creative-representation-unresolved.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/representation_rejections"
+  },
+  "error-details/macro-resolution-failed.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/macro_resolution_results"
+  },
   "error-details/policy-violation.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
@@ -194,6 +1354,11 @@
     "keyword": "enum",
     "pointer": "/properties/scope"
   },
+  "error-details/requote-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "oneOf",
+    "pointer": "/properties/envelope_field"
+  },
   "error-details/stale-response.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "const",
@@ -203,6 +1368,11 @@
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/supported_dimensions"
+  },
+  "error-details/vast-version-mismatch.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
   },
   "error-details/vendor-error-codes.json": {
     "detail": "an object node with no properties is a mapping, step 6",
@@ -219,20 +1389,240 @@
     "keyword": "type",
     "pointer": "/properties/regulatory_basis"
   },
+  "governance/audience-constraints.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/"
+  },
+  "governance/policy-category-definition.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/facets"
+  },
   "governance/policy-ref.json": {
     "detail": "an object node with no properties is a mapping, step 6",
     "keyword": "type",
     "pointer": "/properties/config"
+  },
+  "media-buy/acceptance-context.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/"
+  },
+  "media-buy/acceptance-policy-catalog.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
+  },
+  "media-buy/acceptance-policy-profile.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "media-buy/acceptance-policy-rule.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "media-buy/build-creative-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "media-buy/build-creative-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "media-buy/build-creative-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "media-buy/change-term.json": {
+    "detail": "its target enums/canonical-media-buy-action.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/action"
+  },
+  "media-buy/create-media-buy-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "media-buy/create-media-buy-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "media-buy/create-media-buy-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "media-buy/get-products-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "media-buy/get-products-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "media-buy/get-products-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "media-buy/get-products-targeting-resolution.json": {
+    "detail": "its target core/targeting.json is refused: /: allOf: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/brief_targeting"
+  },
+  "media-buy/legacy-purchase-continuation-input.json": {
+    "detail": "its target core/account-ref.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/account"
+  },
+  "media-buy/product-purchase-input.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "media-buy/product-purchase.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "media-buy/proposal-decline.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "allOf",
+    "pointer": "/"
+  },
+  "media-buy/sync-catalogs-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "media-buy/sync-catalogs-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "media-buy/sync-catalogs-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "media-buy/update-media-buy-async-response-input-required.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/reason"
+  },
+  "media-buy/update-media-buy-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/status"
+  },
+  "media-buy/update-media-buy-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
+  "pricing-options/cpc-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/cpcv-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/cpm-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/cpv-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/flat-rate-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/time-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
+  },
+  "pricing-options/vcpm-option.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/pricing_model"
   },
   "property/authorization-result.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/status"
   },
+  "property/delivery-record.json": {
+    "detail": "its target core/identifier.json is refused: /properties/type: $ref: its target enums/identifier-types.json is refused: /: enum: this step lowers no such keyword (a later D2 row does)",
+    "keyword": "$ref",
+    "pointer": "/properties/identifier"
+  },
+  "property/property-error.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/code"
+  },
+  "property/property-feature-definition.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/type"
+  },
+  "property/property-feature-value.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "oneOf",
+    "pointer": "/properties/value"
+  },
+  "property/property-list-changed-webhook.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/event"
+  },
+  "property/property-list-filters.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/countries_all"
+  },
+  "property/property-list.json": {
+    "detail": "its target core/account-ref.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/account"
+  },
+  "signals/get-signals-async-response-submitted.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "signals/get-signals-async-response-working.json": {
+    "detail": "its target core/context.json is refused: /: type: this step emits an object root with properties, or a scalar root",
+    "keyword": "$ref",
+    "pointer": "/properties/context"
+  },
   "sponsored-intelligence/si-identity.json": {
     "detail": "an array node is step 6",
     "keyword": "type",
     "pointer": "/properties/consent_scope"
+  },
+  "trusted-match/available-package.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/format_ids"
   },
   "trusted-match/error.json": {
     "detail": "this step lowers no such keyword (a later D2 row does)",
@@ -243,6 +1633,16 @@
     "detail": "this step lowers no such keyword (a later D2 row does)",
     "keyword": "enum",
     "pointer": "/properties/model"
+  },
+  "trusted-match/offer.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "not",
+    "pointer": "/"
+  },
+  "trusted-match/provider-registration.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "anyOf",
+    "pointer": "/"
   },
   "trusted-match/publisher-targeting-kv-config.json": {
     "detail": "an object node with no properties is a mapping, step 6",

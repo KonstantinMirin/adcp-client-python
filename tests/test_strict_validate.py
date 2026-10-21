@@ -21,11 +21,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from adcp.types._base import AdCPBaseModel, _document_of
+from adcp.types._base import AdCPBaseModel, _document_at, _document_of
 from adcp.types._schemas.core.pagination_request import PaginationRequest
-from codegen import adapter, emit
+from codegen import adapter, bundle, emit
 
-TREE = Path(__file__).resolve().parents[1] / emit.TREE
+REPO = Path(__file__).resolve().parents[1]
+BUNDLE = REPO / "schemas" / "cache" / "3.2"
+TREE = REPO / emit.TREE
 
 
 def test_an_explicit_null_for_a_string_property_is_refused_on_type() -> None:
@@ -89,13 +91,54 @@ def test_a_class_bound_to_no_document_refuses_instead_of_grading_nothing() -> No
         AdCPBaseModel.strict_validate({})
 
 
-def test_every_emitted_class_resolves_to_the_document_it_was_emitted_from() -> None:
-    """The refusal above is for a class nothing emitted.  No emitted class may
+def test_every_emitted_binding_resolves_to_the_document_it_was_emitted_from() -> None:
+    """The refusal above is for a class nothing emitted.  No emitted binding may
     reach it, and each must land on its OWN document: a lookup that resolved to
     the wrong row would decide acceptance against another schema and still be
-    green everywhere else."""
+    green everywhere else.
+
+    Two kinds of binding, because D2 has two rows that emit here.  A class finds
+    its document from ``__module__`` and ``__qualname__``.  An ``Annotated`` alias
+    (D2's root-scalar row) has neither -- ``Annotated[str, ...].__module__`` is
+    ``typing`` -- so its module binds ``strict_validate`` through
+    ``_base.strict_alias`` and the lookup is by the row's own module and symbol.
+    Both go through ``_document_at``, so there is one table and one refusal.
+    """
     table = adapter.bindings(TREE)
     assert len(table) > 1, len(table)
+    classes = aliases = 0
     for document, row in sorted(table.items()):
-        model = getattr(importlib.import_module(row["module"]), row["symbol"])
-        assert _document_of(model) == (document, row["schema"]), document
+        module = importlib.import_module(row["module"])
+        model = getattr(module, row["symbol"])
+        if isinstance(model, type):
+            assert _document_of(model) == (document, row["schema"]), document
+            classes += 1
+            continue
+        assert callable(getattr(module, "strict_validate", None)), document
+        assert _document_at((row["module"], row["symbol"])) == (document, row["schema"]), document
+        aliases += 1
+    # Both arms non-empty, so neither is graded by an empty loop.
+    assert classes and aliases, (classes, aliases)
+
+
+def test_no_binding_row_carries_an_unresolved_reference() -> None:
+    """``strict_validate`` has to be able to DECIDE with the row's schema.
+
+    A ``$ref`` left in a row is not decidable locally: ``jsonschema`` finds no
+    store for an absolute URI and retrieves it OVER THE NETWORK, on a code path
+    it deprecates and says "will shortly become an error".  Measured before this
+    was fixed: 4.4 s per validation against a live URL, and a ``RefResolutionError``
+    offline.  So the emitter writes the document resolved (``bundle.resolved``),
+    and no row may carry a reference anywhere in it.
+
+    This is the runtime half of step 2.  The module half is the opposite and is
+    graded in ``test_emit``: a reference is an IMPORT in the generated module (P2)
+    and is never inlined there.  The two are not in tension -- one is where a type
+    LIVES and the other is what a document MEANS.
+    """
+    for document, row in sorted(adapter.bindings(TREE).items()):
+        assert bundle.references(row["schema"]) == [], document
+    # And the control: the bundle DOES have references, so the assertion above is
+    # over documents that had something to resolve rather than over nothing.
+    referencing = [d for d in adapter.bindings(TREE) if bundle.references(bundle.read(BUNDLE, d))]
+    assert referencing, "no emitted document has a reference; the check above graded nothing"
