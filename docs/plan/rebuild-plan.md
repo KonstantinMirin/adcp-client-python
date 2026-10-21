@@ -84,24 +84,12 @@ principle that forces it.
   refuses the DOCUMENT, by name and pointer, and it is counted (§5). P1, P5. Identical
   nodes (same content, two URIs) are one node — both authorities already say so (audit
   F4, `.19`); this is the only dedup, and it is by content equality, not by shape.
-- **D4 — the schema decides acceptance; `strict_validate` is the entry point.** An optional
-  renders plain **`T | None = None`**. No `refuse_null`, no `Absent` alias, no per-field
-  validator. `AdCPBaseModel.strict_validate(payload)` validates against the document's own
-  schema, then constructs — one call, both the verdict and a model.
-
-  Why, not P12's rendering: the schema already refuses `null` on `{"type": "string"}`, so a
-  validator re-implements it; the serialization fast path stays on across ~7,000 annotations
-  instead of being spent; and nesting is covered, because the schema check precedes
-  construction. **The harness grades `strict_validate`, not `model_validate`** — grading the
-  constructor grades a constructor, not an accepted set, and it is why step 1's bespoke
-  52-property nullability instrument is deleted rather than carried (`harness.steps()` has no
-  nullability step, so `check_pair` can never reach this obligation).
-
-  **Supersedes P12's rendering, not its obligation.** P12 assumes the model is the only gate;
-  here the schema is. `model_validate` stays public — pydantic exposes it — so
-  `AdCPBaseModel`'s docstring says it constructs **without consulting the schema**.
-  Enforced by `tests/test_d4_no_per_field_null_validator.py`. Defect D1-a is still fixed by
-  D2's typeless → `Any` row.
+- **D4 — the schema decides acceptance.** An optional renders plain `T | None = None`.
+  `AdCPBaseModel.strict_validate(payload)` validates against the document's own schema, then
+  constructs through `model_validate` — one call, both the verdict and a model. A schema
+  refusal raises pydantic's `ValidationError` with the keyword as `type`. The harness grades
+  `strict_validate`. `model_validate` stays public and constructs without consulting the
+  schema; the base class says so. Supersedes P12's rendering, not its obligation.
 - **D5 — rules are after-validators, hand-written once.** `src/adcp/types/_runtime.py`
   carries `RequiredGroups` (`anyOf`/`oneOf`/`not` over `required`), `ConditionalRequired`,
   `PropertyCount`, `UniqueItems`, `Dependencies`, each a dataclass plus one
