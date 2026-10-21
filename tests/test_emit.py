@@ -142,11 +142,12 @@ def test_every_binding_is_graded_green_in_both_directions(document: str) -> None
 def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
     """The walk terminates, graded on a bundle built so that it would not.
 
-    The 3.2 bundle's reference graph is acyclic -- 0 cycles over the 738
-    document-to-document edges -- so this branch is unreachable from it, which is
-    exactly why it gets a bundle of its own instead of a comment saying it cannot
-    happen.  Two modules importing each other's symbol at module scope is an
-    ImportError, not a type, so a cycle has to refuse before it is written.
+    The 3.2 bundle's reference graph is acyclic -- a three-colour DFS over its
+    3,094 document-to-document edges finds 0 cycles -- so this branch is
+    unreachable from it, which is exactly why it gets a bundle of its own instead
+    of a comment saying it cannot happen.  Two modules importing each other's
+    symbol at module scope is an ImportError, not a type, so a cycle has to refuse
+    before it is written.
     """
     ref = "https://example.org/whatever/{}.json"
     for name, other in (("a", "b"), ("b", "a")):
