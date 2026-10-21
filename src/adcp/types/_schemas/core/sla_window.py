@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class SLAWindow(AdCPBaseModel):
@@ -13,8 +13,8 @@ class SLAWindow(AdCPBaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    response_max: Absent[Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$')]] = None
-    completion_max: Absent[Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$')]] = None
+    response_max: Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$')] | None = None
+    completion_max: Annotated[str, Field(pattern='^P(?!$)(\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$')] | None = None
 
 
 __all__ = ["SLAWindow"]

@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PaginationResponse(AdCPBaseModel):
@@ -14,8 +14,8 @@ class PaginationResponse(AdCPBaseModel):
     model_config = ConfigDict(extra="forbid")
 
     has_more: bool
-    cursor: Absent[str] = None
-    total_count: Absent[Annotated[int, Field(ge=0)]] = None
+    cursor: str | None = None
+    total_count: Annotated[int, Field(ge=0)] | None = None
 
 
 __all__ = ["PaginationResponse"]

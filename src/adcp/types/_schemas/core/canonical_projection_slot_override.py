@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class CanonicalProjectionSlotOverride(AdCPBaseModel):
@@ -15,9 +15,9 @@ class CanonicalProjectionSlotOverride(AdCPBaseModel):
 
     asset_group_id: str
     asset_type: str
-    required: Absent[bool] = None
-    max_chars: Absent[Annotated[int, Field(ge=1)]] = None
-    consumed_for_production: Absent[bool] = None
+    required: bool | None = None
+    max_chars: Annotated[int, Field(ge=1)] | None = None
+    consumed_for_production: bool | None = None
 
 
 __all__ = ["CanonicalProjectionSlotOverride"]

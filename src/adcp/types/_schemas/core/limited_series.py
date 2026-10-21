@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class LimitedSeries(AdCPBaseModel):
@@ -15,8 +15,8 @@ class LimitedSeries(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     total_installments: Annotated[int, Field(ge=1)]
-    starts: Absent[datetime] = None
-    ends: Absent[datetime] = None
+    starts: datetime | None = None
+    ends: datetime | None = None
 
 
 __all__ = ["LimitedSeries"]

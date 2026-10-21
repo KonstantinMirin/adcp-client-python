@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class BudgetTooLowDetails(AdCPBaseModel):
@@ -11,8 +11,8 @@ class BudgetTooLowDetails(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    minimum_budget: Absent[float] = None
-    currency: Absent[str] = None
+    minimum_budget: float | None = None
+    currency: str | None = None
 
 
 __all__ = ["BudgetTooLowDetails"]

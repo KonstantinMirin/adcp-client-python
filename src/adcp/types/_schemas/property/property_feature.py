@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class PropertyFeature(AdCPBaseModel):
@@ -13,7 +13,7 @@ class PropertyFeature(AdCPBaseModel):
 
     feature_id: str
     value: str
-    source: Absent[str] = None
+    source: str | None = None
 
 
 __all__ = ["PropertyFeature"]

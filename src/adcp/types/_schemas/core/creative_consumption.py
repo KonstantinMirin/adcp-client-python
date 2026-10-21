@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class CreativeConsumption(AdCPBaseModel):
@@ -13,10 +13,10 @@ class CreativeConsumption(AdCPBaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    tokens: Absent[Annotated[int, Field(ge=0)]] = None
-    images_generated: Absent[Annotated[int, Field(ge=0)]] = None
-    renders: Absent[Annotated[int, Field(ge=0)]] = None
-    duration_seconds: Absent[Annotated[float, Field(ge=0)]] = None
+    tokens: Annotated[int, Field(ge=0)] | None = None
+    images_generated: Annotated[int, Field(ge=0)] | None = None
+    renders: Annotated[int, Field(ge=0)] | None = None
+    duration_seconds: Annotated[float, Field(ge=0)] | None = None
 
 
 __all__ = ["CreativeConsumption"]

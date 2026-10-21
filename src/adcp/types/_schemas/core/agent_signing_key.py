@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import ConfigDict
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class AgentSigningKey(AdCPBaseModel):
@@ -15,14 +15,14 @@ class AgentSigningKey(AdCPBaseModel):
 
     kid: str
     kty: str
-    alg: Absent[str] = None
-    use: Absent[str] = None
-    crv: Absent[str] = None
-    x: Absent[str] = None
-    y: Absent[str] = None
-    n: Absent[str] = None
-    e: Absent[str] = None
-    revoked_at: Absent[datetime] = None
+    alg: str | None = None
+    use: str | None = None
+    crv: str | None = None
+    x: str | None = None
+    y: str | None = None
+    n: str | None = None
+    e: str | None = None
+    revoked_at: datetime | None = None
 
 
 __all__ = ["AgentSigningKey"]

@@ -40,6 +40,7 @@ import keyword
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -190,8 +191,15 @@ def _check_keywords(node: dict, pointer: str, handled: set[str]) -> None:
         raise Refusal(key, pointer, "this step lowers no such keyword (a later D2 row does)")
 
 
-def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> tuple[str, bool]:
-    """``(annotation text, whether the schema admits an explicit null)``."""
+def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
+    """The annotation text for one schema node.
+
+    Nullability is NOT a question here (D4).  This returns the node's own type,
+    and ``lower_object`` adds the ``| None`` arm an OPTIONAL property needs for
+    the value an omitted key leaves on the attribute -- which is a fact about
+    presence, not a claim that the document admits an explicit null.
+    ``AdCPBaseModel.strict_validate`` asks the document about that.
+    """
     kind = node.get("type")
 
     if kind is None:
@@ -201,19 +209,19 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> tuple[s
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
             )
         mod.imports.add(("typing", "Any"))
-        return "Any", True  # D2's typeless row; the schema admits every value
+        return "Any"  # D2's typeless row; the schema admits every value
 
     if isinstance(kind, list):
         raise Refusal("type", pointer, f"a multi-type node ({kind}) is step 6")
 
     if kind == "null":
         _check_keywords(node, pointer, {"type"})
-        return "None", True
+        return "None"
 
     if kind == "object":
         if "properties" not in node:
             raise Refusal("type", pointer, "an object node with no properties is a mapping, step 6")
-        return lower_object(node, name_hint, pointer, mod), False
+        return lower_object(node, name_hint, pointer, mod)
 
     if kind == "array":
         raise Refusal("type", pointer, "an array node is step 6")
@@ -236,7 +244,7 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> tuple[s
         mod.imports.add(("typing", "Annotated"))
         mod.imports.add(("pydantic", "Field"))
         ann = f"Annotated[{ann}, Field({', '.join(kwargs)})]"
-    return ann, False
+    return ann
 
 
 def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
@@ -266,12 +274,20 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        ann, admits_null = annotation(sub, at, name + class_name(key), mod)
-        if not (key in required or admits_null):
-            # D4/P12: absent or valid, never null.  A schema that admits the null
-            # says so, and then the annotation says so plainly instead.
-            mod.imports.add((BASE_MODULE, "Absent"))
-            ann = f"Absent[{ann}]"
+        ann = annotation(sub, at, name + class_name(key), mod)
+        if key not in required and ann not in ("None", "Any"):
+            # D4: an optional renders plain ``T | None = None``.  The ``None`` arm
+            # is the attribute's value for an omitted key, not a claim that the
+            # document admits an explicit null -- ``strict_validate`` asks the
+            # document about that.  Two annotations are left alone because they
+            # already carry the arm: ``Any | None`` evaluates to ``Any`` (live,
+            # one site: ``core/response.json``'s ``data``), and ``None`` cannot be
+            # unioned with itself at all -- ``eval("None | None")`` is a TypeError,
+            # so a ``{"type": "null"}`` optional would not import.  That second
+            # arm matches no document in this step's population and is therefore
+            # ungraded here; it is a guard against a latent import failure, not a
+            # measured behaviour.
+            ann = f"{ann} | None"
         if fname == key:
             lines.append(f"    {key}: {ann}" + ("" if key in required else " = None"))
             continue
@@ -348,7 +364,7 @@ def lower_document(document: str, doc: dict) -> tuple[Module, str]:
 @dataclass
 class Emitted:
     files: dict[str, str] = field(default_factory=dict)  # path -> text
-    bindings: dict[str, dict[str, str]] = field(default_factory=dict)
+    bindings: dict[str, dict[str, Any]] = field(default_factory=dict)
     refusals: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
@@ -369,7 +385,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             continue
         rel = module_path(document)
         out.files[f"{rel}.py"] = render(mod, symbol)
-        out.bindings[document] = {"module": f"{PACKAGE}.{rel.replace('/', '.')}", "symbol": symbol}
+        # The document travels WITH the binding: ``strict_validate`` decides
+        # acceptance against the schema the class was generated from (D4), and
+        # the bundle is a build-time input -- 124 MB, with a version in its path
+        # -- so it cannot be the runtime source.  Written from the same
+        # ``bundle.read`` the lowering used, which is what makes P10's byte
+        # compare cover the schemas the runtime asks, and not only the modules.
+        out.bindings[document] = {
+            "module": f"{PACKAGE}.{rel.replace('/', '.')}",
+            "symbol": symbol,
+            "schema": doc,
+        }
         parts = rel.split("/")[:-1]
         packages.update("/".join(parts[: i + 1]) for i in range(len(parts)))
     for pkg in packages:

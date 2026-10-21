@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class ProductIdentity(AdCPBaseModel):
@@ -14,7 +14,7 @@ class ProductIdentity(AdCPBaseModel):
     model_config = ConfigDict(extra="forbid")
 
     persistent_identifier: bool
-    reach_methodology: Absent[Annotated[str, Field(min_length=1)]] = None
+    reach_methodology: Annotated[str, Field(min_length=1)] | None = None
 
 
 __all__ = ["ProductIdentity"]

@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class IndicatorScope(AdCPBaseModel):
@@ -14,7 +14,7 @@ class IndicatorScope(AdCPBaseModel):
     model_config = ConfigDict(extra="allow")
 
     publisher_domain: Annotated[str, Field(pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')]
-    placement_id: Absent[str] = None
+    placement_id: str | None = None
 
 
 __all__ = ["IndicatorScope"]

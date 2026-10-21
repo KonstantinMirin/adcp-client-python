@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import Absent, AdCPBaseModel
+from adcp.types._base import AdCPBaseModel
 
 
 class OperatorUnit(AdCPBaseModel):
@@ -14,7 +14,7 @@ class OperatorUnit(AdCPBaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: Annotated[str, Field(min_length=1, max_length=255, pattern='^[A-Za-z0-9][A-Za-z0-9._:/-]*$')]
-    name: Absent[Annotated[str, Field(min_length=1, max_length=200)]] = None
+    name: Annotated[str, Field(min_length=1, max_length=200)] | None = None
 
 
 __all__ = ["OperatorUnit"]
