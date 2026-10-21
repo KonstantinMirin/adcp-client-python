@@ -9,7 +9,7 @@ resolution-markers = [
 [[package]]
 name = "adcp-emit"
 version = "0.0.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "hypothesis" },
     { name = "hypothesis-jsonschema" },

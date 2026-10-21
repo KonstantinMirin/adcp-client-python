@@ -1,0 +1,257 @@
+{
+  "a2ui/component.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/component"
+  },
+  "a2ui/user-action.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/action/properties/context"
+  },
+  "core/ad-inventory-config.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/supported_formats"
+  },
+  "core/agent-encryption-key.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kty"
+  },
+  "core/catalog-item-reference-not-found-error.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/code"
+  },
+  "core/collection-selector.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/collection_ids"
+  },
+  "core/creative-variable.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/variable_type"
+  },
+  "core/deadline-policy.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/"
+  },
+  "core/diagnostic-issue.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/severity"
+  },
+  "core/duration.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/unit"
+  },
+  "core/error.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/feature-requirement.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/allowed_values"
+  },
+  "core/forecast-dimension-time.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/kind"
+  },
+  "core/format-id.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "dependencies",
+    "pointer": "/"
+  },
+  "core/geo-place-resolver.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/auth"
+  },
+  "core/insertion-order.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/terms/properties/payment_terms"
+  },
+  "core/overlay.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "minProperties",
+    "pointer": "/properties/visual"
+  },
+  "core/presentation-ref.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/media_type"
+  },
+  "core/preview-provider.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/authority"
+  },
+  "core/preview-renderer-metadata.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/rendering_origin"
+  },
+  "core/price.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/period"
+  },
+  "core/reference-asset.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/role"
+  },
+  "core/reference-renderer.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/runtime"
+  },
+  "core/reporting-canonical-content-digest.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/algorithm"
+  },
+  "core/representation-rejection.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/code"
+  },
+  "core/requirements/audio-asset-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/formats"
+  },
+  "core/requirements/html-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/sandbox"
+  },
+  "core/requirements/javascript-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/module_type"
+  },
+  "core/requirements/text-asset-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/prohibited_terms"
+  },
+  "core/requirements/url-asset-requirements.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/role"
+  },
+  "core/requirements/webhook-asset-requirements.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/methods"
+  },
+  "core/signal-selection-group-rule.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/targeting_mode"
+  },
+  "creative/video-brief.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/segments"
+  },
+  "error-details/account-setup-required.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/setup_steps"
+  },
+  "error-details/agent-permission-denied.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/scope"
+  },
+  "error-details/conflict.json": {
+    "detail": "a multi-type node (['number', 'string']) is step 6",
+    "keyword": "type",
+    "pointer": "/properties/expected_version"
+  },
+  "error-details/creative-rejected.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/reasons"
+  },
+  "error-details/policy-violation.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/origin"
+  },
+  "error-details/rate-limited.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/scope"
+  },
+  "error-details/stale-response.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/served_from_cache"
+  },
+  "error-details/unsupported-refinement-dimension.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/supported_dimensions"
+  },
+  "error-details/vendor-error-codes.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/vendors"
+  },
+  "extensions/extension-meta.json": {
+    "detail": "required names no property declares: ['$id'] (step 7's rule, not a field)",
+    "keyword": "required",
+    "pointer": "/"
+  },
+  "governance/attribute-definition.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/regulatory_basis"
+  },
+  "governance/policy-ref.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/config"
+  },
+  "property/authorization-result.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/status"
+  },
+  "sponsored-intelligence/si-identity.json": {
+    "detail": "an array node is step 6",
+    "keyword": "type",
+    "pointer": "/properties/consent_scope"
+  },
+  "trusted-match/error.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "const",
+    "pointer": "/properties/type"
+  },
+  "trusted-match/offer-price.json": {
+    "detail": "this step lowers no such keyword (a later D2 row does)",
+    "keyword": "enum",
+    "pointer": "/properties/model"
+  },
+  "trusted-match/publisher-targeting-kv-config.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/targeting_kv_mapping"
+  },
+  "trusted-match/publisher-tmpx-config.json": {
+    "detail": "an object node with no properties is a mapping, step 6",
+    "keyword": "type",
+    "pointer": "/properties/tmpx_macro_mapping"
+  }
+}

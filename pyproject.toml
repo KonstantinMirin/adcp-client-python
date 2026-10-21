@@ -19,6 +19,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0.0"]
 
+[build-system]
+# The emitted tree is a package, not a directory of files: the step-1 outcome is
+# that `from adcp.types._schemas.core.pagination_request import PaginationRequest`
+# works, and an uninstalled project makes that conditional on PYTHONPATH.
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
