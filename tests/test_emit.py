@@ -12,6 +12,8 @@ derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
 
 from __future__ import annotations
 
+import ast
+import importlib
 import json
 import os
 import shutil
@@ -23,6 +25,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from adcp.types._base import AdCPBaseModel, _document_at, _document_of
 from codegen import adapter, bundle, emit
 from codegen.harness import check_pair
 
@@ -32,7 +35,21 @@ TREE = REPO / emit.TREE
 
 
 def leaves() -> list[str]:
+    """Step 1's population: an object root with no reference anywhere in it."""
     return [d for d in bundle.portable(BUNDLE) if bundle.is_leaf_object(bundle.read(BUNDLE, d))]
+
+
+def referencing() -> list[str]:
+    """Step 2's population: every reference is a property's own schema or its items."""
+    return [
+        d for d in bundle.portable(BUNDLE) if bundle.references_a_property(bundle.read(BUNDLE, d))
+    ]
+
+
+def population() -> list[str]:
+    """What the committed tree is emitted from.  A reference TARGET is not here and
+    does not need to be: ``emit`` walks ``$ref`` and emits the closure."""
+    return sorted(set(leaves()) | set(referencing()))
 
 
 def test_the_population_is_the_one_the_step_is_stated_over() -> None:
@@ -40,15 +57,35 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     many documents there turned out to be, including none."""
     assert len(bundle.portable(BUNDLE)) == 1054
     assert len(leaves()) == 85
+    assert len(referencing()) == 249
+    assert len(population()) == 334
     assert "core/pagination-request.json" in leaves()
+    assert "error-details/creative-revision-content-mismatch.json" in referencing()
 
 
-def test_every_leaf_is_either_emitted_or_refused_by_name_and_keyword() -> None:
-    out = emit.emit(BUNDLE, leaves())
-    assert len(out.bindings) + len(out.refusals) == 85
-    assert set(out.bindings) | set(out.refusals) == set(leaves())
+def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
+    out = emit.emit(BUNDLE, population())
+    assert set(population()) <= set(out.bindings) | set(out.refusals)
+    assert not set(out.bindings) & set(out.refusals)
     for document, row in out.refusals.items():
         assert row["keyword"] and row["pointer"], document
+
+
+def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
+    """Transitive emission, and that the walk terminates: the whole closure of a
+    document's references is emitted, or the document is refused with the target
+    that stopped it.  An import of a symbol from a module no run wrote is an
+    ImportError, so there is no third outcome."""
+    out = emit.emit(BUNDLE, population())
+    pulled_in = set(out.bindings) - set(population())
+    assert pulled_in, "no document was reached through a reference; the walk graded nothing"
+    assert "core/creative-revision-id.json" in pulled_in
+    # every reference of every emitted document resolves to a document also emitted
+    known = set(bundle.portable(BUNDLE))
+    for document in out.bindings:
+        for _, uri in bundle.references(bundle.read(BUNDLE, document)):
+            target = bundle.document_for(uri, known)
+            assert target in out.bindings, (document, uri)
 
 
 def test_pagination_request_is_graded_green_in_both_directions() -> None:
@@ -59,6 +96,39 @@ def test_pagination_request_is_graded_green_in_both_directions() -> None:
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.step_sites == 3, rep.step_sites  # minimum, maximum, additionalProperties
     assert [r.outcome for r in rep.refuses] == ["pass"] * 3
+
+
+def test_the_referencing_model_refuses_a_constraint_ANOTHER_document_declares() -> None:
+    """Step 2's own control, over every constraint site it has.
+
+    The sharp half of "both graded green" here: two of the six sites --
+    ``minLength`` and ``maxLength`` at ``/properties/revision_id`` -- are declared
+    by ``core/creative-revision-id.json`` and by nothing in this document, and the
+    referencing model refuses a violation of each.  The constraint arrives through
+    the import; there is nowhere else it could have come from.
+
+    This does NOT grade P2, and the pair of tests is deliberate: a COPY of the
+    target's constraints also refuses, so this one passes while
+    ``..._is_an_import_and_not_a_copy`` fails -- probed, by emitting the copy.
+    """
+    control = "error-details/creative-revision-content-mismatch.json"
+    pair = next(p for p in adapter.pairs(BUNDLE, TREE) if p.name == control)
+    target = bundle.read(BUNDLE, "core/creative-revision-id.json")
+    theirs = set(target) & set(emit.CONSTRAINTS)
+    ours = {
+        k
+        for _, node in bundle.nodes(bundle.read(BUNDLE, control))
+        if "$ref" not in node
+        for k in node
+        if k in emit.CONSTRAINTS
+    }
+    assert theirs - ours, "the target declares no constraint this document does not"
+
+    rep = check_pair(pair, max_steps=None)
+    assert rep.missing_formats == []
+    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+    assert [r.outcome for r in rep.refuses] == ["pass"] * rep.step_sites
+    assert {r.keyword for r in rep.refuses if r.pointer == "/properties/revision_id"} == theirs
 
 
 @pytest.mark.parametrize("document", sorted(adapter.bindings(TREE)))
@@ -102,12 +172,160 @@ def test_strict_validate_decides_acceptance_against_the_document() -> None:
     with pytest.raises(ValidationError) as caught:
         model.strict_validate({"max_results": 0})
     assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("minimum", ("max_results",))]
+def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
+    """The walk terminates, graded on a bundle built so that it would not.
+
+    The 3.2 bundle's reference graph is acyclic -- a three-colour DFS over its
+    3,094 document-to-document edges finds 0 cycles -- so this branch is
+    unreachable from it, which is exactly why it gets a bundle of its own instead
+    of a comment saying it cannot happen.  Two modules importing each other's
+    symbol at module scope is an ImportError, not a type, so a cycle has to refuse
+    before it is written.
+    """
+    ref = "https://example.org/whatever/{}.json"
+    for name, other in (("a", "b"), ("b", "a")):
+        (tmp_path / f"{name}.json").write_text(
+            json.dumps(
+                {
+                    "title": name.upper(),
+                    "type": "object",
+                    "required": [other],
+                    "properties": {other: {"$ref": ref.format(other)}},
+                }
+            )
+        )
+    out = emit.emit(tmp_path, ["a.json", "b.json"])
+    assert out.bindings == {}
+    assert sorted(out.refusals) == ["a.json", "b.json"]
+    for document, row in out.refusals.items():
+        assert row["keyword"] == "$ref", (document, row)
+        assert "cycle" in row["detail"], (document, row)
+
+
+def _source(document: str) -> str:
+    return (TREE / f"{emit.module_path(document)}.py").read_text()
+
+
+def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
+    """P2, on the AST of the emitted module rather than on its text.
+
+    The previous attempt's whole premise was that three generators all flatten a
+    ``$ref`` into a COPY of its target, so "it emits an import" is the claim this
+    step has to make falsifiable.  Two halves, because either alone passes while
+    the other fails:
+
+      * the referencing field's annotation NAMES the target's symbol and contains
+        no call -- a copy of the target's constraints is a ``Field(...)`` call,
+        and a copy that replaced the reference does not name the symbol at all;
+      * no ``Field`` kwarg ANYWHERE in the module is one this document does not
+        declare locally -- so a constraint of the target has nowhere else in the
+        module to hide either.
+
+    Deliberately says nothing about HOW an optional property is wrapped.  That is
+    D4's, it has been re-decided once already (a per-field null-refusing alias,
+    then plain ``T | None`` with the schema as the gate), and a test naming the wrapper's
+    spelling would have to be edited by the lane that changes it -- which is how a
+    P2 instrument comes to be adjusted by someone who is not grading P2.  Both
+    renderings satisfy what is asserted here, and so does any third.
+
+    Everything compared is derived: the import module from ``relative_module``,
+    the symbol from the emitter's own binding table, the local constraint set from
+    the document's non-reference nodes.
+    """
+    known = set(bundle.portable(BUNDLE))
+    table = adapter.bindings(TREE)
+    graded = 0
+    for document in sorted(table):
+        doc = bundle.read(BUNDLE, document)
+        refd = {
+            key: sub["$ref"]
+            for key, sub in doc.get("properties", {}).items()
+            if isinstance(sub, dict) and "$ref" in sub
+        }
+        if not refd:
+            continue
+        tree = ast.parse(_source(document))
+        imported = {
+            ("." * n.level + (n.module or ""), a.name)
+            for n in ast.walk(tree)
+            if isinstance(n, ast.ImportFrom)
+            for a in n.names
+        }
+        symbol_of = table[document]["symbol"]
+        root = next(c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == symbol_of)
+        annotated = {
+            t.target.id: t.annotation
+            for t in root.body
+            if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
+        }
+        for key, uri in sorted(refd.items()):
+            target = bundle.document_for(uri, known)
+            symbol = table[str(target)]["symbol"]
+            module = emit.relative_module(document, str(target))
+            assert (module, symbol) in imported, (document, key, module, symbol)
+            got = annotated[emit.field_name(key)]
+            named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
+            assert symbol in named, (document, key, ast.unparse(got))
+            calls = [ast.unparse(n) for n in ast.walk(got) if isinstance(n, ast.Call)]
+            assert calls == [], (document, key, ast.unparse(got), calls)
+            graded += 1
+        local = {
+            emit.CONSTRAINTS[k]
+            for _, node in bundle.nodes(doc)
+            if "$ref" not in node
+            for k in node
+            if k in emit.CONSTRAINTS
+        }
+        used = {
+            kw.arg
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "Field"
+            for kw in n.keywords
+        }
+        assert used <= local | {"alias", "default"}, (document, sorted(used - local))
+    assert graded, "no referencing property was graded"
+
+
+def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
+    """D2's root-scalar row: a node with no field to hang itself on is an alias.
+
+    A wrapper class would be a second name for the same node (P2), and every
+    referencing model would then carry an object where the document carries a
+    string.
+    """
+    table = adapter.bindings(TREE)
+    graded = 0
+    for document in sorted(table):
+        if bundle.read(BUNDLE, document).get("type") not in emit.SCALAR:
+            continue
+        tree = ast.parse(_source(document))
+        assigned = {
+            t.id
+            for n in tree.body
+            if isinstance(n, ast.Assign)
+            for t in n.targets
+            if isinstance(t, ast.Name)
+        }
+        assert table[document]["symbol"] in assigned, document
+        assert [n for n in tree.body if isinstance(n, ast.ClassDef)] == [], document
+        graded += 1
+    assert graded, "no scalar root was graded"
+
+    control = "core/creative-revision-id.json"
+    doc = bundle.read(BUNDLE, control)
+    alias = next(
+        n
+        for n in ast.parse(_source(control)).body
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == table[control]["symbol"]
+    )
+    want = f"Annotated[str, Field(min_length={doc['minLength']}, max_length={doc['maxLength']})]"
+    assert ast.unparse(alias.value) == want
 
 
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     """P10, and D8's byte compare: the tree equals f(bundle, emitter), so a
     defect is fixed in the emitter and nothing rewrites the output."""
-    out = emit.emit(BUNDLE, leaves())
+    out = emit.emit(BUNDLE, population())
     emit.write(out, tmp_path)
 
     def tree(root: Path) -> dict[str, str]:
@@ -142,7 +360,7 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
         into = Path(tempfile.mkdtemp())
         env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(REPO)}
         subprocess.run(
-            [*cmd, str(into), *leaves()], check=False, cwd=REPO, env=env, capture_output=True
+            [*cmd, str(into), *population()], check=False, cwd=REPO, env=env, capture_output=True
         )
         outs.append({str(p.relative_to(into)): p.read_text() for p in sorted(into.rglob("*.py"))})
         shutil.rmtree(into)
@@ -157,3 +375,56 @@ def test_the_adapter_refuses_a_module_from_a_tree_it_was_not_pointed_at(tmp_path
     (tmp_path / "_bindings.json").write_text(json.dumps(table))
     with pytest.raises(AssertionError, match="outside the emitted tree"):
         adapter.pairs(BUNDLE, tmp_path)
+
+
+def test_every_emitted_binding_resolves_to_the_document_it_was_emitted_from() -> None:
+    """The refusal above is for a class nothing emitted.  No emitted binding may
+    reach it, and each must land on its OWN document: a lookup that resolved to
+    the wrong row would decide acceptance against another schema and still be
+    green everywhere else.
+
+    Two kinds of binding, because D2 has two rows that emit here.  A class finds
+    its document from ``__module__`` and ``__qualname__``.  An ``Annotated`` alias
+    (D2's root-scalar row) has neither -- ``Annotated[str, ...].__module__`` is
+    ``typing`` -- so its module binds ``strict_validate`` through
+    ``_base.strict_alias`` and the lookup is by the row's own module and symbol.
+    Both go through ``_document_at``, so there is one table and one refusal.
+    """
+    table = adapter.bindings(TREE)
+    assert len(table) > 1, len(table)
+    classes = aliases = 0
+    for document, row in sorted(table.items()):
+        module = importlib.import_module(row["module"])
+        model = getattr(module, row["symbol"])
+        if isinstance(model, type):
+            assert _document_of(model) == (document, row["schema"]), document
+            classes += 1
+            continue
+        assert callable(getattr(module, "strict_validate", None)), document
+        assert _document_at((row["module"], row["symbol"])) == (document, row["schema"]), document
+        aliases += 1
+    # Both arms non-empty, so neither is graded by an empty loop.
+    assert classes and aliases, (classes, aliases)
+
+
+def test_no_binding_row_carries_an_unresolved_reference() -> None:
+    """``strict_validate`` has to be able to DECIDE with the row's schema.
+
+    A ``$ref`` left in a row is not decidable locally: ``jsonschema`` finds no
+    store for an absolute URI and retrieves it OVER THE NETWORK, on a code path
+    it deprecates and says "will shortly become an error".  Measured before this
+    was fixed: 4.4 s per validation against a live URL, and a ``RefResolutionError``
+    offline.  So the emitter writes the document resolved (``bundle.resolved``),
+    and no row may carry a reference anywhere in it.
+
+    This is the runtime half of step 2.  The module half is the opposite and is
+    graded in ``test_emit``: a reference is an IMPORT in the generated module (P2)
+    and is never inlined there.  The two are not in tension -- one is where a type
+    LIVES and the other is what a document MEANS.
+    """
+    for document, row in sorted(adapter.bindings(TREE).items()):
+        assert bundle.references(row["schema"]) == [], document
+    # And the control: the bundle DOES have references, so the assertion above is
+    # over documents that had something to resolve rather than over nothing.
+    referencing = [d for d in adapter.bindings(TREE) if bundle.references(bundle.read(BUNDLE, d))]
+    assert referencing, "no emitted document has a reference; the check above graded nothing"

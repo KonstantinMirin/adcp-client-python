@@ -8,7 +8,12 @@ byte-compares the tree against exactly this):
 
     python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
-      print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d))])')
+      print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
+      or bundle.references_a_property(bundle.read(b, d))])')
+
+A document this command does not name is still emitted when a named one
+REFERENCES it: a module cannot import a symbol from a module no run wrote, so
+``emit`` walks ``$ref`` transitively and the run emits the closure.
 
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
@@ -16,9 +21,13 @@ path (D1): ``core/pagination-request.json`` ->
 ``src/adcp/types/_schemas/core/pagination_request.py``.  There is no module
 table, and the path is private (P8), so it is never a contract.
 
-This step lowers ONE shape: an object root with ``properties``, whose properties
-are scalars (with their constraints and their format), nested objects, or
-typeless.  Every other shape is a later step's row in D2, and a document
+This step lowers an object root with ``properties``, whose properties are
+scalars (with their constraints and their format), nested objects, typeless, or
+a ``$ref`` to another document; and a scalar root, as the ``Annotated`` alias
+D2 gives it, because a reference TARGET is one.  A cross-document ``$ref``
+becomes an IMPORT of the target's symbol (P2) -- the target declares its type
+once and the referencing module names it, so no constraint of the target has a
+second spelling to drift from.  Every other shape is a later step's row in D2, and a document
 carrying one is REFUSED by name, pointer and keyword rather than emitted
 approximately.  A refusal is the designed outcome of a keyword this emitter does
 not lower: a model that quietly ignores a constraint is wider than its schema,
@@ -38,6 +47,7 @@ import argparse
 import json
 import keyword
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -139,6 +149,27 @@ def module_path(document: str) -> str:
     return "/".join([*p.parent.parts, p.stem]).replace("-", "_")
 
 
+def relative_module(frm: str, to: str) -> str:
+    """D1 again: the import spelling is a function of the two document paths.
+
+    ``error-details/creative-revision-content-mismatch.json`` referencing
+    ``core/creative-revision-id.json`` imports from ``..core.creative_revision_id``:
+    up to the nearest package both modules live under, then down.  No table, and
+    nothing consults the tree -- a cross-document reference has one spelling and it
+    is derived from the same two strings D1 derives the output paths from.
+
+    Relative rather than absolute because ``_schemas`` is private (P8) and a
+    relative import is the one spelling that cannot name it.  An absolute
+    ``adcp.types._schemas.core...`` inside a generated module would publish the
+    private path 690 times over.
+    """
+    src, dst = module_path(frm).split("/"), module_path(to).split("/")
+    common = 0
+    while common < len(src) - 1 and common < len(dst) - 1 and src[common] == dst[common]:
+        common += 1
+    return "." * (len(src) - common) + ".".join(dst[common:])
+
+
 def field_name(key: str) -> str:
     """The Python field name for a property key, which is the key itself unless
     pydantic cannot carry a field under that name.
@@ -166,9 +197,21 @@ def field_name(key: str) -> str:
 # --------------------------------------------------------------------------- #
 # lowering
 # --------------------------------------------------------------------------- #
+def _no_binder(uri: str, pointer: str) -> tuple[str, str]:
+    """The default binder: a document lowered on its own resolves no reference.
+
+    ``emit`` supplies the real one, which owns the walk.  Lowering a document
+    without it refuses its references by name rather than inventing an import, so
+    there is no path on which a reference is silently dropped.
+    """
+    raise Refusal("$ref", pointer, f"no reference binder: {uri} cannot be resolved to a module")
+
+
 @dataclass
 class Module:
     document: str
+    #: ``(uri, pointer) -> (import module, symbol)``; see ``emit``.
+    bind: Callable[[str, str], tuple[str, str]] = _no_binder
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
@@ -184,11 +227,16 @@ class Module:
         self.blocks.append(block)
 
 
-def _check_keywords(node: dict, pointer: str, handled: set[str]) -> None:
+def _check_keywords(
+    node: dict,
+    pointer: str,
+    handled: set[str],
+    why: str = "this step lowers no such keyword (a later D2 row does)",
+) -> None:
     for key in sorted(node):
         if key in handled or key in ANNOTATIONS or key.startswith("x-"):
             continue
-        raise Refusal(key, pointer, "this step lowers no such keyword (a later D2 row does)")
+        raise Refusal(key, pointer, why)
 
 
 def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
@@ -200,6 +248,23 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
     presence, not a claim that the document admits an explicit null.
     ``AdCPBaseModel.strict_validate`` asks the document about that.
     """
+    if "$ref" in node:
+        # P2: a reference is a REFERENCE.  The target's own module declares its
+        # type once and this one names it; nothing of the target's shape is read
+        # here, so nothing of it can be copied.
+        #
+        # A sibling beyond an annotation refuses, and the keyword it refuses on is
+        # the sibling.  draft-07 says a `$ref` IGNORES its siblings, so a sibling
+        # constraint would be a constraint the document does not apply -- and
+        # `resolve_all_refs`, which the harness resolves with, MERGES it instead.
+        # Emitting the import alone is the draft-07 reading and would then be
+        # graded against the stricter merged one, so the document is refused by
+        # name rather than graded against a schema it does not mean.
+        _check_keywords(node, pointer, {"$ref"}, "a sibling of $ref, which draft-07 ignores")
+        module, symbol = mod.bind(node["$ref"], pointer)
+        mod.imports.add((module, symbol))
+        return symbol
+
     kind = node.get("type")
 
     if kind is None:
@@ -318,14 +383,17 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
 # the module text (D8: the emitter owns its layout)
 # --------------------------------------------------------------------------- #
 def _import_rank(module: str) -> int:
-    """stdlib, then the third-party library, then this package's own base."""
+    """stdlib, the third-party library, this package's own base, then a sibling
+    module of this tree (always relative, so always ``.``-prefixed)."""
+    if module.startswith("."):
+        return 3
     if module == BASE_MODULE:
         return 2
     return 1 if module == "pydantic" else 0
 
 
 def render(mod: Module, symbol: str) -> str:
-    groups: list[list[str]] = [[], [], []]
+    groups: list[list[str]] = [[], [], [], []]
     by_module: dict[str, set[str]] = {}
     for module, name in mod.imports:
         by_module.setdefault(module, set()).add(name)
@@ -344,17 +412,45 @@ def render(mod: Module, symbol: str) -> str:
     return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
 
 
-def lower_document(document: str, doc: dict) -> tuple[Module, str]:
+def lower_document(
+    document: str, doc: dict, bind: Callable[[str, str], tuple[str, str]] = _no_binder
+) -> tuple[Module, str]:
     title = doc.get("title")
     if not isinstance(title, str) or not title:
         raise Refusal("title", "", "the document declares no title to derive a name from")
     symbol = class_name(title)
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
-    mod = Module(document=document)
-    if "properties" not in doc or doc.get("type") not in (None, "object"):
-        raise Refusal("type", "", "this step emits an object root with properties")
-    lower_object(doc, symbol, "", mod)
+    mod = Module(document=document, bind=bind)
+    kind = doc.get("type")
+    if "properties" in doc and kind in (None, "object"):
+        lower_object(doc, symbol, "", mod)
+    elif isinstance(kind, str) and kind in SCALAR:
+        # D2's root-scalar row, which this step needs because a reference TARGET is
+        # one 100 times over: `core/creative-revision-id.json` is a string with
+        # `minLength`/`maxLength` and has no field to hang itself on.  An alias,
+        # not a class -- a wrapper class would be a second name for the same node
+        # (P2) and would make every referencing model carry an object where the
+        # document carries a string.  A root array and a root mapping are step 6's
+        # rows and still refuse below.
+        #
+        # D4 puts acceptance on ``strict_validate``, and an alias has no class to
+        # carry one, so the module carries it: ``strict_alias`` is the same schema
+        # lookup and the same refusal ``AdCPBaseModel.strict_validate`` uses, over
+        # the same binding table, bound to this module's own row.  Without it the
+        # harness would fall back to ``TypeAdapter`` -- the alias's CONSTRUCTOR --
+        # and ``codegen.adapter`` refuses a binding whose entry point is that.
+        ann = annotation(doc, "", symbol, mod)
+        mod.imports.add((BASE_MODULE, "strict_alias"))
+        mod.declare(
+            symbol,
+            "",
+            f'{symbol} = {ann}\n\n\nstrict_validate = strict_alias(__name__, "{symbol}", {symbol})',
+        )
+    else:
+        raise Refusal(
+            "type", "", "this step emits an object root with properties, or a scalar root"
+        )
     return mod, symbol
 
 
@@ -369,35 +465,103 @@ class Emitted:
 
 
 def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
-    """Lower every named document.  Sorted, so the run is order-independent (P7)."""
+    """Lower every named document, and every document one of them references.
+
+    Sorted, so the run is order-independent (P7).  Transitive emission is the walk
+    a reference forces: a module cannot import a symbol from a module no run wrote,
+    so a named document's targets are emitted whether or not they were named.  The
+    walk is over ``$ref`` strings and nothing else -- an import edge is
+    ``(referencing path, target path)``, which is what D1 already derives a module
+    path from, so there is no resolution here and no node graph.  Resolution does
+    the OPPOSITE of what an import needs: it substitutes the target's contents for
+    the reference, leaving nothing to emit an import from.
+
+    It terminates on a memo, and a document reached while its own lowering is in
+    flight is a reference CYCLE, which refuses by name: two modules importing each
+    other's symbol at module scope is an ImportError, not a type.
+    """
     out = Emitted()
     packages: set[str] = set()
-    for document in sorted(set(documents)):
+    known = set(bundle.portable(bundle_dir))
+    #: document -> (module, symbol, the document itself).  The document is kept
+    #: because the binding row carries it (D4), and the row must carry the SAME
+    #: read the lowering used rather than a second one.
+    lowered: dict[str, tuple[Module, str, dict]] = {}
+    refused: dict[str, Refusal] = {}
+    inflight: list[str] = []
+
+    def bind(referencing: str) -> Callable[[str, str], tuple[str, str]]:
+        def do(uri: str, pointer: str) -> tuple[str, str]:
+            target = bundle.document_for(uri, known)
+            if target is None:
+                raise Refusal(
+                    "$ref",
+                    pointer,
+                    f"{uri} names no document of this bundle (a fragment names a node "
+                    "inside one, which needs a name of its own: a later step's row)",
+                )
+            try:
+                _, symbol = lower(target)  # the target emits first, or this refuses with it
+            except Refusal as r:
+                raise Refusal("$ref", pointer, f"its target {target} is refused: {r}") from r
+            return relative_module(referencing, target), symbol
+
+        return do
+
+    def lower(document: str) -> tuple[Module, str]:
+        if document in lowered:
+            mod, symbol, _ = lowered[document]
+            return mod, symbol
+        if document in refused:
+            raise refused[document]
+        if document in inflight:
+            raise Refusal("$ref", "", f"a reference cycle: {' -> '.join([*inflight, document])}")
+        inflight.append(document)
         doc = bundle.read(bundle_dir, document)
         try:
-            mod, symbol = lower_document(document, doc)
+            mod, symbol = lower_document(document, doc, bind(document))
         except Refusal as r:
-            out.refusals[document] = {
-                "keyword": r.keyword,
-                "pointer": r.pointer,
-                "detail": r.detail,
-            }
-            continue
+            refused[document] = r
+            raise
+        finally:
+            inflight.pop()
+        lowered[document] = (mod, symbol, doc)
+        return mod, symbol
+
+    for document in sorted(set(documents)):
+        try:
+            lower(document)
+        except Refusal:
+            continue  # recorded in `refused`, reported below by name and keyword
+
+    for document in sorted(lowered):
+        mod, symbol, doc = lowered[document]
         rel = module_path(document)
         out.files[f"{rel}.py"] = render(mod, symbol)
         # The document travels WITH the binding: ``strict_validate`` decides
         # acceptance against the schema the class was generated from (D4), and
         # the bundle is a build-time input -- 124 MB, with a version in its path
-        # -- so it cannot be the runtime source.  Written from the same
-        # ``bundle.read`` the lowering used, which is what makes P10's byte
-        # compare cover the schemas the runtime asks, and not only the modules.
+        # -- so it cannot be the runtime source.  Written here, by the run that
+        # lowered it, which is what makes P10's byte compare cover the schemas
+        # the runtime asks and not only the modules.
+        #
+        # RESOLVED, and that is this step's correction to the row rather than a
+        # preference: a reference is an import in the MODULE (P2), but a `$ref`
+        # left in the ROW is a schema nothing local can decide, so `jsonschema`
+        # fetches the target over the network -- see ``bundle.resolved``.  A
+        # document with no reference resolves to itself, so the 34 rows step 1
+        # wrote are unchanged by this.
         out.bindings[document] = {
             "module": f"{PACKAGE}.{rel.replace('/', '.')}",
             "symbol": symbol,
-            "schema": doc,
+            "schema": bundle.resolved(bundle_dir, document) if bundle.references(doc) else doc,
         }
         parts = rel.split("/")[:-1]
         packages.update("/".join(parts[: i + 1]) for i in range(len(parts)))
+
+    for document in sorted(refused):
+        r = refused[document]
+        out.refusals[document] = {"keyword": r.keyword, "pointer": r.pointer, "detail": r.detail}
     for pkg in packages:
         out.files[f"{pkg}/__init__.py"] = ""
     out.files["__init__.py"] = ""
@@ -439,7 +603,10 @@ def main(argv: list[str] | None = None) -> int:
     for document in sorted(out.refusals):
         r = out.refusals[document]
         print(f"refused {document} at {r['pointer']} on {r['keyword']}: {r['detail']}")
-    print(f"emitted {len(out.bindings)} / refused {len(out.refusals)} of {len(set(ns.document))}")
+    print(
+        f"emitted {len(out.bindings)} / refused {len(out.refusals)}; "
+        f"{len(set(ns.document))} named, the rest reached through a $ref"
+    )
     return 1 if out.refusals else 0
 
 
