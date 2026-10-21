@@ -1,0 +1,26 @@
+[project]
+name = "adcp-emit"
+version = "0.0.0"
+description = "Emit the AdCP SDK types from the schema bundle."
+requires-python = ">=3.10"
+dependencies = [
+    # The harness grades a (JSON Schema document, Python class) pair. These four
+    # are everything it imports, and the emitter adds nothing to them.
+    "pydantic>=2.13.0,<2.14",
+    "jsonschema>=4.20.0",
+    # Pinned exactly. A hypothesis example stream is a function of the version:
+    # the same control pair measured 30/40 at 6.98.0, 24 at 6.112.0, 25 at
+    # 6.125.0, 28 at 6.140.0 and 6.168.5, 20 at 6.170.5. 6.169.0 raises the
+    # floor to Python 3.11, above requires-python here.
+    "hypothesis==6.168.5",
+    "hypothesis-jsonschema==0.23.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
