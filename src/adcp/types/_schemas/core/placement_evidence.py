@@ -2,23 +2,26 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import AnyUrl, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel
+from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
 class PlacementEvidence(AdCPBaseModel):
-    "Seller-attested evidence artifact proving a physical placement ran \u2014 a posting photograph for an OOH face, a tearsheet page for a print insertion. Channel-neutral: this record carries the artifact facts; what the artifact proves (posting, rotation, insertion) is declared by the containing record's event semantics. Third-party audit convention: the artifact should be geotagged and timestamped within the placement period, with the creative legible."
-
-    model_config = ConfigDict(extra="allow")
-
-    url: AnyUrl
-    captured_at: datetime | None = None
-    latitude: Annotated[float, Field(ge=-90, le=90)] | None = None
-    longitude: Annotated[float, Field(ge=-180, le=180)] | None = None
-    notes: str | None = None
+    """
+    Seller-attested evidence artifact proving a physical placement ran — a posting photograph for an OOH face, a tearsheet page for a print insertion. Channel-neutral: this record carries the artifact facts; what the artifact proves (posting, rotation, insertion) is declared by the containing record's event semantics. Third-party audit convention: the artifact should be geotagged and timestamped within the placement period, with the creative legible.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-evidence.json', pointer='#')
+    url: Annotated[AnyUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
+    captured_at: Annotated[datetime | None, Field(description='When the artifact was captured')] = None
+    latitude: Annotated[float | None, Field(description='Capture location latitude', ge=-90.0, le=90.0)] = None
+    longitude: Annotated[float | None, Field(description='Capture location longitude', ge=-180.0, le=180.0)] = None
+    notes: Annotated[str | None, Field(description="Context that doesn't fit the structured fields (e.g., 'shot from the eastbound approach at 40mph equivalent')")] = None
 
 
 __all__ = ["PlacementEvidence"]

@@ -4,7 +4,7 @@
 
 The committed tree is the same command over this step's whole population, which
 is derived from the bundle and never listed by hand (``tests/test_emit.py``
-byte-compares the tree against exactly this):
+grades the tree against exactly this):
 
     python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
@@ -15,11 +15,29 @@ A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
 ``emit`` walks ``$ref`` transitively and the run emits the closure.
 
+**This module is the walk, and it decides; it writes no annotation text.**
+``docs/plan/rebuild-plan.md`` §1 puts the seam at the decision: everything here
+reads the schema and decides what a node IS -- a class, a type, a field, a
+constraint, a default, a name, what ``extra`` is -- and ``codegen.compiler``
+hands that decision to ``datamodel-code-generator``'s pydantic-v2 model layer,
+which writes the Python.  dmcg's parser never runs.  What this module still owns
+in the output is the MODULE around the classes: the header, the import block, the
+``__all__``, and the two statements a root-scalar alias needs, because no
+compiler template has a slot for a line beside an alias.
+
 The bundle directory is an argument (D9) and there is no default, so no version
 literal can enter this package.  The output path is a function of the document
 path (D1): ``core/pagination-request.json`` ->
 ``src/adcp/types/_schemas/core/pagination_request.py``.  There is no module
 table, and the path is private (P8), so it is never a contract.
+
+**Each emitted class carries the schema it was generated from**, as a
+``SchemaRef`` on ``__adcp_schema__`` (§2), and the run writes that document into
+the package beside the module.  A root class names its document's root; a nested
+class names its own node, because a nested class is a subschema and must grade
+against that.  There is no binding table: the previous arrangement wrote one and
+a separate adapter pointed the grader at a tree through it, and an adapter that
+can be aimed can be aimed at the wrong tree.
 
 This step lowers an object root with ``properties``, whose properties are
 scalars (with their constraints and their format), nested objects, typeless, or
@@ -35,10 +53,11 @@ which is the defect class P3 exists to remove.
 
 The emitter owns its own layout and writes no file twice (D8): there is no
 formatter and no patch pass.  P7 is held by construction rather than tested:
-``emit`` sorts its document set, ``render`` sorts the import set, and the two
-JSON artifacts are dumped with sorted keys, so the output is a function of
-(bundle, document set, this module) and of nothing a caller orders.  What a
-test CAN perturb is set iteration, and ``test_emit`` does, with two hash seeds.
+``emit`` sorts its document set, ``render`` sorts the import set, and the JSON
+artifacts are dumped with sorted keys, so the output is a function of
+(bundle, document set, this package, the pinned compiler) and of nothing a
+caller orders.  What a test CAN perturb is set iteration, and ``test_emit``
+does, with two hash seeds.
 """
 
 from __future__ import annotations
@@ -54,7 +73,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from codegen import bundle
+from adcp.types._base import SchemaRef
+from codegen import bundle, compiler
+from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
 TREE = Path("src") / "adcp" / "types" / "_schemas"
@@ -64,38 +85,33 @@ BASE_MODULE = "adcp.types._base"
 
 SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
 
-#: JSON Schema keyword -> pydantic ``Field`` kwarg, for a scalar.
-CONSTRAINTS = {
-    "minimum": "ge",
-    "maximum": "le",
-    "exclusiveMinimum": "gt",
-    "exclusiveMaximum": "lt",
-    "multipleOf": "multiple_of",
-    "minLength": "min_length",
-    "maxLength": "max_length",
-    "pattern": "pattern",
-}
+#: The JSON Schema constraint keywords a scalar node can carry.  The spelling is
+#: the DOCUMENT'S, and it stays the document's all the way into the compiler --
+#: see ``compiler.CONSTRAINTS`` and gate 1 there.
+CONSTRAINTS = compiler.CONSTRAINTS
 
-#: ``format`` -> the Python type that admits exactly the format's values, and
-#: the import that names it.  A format is in this table only when such a type
-#: exists and a document in the emitted population uses it.  ``hostname`` and
-#: ``email`` are deliberately ABSENT: neither has a type narrower than ``str``
-#: here without adding a dependency or hand-writing a checker, and ``str`` is
-#: already the document's own accepted set, because draft-07 ``format`` is an
-#: annotation that ``jsonschema`` asserts nothing for.  A format with no row
-#: falls through to its ``type``.
+#: ``format`` -> the dotted path of the Python type that admits exactly the
+#: format's values.  A format is in this table only when such a type exists and
+#: a document in the emitted population uses it.  ``hostname`` and ``email`` are
+#: deliberately ABSENT: neither has a type narrower than ``str`` here without
+#: adding a dependency or hand-writing a checker, and ``str`` is already the
+#: document's own accepted set, because draft-07 ``format`` is an annotation that
+#: ``jsonschema`` asserts nothing for.  Neither appears in this step's
+#: population (measured: it uses ``date-time`` 7 times, ``uri`` 5, ``date`` 2,
+#: and no other), so a format with no row here is not reached; the first step
+#: whose population includes one has to decide whether to carry the annotation
+#: into ``json_schema_extra`` or refuse the document, because the faithfulness
+#: leg grades ``format`` as a fact the document states.
 FORMATS = {
-    "date": ("datetime", "date"),
-    "date-time": ("datetime", "datetime"),
-    "uri": ("pydantic", "AnyUrl"),
+    "date": "datetime.date",
+    "date-time": "datetime.datetime",
+    "uri": "pydantic.AnyUrl",
 }
 
-#: Keywords that annotate a node without constraining an instance.  Read and
-#: carried where there is somewhere to carry them; never a reason to refuse.
-#: ``default`` is here and is NOT transcribed: an optional property renders
-#: ``= None`` (D4), so an omitted key round-trips as omitted under
-#: ``exclude_unset`` instead of being filled in with a value the sender never
-#: sent, and a required property keeps no default at all.
+#: Keywords that annotate a node without constraining an instance.  ``default``
+#: and ``description`` are carried by the compiler (they are rendering, and
+#: rendering is what the compiler is for); the rest have nowhere to go and are
+#: never a reason to refuse.
 ANNOTATIONS = frozenset(
     {
         "$schema",
@@ -111,16 +127,6 @@ ANNOTATIONS = frozenset(
         "writeOnly",
     }
 )
-
-
-class Refusal(Exception):
-    """One document this emitter will not approximate, and why."""
-
-    def __init__(self, kw: str, pointer: str, detail: str) -> None:
-        super().__init__(f"{pointer or '/'}: {kw}: {detail}")
-        self.keyword = kw
-        self.pointer = pointer or "/"
-        self.detail = detail
 
 
 # --------------------------------------------------------------------------- #
@@ -194,8 +200,13 @@ def field_name(key: str) -> str:
     return name
 
 
+def schema_ref(document: str, pointer: str) -> SchemaRef:
+    """The schema reference a class at ``pointer`` of ``document`` carries."""
+    return SchemaRef(document, f"#{pointer}")
+
+
 # --------------------------------------------------------------------------- #
-# lowering
+# the walk: what each node IS
 # --------------------------------------------------------------------------- #
 def _no_binder(uri: str, pointer: str) -> tuple[str, str]:
     """The default binder: a document lowered on its own resolves no reference.
@@ -239,14 +250,33 @@ def _check_keywords(
         raise Refusal(key, pointer, why)
 
 
-def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
-    """The annotation text for one schema node.
+@dataclass(frozen=True)
+class Decided:
+    """What the walk decided one schema node IS.
+
+    ``format`` is set only when ``type`` does NOT already carry the format -- the
+    compiler then states it as an annotation rather than as a type.  Keeping the
+    two separate here is what makes the drop impossible to make by accident: a
+    format is either in the type or in this field, and never nowhere.
+    """
+
+    type: compiler.Type
+    constraints: dict[str, Any] = field(default_factory=dict)
+    format: str | None = None
+
+
+def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+    """What one schema node IS: a Python type, and what constrains it.
 
     Nullability is NOT a question here (D4).  This returns the node's own type,
-    and ``lower_object`` adds the ``| None`` arm an OPTIONAL property needs for
-    the value an omitted key leaves on the attribute -- which is a fact about
+    and the compiler adds the ``| None`` arm an OPTIONAL property needs for the
+    value an omitted key leaves on the attribute -- which is a fact about
     presence, not a claim that the document admits an explicit null.
     ``AdCPBaseModel.strict_validate`` asks the document about that.
+
+    The constraints come back in the DOCUMENT'S spelling and are passed through
+    unchanged: ``compiler.CONSTRAINTS`` gate 1 is that the compiler's
+    ``Constraints`` reads JSON Schema names and silently ignores pydantic ones.
     """
     if "$ref" in node:
         # P2: a reference is a REFERENCE.  The target's own module declares its
@@ -263,7 +293,7 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
         _check_keywords(node, pointer, {"$ref"}, "a sibling of $ref, which draft-07 ignores")
         module, symbol = mod.bind(node["$ref"], pointer)
         mod.imports.add((module, symbol))
-        return symbol
+        return Decided(compiler.Type(symbol, local=True))
 
     kind = node.get("type")
 
@@ -273,20 +303,19 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
             raise Refusal(
                 "type", pointer, "a typeless node carrying a constraint has nothing to apply it to"
             )
-        mod.imports.add(("typing", "Any"))
-        return "Any"  # D2's typeless row; the schema admits every value
+        return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
         raise Refusal("type", pointer, f"a multi-type node ({kind}) is step 6")
 
     if kind == "null":
         _check_keywords(node, pointer, {"type"})
-        return "None"
+        return Decided(compiler.Type("None"))
 
     if kind == "object":
         if "properties" not in node:
             raise Refusal("type", pointer, "an object node with no properties is a mapping, step 6")
-        return lower_object(node, name_hint, pointer, mod)
+        return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
 
     if kind == "array":
         raise Refusal("type", pointer, "an array node is step 6")
@@ -295,21 +324,16 @@ def annotation(node: dict, pointer: str, name_hint: str, mod: Module) -> str:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
 
     _check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
-    kwargs = [f"{CONSTRAINTS[k]}={node[k]!r}" for k in CONSTRAINTS if k in node]
-    ann = SCALAR[kind]
-    fmt = node.get("format")
-    if isinstance(fmt, str) and fmt in FORMATS and not kwargs:
+    constraints = {k: node[k] for k in CONSTRAINTS if k in node}
+    fmt = node.get("format") if isinstance(node.get("format"), str) else None
+    if fmt in FORMATS and not constraints:
         # The format's own type, but only with no constraint beside it: a
         # `min_length` belongs to a string and means nothing on a `date`.  With
         # one present the node keeps its scalar type and its constraints, which
-        # is the document's accepted set either way.
-        module, ann = FORMATS[fmt]
-        mod.imports.add((module, ann))
-    if kwargs:
-        mod.imports.add(("typing", "Annotated"))
-        mod.imports.add(("pydantic", "Field"))
-        ann = f"Annotated[{ann}, Field({', '.join(kwargs)})]"
-    return ann
+        # is the document's accepted set either way -- and the format then rides
+        # as an annotation, so the fact survives either way.
+        return Decided(compiler.Type(FORMATS[fmt]), constraints)
+    return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
 def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
@@ -327,7 +351,7 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             f"required names no property declares: {undeclared} (step 7's rule, not a field)",
         )
 
-    lines: list[str] = []
+    decided: list[compiler.Property] = []
     spelled: dict[str, str] = {}
     for key, sub in props.items():
         if not isinstance(sub, dict):
@@ -339,43 +363,56 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        ann = annotation(sub, at, name + class_name(key), mod)
-        if key not in required and ann not in ("None", "Any"):
-            # D4: an optional renders plain ``T | None = None``.  The ``None`` arm
-            # is the attribute's value for an omitted key, not a claim that the
-            # document admits an explicit null -- ``strict_validate`` asks the
-            # document about that.  Two annotations are left alone because they
-            # already carry the arm: ``Any | None`` evaluates to ``Any`` (live,
-            # one site: ``core/response.json``'s ``data``), and ``None`` cannot be
-            # unioned with itself at all -- ``eval("None | None")`` is a TypeError,
-            # so a ``{"type": "null"}`` optional would not import.  That second
-            # arm matches no document in this step's population and is therefore
-            # ungraded here; it is a guard against a latent import failure, not a
-            # measured behaviour.
-            ann = f"{ann} | None"
-        if fname == key:
-            lines.append(f"    {key}: {ann}" + ("" if key in required else " = None"))
-            continue
-        mod.imports.add(("pydantic", "Field"))
-        default = "" if key in required else "default=None, "
-        lines.append(f'    {fname}: {ann} = Field({default}alias="{key}")')
+        decided_type = decide_type(sub, at, name + class_name(key), mod)
+        is_required = key in required
+        default = compiler.MISSING
+        if "default" in sub:
+            if is_required:
+                # No rendering carries it: a pydantic field with a default is not
+                # required, so transcribing one here would widen the model's
+                # accepted set to admit an instance omitting a key the document
+                # demands -- and the schema half of `strict_validate` would hide
+                # that in both acceptance directions.  5 of the bundle's 339
+                # property defaults sit on a required property; none is in this
+                # step's population, so this refusal is a guard rather than a
+                # measured behaviour, and the step whose population reaches one
+                # decides between `json_schema_extra` and refusing.
+                raise Refusal(
+                    "default",
+                    at,
+                    "a default on a REQUIRED property has no rendering that does not also "
+                    "make the property optional",
+                )
+            default = sub["default"]
+        doc = sub.get("description")
+        decided.append(
+            compiler.Property(
+                name=fname,
+                wire=key,
+                type=decided_type.type,
+                required=is_required,
+                default=default,
+                description=doc if isinstance(doc, str) and doc else None,
+                constraints=decided_type.constraints,
+                format=decided_type.format,
+            )
+        )
 
     if isinstance(node.get("additionalProperties"), dict):
         raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
-    mod.imports.add((BASE_MODULE, "AdCPBaseModel"))
-    body: list[list[str]] = []
-    doc = node.get("description")
-    if isinstance(doc, str) and doc:
-        # json.dumps of a str is a valid Python string literal, so a description
-        # carrying a quote or a newline needs no escaping of its own here.
-        body.append(["    " + json.dumps(doc)])
-    extra = {False: "forbid", True: "allow"}.get(node.get("additionalProperties"))
-    if extra:  # D7; absent leaves the base's default in place
-        mod.imports.add(("pydantic", "ConfigDict"))
-        body.append([f'    model_config = ConfigDict(extra="{extra}")'])
-    body.append(lines)
-    block = f"class {name}(AdCPBaseModel):\n" + "\n\n".join("\n".join(s) for s in body)
-    mod.declare(name, pointer, block)
+    description = node.get("description")
+    rendered = compiler.render(
+        compiler.Class(
+            name=name,
+            ref=schema_ref(mod.document, pointer),
+            properties=tuple(decided),
+            description=description if isinstance(description, str) and description else None,
+            # D7; absent leaves the base's default in place
+            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+        )
+    )
+    mod.imports |= rendered.imports
+    mod.declare(name, pointer, rendered.text)
     return name
 
 
@@ -434,18 +471,29 @@ def lower_document(
         # document carries a string.  A root array and a root mapping are step 6's
         # rows and still refuse below.
         #
-        # D4 puts acceptance on ``strict_validate``, and an alias has no class to
-        # carry one, so the module carries it: ``strict_alias`` is the same schema
-        # lookup and the same refusal ``AdCPBaseModel.strict_validate`` uses, over
-        # the same binding table, bound to this module's own row.  Without it the
-        # harness would fall back to ``TypeAdapter`` -- the alias's CONSTRUCTOR --
-        # and ``codegen.adapter`` refuses a binding whose entry point is that.
-        ann = annotation(doc, "", symbol, mod)
+        # The ANNOTATION is still the compiler's: the same field rendering a class
+        # property gets, read off the field instead of out of a class body, so a
+        # constraint on an alias and a constraint on a property cannot come to be
+        # spelled two ways.  What is ours is the two module-level STATEMENTS, and
+        # §1 says why: no compiler template has a slot for a line beside an alias.
+        decided_type = decide_type(doc, "", symbol, mod)
+        description = doc.get("description")
+        rendered = compiler.render_alias(
+            symbol,
+            decided_type.type,
+            decided_type.constraints,
+            description=description if isinstance(description, str) and description else None,
+            format=decided_type.format,
+        )
+        mod.imports |= rendered.imports
         mod.imports.add((BASE_MODULE, "strict_alias"))
+        ref = schema_ref(document, "")
         mod.declare(
             symbol,
             "",
-            f'{symbol} = {ann}\n\n\nstrict_validate = strict_alias(__name__, "{symbol}", {symbol})',
+            f"__adcp_schema__ = {ref!r}\n\n"
+            f"{rendered.text}\n\n\n"
+            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
         )
     else:
         raise Refusal(
@@ -460,7 +508,11 @@ def lower_document(
 @dataclass
 class Emitted:
     files: dict[str, str] = field(default_factory=dict)  # path -> text
-    bindings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    #: document -> the module it was written to.  The run's own record of what it
+    #: emitted, for the refusal arithmetic and the CLI report.  It is NOT a
+    #: binding table and nothing reads it at runtime: a class finds its schema
+    #: through its own ``__adcp_schema__``.
+    emitted: dict[str, str] = field(default_factory=dict)
     refusals: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
@@ -483,9 +535,6 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     out = Emitted()
     packages: set[str] = set()
     known = set(bundle.portable(bundle_dir))
-    #: document -> (module, symbol, the document itself).  The document is kept
-    #: because the binding row carries it (D4), and the row must carry the SAME
-    #: read the lowering used rather than a second one.
     lowered: dict[str, tuple[Module, str, dict]] = {}
     refused: dict[str, Refusal] = {}
     inflight: list[str] = []
@@ -538,24 +587,22 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         mod, symbol, doc = lowered[document]
         rel = module_path(document)
         out.files[f"{rel}.py"] = render(mod, symbol)
-        # The document travels WITH the binding: ``strict_validate`` decides
-        # acceptance against the schema the class was generated from (D4), and
-        # the bundle is a build-time input -- 124 MB, with a version in its path
-        # -- so it cannot be the runtime source.  Written here, by the run that
-        # lowered it, which is what makes P10's byte compare cover the schemas
-        # the runtime asks and not only the modules.
+        out.emitted[document] = f"{PACKAGE}.{rel.replace('/', '.')}"
+        # The document travels WITH the module, at its own bundle-relative path,
+        # because ``__adcp_schema__`` names that path and ``strict_validate``
+        # reads it to decide acceptance (D4).  The bundle is a build-time input
+        # -- 124 MB, with a version in its path -- so it cannot be the runtime
+        # source.  Written here, by the run that lowered it, which is what makes
+        # P10's compare cover the schemas the runtime asks and not only the
+        # modules.
         #
-        # RESOLVED, and that is this step's correction to the row rather than a
-        # preference: a reference is an import in the MODULE (P2), but a `$ref`
-        # left in the ROW is a schema nothing local can decide, so `jsonschema`
-        # fetches the target over the network -- see ``bundle.resolved``.  A
-        # document with no reference resolves to itself, so the 34 rows step 1
-        # wrote are unchanged by this.
-        out.bindings[document] = {
-            "module": f"{PACKAGE}.{rel.replace('/', '.')}",
-            "symbol": symbol,
-            "schema": bundle.resolved(bundle_dir, document) if bundle.references(doc) else doc,
-        }
+        # RESOLVED: a reference is an import in the MODULE (P2), but a `$ref`
+        # left in the DOCUMENT is a schema nothing local can decide, so
+        # `jsonschema` fetches the target over the network -- deprecated, 4.4 s
+        # per validation measured, and simply unavailable offline.  See
+        # ``bundle.resolved``; a document with no reference resolves to itself.
+        schema = bundle.resolved(bundle_dir, document) if bundle.references(doc) else doc
+        out.files[document] = json.dumps(schema, indent=2, sort_keys=True) + "\n"
         parts = rel.split("/")[:-1]
         packages.update("/".join(parts[: i + 1]) for i in range(len(parts)))
 
@@ -565,7 +612,6 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for pkg in packages:
         out.files[f"{pkg}/__init__.py"] = ""
     out.files["__init__.py"] = ""
-    out.files["_bindings.json"] = json.dumps(out.bindings, indent=2, sort_keys=True) + "\n"
     out.files["_refusals.json"] = json.dumps(out.refusals, indent=2, sort_keys=True) + "\n"
     return out
 
@@ -576,8 +622,8 @@ def write(out: Emitted, tree: Path) -> None:
     A stale module -- one emitted by an earlier run over a different document set
     -- is a real defect: it stays importable while no document produces it any
     more.  Pruning it here was tried and removed, because it makes the
-    one-document command above destroy the other 33 modules of the committed
-    tree, and a command whose demonstration wipes the tree gets run once.
+    one-document command above destroy the other modules of the committed tree,
+    and a command whose demonstration wipes the tree gets run once.
 
     The file SET is checked where P10 puts a check, against the inputs rather
     than against a previous output: ``test_emit`` compares the whole committed
@@ -604,7 +650,7 @@ def main(argv: list[str] | None = None) -> int:
         r = out.refusals[document]
         print(f"refused {document} at {r['pointer']} on {r['keyword']}: {r['detail']}")
     print(
-        f"emitted {len(out.bindings)} / refused {len(out.refusals)}; "
+        f"emitted {len(out.emitted)} / refused {len(out.refusals)}; "
         f"{len(set(ns.document))} named, the rest reached through a $ref"
     )
     return 1 if out.refusals else 0

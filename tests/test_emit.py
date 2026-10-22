@@ -1,12 +1,23 @@
 """Grade the committed emitted tree against the documents it was emitted from.
 
 Every assertion here is over something DERIVED: the population comes from the
-bundle, the pairs come from the emitter's own binding table, and the verdict
+bundle, the pairs come from the classes' own ``__adcp_schema__``, and the verdict
 comes from the harness.  There is no expected class list, no snapshot and no
 blessed value, so a test that passes cannot be passing because someone recorded
 what the tree happened to hold (P10).
 
-The bundle directory is a constant here and nowhere inside ``codegen/``: step 11
+**There is no adapter and no binding table.**  Both existed to tell the harness
+which document a class was generated from, and an indirection that can be aimed
+at a tree can be aimed at the WRONG tree -- which is how a previous attempt came
+to grade 1,602 documents green while generating nothing.  Now a class carries its
+own schema reference, so ``pairs`` reads the pairing off the class and the
+"grading someone else's tree" failure has no site.  What remains is a STALE
+module -- one an earlier run wrote and no current document produces -- and that
+is caught where P10 puts a check: ``test_the_committed_tree_is_what_a_fresh_run_emits``
+compares the whole tree with a fresh emission of the derived population, so a file
+no run produces is a failure at the gate.
+
+The bundle directory is a constant here and nowhere inside ``codegen/``: step 10
 derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
 """
 
@@ -16,18 +27,20 @@ import ast
 import importlib
 import json
 import os
+import pkgutil
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, NamedTuple
 
 import pytest
 from pydantic import ValidationError
 
-from adcp.types._base import AdCPBaseModel, _document_at, _document_of
-from codegen import adapter, bundle, emit
-from codegen.harness import check_pair
+from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
+from codegen import bundle, emit
+from codegen.harness import Pair, check_faithful, check_pair, steps
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -52,6 +65,73 @@ def population() -> list[str]:
     return sorted(set(leaves()) | set(referencing()))
 
 
+# --------------------------------------------------------------------------- #
+# the pairs, read off the classes themselves
+# --------------------------------------------------------------------------- #
+class Graded(NamedTuple):
+    ref: SchemaRef
+    model: Any
+    accept: Any
+    module: str
+
+
+def graded() -> list[Graded]:
+    """Every class and alias the tree carries, with the schema each one names.
+
+    The whole of the pairing.  A class is taken only from the module that DEFINES
+    it (``__module__``), because a referencing module imports its target's symbol
+    and the same class would otherwise be graded once per importer.
+
+    An alias is D2's root-scalar row: it is not a class, so its MODULE carries
+    the ``__adcp_schema__`` and the ``strict_validate``, and the model is the one
+    name the module exports.  Both arms are asserted non-empty below, so neither
+    is graded by an empty loop.
+    """
+    import adcp.types._schemas as pkg
+
+    out: list[Graded] = []
+    for info in sorted(pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."), key=lambda i: i.name):
+        module = importlib.import_module(info.name)
+        for value in vars(module).values():
+            if (
+                isinstance(value, type)
+                and issubclass(value, AdCPBaseModel)
+                and "__adcp_schema__" in value.__dict__
+                and value.__module__ == info.name
+            ):
+                out.append(Graded(value.__adcp_schema__, value, value.strict_validate, info.name))
+        ref = vars(module).get("__adcp_schema__")
+        if isinstance(ref, SchemaRef) and callable(vars(module).get("strict_validate")):
+            (symbol,) = module.__all__
+            out.append(Graded(ref, getattr(module, symbol), module.strict_validate, info.name))
+    return out
+
+
+def pair_of(g: Graded) -> Pair:
+    return Pair(
+        name=f"{g.ref.document}{g.ref.pointer}",
+        schema=schema_at(g.ref),
+        model=g.model,
+        accept=g.accept,
+    )
+
+
+PAGINATION = "core/pagination-request.json"
+
+#: ``Field`` kwargs that state no constraint: a name (``alias``), a presence
+#: default, and the two annotations the document carries and the compiler
+#: transcribes.  Everything else a ``Field`` can carry narrows a value, so a
+#: kwarg outside this set has to be one the document declares locally.
+ANNOTATION_KWARGS = frozenset({"alias", "default", "description", "json_schema_extra"})
+
+
+def pagination() -> Graded:
+    return next(g for g in graded() if g.ref == SchemaRef(PAGINATION, "#"))
+
+
+# --------------------------------------------------------------------------- #
+# the population and the arithmetic over it
+# --------------------------------------------------------------------------- #
 def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     """A verdict read off a population nobody counted is a verdict over however
     many documents there turned out to be, including none."""
@@ -59,14 +139,14 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     assert len(leaves()) == 85
     assert len(referencing()) == 249
     assert len(population()) == 334
-    assert "core/pagination-request.json" in leaves()
+    assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
     out = emit.emit(BUNDLE, population())
-    assert set(population()) <= set(out.bindings) | set(out.refusals)
-    assert not set(out.bindings) & set(out.refusals)
+    assert set(population()) <= set(out.emitted) | set(out.refusals)
+    assert not set(out.emitted) & set(out.refusals)
     for document, row in out.refusals.items():
         assert row["keyword"] and row["pointer"], document
 
@@ -77,90 +157,227 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     that stopped it.  An import of a symbol from a module no run wrote is an
     ImportError, so there is no third outcome."""
     out = emit.emit(BUNDLE, population())
-    pulled_in = set(out.bindings) - set(population())
+    pulled_in = set(out.emitted) - set(population())
     assert pulled_in, "no document was reached through a reference; the walk graded nothing"
     assert "core/creative-revision-id.json" in pulled_in
     # every reference of every emitted document resolves to a document also emitted
     known = set(bundle.portable(BUNDLE))
-    for document in out.bindings:
+    for document in out.emitted:
         for _, uri in bundle.references(bundle.read(BUNDLE, document)):
             target = bundle.document_for(uri, known)
-            assert target in out.bindings, (document, uri)
+            assert target in out.emitted, (document, uri)
 
 
-def test_pagination_request_is_graded_green_in_both_directions() -> None:
-    """Step 1's own document, graded over EVERY constraint site it has."""
-    pairs = {p.name: p for p in adapter.pairs(BUNDLE, TREE)}
-    rep = check_pair(pairs["core/pagination-request.json"], max_steps=None)
+def test_the_pairing_is_intrinsic_to_every_class_the_tree_carries() -> None:
+    """§2: the class names its schema, so nothing aims the grader at a tree.
+
+    Three things, all derived:
+
+    * every class and alias in the tree names a document THIS run emitted, so no
+      module survives from a run over a different population;
+    * every emitted document has exactly one ROOT pair, so N is a count of
+      documents and not of classes;
+    * a nested class names its own node and not its document's root, because a
+      nested class is a subschema (and the previous arrangement could not bind
+      one at all -- a nested class had no row and so no ``strict_validate``).
+    """
+    emitted = set(emit.emit(BUNDLE, population()).emitted)
+    rows = graded()
+    assert {g.ref.document for g in rows} == emitted
+    roots = [g for g in rows if g.ref.pointer == "#"]
+    assert sorted(g.ref.document for g in roots) == sorted(emitted)
+    nested = [g for g in rows if g.ref.pointer != "#"]
+    assert nested, "no nested class was emitted; the pointer arm is graded by nothing"
+    for g in nested:
+        assert schema_at(g.ref) != schema_at(SchemaRef(g.ref.document, "#")), g.ref
+    aliases = [g for g in rows if not isinstance(g.model, type)]
+    assert aliases, "no root-scalar alias was emitted; that arm is graded by nothing"
+
+
+# --------------------------------------------------------------------------- #
+# the three legs
+# --------------------------------------------------------------------------- #
+def test_pagination_request_is_graded_green_on_all_three_legs() -> None:
+    """Step 1's own document, over EVERY constraint site it has.
+
+    The direction-2 denominator is asserted, not just the verdict: a model with
+    ``Any`` on every field is green in both directions on this document with a
+    denominator of zero (see the next test), so a green mark without the count
+    beside it says nothing.
+    """
+    rep = check_pair(pair_of(pagination()), max_steps=None)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.step_sites == 3, rep.step_sites  # minimum, maximum, additionalProperties
     assert [r.outcome for r in rep.refuses] == ["pass"] * 3
+    assert rep.graded_instances == 75, rep.graded_instances
+    assert rep.faithful.outcome == "pass", (rep.faithful.missing, rep.faithful.differs)
+    assert rep.faithful.compared == 10, rep.faithful.compared
+    assert rep.outcome == "pass"
 
 
-def test_the_referencing_model_refuses_a_constraint_ANOTHER_document_declares() -> None:
-    """Step 2's own control, over every constraint site it has.
+def test_the_compiler_carries_what_the_document_says_and_a_text_emitter_dropped() -> None:
+    """By introspection, not by reading the emitted text.
 
-    The sharp half of "both graded green" here: two of the six sites --
-    ``minLength`` and ``maxLength`` at ``/properties/revision_id`` -- are declared
-    by ``core/creative-revision-id.json`` and by nothing in this document, and the
-    referencing model refuses a violation of each.  The constraint arrives through
-    the import; there is nowhere else it could have come from.
-
-    This does NOT grade P2, and the pair of tests is deliberate: a COPY of the
-    target's constraints also refuses, so this one passes while
-    ``..._is_an_import_and_not_a_copy`` fails -- probed, by emitting the copy.
+    These are the facts the faithfulness leg exists to grade, named here one at a
+    time so a failure says WHICH one moved.  All four were dropped by the
+    hand-rolled renderer this step replaces, and all four come out of the
+    compiler for free.
     """
-    control = "error-details/creative-revision-content-mismatch.json"
-    pair = next(p for p in adapter.pairs(BUNDLE, TREE) if p.name == control)
-    target = bundle.read(BUNDLE, "core/creative-revision-id.json")
-    theirs = set(target) & set(emit.CONSTRAINTS)
-    ours = {
-        k
-        for _, node in bundle.nodes(bundle.read(BUNDLE, control))
-        if "$ref" not in node
-        for k in node
-        if k in emit.CONSTRAINTS
-    }
-    assert theirs - ours, "the target declares no constraint this document does not"
+    model = pagination().model
+    schema = schema_at(SchemaRef(PAGINATION, "#"))
 
+    assert model.model_fields["max_results"].default == schema["properties"]["max_results"]["default"]
+    assert model.model_fields["max_results"].default == 50
+    assert {
+        name: field.description for name, field in model.model_fields.items()
+    } == {name: node["description"] for name, node in schema["properties"].items()}
+    emitted = model.model_json_schema()["properties"]["max_results"]["anyOf"][0]
+    assert (emitted["minimum"], emitted["maximum"]) == (
+        schema["properties"]["max_results"]["minimum"],
+        schema["properties"]["max_results"]["maximum"],
+    )
+    assert model.model_config["extra"] == "forbid"  # D7, from additionalProperties: false
+    assert model.__adcp_schema__ == SchemaRef(PAGINATION, "#")
+
+
+def test_leg_3_grades_the_generated_code_and_the_acceptance_legs_do_not() -> None:
+    """The measurement that forces leg 3, as a test rather than as a note.
+
+    A model with ``Any`` on every field is wider than its document in every way
+    an annotation can be.  Graded through the PRODUCTION entry point -- which
+    validates against the document and only then constructs, and is therefore the
+    only entry point grading acceptance says anything about -- it is
+    indistinguishable from a faithful model: direction 1 passes, all three
+    direction-2 steps pass, and the denominator is the SAME 75 instances the
+    faithful model is graded over.  The schema half refuses every stepped
+    instance, so the verdict is the schema's and the annotations are never
+    consulted.
+
+    **That is strictly worse than the plan's §4 states, and the correction
+    matters.**  §4 records this as a pass "with a direction-2 denominator of 0
+    instances", which would make the zero-denominator rule enough to catch it.
+    It is not: the 0 came from the probe's own hand-rolled entry point raising
+    ``jsonschema.ValidationError`` (which ``check_refuses`` does not catch, so
+    every step reported ``harness_error``) while the probe's verdict read
+    ``accepted_invalid == 0`` as green.  Measured both ways in the same process:
+    the FAITHFUL model gets the same denominator of 0 through that wrapper, so
+    the 0 was a property of the wrapper and not of the model.  Through the real
+    one, both models get 75.  So leg 3 is not a second opinion -- it is the only
+    thing that separates them.
+
+    Falsifiable here: delete leg 3 and a wide model passes this file.
+    """
+    schema = schema_at(SchemaRef(PAGINATION, "#"))
+
+    class Wide(AdCPBaseModel):
+        __adcp_schema__ = SchemaRef(PAGINATION, "#")
+        model_config = {"extra": "forbid"}
+        max_results: Any = None
+        cursor: Any = None
+
+    wide = check_pair(
+        Pair(name="wide", schema=schema, model=Wide, accept=Wide.strict_validate), max_steps=None
+    )
+    faithful = check_pair(pair_of(pagination()), max_steps=None)
+
+    assert wide.accepts.outcome == faithful.accepts.outcome == "pass"
+    assert [r.outcome for r in wide.refuses] == [r.outcome for r in faithful.refuses] == ["pass"] * 3
+    assert wide.graded_instances == faithful.graded_instances == 75
+
+    assert faithful.faithful.outcome == "pass"
+    assert wide.faithful.outcome == "model_drops_a_fact"
+    missing = {m.split(":")[0] for m in wide.faithful.missing}
+    assert {
+        "/properties/max_results/type",
+        "/properties/max_results/minimum",
+        "/properties/max_results/maximum",
+    } <= missing
+    # ``Any = None`` STATES a default, it just states the wrong one, so it is a
+    # difference and not an omission -- and leg 3 has to tell those apart,
+    # because "the model says nothing" and "the model says something else" point
+    # at different defects in the walk.
+    assert "/properties/max_results/default: the document says 50, the model None" in wide.faithful.differs
+
+
+def test_a_zero_direction_2_denominator_is_not_reportable_as_a_pass() -> None:
+    """The other half of the rule, and it needs its own fixture.
+
+    The rule is right -- a pair no instance reached is graded by nothing in
+    direction 2 -- and the test above shows it is not what catches a wide model.
+    So it is graded here on the thing that does produce a zero denominator: an
+    entry point that refuses with an exception ``check_refuses`` does not catch,
+    which is the shape the plan's own probe had.  Every step reports
+    ``harness_error``, the denominator is 0, and the pair's verdict is a refusal
+    rather than a pass.
+    """
+    import jsonschema
+
+    schema = schema_at(SchemaRef(PAGINATION, "#"))
+    model = pagination().model
+
+    def foreign_error(payload: Any) -> Any:
+        jsonschema.validate(payload, schema)  # raises jsonschema's error, not pydantic's
+        return model.model_validate(payload)
+
+    rep = check_pair(
+        Pair(name="foreign", schema=schema, model=model, accept=foreign_error), max_steps=None
+    )
+    assert [r.outcome for r in rep.refuses] == ["harness_error"] * 3
+    assert rep.graded_instances == 0
+    assert rep.outcome.startswith("refuses:harness_error")
+
+
+@pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
+def test_every_class_is_graded_green_on_all_three_legs(row: Graded) -> None:
+    """N: emitted AND graded green against the schema the class itself names.
+
+    ``no_constraint_to_step`` is the one verdict other than ``pass`` allowed
+    through, and only where the document genuinely states no keyword ``steps()``
+    can step -- asserted here against ``steps()`` itself rather than taken on
+    trust.  Such a pair is still graded by direction 1 and by leg 3, and the
+    assertion below requires leg 3 to have compared something, so it is not a
+    pair nothing looked at.
+    """
+    pair = pair_of(row)
     rep = check_pair(pair, max_steps=None)
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-    assert [r.outcome for r in rep.refuses] == ["pass"] * rep.step_sites
-    assert {r.keyword for r in rep.refuses if r.pointer == "/properties/revision_id"} == theirs
-
-
-@pytest.mark.parametrize("document", sorted(adapter.bindings(TREE)))
-def test_every_binding_is_graded_green_in_both_directions(document: str) -> None:
-    """N: emitted AND graded green against the EMITTING document, both ways."""
-    pair = next(p for p in adapter.pairs(BUNDLE, TREE) if p.name == document)
-    rep = check_pair(pair, max_steps=None)
-    assert rep.missing_formats == []
-    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+    assert rep.faithful.outcome == "pass", (rep.faithful.missing, rep.faithful.differs)
     bad = [(r.keyword, r.pointer, r.outcome, r.counterexample, r.harness) for r in rep.refuses]
     assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
+    if rep.outcome != "pass":
+        assert rep.outcome == "no_constraint_to_step", rep.outcome
+        assert steps(pair.schema) == []
+        assert rep.faithful.compared > 0
 
 
+def test_the_direction_2_denominator_is_counted_over_the_whole_population() -> None:
+    """One number for the step, with its denominator, because a per-pair green
+    mark does not add up to one and nobody can sum 44 of them by eye."""
+    reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
+    assert len(reports) == 44, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 42
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 2
+    assert sum(r.graded_instances for r in reports) == 3758
+    assert sum(r.faithful.compared for r in reports) == 486
+
+
+# --------------------------------------------------------------------------- #
+# what the schema half decides, and where it finds the schema
+# --------------------------------------------------------------------------- #
 def test_strict_validate_decides_acceptance_against_the_document() -> None:
-    """D4, in the place step 1's 52-property nullability instrument used to sit.
-
-    That instrument asserted the MODEL refuses an explicit null at every optional
-    non-nullable property, and it had to be per-property because the RENDERING
-    was: each annotation carried its own validator, so a missing wrap on one
-    property was invisible.  The rendering is now plain ``T | None = None`` and
-    the refusal is one function reading the document, so the 52 sites collapse to
-    one mechanism and asserting it 52 times would be asserting it with 52 inputs.
+    """D4.
 
     What nothing else in this file reaches: that the schema half of
     ``strict_validate`` runs at all, and that the keyword it refuses on is the
-    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- ``steps()`` has
-    no nullability step, and a model graded through ``strict_validate`` refuses
-    whatever the control already says the document refuses.  Measured: with the
-    schema check deleted from ``strict_validate``, this is the only test in the
-    suite that goes red.
+    DOCUMENT'S name for it.  ``check_pair`` cannot grade either -- ``steps()``
+    has no nullability step, and a model graded through ``strict_validate``
+    refuses whatever the control already says the document refuses.  Measured:
+    with the schema check deleted from ``strict_validate``, this is the only test
+    in the suite that goes red.
     """
-    model = {p.name: p for p in adapter.pairs(BUNDLE, TREE)}["core/pagination-request.json"].model
+    model = pagination().model
 
     with pytest.raises(ValidationError) as caught:
         model.strict_validate({"cursor": None})
@@ -172,38 +389,88 @@ def test_strict_validate_decides_acceptance_against_the_document() -> None:
     with pytest.raises(ValidationError) as caught:
         model.strict_validate({"max_results": 0})
     assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("minimum", ("max_results",))]
-def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
-    """The walk terminates, graded on a bundle built so that it would not.
 
-    The 3.2 bundle's reference graph is acyclic -- a three-colour DFS over its
-    3,094 document-to-document edges finds 0 cycles -- so this branch is
-    unreachable from it, which is exactly why it gets a bundle of its own instead
-    of a comment saying it cannot happen.  Two modules importing each other's
-    symbol at module scope is an ImportError, not a type, so a cycle has to refuse
-    before it is written.
+
+def test_a_class_pointed_at_another_document_grades_red() -> None:
+    """``__adcp_schema__`` is load-bearing and not decoration.
+
+    The same class body, pointed at a different document, must fail -- otherwise
+    the reference is a comment and ``strict_validate`` is deciding acceptance
+    against something nobody chose.  The other document is picked by its own
+    property: the first emitted document whose root forbids what this one's root
+    requires.
     """
-    ref = "https://example.org/whatever/{}.json"
-    for name, other in (("a", "b"), ("b", "a")):
-        (tmp_path / f"{name}.json").write_text(
-            json.dumps(
-                {
-                    "title": name.upper(),
-                    "type": "object",
-                    "required": [other],
-                    "properties": {other: {"$ref": ref.format(other)}},
-                }
-            )
-        )
-    out = emit.emit(tmp_path, ["a.json", "b.json"])
-    assert out.bindings == {}
-    assert sorted(out.refusals) == ["a.json", "b.json"]
-    for document, row in out.refusals.items():
-        assert row["keyword"] == "$ref", (document, row)
-        assert "cycle" in row["detail"], (document, row)
+    other = next(
+        g.ref.document
+        for g in sorted(graded(), key=lambda g: g.ref.document)
+        if g.ref.pointer == "#"
+        and g.ref.document != PAGINATION
+        and schema_at(g.ref).get("additionalProperties") is False
+        and schema_at(g.ref).get("required")
+    )
+
+    class Misaimed(AdCPBaseModel):
+        __adcp_schema__ = SchemaRef(other, "#")
+        model_config = {"extra": "forbid"}
+        max_results: int | None = 50
+        cursor: str | None = None
+
+    with pytest.raises(ValidationError):
+        Misaimed.strict_validate({"max_results": 50})
+    assert check_faithful(schema_at(SchemaRef(other, "#")), Misaimed).outcome == "model_drops_a_fact"
 
 
+def test_a_pointer_names_one_node_of_a_document() -> None:
+    """The pointer half of ``SchemaRef``, on the document step 1 is stated over.
+
+    A nested class grades against its own node, and that only works if the
+    pointer resolves to the node rather than to the file.  Graded on
+    ``pagination-request`` even though it has no nested class, so the mechanism
+    is checked where the step's own document is: the property node it names is
+    not the root, and a pointer that names nothing raises.
+    """
+    root = schema_at(SchemaRef(PAGINATION, "#"))
+    node = schema_at(SchemaRef(PAGINATION, "#/properties/max_results"))
+    assert node == root["properties"]["max_results"]
+    assert node != root
+    with pytest.raises(KeyError):
+        schema_at(SchemaRef(PAGINATION, "#/properties/no_such_property"))
+
+
+def test_no_schema_the_package_carries_has_an_unresolved_reference() -> None:
+    """``strict_validate`` has to be able to DECIDE with the document it reads.
+
+    A ``$ref`` left in one is not decidable locally: ``jsonschema`` finds no
+    store for an absolute URI and retrieves it OVER THE NETWORK, on a code path
+    it deprecates and says "will shortly become an error".  Measured before this
+    was fixed: 4.4 s per validation against a live URL, and a
+    ``RefResolutionError`` offline.  So the emitter writes each document resolved
+    (``bundle.resolved``).
+
+    This is the runtime half of step 2.  The module half is the opposite and is
+    graded below: a reference is an IMPORT in the generated module (P2) and is
+    never inlined there.  The two are not in tension -- one is where a type LIVES
+    and the other is what a document MEANS.
+    """
+    documents = {g.ref.document for g in graded()}
+    for document in sorted(documents):
+        assert bundle.references(schema_at(SchemaRef(document, "#"))) == [], document
+    # And the control: the bundle DOES have references, so the assertion above is
+    # over documents that had something to resolve rather than over nothing.
+    assert [d for d in documents if bundle.references(bundle.read(BUNDLE, d))]
+
+
+# --------------------------------------------------------------------------- #
+# the emitted text
+# --------------------------------------------------------------------------- #
 def _source(document: str) -> str:
     return (TREE / f"{emit.module_path(document)}.py").read_text()
+
+
+def _symbol(document: str) -> str:
+    """The name the emitted module exports, read off the module itself."""
+    (symbol,) = importlib.import_module(emit.emit(BUNDLE, [document]).emitted[document]).__all__
+    return symbol
 
 
 def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
@@ -214,28 +481,36 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
     step has to make falsifiable.  Two halves, because either alone passes while
     the other fails:
 
-      * the referencing field's annotation NAMES the target's symbol and contains
-        no call -- a copy of the target's constraints is a ``Field(...)`` call,
-        and a copy that replaced the reference does not name the symbol at all;
+      * the referencing field's annotation NAMES the target's symbol and carries
+        no CONSTRAINT -- a copy of the target's constraints is a ``Field(ge=...,
+        min_length=...)``, and a copy that replaced the reference does not name
+        the symbol at all;
       * no ``Field`` kwarg ANYWHERE in the module is one this document does not
         declare locally -- so a constraint of the target has nowhere else in the
         module to hide either.
 
+    The first half used to assert the annotation contained no CALL, which was the
+    same claim only while the renderer dropped the property's own
+    ``description``.  draft-07 says a ``$ref`` ignores its siblings and
+    ``resolve_all_refs`` MERGES them, so the resolved document the class names
+    carries the sibling description -- and a renderer that drops it drops a fact
+    the document states.  The compiler carries it, as ``Field(description=...)``,
+    which is a call in the annotation and not a copy of anything.  So the
+    assertion is on the kwarg NAMES, which is what "copies no constraint" means.
+
     Deliberately says nothing about HOW an optional property is wrapped.  That is
-    D4's, it has been re-decided once already (a per-field null-refusing alias,
-    then plain ``T | None`` with the schema as the gate), and a test naming the wrapper's
-    spelling would have to be edited by the lane that changes it -- which is how a
-    P2 instrument comes to be adjusted by someone who is not grading P2.  Both
-    renderings satisfy what is asserted here, and so does any third.
+    D4's, it has been re-decided once already, and a test naming the wrapper's
+    spelling would have to be edited by the lane that changes it -- which is how
+    a P2 instrument comes to be adjusted by someone who is not grading P2.
 
     Everything compared is derived: the import module from ``relative_module``,
-    the symbol from the emitter's own binding table, the local constraint set from
-    the document's non-reference nodes.
+    the symbol from the target module's own ``__all__``, the local constraint set
+    from the document's non-reference nodes.
     """
     known = set(bundle.portable(BUNDLE))
-    table = adapter.bindings(TREE)
-    graded = 0
-    for document in sorted(table):
+    documents = sorted({g.ref.document for g in graded()})
+    graded_properties = 0
+    for document in documents:
         doc = bundle.read(BUNDLE, document)
         refd = {
             key: sub["$ref"]
@@ -251,26 +526,29 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             if isinstance(n, ast.ImportFrom)
             for a in n.names
         }
-        symbol_of = table[document]["symbol"]
-        root = next(c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == symbol_of)
+        root = next(
+            c for c in tree.body if isinstance(c, ast.ClassDef) and c.name == _symbol(document)
+        )
         annotated = {
             t.target.id: t.annotation
             for t in root.body
             if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
         }
         for key, uri in sorted(refd.items()):
-            target = bundle.document_for(uri, known)
-            symbol = table[str(target)]["symbol"]
-            module = emit.relative_module(document, str(target))
+            target = str(bundle.document_for(uri, known))
+            symbol = _symbol(target)
+            module = emit.relative_module(document, target)
             assert (module, symbol) in imported, (document, key, module, symbol)
             got = annotated[emit.field_name(key)]
             named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
             assert symbol in named, (document, key, ast.unparse(got))
-            calls = [ast.unparse(n) for n in ast.walk(got) if isinstance(n, ast.Call)]
-            assert calls == [], (document, key, ast.unparse(got), calls)
-            graded += 1
+            carried = {
+                kw.arg for n in ast.walk(got) if isinstance(n, ast.Call) for kw in n.keywords
+            }
+            assert carried <= ANNOTATION_KWARGS, (document, key, ast.unparse(got))
+            graded_properties += 1
         local = {
-            emit.CONSTRAINTS[k]
+            k
             for _, node in bundle.nodes(doc)
             if "$ref" not in node
             for k in node
@@ -282,8 +560,21 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "Field"
             for kw in n.keywords
         }
-        assert used <= local | {"alias", "default"}, (document, sorted(used - local))
-    assert graded, "no referencing property was graded"
+        assert used <= _pydantic_names(local) | ANNOTATION_KWARGS, (document, sorted(used))
+    assert graded_properties, "no referencing property was graded"
+
+
+def _pydantic_names(json_schema_keywords: set[str]) -> set[str]:
+    """The ``Field`` kwarg each JSON Schema constraint renders as.
+
+    Derived from the compiler's own ``Constraints`` model, which declares every
+    field under its JSON-Schema alias -- so this mapping is the compiler's and
+    not a second copy of it that could drift.
+    """
+    from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
+
+    by_alias = {f.alias: name for name, f in Constraints.model_fields.items() if f.alias}
+    return {by_alias[k] for k in json_schema_keywords if k in by_alias}
 
 
 def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
@@ -291,12 +582,14 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
 
     A wrapper class would be a second name for the same node (P2), and every
     referencing model would then carry an object where the document carries a
-    string.
+    string.  The alias carries its document's own ``description``, which an
+    earlier rendering dropped at all five of this population's scalar roots
+    because an alias has no docstring slot -- a ``Field(description=...)`` does.
     """
-    table = adapter.bindings(TREE)
-    graded = 0
-    for document in sorted(table):
-        if bundle.read(BUNDLE, document).get("type") not in emit.SCALAR:
+    graded_aliases = 0
+    for document in sorted({g.ref.document for g in graded()}):
+        doc = bundle.read(BUNDLE, document)
+        if doc.get("type") not in emit.SCALAR:
             continue
         tree = ast.parse(_source(document))
         assigned = {
@@ -306,25 +599,37 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
             for t in n.targets
             if isinstance(t, ast.Name)
         }
-        assert table[document]["symbol"] in assigned, document
+        assert _symbol(document) in assigned, document
         assert [n for n in tree.body if isinstance(n, ast.ClassDef)] == [], document
-        graded += 1
-    assert graded, "no scalar root was graded"
+        graded_aliases += 1
+    assert graded_aliases, "no scalar root was graded"
 
     control = "core/creative-revision-id.json"
     doc = bundle.read(BUNDLE, control)
-    alias = next(
-        n
-        for n in ast.parse(_source(control)).body
-        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == table[control]["symbol"]
+    schema = __import__(
+        "adcp.types._schemas.core.creative_revision_id", fromlist=["strict_validate"]
     )
-    want = f"Annotated[str, Field(min_length={doc['minLength']}, max_length={doc['maxLength']})]"
-    assert ast.unparse(alias.value) == want
+    from pydantic import TypeAdapter
+
+    emitted = TypeAdapter(getattr(schema, _symbol(control))).json_schema()
+    assert emitted["minLength"] == doc["minLength"]
+    assert emitted["maxLength"] == doc["maxLength"]
+    assert emitted["description"] == doc["description"]
 
 
+# --------------------------------------------------------------------------- #
+# the run itself
+# --------------------------------------------------------------------------- #
 def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
-    """P10, and D8's byte compare: the tree equals f(bundle, emitter), so a
-    defect is fixed in the emitter and nothing rewrites the output."""
+    """P10, and D8's compare: the tree equals f(bundle, emitter, pinned compiler),
+    so a defect is fixed in one of those and nothing rewrites the output.
+
+    It compares the whole file set and every byte of it.  The previous revision of
+    this test compared against a recorded earlier output of the same emitter,
+    which P10 forbids for the reason this step demonstrates: the renderer changed
+    and the recorded text was the OLD renderer's, so the comparison graded the
+    change rather than the inputs.
+    """
     out = emit.emit(BUNDLE, population())
     emit.write(out, tmp_path)
 
@@ -367,64 +672,80 @@ def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
     assert outs[0] and outs[0] == outs[1]
 
 
-def test_the_adapter_refuses_a_module_from_a_tree_it_was_not_pointed_at(tmp_path) -> None:
-    """The guard that makes N mean anything, exercised rather than asserted: a
-    harness pointed at a tree this run did not emit grades another generator's
-    output and reports it as this one's."""
-    table = {"core/pagination-request.json": adapter.bindings(TREE)["core/pagination-request.json"]}
-    (tmp_path / "_bindings.json").write_text(json.dumps(table))
-    with pytest.raises(AssertionError, match="outside the emitted tree"):
-        adapter.pairs(BUNDLE, tmp_path)
+def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
+    """D11, graded through the entry point that breaks it.
 
+    ``python -m codegen.emit`` runs the emitter as ``__main__``.  With ``Refusal``
+    defined in that module, a lowering that imports ``codegen.emit`` to raise one
+    raises a DIFFERENT class from the one ``main``'s ``except`` names, so every
+    refusal escapes as an unhandled traceback and the run writes nothing -- while
+    the in-process path, which imports the module once, stays green.  Three lanes
+    measured that independently.
 
-def test_every_emitted_binding_resolves_to_the_document_it_was_emitted_from() -> None:
-    """The refusal above is for a class nothing emitted.  No emitted binding may
-    reach it, and each must land on its OWN document: a lookup that resolved to
-    the wrong row would decide acceptance against another schema and still be
-    green everywhere else.
-
-    Two kinds of binding, because D2 has two rows that emit here.  A class finds
-    its document from ``__module__`` and ``__qualname__``.  An ``Annotated`` alias
-    (D2's root-scalar row) has neither -- ``Annotated[str, ...].__module__`` is
-    ``typing`` -- so its module binds ``strict_validate`` through
-    ``_base.strict_alias`` and the lookup is by the row's own module and symbol.
-    Both go through ``_document_at``, so there is one table and one refusal.
+    So this runs the CLI, over a bundle whose two documents are one emittable and
+    one refused, and requires the refusal to be REPORTED: exit 1, the document
+    and its keyword on stdout, no traceback, and the other document written.
     """
-    table = adapter.bindings(TREE)
-    assert len(table) > 1, len(table)
-    classes = aliases = 0
-    for document, row in sorted(table.items()):
-        module = importlib.import_module(row["module"])
-        model = getattr(module, row["symbol"])
-        if isinstance(model, type):
-            assert _document_of(model) == (document, row["schema"]), document
-            classes += 1
-            continue
-        assert callable(getattr(module, "strict_validate", None)), document
-        assert _document_at((row["module"], row["symbol"])) == (document, row["schema"]), document
-        aliases += 1
-    # Both arms non-empty, so neither is graded by an empty loop.
-    assert classes and aliases, (classes, aliases)
+    (tmp_path / "ok.json").write_text(
+        json.dumps({"title": "Ok", "type": "object", "properties": {"a": {"type": "string"}}})
+    )
+    (tmp_path / "no.json").write_text(
+        json.dumps(
+            {"title": "No", "type": "object", "properties": {"a": {"type": "string"}}, "not": {}}
+        )
+    )
+    into = tmp_path / "out"
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "codegen.emit",
+            "--bundle",
+            str(tmp_path),
+            "--tree",
+            str(into),
+            "ok.json",
+            "no.json",
+        ],
+        check=False,
+        cwd=REPO,
+        env={**os.environ, "PYTHONPATH": str(REPO)},
+        capture_output=True,
+        text=True,
+    )
+    assert "Traceback" not in done.stderr, done.stderr
+    assert done.returncode == 1, (done.returncode, done.stdout, done.stderr)
+    assert "refused no.json" in done.stdout, done.stdout
+    assert "on not:" in done.stdout, done.stdout
+    assert (into / "ok.py").exists()
+    assert not (into / "no.py").exists()
 
 
-def test_no_binding_row_carries_an_unresolved_reference() -> None:
-    """``strict_validate`` has to be able to DECIDE with the row's schema.
+def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
+    """The walk terminates, graded on a bundle built so that it would not.
 
-    A ``$ref`` left in a row is not decidable locally: ``jsonschema`` finds no
-    store for an absolute URI and retrieves it OVER THE NETWORK, on a code path
-    it deprecates and says "will shortly become an error".  Measured before this
-    was fixed: 4.4 s per validation against a live URL, and a ``RefResolutionError``
-    offline.  So the emitter writes the document resolved (``bundle.resolved``),
-    and no row may carry a reference anywhere in it.
-
-    This is the runtime half of step 2.  The module half is the opposite and is
-    graded in ``test_emit``: a reference is an IMPORT in the generated module (P2)
-    and is never inlined there.  The two are not in tension -- one is where a type
-    LIVES and the other is what a document MEANS.
+    The 3.2 bundle's reference graph is acyclic -- a three-colour DFS over its
+    3,094 document-to-document edges finds 0 cycles -- so this branch is
+    unreachable from it, which is exactly why it gets a bundle of its own instead
+    of a comment saying it cannot happen.  Two modules importing each other's
+    symbol at module scope is an ImportError, not a type, so a cycle has to refuse
+    before it is written.
     """
-    for document, row in sorted(adapter.bindings(TREE).items()):
-        assert bundle.references(row["schema"]) == [], document
-    # And the control: the bundle DOES have references, so the assertion above is
-    # over documents that had something to resolve rather than over nothing.
-    referencing = [d for d in adapter.bindings(TREE) if bundle.references(bundle.read(BUNDLE, d))]
-    assert referencing, "no emitted document has a reference; the check above graded nothing"
+    ref = "https://example.org/whatever/{}.json"
+    for name, other in (("a", "b"), ("b", "a")):
+        (tmp_path / f"{name}.json").write_text(
+            json.dumps(
+                {
+                    "title": name.upper(),
+                    "type": "object",
+                    "required": [other],
+                    "properties": {other: {"$ref": ref.format(other)}},
+                }
+            )
+        )
+    out = emit.emit(tmp_path, ["a.json", "b.json"])
+    assert out.emitted == {}
+    assert sorted(out.refusals) == ["a.json", "b.json"]
+    for document, row in out.refusals.items():
+        assert row["keyword"] == "$ref", (document, row)
+        assert "cycle" in row["detail"], (document, row)

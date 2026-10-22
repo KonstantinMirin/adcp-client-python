@@ -2,19 +2,23 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel
+from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
 class DateRange(AdCPBaseModel):
-    "A date range with inclusive start and end dates (ISO 8601 calendar dates). Used for billing periods, flight dates, and other calendar-day boundaries."
-
-    model_config = ConfigDict(extra="allow")
-
-    start: date
-    end: date
+    """
+    A date range with inclusive start and end dates (ISO 8601 calendar dates). Used for billing periods, flight dates, and other calendar-day boundaries.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/date-range.json', pointer='#')
+    start: Annotated[date, Field(description='Start date (inclusive), ISO 8601')]
+    end: Annotated[date, Field(description='End date (inclusive), ISO 8601')]
 
 
 __all__ = ["DateRange"]

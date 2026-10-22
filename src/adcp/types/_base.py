@@ -3,6 +3,22 @@
 Hand-written, and small on purpose: everything else in ``_schemas/`` is a
 function of a bundle document.
 
+**Every emitted class carries a reference to the schema that generated it.**
+``__adcp_schema__`` is a ``SchemaRef`` -- the document's bundle-relative path
+plus a JSON pointer -- and that one fact is what makes everything below generic.
+``strict_validate`` reads it off ``cls``; the test harness reads it off the same
+class; neither consults a table, a module header, a filename convention or a
+name-keyed lookup.  The previous arrangement had all four, through a
+``_bindings.json`` the emitter wrote and a ``codegen/adapter.py`` that aimed the
+harness at a tree -- and an adapter that can be aimed at a tree can be aimed at
+the WRONG tree, which is how a previous attempt came to grade 1,602 documents
+green while generating nothing.  A class that carries its own schema cannot be
+aimed at someone else's output.
+
+The pointer is there because a nested class is a SUBSCHEMA of its document and
+has to grade against its own node rather than against the whole file.  A root
+class names ``"#"``.
+
 ``AdCPBaseModel`` carries the config a document says nothing about.  D7 derives
 ``extra`` from ``additionalProperties``, so a document declaring ``false`` or
 ``true`` gets ``forbid`` or ``allow`` on its own class and never reaches this
@@ -18,31 +34,30 @@ value is pydantic's.
 
 ``model_validate`` stays public, because pydantic exposes it and it cannot be
 removed.  It constructs **without** consulting the schema.  Everything the
-schema states and the annotation does not -- a ``minimum`` on a field pydantic
-sees only as ``int``, an explicit ``null`` for a property declared
-``{"type": "string"}``, a key the document forbids -- is invisible to it.  A
-caller that wants the document's accepted set calls ``strict_validate``; a
-caller that already knows its payload conforms, or that is rebuilding a value
+schema states and the annotation does not -- an explicit ``null`` for a property
+declared ``{"type": "string"}``, a key the document forbids -- is invisible to
+it.  A caller that wants the document's accepted set calls ``strict_validate``;
+a caller that already knows its payload conforms, or that is rebuilding a value
 this library produced, calls ``model_validate`` and takes the constructor.
 
-So an optional property renders plain ``T | None = None`` (D4), and there is no
-per-field validator refusing the null.  ``required`` governs presence and
-``type`` governs value, which is the distinction the schema already draws and
-the schema half already enforces: a validator re-stating it in Python would
-re-implement a fact the document states exactly, on every one of the bundle's
-~7,000 property annotations, and would cost pydantic's serialization fast path
-to do it.  The ``None`` arm of the annotation is live either way, because the
-attribute holds ``None`` for an omitted key, so ``x.field is None`` means "not
-supplied".
+So an optional property renders plain ``T | None``, with its own default (D4),
+and there is no per-field validator refusing the null.  ``required`` governs
+presence and ``type`` governs value, which is the distinction the schema already
+draws and the schema half already enforces: a validator re-stating it in Python
+would re-implement a fact the document states exactly, on every one of the
+bundle's ~7,000 property annotations, and would cost pydantic's serialization
+fast path to do it.  The ``None`` arm of the annotation is live either way,
+because the attribute holds ``None`` for an omitted key, so ``x.field is None``
+means "not supplied".
 
 ``strict_alias`` is the same two halves for a node that has no class to put them
 on: D2 makes a scalar ROOT a module-level ``Annotated`` alias, so the emitted
 module binds ``strict_validate`` as a function instead of a classmethod.  Both
-reach the document through ``_document_at`` and refuse through ``_refuse``, which
+reach the document through ``schema_at`` and refuse through ``_refuse``, which
 is what keeps a class and an alias from answering differently about what their
 document accepts.
 
-``docs/plan/rebuild-plan.md`` D4 carries the decision and the reasoning.
+``docs/plan/rebuild-plan.md`` §2 and D4 carry the decisions and the reasoning.
 """
 
 from __future__ import annotations
@@ -51,67 +66,75 @@ import functools
 import json
 from collections.abc import Callable
 from importlib import resources
-from typing import Any, TypeVar
+from typing import Any, ClassVar, NamedTuple, TypeVar
 
 import jsonschema
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
 
-#: The emitted binding table, and the package it lands in.  The emitter writes
-#: one row per document it lowered -- the module, the symbol, and the document
-#: itself, RESOLVED -- so a class can find the schema it was generated from with
-#: nothing but its own name, and the bundle (124 MB, and a version in its path)
-#: is a build-time input rather than a runtime dependency.
-#:
-#: Resolved because a row has to be DECIDABLE here, with no second input: a
-#: ``$ref`` left in one sends ``jsonschema`` to the network to retrieve the
-#: target, which is deprecated, slow (4.4 s per validation, measured) and simply
-#: unavailable offline.  ``codegen.bundle.resolved`` inlines it at emit time and
-#: ``codegen.adapter`` asserts the row equals the bundle's document resolved.
-#: This is the one thing a reference does NOT become an import: the module
-#: imports its target's type (P2), and the row carries its target's meaning.
-#:
-#: This is the one place a schema comes from.  Reading any other tree is how a
-#: previous attempt came to grade 1,602 documents while generating nothing, so
-#: there is deliberately no second lookup and no fallback: a class with no row
-#: here has no schema, and ``strict_validate`` refuses rather than quietly
-#: becoming ``model_validate``.
-_BINDINGS = ("adcp.types._schemas", "_bindings.json")
+#: The package the emitter writes both the modules and the documents into.  One
+#: JSON file per document, at the document's own bundle-relative path, so
+#: ``SchemaRef.document`` is simultaneously the identity of the schema and the
+#: resource that holds it.  The bundle itself (124 MB, with a version in its
+#: path) is a build-time input and cannot be the runtime source.
+PACKAGE = "adcp.types._schemas"
 
 ModelT = TypeVar("ModelT", bound="AdCPBaseModel")
 
 
-@functools.lru_cache(maxsize=1)
-def _documents() -> dict[tuple[str, str], tuple[str, dict]]:
-    """``(module, symbol)`` -> ``(document path, document)``, read once.
+class SchemaRef(NamedTuple):
+    """The schema a generated class was generated from.
 
-    KNOWN CEILING: the whole table is parsed to validate against one document.
-    At this step's N that is 34 rows and ~50 KB; over the bundle's 1,054 it
-    would be read once and held, which is the point at which the emitter should
-    write one schema file per module and this row should name it instead.
+    ``document`` is bundle-relative (``"core/pagination-request.json"``) and is
+    also the resource path inside :data:`PACKAGE`.  ``pointer`` is a JSON
+    pointer into it: ``"#"`` for a root class, ``"#/properties/x"`` for the
+    nested class a property declares inline.
+
+    A ``NamedTuple`` for three reasons: it is hashable, so the read below can be
+    memoized per document instead of per table; it is immutable, so a class
+    cannot be re-pointed at another document after import; and its ``repr`` is a
+    valid Python expression naming this type, which is how the emitter writes
+    the ``ClassVar`` line without any template of its own.
     """
-    package, name = _BINDINGS
-    table = json.loads(resources.files(package).joinpath(name).read_text())
-    return {
-        (row["module"], row["symbol"]): (document, row["schema"])
-        for document, row in table.items()
-    }
+
+    document: str
+    pointer: str = "#"
 
 
-def _document_at(key: tuple[str, str]) -> tuple[str, dict]:
-    try:
-        return _documents()[key]
-    except KeyError:
-        raise LookupError(
-            f"{key[0]}.{key[1]} is bound to no document in {_BINDINGS[0]}/{_BINDINGS[1]}: "
-            "strict_validate has no schema to decide acceptance against. A nested class "
-            "is a subschema and not a document; accepting the payload anyway would be "
-            "model_validate under another name."
-        ) from None
+@functools.lru_cache(maxsize=None)
+def _document(document: str) -> dict:
+    """One document, read from the package and held.
+
+    Per DOCUMENT, which is the fix the previous whole-table cache's own docstring
+    named: that one parsed every row to validate against one of them, so its
+    cost grew with the size of the population rather than with the number of
+    documents a process actually validates against.  This one is bounded by the
+    number of distinct documents the caller touches, and a process that
+    validates against one reads one.
+    """
+    resource = resources.files(PACKAGE)
+    for part in document.split("/"):
+        resource = resource.joinpath(part)
+    return json.loads(resource.read_text())
 
 
-def _document_of(model: type[BaseModel]) -> tuple[str, dict]:
-    return _document_at((model.__module__, model.__qualname__))
+def schema_at(ref: SchemaRef) -> dict:
+    """The subschema ``ref`` names.
+
+    The pointer is resolved here and not at emit time, because the document is
+    what the package carries: a nested class's node is part of its document's
+    meaning, and writing each node out separately would put the same subschema
+    in the package twice and let the two drift.
+    """
+    node: Any = _document(ref.document)
+    for part in ref.pointer.lstrip("#").lstrip("/").split("/"):
+        if part == "":
+            continue
+        part = part.replace("~1", "/").replace("~0", "~")
+        node = node[int(part)] if isinstance(node, list) else node[part]
+    if not isinstance(node, dict):
+        raise LookupError(f"{ref.document}{ref.pointer} is {type(node).__name__}, not a schema")
+    return node
 
 
 def _refuse(schema: dict, payload: Any, name: str) -> None:
@@ -154,34 +177,27 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     )
 
 
-def strict_alias(module: str, symbol: str, alias: Any) -> Callable[[Any], Any]:
+def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any]:
     """The strict entry point for a module-level ``Annotated`` alias.
 
     D2 makes a scalar root an alias and not a class -- the document is a string,
     and a wrapper class would be a second name for the same node (P2) and would
     put an object on the wire.  So there is no ``AdCPBaseModel`` to carry
-    ``strict_validate`` and no ``__qualname__`` to find the document by, and the
-    emitted module binds this under its own name instead.
+    ``strict_validate`` and no class attribute to hold the ``SchemaRef``, and the
+    emitted module binds this under its own name instead, with the ref passed in.
 
-    The schema half is the SAME lookup, over the same binding table, raising the
-    same error shape; only the construction half differs, and for an alias that
-    is ``TypeAdapter``.  Which is exactly the fallback ``codegen.harness.accepting``
-    warns about -- and the warning is about using it ALONE as the accepted set.
-    Behind the schema check it is the constructor, which is all it was ever meant
-    to be.
-
-    The module's own row is read at CALL time, not here: a class finds its
-    document when asked and so does this, so an alias module bound to no row
-    raises ``LookupError`` the same way rather than failing to import.
+    The schema half is the SAME read and the same refusal a class gets; only the
+    construction half differs, and for an alias that is ``TypeAdapter``, which
+    is the alias's constructor and not its accepted set.  Behind the schema check
+    it is the constructor, which is all it was ever meant to be.
     """
     adapter = TypeAdapter(alias)
 
     def strict_validate(payload: Any) -> Any:
-        _, schema = _document_at((module, symbol))
-        _refuse(schema, payload, symbol)
+        _refuse(schema_at(ref), payload, symbol)
         return adapter.validate_python(payload)
 
-    strict_validate.__doc__ = f"Validate against {module}'s document, then construct {symbol}."
+    strict_validate.__doc__ = f"Validate against {ref.document}, then construct {symbol}."
     return strict_validate
 
 
@@ -196,6 +212,12 @@ class AdCPBaseModel(BaseModel):
     #: pattern the schema admits is unrepresentable.
     model_config = ConfigDict(extra="ignore", regex_engine="python-re")
 
+    #: Declared and not assigned: every emitted class writes its own, and a
+    #: subclass of this base that writes none has no schema to be validated
+    #: against, so reading it is an ``AttributeError`` at the one call below
+    #: rather than a silent fall back to ``model_validate``.
+    __adcp_schema__: ClassVar[SchemaRef]
+
     @classmethod
     def strict_validate(cls: type[ModelT], payload: Any) -> ModelT:
         """Validate ``payload`` against this class's own document, then construct.
@@ -207,10 +229,8 @@ class AdCPBaseModel(BaseModel):
         keyword is carried through ``PydanticCustomError``, which is the only way
         a name from another vocabulary reaches ``errors()[0]["type"]``.
 
-        The refusal is ``_refuse``, shared with ``strict_alias`` (D2's root-scalar
-        row, which has no class to put this method on).  One refusal, so a class
-        and an alias cannot come to disagree about what their document accepts.
+        The schema is the one this class names.  There is no lookup to get wrong
+        and no second place to read one from.
         """
-        _, schema = _document_of(cls)
-        _refuse(schema, payload, cls.__name__)
+        _refuse(schema_at(cls.__adcp_schema__), payload, cls.__name__)
         return cls.model_validate(payload)

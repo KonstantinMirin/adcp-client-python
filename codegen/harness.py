@@ -15,11 +15,16 @@ generator or model package.  Its whole input is:
                   ``harness`` imports nothing beyond its four libraries and
                   stdlib, so the choice belongs to the caller.
   * ``model``   - anything ``pydantic.TypeAdapter`` accepts: a BaseModel subclass,
-                  a RootModel, an Enum, a bare annotation, a union alias.  A
-                  model carrying a ``strict_validate`` is offered the instance
-                  through it; see ``accepting``.
+                  a RootModel, an Enum, a bare annotation, a union alias.
+  * ``accept``  - the entry point an instance is offered through, SUPPLIED by the
+                  caller.  It used to be sniffed off the model with ``getattr``,
+                  and sniffing cannot tell a model that has no entry point from
+                  one whose entry point is missing: the fallback was the model's
+                  CONSTRUCTOR, which is not an accepted set, so a model that
+                  should have had one was graded wide and green.  The caller
+                  knows which it is; this module does not and now does not guess.
 
-It answers two questions about that pair:
+It answers three questions about that pair:
 
   direction 1 (``check_accepts``)
       every instance the schema admits, the model admits.
@@ -27,6 +32,21 @@ It answers two questions about that pair:
   direction 2 (``check_refuses``)
       for each constraint keyword in the document, an instance that violates
       exactly that keyword is refused by the model.
+
+  faithfulness (``check_faithful``)
+      every fact the document states about a value, the model's own
+      ``model_json_schema()`` states too.
+
+**The third is not redundant and here is the measurement that forces it.**  Where
+``accept`` validates against the document before constructing -- which is the
+production entry point and so the only honest thing to grade the first two
+through -- its schema half refuses everything the document refuses, so the
+ANNOTATIONS are never exercised.  On ``core/pagination-request.json`` a model
+with ``Any`` on every field grades green in both directions with a direction-2
+denominator of **0 instances**, and so does deleting its base classes; a faithful
+model grades green with a denominator of 75.  Three lanes found that
+independently, by widening their own lowering and staying green.  Directions 1
+and 2 grade the entry point; ``check_faithful`` grades the generated code.
 
 Nothing is enumerated by hand.  The keyword comes from the document, the instance
 from ``hypothesis_jsonschema``, and the expected refusal is the keyword that was
@@ -45,6 +65,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -153,29 +174,6 @@ def resolve(schema: dict, *, store: Mapping[str, Any], base_uri: str = "") -> di
 
 def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrategy:
     return from_schema(schema, custom_formats=dict(custom_formats))
-
-
-def accepting(model: Any) -> Callable[[Any], Any]:
-    """The one way an instance is offered to the model under grading.
-
-    A model that declares its own ``strict_validate`` is graded THROUGH it.  Both
-    directions ask what a model ACCEPTS, and a constructor is not an accepted
-    set: ``TypeAdapter(...).validate_python`` asks only what the annotations
-    carry, so everything a document states and an annotation does not -- a
-    ``minimum`` behind a bare ``int``, an explicit ``null`` for a property
-    declared ``{"type": "string"}`` -- is admitted, and the model is graded green
-    for being wider than its schema.
-
-    A model with no such method is graded through ``TypeAdapter``, because this
-    module's input is anything ``TypeAdapter`` accepts and an Enum or a bare
-    annotation has no entry point of its own.  That fallback is therefore a hole
-    for any model that SHOULD have one, and this module cannot tell which those
-    are -- it knows no package.  The caller that does must refuse it:
-    ``codegen.adapter`` requires every binding's class to carry
-    ``strict_validate`` before a pair is built.
-    """
-    strict = getattr(model, "strict_validate", None)
-    return strict if callable(strict) else TypeAdapter(model).validate_python
 
 
 def conforms(schema: dict, instance: Any, *, validator_cls=None) -> bool | None:
@@ -290,6 +288,11 @@ def at(doc: Any, pointer: str) -> Any:
 # ``$defs`` entry has no instance location to make mandatory at all, so a site
 # beneath one stays unreachable and the control still counts it as ungraded.
 _FORCE_NAMED = ("properties", "dependentSchemas")
+
+#: Candidate instances for a ``pattern`` step, tried in order.  Short, so a
+#: ``maxLength`` beside the pattern does not rule them all out, and spread across
+#: character classes, so a pattern restricting to one of them still has a miss.
+_PATTERN_MISSES = ("!", "A", "0", " ", "", "\x00", "__adcp_harness__")
 
 
 def force_path(schema: dict, pointer: str) -> dict:
@@ -480,6 +483,36 @@ def steps(schema: dict) -> list[Step]:
                 r,
             )
 
+        p = node.get("pattern")
+        if isinstance(p, str):
+            # A `pattern` step has to be a value the pattern refuses, and no
+            # rewrite of the pattern itself produces one reliably.  So the step
+            # pins a `const` -- exclusive by construction -- chosen from a fixed
+            # list by two tests: the ORIGINAL pattern must not match it
+            # (`jsonschema` uses `re.search`, so the candidate is graded the way
+            # the document will grade it), and the node WITHOUT its pattern must
+            # admit it, so the instance violates the pattern and nothing else.
+            # A node no candidate clears gets no step and the pair reports its own
+            # zero denominator; inventing one that also violates a `minLength`
+            # would make the step's keyword a label for someone else's refusal.
+            without = {k: v for k, v in node.items() if k != "pattern"}
+            pick = next(
+                (
+                    c
+                    for c in _PATTERN_MISSES
+                    if re.search(p, c) is None and conforms(without, c) is True
+                ),
+                None,
+            )
+            if pick is not None:
+
+                def r(t: dict, _c: str = pick) -> None:
+                    t.pop("pattern", None)
+                    t["type"] = "string"
+                    t["const"] = _c
+
+                emit(pointer, "pattern", f"pattern {p!r} -> the non-matching {pick!r}", r)
+
         e = node.get("enum")
         if isinstance(e, list) and e and all(isinstance(x, str) for x in e):
 
@@ -640,14 +673,20 @@ def check_format_strategy(
 
 def check_accepts(
     schema: dict,
-    model: Any,
+    accept: Callable[[Any], Any],
     *,
     examples: int = 25,
     custom_formats: Mapping[str, Any] = (),
 ) -> AcceptsResult:
-    """Direction 1: every instance the schema admits, the model admits."""
+    """Direction 1: every instance the schema admits, ``accept`` admits.
+
+    This is where a model NARROWER than its document fails, and the annotations
+    are load-bearing here even behind a schema check: the schema half passes an
+    instance it admits, and then the constructor runs on it.  A ``maxLength``
+    the annotation invented, or a required field the model does not declare, is
+    refused at construction and reported.
+    """
     res = AcceptsResult()
-    accept = accepting(model)
     cf = dict(custom_formats)
     seen: list[Any] = []
 
@@ -682,7 +721,7 @@ def check_accepts(
 
 def check_refuses(
     schema: dict,
-    model: Any,
+    accept: Callable[[Any], Any],
     step: Step,
     *,
     examples: int = 25,
@@ -694,26 +733,16 @@ def check_refuses(
     ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
     for why the default is on and why it touches only the generated-from document.
 
-    WHAT A GREEN RESULT CAN NO LONGER DISTINGUISH: for a model offered the
-    instance through its own ``strict_validate`` (see ``accepting``), the refusal
-    is implied by the control.  ``violated_keywords`` asks the original document
-    which keyword bit, and a ``strict_validate`` validating against that same
-    document with the same library must then refuse -- so a pass says the entry
-    point's accepted set is the document's, which is the obligation, and does not
-    say whether the annotations underneath would have refused too.
-
-    MEASURED, so that it is not assumed either way: with the schema half of
-    ``strict_validate`` disabled, all 34 of this step's pairs stay green in both
-    directions.  The annotations alone refuse every instance ``steps()`` can
-    produce, because every keyword it steps (``minimum``, ``maximum``,
-    ``required``, ``additionalProperties``) is one the emitter carries into the
-    model.  The schema half is load-bearing for what ``steps()`` cannot produce
-    -- D4's nullability widening is the one this step has -- and redundant for
-    the rest.  Direction 1 is still where a model NARROWER than its document
-    fails, and there the two halves are not interchangeable.
+    WHAT A GREEN RESULT CANNOT DISTINGUISH: where ``accept`` validates against
+    the document before constructing, the refusal is implied by the control.
+    ``violated_keywords`` asks the original document which keyword bit, and an
+    entry point validating against that same document with the same library must
+    then refuse -- so a pass says the entry point's accepted set is the
+    document's, which is the obligation, and says nothing about whether the
+    annotations underneath would have refused too.  ``check_faithful`` is what
+    grades those.
     """
     res = RefusesResult(keyword=step.keyword, pointer=step.pointer, describe=step.describe)
-    accept = accepting(model)
     cf = dict(custom_formats)
     validator_cls = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
 
@@ -756,15 +785,197 @@ def _dump(x: Any) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# leg 3: the model's own schema against the document
+# --------------------------------------------------------------------------- #
+#: What a document can STATE about a value, and therefore what the model has to
+#: state too.  Three groups, and the grouping is the reason this is one list:
+#: the constraints (an accepted set), ``required`` / ``additionalProperties`` /
+#: ``type`` / ``enum`` / ``const`` (also an accepted set, at the object level),
+#: and ``default`` / ``description`` / ``format``, which do NOT change the
+#: accepted set and are exactly what a hand-rolled renderer drops without any
+#: acceptance test noticing.  ``title`` is absent on purpose: pydantic derives
+#: one for every class and every property and the documents carry one only at a
+#: root, so it is a name the compiler makes up rather than a fact to compare.
+FACTS = (
+    "type",
+    "enum",
+    "const",
+    "format",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minLength",
+    "maxLength",
+    "pattern",
+    "minItems",
+    "maxItems",
+    "uniqueItems",
+    "required",
+    "additionalProperties",
+    "default",
+    "description",
+)
+
+
+@dataclass
+class FaithfulResult:
+    """Leg 3's verdict for one pair."""
+
+    compared: int = 0  # facts the document states that were looked for
+    missing: list[str] = field(default_factory=list)  # the model states nothing
+    differs: list[str] = field(default_factory=list)  # the model states something else
+    detail: str = ""
+
+    @property
+    def outcome(self) -> str:
+        if self.detail:
+            return "harness_error"
+        if self.missing or self.differs:
+            return "model_drops_a_fact"
+        if not self.compared:
+            return "no_evidence"  # the document states nothing; nothing was graded
+        return "pass"
+
+
+def _text(x: Any) -> Any:
+    """A description compared by its words, not by its line breaks."""
+    return " ".join(x.split()) if isinstance(x, str) else x
+
+
+def _closed(x: Any) -> Any:
+    """``additionalProperties``, with the one canonicalization folded out.
+
+    ``{"not": {}}`` is the never-satisfiable schema and so is ``false``, and
+    ``resolve`` -- which is ``hypothesis_jsonschema``'s own resolver, used here
+    deliberately so the schema the runtime decides with is the schema the harness
+    grades -- rewrites the second into the first while inlining.  Measured at one
+    site in this step's population (``core/operator-identity.json``'s
+    ``operator_unit``, closed in the raw document and ``{"not": {}}`` in the
+    resolved one), and it is a fact about the resolver rather than about the
+    model: the two forms refuse the same instances.
+    """
+    return False if x == {"not": {}} else x
+
+
+def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
+    """The model's node for one position, in the document's own shape.
+
+    Three normalizations, and each one is forced by a decision this pipeline made
+    rather than by anything arbitrary in pydantic:
+
+    * **``$ref`` into ``$defs``.**  A nested object is a nested CLASS and a
+      cross-document reference is an IMPORT (P2), so pydantic hoists both into
+      ``$defs`` and references them.  The document the class names is resolved,
+      so the same facts are inline there.
+    * **An ``anyOf`` with a ``null`` arm.**  D4 renders an optional property
+      ``T | None``, because the attribute holds ``None`` for an omitted key.
+      pydantic states that as a union; the document states the type and leaves
+      presence to ``required``.  Unwrapping the null arm compares like with
+      like, and it is safe: a document that genuinely admits null says so with
+      ``"type": ["string", "null"]`` or a union, which is a later step's row and
+      arrives as a multi-member ``anyOf`` that is not unwrapped here.
+    * **The outer keys win.**  ``default`` and ``description`` sit outside the
+      ``anyOf`` and the type facts inside it.
+    """
+    if depth > 16 or not isinstance(node, dict):  # a self-referential $defs chain
+        return node if isinstance(node, dict) else {}
+    if "$ref" in node:
+        name = str(node["$ref"]).rsplit("/", 1)[-1]
+        target = defs.get(name)
+        outer = {k: v for k, v in node.items() if k != "$ref"}
+        return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
+    arms = node.get("anyOf")
+    if isinstance(arms, list) and len(arms) == 2:  # noqa: PLR2004 -- T | None, and nothing else
+        live = [a for a in arms if isinstance(a, dict) and a.get("type") != "null"]
+        nulls = [a for a in arms if isinstance(a, dict) and a.get("type") == "null"]
+        if len(live) == 1 and len(nulls) == 1:
+            outer = {k: v for k, v in node.items() if k != "anyOf"}
+            return {**_normalize(live[0], defs, depth + 1), **outer}
+    return node
+
+
+def check_faithful(schema: dict, model: Any) -> FaithfulResult:
+    """Leg 3: every fact the document states, the model's own schema states.
+
+    One direction, and deliberately: the reverse -- the model stating a
+    constraint the document does not -- is what direction 1 fails on, because an
+    instance the schema admits and the annotation refuses is generated there.
+    A model that states LESS than its document is invisible to both acceptance
+    directions when the entry point checks the schema first, which is the hole
+    this closes.
+
+    pydantic adds facts of its own (a ``title`` per class and per property, the
+    ``minLength``/``maxLength`` that come with ``AnyUrl``).  Those are not
+    compared: an addition is either a narrowing, which direction 1 catches, or a
+    name, which is not a fact about a value.
+    """
+    res = FaithfulResult()
+    try:
+        emitted = (
+            model.model_json_schema()
+            if isinstance(model, type) and hasattr(model, "model_json_schema")
+            else TypeAdapter(model).json_schema()
+        )
+    except Exception as e:  # a model whose schema cannot be built states nothing
+        res.detail = f"{type(e).__name__}: {e}"[:300]
+        return res
+    defs = emitted.get("$defs", {})
+
+    def compare(doc: Any, got: Any, pointer: str) -> None:
+        if not isinstance(doc, dict):
+            return
+        got = _normalize(got, defs)
+        for kw in FACTS:
+            if kw not in doc:
+                continue
+            res.compared += 1
+            where = f"{pointer}/{kw}"
+            if kw not in got:
+                res.missing.append(f"{where}: the document says {doc[kw]!r}")
+                continue
+            a, b = doc[kw], got[kw]
+            if kw == "additionalProperties":
+                a, b = _closed(a), _closed(b)
+            elif kw == "description":
+                a, b = _text(a), _text(b)
+            elif kw in ("required", "enum"):
+                a, b = sorted(map(repr, a or [])), sorted(map(repr, b or []))
+            elif kw == "type" and (isinstance(a, list) or isinstance(b, list)):
+                a = sorted(a) if isinstance(a, list) else [a]
+                b = sorted(b) if isinstance(b, list) else [b]
+            if a != b:
+                res.differs.append(f"{where}: the document says {doc[kw]!r}, the model {got[kw]!r}")
+        props = doc.get("properties")
+        if isinstance(props, dict):
+            mine = got.get("properties") if isinstance(got.get("properties"), dict) else {}
+            for key in sorted(props):
+                at = f"{pointer}/properties/{_esc(key)}"
+                if key not in mine:
+                    res.compared += 1
+                    res.missing.append(f"{at}: the model declares no such property")
+                    continue
+                compare(props[key], mine[key], at)
+        if isinstance(doc.get("items"), dict):
+            compare(doc["items"], got.get("items"), f"{pointer}/items")
+
+    compare(schema, emitted, "")
+    return res
+
+
+# --------------------------------------------------------------------------- #
 # the pair, and one entry point over a sequence of them
 # --------------------------------------------------------------------------- #
 @dataclass
 class Pair:
-    """One graded unit: a name for reporting, a resolved document, a model."""
+    """One graded unit: a name for reporting, a resolved document, a model, and
+    the entry point the caller says an instance is offered through."""
 
     name: str
     schema: dict
     model: Any
+    accept: Callable[[Any], Any]
 
 
 @dataclass
@@ -773,8 +984,44 @@ class PairReport:
     model_repr: str = ""
     accepts: AcceptsResult | None = None
     refuses: list[RefusesResult] = field(default_factory=list)
+    faithful: FaithfulResult | None = None
     step_sites: int = 0
     missing_formats: list[str] = field(default_factory=list)
+
+    @property
+    def graded_instances(self) -> int:
+        """Direction 2's denominator: instances that actually reached the model.
+
+        An instance the step failed to push out of the document grades nothing
+        and is counted by the control instead.
+        """
+        return sum(r.refused + r.accepted_invalid for r in self.refuses)
+
+    @property
+    def outcome(self) -> str:
+        """One verdict for the pair, and **a zero denominator is a refusal**.
+
+        Measured, which is why it is structural here rather than a convention a
+        caller is trusted to apply: a model with ``Any`` on every field grades
+        green in both directions on ``core/pagination-request.json`` with
+        ``accepted_invalid + refused == 0``.  Reporting that as a pass is the
+        vacuous pass, and "no pair is reportable with a zero direction-2
+        denominator" is a rule a report can enforce and a reader cannot.
+        """
+        if self.missing_formats:
+            return "missing_formats"
+        if self.accepts is None or self.accepts.outcome != "pass":
+            return "accepts:" + (self.accepts.outcome if self.accepts else "unrun")
+        bad = [r.outcome for r in self.refuses if r.outcome not in ("pass", "no_evidence")]
+        if bad:
+            return "refuses:" + bad[0]
+        if self.faithful is None or self.faithful.outcome not in ("pass", "no_evidence"):
+            return "faithful:" + (self.faithful.outcome if self.faithful else "unrun")
+        if not self.step_sites:
+            return "no_constraint_to_step"  # the document states nothing to step
+        if not self.graded_instances:
+            return "no_direction_2_evidence"
+        return "pass"
 
 
 def check_pair(
@@ -790,7 +1037,7 @@ def check_pair(
     )
     rep.missing_formats = sorted(missing_formats(pair.schema, custom_formats))
     rep.accepts = check_accepts(
-        pair.schema, pair.model, examples=accepts_examples, custom_formats=custom_formats
+        pair.schema, pair.accept, examples=accepts_examples, custom_formats=custom_formats
     )
     all_steps = steps(pair.schema)
     rep.step_sites = len(all_steps)
@@ -798,9 +1045,14 @@ def check_pair(
     for s in chosen:
         rep.refuses.append(
             check_refuses(
-                pair.schema, pair.model, s, examples=refuses_examples, custom_formats=custom_formats
+                pair.schema,
+                pair.accept,
+                s,
+                examples=refuses_examples,
+                custom_formats=custom_formats,
             )
         )
+    rep.faithful = check_faithful(pair.schema, pair.model)
     return rep
 
 

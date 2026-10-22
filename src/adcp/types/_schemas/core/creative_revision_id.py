@@ -5,13 +5,15 @@ from typing import Annotated
 
 from pydantic import Field
 
-from adcp.types._base import strict_alias
+from adcp.types._base import SchemaRef, strict_alias
 
 
-CreativeRevisionID = Annotated[str, Field(min_length=1, max_length=255)]
+__adcp_schema__ = SchemaRef(document='core/creative-revision-id.json', pointer='#')
+
+CreativeRevisionID = Annotated[str, Field(description='Buyer-assigned identity for one immutable input-content state of a durable creative. Scoped to the parent creative_id. Seller transcoding, normalization, and delivery representations do not change this identity.', max_length=255, min_length=1)]
 
 
-strict_validate = strict_alias(__name__, "CreativeRevisionID", CreativeRevisionID)
+strict_validate = strict_alias(__adcp_schema__, "CreativeRevisionID", CreativeRevisionID)
 
 
 __all__ = ["CreativeRevisionID"]

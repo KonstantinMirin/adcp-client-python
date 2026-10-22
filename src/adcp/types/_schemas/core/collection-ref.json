@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Canonical reference to a collection. Collection IDs are scoped to the adagents.json at publisher_domain, so both fields participate in identity.",
+  "properties": {
+    "collection_id": {
+      "description": "Collection ID from the publisher's adagents.json collection catalog.",
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "collection"
+    },
+    "publisher_domain": {
+      "description": "Domain where the adagents.json declaring this collection is hosted.",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "publisher_domain",
+    "collection_id"
+  ],
+  "title": "Collection Reference",
+  "type": "object"
+}

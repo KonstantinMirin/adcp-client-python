@@ -2,21 +2,24 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel
+from adcp.types._base import AdCPBaseModel, SchemaRef
 
 
 class LimitedSeries(AdCPBaseModel):
-    "A bounded content run with a defined arc. Indicates the collection has a planned beginning, end, and installment count \u2014 distinguishing it from ongoing series."
-
-    model_config = ConfigDict(extra="allow")
-
-    total_installments: Annotated[int, Field(ge=1)]
-    starts: datetime | None = None
-    ends: datetime | None = None
+    """
+    A bounded content run with a defined arc. Indicates the collection has a planned beginning, end, and installment count — distinguishing it from ongoing series.
+    """
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/limited-series.json', pointer='#')
+    total_installments: Annotated[int, Field(description='Planned number of installments in the series', ge=1)]
+    starts: Annotated[datetime | None, Field(description='When the series begins (ISO 8601)')] = None
+    ends: Annotated[datetime | None, Field(description='When the series ends (ISO 8601)')] = None
 
 
 __all__ = ["LimitedSeries"]
