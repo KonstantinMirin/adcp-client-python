@@ -223,7 +223,7 @@ def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzz
     assert bundle.composes_at_the_root(doc)
     saved = emit.ROWS
     try:
-        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_root))
+        emit.ROWS = (*saved, (bundle.composes_at_the_root, product.lower_composition))
         with pytest.raises(emit.AmbiguousRoot, match="composes_at_the_root"):
             emit.lower_document("media-buy/get-products-request.json", doc)
     finally:
@@ -537,7 +537,7 @@ def test_the_accepts_and_refuses_checks_are_green_with_a_denominator(
 # what refuses, by name, pointer and keyword
 # --------------------------------------------------------------------------- #
 def _lower(doc: dict, binder=emit._no_binder) -> str:  # noqa: SLF001 -- the test is the caller
-    return product.lower_root(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
+    return product.lower_composition(doc, "Probe", "", emit.Module(document="probe.json", bind=binder))
 
 
 def test_an_incompatible_restatement_refuses_by_name_pointer_and_keyword() -> None:
