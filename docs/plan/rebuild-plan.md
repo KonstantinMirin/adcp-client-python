@@ -22,11 +22,9 @@ Three properties hold for every emitted class:
 - It carries `__adcp_schema__`, the document and JSON pointer it was generated from.
 - It accepts exactly what its schema accepts, through `strict_validate`.
 
-A union document gives a base class plus one subclass per branch. **Receiving a payload
-resolves to the correct branch**: a discriminated union where the document tags its branches
-with a `const`, a plain union otherwise, so a caller gets the branch type rather than the base
-and can `isinstance` against either. A consumer subclasses the base to extend the envelope and
-the branches resolve underneath it.
+A union document gives a base class plus one subclass per branch, and **receiving a payload
+resolves to the branch the document satisfies** — on every path, including through a consumer's
+own subclass. §4 states that mechanism exactly.
 
 ## 2. The build
 
@@ -128,6 +126,54 @@ Both engines agree with the schema's own accepted set for those 102, and the sch
 compiles with Python `re` in either case, so the split costs no divergence: a class uses the
 weaker engine exactly when its own patterns require it.
 
+### A union root: the base, the branches, and how a payload reaches the right one
+
+A `oneOf`/`anyOf` root emits a **base** carrying `BranchDispatchMixin` plus **one subclass per
+branch**, and the base's name is what every referrer imports. Four things make it work, and
+each exists because one of the others does not reach a path.
+
+**`__get_pydantic_core_schema__` on the mixin returns the branches' union** instead of the
+base's own model schema. That covers every path pydantic validates *through*: a nested field, a
+`TypeAdapter`, `model_validate`. Overriding `model_validate` instead reaches only one of those
+three, and most union roots are nested, which is where an override leaves a document satisfying
+no branch to parse as a loose base.
+
+**`__new__` on the mixin covers `Base(**data)`**, which no schema can reach — `BaseModel.
+__init__` validates with `self_instance=self`, so the object is already allocated by the time
+validation runs and direct construction returns a base instance whose serializer is the union.
+`__new__` asks the base's own validator, which is that union, so all four paths refuse
+identically. Direct construction therefore validates twice and is idempotent; `model_validate`
+stays single-pass.
+
+**Which class gets the union is decided by `"_branch_models" not in cls.__dict__`** — the base
+is the class that *declares* `_branch_models`, and a class that inherits it gets its own shape
+back. That is the whole of subclass support: a branch keeps its own schema, and so does a
+consumer's refinement declared elsewhere. Membership (`cls in branches`) is not enough, because
+it admits both "is a branch" and "is an unrelated subclass", and only the second matters once
+the schema is being replaced.
+
+**The union is the validator and not the serializer.** Put it in the serializer slot and the
+class has no serializer for an instance of itself: the union's serializer matches no branch,
+falls back to inferring a model, finds the same union and recurses — `model_dump(mode="json")`
+raises, and `mode="python"` silently returns the model instance instead of a dict. So the
+`serialization` slot carries a wrap serializer built from `handler(source)`, the plain model
+schema the class would have had, which terminates. It is set on the schema the wrapper *holds*:
+most roots come back as a `definitions` node wrapping the `function-wrap`, and a `serialization`
+key on a `definitions` node is not consulted.
+
+Two facts the emitter writes onto the base because they are not recoverable at runtime:
+
+- **`_ROOT_REQUIRED`**, the fields the root requires as opposed to the ones that select a
+  branch. A combinator refusal reports every absent field with the two kinds mixed together, and
+  no intersection over those errors separates them.
+- **`_branch_combinator()`**, `anyOf` or `oneOf`, because a refusal has to name a JSON Schema
+  keyword and a document satisfying no branch fails each branch at field validation, where
+  pydantic reports `missing` — which is not in that vocabulary.
+
+The branches subclass the base, so they do not exist while the base is being built: the hook
+returns the base's own schema then, and the declaring module calls `model_rebuild(force=True)`
+after the branches are defined to install the union.
+
 A root scalar is an annotation and not a class (D2), so it has no class to carry
 `strict_validate`. Its module binds the same two halves as a module-level function over the same
 `SchemaRef`, so a class and an alias cannot disagree about what their document accepts.
@@ -177,14 +223,19 @@ A step that wants to change one of these reports it and stops.
   document refuses**, so it is a widening and is banned rather than merely unqualified.
   `AnyUrl` adds `minLength: 1`, which its document does not state.
 
-  A type derived from `format` is a separate question, because draft-07 `format` is an
-  annotation and `jsonschema` asserts nothing for it without a checker — and the checker
-  available here covers `date`, `email`, `ipv4`, `ipv6`, `regex`, `time` and `uuid`, not
-  `date-time` or `uri`. So `AwareDatetime` refuses a timestamp with no offset that the document
-  as graded accepts, and that is a narrowing no check reports: the accepts check draws through
-  `hypothesis_jsonschema`, which honours the format and produced an offset in 200 of 200
-  instances. Until `format` is asserted on both sides, a format keyword stays an annotation on
-  a `str` and does not select a Python type.
+  **`format` selects a type, and the schema half asserts it.** `format: date-time` references
+  RFC 3339, where the offset is mandatory, so the schema does require a timezone and
+  `AwareDatetime` states the document's own rule. `jsonschema` asserts nothing for `format`
+  without a checker, so `strict_validate` and the harness both pass one, and the SDK depends on
+  the packages that make the bundle's formats checkable: `rfc3339-validator` for `date-time`
+  and `rfc3987` for `uri`, beside the `date`, `email`, `ipv4`, `ipv6`, `regex`, `time` and
+  `uuid` checkers `jsonschema` carries. Without them 6,083 of the bundle's 6,626 format uses go
+  ungraded and a format-derived type is narrower than its document — which is the state this
+  avoids, and which no check reports, because the accepts check draws through
+  `hypothesis_jsonschema` and that honours the format when generating.
+
+  So `date-time` is `AwareDatetime`, `date` is `datetime.date`, and `uri` is a URL type. A
+  format with no checker available does not select a type.
 
   **An alias names a constraint, never a concept.** Its name is derived from the constraint it
   carries, never from a property name or a domain word, because two fields sharing a bound are
@@ -211,9 +262,24 @@ A step that wants to change one of these reports it and stops.
   subschema that must not match). Those six are the whole population. Everything else is an
   annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
   constructor; acceptance stays with the schema (D4).
-- **D7 — bases are derived.** An `allOf` of `$ref`s makes those classes the bases. There is no
-  marker-class policy: anything a caller wants to test with `isinstance` is a schema the
-  document composes.
+- **D7 — bases are derived, and a consumer's own marker is mixed in.** An `allOf` of `$ref`s
+  makes those referenced classes the bases, so every base an emitted class has is a schema its
+  document composes. The SDK emits no marker hierarchy of its own — no `AdcpRequest` or
+  `AdcpResponse` — because assigning one means classifying documents by something other than
+  what they say, and the generator has no such fact to read.
+
+  A consumer that needs one declares it and mixes it in:
+
+  ```python
+  class GetProductsRequest(BuyerRequest, LibraryGetProductsRequest): ...
+  ```
+
+  `BuyerRequest` is the consumer's marker, `LibraryGetProductsRequest` the generated class, and
+  a registry generic in `Req: BuyerRequest` then type-checks every row. This is the supported
+  extension point, and the declaring-class test in §4 is what makes it hold: a subclass declared
+  elsewhere is not the base, so it keeps its own schema rather than being replaced by a union.
+  **An emitted class must stay subclassable for exactly this reason**, which is a constraint on
+  the generator and not a convenience.
 - **D8 — `extra` follows the schema, and nothing else.** `additionalProperties: false` →
   `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; **absent →
   `ignore`**. Absent and `true` are different statements: `true` says additional properties are
@@ -294,7 +360,7 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 | 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — trunk |
 | 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
 | 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | no emitted field shadows a typed base field; a composed `ge`/`le` inherits | yes — `lower/product.py` |
-| 5 | **Union roots** — base, branches, alias; `discriminator` where the tag is a `const` present and required on every branch, plain union with a rule otherwise; the root name binds the base, never the alias | a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
+| 5 | **Union roots** — the base carries `BranchDispatchMixin` and declares `_branch_models`, `_ROOT_REQUIRED` and `_branch_combinator`; one subclass per branch; the declaring module calls `model_rebuild(force=True)`; the root name binds the base (§4) | a payload resolves to its branch on all four paths — nested field, `TypeAdapter`, `model_validate`, `Base(**data)`; a consumer's subclass of the base keeps its own schema; `model_dump_json` on a base instance does not raise; a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
 | 6 | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
 | 8 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 3–7 |
