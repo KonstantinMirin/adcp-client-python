@@ -1449,7 +1449,15 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 481, len(reports)
+    assert len(reports) == 528, len(reports)
+    # UNMEASURED at this tip, and these three plus the `graded_instances` floor below
+    # are the LAST values rather than measured ones. Each needs the accepts and
+    # refuses checks over all 528 pairs -- roughly half an hour of CPU -- and this
+    # machine gave such a process 34 seconds of CPU per 30 minutes of wall clock at
+    # load 23, measured twice. The PARTITION below grades the population meanwhile and
+    # needs no figure; the comparison half of this test (compared / model_facts /
+    # url_typed / added / missing / differs) IS measured, because it needs no
+    # generator. Re-measure these on a quiet machine with `codegen.report`.
     assert sum(1 for r in reports if r.outcome == "pass") == 469
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # **`no_instrument` IS COUNTED AND IS NOT RATCHETED**, and that is the decision
@@ -1488,8 +1496,8 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
     assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4859  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1128  # model-only facts examined
+    assert sum(r.comparison.compared for r in reports) == 5878  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1352  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
@@ -1501,7 +1509,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so 36 is larger than the 27 annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 74
+    assert sum(len(r.comparison.url_typed) for r in reports) == 107
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
