@@ -24,7 +24,7 @@ fields, these constraints, these defaults, this base", it hands that to dmcg's p
 model layer and dmcg writes the Python. P11 names it the compiler, and it is.
 
 ```
-schema document -> our walk -> a decided shape -> dmcg's model layer -> Python
+schema document -> our walk -> a class declaration -> dmcg's model layer -> Python
                    (ours)                         (the compiler)
 ```
 
@@ -64,8 +64,8 @@ Measured, so a step does not discover it late:
   keyword on a different node. **A constrained container value gets its own symbol**, and the
   mapping names it — then the constraint sits on a declaration the compiler does express.
   53 documents use the construct.
-- **A module-level statement beside an alias.** No alias template has a slot for a sibling
-  line, so a module that needs one is written by our module writer around the compiler's
+- **A module-level statement beside an alias.** No alias template has a place for a sibling
+  statement, so a module that needs one is written by our module writer around the compiler's
   output.
 - **A union discriminated by requiredness.** `DataType.discriminator` renders
   `Annotated[A | B, Field(discriminator='type')]` and is sound on 63 of 156 union roots. The
@@ -143,7 +143,7 @@ Fixed before step 1. A step that wants to re-decide one reports it and stops.
   exception class defined in it has two identities and `except Refusal` misses the one a
   lowering raised. Measured three times independently; this is the structural fix.
 
-Layout: `codegen/emit.py` (CLI, module writer, the refusal report), `codegen/lower/<shape>.py`
+Layout: `codegen/emit.py` (CLI, module writer, the refusal report), `codegen/lower/<kind>.py`
 one per D2 row, and a dispatch **table** of `(selector, lowering)` pairs where a document
 selected by two rows is a build failure rather than a precedence puzzle. A selector is its
 step's population test, so a row cannot claim a document its step does not count.
@@ -155,40 +155,42 @@ step's population test, so a row cannot claim a document its step does not count
 > names, with `N + refused == 1,054` asserted and every refusal named by document, pointer and
 > keyword.**
 
-The harness grades in three legs. The first two are the existing both-directions acceptance
-check; the third exists because of a measurement.
+The harness runs three checks. The first two already exist and keep the names the code gives
+them, `check_accepts` and `check_refuses`. The third exists because of a measurement.
 
-1. **Acceptance, schema → payload → model.** Through `strict_validate`, which is the
-   production entry point.
-2. **Acceptance, model → mutated keyword → schema.** The same entry point, the other way.
-3. **Faithfulness: the class against its schema.** Compare the class's own
-   `model_json_schema()` to the document `__adcp_schema__` names.
+1. **The accepts check**, schema → payload → model: the model accepts every instance the
+   document accepts. Through `strict_validate`, the production entry point.
+2. **The refuses check**, model → mutated keyword → schema: the model refuses every instance
+   the document refuses. The same entry point, the other direction.
+3. **The schema comparison**: the class's own `model_json_schema()` against the document that
+   `__adcp_schema__` names.
 
-**Leg 3 is not optional, and here is the measurement that forces it.** Legs 1 and 2 go through
-`strict_validate`, whose schema half refuses everything the document refuses — so the
-annotations are never exercised. On `core/pagination-request.json`, a model with `Any` on
-every field grades GREEN in both directions with a direction-2 denominator of **0 instances**,
-and so does deleting the base classes. A faithful model grades green with a denominator of 75.
-Three lanes found this independently by widening their own lowerings and staying green. Leg 3
-is what grades the generated code; legs 1 and 2 grade the entry point.
+**The schema comparison is not optional, and a measurement forces it.** The accepts and
+refuses checks both call `strict_validate`, whose schema half refuses everything the document
+refuses, so the annotations are never exercised. On `core/pagination-request.json`, a model
+carrying `Any` on every field passes both checks with a refuses-check denominator of **0
+instances**, and so does deleting the base classes. A faithful model passes with a denominator
+of 75. Three lanes found this independently by widening their own lowerings and staying green.
+The schema comparison grades the generated code; the other two grade the entry point.
 
-Leg 3 also catches what no acceptance test can, because it does not change the accepted set:
+The schema comparison also catches what no acceptance test can, because it does not change the
+accepted set:
 **3 of 3 schema defaults in the first 43 emitted modules were dropped**, against 626 of 1,625
 documents carrying one. 137 enum nodes carry `enumDescriptions`, also dropped. The compiler
 carries both for free, which is one of the reasons it is the compiler.
 
 **A zero denominator is a refusal, not a pass.** No pair is reportable with
-`accepted_invalid + refused == 0` in leg 2.
+`accepted_invalid + refused == 0` in the refuses check.
 
 ## 5. The steps
 
-Each step ends with Python emitted by `codegen.emit` and graded green on all three legs
-against the schema each class names. Steps 3–7 share only the dispatch table.
+Each step ends with Python emitted by `codegen.emit` and passing all three checks against the
+schema each class names. Steps 3–7 share only the dispatch table.
 
 | # | step | done when | parallel |
 |---|---|---|---|
-| 1 | **The spine, on one leaf document** — `core/pagination-request.json`: our walk decides the shape, dmcg renders it, the class carries `__adcp_schema__`, `AdCPBaseModel.strict_validate` reads it, the harness grades all three legs off it. `_bindings.json` and `codegen/adapter.py` do not exist. | the module imports, `max_results` carries `ge=1, le=100` **and `= 50`**, leg 3 green, and the three legs are generic over any class | no — the trunk |
-| 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint (asserted on the AST); the target emits as an alias | both graded, three legs | no — the trunk |
+| 1 | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, dmcg renders it, the class carries `__adcp_schema__`, `AdCPBaseModel.strict_validate` reads it, and the harness runs all three checks off it. `_bindings.json` and `codegen/adapter.py` do not exist. | the module imports, `max_results` carries `ge=1, le=100` **and `= 50`**, the schema comparison passes, and all three checks are generic over any class | no — the trunk |
+| 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint (asserted on the AST); the target emits as an alias | both documents pass all three checks | no — the trunk |
 | 3 | **Enumerations** — root and inline. Member spelling upper-cased (`pass` and `global` are live values and lower-casing emits a module that does not parse); the injectivity check binds to whatever name function the compiler runs, or it is vacuous | 213 of 214 root enums emit; `enumDescriptions` carried | yes — `lower/enum.py` |
 | 4 | **`allOf` roots** — `$ref` conjuncts become bases; a subclass never redeclares an inherited field | the `Optional[Any]` shadow is gone (31 of 42 `Any` fields shadowing a typed base field across 15 classes); `version-envelope`'s `ge=1, le=99` inherits | yes — `lower/product.py` |
 | 5 | **Union roots** — base plus branches plus alias; `discriminator` where sound (63 of 156), plain union otherwise; the root name binds the base, never the alias | sole-untitled-branch nodes refused by name (6 documents, 9 nodes) | yes — `lower/union.py` |
@@ -199,11 +201,11 @@ against the schema each class names. Steps 3–7 share only the dispatch table.
 | 10 | **Closeout** — P9 version derivation wired, byte compare in `make validate-generated`, the defect inventory re-run against the new tree expecting 0 | `tox` green | last |
 
 **Order is by risk.** Step 1 is first because it is the only step that can still invalidate
-the split: if our walk cannot hand the compiler a shape it renders faithfully on the simplest
+the split: if our walk cannot hand the compiler a declaration it renders faithfully on the simplest
 document in the bundle, nothing after it matters. There is no step for `strict_validate` —
 it is generic and lands in step 1, which is the point of §2.
 
 **What the previous eleven steps had that these ten do not:** a step to remove the compiler, a
-step to build `strict_validate` separately, and a rendering half in every shape lane. The
+step to build `strict_validate` separately, and a rendering half in every lowering lane. The
 lanes' schema-reading work transfers; their text generation does not, and that was measured
 per file at roughly 124 lines of judgement to 37 of text in the largest case.
