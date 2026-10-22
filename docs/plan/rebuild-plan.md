@@ -128,7 +128,8 @@ A step that wants to change one of these reports it and stops.
 - **D2 — what becomes a class.** An object with `properties` → a model. An `enum` node →
   `StrEnum`/`IntEnum`. A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
   Everything else is an annotation or a rule: scalar → an annotation; array → `list[X]`; typed
-  `additionalProperties` → `dict[str, X]`; `const` → `Literal`; typeless → `Any`;
+  `additionalProperties` or `patternProperties` → a mapping (D5 types its key); `const` →
+  `Literal`; typeless → `Any`;
   `required`-only, `not`, conditional, `dependencies`, `min`/`maxProperties` and `uniqueItems` →
   a rule on the nearest class. A root array → `RootModel[list[X]]`; a root scalar or mapping →
   a module-level alias.
@@ -159,6 +160,16 @@ A step that wants to change one of these reports it and stops.
   not thereby the same idea. Naming the type is also what keeps a constrained container usable
   as a mapping value: once it has a symbol, `dict[str, Tags]` is a plain reference and needs
   nothing from the compiler.
+
+  **A mapping's key is typed from the schema too, and `str` is the last resort.** The key type
+  comes from `propertyNames` where the document has one: a `$ref` names it, so the key is that
+  type; a `pattern`, `minLength` or `maxLength` constrains it, so the key is an annotated
+  `str`; an `anyOf` makes it a union of those. A `patternProperties` key carries the pattern
+  that selected it. An `enum` under `propertyNames` closes the key set, and **a closed key set
+  is a model and not a mapping** — the keys are its fields. Only where the document says
+  nothing about keys is the key `str`, and that is a faithful reading rather than a default:
+  typing it further would be the SDK inventing a constraint. Measured over the bundle, a key is
+  constrained at roughly 176 mapping sites and unconstrained at 193.
 - **D6 — rules are after-validators, hand-written once** in `src/adcp/types/_runtime.py`,
   reading a class-level tuple the emitter writes. A rule exists only for a keyword that has no
   field-level annotation, which is exactly the set spanning fields or collections: `oneOf` and
@@ -174,8 +185,10 @@ A step that wants to change one of these reports it and stops.
   document composes.
 - **D8 — `extra` follows the schema, and nothing else.** `additionalProperties: false` →
   `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; **absent →
-  `allow`**, because JSON Schema permits additional properties by default. `allow` rather than
-  `ignore`, so a field a newer sender adds survives a round trip instead of being dropped.
+  `ignore`**. Absent and `true` are different statements: `true` says additional properties are
+  part of the document, so they are retained, and silence says only that they are permitted, so
+  they are accepted and dropped. Retaining a property the document never mentions would be the
+  SDK adding a claim the schema does not make.
 
   A consumer who wants stricter or looser behaviour than the schema sets it on a subclass. The
   SDK does not read an environment to decide, and no generated class carries a policy that is
@@ -224,12 +237,18 @@ The harness runs three checks, two of which keep the names the code gives them.
    `__adcp_schema__` names.
 
 The first two call `strict_validate`, whose schema half answers first, so neither exercises the
-annotations: a class carrying `Any` on every field passes both, with a refuses-check denominator
-of zero instances. **The schema comparison is what grades the generated code.** It is also the
-only check that sees a default or a description, because neither changes the accepted set.
+annotations. A class carrying `Any` on every field and a faithful one produce **identical
+reports**: on `core/pagination-request.json`, both accept, both refuse 75 of 75 instances, both
+record no wrong acceptance. Dropping `extra="forbid"` and dropping a `pattern` measure the same
+way. No reading of those two checks separates a faithful class from a widened one, and the
+denominator is healthy in both, so nothing looks wrong.
 
-**A zero denominator is a refusal, not a pass.** No pair is reportable with
-`accepted_invalid + refused == 0` in the refuses check.
+**The schema comparison is what grades the generated code.** It is also the only check that
+sees a default or a description, because neither changes the accepted set.
+
+**A zero denominator is a refusal, not a pass.** A pair with
+`accepted_invalid + refused == 0` in the refuses check never reports `pass`, because no instance
+reached the class. That guards a pair nothing exercised; it does not catch a widening.
 
 ## 7. The steps
 
