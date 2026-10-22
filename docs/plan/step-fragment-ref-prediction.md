@@ -142,4 +142,103 @@ that lowers is `core/version-envelope.json` (`AdCPVersionEnvelope`), named at
 
 ## Grading
 
-Filled in after the measurement, in this file, saying which predictions were wrong.
+Branch tip `6ec81e303`. Three commits: the prediction, `codegen/compiler.py` on its own
+(a sibling lane holds the lowerings), then the mechanism, then the one fix below.
+
+| # | predicted | measured | |
+|---|---|---|---|
+| P1 | `resolved` raises 0 of 1,054 | 0 of 1,054, from 151 | right |
+| P2 | 88 + 63 = 151 of 151 become resolvable | 151 of 151 | right |
+| P3 | 0 of the 88 emit | 0 | right |
+| P4 | 88 refused on a keyword of their own; the 4 become chain refusals | 88 refused; the 4 now name `pattern`, `allOf`, `definitions` and a chained `$ref`; 0 refusals anywhere still say "names no document of this bundle" | right, but see D4 |
+| P5 | 0 new classes | 0 | right |
+| P6 | 2 new nested aliases, `AdCPVersionEnvelopeAdcpVersion` and `AdCPVersionEnvelopeAdcpMajorVersion` | exactly those two | right |
+| P7 | N = 383 | 383 over the named population of 981, 616 refused. Over the WHOLE 1,054: 394 emitted / 660 refused, both unchanged | right |
+| P8 | graded pairs 448 | 448 (224 classes + 224 module-level aliases) | right |
+| P9 | 1 file of the tree changes | 1: `src/adcp/types/_schemas/core/version_envelope.py` | right |
+| P10 | the comparison stays green | identical before and after: 9 compared, 2 model-only facts, 0 missing, 0 differs, 0 added | right |
+| P11 | the local-fragment IMPORT path is not built | not built; only the resolution half, which is where `resolved` raises | right |
+
+**Eleven for eleven is not a good sign on its own, so say why.** These were written after
+the baseline above was measured, not before it, and the baseline is what made them easy: once
+you know that 18 of the 19 fragment-target documents refuse on a keyword of their own, P3
+through P9 follow. The predictions that would have been hard are the ones about the MECHANISM,
+and four of those are things the build found and the sheet does not mention. Those are the
+content:
+
+**D1 — `document_for`'s own fragment split was dead production code.** The sheet's build item
+1 says "`document_for` splits the fragment off and matches the document half", and it was
+written that way. It is wrong: every caller needs BOTH halves, so every caller splits before
+asking, and a split inside `document_for` is unreachable from any live call. Found by breaking
+the change on purpose — reverting that clause reddened one unit test of itself and nothing
+else, while the real gate kept working. `split_ref` is now the one reading and `document_for`
+reads no `#` at all. **A probe that reddens only a test of the line you changed is telling you
+the line is not load-bearing.**
+
+**D2 — 10 of the 76 named nodes are THEMSELVES a `$ref`, and the design did not cover them.**
+Build item 5 says "a named node that is not already a class gets an alias", and the
+implementation asks `decided.type.local`. A `$ref` node comes back `local` too, with a symbol
+the target module IMPORTED rather than declared — so it gets no entry in `Module.declared` and
+the reference refuses. Binding it anyway would make a fragment reference a re-export, where
+section 2's rule is an import of a symbol the target DECLARES. The 10 sit in 3 documents
+(`core/catalog.json`, `core/targeting.json`, `media-buy/product-purchase.json`), all three
+refused on a keyword of their own, so 0 are reachable: refused with that reason named, rather
+than a re-export built for an empty population. The step whose population reaches one decides
+whether the chain is followed to the declaring module.
+
+**D3 — 3 of the 13 documents that reference only themselves keep a recursive `$ref` after
+resolution.** `resolve_all_refs` cannot inline a cycle, so
+`core/bidding-policy-capability.json`, `core/placement-presentation.json` and
+`governance/reported-outcome-error.json` come back with 4, 8 and 10 references still in them.
+All three are refused on `definitions`, so no pair grades a document with a reference left in
+it. Named as a ceiling in the test rather than asserted away.
+
+**D4 — the chain refusal satisfied P4's letter and not the exit condition.** With the gate
+lifted, the four former gate refusals became `its target core/catalog.json is refused: …` — the
+right cause, but naming only the file and not which of its nodes was wanted, where the gate's
+message had carried the whole URI. The exit condition for this row is a refusal with the
+FRAGMENT named. Fixed in its own commit: `its target core/catalog.json#/properties/type is
+refused: …`, bundle-relative, with a reference carrying no fragment unchanged (all 214 existing
+chains). **P4 was graded green on a count before the message was read.**
+
+**D5 — `bundle.resolved` is now reachable on documents where its O(paths) ceiling bites.** The
+function's own docstring predicts this ("Step 8 emits the whole population and will meet it";
+a 9,109-byte document resolves to 4.8 MB), and opening the gate is what makes those documents
+reachable: a full `resolved` pass over the 1,054 did not finish in 30 minutes, and over the 151
+that used to raise, at least one document does not finish in 20 seconds. **This does not affect
+N or the gate** — `emit` calls `resolved` only for a document that EMITS, and no newly
+resolvable document emits, so the committed tree costs what it cost. It is the next cost
+`salesagent-j3k2l.8` pays, and `acp-sdkgen/codegen/resolved_cache.py` is the upgrade path the
+docstring already names. It is also why the whole-population resolution test is a replica of
+the store loop with the inlining left off, which the test says in as many words.
+
+**On the bead's own scope.** The 34 / 88 / 966 / 76 reproduce exactly, and the three stated
+non-causes hold under my instruments too. Two corrections: the resolution gate closes on **151**
+documents and not 88, because `document_for`'s `if "#" in uri` matched a LOCAL reference as
+well; and **311 is not reproducible by any of nine instruments** (listed in the baseline), so
+the ~223 residual the bead asks about does not exist — the real gap is the 63 local-only
+documents. The `None` was also not the only gate: the store key was the other half, and
+removing the `None` alone would have left a fragment reference unresolvable with its target
+already read in.
+
+**Each half was broken on purpose**, and these are the tests that redden, all in
+`tests/test_fragment_ref.py`:
+
+| half broken | reddens |
+|---|---|
+| `resolved`'s call site stops splitting | the two resolution tests and both import tests (4) |
+| `bind`'s call site stops splitting | both import tests and the chain-refusal test (3) |
+| `named_nodes`' call site stops splitting | the naming test, the bundle-function test, the byte compare, the import test (4) |
+| the store is keyed on the full URI | the inlining test and both import tests (3) |
+| a local reference is looked up as a document | the local-resolution test (1) |
+| the empty-store shortcut skips resolution | the local-resolution test (1) |
+| a named node gets no symbol | the naming test, the bundle-function test, the byte compare, the import test (4) |
+| `named_nodes` reads the run's documents | the same 4 |
+| a fragment binds the target's root symbol | the import test (1) |
+| two symbols at one pointer are ordered | the duplicate-pointer test (1) |
+| the alias leaves its constraints on the property too | the naming test, the bundle-function test, the byte compare (3) |
+
+Nothing is ungraded. The one test no probe reddens is
+`test_no_portable_documents_reference_closure_names_a_document_this_bundle_lacks`, and that is
+deliberate: it is a CENSUS over the bundle rather than a grader of any one line, so it reddens
+on a bundle update that introduces a dangling reference and on nothing else.
