@@ -255,19 +255,41 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
 # site itself is unreachable (an optional subtree, an untaken union branch).
 @dataclass(frozen=True)
 class Step:
-    """A constraint site, and how to rewrite it. The rewrite is NOT applied yet.
+    """A constraint FACT about one instance location, and how to rewrite it away.
 
     ``steps()`` finds every site by walking the document once and copies nothing:
     a resolved document can be megabytes with thousands of sites, and
     deep-copying it per site cost 93 s on a 214-site document before this was
     made lazy. ``materialize`` produces the stepped document for the sites a
     caller actually grades.
+
+    **A fact can be stated at more than one schema position, and the step is the
+    fact rather than the position.**  ``allOf`` conjoins, so a document whose root
+    and whose conjunct both state ``minLength: 3`` states one fact about one
+    instance location through two positions.  Rewriting ONE of them left the other
+    stating the original bound, the conjunction of the two admitted no instance,
+    and ``hypothesis_jsonschema`` raised -- so the site cost a step and graded
+    nothing.  MEASURED on a root ``allOf`` restating ``required``, ``minLength``
+    and ``minItems``: 6 of 6 sites reported ``harness_error``, in three different
+    exception shapes.  D7 makes that restatement the normal case rather than an
+    edge: where a composition tightens an inherited field's requiredness the
+    subclass redeclares the field with the base's keywords, and a composed class's
+    ``required`` is the union of its own and every base's.
+
+    So ``positions`` holds every position stating the fact and ``materialize``
+    rewrites all of them, which pushes the instance out of the document once.
+    ``pointer`` is the first of them, kept because a report names one site.
     """
 
     keyword: str  # the constraint that was stepped, as the document spells it
-    pointer: str  # JSON Pointer to the subschema it was stepped at
+    pointer: str  # JSON Pointer to the first subschema it was stepped at
     describe: str  # human-readable "before -> after"
     _rewrite: Callable[[dict], None]
+    positions: tuple[str, ...] = ()  # every position stating this fact
+
+    def __post_init__(self) -> None:
+        if not self.positions:
+            object.__setattr__(self, "positions", (self.pointer,))
 
     def materialize(self, schema: dict, *, force: bool = True) -> dict:
         """The stepped document to GENERATE from. The original still decides.
@@ -276,9 +298,16 @@ class Step:
         It is on because a site the generator never populates grades nothing;
         ``force=False`` exists so a measurement can draw the unforced case from
         the same inputs in the same process, and nothing else passes it.
+
+        Every position is forced BEFORE any is rewritten, because forcing a path
+        adds a name to a ``required`` list and a ``required`` step takes one away.
         """
-        doc = force_path(schema, self.pointer) if force else copy.deepcopy(schema)
-        self._rewrite(at(doc, "" if self.pointer == "/" else self.pointer))
+        doc = copy.deepcopy(schema)
+        if force:
+            for pointer in self.positions:
+                _force_into(doc, pointer)
+        for pointer in self.positions:
+            self._rewrite(at(doc, "" if pointer == "/" else pointer))
         return doc
 
 
@@ -377,6 +406,17 @@ def force_path(schema: dict, pointer: str) -> dict:
     harness error instead of as the ungraded site it is.
     """
     doc = copy.deepcopy(schema)
+    _force_into(doc, pointer)
+    return doc
+
+
+def _force_into(doc: dict, pointer: str) -> None:
+    """``force_path``'s body, applied IN PLACE.
+
+    One step can hold several positions (see ``Step``), and each is forced into
+    the same document: copying per position would discard the previous one's
+    forcing.
+    """
     parts = [p for p in pointer.split("/") if p]
     node: Any = doc
     i = 0
@@ -411,7 +451,6 @@ def force_path(schema: dict, pointer: str) -> dict:
         else:
             node = node[int(k)] if isinstance(node, list) else node[k]
             i += 1
-    return doc
 
 
 def _is_index(part: str | None) -> TypeGuard[str]:
@@ -430,12 +469,81 @@ def _at_least(node: Any, floor_kw: str, ceiling_kw: str, n: int) -> None:
         node[floor_kw] = n
 
 
+#: The pointer hops that do NOT move the instance cursor, so two positions either
+#: side of one address the same instance location.  ``allOf``, ``anyOf`` and
+#: ``oneOf`` take an index; ``then`` and ``else`` do not.
+_APPLICATOR_INDEXED = ("allOf", "anyOf", "oneOf")
+_APPLICATOR_PLAIN = ("then", "else")
+
+#: A position beneath one of these states no fact ABOUT the instance that a
+#: sibling could restate, so it joins no group and is always a step of its own.
+#: A step beneath an ``if`` makes the condition FAIL, which releases ``then``
+#: instead of pushing the instance out of the document; a step beneath a ``not``
+#: is satisfied by the negation.  Such a site stays exactly as reachable as it is
+#: today, and the control counts it when it grades nothing.
+#:
+#: MEASURED, and this is why the rule is "groups with nothing" rather than "keeps
+#: the hop in its location": ``core/creative-approval-scope.json`` states
+#: ``required: ['approval_status']`` inside ``/allOf/0/if`` AND inside
+#: ``/allOf/1/if`` -- two different conditions, which keeping the ``if`` hop while
+#: dropping the ``allOf`` index collapses to one location called ``/if``.  They
+#: are not one fact and grouping them says they are.
+_NEVER_GROUPED = ("if", "not")
+
+
+def instance_location(pointer: str) -> str:
+    """The instance location a schema position addresses.
+
+    Two positions with the same location constrain the same place in an instance,
+    which is what makes them restatements of one fact rather than two facts.  A
+    position under an ``if`` or a ``not`` gets its own pointer back, so it is
+    equal to no other position and groups with nothing (see ``_NEVER_GROUPED``).
+    """
+    parts = [p for p in pointer.split("/") if p]
+    out: list[str] = []
+    i = 0
+    while i < len(parts):
+        p = parts[i]
+        if p in _NEVER_GROUPED:
+            return pointer or "/"
+        if p in _APPLICATOR_INDEXED and _is_index(parts[i + 1] if i + 1 < len(parts) else None):
+            i += 2
+        elif p in _APPLICATOR_PLAIN:
+            i += 1
+        else:
+            out.append(p)
+            i += 1
+    return "/" + "/".join(out)
+
+
 def steps(schema: dict) -> list[Step]:
-    """Every constraint keyword in the document, each as one exclusive step."""
-    out: list[Step] = []
+    """Every constraint FACT in the document, each as one exclusive step.
+
+    A fact restated at a second position is ONE step that rewrites both, because
+    rewriting one of them leaves the other constraining the value and the
+    conjunction of the two can admit no instance at all (see ``Step``).
+
+    **Two positions are the same fact when they state the same keyword at the same
+    instance location AND their rewrites are identical**, which is read off
+    ``describe`` -- the text is derived from the stated value by the emitting
+    branch, so equal descriptions mean interchangeable rewrites and the group can
+    apply any one of them at every position.  That is the whole admission rule,
+    and it is why a group can never manufacture a contradiction of its own: two
+    positions stating DIFFERENT bounds for one keyword are an intersection rather
+    than a restatement, they describe differently, and they stay separate steps
+    behaving exactly as they do today.
+    """
+    found: dict[tuple[str, str, str], list[str]] = {}
+    rewrites: dict[tuple[str, str, str], Callable[[dict], None]] = {}
 
     def emit(pointer: str, keyword: str, describe: str, rewrite: Callable[[dict], None]) -> None:
-        out.append(Step(keyword, pointer or "/", describe, rewrite))
+        pointer = pointer or "/"
+        key = (instance_location(pointer), keyword, describe)
+        if key in found:
+            found[key].append(pointer)
+            return
+        found[key] = [pointer]
+        rewrites[key] = rewrite
 
     def rec(node: Any, pointer: str) -> None:
         if isinstance(node, list):
@@ -590,6 +698,15 @@ def steps(schema: dict) -> list[Step]:
                 rec(v, f"{pointer}/{k}")
 
     rec(schema, "")
+    out: list[Step] = []
+    for key, positions in found.items():
+        _, keyword, describe = key
+        # Shallowest first, so the position a report NAMES is the outermost one
+        # stating the fact rather than whichever the document happens to spell
+        # first -- `rec` follows the document's own key order, which would make
+        # the reported pointer a function of how the file was written.
+        ordered = sorted(positions, key=lambda p: (p.count("/"), p))
+        out.append(Step(keyword, ordered[0], describe, rewrites[key], tuple(ordered)))
     return out
 
 
@@ -642,6 +759,10 @@ class RefusesResult:
     keyword: str = ""
     pointer: str = ""
     describe: str = ""
+    # every position the fact was stepped at; more than one means the document
+    # restates it (a root and an `allOf` conjunct, say) and all of them were
+    # rewritten together -- see `Step`
+    positions: tuple[str, ...] = ()
     examples: int = 0
     control_fired: int = 0  # step did not push the instance out of the schema
     refused: int = 0
@@ -797,7 +918,12 @@ def check_refuses(
     annotations underneath would have refused too.  ``compare_schema`` is what
     grades those.
     """
-    res = RefusesResult(keyword=step.keyword, pointer=step.pointer, describe=step.describe)
+    res = RefusesResult(
+        keyword=step.keyword,
+        pointer=step.pointer,
+        describe=step.describe,
+        positions=step.positions,
+    )
     cf = dict(custom_formats)
     validator_cls = validator_for(schema)
 
