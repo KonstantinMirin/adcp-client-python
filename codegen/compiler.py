@@ -691,11 +691,21 @@ class Module:
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
     asserted: frozenset[str] = frozenset()
+    #: The pointers of THIS document's nodes that a ``$ref`` elsewhere in the bundle
+    #: NAMES; see ``bundle.named_nodes``.  Empty by default, so a document lowered
+    #: outside ``lower_document`` names no node for a referrer that is not there --
+    #: the same reason ``asserted`` is empty by default.
+    named: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
     #: class name -> its :class:`Shape`, for a class declared in THIS module.
     shapes: dict[str, Shape] = field(default_factory=dict)
+    #: JSON Pointer -> the symbol declared for the node at it.  Written by
+    #: :meth:`declare`, which EVERY declaration passes through, so a fragment
+    #: reference reads one map rather than a second record something could forget to
+    #: write.  This is how a ``$ref`` carrying a pointer finds the symbol to import.
+    declared: dict[str, str] = field(default_factory=dict)
 
     def declare(self, name: str, pointer: str, block: str) -> None:
         if name in self.names:
@@ -704,7 +714,22 @@ class Module:
                 pointer,
                 f"two nodes in this document derive the class name {name!r}",
             )
+        if pointer in self.declared:
+            # The symmetric failure to the one above, and the same kind of thing: a
+            # pointer names ONE node of a document, so two symbols at one pointer
+            # means a fragment reference to it would import whichever the walk
+            # happened to declare last.  Measured 0 times over the whole population
+            # -- the root's pointer is written once, by the row, and every nested
+            # declaration sits at its own node -- so this refuses rather than
+            # ordering them.
+            raise Refusal(
+                "$ref",
+                pointer,
+                f"two nodes are declared at this pointer: {self.declared[pointer]!r} "
+                f"and {name!r}, so a reference to it would import whichever came last",
+            )
         self.names.add(name)
+        self.declared[pointer] = name
         self.blocks.append(block)
 
     def add(self, name: str, pointer: str, rendered: Rendered) -> None:
@@ -1012,6 +1037,59 @@ def bind_without_a_model(mod: Module, symbol: str, rendered: Rendered) -> str:
     return symbol
 
 
+def _alias_for(symbol: str, node: dict, decided: Decided) -> Rendered:
+    """:func:`render_alias` over one node's own decision.
+
+    Shared by the TWO rows that declare an alias -- a root (:func:`declare_alias`) and
+    a node another document names (:func:`name_the_node`) -- because "the annotation
+    for this node, under this name" is the same question in both and a second copy of
+    it is how the two come to carry a node's ``format`` or its ``description``
+    differently.  They differ only in what wraps the statement, which is each row's
+    own and stays there.
+    """
+    description = node.get("description")
+    return render_alias(
+        symbol,
+        decided.type,
+        decided.constraints,
+        description=description if isinstance(description, str) and description else None,
+        format=decided.format,
+    )
+
+
+def name_the_node(mod: Module, symbol: str, pointer: str, node: dict, decided: Decided) -> Decided:
+    """Give a node a SYMBOL in its own module, because a ``$ref`` elsewhere names it.
+
+    A fragment reference resolves to an import of a symbol the target module
+    declares, never to a copy (section 2's rule).  A node D2 makes a CLASS already
+    has one -- the walk declared it and ``decided.type.local`` says so -- and this is
+    the other case: an array, a scalar or a mapping is an annotation with no name, so
+    the target module has nothing to export and the reference has nothing to import.
+
+    **The node's type BECOMES the symbol**, which is why this returns a ``Decided``
+    rather than only declaring: the alias carries the constraints and the referring
+    property then references it, so the node's facts have ONE spelling in the module.
+    Declaring the alias and leaving the parent's field to restate the same
+    ``minLength`` inline would be the copy P2 removes, two spellings deep in one file.
+
+    Not :func:`declare_alias`, which is a ROOT's whole module -- the reference, the
+    alias and the bound ``strict_validate``, all at module scope, where there is room
+    for exactly one of each.  A named node is INSIDE a document that already has a
+    root, so it takes the alias statement alone.  It therefore carries no
+    ``__adcp_schema__`` of its own, and that is the existing arrangement rather than
+    a gap: every nested node that is not a class is ungraded on its own today, and
+    this one is graded twice over anyway -- inside its own document's pair, which
+    names the whole document, and inside its referrer's, whose resolved schema inlines
+    this very node at the pointer the reference carries.
+
+    The name is the walk's own ``name_hint``, which is D3's nested rule (parent +
+    ``pascal_case(property)``) already computed at the call site.  D3 says a name is an
+    input to a lowering and is never computed inside one, so none is computed here.
+    """
+    mod.add(symbol, pointer, _alias_for(symbol, node, decided))
+    return Decided(Type(symbol, local=True))
+
+
 def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
     """Declare the module for a root D2 makes an ALIAS rather than a class.
 
@@ -1039,15 +1117,4 @@ def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
     one: either refuse such a document by name, or wrap the alias in a
     ``RootModel`` that has a config slot.
     """
-    description = doc.get("description")
-    return bind_without_a_model(
-        mod,
-        symbol,
-        render_alias(
-            symbol,
-            decided.type,
-            decided.constraints,
-            description=description if isinstance(description, str) and description else None,
-            format=decided.format,
-        ),
-    )
+    return bind_without_a_model(mod, symbol, _alias_for(symbol, doc, decided))
