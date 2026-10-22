@@ -1498,7 +1498,18 @@ def _refuses_once(
             res.collides = contradicting(schema, step)
             named = ", ".join(res.collides) or "nothing at this instance location"
             res.harness = f"{detail} | contradicted by: {named}"[:300]
-            res.undrawable = f"contradicted by {named}; {_why(e)}"[:300]
+            # **Only where NOTHING contradicts the step**, and that gate is the whole
+            # difference between the two things an empty witness means.  A keyword at
+            # the same instance location that contradicts it is a reason the harness
+            # could act on -- group the positions, step the other keyword -- so §6's
+            # rule stands and the pair's verdict is a refusal
+            # (``test_an_unsteppable_site_is_reported_rather_than_passed`` is exactly
+            # that site, a ``maxLength`` stepped against a conjunct's ``const``).
+            # With nothing contradicting it, the document forbids the witness nowhere
+            # and the strategy still produced none: that is the GENERATOR, and
+            # ``PairReport.no_instrument`` records it.
+            if not res.collides:
+                res.undrawable = f"nothing at this instance location contradicts the step; {_why(e)}"
     except Exception as e:
         res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
@@ -2291,8 +2302,11 @@ class PairReport:
           is the shape ``hypothesis_jsonschema``'s ``string_schema`` filters and
           cannot satisfy.  The positions are DERIVED from the document, not guessed:
           hypothesis raises over the whole schema and names no node.
-        * a REFUSES step reports its keyword, its position and what contradicts it,
-          all of which the step already knows.
+        * a REFUSES step reports its keyword and its position, and it lands here
+          only where NOTHING at that instance location contradicts it
+          (:attr:`RefusesResult.undrawable` says why). A step contradicted by a
+          NAMED keyword is a harness defect and still reddens the pair under §6's
+          rule -- that is what separates this from a tolerance.
         """
         out: list[str] = []
         if self.accepts is not None and self.accepts.outcome == "strategy_error":

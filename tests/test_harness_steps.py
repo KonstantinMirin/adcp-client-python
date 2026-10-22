@@ -363,6 +363,13 @@ def test_an_unsteppable_site_is_reported_rather_than_passed() -> None:
     assert res.outcome == "harness_error"
     assert res.harness
     assert res.refused + res.accepted_invalid == 0  # nothing reached the model
+    # **And it is NOT `no_instrument`**, which is the gate between the two things an
+    # empty witness means: a NAMED keyword contradicts the step here, so the harness
+    # has a reason it could act on and §6's rule stands.  An empty `collides` is the
+    # other case -- nothing forbids the witness and the strategy still produced none
+    # -- and that is the generator's, recorded by `PairReport.no_instrument`.
+    assert res.collides == ("/allOf/0/properties/label:const",), res.collides
+    assert not res.undrawable, res.undrawable
 
     rep = check_pair(
         Pair(name="unsteppable", schema=document, model=Faithful, accept=Faithful.model_validate),
