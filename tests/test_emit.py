@@ -44,7 +44,7 @@ from hypothesis import strategies as st
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from adcp.types._base import AdCPBaseModel, REGEX_ENGINE, SchemaRef, schema_at
-from codegen import bundle, emit
+from codegen import bundle, compiler, emit
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
@@ -778,7 +778,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
         for key, sub in (doc.get("properties") or {}).items():
             if not isinstance(sub.get("format"), str):
                 continue
-            mine = _unwrap(emitted["properties"][emit.field_name(key)], emitted.get("$defs", {}))
+            mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
     assert stated == 14, stated
@@ -1287,7 +1287,7 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
             symbol = _symbol(target)
             module = emit.relative_module(document, target)
             assert (module, symbol) in imported, (document, key, module, symbol)
-            got = annotated[emit.field_name(key)]
+            got = annotated[compiler.field_name(key)]
             named = {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}
             assert symbol in named, (document, key, ast.unparse(got))
             carried = {

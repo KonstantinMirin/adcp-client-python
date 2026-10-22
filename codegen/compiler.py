@@ -1,4 +1,5 @@
-"""The compiler half: a class declaration in, Python out.
+"""The compiler half: a class declaration in, Python out -- and the machinery a
+lowering is handed to build one.
 
 ``docs/plan/rebuild-plan.md`` §1 splits the pipeline at a DECISION rather than at
 a translation.  Our walk reads the JSON Schema and decides what each node becomes -- a class, an
@@ -6,6 +7,32 @@ annotation, an enumeration or a rule -- what it is called, which fields it has
 and what constrains them.  This module takes that declaration and nothing else,
 and hands it to
 ``datamodel-code-generator``'s pydantic-v2 MODEL layer, which writes the Python.
+
+**D13 puts the shared machinery here and not in ``codegen.emit``**, and the reason
+is an import rule rather than a preference.  A lowering under ``codegen/lower/``
+imports this module and ``codegen.refusal`` and nothing else of this package: it
+never imports ``codegen.emit``, because ``emit`` holds the dispatch table that
+names it, and an import back the other way closes a cycle that ``python -m
+codegen.emit`` resolves into TWO module objects rather than into an ``ImportError``
+-- the failure D12 already exists to prevent for ``Refusal``, one layer in.  A
+``TYPE_CHECKING`` import hides that cycle from the type checker without removing
+it, because the lowering needs the machinery at RUN time.  So the machinery moves,
+which is what makes the one-directional import true rather than intended.
+
+What moved, in D13's own terms: the field builder (:func:`fields`), the class
+declarer (:func:`declare_object`, and :func:`declare_alias` beside it for a root
+D2 makes an alias), and the carriers a lowering is handed (:class:`Module`,
+:class:`Shape`, :class:`Target`, :class:`Decided`), with the keyword screen
+(:func:`check_keywords`), the name rules (D3) and :func:`lower_object` -- which is
+:func:`fields` plus :func:`declare_object` and has nothing else in it -- alongside.
+
+**What did NOT move is the per-node dispatch.**  ``emit.decide_type`` answers "what
+IS this node", and for an array, a mapping or a multi-type node the answer lives in
+``codegen.lower.containers``.  Putting it here would make this module import a
+lowering; leaving :func:`fields` to call it directly would make this module import
+``emit``.  So it arrives the way reference resolution already arrives --
+:class:`Module` carries it, ``emit`` supplies it, and the default refuses -- which
+is the same mechanism as ``Module.bind`` and for the same reason.
 
 **dmcg's parser never runs.**  The parser is the half that decides names and
 structure from a schema, and that is our half -- it is where every judgement
@@ -45,8 +72,9 @@ has no schema, so every grade of it fails rather than quietly passing.
 
 from __future__ import annotations
 
+import keyword
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -55,8 +83,17 @@ from datamodel_code_generator.model.pydantic_v2 import BaseModel, DataModelField
 from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
+from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
+from codegen.refusal import Refusal
+
+#: The import path of the hand-written base every emitted module imports from.
+#: Here rather than in ``emit`` because :func:`declare_alias` writes the two
+#: statements a root alias needs and a lowering calls it (D13's import rule).
+BASE_MODULE = "adcp.types._base"
+
+SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool"}
 
 #: The floor of ``requires-python``.  It decides the rendered spelling of an
 #: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
@@ -306,3 +343,386 @@ def render(decided: Class) -> Rendered:
     out.imports.add(("typing", "ClassVar"))
     out.imports.add(("adcp.types._base", "SchemaRef"))
     return out
+
+
+# --------------------------------------------------------------------------- #
+# the machinery a lowering is handed (D13)
+# --------------------------------------------------------------------------- #
+#: Keywords that annotate a node without constraining an instance.  ``default``
+#: and ``description`` are carried by the compiler (they are rendering, and
+#: rendering is what the compiler is for); the rest have nowhere to go and are
+#: never a reason to refuse.
+ANNOTATIONS = frozenset(
+    {
+        "$schema",
+        "$id",
+        "$comment",
+        "title",
+        "description",
+        "examples",
+        "example",
+        "default",
+        "deprecated",
+        "readOnly",
+        "writeOnly",
+    }
+)
+
+
+# --------------------------------------------------------------------------- #
+# names (D3)
+# --------------------------------------------------------------------------- #
+def class_name(title: str) -> str:
+    """``pascal_case`` that keeps an acronym: only the first letter of a word is
+    touched, so ``TMPX Chunk`` stays ``TMPXChunk`` and does not become
+    ``TmpxChunk``."""
+    words: list[str] = []
+    cur = ""
+    for ch in title:
+        if ch.isalnum():
+            cur += ch
+        elif cur:
+            words.append(cur)
+            cur = ""
+    if cur:
+        words.append(cur)
+    return "".join(w[:1].upper() + w[1:] for w in words)
+
+
+def field_name(key: str) -> str:
+    """The Python field name for a property key, which is the key itself unless
+    pydantic cannot carry a field under that name.
+
+    A key is carried as-is or it is carried under an ALIAS, never dropped.  The
+    bundle has keys a Python attribute cannot spell (``$schema``) and keys
+    pydantic reads as something other than a field: a leading underscore makes a
+    private attribute and no field at all, so
+    ``core/truncation-sentinel.json``'s required ``_truncation`` was silently
+    absent from the model -- the model refused the document's own instance AND
+    accepted an instance omitting the required key, in the same class.
+
+    The alias is the ONLY accepted spelling (no ``populate_by_name``), so the
+    model's accepted set stays the document's: the wire name is accepted and the
+    Python name is not a second way in.
+    """
+    name = "".join(c if c.isalnum() or c == "_" else "_" for c in key).lstrip("_")
+    if not name or name[0].isdigit():
+        name = f"f_{name}"
+    while (
+        keyword.iskeyword(name) or name.startswith("model_") or hasattr(PydanticBaseModel, name)
+    ):
+        name += "_"
+    return name
+
+
+def schema_ref(document: str, pointer: str) -> SchemaRef:
+    """The schema reference a class at ``pointer`` of ``document`` carries."""
+    return SchemaRef(document, f"#{pointer}")
+
+
+# --------------------------------------------------------------------------- #
+# the carriers
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class Shape:
+    """One class's own field set: each property key's schema node, and which keys
+    are required.
+
+    Written by :func:`declare_object` for every class the emitter declares, and
+    carried to a lowering by :class:`Target`, so it is produced in ONE place and
+    a second copy cannot disagree about what a class declares.
+
+    Read by TWO of D2's rows, not one: the ``allOf`` row, and the union row for a
+    branch whose root composes as well -- a subclass has to know what it inherits
+    in order not to restate it.
+
+    TRANSITIVE by construction: a class that itself composes records its inherited
+    keys here too, so a subclass reads one map rather than walking a chain of base
+    documents.
+    """
+
+    properties: Mapping[str, dict]
+    required: frozenset[str]
+
+
+@dataclass(frozen=True)
+class Target:
+    """What a resolved ``$ref`` gives the lowering that asked for it.
+
+    ``module`` and ``symbol`` are what an ANNOTATION needs.  ``shape`` is what an
+    ``allOf`` conjunct needs, and it is ``None`` when the target is not a class --
+    D2's root-scalar row is an ``Annotated`` alias, and subclassing one is a
+    ``TypeError`` at import, so a lowering refuses it as a base rather than
+    writing a module that cannot be imported.
+    """
+
+    module: str
+    symbol: str
+    shape: Shape | None = None
+
+
+@dataclass(frozen=True)
+class Decided:
+    """What the walk decided one schema node IS.
+
+    ``format`` is set only when ``type`` does NOT already carry the format -- the
+    compiler then states it as an annotation rather than as a type.  Keeping the
+    two separate here is what makes the drop impossible to make by accident: a
+    format is either in the type or in this field, and never nowhere.
+    """
+
+    type: Type
+    constraints: dict[str, Any] = field(default_factory=dict)
+    format: str | None = None
+
+
+def _no_binder(uri: str, pointer: str) -> Target:
+    """The default binder: a document lowered on its own resolves no reference.
+
+    ``emit`` supplies the real one, which owns the walk.  Lowering a document
+    without it refuses its references by name rather than inventing an import, so
+    there is no path on which a reference is silently dropped.
+    """
+    raise Refusal("$ref", pointer, f"no reference binder: {uri} cannot be resolved to a module")
+
+
+def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+    """The default node decider, and it refuses for ``_no_binder``'s reason.
+
+    ``emit.decide_type`` is the real one.  It stays in ``emit`` because an array, a
+    mapping and a multi-type node are answered by ``codegen.lower.containers``, so
+    a decider living HERE would make this module import a lowering -- and a
+    :func:`fields` that called into ``emit`` directly would make this module import
+    the entry point, which is the cycle D13 removes.  Carried on the :class:`Module`
+    instead, exactly as ``bind`` is carried, so a lowering decides a nested node
+    without naming ``emit``.
+    """
+    raise Refusal("type", pointer, f"no node decider: {node.get('type')!r} cannot be decided")
+
+
+@dataclass
+class Module:
+    document: str
+    #: ``(uri, pointer) -> Target``; see ``emit.emit``.
+    bind: Callable[[str, str], Target] = _no_binder
+    #: ``(node, pointer, name_hint, mod) -> Decided``; see ``emit.decide_type``.
+    decide: Callable[[dict, str, str, "Module"], Decided] = _no_decider
+    #: The formats this document's own draft asserts; see ``emit.asserted_formats``.
+    #: Empty by default, so a node lowered outside ``lower_document`` selects no
+    #: format-derived type rather than one nothing checks.
+    asserted: frozenset[str] = frozenset()
+    imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
+    blocks: list[str] = field(default_factory=list)
+    names: set[str] = field(default_factory=set)
+    #: class name -> its :class:`Shape`, for a class declared in THIS module.
+    shapes: dict[str, Shape] = field(default_factory=dict)
+
+    def declare(self, name: str, pointer: str, block: str) -> None:
+        if name in self.names:
+            raise Refusal(
+                "title",
+                pointer,
+                f"two nodes in this document derive the class name {name!r}",
+            )
+        self.names.add(name)
+        self.blocks.append(block)
+
+
+def check_keywords(
+    node: dict,
+    pointer: str,
+    handled: set[str],
+    why: str = "this step lowers no such keyword (a later D2 row does)",
+) -> None:
+    for key in sorted(node):
+        if key in handled or key in ANNOTATIONS or key.startswith("x-"):
+            continue
+        raise Refusal(key, pointer, why)
+
+
+# --------------------------------------------------------------------------- #
+# the field builder and the class declarer
+# --------------------------------------------------------------------------- #
+def fields(
+    props: Mapping[str, Any],
+    required: Collection[str],
+    pointer: str,
+    name: str,
+    mod: Module,
+    *,
+    inherited: Collection[str] = (),
+    declared_at: Mapping[str, str] | None = None,
+) -> list[Property]:
+    """The decided properties for one property map, children declared first.
+
+    Shared with a composing row, which builds ONE property map out of a root's
+    own ``properties`` and an inline ``allOf`` conjunct's.  How a property is
+    decided is the same question wherever it was declared, and a second copy of
+    this loop is how two declarations of one field come to disagree about the
+    answer.
+
+    ``inherited`` names the keys a BASE CLASS already declares.  They are not
+    decided here -- the field is inherited, and a subclass that restated it would
+    shadow the base's type with whatever its own restatement happens to say --
+    but they do satisfy ``required``, because an inherited field is present on
+    the class.  The row decides what goes in it (the narrowing rule); this
+    function only honours it.  ``declared_at`` gives the pointer a key was
+    declared at where that is not ``<pointer>/properties/<key>``, which it is not
+    for a key that came from a conjunct.
+    """
+    undeclared = [r for r in required if r not in props and r not in inherited]
+    if undeclared:
+        raise Refusal(
+            "required",
+            pointer,
+            f"required names no property declares: {undeclared} (step 7's rule, not a field)",
+        )
+
+    decided: list[Property] = []
+    spelled: dict[str, str] = {}
+    where = declared_at or {}
+    for key, sub in props.items():
+        at = where.get(key, f"{pointer}/properties/{key}")
+        if not isinstance(sub, dict):
+            raise Refusal("properties", at, "property is not a schema")
+        fname = field_name(key)
+        if fname in spelled:
+            raise Refusal(
+                "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
+            )
+        spelled[fname] = key
+        decided_type = mod.decide(sub, at, name + class_name(key), mod)
+        is_required = key in required
+        default = MISSING
+        if "default" in sub:
+            if is_required:
+                # No rendering carries it: a pydantic field with a default is not
+                # required, so transcribing one here would widen the model's
+                # accepted set to admit an instance omitting a key the document
+                # demands -- and the schema half of `strict_validate` would hide
+                # that in both acceptance directions.  5 of the bundle's 339
+                # property defaults sit on a required property; the step whose
+                # population reaches one decides between `json_schema_extra` and
+                # refusing.
+                raise Refusal(
+                    "default",
+                    at,
+                    "a default on a REQUIRED property has no rendering that does not also "
+                    "make the property optional",
+                )
+            default = sub["default"]
+        doc = sub.get("description")
+        decided.append(
+            Property(
+                name=fname,
+                wire=key,
+                type=decided_type.type,
+                required=is_required,
+                default=default,
+                description=doc if isinstance(doc, str) and doc else None,
+                constraints=decided_type.constraints,
+                format=decided_type.format,
+            )
+        )
+    return decided
+
+
+def declare_object(
+    node: dict,
+    name: str,
+    pointer: str,
+    mod: Module,
+    props: Sequence[Property],
+    shape: Shape,
+    *,
+    bases: tuple[str, ...] = (),
+) -> str:
+    """Assemble one class out of decided properties, and record what it declares.
+
+    The other half shared with a composing row: D8's ``extra``, the description,
+    the ``__adcp_schema__`` the compiler writes, and the :class:`Shape` a later
+    subclass reads.  ``bases`` is empty for a node that composes nothing, and
+    then the base is ``AdCPBaseModel``; a composing row passes the symbols its
+    ``$ref`` conjuncts bound (D7 -- a base is DERIVED from what the document
+    composes, never classified by hand), and ``AdCPBaseModel`` arrives through
+    them.
+    """
+    if isinstance(node.get("additionalProperties"), dict):
+        raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
+    description = node.get("description")
+    rendered = render(
+        Class(
+            name=name,
+            ref=schema_ref(mod.document, pointer),
+            properties=tuple(props),
+            description=description if isinstance(description, str) and description else None,
+            # D8; absent leaves the base's default in place
+            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            bases=bases,
+        )
+    )
+    mod.imports |= rendered.imports
+    mod.shapes[name] = shape
+    mod.declare(name, pointer, rendered.text)
+    return name
+
+
+def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
+    """Append the class for an object node, children first, and return its name."""
+    check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    props = node["properties"]
+    if not isinstance(props, dict) or not props:
+        raise Refusal("properties", pointer, "an object node with no property declared")
+    required = node.get("required", [])
+    if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
+        raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
+    decided = fields(props, required, pointer, name, mod)
+    return declare_object(node, name, pointer, mod, decided, Shape(props, frozenset(required)))
+
+
+def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
+    """Declare the module for a root D2 makes an ALIAS rather than a class.
+
+    A scalar root takes this shape, and so does every other root with no field to
+    hang itself on: a class would be a second name for the same node (P2) and
+    would put an object on the wire where the document carries a string or a map.
+    One function for all of them because the module shape is identical -- the
+    reference, the alias, and the bound ``strict_validate`` -- and two copies of it
+    would be two places for the ``strict_validate`` line to drift.
+
+    The ANNOTATION is still the compiler's: the same field rendering a class
+    property gets, read off the field instead of out of a class body, so a
+    constraint on an alias and a constraint on a property cannot come to be spelled
+    two ways.  What is ours is the two module-level STATEMENTS, and §1 says why: no
+    compiler template has a slot for a line beside an alias.
+
+    KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the per-class
+    ``regex_engine`` a look-around pattern needs, and ``strict_alias`` builds its
+    ``TypeAdapter`` at import.  A root carrying look-around would therefore fail to
+    IMPORT once the base stops forcing ``python-re``.  Measured over steps 1 and 2's
+    population: 5 scalar roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``,
+    which the default engine compiles) and 0 carrying look-around, so no document
+    there reaches it.  The failure is an ImportError at the gate rather than a
+    silent widening, so the upgrade path is for the step whose population reaches
+    one: either refuse such a document by name, or wrap the alias in a
+    ``RootModel`` that has a config slot.
+    """
+    description = doc.get("description")
+    rendered = render_alias(
+        symbol,
+        decided.type,
+        decided.constraints,
+        description=description if isinstance(description, str) and description else None,
+        format=decided.format,
+    )
+    mod.imports |= rendered.imports
+    mod.imports.add((BASE_MODULE, "strict_alias"))
+    ref = schema_ref(mod.document, "")
+    mod.declare(
+        symbol,
+        "",
+        f"__adcp_schema__ = {ref!r}\n\n"
+        f"{rendered.text}\n\n\n"
+        f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
+    )
+    return symbol

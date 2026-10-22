@@ -17,6 +17,7 @@ import json
 from collections.abc import Collection, Iterator
 from pathlib import Path
 
+from codegen import compiler
 from codegen.harness import resolve
 
 #: Top-level directories holding projections of documents published elsewhere.
@@ -181,6 +182,33 @@ def resolved(bundle_dir: Path, document: str) -> dict:
             store[uri] = read(bundle_dir, target)
             queue.append(store[uri])
     return resolve(doc, store=store) if store else doc
+
+
+# --------------------------------------------------------------------------- #
+# the dispatch table's selectors: which ROW lowers a document's root
+# --------------------------------------------------------------------------- #
+# One predicate per D2 root row, and together they are a PARTITION of the bundle's
+# documents by what their root IS -- so ``emit.ROWS`` is unordered and two rows
+# selecting one document is a defect in these predicates rather than a question of
+# precedence.  They live beside the population selectors below because a selector
+# and the population a step's result is stated over are the same kind of thing.
+#
+# Disjointness is by construction and asserted in ``tests/test_emit.py``, over the
+# whole bundle and in both directions.  Each row that lands adds its EXCLUSION to
+# the two generic rows here rather than a precedence line to the table: a root
+# ``oneOf`` makes the document a union whatever else it declares, and a root
+# ``enum`` makes it an enumeration though its ``type`` names a scalar, so the
+# clauses below are what keep this a partition.
+
+
+def is_object_root(doc: dict) -> bool:
+    """D2's object row: a root declaring ``properties``."""
+    return "properties" in doc and doc.get("type") in (None, "object")
+
+
+def is_scalar_root(doc: dict) -> bool:
+    """D2's root-scalar row: a root whose ``type`` names one scalar."""
+    return isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR
 
 
 def is_leaf_object(doc: dict) -> bool:
