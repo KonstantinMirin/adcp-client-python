@@ -276,6 +276,33 @@ A step that wants to change one of these reports it and stops.
   document refuses**, so it is a widening and is banned rather than merely unqualified.
   `AnyUrl` adds `minLength: 1`, which its document does not state.
 
+  **A `format: uri` field is `AdCPUrl`**, defined once in `adcp.types.constraints` as
+  `Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]`. Named for provenance rather
+  than after a standard: pydantic exports 22 URL types and none is https-only, so a name like
+  `HttpsUrl` would read as an upstream export a reader cannot find. `AnyHttpUrl` and `HttpUrl`
+  both admit `http://`, and `HttpUrl` adds a `maxLength: 2083` no document states.
+
+  **A document's `pattern` on such a field is not carried on the annotation.** The bundle states
+  eight distinct patterns across 73 of its 300 `uri` uses, and `UrlConstraints` expresses only
+  the first — `^https://` at 47 sites. The other 26 say things it has no field for: no userinfo,
+  not `localhost`, not an IP literal, host-only, a single pinned host. Rather than let the field
+  type vary by how strict a schema author happened to be, every `format: uri` field is
+  `AdCPUrl` and the pattern stays with the schema half.
+
+  **Nothing widens, because `strict_validate` validates against the document first.** Measured
+  against the strictest of the eight patterns: `https://localhost/x`, `https://10.0.0.1/x` and
+  `https://user@evil.test/x` are all REFUSED by the schema half while the bare constructor
+  accepts them — which is what D4 already says the constructor does. Request-forgery defence is
+  a layer of its own in the SDK and in the consuming application, not a job the annotation does.
+
+  **This needs a comparison row of a new kind, and it is weaker than the others.** The enum rows
+  admit a fact the document's own members *imply*. This one admits a fact the model does not
+  state at all, on the ground that the entry point enforces it — so the row is "the schema half
+  enforces this keyword and the annotation does not restate it", gated on the keyword being a
+  `pattern` on a `format: uri` field whose model is a URL type, with `minLength: 1` admitted as
+  implied by any URL type. Write it as its own category. Collapsing it into the implied-fact
+  rows would make a genuine omission look like a derivation.
+
   **`format` selects a type, and the schema half asserts it.** `format: date-time` references
   RFC 3339, where the offset is mandatory, so the schema does require a timezone and
   `AwareDatetime` states the document's own rule. `jsonschema` asserts nothing for `format`
