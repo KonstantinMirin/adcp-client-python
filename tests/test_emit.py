@@ -247,11 +247,15 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     assert len(leaves()) == 85
     assert len(referencing()) == 249
     assert len(enums()) == 535
-    assert len(composing()) == 287
+    # 301 and not 287: ``composes_at_the_root`` reads "a union beside the allOf"
+    # through ``union_root`` now, so a root carrying ``allOf`` beside a
+    # PRESENCE-ONLY ``anyOf`` is step 4's rather than nobody's -- 14 documents that
+    # both this row and step 5's used to refuse.
+    assert len(composing()) == 301
     # Not the sum: the selectors OVERLAP, and the overlaps are counted below
     # rather than assumed.  The union is the denominator; no selector here is a
     # ROW for another's shape, so nothing is counted twice by the table.
-    assert len(population()) == 981
+    assert len(population()) == 991
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
@@ -1403,8 +1407,8 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 481, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 469
+    assert len(reports) == 484, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 472
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
@@ -2492,8 +2496,13 @@ def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() 
         n = sum(1 for selector, _ in emit.ROWS if selector(doc))
         by_count[n] = by_count.get(n, 0) + 1
     assert sorted(by_count) == [0, 1], by_count  # never two
-    assert by_count[1] == 1033, by_count  # the six rows' own population
-    assert by_count[0] == 21, by_count  # no row yet: a later step's
+    assert by_count[1] == 1047, by_count  # the six rows' own population
+    # 7 and not 21: closing ``composes_at_the_root``'s two-reading hole moved 14 of
+    # them onto step 4's row.  **The 7 that remain are not waiting for a row** -- four
+    # are DATA documents with no schema keyword at the root, two are conditional-only
+    # and one is a bare root ``$ref`` -- and ``emit.lower_document`` refuses each on
+    # the keyword its kind is read from rather than on the absence of a row.
+    assert by_count[0] == 7, by_count
 
     both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
     assert bundle.is_object_root(both)
@@ -2825,7 +2834,10 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         for key, sub in (schema_at(row.ref).get("properties") or {}).items()
         if isinstance(sub.get("type"), list)
     ]
-    assert len(live) == 2, live
+    # 6 and not 2: core/webhook-activity-record.json and core/registry-event.json
+    # carry a DECLARED null beside their type and emit now, so the live sites are no
+    # longer only error-details/conflict.json's two ['number', 'string'].
+    assert len(live) == 6, live
     for ref, key in live:
         doc = schema_at(ref)
         model = next(r.model for r in graded() if r.ref == ref)
