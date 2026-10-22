@@ -803,4 +803,4 @@ def test_the_emitted_tree_still_declares_every_module_it_imports() -> None:
             for alias in n.names:
                 assert alias.name in exported[target], (module, target, alias.name)
                 checked += 1
-    assert checked == 171, checked
+    assert checked == 172, checked

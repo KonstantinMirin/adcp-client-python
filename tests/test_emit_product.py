@@ -170,7 +170,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population is 188 on the merged table (43 when this lane measured
     # it alone, before the other four steps' rows were beside it), and the row moves
     # it by 0.
-    assert len(with_row.emitted) == 214, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 215, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
