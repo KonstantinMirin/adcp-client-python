@@ -1,23 +1,46 @@
-# Emit the AdCP types: walk the schema, let the compiler write the class
+# The AdCP types SDK: what it is, and how it is built
 
-## 1. The split
+## 1. The artifact
+
+The SDK is a set of pydantic classes, one per schema node that needs one, generated from the
+AdCP schema bundle. A consumer reaches them through one import surface:
+
+```python
+from adcp.types import PaginationRequest          # or
+from adcp.types.core import PaginationRequest     # the same object
+
+req = PaginationRequest.strict_validate(payload)  # the schema decides, then construct
+req = PaginationRequest(max_results=50)           # pydantic constructs, annotations only
+```
+
+Three properties hold for every emitted class:
+
+- It inherits `AdCPBaseModel`.
+- It carries `__adcp_schema__`, the document and JSON pointer it was generated from.
+- It accepts exactly what its schema accepts, through `strict_validate`.
+
+## 2. The build
 
 **Our code walks the JSON Schema.** Read the document, resolve references, collapse identical
 nodes, decide what each node becomes — a class, an annotation, an enumeration, or a rule — and
 decide its name. Every judgement about the bundle lives here.
 
-**`datamodel-code-generator` writes the class.** Our walk hands it a declaration — these
-fields, these constraints, these defaults, this base — and it emits the Python.
+**The compiler writes the class.** Our walk hands `datamodel-code-generator` a declaration —
+these fields, these constraints, these defaults, this base — and it emits the Python.
 
 ```
-schema document -> our walk -> a class declaration -> dmcg's model layer -> Python
-                   (ours)                              (the compiler)
+schema document -> our walk -> a class declaration -> the compiler -> Python
+                   (ours)                             (our fork of dmcg)
 ```
 
-dmcg's **parser never runs**. Deciding names and structure from a schema is our half; the
-compiler's half is rendering a declaration it is given.
+The compiler's **parser never runs**. Deciding names and structure from a schema is our half;
+the compiler's half is rendering a declaration it is handed.
 
-## 2. Driving the compiler
+**The compiler is a fork we own** (D10). When it cannot express something, we add the
+expression to the fork and offer it upstream. Nothing is ever worked around in the emitted
+output.
+
+## 3. Driving the compiler
 
 ```python
 datamodel_code_generator.model.pydantic_v2.BaseModel(
@@ -27,36 +50,36 @@ datamodel_code_generator.model.pydantic_v2.BaseModel(
 ```
 
 Fields are `DataModelField(name=, data_type=, required=, default=, has_default=, constraints=,
-extras=)`.
+extras=, alias=)`. Each input has exactly one channel:
 
-**Constraints are spelled in JSON Schema.** `ConstraintsBase` declares each field under its
-JSON-Schema alias and sets no `populate_by_name`, so `Constraints(ge=1, le=100)` sets nothing
-and renders nothing. Write `Constraints(minimum=1, maximum=100)`, which renders
-`Field(ge=1, le=100)`.
+- The type goes in `data_type`.
+- Constraints go in `constraints=`, in JSON-Schema spelling:
+  `Constraints(minimum=1, maximum=100)`.
+- A description goes in `extras={"description": ...}`.
+- A default goes in `default=` with `has_default=True`.
+- A property key Python cannot carry goes in `alias=`.
 
-**Constraints travel in `constraints=` and nowhere else.** `_EXCLUDE_FIELD_KEYS` strips
-`gt ge lt le multiple_of min_length max_length pattern` out of `extras`.
+`Constraints` declares each field under its JSON-Schema alias with `populate_by_name` off, so
+the JSON-Schema spelling is the only one that sets anything. The fork may add
+`populate_by_name` so both spellings work; until it does, write `minimum`/`maximum`.
 
-### What the compiler does not express
+### What the fork adds
 
-- **A constrained container as a mapping value.** A nested scalar carries its bound
-  (`Dict[str, conint(ge=1, le=100)]` renders); a nested container does not — `DataType` has no
-  `constraints` field, and `min_items` on an array value renders `List[Any]`. A field-level
-  `Field(min_length=1)` bounds the mapping's key count instead, which is a different keyword on
-  a different node. **A constrained container value gets its own symbol** and the mapping names
-  it, so the constraint sits on a declaration the compiler does express. 53 documents use the
-  construct.
+Each of these is a gap in the upstream compiler and a change we make in the fork, not a
+workaround in our walk.
+
+- **A constraint on a nested container.** `DataType` carries no constraints, so `min_items` on
+  an array used as a mapping value renders `List[Any]` and the bound is lost. The fork gives
+  `DataType` a `constraints` field so `dict[str, Annotated[list[str], Field(min_length=1)]]`
+  renders. A field-level constraint is not the fix: on a mapping field it bounds the key count,
+  which is a different keyword on a different node.
 - **A statement beside a module-level alias.** No alias template has a place for a sibling
-  statement, so our module writer emits it around the compiler's output.
-- **A union discriminated by requiredness.** `DataType.discriminator` renders
-  `Annotated[A | B, Field(discriminator='type')]`, which is sound on 63 of 156 union roots —
-  those where the tag is a `const` on every branch and required in every branch. The rest are
-  plain unions with a rule (D5).
+  statement, and a root scalar needs one to bind its entry point. The fork adds the slot.
+- **A union discriminated by requiredness.** `DataType.discriminator` expresses a union tagged
+  by a `const` property, which covers the roots where the tag is present and required on every
+  branch. Requiredness as a discriminant has no expression; it is a rule (D5).
 
-## 3. The emitted class
-
-Every emitted class inherits `AdCPBaseModel` and carries a reference to the schema that
-generated it.
+## 4. The emitted class
 
 ```python
 class PaginationRequest(AdCPBaseModel):
@@ -68,23 +91,34 @@ class PaginationRequest(AdCPBaseModel):
 `SchemaRef` is a document path plus a JSON pointer, because a nested class is a subschema and
 answers for its own node rather than the whole document.
 
-That reference makes two things generic:
+That reference is what makes the runtime contract and the test instrument generic:
 
-- **`strict_validate`**, once on the base: read `cls.__adcp_schema__`, validate the payload
-  against that schema, then construct through `model_validate`.
+- **`strict_validate`**, once on `AdCPBaseModel`: read `cls.__adcp_schema__`, validate the
+  payload against that schema, then construct through `model_validate`. A schema refusal raises
+  pydantic's `ValidationError` with the JSON Schema keyword as `type` and the instance pointer
+  as `loc`, so a caller reads one error shape whichever half refused.
 - **The harness**: take a class, read `__adcp_schema__`, grade the class against that document.
 
 So there is **no adapter, no binding table, and no name-keyed lookup**. A class cannot be paired
-with a document other than its own, and `codegen/adapter.py`, `_bindings.json`, `_documents()`,
-`_document_at` and `_document_of` do not exist.
+with a document other than its own.
 
-## 4. Decisions
+`AdCPBaseModel` also sets `regex_engine="python-re"`. pydantic's default Rust engine refuses to
+compile a pattern using look-around and the bundle contains such patterns, so the default engine
+makes those modules fail to import. The document's own validator compiles patterns with Python
+`re`, so `python-re` is the engine whose accepted set matches the schema's.
+
+A root scalar is an annotation and not a class (D2), so it has no class to carry
+`strict_validate`. Its module binds the same two halves as a module-level function over the same
+`SchemaRef`, so a class and an alias cannot disagree about what their document accepts.
+
+## 5. Decisions
 
 A step that wants to change one of these reports it and stops.
 
-- **D1 — the module is the document path.** `core/date-range.json` →
-  `src/adcp/types/_schemas/core/date_range.py`. `_schemas/` is private; the public surface is
-  generated in step 9.
+- **D1 — the module is the document path, and it is private.** `core/date-range.json` →
+  `src/adcp/types/_schemas/core/date_range.py`. The public surface is generated (step 9) and
+  keyed on the class name, which comes from the schema `title`. A consumer's import therefore
+  survives an upstream file rename; the document path is a build input, not an API.
 - **D2 — what becomes a class.** An object with `properties` → a model. An `enum` node →
   `StrEnum`/`IntEnum`. A `oneOf`/`anyOf` → a base, one subclass per branch, and a union alias.
   Everything else is an annotation or a rule: scalar → an annotation; array → `list[X]`; typed
@@ -97,41 +131,60 @@ A step that wants to change one of these reports it and stops.
   required set, else refuse the document by name and pointer. Nodes with identical content are
   one node; content equality is the only deduplication. A name is an input to a lowering and is
   never computed inside one.
-- **D4 — the schema decides acceptance.** An optional renders plain, carrying its default.
-  `strict_validate` validates against the class's own schema and then constructs. A schema
-  refusal raises pydantic's `ValidationError` with the JSON Schema keyword as `type` and the
-  instance pointer as `loc`. `model_validate` stays public and constructs without consulting
-  the schema.
-- **D5 — rules are after-validators, hand-written once** in `src/adcp/types/_runtime.py`,
-  reading a class-level tuple the emitter writes. A rule narrows the constructor; acceptance
-  stays with the schema.
-- **D6 — bases are derived.** An `allOf` of `$ref`s makes those classes the bases. There is no
+- **D4 — the schema decides acceptance.** `strict_validate` validates against the class's own
+  schema and then constructs. `model_validate` and the constructor stay public and build without
+  consulting the schema, so a caller that already has a conforming payload pays nothing.
+- **D5 — constraints bind to the type, not the field.** `Annotated[int, Field(ge=1, le=100)]`,
+  never `Field(None, ge=1, le=100)` as a default. A constrained type nests into `list[...]` and
+  `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
+  field-bound constraint does none of those. It also keeps `= 50` meaning a default rather than
+  conflating the default with metadata.
+- **D6 — rules are after-validators, hand-written once** in `src/adcp/types/_runtime.py`,
+  reading a class-level tuple the emitter writes. A rule exists only for a keyword that has no
+  field-level annotation, which is exactly the set spanning fields or collections: `oneOf` and
+  `anyOf` over `required` (exactly one, or at least one, of these field groups is present);
+  `if`/`then`/`else` (a field is required only when another holds a given value);
+  `dependencies` (if A is present, B is required); `minProperties` and `maxProperties` (a bound
+  on the count of set fields); `uniqueItems` (a list's items are distinct); and `not` (a
+  subschema that must not match). Those six are the whole population. Everything else is an
+  annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
+  constructor; acceptance stays with the schema (D4).
+- **D7 — bases are derived.** An `allOf` of `$ref`s makes those classes the bases. There is no
   marker-class policy: anything a caller wants to test with `isinstance` is a schema the
   document composes.
-- **D7 — `extra` is derived.** `additionalProperties: false` → `forbid`; `true` → `allow`;
-  absent → the base default; typed → `allow` with a typed `__pydantic_extra__`.
-- **D8 — no patch pass.** `make validate-generated` byte-compares the committed tree to a fresh
-  run. A defect is fixed in our walk, in the compiler's configuration, or in a compiler
-  extension. Nothing rewrites emitted output.
-- **D9 — the bundle directory is an argument.** `python -m codegen.emit --bundle <dir>`. No
+- **D8 — `extra` is derived, and its default is environment-driven.** A document that declares
+  `additionalProperties` decides its own class: `false` → `forbid`; `true` → `allow`; typed →
+  `allow` with a typed `__pydantic_extra__`. Where the document is silent, the base default is
+  `forbid` in development and `ignore` in production. In development an unknown field raises, so
+  a field the SDK has not implemented is loud; in production it is inert, so a newer sender is
+  served rather than refused.
+- **D9 — nothing rewrites emitted output.** A defect is fixed in the schema input before the
+  compiler reads it, or in the fork. `make validate-generated` byte-compares the committed tree
+  to a fresh run.
+- **D10 — the compiler is our fork, pinned by commit.** The pipeline is `f(schemas, pinned
+  compiler)` and both arguments are ours to change. An extension that proves itself is offered
+  upstream as a pull request; the fork is where it lands first, not where it stays.
+- **D11 — the bundle directory is an argument.** `python -m codegen.emit --bundle <dir>`. No
   version literal in `codegen/`.
-- **D10 — the compiler is pinned and stays.** The pipeline is `f(schemas, pinned compiler)`.
-- **D11 — `Refusal` lives in the package every lowering imports**, never in a module that is
+- **D12 — `Refusal` lives in the package every lowering imports**, never in a module that is
   also an entry point. Under `runpy`, `python -m codegen.emit` binds the emitter twice, so an
   exception class defined there has two identities and `except Refusal` misses the one a
   lowering raised.
 
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
-`codegen/lower/<kind>.py` is one module per D2 row. A dispatch table of `(selector, lowering)`
-pairs connects them, and a document selected by two rows is a build failure rather than a
-question of precedence. A selector is its step's population test, so a row cannot claim a
-document its step does not count.
+`codegen/compiler.py` drives the fork; `codegen/lower/<kind>.py` is one module per D2 row. A
+dispatch table of `(selector, lowering)` pairs connects them, and a document selected by two
+rows is a build failure rather than a question of precedence. A selector is its step's
+population test, so a row cannot claim a document its step does not count.
 
-## 5. The metric
+## 6. The metric
 
-> **N = the number of portable bundle documents (of 1,054) whose class `codegen.emit` emits and
-> `codegen.harness` grades green against the schema the class itself names, with
-> `N + refused == 1,054` asserted and every refusal named by document, pointer and keyword.**
+> **Every document in the bundle is either emitted as a class the harness grades green against
+> that document, or refused by name, pointer and keyword. Emitted plus refused equals the
+> bundle's own size, asserted at run time.**
+
+The bundle size is read from the bundle, never written here. N is the emitted count and the
+refusal list is its complement.
 
 The harness runs three checks, two of which keep the names the code gives them.
 
@@ -142,17 +195,15 @@ The harness runs three checks, two of which keep the names the code gives them.
 3. **The schema comparison**: the class's own `model_json_schema()` against the document
    `__adcp_schema__` names.
 
-The first two call `strict_validate`, whose schema half refuses whatever the document refuses,
-so neither exercises the annotations: a class carrying `Any` on every field passes both, with a
-refuses-check denominator of zero instances. **The schema comparison is what grades the
-generated code**, and it is also the only check that sees a default or a description, because
-neither changes the accepted set. 626 of 1,625 documents carry a `default`; 137 enum nodes
-carry `enumDescriptions`.
+The first two call `strict_validate`, whose schema half answers first, so neither exercises the
+annotations: a class carrying `Any` on every field passes both, with a refuses-check denominator
+of zero instances. **The schema comparison is what grades the generated code.** It is also the
+only check that sees a default or a description, because neither changes the accepted set.
 
 **A zero denominator is a refusal, not a pass.** No pair is reportable with
 `accepted_invalid + refused == 0` in the refuses check.
 
-## 6. The steps
+## 7. The steps
 
 Each step ends with Python that `codegen.emit` emitted and that passes all three checks against
 the schema each class names. Steps 3–7 share only the dispatch table.
@@ -161,16 +212,16 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 |---|---|---|---|
 | 1 | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — trunk |
 | 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — trunk |
-| 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | 213 of 214 root enums emit; `enumDescriptions` carried | yes — `lower/enum.py` |
-| 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | the `Optional[Any]` shadow is gone (31 of 42 `Any` fields shadow a typed base field, across 15 classes); `version-envelope`'s `ge=1, le=99` inherits | yes — `lower/product.py` |
-| 5 | **Union roots** — base, branches, alias; `discriminator` where sound (63 of 156), plain union otherwise; the root name binds the base, never the alias | nodes whose only untitled branch has no derivable name are refused by name (6 documents, 9 nodes) | yes — `lower/union.py` |
-| 6 | **Containers and mappings** — a constrained container value gets its own symbol (§2); a multi-type property applies each keyword to its own branch | the `dict[str, <array with minItems>]` widening is gone across its 53 documents | yes — `lower/containers.py` |
-| 7 | **Rules** — `not`, conditionals, `dependencies`, `min`/`maxProperties` and `uniqueItems` as class-level tuples read by `_runtime.py` | the harness steps `uniqueItems` (479 sites over 198 documents) | yes — `lower/rules.py` |
-| 8 | **The whole population** — `--all` emits or refuses every portable document | `N + refused == 1,054` asserted; every refusal named | after 3–7 |
-| 9 | **Public surface** — `adcp/types/__init__.py` and per-domain packages generated, PEP 562 lazy; a root name bound to two nodes is a build failure | `from adcp.types import X` and `from adcp.types.core import X` are the same object | after 8 |
-| 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; the defect inventory re-run against the emitted tree | the inventory reports 0; `tox` green | last |
+| 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
+| 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | no emitted field shadows a typed base field; a composed `ge`/`le` inherits | yes — `lower/product.py` |
+| 5 | **Union roots** — base, branches, alias; `discriminator` where the tag is a `const` present and required on every branch, plain union with a rule otherwise; the root name binds the base, never the alias | a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
+| 6 | **Containers and mappings** — the fork carries a constraint on a nested container (§3); a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation | yes — `lower/containers.py` |
+| 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
+| 8 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 3–7 |
+| 9 | **Public surface** — `adcp/types/__init__.py` and per-domain packages generated, PEP 562 lazy; a class name bound to two nodes is a build failure | `from adcp.types import X` and `from adcp.types.<domain> import X` are the same object | after 8 |
+| 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; the fork's extensions filed upstream | `tox` green | last |
 
 **Order is by risk.** Step 1 comes first because it is the only step that can invalidate the
 split: if our walk cannot hand the compiler a declaration it renders faithfully on the simplest
-document in the bundle, nothing after it matters. `strict_validate` has no step of its own —
-it is generic, so it lands in step 1.
+document in the bundle, nothing after it matters. `strict_validate` has no step of its own — it
+is generic, so it lands in step 1.
