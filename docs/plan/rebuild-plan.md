@@ -210,9 +210,12 @@ A step that wants to change one of these reports it and stops.
   name produces the wrapper, not the constraint.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
-  required set, else refuse the document by name and pointer. Nodes with identical content are
-  one node; content equality is the only deduplication. A name is an input to a lowering and is
-  never computed inside one.
+  required set, else refuse the document by name and pointer. **A branch named by anything other
+  than its own title is qualified by its base's name**, because a discriminator `const` yields
+  `ById` and a required set yields `ExplicitPackagesWithFixedAllocation` — names that collide
+  across documents and carry nothing of the root they belong to. Nodes with identical content
+  are one node; content equality is the only deduplication. A name is an input to a lowering and
+  is never computed inside one.
 
   **Two nodes are compared by content, never by title**, and the comparison must say where it
   cuts a reference cycle. Two instruments that cut differently disagree about whether two nodes
@@ -230,6 +233,13 @@ A step that wants to change one of these reports it and stops.
 - **D4 — the schema decides acceptance.** `strict_validate` validates against the class's own
   schema and then constructs. `model_validate` and the constructor stay public and build without
   consulting the schema, so a caller that already has a conforming payload pays nothing.
+
+  **A required property is emitted with no default**, whatever `default` the document states for
+  it, and the drop is reported. A default makes a field optional and the document says it is
+  not, so carrying both would make the model accept an absence the schema refuses. Measured: 4
+  sites state a `default` for a property their own node requires — in `core/product.json`,
+  `core/reporting-capabilities.json`, `core/reporting-delivery-config.json` and
+  `formats/canonical/seller_rendered_stateful_display.json`.
 - **D5 — constraints bind to the type, not the field.** `Annotated[int, Field(ge=1, le=100)]`,
   never `Field(None, ge=1, le=100)` as a default. A constrained type nests into `list[...]` and
   `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
@@ -290,9 +300,26 @@ A step that wants to change one of these reports it and stops.
   subschema that must not match). Those six are the whole population. Everything else is an
   annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
   constructor; acceptance stays with the schema (D4).
-- **D7 — bases are derived, and the message markers come from the task registry.** An `allOf`
-  of `$ref`s makes those referenced classes the bases, so every base an emitted class has is a
-  schema its document composes. A response composing the two envelopes inherits them:
+- **D7 — bases are derived, and composition merges by intersection.** An `allOf` of `$ref`s
+  makes those referenced classes the bases, so every base an emitted class has is a schema its
+  document composes.
+
+  **A composed class's `required` is the union of its own and every base's.** Where a
+  composition makes an inherited field required, the subclass **redeclares that field with the
+  base's type and no default** — and that is the ONLY case in which an emitted class redeclares
+  an inherited field. A redeclaration that changes the type or adds a default is a build
+  failure. Measured: 94 sites in 37 documents have an `allOf` conjunct whose `required` names a
+  property no conjunct declares locally, so the name comes from the `$ref` target and the
+  overlay is tightening it. `core/canonical-product.json#/properties/collections/items` is the
+  clearest: an overlay with no `properties` at all, only a requiredness change.
+
+  **Where composed schemas constrain the same property, the field carries the INTERSECTION**,
+  never the union: an enum is the intersection of the members, a bound is the tighter one, a
+  `const` must agree. This holds at any depth, including an overlay under `items`. An empty
+  intersection refuses the document by name and pointer. Unioning an enum's vocabularies makes
+  the model accept a member the schema forbids, which is the defect this prevents.
+
+  A response composing the two envelopes inherits them:
 
   ```python
   class CreateMediaBuyResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope): ...
@@ -442,7 +469,7 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 | 1 | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — runs alone |
 | 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — runs alone |
 | 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
-| 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | no emitted field shadows a typed base field; a composed `ge`/`le` inherits | yes — `lower/product.py` |
+| 4 | **`allOf` roots** — `$ref` conjuncts become bases; composed constraints on one property intersect; a requiredness-tightening overlay redeclares the field with the base's type and no default, and that is the only permitted redeclaration (D7) | no emitted field shadows a typed base field EXCEPT a requiredness tightening, which 37 documents need; a composed `ge`/`le` inherits; a composed enum is the intersection of its members and an empty one refuses | yes — `lower/product.py` |
 | 5 | **Union roots** — the base carries `BranchDispatchMixin` and declares `_branch_models`, `_ROOT_REQUIRED` and `_branch_combinator`; one subclass per branch; the declaring module calls `model_rebuild(force=True)`; the root name binds the base (§4) | a payload resolves to its branch on all four paths — nested field, `TypeAdapter`, `model_validate`, `Base(**data)`; a consumer's subclass of the base keeps its own schema; `model_dump_json` on a base instance does not raise; a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
 | 6 | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
