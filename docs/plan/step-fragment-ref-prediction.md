@@ -201,16 +201,25 @@ FRAGMENT named. Fixed in its own commit: `its target core/catalog.json#/properti
 refused: …`, bundle-relative, with a reference carrying no fragment unchanged (all 214 existing
 chains). **P4 was graded green on a count before the message was read.**
 
-**D5 — `bundle.resolved` is now reachable on documents where its O(paths) ceiling bites.** The
-function's own docstring predicts this ("Step 8 emits the whole population and will meet it";
-a 9,109-byte document resolves to 4.8 MB), and opening the gate is what makes those documents
-reachable: a full `resolved` pass over the 1,054 did not finish in 30 minutes, and over the 151
-that used to raise, at least one document does not finish in 20 seconds. **This does not affect
-N or the gate** — `emit` calls `resolved` only for a document that EMITS, and no newly
-resolvable document emits, so the committed tree costs what it cost. It is the next cost
-`salesagent-j3k2l.8` pays, and `acp-sdkgen/codegen/resolved_cache.py` is the upgrade path the
-docstring already names. It is also why the whole-population resolution test is a replica of
-the store loop with the inlining left off, which the test says in as many words.
+**D5 — `bundle.resolved`'s cost on the newly reachable documents is NOT MEASURED, and the
+first version of this entry claimed it was.** The function's own docstring predicts a ceiling
+("Step 8 emits the whole population and will meet it"; a 9,109-byte document resolves to
+4.8 MB), and opening the gate is what makes those documents reachable, so the ceiling is
+plainly the next thing `salesagent-j3k2l.8` pays — but I wrote "a full pass did not finish in
+30 minutes, and at least one of the 151 does not finish in 20 seconds" and **neither figure is
+evidence.** All four long-running measurements on this box died with exit 144, which is the
+memory killer: 15 Python processes from sibling lanes, 3.4 GB of 5 GB swap in use, ~900 MB
+free. Two of the four I had killed myself. The 20-second probe printed no over-limit line
+before it was killed, so what it actually says is that every document it reached finished
+UNDER 20 seconds. A number taken while the box is swapping is not a number.
+
+What IS measured cleanly, in seconds, repeatedly: `emit` over the named population of 981
+takes 5.4 s and N is unchanged, so the committed tree's cost did not move — `emit` calls
+`resolved` only for a document that EMITS, and no newly resolvable document emits. The ceiling
+is real and documented; its size on this population is unmeasured and
+`acp-sdkgen/codegen/resolved_cache.py` is the upgrade path the docstring already names. It is
+also why the whole-population resolution test is a replica of the store loop with the inlining
+left off, which the test says in as many words.
 
 **On the bead's own scope.** The 34 / 88 / 966 / 76 reproduce exactly, and the three stated
 non-causes hold under my instruments too. Two corrections: the resolution gate closes on **151**

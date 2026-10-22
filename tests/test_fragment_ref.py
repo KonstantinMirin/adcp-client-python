@@ -153,11 +153,11 @@ def test_no_portable_documents_reference_closure_names_a_document_this_bundle_la
 
     **INSTRUMENT, stated because it is not the function itself.**  ``resolved`` has a
     documented O(paths) ceiling -- the bundle holds a 9,109-byte document that
-    resolves to 4.8 MB -- and calling it 1,054 times does not finish in a test.  What
-    raises is the STORE loop, which is this; the inlining that follows cannot raise
+    resolves to 4.8 MB -- so calling it 1,054 times does not belong in a suite.  What
+    RAISES is the STORE loop, which is this; the inlining that follows cannot raise
     for a reference the store already holds.  ``resolved`` itself is exercised on a
-    real fragment-bearing document in the next test, which is where the inlining is
-    graded.
+    real fragment-bearing document in the next test, and on 13 more in the one after,
+    which is where the inlining is graded.
 
     Measured before this step: the loop raised for 151 of the 1,054 -- 88 reaching an
     absolute fragment reference and 63 more whose only unresolvable reference was a
