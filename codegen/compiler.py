@@ -239,6 +239,16 @@ class Property:
     #: never in both and never nowhere.  Dropping it would lose a fact the
     #: document states.
     format: str | None = None
+    #: D6's ``uniqueItems`` on the array this field holds.  The RULE is what enforces
+    #: it on the constructor (``adcp.types._runtime.UniqueItems``); this flag is the
+    #: other half, and it rides the same ``json_schema_extra`` channel as
+    #: :attr:`format` and for the same reason -- pydantic removed ``unique_items`` in
+    #: v2, so no annotation states the fact, and the schema comparison reads
+    #: ``uniqueItems`` off a model's rendered schema (``harness.FACTS``).  Rendering
+    #: it where the document states it is what keeps the comparison symmetric: the
+    #: fact is TRUE of the model, because the schema half and the rule both enforce
+    #: it, so no admission row is needed in either direction.
+    distinct: bool = False
 
 
 @dataclass(frozen=True)
@@ -290,8 +300,15 @@ def _field(prop: Property) -> DataModelField:
     extras: dict[str, Any] = {}
     if prop.description:
         extras["description"] = prop.description
-    if prop.format:
-        extras["json_schema_extra"] = {"format": prop.format}
+    # One ``json_schema_extra`` dict, two facts that can both be true of one field:
+    # a ``format`` no type was selected for, and D6's ``uniqueItems``.  Assigning
+    # rather than merging dropped whichever came second.
+    extra_schema = {
+        **({"format": prop.format} if prop.format else {}),
+        **({"uniqueItems": True} if prop.distinct else {}),
+    }
+    if extra_schema:
+        extras["json_schema_extra"] = extra_schema
     constraints = {k: v for k, v in prop.constraints.items() if k in CONSTRAINTS}
     kwargs: dict[str, Any] = {}
     if prop.default is not MISSING:
@@ -836,6 +853,7 @@ def fields(
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
     decided: Mapping[str, Decided] | None = None,
+    distinct: Collection[str] = (),
 ) -> list[Property]:
     """The decided properties for one property map, children declared first.
 
@@ -860,6 +878,16 @@ def fields(
     ``const`` into a ``Literal``, and putting that into ``decide_type`` instead
     would emit a ``const`` row for steps 1 and 2's own populations too and collide
     with whichever step claims D2's ``const`` row in full.
+
+    ``distinct`` names the keys whose array D6's rule lowering has CLAIMED the
+    ``uniqueItems`` of (``lower.rules._distinct``).  It is the same "one position, not
+    everywhere" shape as ``decided``: the keyword is stripped off the declaration here
+    so the array row never sees it -- which is what leaves that row's screen refusing
+    an array no class holds -- and :attr:`Property.distinct` carries the fact onto the
+    field, where ``_field`` renders it.  A key named here whose declaration is not an
+    array with ``uniqueItems: true`` is a caller defect, so nothing is silently
+    stripped: the strip is read off the declaration and the flag off this set, and the
+    two agreeing is asserted by the rules lowering's own gate.
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
@@ -882,6 +910,12 @@ def fields(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
+        is_distinct = key in distinct
+        if is_distinct:
+            # D6 owns the keyword at this position, so the walk below must not see it:
+            # the array row carries no ``uniqueItems`` and refuses one by name, which
+            # is what keeps an array NO class holds refused rather than widened.
+            sub = {k: v for k, v in sub.items() if k != "uniqueItems"}
         decided_type = (decided or {}).get(key) or mod.decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
@@ -913,6 +947,7 @@ def fields(
                 description=doc if isinstance(doc, str) and doc else None,
                 constraints=decided_type.constraints,
                 format=decided_type.format,
+                distinct=is_distinct,
             )
         )
     return built
@@ -1074,7 +1109,7 @@ def lower_object(
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
-    built = fields(props, required, pointer, name, mod, decided=decided)
+    built = fields(props, required, pointer, name, mod, decided=decided, distinct=stated.distinct)
     return declare_object(
         node,
         name,
