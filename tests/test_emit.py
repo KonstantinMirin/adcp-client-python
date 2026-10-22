@@ -54,7 +54,9 @@ from codegen.harness import (
     RefusesResult,
     check_pair,
     compare_schema,
+    conforms,
     steps,
+    violated_keywords,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -687,6 +689,43 @@ def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
     assert rep.missing_formats == []
     assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.added)
+
+
+def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
+    """One schema, one verdict: the control and the refusal cannot disagree.
+
+    The refuses check asks the ORIGINAL document which keyword bit
+    (``violated_keywords``) and treats an instance nothing bit as grading nothing
+    (``conforms``, the control).  ``strict_validate``'s schema half asks the same
+    document.  If those two build validators with different vocabularies, a step
+    is excused on the strength of a keyword one of them cannot see -- so the
+    harness passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what
+    says so.
+
+    Measured without it: the suite went fully green, because the one place a
+    format reaches the control is the ``pattern`` step's candidate screen and the
+    corpus now clears that screen either way.  So the agreement had no instrument
+    at all and this is it.  A ``format``-violating instance is the one case
+    ``steps()`` cannot produce on its own, so it is written here rather than
+    drawn.
+    """
+    g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
+    doc = schema_at(g.ref)
+    aware = "2020-06-01T12:00:00Z"
+    naive = {"start": "2020-06-01T12:00:00", "end": aware}
+
+    # the control's two predicates
+    assert conforms(doc, naive) is False
+    assert violated_keywords(doc, naive) == ["format"]
+    # ... and the runtime's, on the same document, naming the same keyword
+    with pytest.raises(ValidationError) as caught:
+        g.accept(naive)
+    assert [e["type"] for e in caught.value.errors()] == ["format"]
+
+    # The control also has to stay able to say YES, or the agreement above is
+    # satisfied by a harness that refuses everything.
+    assert conforms(doc, {"start": aware, "end": aware}) is True
+    assert violated_keywords(doc, {"start": aware, "end": aware}) == []
 
 
 def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() -> None:
