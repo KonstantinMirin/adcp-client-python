@@ -122,6 +122,16 @@ ROOT_HANDLED = frozenset(
 #: branch ``type`` and 1 on ``dependencies``.  So the reachable population of a
 #: conjunct-binding branch here is 0 today, which is the same ground D5 refuses an ``enum``
 #: under ``propertyNames`` on and the product row omits a ``required``-only conjunct on.
+#:
+#: **And this entry is what keeps that honest once a branch stops refusing.**  Probed the
+#: other way, by removing ``allOf`` from this tuple while the keyword screen above still
+#: admits it: nothing emits today either, so the entry changes no accepted set now -- what
+#: it changes is the REASON 37 documents are refused, from a deferral naming a row that
+#: claims none of them to the fact above.  The widening it forecloses becomes reachable at
+#: the first branch repair: ``_base.applied_schema`` conjoins an enclosing ``type``, which
+#: by itself unblocks a branch in 17 of these 41, and without this entry such a document
+#: would emit a base that drops its composed bases -- caught by the comparison as a
+#: ``missing``, so a red gate rather than a named refusal.
 ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 
 #: What a BRANCH may carry and still be a class this module declares.  ``allOf`` is
@@ -341,10 +351,15 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
         # class that does not descend from this base, so the branch would not answer
         # ``isinstance``, which is the same reason a bare ``$ref`` branch refuses above.
         #
-        # Measured over the 9 documents in this position: 2 compose nothing but bare
-        # ``$ref`` conjuncts and would emit; the other 7 state ``if``/``then``/``else``,
-        # ``not`` or a nested ``anyOf`` in their conjuncts and refuse on those whatever
-        # happens here.
+        # **The reachable population of that move is 0 TODAY, measured by making this
+        # refusal fail.**  Probed by removing it and lowering each branch with its
+        # conjuncts DROPPED -- which is what the move would supply -- over all 9
+        # documents in this position: 0 emit.  They refuse on ``uniqueItems`` (3), a
+        # ``$ref`` chain (2), a branch ``type`` (2), an ``allOf`` whose base is an alias
+        # (1) and a class-name collision (1).  So hoisting the reader into ``compiler``
+        # would be a derivation matching nothing (D14), and the step whose own keyword
+        # unblocks one of these 9 is the step that should do it.  2 of the 9 compose
+        # nothing but bare ``$ref`` conjuncts and are the two to re-measure then.
         raise Refusal(
             "allOf",
             pointer,
