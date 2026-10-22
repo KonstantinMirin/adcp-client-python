@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AnyUrl, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
@@ -16,7 +16,7 @@ class SellerAgentReference(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/seller-agent-ref.json', pointer='#')
-    agent_url: Annotated[AnyUrl, Field(description="The seller agent's API endpoint URL as declared in the property publisher's adagents.json `authorized_agents[].url`. MUST use the `https://` scheme. Receivers compare this URL against the `authorized_agents` list using the AdCP URL canonicalization rules — not byte-equality — and reject mismatches with `seller_not_authorized`. See docs/reference/url-canonicalization.")]
+    agent_url: Annotated[str, Field(description="The seller agent's API endpoint URL as declared in the property publisher's adagents.json `authorized_agents[].url`. MUST use the `https://` scheme. Receivers compare this URL against the `authorized_agents` list using the AdCP URL canonicalization rules — not byte-equality — and reject mismatches with `seller_not_authorized`. See docs/reference/url-canonicalization.", json_schema_extra={'format': 'uri'})]
     id: Annotated[str | None, Field(description='Reserved for a future registry-assigned stable seller identifier. Not used today — senders MUST NOT populate this field until a registry is defined. When a future release populates both `agent_url` and `id`, `agent_url` remains authoritative and `id` is advisory.', min_length=1, pattern='^[a-zA-Z0-9_-]+$')] = None
 
 

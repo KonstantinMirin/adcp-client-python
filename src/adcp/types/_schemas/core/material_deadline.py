@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
@@ -17,7 +17,7 @@ class MaterialDeadline(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/material-deadline.json', pointer='#')
     stage: Annotated[str, Field(description="Submission stage identifier. Use 'draft' for materials that need seller processing and 'final' for production-ready assets. Sellers may define additional stages.")]
-    due_at: Annotated[AwareDatetime, Field(description='When materials for this stage are due (ISO 8601)')]
+    due_at: Annotated[str, Field(description='When materials for this stage are due (ISO 8601)', json_schema_extra={'format': 'date-time'})]
     label: Annotated[str | None, Field(description="What the seller needs at this stage (e.g., 'Talking points and brand guidelines', 'Press-ready PDF with bleed')")] = None
 
 

@@ -36,11 +36,20 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
 from codegen import bundle, emit
-from codegen.harness import Pair, check_pair, compare_schema, steps
+from codegen.harness import (
+    AcceptsResult,
+    ComparisonResult,
+    Pair,
+    PairReport,
+    RefusesResult,
+    check_pair,
+    compare_schema,
+    steps,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -336,6 +345,73 @@ def test_a_zero_refuses_check_denominator_is_not_reportable_as_a_pass() -> None:
     assert rep.outcome.startswith("refuses:harness_error")
 
 
+def test_the_two_zero_denominator_verdicts_are_never_pass() -> None:
+    """The rule itself, on a report built to have a zero denominator.
+
+    The test above reaches the zero through an entry point that errors, so the
+    verdict it gets is ``refuses:harness_error`` and the two remaining branches
+    -- the ones that say "nothing reached the model and nothing went wrong" --
+    are not exercised by it.  No document in this population produces them with
+    every step healthy, so they are graded here on a report rather than on a
+    pipeline, which is the right level: the rule is a property of
+    ``PairReport``.
+
+    Both are asserted to be something other than ``pass``, so deleting either
+    branch fails this test rather than silently turning a pair nothing reached
+    into a green mark.
+    """
+    ok = AcceptsResult(examples=25, outcome="pass")
+    fine = ComparisonResult(compared=7)
+
+    nothing_to_step = PairReport(name="n", accepts=ok, comparison=fine, refuses=[], step_sites=0)
+    assert nothing_to_step.graded_instances == 0
+    assert nothing_to_step.outcome == "no_constraint_to_step"
+
+    control_fired = PairReport(
+        name="c",
+        accepts=ok,
+        comparison=fine,
+        refuses=[RefusesResult(keyword="minimum", pointer="/", examples=25, control_fired=25)],
+        step_sites=1,
+    )
+    assert control_fired.refuses[0].outcome == "no_evidence"
+    assert control_fired.graded_instances == 0
+    assert control_fired.outcome == "no_refuses_check_evidence"
+
+    # ... and one instance reaching the model is the whole difference.
+    reached = PairReport(
+        name="r",
+        accepts=ok,
+        comparison=fine,
+        refuses=[RefusesResult(keyword="minimum", pointer="/", examples=25, refused=1)],
+        step_sites=1,
+    )
+    assert reached.graded_instances == 1
+    assert reached.outcome == "pass"
+
+
+def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none() -> None:
+    """Which pairs take the ``no_constraint_to_step`` exit, and why.
+
+    The population test counts them; this one says they are the documents whose
+    own content leaves ``steps()`` nothing to do, read off ``steps()`` rather
+    than off a list.  A pair that landed there for any other reason -- a model
+    defect, a generator failure -- would not satisfy this.
+    """
+    excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
+    assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
+        "error-details/audience-too-small.json#",
+        "error-details/budget-too-low.json#",
+    ]
+    for g in excused:
+        assert steps(schema_at(g.ref)) == [], g.ref
+        rep = check_pair(pair_of(g), max_steps=None)
+        assert rep.outcome == "no_constraint_to_step"
+        assert rep.accepts.outcome == "pass"
+        assert rep.comparison.outcome == "pass"
+        assert rep.comparison.compared > 0
+
+
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
 def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
@@ -358,6 +434,57 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
         assert rep.outcome == "no_constraint_to_step", rep.outcome
         assert steps(pair.schema) == []
         assert rep.comparison.compared > 0
+
+
+def test_a_format_states_a_fact_and_never_selects_a_python_type() -> None:
+    """D5's format rule, over every format site the population has.
+
+    Draft-07 ``format`` is an annotation and ``jsonschema`` asserts nothing for
+    it without a checker -- and the checker available here covers ``date``,
+    ``email``, ``ipv4``, ``ipv6``, ``regex``, ``time`` and ``uuid``, not
+    ``date-time`` and not ``uri``.  So a Python type derived from a format is
+    narrower than the document as it is graded, and none of the three checks
+    reports the difference: the accepts check draws through
+    ``hypothesis_jsonschema``, which honours the format and produced an offset in
+    200 of 200 instances.
+
+    Two halves, because either alone is satisfied by doing the wrong thing:
+
+    * the annotation at a format site is the node's OWN scalar type, asserted on
+      the AST by the absence of any format-derived name from the module's
+      imports -- so ``AwareDatetime``, ``datetime`` and ``AnyUrl`` cannot reach
+      one;
+    * the format is still STATED on the model's own schema, so the first half
+      cannot be satisfied by dropping the format instead of annotating it.
+    """
+    banned = {"AwareDatetime", "NaiveDatetime", "AnyUrl", "AnyHttpUrl", "datetime", "date"}
+    sites = 0
+    for document in sorted({g.ref.document for g in graded()}):
+        imported = {
+            a.name
+            for n in ast.walk(ast.parse(_source(document)))
+            if isinstance(n, ast.ImportFrom)
+            for a in n.names
+        }
+        assert not (imported & banned), (document, sorted(imported & banned))
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
+            if isinstance(node.get("format"), str):
+                sites += 1
+                assert node["type"] in emit.SCALAR, (document, pointer)
+    assert sites == 14, sites  # date-time 7, uri 5, date 2
+
+    stated = 0
+    for g in graded():
+        emitted = (
+            g.model.model_json_schema()
+            if isinstance(g.model, type)
+            else TypeAdapter(g.model).json_schema()
+        )
+        for node in [emitted, *(emitted.get("properties") or {}).values()]:
+            for branch in node.get("anyOf") or [node]:
+                stated += 1 if isinstance(branch, dict) and "format" in branch else 0
+            stated += 1 if "format" in node and node.get("anyOf") else 0
+    assert stated, "no format reached a model schema; the comparison grades nothing here"
 
 
 def test_the_step_result_is_counted_over_the_whole_population() -> None:
@@ -646,8 +773,6 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
     schema = __import__(
         "adcp.types._schemas.core.creative_revision_id", fromlist=["strict_validate"]
     )
-    from pydantic import TypeAdapter
-
     emitted = TypeAdapter(getattr(schema, _symbol(control))).json_schema()
     assert emitted["minLength"] == doc["minLength"]
     assert emitted["maxLength"] == doc["maxLength"]

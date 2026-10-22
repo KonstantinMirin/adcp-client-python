@@ -146,14 +146,13 @@ class Property:
     description: str | None = None
     #: JSON Schema spelling, per gate 1.
     constraints: Mapping[str, Any] = field(default_factory=dict)
-    #: Set only when :class:`Type` does not already carry the format -- a
-    #: ``format`` whose Python type the walk declined to use because a
-    #: constraint sits beside it.  It then rides as ``json_schema_extra``, which
-    #: states the fact without changing what is accepted: draft-07 ``format`` is
-    #: an annotation and ``jsonschema`` asserts nothing for it.  Dropping it
-    #: instead loses a fact the document states, which the schema comparison
-    #: grades (measured: ``core/platform-extension-ref.json``'s ``uri`` carries
-    #: ``format: uri`` beside a ``pattern``).
+    #: The document's ``format``, which rides as ``json_schema_extra`` and never
+    #: as a type (D5).  It states the fact without changing what is accepted,
+    #: which is exactly right: draft-07 ``format`` is an annotation and
+    #: ``jsonschema`` asserts nothing for it without a checker, so a Python type
+    #: derived from one is narrower than the document as it is graded.  Dropping
+    #: it instead loses a fact the document states, which the schema comparison
+    #: grades.
     format: str | None = None
 
 

@@ -90,33 +90,24 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 #: see ``compiler.CONSTRAINTS`` and gate 1 there.
 CONSTRAINTS = compiler.CONSTRAINTS
 
-#: ``format`` -> the dotted path of the Python type that admits the format's
-#: values.  D5 asks for the type a standard library already names in preference
-#: to one of ours, so ``date-time`` is pydantic's ``AwareDatetime`` and ``uri``
-#: its ``AnyUrl``.
+#: ``format`` SELECTS NO PYTHON TYPE, and D5 says why: draft-07 ``format`` is an
+#: annotation, so ``jsonschema`` asserts nothing for it without a format checker,
+#: and the checker available here covers ``date``, ``email``, ``ipv4``, ``ipv6``,
+#: ``regex``, ``time`` and ``uuid`` -- not ``date-time`` and not ``uri``.  Any
+#: Python type derived from a format is therefore NARROWER than the document as
+#: it is graded: ``AwareDatetime`` refuses a timestamp with no offset,
+#: ``datetime.datetime`` refuses a string that is not a timestamp at all, and
+#: ``AnyUrl`` refuses the empty string and adds a ``minLength: 1`` its document
+#: does not state.  None of those narrowings is reported by any of the three
+#: checks: the accepts check draws through ``hypothesis_jsonschema``, which
+#: honours the format and produced an offset in 200 of 200 instances.
 #:
-#: Each of the three is NARROWER than the document as ``jsonschema`` grades it,
-#: because draft-07 ``format`` is an annotation that a validator asserts nothing
-#: for without a format checker: the document admits any string and these admit
-#: a parseable one.  ``AwareDatetime`` narrows it once more, to a value carrying
-#: a UTC offset, which is what RFC 3339 ``date-time`` requires and what
-#: ``datetime.datetime`` accepted without.  Neither narrowing is reached by the
-#: accepts check -- ``hypothesis_jsonschema`` honours the format and generated an
-#: offset in 200 of 200 instances -- so it is a difference the checks cannot see
-#: and it is recorded here instead.
-#:
-#: ``hostname`` and ``email`` are deliberately ABSENT: neither has a type
-#: narrower than ``str`` without adding a dependency or hand-writing a checker.
-#: Neither appears in this step's population (measured: ``date-time`` 7 times,
-#: ``uri`` 5, ``date`` 2, and no other), so a format with no row here is not
-#: reached; the first step whose population includes one has to decide whether to
-#: carry the annotation into ``json_schema_extra`` or refuse the document,
-#: because the schema comparison grades ``format`` as a fact the document states.
-FORMATS = {
-    "date": "datetime.date",
-    "date-time": "pydantic.AwareDatetime",
-    "uri": "pydantic.AnyUrl",
-}
+#: So a format stays an ANNOTATION on the node's own scalar type -- carried into
+#: ``json_schema_extra``, where the schema comparison grades it as the fact the
+#: document states -- until ``format`` is asserted on both sides.  One path for
+#: every format, which is also why there is no table: a format this population
+#: does not use needs no row, and the 14 sites that do use one (``date-time`` 7,
+#: ``uri`` 5, ``date`` 2) take the same path as the rest.
 
 #: Keywords that annotate a node without constraining an instance.  ``default``
 #: and ``description`` are carried by the compiler (they are rendering, and
@@ -336,13 +327,10 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     _check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
-    if fmt in FORMATS and not constraints:
-        # The format's own type, but only with no constraint beside it: a
-        # `min_length` belongs to a string and means nothing on a `date`.  With
-        # one present the node keeps its scalar type and its constraints, which
-        # is the document's accepted set either way -- and the format then rides
-        # as an annotation, so the fact survives either way.
-        return Decided(compiler.Type(FORMATS[fmt]), constraints)
+    # The node's own scalar type, and the format as an annotation beside it.  One
+    # path for every format, for the reason above the empty table: a type derived
+    # from a format is narrower than the document as it is graded, and no check
+    # reports the difference.
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
