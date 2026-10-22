@@ -276,11 +276,47 @@ A step that wants to change one of these reports it and stops.
   document refuses**, so it is a widening and is banned rather than merely unqualified.
   `AnyUrl` adds `minLength: 1`, which its document does not state.
 
-  **A `format: uri` field is `AdCPUrl`**, defined once in `adcp.types.constraints` as
-  `Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]`. Named for provenance rather
-  than after a standard: pydantic exports 22 URL types and none is https-only, so a name like
-  `HttpsUrl` would read as an upstream export a reader cannot find. `AnyHttpUrl` and `HttpUrl`
-  both admit `http://`, and `HttpUrl` adds a `maxLength: 2083` no document states.
+  **A `format: uri` field's type follows the document's own `pattern`.** Where the document
+  restricts the scheme to https — `^https://`, 47 of the bundle's 300 `uri` positions — the field
+  is **`AdCPUrl`**, defined once in `adcp.types.constraints` as
+  `Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]`. There the type and the document
+  agree. Named for provenance rather than after a standard: pydantic exports 22 URL types and
+  none is https-only, so a name like `HttpsUrl` would read as an upstream export a reader cannot
+  find. Everywhere else the field is **`HttpUrl`**.
+
+  **`AdCPUrl` everywhere was measured and withdrawn.** A document stating only
+  `{"type": "string", "format": "uri"}` admits `https://`, `http://`, `urn:` and `file:///` alike
+  — `format: uri` is RFC 3986. `AdCPUrl` refuses three of those four, which narrowed the SDK
+  below the pinned spec at **228 of 300 positions in 128 of 160 documents**, and at **26 of 27**
+  positions in documents the emitter emits today. End to end on a shipped class:
+  `core/placement-evidence.json#/properties/url` states only the bare pair, the document admits
+  `{"url": "http://x.example/p"}`, and `PlacementEvidence.strict_validate` raises
+  `URL scheme should be 'https'` — a buyer sending a payload the spec admits refused at the entry
+  point D4 makes public. One position is sharper still: `core/macro-bearing-url.json#/anyOf/1` is
+  the only one whose author wrote `^https?://`, admitting `http` deliberately.
+
+  **No check saw it, and that is why it ran this long.** `compare_schema` passes, because
+  `allowed_schemes` has no rendering in pydantic's schema output at all — there is no keyword on
+  either side to compare. `format` is not a step keyword, so `steps()` returns `[]` and the
+  refuses check never visits the position. And `hypothesis-jsonschema`'s `uri` strategy drew
+  `https` in 200 of 200 derandomized examples, so the accepts check never tried another scheme.
+  A narrowing invisible to all three checks is the one the schema comparison exists to catch, and
+  reaching it needs a generator that does not honour `format`.
+
+  **`HttpUrl` carries two named ceilings, both accepted deliberately.** It admits `http://`, which
+  removes the sharpest case, and it still refuses `urn:` and `file:` — so **227 of 300 positions
+  stay narrower than their document**. It also renders `maxLength: 2083` and `minLength: 1`,
+  neither of which any document states, so the comparison needs a hand-written row for each; a
+  row that names itself can be audited, and a derived rule admitting a widening would be
+  invisible and permanent.
+
+  **Type plus `pattern` is not representable in this stack**, so "the pattern stays with the
+  schema half" is an either/or rather than a preference. `Annotated[AnyUrl, Field(pattern=...)]`
+  does not drop the pattern — pydantic raises
+  `Unable to apply constraint 'pattern' … for schema of type 'function-wrap'` while building the
+  core schema, so the class does not exist. It was found as an `ImportError` at the gate when
+  `core/platform_extension_ref.py` failed to import, which is where a future attempt will find it
+  too.
 
   **A document's `pattern` on such a field is not carried on the annotation.** The bundle states
   eight distinct patterns across 73 of its 300 `uri` uses, and `UrlConstraints` expresses only
