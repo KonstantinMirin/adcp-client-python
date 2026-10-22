@@ -521,11 +521,26 @@ A step that wants to change one of these reports it and stops.
   whole bundle or the whole emitted tree. Nothing else.
 
   **A check that matches a spelling is deleted rather than extended.** There are infinitely many
-  ways to write the thing it bans and it tests one, so it buys nothing and costs a parse. An
-  import ban resolved by AST is the clearest case: `importlib.import_module("codegen.emit")`
-  walks past it. Where such a rule matters, make it structural instead — the shared machinery
-  living in `compiler.py` is what makes a lowering unable to close the import cycle, and no
-  check is needed once that holds.
+  ways to write the thing it bans and it tests one, so it buys nothing and costs a parse.
+
+  **A check over a CLOSED set of forms is a population check and survives.** The distinction is
+  whether the set of ways to do the banned thing can be enumerated. The import rule is the worked
+  case, and the measurement settles it: reaching another module has exactly two forms in Python,
+  a static import statement and a dynamic import call, so the set is closed. `test_import_rule`
+  grades all six modules of `codegen/lower/` with its denominator asserted non-empty, and
+  catches all three static spellings — `from codegen import emit`, `import codegen.emit`,
+  `from codegen.bundle import x`. It is **blind to both dynamic forms**,
+  `importlib.import_module("codegen.emit")` and `__import__("codegen.emit")`, so it covers one of
+  the two and is extended to cover the other rather than deleted.
+
+  That gap is not hypothetical: step 6's lowering shipped an `_emit()` run-time accessor built
+  precisely to reach `codegen.emit` without a static import, and the seam merge removed it. The
+  next one spelled with `import_module` would pass the check as it stands.
+
+  **Moving the machinery removed the NEED to import `emit`, not the ABILITY.** Three of the five
+  lanes imported it, and under `runpy` that import resolves into two module objects rather than
+  an `ImportError`, so the failure is silent. There is no structural way in Python to make a
+  module unable to import another, which is why this rule is asserted rather than trusted.
 
   **A behaviour asserted on one example is upgraded or deleted.** If a `date-time` with no
   offset must be refused by the schema half, that is a claim about every format-bearing site,
