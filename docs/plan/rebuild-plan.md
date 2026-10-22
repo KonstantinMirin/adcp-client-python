@@ -422,6 +422,29 @@ A step that wants to change one of these reports it and stops.
   exception class defined there has two identities and `except Refusal` misses the one a
   lowering raised.
 
+- **D13 — the dispatch seam, stated exactly.** Three lanes invented three seams because an
+  earlier revision named a table that did not exist. The seam is:
+
+  - **The table lives in `codegen/emit.py`** as `ROWS`, a tuple of `(selector, lowering)` pairs,
+    unordered. `emit` imports each lowering.
+  - **A lowering under `codegen/lower/` imports `codegen.compiler` and `codegen.refusal`, and
+    nothing else of this package.** It never imports `codegen.emit`.
+  - **Shared machinery lives in `codegen/compiler.py`**, not in `emit.py`: the field builder,
+    the class declarer, and the carriers a lowering is handed.
+  - **One signature.** A lowering takes the node, its name, its pointer and the module being
+    written, and returns the declared name.
+
+  The import rule decides the other two. A lowering that imports `emit` closes a cycle, and
+  under `runpy` — `python -m codegen.emit` — that cycle resolves into **two module objects**
+  rather than an `ImportError`, which is the failure D12 exists to prevent for `Refusal`. A
+  `TYPE_CHECKING` import hides the cycle from the type checker without removing it, because the
+  lowering still needs the shared machinery at run time. Moving that machinery into
+  `compiler.py` is what makes the one-directional import true rather than merely intended.
+
+  A row's selector is its step's population test in `codegen.bundle`, so a row cannot claim a
+  document its step does not count, and `lower_document` **fails** on a document two rows select
+  rather than letting insertion order decide.
+
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
 `codegen/compiler.py` drives the compiler; `codegen/lower/<kind>.py` is one module per D2 row. A
 dispatch table of `(selector, lowering)` pairs connects them, and a document selected by two
