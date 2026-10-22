@@ -525,6 +525,98 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
     assert refused.value.validator == "format"
 
 
+def test_the_comparison_reads_a_root_allof_the_way_the_schema_half_reads_it() -> None:
+    """A conjunct's facts are the document's, and the check still refuses.
+
+    ``allOf`` conjoins: draft-07 applies every conjunct to the whole instance, and
+    a composing class flattens every inherited field into its own ``properties``
+    and its own ``required``.  So a comparison that walks only the document's own
+    root reads a FAITHFUL composing class as both dropping and adding facts, and
+    reads the facts a conjunct DOES state against nothing.
+
+    **Measured on the document below, against the code before ``_composed``: 0 of
+    these four cases were graded right**, including case 3, whose verdict looked
+    right.  Case 1 reported ``model_drops_a_fact`` with its real row buried among
+    three false ones; case 2's omission appeared nowhere at all, in no list and in
+    no ``compared`` count; case 3 reported the right outcome off the false
+    ``/required`` row while its own ``maximum`` was never compared; case 4, the
+    faithful class, failed.  After: four outcomes, each with exactly the row its
+    axis names, and ``compared`` 3 -> 7.
+
+    The reason all four are here and not just the faithful one: widening a check
+    until the composing class passes is how the check stops returning the other
+    answer, and the three failing cases are what forbids that.  Each model differs
+    from the faithful one in exactly ONE axis -- no docstring, which would become a
+    ``description`` the document does not state, and no second deviation -- so a
+    row names the axis it was built to name.
+    """
+    doc = {
+        "type": "object",
+        "required": ["label"],
+        "allOf": [
+            {"type": "object", "properties": {"kind": {"type": "string"}}, "required": ["kind"]},
+            {
+                "type": "object",
+                "properties": {
+                    "adcp_major_version": {"type": "integer", "minimum": 1, "maximum": 99}
+                },
+            },
+        ],
+        "properties": {"label": {"type": "string"}},
+    }
+
+    class Base(AdCPBaseModel):
+        kind: str
+
+    class Faithful(Base):
+        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
+        label: str
+
+    class StatesWhatNobodyStates(Base):
+        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
+        label: str = Field(min_length=3)  # no view of the document states this
+
+    class OmitsAConjunctFact(AdCPBaseModel):
+        adcp_major_version: int | None = Field(default=None, ge=1, le=99)
+        label: str  # the conjunct's `kind` is gone
+
+    class DisagreesWithTheConjunct(Base):
+        adcp_major_version: int | None = Field(default=None, ge=1, le=100)  # conjunct says 99
+        label: str
+
+    faithful = compare_schema(doc, Faithful)
+    assert faithful.outcome == "pass", (faithful.missing, faithful.differs, faithful.added)
+    assert faithful.compared == 7, faithful.compared  # the conjuncts' facts are COUNTED
+
+    adds = compare_schema(doc, StatesWhatNobodyStates)
+    assert adds.outcome == "model_adds_a_fact"
+    assert [a.split(": ")[0] for a in adds.added] == ["/properties/label/minLength"]
+
+    omits = compare_schema(doc, OmitsAConjunctFact)
+    assert omits.outcome == "model_drops_a_fact"
+    assert omits.missing == ["/properties/kind: the model declares no such property"]
+    assert [d.split(": ")[0] for d in omits.differs] == ["/required"]
+
+    differs = compare_schema(doc, DisagreesWithTheConjunct)
+    assert differs.outcome == "model_drops_a_fact"
+    assert differs.differs == [
+        "/properties/adcp_major_version/maximum: the document says 99, the model 100"
+    ]
+
+    # A branch is NOT a conjunct, and the same document read as a union must not
+    # fold: `anyOf` is satisfied by SOME branch, so a branch's properties are not
+    # unconditionally the document's.  "Left alone" is asserted as what it is --
+    # both branch properties still read as model-only -- rather than as an
+    # outcome, because the faithful class fails a union document on the
+    # `/required` axis too and that would pass for the wrong reason.
+    as_union = {("anyOf" if k == "allOf" else k): v for k, v in doc.items()}
+    branches = compare_schema(as_union, Faithful)
+    assert {a.split(":")[0] for a in branches.added} == {
+        "/properties/kind",
+        "/properties/adcp_major_version",
+    }
+
+
 def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     """D5's format rule, over every format site the population has.
 

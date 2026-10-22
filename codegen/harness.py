@@ -990,6 +990,103 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
     return node
 
 
+#: How deep an ``allOf`` chain ``_composed`` folds before it stops folding.  Same
+#: constant and same shape as ``_normalize``'s, deliberately: two instruments that
+#: cut a traversal at different places disagree about node identity for no reason
+#: anyone can read off either of them (``docs/plan/rebuild-plan.md`` §9).
+_COMPOSE_DEPTH = 16
+
+
+def _composed(doc: Any, depth: int = 0) -> Any:
+    """The document's node with every ``allOf`` conjunct's facts folded in.
+
+    **``allOf`` conjoins, so a conjunct's unconditional facts ARE the
+    document's.**  Draft-07 applies every conjunct to the whole instance, and a
+    composing class flattens every inherited field into its own ``properties``
+    and its own ``required`` -- so without this the two halves read the document
+    differently and a FAITHFUL composing class reports as both dropping and
+    adding facts.  Measured on a root stating ``required: ['label']`` beside a
+    conjunct requiring ``kind``: ``/required`` differed, ``/properties/kind``
+    read as added, and the conjunct's own ``maximum`` was compared against
+    nothing -- 0 of the four cases in this module's own test set were graded
+    right, including the one whose VERDICT looked right.
+
+    Three rules, and each is the one the vocabulary forces:
+
+    * **``required`` composes by union.**  It is a set of names and every
+      conjunct contributes its own.
+    * **``properties`` composes by key.**  A key two views declare is not merged
+      here: the conjunct's declaration is stashed as an ``allOf`` on the merged
+      node, and ``compare`` folds it by calling this function again when it
+      descends.  One mechanism for composition at every depth rather than a
+      second rule for properties.
+    * **Every other fact fills a gap and never overrides.**  The node's own
+      declaration wins.  KNOWN CEILING: where a node and a conjunct state the
+      same ordering keyword with different bounds the effective constraint is
+      the TIGHTER one, and this reports the looser one as expected -- a false
+      failure, which is the safe direction and is visible.  Measured over 61 of
+      the 342 ``allOf``-root documents in the 3.2 bundle (smallest first, an
+      80-second budget): no ordering keyword is stated in two views at a root,
+      and of the 6 properties declared in both a root and a conjunct the only
+      keyword that ever DISAGREES is ``description`` (3 of 6), where the node
+      winning is also the right answer -- the class's field description comes
+      from the root's own declaration.  Intersecting by direction would be code
+      for a population of zero; the upgrade path is to replace the gap-fill with
+      a per-keyword intersection if a document ever collides on a bound.
+
+    **``if`` / ``then`` / ``else`` / ``not`` need no code and that is not an
+    oversight.**  A conjunct holding only those states nothing unconditional
+    about the value, and none of them is in ``FACTS``, so such a conjunct
+    contributes nothing by construction.  That is the dominant conjunct shape in
+    the bundle: 352 ``if``/``then`` conjuncts against 21 that state
+    ``properties``.
+
+    **``anyOf`` / ``oneOf`` at a root are left alone, and must be.**  A branch's
+    properties are satisfied by SOME branch, not by every instance, so folding
+    one in the way a conjunct is folded would state a fact the document does not
+    state.  What that costs is nothing here: a union root emits a base and one
+    subclass per branch (§4), each naming its own node on ``__adcp_schema__``, so
+    a branch is compared as a document in its own right by the pairing rather
+    than through its parent.
+
+    A ``$ref`` conjunct is not resolved here, and does not need to be: the
+    caller hands this a RESOLVED document (``codegen.bundle.resolved`` writes it
+    into the package and ``adcp.types._base.schema_at`` reads it back), and 0 of
+    the conjuncts in that 61-document sample still carried a ``$ref``.  A
+    conjunct that somehow did would state no fact in ``FACTS`` and so fold to
+    nothing, which is the pre-existing behaviour rather than a new hole.
+    """
+    conjuncts = doc.get("allOf") if isinstance(doc, dict) else None
+    if not isinstance(conjuncts, list) or depth > _COMPOSE_DEPTH:
+        return doc
+    out = {k: v for k, v in doc.items() if k != "allOf"}
+    for conjunct in conjuncts:
+        if not isinstance(conjunct, dict):
+            continue
+        c = _composed(conjunct, depth + 1)
+        for kw in FACTS:
+            if kw != "required" and kw in c and kw not in out:
+                out[kw] = c[kw]
+        req = c.get("required")
+        if isinstance(req, list):
+            have = out["required"] if isinstance(out.get("required"), list) else []
+            out["required"] = [*have, *(k for k in req if k not in have)]
+        props = c.get("properties")
+        if isinstance(props, dict):
+            mine = dict(out["properties"]) if isinstance(out.get("properties"), dict) else {}
+            for name, sub in props.items():
+                node = mine.get(name)
+                if isinstance(node, dict):
+                    pending = node["allOf"] if isinstance(node.get("allOf"), list) else []
+                    mine[name] = {**node, "allOf": [*pending, sub]}
+                else:
+                    mine[name] = sub
+            out["properties"] = mine
+        if isinstance(c.get("items"), dict) and "items" not in out:
+            out["items"] = c["items"]
+    return out
+
+
 def compare_schema(schema: dict, model: Any) -> ComparisonResult:
     """The document's facts and the model's, compared in BOTH directions.
 
@@ -1036,6 +1133,11 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
     def compare(doc: Any, got: Any, pointer: str) -> None:
         if not isinstance(doc, dict):
             return
+        # The document side is read the way the schema half reads it: a conjunct's
+        # facts are the document's (see `_composed`).  At every node, not only at
+        # the root -- a property's own node composes too, and the pydantic side is
+        # flattened at every depth, so one call in the recursion is the whole of it.
+        doc = _composed(doc)
         got = _normalize(got, defs)
         for kw in FACTS:
             if kw not in doc:
