@@ -1449,13 +1449,13 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
     # D5's URL-type rows, the one category that excuses a fact the model does not
-    # state, and 72 is the sum of its three: 36 `minLength: 1` (every URL type
-    # renders it), 35 `maxLength: 2083` (`HttpUrl` renders it, and 35 of the 36
+    # state, and 74 is the sum of its three: 37 `minLength: 1` (every URL type
+    # renders it), 36 `maxLength: 2083` (`HttpUrl` renders it, and 36 of the 37
     # positions take that arm), and the ONE `pattern` the bundle states on a
     # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
-    # parent's, so 36 is larger than the 27 annotation sites the tree has.
+    # parent's, so it is larger than the annotation sites the tree has.
     assert sum(len(r.comparison.url_typed) for r in reports) == 74
 
 
@@ -2571,7 +2571,7 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 64, arrays
+    assert arrays == 70, arrays
     assert bounded == 30, bounded
 
 
@@ -3304,7 +3304,7 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 62, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
+    assert len(declared) == 62, len(declared)  # the derived shapes + AdCPUrl + HttpUrl
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
     assert sum(len(where) for where in imported.values()) == 201, imported
