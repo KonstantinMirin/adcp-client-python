@@ -7,10 +7,21 @@ AdCP schema bundle. A consumer reaches them through one import surface:
 
 ```python
 from adcp.types.core import PaginationRequest     # the one import spelling
+from adcp.types.enums import MatchType            # the domain says where it came from
 
 req = PaginationRequest.strict_validate(payload)  # the schema decides, then construct
 req = PaginationRequest(max_results=50)           # pydantic constructs, annotations only
+mode = MatchType("broad")                         # a consumer uses these types directly
 ```
+
+**The domain in the path is derived from the document's own path and carries meaning.**
+`enums/match-type.json` is reachable as `adcp.types.enums.MatchType`, so a reader of application
+code sees what kind of thing it is without looking it up, and `import adcp.types.enums as enums`
+then `enums.MatchType` reads the same way. Nine domains exist today: `enums`, `core`,
+`error_details`, `property`, `trusted_match`, `brand`, `media_buy`, `sponsored_intelligence`,
+`pricing_options`. The SDK's types are for a consumer to construct and annotate with, not only
+for the SDK to parse into, so the import path is part of the artifact rather than packaging
+detail.
 
 There is **one import path per class**, mirroring the document's own place in the bundle, and
 **the SDK never offers a second way to reach the same class.** `adcp.types` is a package, not a
@@ -282,7 +293,15 @@ A step that wants to change one of these reports it and stops.
 
   **An alias names a constraint, never a concept.** Its name is derived from the constraint it
   carries, never from a property name or a domain word, because two fields sharing a bound are
-  not thereby the same idea. Naming the type is also what keeps a constrained container usable
+  not thereby the same idea.
+
+  **An alias we emit has no document, so it has no domain, and it lives in
+  `adcp.types.constraints`.** Every other type is reachable at `adcp.types.<domain>.<Name>`
+  where the domain is the document's own path, but a type derived from a repeated constraint
+  belongs to no document and inventing a domain for it would be naming it after a concept. One
+  module holds them, and a consumer annotating application code imports from there. The module
+  is named for what it holds rather than for `Annotated`, which is only the mechanism — a
+  constraint expressed some other way later does not make the name a lie. Naming the type is also what keeps a constrained container usable
   as a mapping value: once it has a symbol, `dict[str, Tags]` is a plain reference and needs
   nothing from the compiler.
 
