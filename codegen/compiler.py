@@ -167,6 +167,12 @@ class Class:
     description: str | None = None
     #: D7: ``forbid``, ``allow``, or ``None`` to leave the base's default.
     extra: str | None = None
+    #: Class-body statements a lowering produced that are not fields -- D6's rule
+    #: tuple is the one there is.  They go through the same
+    #: ``class_body_lines`` channel as ``__adcp_schema__`` (gate 3), so this
+    #: module stays ignorant of what a rule IS: it renders a statement a lowering
+    #: decided, exactly as it renders a field a lowering decided.
+    body: tuple[str, ...] = ()
 
 
 @dataclass
@@ -272,10 +278,10 @@ def render(decided: Class) -> Rendered:
     # code.  ``repr`` of a ``SchemaRef`` is a valid Python expression naming the
     # type, so there is no spelling of the ref in this module to drift from the
     # one in ``_base``.
-    model._append_internal_template_data(  # noqa: SLF001 -- dmcg's own channel; see the module docstring
-        "class_body_lines",
-        f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}",
-    )
+    for line in (f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}", *decided.body):
+        model._append_internal_template_data(  # noqa: SLF001 -- dmcg's own channel; see the module docstring
+            "class_body_lines", line
+        )
     out = Rendered(text=model.render().rstrip("\n"))
     for imp in model.imports:
         if imp.from_ and imp.import_:

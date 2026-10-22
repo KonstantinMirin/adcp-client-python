@@ -75,6 +75,7 @@ from pydantic import BaseModel
 
 from adcp.types._base import SchemaRef
 from codegen import bundle, compiler, harness
+from codegen.lower import rules
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -142,25 +143,14 @@ def asserted_formats(doc: dict) -> frozenset[str]:
     """
     return frozenset(harness.validator_for(doc).FORMAT_CHECKER.checkers)
 
-#: Keywords that annotate a node without constraining an instance.  ``default``
-#: and ``description`` are carried by the compiler (they are rendering, and
-#: rendering is what the compiler is for); the rest have nowhere to go and are
-#: never a reason to refuse.
-ANNOTATIONS = frozenset(
-    {
-        "$schema",
-        "$id",
-        "$comment",
-        "title",
-        "description",
-        "examples",
-        "example",
-        "default",
-        "deprecated",
-        "readOnly",
-        "writeOnly",
-    }
-)
+#: Keywords that annotate a node without constraining an instance.
+#:
+#: Declared in ``codegen.lower.rules`` and named here, because three readers need
+#: the same set and that package is the only one all three can import without a
+#: cycle: this walk, every rule reduction, and ``bundle.states_an_object_rule``
+#: (step 7's selector, through ``rules.presence_only``).  Two copies would be one
+#: place for a selector to claim a document its lowering cannot read.
+ANNOTATIONS = rules.ANNOTATIONS
 
 
 # --------------------------------------------------------------------------- #
@@ -361,7 +351,11 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
 
-    _check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
+    # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no
+    # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
+    # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
+    # conditional that narrows one.  Carrying it is not refusing it.
+    _check_keywords(node, pointer, {"type", "format", *CONSTRAINTS, *rules.ON_A_VALUE})
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
     # A format SELECTS a type where one is named for it and the document's own
@@ -378,10 +372,24 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 
 def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
     """Append the class for an object node, children first, and return its name."""
-    _check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    # D6's six families are handled HERE and not refused: a rule attaches to the
+    # nearest class, so an object node is the only node that can carry one.
+    _check_keywords(
+        node,
+        pointer,
+        {"type", "properties", "required", "additionalProperties", *rules.KEYWORDS},
+    )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
+    # A property the node declares only under a conditional still arrives on the
+    # wire, so the class needs a field to carry it.  Collected by the rules
+    # lowering, which is what reads the conditional, and merged in BEFORE the
+    # walk over ``props`` so such a property is typed from its own declaration
+    # rather than left off the model -- a required name the model does not declare
+    # is a class narrower than its document on both acceptance paths.
+    stated = rules.lower(node)
+    props = {**props, **{k: v for k, v in stated.properties.items() if k not in props}}
     required = node.get("required", [])
     undeclared = [r for r in required if r not in props]
     if undeclared:
@@ -449,9 +457,10 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             description=description if isinstance(description, str) and description else None,
             # D7; absent leaves the base's default in place
             extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            body=tuple(b for b in (rules.block(stated.rules),) if b),
         )
     )
-    mod.imports |= rendered.imports
+    mod.imports |= rendered.imports | stated.imports
     mod.declare(name, pointer, rendered.text)
     return name
 
@@ -460,11 +469,12 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
 # the module text (D8: the emitter owns its layout)
 # --------------------------------------------------------------------------- #
 def _import_rank(module: str) -> int:
-    """stdlib, the third-party library, this package's own base, then a sibling
-    module of this tree (always relative, so always ``.``-prefixed)."""
+    """stdlib, the third-party library, this package's own hand-written modules,
+    then a sibling module of this tree (always relative, so always
+    ``.``-prefixed)."""
     if module.startswith("."):
         return 3
-    if module == BASE_MODULE:
+    if module in (BASE_MODULE, rules.RUNTIME_MODULE):
         return 2
     return 1 if module == "pydantic" else 0
 
