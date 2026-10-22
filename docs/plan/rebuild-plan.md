@@ -122,11 +122,11 @@ with a document other than its own.
 
 **The regex engine is derived per class.** pydantic's default Rust engine is the one to want —
 it is faster and it refuses to compile a pattern it cannot honour rather than quietly
-mis-matching. It has no look-around, and 4 of the bundle's 106 distinct patterns use look-around
+mis-matching. It has no look-around, and 4 of the bundle's 111 distinct patterns use look-around
 at 107 sites across 27 documents, so a class carrying one of those sets
 `regex_engine="python-re"` and every other class takes the default. No pattern in the bundle
 uses a backreference or a named group, so look-around is the whole of the incompatibility and
-102 of 106 patterns compile under Rust.
+107 of 111 patterns compile under Rust.
 
 Both engines agree with the schema's own accepted set for those 102, and the schema half
 compiles with Python `re` in either case, so the split costs no divergence: a class uses the
@@ -236,10 +236,14 @@ A step that wants to change one of these reports it and stops.
 
   **A required property is emitted with no default**, whatever `default` the document states for
   it, and the drop is reported. A default makes a field optional and the document says it is
-  not, so carrying both would make the model accept an absence the schema refuses. Measured: 4
-  sites state a `default` for a property their own node requires — in `core/product.json`,
-  `core/reporting-capabilities.json`, `core/reporting-delivery-config.json` and
-  `formats/canonical/seller_rendered_stateful_display.json`.
+  not, so carrying both would make the model accept an absence the schema refuses. Measured: 5
+  sites state a `default` for a property their own node requires. Four are leaves —
+  `core/product.json`, `core/reporting-capabilities.json`,
+  `core/reporting-delivery-config.json`, `formats/canonical/seller_rendered_stateful_display.json`.
+  The fifth is `core/format.json#/$defs/baseGroupAsset`, whose `required` lists a property
+  literally named `required` that carries `default: false`, and that node is `$ref`'d **21
+  times as an `allOf/0` base** inside its own document — so emitting it optional makes all 21
+  branches accept a document the schema refuses.
 - **D5 — constraints bind to the type, not the field.** `Annotated[int, Field(ge=1, le=100)]`,
   never `Field(None, ge=1, le=100)` as a default. A constrained type nests into `list[...]` and
   `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
@@ -267,9 +271,10 @@ A step that wants to change one of these reports it and stops.
   without a checker, so `strict_validate` and the harness both pass one, and the SDK depends on
   the packages that make the bundle's formats checkable: `rfc3339-validator` for `date-time`
   and `rfc3987` for `uri`, beside the `date`, `email`, `ipv4`, `ipv6`, `regex`, `time` and
-  `uuid` checkers `jsonschema` carries. Without them 6,083 of the bundle's 6,626 format uses go
-  ungraded and a format-derived type is narrower than its document — which is the state this
-  avoids, and which no check reports, because the accepts check draws through
+  `uuid` checkers `jsonschema` carries. Without them 749 of the bundle's 807 format uses go
+  ungraded — `date-time` 438, `uri` 300, `hostname` 10, `uri-template` 1, counted over the
+  1,057 documents outside `bundled/` and `mcp/` — and a format-derived type is then narrower
+  than its document, which no check reports because the accepts check draws through
   `hypothesis_jsonschema` and that honours the format when generating.
 
   So `date-time` is `AwareDatetime`, `date` is `datetime.date`, and `uri` is a URL type. A
@@ -308,10 +313,17 @@ A step that wants to change one of these reports it and stops.
   composition makes an inherited field required, the subclass **redeclares that field with the
   base's type and no default** — and that is the ONLY case in which an emitted class redeclares
   an inherited field. A redeclaration that changes the type or adds a default is a build
-  failure. Measured: 94 sites in 37 documents have an `allOf` conjunct whose `required` names a
-  property no conjunct declares locally, so the name comes from the `$ref` target and the
-  overlay is tightening it. `core/canonical-product.json#/properties/collections/items` is the
-  clearest: an overlay with no `properties` at all, only a requiredness change.
+  failure. Measured over the node that OWNS the `allOf`, at any depth, with refs resolved and
+  `not`/`if`/`then`/`else` positions excluded: **47 composition sites, 79 field tightenings, 31
+  documents**. `core/canonical-product.json#/properties/collections/items` is the clearest —
+  an overlay with no `properties` at all, only a requiredness change. Concentrated in
+  `core/registry-event.json` (14), `media-buy/get-media-buy-delivery-response.json` (11) and
+  the twelve `*-delivery-metrics.json` documents (2 each, all the same shape), then a tail of
+  one.
+
+  **A `required` under `not`, `if`, `then` or `else` is a rule and not a field** (D6), so this
+  exception does not reach it and nothing is redeclared there. A further 12 sites tighten inside
+  such a position and belong to the rules step.
 
   **Where composed schemas constrain the same property, the field carries the INTERSECTION**,
   never the union: an enum is the intersection of the members, a bound is the tighter one, a
