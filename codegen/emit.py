@@ -9,7 +9,8 @@ grades the tree against exactly this):
     python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
       print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
-      or bundle.references_a_property(bundle.read(b, d))])')
+      or bundle.references_a_property(bundle.read(b, d)) \
+      or bundle.composes_at_the_root(bundle.read(b, d))])')
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so
@@ -74,7 +75,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -93,6 +94,7 @@ from codegen.compiler import (
     lower_object,
 )
 from codegen.lower import enum as lower_enum
+from codegen.lower import product as lower_product
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -360,6 +362,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
+    (bundle.composes_at_the_root, lower_product.lower_root),
 )
 
 
@@ -377,6 +380,12 @@ class AmbiguousRoot(Exception):
 def lower_document(
     document: str, doc: dict, bind: Callable[[str, str], Target] = _no_binder
 ) -> tuple[Module, str]:
+    # D2's shape rows dispatch through ``codegen.lower.ROWS``, one module per row.
+    # Imported inside the function because a row's module imports this module's
+    # ``fields``/``declare_object`` by name: one direction is lazy, so the two
+    # never form an import cycle whichever is loaded first.
+    from codegen import lower
+
     title = doc.get("title")
     if not isinstance(title, str) or not title:
         raise Refusal("title", "", "the document declares no title to derive a name from")

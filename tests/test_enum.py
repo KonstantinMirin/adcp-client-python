@@ -117,8 +117,16 @@ def test_every_root_enum_is_emitted_or_refused_by_name_pointer_and_keyword() -> 
     )
     assert len(referrers) == 7, referrers
     in_population = [d for d in referrers if d in population()]
-    assert len(in_population) == 6, in_population
-    assert [d for d in in_population if out.refusals[d]["keyword"] == "$ref"] == []
+    # 7, not the 6 this read before step 4's population landed: ``composes_at_the_root``
+    # names one more of the referrers, and the cascade claim is the same either way.
+    assert len(in_population) == 7, in_population
+    # The claim is that NONE of them is blocked BY this document, which is read off
+    # the refusal's own detail.  The keyword alone no longer says it: with step 4's
+    # row claiming these roots the walk reaches their conjuncts, and 6 of the 7 now
+    # refuse on a DIFFERENT ``$ref`` -- a fragment of another document, or a target
+    # that composes.  A keyword test would have read those as this document's
+    # cascade; the detail names the target and does not.
+    assert [d for d in in_population if "task-type" in out.refusals[d]["detail"]] == []
 
 
 def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() -> None:
@@ -131,11 +139,13 @@ def test_the_dispatch_table_is_unordered_because_no_document_is_claimed_twice() 
     enumeration.  So the exclusion is load-bearing and is measured as such.
     """
     documents = [bundle.read(BUNDLE, d) for d in bundle.portable(BUNDLE)]
-    assert len(emit.ROWS) == 3, emit.ROWS
+    # Every row's selector comes from ``codegen.bundle`` (D13), which is what a
+    # count of rows cannot say and what keeps this from going stale as rows land.
+    assert [s for s, _ in emit.ROWS if getattr(bundle, s.__name__, None) is not s] == []
     claimed = [sum(1 for selects, _ in emit.ROWS if selects(doc)) for doc in documents]
     assert [n for n in claimed if n > 1] == []
-    assert sum(1 for n in claimed if n == 1) == 910, sum(1 for n in claimed if n == 1)
-    assert sum(1 for n in claimed if n == 0) == 144  # steps 4-7's rows
+    assert sum(1 for n in claimed if n == 1) == 918, sum(1 for n in claimed if n == 1)
+    assert sum(1 for n in claimed if n == 0) == 136  # the rows that have not landed
 
     def scalar_without_the_exclusion(doc: dict) -> bool:
         return isinstance(doc.get("type"), str) and doc["type"] in emit.SCALAR
@@ -588,8 +598,13 @@ def test_the_colliding_node_is_in_the_bundle_and_its_document_refuses_earlier() 
     assert node["enum"] == ["clickTag", "clickTAG"]
     assert len({lower_enum.member_name(v) for v in node["enum"]}) == 1
     out = emit.emit(BUNDLE, population())
-    assert out.refusals[document]["keyword"] == "allOf"
-    assert out.refusals[document]["pointer"] == "/"
+    # ``$ref`` and not ``allOf``: step 4's row now claims this root, so the walk
+    # reaches the conjuncts and refuses on the first one that names a FRAGMENT of
+    # another document -- a node needing a name of its own, which is a later row.
+    # The claim this test makes is that the colliding enum node is never reached,
+    # and it holds on either keyword.
+    assert out.refusals[document]["keyword"] == "$ref"
+    assert out.refusals[document]["pointer"] == "/allOf/0"
 
 
 def test_an_integer_enum_becomes_an_int_enum_though_no_emitted_document_has_one() -> None:

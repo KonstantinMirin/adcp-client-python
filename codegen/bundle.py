@@ -201,9 +201,34 @@ def resolved(bundle_dir: Path, document: str) -> dict:
 # clauses below are what keep this a partition.
 
 
+def declares_its_own_root_kind(doc: dict) -> bool:
+    """Does the root declare a kind of its OWN, which one of the specific rows owns?
+
+    A root is exactly ONE kind, and each keyword here decides it whatever else the
+    root declares: an ``enum`` at the root makes the document an enumeration though
+    its ``type`` names a scalar, and an ``allOf`` at the root makes it a composition
+    though it declares ``properties`` as well -- a draft-07 root ``allOf`` applies
+    to the whole instance, so a row that lowered the properties without the
+    conjuncts would drop the bases.
+
+    So the two GENERIC rows below are "none of these, and <shape>".  That is what
+    makes ``emit.ROWS`` a partition by construction, and it is a fact about the
+    SELECTORS rather than a precedence rule in the table: D13 says a collision is a
+    selector defect and gets fixed here.  Each specific row adds its own name to
+    this function when it lands, and ``tests/test_emit.py`` asserts over the whole
+    bundle that no document is claimed twice.
+    """
+    return is_enum_root(doc) or isinstance(doc.get("allOf"), list)
+
+
 def is_object_root(doc: dict) -> bool:
-    """D2's object row: a root declaring ``properties``."""
-    return "properties" in doc and doc.get("type") in (None, "object")
+    """D2's object row: a plain object root -- ``properties``, and no kind of its
+    own that a specific row owns."""
+    return (
+        "properties" in doc
+        and doc.get("type") in (None, "object")
+        and not declares_its_own_root_kind(doc)
+    )
 
 
 def is_scalar_root(doc: dict) -> bool:
@@ -216,7 +241,9 @@ def is_scalar_root(doc: dict) -> bool:
     at a sixth of the population.
     """
     return (
-        isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR and "enum" not in doc
+        isinstance(doc.get("type"), str)
+        and doc["type"] in compiler.SCALAR
+        and not declares_its_own_root_kind(doc)
     )
 
 
@@ -271,6 +298,27 @@ def carries_an_enum(doc: dict) -> bool:
     of this to the root, and implies it.
     """
     return any("enum" in n for _, n in nodes(doc))
+def composes_at_the_root(doc: dict) -> bool:
+    """Step 4's population: a root carrying ``allOf`` with NO union beside it.
+
+    **287 documents**, and the definition is what lands on that number: the other
+    readings give 342 (any root ``allOf``, union or not), 401 (``allOf`` anywhere
+    in the document) and 257 (``allOf`` at the root and nowhere else).  A verdict
+    read off a population nobody counted is a verdict over however many documents
+    there turned out to be.
+
+    The union clause is not a convenience: a ``oneOf``/``anyOf`` root is step 5's
+    row whatever ELSE it carries, because the root ``allOf`` of a draft-07
+    document applies to the whole instance and therefore to every branch, and a
+    row that lowered the conjuncts without the branches would apply the bases to
+    some branches and not others.  So the two populations are DISJOINT by this
+    clause -- 55 documents carry both -- and ``emit.lower_document`` fails on a
+    document two rows select rather than letting a table order decide.
+
+    This is the row's selector and the predicate its metric is stated over, so it
+    cannot come to claim a document the step does not count.
+    """
+    return isinstance(doc.get("allOf"), list) and not any(k in doc for k in ("oneOf", "anyOf"))
 
 
 def _is_property_or_items(pointer: str) -> bool:

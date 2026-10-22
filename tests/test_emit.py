@@ -81,6 +81,13 @@ def enums() -> list[str]:
     return [d for d in bundle.portable(BUNDLE) if bundle.carries_an_enum(bundle.read(BUNDLE, d))]
 
 
+def composing() -> list[str]:
+    """Step 4's population: a root ``allOf`` with no union beside it."""
+    return [
+        d for d in bundle.portable(BUNDLE) if bundle.composes_at_the_root(bundle.read(BUNDLE, d))
+    ]
+
+
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure.
@@ -91,7 +98,7 @@ def population() -> list[str]:
     overlap is a property of the POPULATION and not of the dispatch table, whose
     rows read a document's ROOT and claim 0 documents in common (asserted below).
     """
-    return sorted(set(leaves()) | set(referencing()) | set(enums()))
+    return sorted(set(leaves()) | set(referencing()) | set(enums()) | set(composing()))
 
 
 # --------------------------------------------------------------------------- #
@@ -176,7 +183,11 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     assert len(leaves()) == 85
     assert len(referencing()) == 249
     assert len(enums()) == 535
-    assert len(population()) == 749
+    assert len(composing()) == 287
+    # Not the sum: the selectors OVERLAP, and the overlaps are counted below
+    # rather than assumed.  The union is the denominator; no selector here is a
+    # ROW for another's shape, so nothing is counted twice by the table.
+    assert len(population()) == 900
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
