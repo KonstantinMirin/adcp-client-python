@@ -48,7 +48,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0.0"]
+# ``pytest-xdist`` is pinned like the other test-time pins above, because it
+# decides how many processes grade the population and a floating major could
+# change that silently.
+dev = ["pytest>=7.0.0", "pytest-xdist==3.8.0"]
 
 [build-system]
 # The emitted tree is a package, not a directory of files: the step-1 outcome is
@@ -71,3 +74,19 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# EVERY RUN IS PARALLEL, because the expensive part of this suite is one
+# ``check_pair`` per emitted pair and those are independent of each other.
+# Measured on the same tree, same pins, same bundle: 1,070 s serial against
+# 366 s at ten workers, 2.9x, with the SAME verdict -- three failures, the same
+# three by name. A faster suite that grades something else would not be faster,
+# so the identity of the failure set is the thing to check if this ever changes.
+#
+# ``auto`` scales down on a smaller machine and ``--maxprocesses`` caps it,
+# because MEMORY and not CPU is this suite's ceiling: each worker imports the
+# whole emitted tree and builds hypothesis strategies, and runs here have been
+# killed by the OOM killer at fifteen Python processes against 5 GB of swap.
+# Ten is the measured-stable figure WITH a lane's own suite running beside it,
+# which is the normal case during an epic. Override upward on an idle machine
+# with ``-n 14``; a single test still runs alone under ``-n 0``.
+addopts = "-n auto --maxprocesses=10"
