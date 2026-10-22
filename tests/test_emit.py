@@ -1240,12 +1240,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 428, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 417
+    assert len(reports) == 448, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 437
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 11
-    assert sum(r.graded_instances for r in reports) == 28414  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 3944  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 838  # model-only facts examined
+    assert sum(r.graded_instances for r in reports) == 31923  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 4276  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 896  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
