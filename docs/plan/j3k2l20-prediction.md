@@ -179,4 +179,120 @@ ever named before, so this change is the first thing to put that path under load
 
 ## The grading
 
-Filled in after the measurement, against the table above.
+Measured on branch `sdk/j3k2l20-defs-declarations`, `emit.emit` over all 1,054 portable
+documents, against a re-measurement of `63dc1bb68` in a pristine worktree
+(`/Users/konst/projects/acp-j3k2l20-base`) in the same process-per-tree instrument
+(`snap.py`, which inserts the tree it is told to measure at `sys.path[0]` and asserts
+`codegen.emit.__file__` came from it).
+
+| # | predicted | measured | verdict |
+|---|---|---|---|
+| P1 | 40 of 40 off the section keyword | **40 of 40** | right |
+| P2 | 16 emit (10–24) | **0** | **WRONG, and outside the range** |
+| P3 | 24 still refused (16–30) | **40** | **WRONG, and outside the range** |
+| P4 | the 6 with a keyword outside every handled set still refuse, on `contains`/`patternProperties` | all 6 refuse; **0 of them on either keyword** | outcome right, mechanism wrong |
+| P5 | 7 unblocked by the `$ref` chain (2–14) | **0** | **WRONG** |
+| P6 | N = 424 (415–445) | **401**, unchanged | **WRONG, and outside the range** |
+| P7 | refused = 630 (609–639) | **653**, unchanged | **WRONG, and outside the range** |
+| P8 | emitted + refused = 1,054 | **1,054** | right |
+| P9 | 557 graded pairs (520–610) | **462**, unchanged | **WRONG, and outside the range** |
+| P10 | `added` = 0 | **0** | right |
+| P11 | `missing` = 0 | **0** | right |
+| P12 | `differs` = 0 | **0** | right |
+| P13 | `a2ui/si-catalog.json` emits, 0 classes from its section | does **not** emit — `const` at `/properties/catalogId`; 0 classes from its section | half wrong |
+| P14 | the nested section resolves through the same path | `brand/get-brand-identity-response.json` still refuses on `allOf` at `/`, so the real bundle never reaches it; its pointer IS in `named_nodes` and the path is graded on a constructed bundle | not demonstrated on the bundle |
+| P15 | 0 refusals on a section keyword | **0** | right |
+| P16 | `ROWS` length 6 | **6** | right |
+
+**Five of sixteen are wrong and four of those are outside their stated range, all in one
+direction: nothing emits.** The one prediction that mattered — that this step moves N —
+was wrong, and the reason is a single thing the 34-of-40 instrument could not see.
+
+### Why P2 was wrong, and what the right instrument would have been
+
+The predictor unioned EVERY row's handled set and asked which documents state a keyword
+outside the union. That admits a keyword handled at exactly one position everywhere, and
+the five largest non-`$ref` blockers are all of that kind. The prediction said so and
+then used 34 as a ceiling anyway, with a midpoint guess inside it. The position screen
+did not cut into that ceiling by a fraction: it cut all of it.
+
+The keywords the 40 land on, measured:
+
+| keyword | documents | owner |
+|---|---|---|
+| `if` | 10 | D6's rule at an `allOf` conjunct — step 4/7's boundary |
+| `const` | 7 | D2's `Literal` row — `salesagent-j3k2l.16`, in flight |
+| `$ref` | 4 | a chain, or a bare-`$ref` union branch |
+| `anyOf` | 3 | step 5's row at a nested position |
+| `properties` | 3 | a root conjunct beside a union (step 5's own refusal) |
+| `type` | 2 | real: a declared `null` beside another type, and `properties` with no `type` |
+| `discriminator` | 2 | step 5's row at a nested position |
+| `allOf` | 2 | step 4's row at a nested position |
+| `else` | 2 | D6, as `if` |
+| `not` | 2 | D6 |
+| `minProperties` | 1 | D6 |
+| `uniqueItems` | 1 | D6 |
+| `maxProperties` | 1 | D6 |
+
+Not one of the 40 is held by a keyword with no scheduled row, which is the exit
+condition; and not one is held ONLY by the section, which is why N does not move. **This
+step cannot raise N on its own**, and the sharp instrument for that was available before
+the change: for each of the 40, walk the document the way the rows walk it and take the
+first keyword each position's own screen refuses. I substituted a cheap union for it and
+reported a range I had no instrument for.
+
+`salesagent-j3k2l.16` (`const`) alone would clear 7 of the 40 once both land, and D6 at a
+conjunct position would clear 14 more.
+
+### What the change did move, none of it predicted
+
+- **The refusal attribution, for all 40.** `(keyword, pointer)` moved for exactly 40
+  documents and for 0 outside them, with no document emitted-to-refused in either
+  direction. The keyword census moves by −35 `definitions`, −5 `$defs` and +40
+  distributed across 13 keywords.
+- **7 documents now refuse at a pointer INSIDE a section**, where 0 could before — every
+  pointer under `definitions` was unreachable. That is the descent made observable, and
+  it is what `test_the_bundles_own_sections_are_walked_and_the_closure_follows` grades.
+- **The closure reaches further where a root refusal moved into the properties.**
+  `governance/policy-entry.json` stopped at `$defs` at `/` before any of its 8 property
+  references was read; it now refuses at `/properties/acceptance_profile`, so the three
+  enum documents its earlier properties name are emitted. Over step 1, 2 and 4's own
+  587-document population that is **214 → 217**, and the with/without-row delta for
+  `composes_at_the_root` is **31 → 34** (both referrers of `policy-entry` in that
+  population are selected by that row and by no other, so removing it removes the only
+  path). Over the whole 1,054 it is +0, because there all three are named directly.
+- **One document outside the 40 changed its refusal DETAIL and nothing else**:
+  `core/registry-feed-response.json`, whose chain quotes `core/registry-event.json`'s new
+  message. `(keyword, pointer)` is unchanged.
+- **The committed tree is byte-identical.** `test_the_committed_tree_is_what_a_fresh_run_emits`
+  passes untouched, so no module was regenerated and the 462 graded pairs, 450 `pass`,
+  4,658 compared facts and 0/0/0 added-missing-differs are all unchanged. Which also
+  means **no declared section entry reaches the committed tree**, so the positive path —
+  the class, its own pointer, the symbol the property names, the entry nothing references
+  — is graded on constructed bundles in `tests/test_fragment_ref.py` and nowhere else.
+  That is the same arrangement `salesagent-j3k2l.14` records for the absolute half and
+  for the same reason: the population is gated behind other steps.
+- **4 of the bundle's 405 local reference sites name an entry that is ITSELF a `$ref`**
+  (`brand.json#/definitions/logo_slot`, `core/registry-event.json#/$defs/badgeRole`, each
+  named twice). That arm was found while writing `local_reference` and it decided the
+  signature: the function returns the `Decided` rather than reading `Module.declared`
+  back, because such an entry decides to a symbol the module IMPORTED and nothing
+  declared it at that pointer. Reading the memo back would have been a `KeyError` on 2
+  real documents.
+
+### What was dropped from the design as unreachable
+
+An identifier check on the derived name. `class_name` returns alphanumerics only and
+`emit.lower_document` refuses a title deriving no identifier before any row runs, so an
+identifier root concatenated with it is always an identifier. What can go wrong is a
+COLLISION, which `Module.declare` already fails the build for — graded on `a_b` against
+`a.b`, which both derive `CollideAB`.
+
+### The checks, each probed by making it fail
+
+| check | removed | observed |
+|---|---|---|
+| `Module.resolving` (the cycle guard) | branch disabled | `RecursionError: maximum recursion depth exceeded`, both the two-hop and the self-reference case |
+| `local_reference`'s "names no node" | branch disabled | `TypeError: argument of type 'NoneType' is not a container`, one frame out in `_decide` |
+| `DEFINITION_SECTIONS` in `check_keywords` | removed from the screen | 3 tests red, including the whole-population "0 refusals on a section" |
+| `named_nodes`' local arm | `continue` restored | the constructed bundle refuses with `#/definitions/slot names no node of this document` |
