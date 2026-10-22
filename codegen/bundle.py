@@ -266,6 +266,29 @@ def is_enum_root(doc: dict) -> bool:
     """
     return "enum" in doc
 
+def is_container_root(doc: dict) -> bool:
+    """Step 6's row, and step 6's population: a root that is a container.
+
+    An array (D2's ``RootModel[list[X]]`` row), a mapping (an object declaring no
+    property), or a multi-type node.
+
+    **The exclusion is load-bearing and the lane's own count was over the predicate
+    WITHOUT it.**  Measured both ways on the 3.2 bundle: the bare shape test selects
+    37 documents (32 mappings, 5 arrays, 0 multi-type), and 28 of those 32 mappings
+    declare a union at the root as well -- so without the clause ``union_root`` and
+    this row both claim all 28.  The union owns them for the reason
+    :func:`declares_its_own_root_kind` states: a root ``oneOf`` makes the document a
+    union whatever else the root declares.  With it, this row's population is 9 (5
+    arrays, 4 mappings), overlapping neither :func:`is_leaf_object` nor
+    :func:`references_a_property` in a single document.
+    """
+    kind = doc.get("type")
+    if declares_its_own_root_kind(doc):
+        return False
+    if isinstance(kind, list):
+        return True
+    return kind == "array" or (kind == "object" and "properties" not in doc)
+
 
 def is_leaf_object(doc: dict) -> bool:
     """Step 1's population: an object root with no reference, composition,

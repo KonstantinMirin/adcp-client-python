@@ -1042,6 +1042,39 @@ def _implied_by_an_enum(keyword: str, value: Any, members: Any) -> bool:
     return False
 
 
+def _pinned_by_the_model(keyword: str, value: Any, model: Mapping[str, Any]) -> bool:
+    """Does the model already pin a document fact it does not SPELL?
+
+    The mirror of :func:`_narrows_nothing`, on the other direction: a document fact
+    the model omits is a model WIDER than its document and is reported -- unless
+    what the model does state admits exactly the same set, in which case the two
+    are one fact in two spellings and §6 says the comparison must not grade that.
+
+    **One row, and it exists because the resolver rewrites a boolean.**
+    ``canonicalish`` reduces ``{"type": "boolean"}`` to ``{"enum": [false, true]}``
+    -- measured directly -- so a faithful ``bool`` field compares against a document
+    that states an ``enum`` and no ``type``, and the comparison reported
+    ``model_drops_a_fact`` at every boolean property step 6's container rows made
+    reachable (``core/canonical-projection-slot-override.json``'s two).  The model's
+    ``type: boolean`` and the document's ``enum: [false, true]`` admit the same two
+    instances, and the model-only ``type`` is excused on the same ground by
+    ``_implied_by_an_enum``, so the pair was already being read as one fact in one
+    direction and not the other.
+
+    **``boolean`` is the whole of the rule and not an example of it.**  It is the
+    only JSON type whose instance set is finite and enumerable, so it is the only
+    type a ``type`` keyword can pin an ``enum`` with.  An ``enum`` of strings beside
+    ``type: string`` is a real narrowing of the document that a model omitting it
+    really does drop, and this returns ``False`` for it.
+    """
+    if keyword != "enum":
+        return False
+    members = value if isinstance(value, list) else []
+    return sorted(map(repr, members)) == sorted(map(repr, [False, True])) and (
+        model.get("type") == "boolean"
+    )
+
+
 def _closed(x: Any) -> Any:
     """``additionalProperties``, with the one canonicalization folded out.
 
@@ -1071,9 +1104,24 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
       ``T | None``, because the attribute holds ``None`` for an omitted key.
       pydantic states that as a union; the document states the type and leaves
       presence to ``required``.  Unwrapping the null branch compares like with
-      like, and it is safe: a document that genuinely admits null says so with
-      ``"type": ["string", "null"]`` or a union, which is a later step's row and
-      arrives as a multi-member ``anyOf`` that is not unwrapped here.
+      like.
+    * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
+      several types at once and pydantic has no spelling for that but a union, so
+      ``{"type": ["number", "string"]}`` comes back
+      ``{"anyOf": [{"type": "number"}, {"type": "string"}]}`` -- one fact in two
+      spellings, and without this fold the model was reported as stating no
+      ``type`` at all.  Measured on ``error-details/conflict.json``, whose two
+      multi-type properties were the first in the emitted population: the
+      comparison said ``model_drops_a_fact`` twice for a model that states exactly
+      what its document states.
+
+      The fold applies only where EVERY branch is a bare ``{"type": X}``.  A
+      branch carrying anything else is a union of constrained types rather than a
+      type list, and folding it would throw that branch's constraint away -- so
+      such a union is left alone and compares as it is.  It also cannot excuse an
+      omission in either direction: a model listing more types than the document
+      still differs after the fold, and a model listing fewer never folds into a
+      match.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
       ``anyOf`` and the type facts inside the branch.
     """
@@ -1085,12 +1133,14 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
         outer = {k: v for k, v in node.items() if k != "$ref"}
         return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
     branches = node.get("anyOf")
-    if isinstance(branches, list) and len(branches) == 2:  # noqa: PLR2004 -- T | None only
-        live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
-        nulls = [b for b in branches if isinstance(b, dict) and b.get("type") == "null"]
-        if len(live) == 1 and len(nulls) == 1:
-            outer = {k: v for k, v in node.items() if k != "anyOf"}
+    if isinstance(branches, list) and branches and all(isinstance(b, dict) for b in branches):
+        live = [b for b in branches if b.get("type") != "null"]
+        nulls = [b for b in branches if b.get("type") == "null"]
+        outer = {k: v for k, v in node.items() if k != "anyOf"}
+        if len(nulls) == 1 and len(live) == 1:
             return {**_normalize(live[0], defs, depth + 1), **outer}
+        if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
+            return {"type": [b["type"] for b in live], **outer}
     return node
 
 
@@ -1249,10 +1299,26 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
             res.compared += 1
             where = f"{pointer}/{kw}"
             if kw not in got:
+                if _pinned_by_the_model(kw, doc[kw], got):
+                    continue
                 res.missing.append(f"{where}: the document says {doc[kw]!r}")
                 continue
             a, b = doc[kw], got[kw]
             if kw == "additionalProperties":
+                if isinstance(a, dict) and a and isinstance(b, dict):
+                    # A TYPED ``additionalProperties`` is a subschema, so it is
+                    # compared the way ``items`` is -- recursively, with the model's
+                    # side normalized -- and not as an opaque value.  Step 6's
+                    # mapping row makes the model's side a local class, which
+                    # pydantic renders ``{"$ref": "#/$defs/..."}``: comparing the
+                    # two as values reports a difference that is a SPELLING, while
+                    # the facts inside the value schema go ungraded.  Measured on
+                    # ``error-details/vendor-error-codes.json``, whose two nested
+                    # mappings reported ``model_drops_a_fact`` for a model stating
+                    # exactly what its document states; recursing instead grades the
+                    # value's own ``type``, ``required`` and ``enum``.
+                    compare(a, b, f"{where}")
+                    continue
                 a, b = _closed(a), _closed(b)
             elif kw == "description":
                 a, b = _text(a), _text(b)

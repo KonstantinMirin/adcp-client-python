@@ -129,7 +129,7 @@ def test_a_required_only_conjunct_has_no_population_so_the_arm_is_not_built() ->
     assert found == []
 
 
-def test_the_row_adds_no_document_and_the_delta_is_reported_with_its_denominator() -> None:
+def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     """**ΔN = 0. N = 43 of 1,054.**  Measured both ways in one process.
 
     The plan's step table implies the volume of a 287-document population; it
@@ -166,27 +166,38 @@ def test_the_row_adds_no_document_and_the_delta_is_reported_with_its_denominator
         emit.ROWS = saved
 
     assert len(docs) == 1054
-    # N over this population is 102 on the merged table (43 when this lane measured
-    # it alone, before step 3's enum row was beside it), and the row moves it by 0.
-    assert len(with_row.emitted) == 102, "N, over a bundle of 1,054"
-    assert set(with_row.emitted) == set(without.emitted), "the row emits nothing yet"
-    assert not set(composing()) & set(with_row.emitted)
+    # N over this population is 188 on the merged table (43 when this lane measured
+    # it alone, before the other four steps' rows were beside it), and the row moves
+    # it by 0.
+    assert len(with_row.emitted) == 188, "N, over a bundle of 1,054"
+    # **The row DOES emit now, and it did not when this lane measured alone.**  On
+    # its own branch the conjuncts' targets refused and took their referrers with
+    # them, so the delta was 0 and the row's value was the attribution it moved.  On
+    # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
+    # documents follow: 20 of the 287 are emitted BY this row, and removing it loses
+    # 24 modules -- the 20 plus the 4 reached only through one of their references.
+    # That is joint unblocking measured from this side -- the row's own 0 was a fact
+    # about which other rows existed, not about the row.
+    assert len(with_row.emitted) - len(without.emitted) == 24
+    assert len(set(composing()) & set(with_row.emitted)) == 20
+    assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
+        with_row.emitted
+    )
     # Every document of the population is accounted for by name, pointer and keyword.
     assert set(pop) <= set(with_row.emitted) | set(with_row.refusals)
     for document, row in with_row.refusals.items():
         assert row["keyword"] and row["pointer"] and row["detail"], document
-    # The ATTRIBUTION moved for 270 of the 287, and no verdict did.  Without the
-    # row a composing document is claimed by nothing and refuses at the root on
-    # ``type``; with it, the walk reaches the conjuncts and names the keyword that
-    # actually stopped it.  The 17 that do not move already refused on that same
-    # keyword at the root.
+    # The ATTRIBUTION moved for all 287.  Without the row a composing document is
+    # claimed by nothing and refuses at the root on ``type``; with it, the walk
+    # reaches the conjuncts and either emits the document or names the keyword that
+    # actually stopped it.
     moved = [
         d
         for d in composing()
-        if with_row.refusals[d]["keyword"] != without.refusals[d]["keyword"]
+        if with_row.refusals.get(d, {}).get("keyword")
+        != without.refusals.get(d, {}).get("keyword")
     ]
-    assert len(moved) == 270
-    assert not set(without.refusals) - set(with_row.refusals), "no document stopped refusing"
+    assert len(moved) == 287
 
 
 def test_a_document_two_rows_select_is_a_build_failure_and_not_a_precedence_puzzle() -> None:

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Payload when sync_creatives task is paused waiting for buyer clarification or approval.",
+  "properties": {
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "reason": {
+      "description": "Reason code indicating why buyer input is needed",
+      "enum": [
+        "APPROVAL_REQUIRED",
+        "ASSET_CONFIRMATION",
+        "FORMAT_CLARIFICATION"
+      ],
+      "type": "string"
+    }
+  },
+  "title": "Sync Creatives - Input Required",
+  "type": "object"
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A targeted metro area.",
+  "properties": {
+    "system": {
+      "enum": [
+        "custom",
+        "uk_itl1",
+        "uk_itl2",
+        "nielsen_dma",
+        "eurostat_nuts2"
+      ]
+    },
+    "values": {
+      "description": "Metro codes within the system (e.g., ['501', '602'] for Nielsen DMAs)",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "system",
+    "values"
+  ],
+  "title": "Geo Metro",
+  "type": "object"
+}

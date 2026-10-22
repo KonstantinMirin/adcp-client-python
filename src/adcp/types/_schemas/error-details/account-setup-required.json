@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Recommended details shape for ACCOUNT_SETUP_REQUIRED errors. Provides setup URL and remaining steps.",
+  "properties": {
+    "setup_steps": {
+      "description": "Steps remaining before the account is ready",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "setup_url": {
+      "description": "URL where account setup can be completed",
+      "format": "uri",
+      "type": "string"
+    }
+  },
+  "title": "Account Setup Required Details",
+  "type": "object"
+}

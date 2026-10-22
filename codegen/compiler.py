@@ -161,12 +161,48 @@ class Type:
     local symbol here is something this pipeline emitted -- a sibling class or an
     ``Annotated`` alias -- so pydantic resolves all of them and the relaxation is
     both unasked for and untrue.
+
+    A CONTAINER is the same vocabulary one level up: ``container`` names the shape
+    and ``of`` carries the types inside it.  It is here rather than in the
+    container lowering because deciding ``list[X]`` is the walk's judgement and
+    writing ``list[X]`` is the compiler's rendering -- a lowering that assembled
+    the annotation text itself would be the second half of the seam doing the
+    first half's job, and the text is exactly what §1 says the compiler is for.
+
+    ``of`` is deliberately one field for three shapes, because the compiler reads
+    all three out of dmcg's single ``data_types``: the element of a list, the
+    VALUE of a mapping, and the arms of a union.  A mapping's key is the one type
+    that is not in it, because dmcg carries it in its own ``dict_key`` slot --
+    which is what makes D5's typed key expressible at all.
+
+    **A container carries no constraints of its own here.**  A bound on a list is
+    a bound on the FIELD holding it (``Property.constraints``, rendered
+    ``Field(min_length=...)``), and a bound on what is INSIDE a container has no
+    slot in dmcg's ``DataType`` -- which is the gap D5 closes by naming the
+    inner type rather than the gap it looks like.  The container lowering refuses
+    an inner constraint it cannot name instead of dropping it.
     """
 
-    path: str
+    path: str = ""
     local: bool = False
+    #: ``"list"``, ``"dict"`` or ``"union"`` when this type is a container.
+    container: str = ""
+    #: A list's element, a mapping's value, or a union's arms.
+    of: tuple[Type, ...] = ()
+    #: A mapping's key, and only a mapping has one (D5 types it from the document).
+    key: Type | None = None
 
     def data_type(self) -> Any:
+        if self.container == "list":
+            return _TYPES.data_type(is_list=True, data_types=[t.data_type() for t in self.of])
+        if self.container == "dict":
+            return _TYPES.data_type(
+                is_dict=True,
+                data_types=[t.data_type() for t in self.of],
+                dict_key=self.key.data_type() if self.key is not None else None,
+            )
+        if self.container == "union":
+            return _TYPES.data_type(data_types=[t.data_type() for t in self.of])
         if self.path == "None":
             return _TYPES.data_type(type="None")
         if self.local:
@@ -223,13 +259,10 @@ class Class:
     #: writer has already imported -- the compiler adds no import for a base, for
     #: the same reason ``Type.local`` adds none: a cross-document import is
     #: derived from the two document paths (D1) and is the module writer's.
-    bases: tuple[str, ...] = ()
-    #: The classes this one derives from, in rendered order.  Empty leaves
-    #: ``custom_base_class`` in place, which is ``AdCPBaseModel`` and is what every
-    #: ordinary document's class gets.  D7 derives these from a composition and §4's
-    #: union row derives them from the shape -- a base is ``(BranchDispatchMixin,
-    #: AdCPBaseModel)`` and a branch is its base.  Naming any of them REPLACES
-    #: ``custom_base_class``, so a caller that wants ``AdCPBaseModel`` in the list says so.
+    #: §4's union row derives them from the SHAPE rather than from a composition --
+    #: a base is ``(BranchDispatchMixin, AdCPBaseModel)`` and a branch is its base --
+    #: so naming any of them replaces ``custom_base_class`` and a caller that wants
+    #: ``AdCPBaseModel`` in the list says so.
     bases: tuple[str, ...] = ()
     #: Lines appended to the class body verbatim, after ``__adcp_schema__``.  The channel
     #: for a fact the emitter has to write onto a class because it is not recoverable at
@@ -237,6 +270,12 @@ class Class:
     #: one thing in this module that is text rather than a decision -- which is why it is a
     #: parameter here rather than a second renderer somewhere else.
     body_lines: tuple[str, ...] = ()
+    #: D8's typed row: the type of a property the class does not DECLARE, which
+    #: pydantic validates through ``__pydantic_extra__``.  It is a mapping, because
+    #: ``additionalProperties`` types the values under keys the document does not
+    #: name -- D5 types the key too, so it is the same ``dict[K, V]`` a mapping node
+    #: lowers to and is decided by the same row.
+    extra_type: Type | None = None
 
 
 @dataclass
@@ -438,16 +477,35 @@ def render(decided: Class) -> Rendered:
     #
     # ``_append_internal_template_data`` APPENDS to a list, measured on 0.86.0, so a
     # caller's own lines follow the ref rather than replacing it.
-    model._append_internal_template_data(  # noqa: SLF001 -- dmcg's own channel; see the module docstring
-        "class_body_lines",
-        f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}",
-    )
-    for line in decided.body_lines:
-        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001
+    body = [f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}"]
+    extra_field = None
+    if decided.extra_type is not None:
+        # ``__pydantic_extra__`` is a dunder and not a field: declared as one it
+        # would be a model field named ``__pydantic_extra__``, which pydantic reads
+        # as the extras store rather than as a property, so it goes through the same
+        # channel the schema reference does.  The ANNOTATION is still the compiler's
+        # -- read off a ``DataModelField`` like every other type hint in this module
+        # -- so a mapping's rendering and an extras store's cannot come to be two
+        # spellings of one decision.  Only the ``name: hint`` line is ours.
+        extra_field = _field(
+            Property(
+                name="__pydantic_extra__",
+                wire="__pydantic_extra__",
+                type=decided.extra_type,
+                required=True,
+            )
+        )
+        body.append(f"__pydantic_extra__: {extra_field.type_hint}")
+    for line in (*body, *decided.body_lines):
+        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001 -- dmcg's own channel; see the module docstring
     out = Rendered(text=model.render().rstrip("\n"))
     for imp in model.imports:
         if imp.from_ and imp.import_:
             out.imports.add((imp.from_, imp.import_))
+    if extra_field is not None:
+        for imp in extra_field.imports:
+            if imp.from_ and imp.import_:
+                out.imports.add((imp.from_, imp.import_))
     # ``ConfigDict`` is kept exactly when the rendered text uses the name, read
     # off the text rather than off what we asked for.  dmcg reports the import
     # for a model whose rendering MIGHT need one, and it also renders a config
@@ -788,8 +846,28 @@ def declare_object(
     composes, never classified by hand), and ``AdCPBaseModel`` arrives through
     them.
     """
-    if isinstance(node.get("additionalProperties"), dict):
-        raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
+    # D8's typed row: a property the class does not DECLARE is validated against
+    # the document's own value schema, through pydantic's ``__pydantic_extra__``.
+    # The TYPE is the same ``dict[K, V]`` a mapping node lowers to, decided by the
+    # same row -- the node is handed to ``mod.decide`` as the mapping it is, with
+    # whatever the node says about its KEYS carried across (D5 types the key too),
+    # so an extras store and a mapping cannot come to read ``additionalProperties``
+    # two different ways.  ``mod.decide`` rather than an import of the container
+    # row: D13's import rule runs the other way, and the default decider refuses,
+    # so a node lowered outside ``lower_document`` is not silently widened.
+    ap = node.get("additionalProperties")
+    extra_type = None
+    if isinstance(ap, dict) and ap:
+        extra_type = mod.decide(
+            {
+                "type": "object",
+                "additionalProperties": ap,
+                **{k: node[k] for k in ("propertyNames",) if k in node},
+            },
+            pointer,
+            name,
+            mod,
+        ).type
     description = node.get("description")
     rendered = render(
         Class(
@@ -797,8 +875,12 @@ def declare_object(
             ref=schema_ref(mod.document, pointer),
             properties=tuple(props),
             description=description if isinstance(description, str) and description else None,
-            # D8; absent leaves the base's default in place
-            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            # D8; absent leaves the base's default in place.  A TYPED
+            # ``additionalProperties`` is ``allow`` with the type beside it: the
+            # properties are part of the document, so they are retained, and
+            # ``__pydantic_extra__`` is what validates them.
+            extra="allow" if extra_type is not None else {False: "forbid", True: "allow"}.get(ap),
+            extra_type=extra_type,
             bases=bases,
             body_lines=body_lines,
         )
@@ -825,7 +907,9 @@ def lower_object(
     unchanged and so is every module they emit.  :func:`fields` documents
     ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
     """
-    check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    check_keywords(
+        node, pointer, {"type", "properties", "required", "additionalProperties", "propertyNames"}
+    )
     if node.get("type") != "object":
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
         # Schema applies ``properties`` only to objects and asserts nothing about

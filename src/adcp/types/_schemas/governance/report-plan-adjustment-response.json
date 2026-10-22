@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Release-precision AdCP protocol version negotiation fields. Composed via `allOf` into AdCP request schemas and shared response components so the version semantics live in one place. Strict (`additionalProperties: false`) request schemas also redeclare these two fields in their own `properties` via `$ref`, because draft-07 does not evaluate properties across `allOf`. The Trusted Match match requests are the exception: they inline both fields for their strict privacy boundary. Distinct from `core/protocol-envelope.json`, which wraps responses at the transport layer (context_id / task_id / status / payload). This envelope is part of the payload itself.",
+      "properties": {
+        "adcp_major_version": {
+          "deprecated": true,
+          "description": "DEPRECATED in favor of adcp_version (release-precision string). Servers MUST continue to honor this field through 3.x. Removed in 4.0. Original semantics: the AdCP major version the buyer's payloads conform to. Sellers validate against their supported major_versions and return VERSION_UNSUPPORTED if unsupported. When omitted, the seller assumes its highest supported version.",
+          "maximum": 99,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "adcp_version": {
+          "description": "Release-precision AdCP version (VERSION.RELEASE, e.g. \"3.0\", \"3.1\", \"3.1-beta\"). On a request: the buyer's release pin \u2014 the seller validates against its supported_versions and returns VERSION_UNSUPPORTED on cross-major mismatch, or downshifts to the highest supported release within the same major. On a response: the release the seller actually served \u2014 clients SHOULD validate the response against that release's schema, not against their pin. Patches are not negotiated; surface them as build_version on capabilities for operational visibility. When omitted, falls back to adcp_major_version (deprecated) or server default. Buyers SHOULD emit both adcp_version and adcp_major_version through 3.x to remain compatible with sellers that only read the legacy field. NORMALIZATION: SDKs that read full-semver values from bundle metadata (e.g. ComplianceIndex.published_version = \"3.1.0-beta.1\") MUST normalize to release-precision (\"3.1-beta.1\") before emitting on the wire \u2014 meta-field values are NOT valid wire values.",
+          "examples": [
+            "3.0",
+            "3.1",
+            "3.1-beta",
+            "3.1-rc.1"
+          ],
+          "pattern": "^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?)?$",
+          "type": "string"
+        }
+      },
+      "title": "AdCP Version Envelope",
+      "type": "object"
+    }
+  ],
+  "description": "Append-only adjustment lifecycle result and attributed plan accounting state.",
+  "properties": {
+    "adjustment_id": {
+      "description": "Governance-agent identifier for the adjustment record.",
+      "type": "string",
+      "x-entity": "governance_adjustment"
+    },
+    "adjustment_state": {
+      "description": "reported has seller evidence but no buyer decision; verified was accepted by the plan owner; disputed was rejected by the plan owner. Only verified records can affect net cost or headroom.",
+      "enum": [
+        "reported",
+        "verified",
+        "disputed"
+      ],
+      "type": "string"
+    },
+    "adjustment_type": {
+      "enum": [
+        "decommitment",
+        "refund",
+        "credit",
+        "makegood"
+      ],
+      "type": "string"
+    },
+    "amount": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "type": "object"
+    },
+    "context": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Opaque correlation data that is echoed unchanged in responses. Used for internal tracking, UI session IDs, trace IDs, and other caller-specific identifiers that don't affect protocol behavior. Context data is never parsed by AdCP agents - it's simply preserved and returned.",
+      "title": "Context Object",
+      "type": "object"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "headroom_restored": {
+      "description": "Amount by which current ledger commitment was reduced under the plan accounting mode.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "plan_summary": {
+      "additionalProperties": false,
+      "properties": {
+        "accounting_mode": {
+          "enum": [
+            "gross_commitment",
+            "verified_net_cost"
+          ],
+          "type": "string"
+        },
+        "adjustments_reported": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "adjustments_verified": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "budget_remaining": {
+          "type": "number"
+        },
+        "gross_committed": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "headroom_restored": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "ledger_committed": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "net_committed": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "net_cost": {
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "accounting_mode",
+        "gross_committed",
+        "adjustments_reported",
+        "adjustments_verified",
+        "net_cost",
+        "headroom_restored",
+        "ledger_committed",
+        "net_committed",
+        "budget_remaining"
+      ],
+      "type": "object"
+    },
+    "replayed": {
+      "default": false,
+      "description": "Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions \u2014 matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state \u2014 re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "adjustment_id",
+    "adjustment_state",
+    "adjustment_type",
+    "amount",
+    "headroom_restored",
+    "plan_summary"
+  ],
+  "title": "Report Plan Adjustment Response",
+  "type": "object",
+  "x-status": "experimental"
+}

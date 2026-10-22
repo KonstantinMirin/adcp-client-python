@@ -96,6 +96,7 @@ from codegen.compiler import (
 )
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
+from codegen.lower import containers as lower_containers
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 
@@ -237,7 +238,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
-        raise Refusal("type", pointer, f"a multi-type node ({kind}) is step 6")
+        return lower_containers.multi_type(node, pointer, name_hint, mod)
 
     if kind == "null":
         check_keywords(node, pointer, {"type"})
@@ -245,11 +246,11 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 
     if kind == "object":
         if "properties" not in node:
-            raise Refusal("type", pointer, "an object node with no properties is a mapping, step 6")
+            return lower_containers.mapping(node, pointer, name_hint, mod)
         return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
 
     if kind == "array":
-        raise Refusal("type", pointer, "an array node is step 6")
+        return lower_containers.array(node, pointer, name_hint, mod)
 
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
@@ -372,6 +373,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_enum_root, _enum_root),
     (bundle.composes_at_the_root, lower_product.lower_root),
     (bundle.union_root, _union_root),
+    (bundle.is_container_root, lower_containers.root),
 )
 
 

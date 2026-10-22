@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Definition of a policy category in the registry. Policy categories group related regulatory regimes (e.g., 'children_directed' groups COPPA, UK AADC, GDPR Article 8). Used on campaign plans (plan.policy_categories), signal definitions (signal-definition.policy_categories), and policy entries (policy-entry.policy_categories) to connect campaigns and data to the right regulatory frameworks.",
+  "properties": {
+    "category_id": {
+      "description": "Unique identifier for this category. Used in plan.policy_categories, signal-definition.policy_categories, and policy-entry.policy_categories.",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "type": "string",
+      "x-entity": "governance_policy_category"
+    },
+    "description": {
+      "description": "What this category covers. Defines the boundary \u2014 what campaigns or data fall under this category.",
+      "type": "string"
+    },
+    "facets": {
+      "description": "Registry-defined distinctions within the category that materially affect policy applicability or seller acceptance. Facets refine a category without creating a new top-level policy category.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "facet_id": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string",
+            "x-entity": "governance_policy_category_facet"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "facet_id",
+          "name",
+          "description"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "guidance": {
+      "description": "Implementation notes for governance agents. Edge cases, disambiguation, and common pitfalls.",
+      "type": "string"
+    },
+    "industries": {
+      "description": "Industries where this category commonly applies (e.g., 'pharmaceutical' for age_restricted). Governance agents MAY suggest relevant categories when a plan's brand industry matches but no policy_categories are declared.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "name": {
+      "description": "Human-readable name (e.g., 'Children-Directed Content').",
+      "type": "string"
+    },
+    "regulatory_frameworks": {
+      "description": "Key regulations and standards grouped under this category. Governance agents use this to resolve specific policies from the registry.",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "jurisdictions": {
+            "description": "ISO 3166-1 alpha-2 codes where this framework applies.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Name of the regulation or standard (e.g., 'US COPPA').",
+            "type": "string"
+          },
+          "policy_ids": {
+            "description": "Registry policy IDs that implement this framework.",
+            "items": {
+              "type": "string",
+              "x-entity": "governance_registry_policy"
+            },
+            "type": "array"
+          },
+          "summary": {
+            "description": "Brief summary of what the framework requires or prohibits.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "related_categories": {
+      "description": "Categories that frequently co-occur (e.g., 'children_directed' often appears with 'age_restricted').",
+      "items": {
+        "type": "string",
+        "x-entity": "governance_policy_category"
+      },
+      "type": "array"
+    },
+    "requires_human_review": {
+      "default": false,
+      "description": "When true, any plan declaring this category MUST set plan.human_review_required = true. Use for regulatory regimes that mandate human oversight under GDPR Art 22 or EU AI Act Annex III \u2014 fair_housing, fair_lending, fair_employment, pharmaceutical_advertising, and similar high-risk categories. Category-level setting applies to all policies and plans referencing it; policies can override on policy-entry.requires_human_review. Effective immediately regardless of individual policy `effective_date` fields.",
+      "type": "boolean"
+    },
+    "restricted_attributes": {
+      "description": "Restricted attribute categories that regulations in this category prohibit for targeting. Governance agents enforce these when the category is active on a plan \u2014 if a plan declares policy_categories: ['fair_housing'], the governance agent restricts targeting on these attributes.",
+      "items": {
+        "enum": [
+          "age",
+          "health_data",
+          "genetic_data",
+          "biometric_data",
+          "familial_status",
+          "religious_beliefs",
+          "political_opinions",
+          "racial_ethnic_origin",
+          "trade_union_membership",
+          "sex_life_sexual_orientation"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "category_id",
+    "name",
+    "description"
+  ],
+  "title": "Policy Category Definition",
+  "type": "object",
+  "x-adcp-validation": {
+    "unique_by": [
+      {
+        "field": "facet_id",
+        "path": "facets"
+      }
+    ]
+  }
+}

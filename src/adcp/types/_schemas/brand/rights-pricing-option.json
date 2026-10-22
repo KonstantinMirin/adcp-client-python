@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "A pricing option for licensable rights. Separate from media-buy pricing options \u2014 rights pricing includes period, impression caps, overage rates, and use-type scoping.",
+  "properties": {
+    "currency": {
+      "description": "ISO 4217 currency code",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "description": {
+      "description": "Human-readable description of this pricing option",
+      "type": "string"
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "impression_cap": {
+      "description": "Maximum impressions included in this pricing option per period",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "model": {
+      "enum": [
+        "cpa",
+        "cpc",
+        "cpm",
+        "cpp",
+        "cpv",
+        "cpcv",
+        "time",
+        "vcpm",
+        "flat_rate",
+        "revenue_share"
+      ]
+    },
+    "overage_cpm": {
+      "description": "CPM rate applied to impressions exceeding the impression_cap",
+      "minimum": 0,
+      "type": "number"
+    },
+    "period": {
+      "enum": [
+        "daily",
+        "annual",
+        "weekly",
+        "monthly",
+        "one_time",
+        "quarterly"
+      ]
+    },
+    "price": {
+      "description": "Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "pricing_option_id": {
+      "description": "Unique identifier for this pricing option. Referenced in acquire_rights and report_usage.",
+      "type": "string"
+    },
+    "uses": {
+      "description": "Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).",
+      "items": {
+        "enum": [
+          "name",
+          "sync",
+          "voice",
+          "likeness",
+          "editorial",
+          "signature",
+          "commercial",
+          "catchphrase",
+          "endorsement",
+          "motion_capture",
+          "background_music",
+          "ai_generated_image"
+        ]
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "model",
+    "price",
+    "currency",
+    "uses"
+  ],
+  "title": "Rights Pricing Option",
+  "type": "object",
+  "x-status": "experimental"
+}
