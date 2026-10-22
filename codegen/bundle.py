@@ -71,7 +71,11 @@ _DESCEND_LIST = ("oneOf", "anyOf", "allOf", "prefixItems")
 
 COMPOSITION = ("allOf", "oneOf", "anyOf")
 CONDITIONAL = ("if", "then", "else", "not")
-DEFINITIONS = ("definitions", "$defs")
+#: The two keywords holding a bag of named subschemas, named ONCE and in the module
+#: both halves of the walk can import: ``compiler.check_keywords`` admits them at every
+#: node and the selectors below exclude a document declaring one, so a second literal
+#: here is a second place for the pair to drift.
+DEFINITIONS = compiler.DEFINITION_SECTIONS
 
 
 def nodes(node: object, pointer: str = "") -> Iterator[tuple[str, dict]]:
@@ -175,12 +179,21 @@ def document_for(document_uri: str, documents: Collection[str]) -> str | None:
 
 
 def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
-    """For each document, the pointers of its nodes that a ``$ref`` ELSEWHERE names.
+    """For each document, the pointers of its nodes that a ``$ref`` NAMES.
 
-    A fragment reference becomes an IMPORT of a symbol the target module declares
-    (section 2's rule), so the target module has to declare one -- and a node that
-    D2 makes an annotation rather than a class has no symbol unless something asks
-    for it.  This is what asks.
+    A fragment reference resolves to a SYMBOL the target module declares (section 2's
+    rule), so that module has to declare one -- and a node that D2 makes an annotation
+    rather than a class has no symbol unless something asks for it.  This is what asks.
+
+    **Both kinds of reference ask, and the document they ask of is the one the
+    reference RESOLVES AGAINST.**  An absolute fragment reference asks of the document
+    its own half names; a LOCAL one (``#/definitions/x``, an empty document half --
+    :func:`split_ref`) asks of the REFERRING document, because that is what a pointer
+    with no document half means.  The two differ in how the symbol is reached and not
+    in whether one is needed: an absolute reference becomes an import, a local one is a
+    name already in the module being written.  Keying a local reference against its own
+    document is therefore the whole of the difference here, and it is why ``document``
+    appears on the left of the assignment below as well as ``target``.
 
     **A function of the BUNDLE and not of the run's document set**, which is the
     whole reason it is computed here rather than from the ``$ref``\\ s the run's own
@@ -189,19 +202,29 @@ def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
     were named would satisfy that letter and break its point -- the committed
     ``core/version_envelope.py`` would differ from the one the README's
     one-document command writes, at the same bundle, and the gate's byte compare
-    would then be against whichever population last ran.
+    would then be against whichever population last ran.  A local reference satisfies
+    that too, for a sharper reason: the document asking and the document asked are the
+    same file, so no other document can affect the answer at all.
 
     Reads every portable document once.  Measured on the 3.2 bundle: 76 pointers
-    across 19 documents, from 113 reference sites in 34 documents.  Local references
-    are NOT here: one names a node of its own document, so there is no import and no
-    cross-module symbol -- see :func:`split_ref`.
+    across 19 documents from 113 ABSOLUTE fragment sites in 34 documents, and 157
+    pointers across 45 documents from 405 LOCAL sites -- 402 of those sites naming a
+    ``definitions``/``$defs`` entry at a document root, 3 naming one inside the
+    bundle's single nested section
+    (``brand/get-brand-identity-response.json#/oneOf/0/properties/fonts``) and 0
+    naming a document root or a node that is not an entry.  **216 pointers across 54
+    documents in all, and not 233**: 10 documents are named by both kinds and 17 of
+    their pointers by both, which the set union is what absorbs.
     """
     known = set(portable(bundle_dir))
     out: dict[str, set[str]] = {}
     for document in sorted(known):  # sorted, like ``portable``: P7
         for _, uri in references(read(bundle_dir, document)):
             head, pointer = split_ref(uri)
-            if not head or not pointer:
+            if not pointer:
+                continue
+            if not head:
+                out.setdefault(document, set()).add(pointer)
                 continue
             target = document_for(head, known)
             if target is not None:
