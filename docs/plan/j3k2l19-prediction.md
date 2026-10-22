@@ -175,4 +175,98 @@ alter.
 
 ## 7. Grading against this prediction
 
-Filled in after the measurement, in this file, in a commit of its own.
+Every number below is measured on base `00c7dd4d4` with this branch applied.
+The trunk has since moved (`.20` and `.24` merged, taking it to emitted 406 /
+refused 648, 481 pairs, 395 modules); **none of my figures is on that base**,
+and the merge is the coordinator's.
+
+| # | predicted | measured | verdict |
+|---|---|---|---|
+| P1 | the population is 49 over 1,054 | 49 over 1,054 | **right** |
+| P2 | 19 of the 49 emit | 19 | **right** |
+| P3 | 24 refuse on another step's keyword, `$ref` 16 / `allOf` 4 / one each of `minProperties`, `anyOf`, `const`, `oneOf` | 24, and the split is as predicted | **right** |
+| P4 | 6 still refuse on `uniqueItems`: the 4 root arrays, `core/account-authorization.json`, `media-buy/list-creative-formats-request.json` | exactly those 6 | **right** |
+| P5 | N over 1,054 rises 401 → 425 ± 2 | 401 → **426** | **right**, at the top of the band |
+| P6 | emitted modules and graded pairs both rise, re-measured not predicted | step population 390 → 416 emitted; pairs 462 → **507** | **right** |
+| P7 | the comparison stays at `added` 0, `missing` 0, `differs` 0 | 0 / 0 / 0 over all 507 — but **only after a harness row I had not predicted** | **WRONG as stated** (see below) |
+| P8 | `ROWS` stays at six and `codegen/bundle.py` is unchanged | both hold; neither file is in the diff | **right** |
+| P9 | the step census is unchanged at `(462, 198)` | unchanged | **right** |
+| P10 | the grade test's `carried == []` half becomes false and is inverted, not dropped | done, with a third direction added | **right** |
+| P11 | `RULE_KIND_POPULATION` is extended, not relaxed | extended to 7 kinds; `PropertyCount` ALSO moved, which I had not predicted | **right, incomplete** |
+
+### What I got wrong
+
+**P7 was wrong, and it was the prediction that mattered.** I predicted the
+comparison would need no new row because the model renders the fact where the
+document states it. The rendering half held — all 507 pairs compare clean on
+`uniqueItems` itself. What I did not foresee is that **making a `uniqueItems`
+document emit exposes a `maxItems` the RESOLVER derives from that very
+keyword.** `hypothesis_jsonschema`'s `canonicalish` turns `uniqueItems: true`
+over a countable item set into a `maxItems` equal to the number of distinct
+values, and the harness grades against the resolved document — so three pairs
+reported `model_drops_a_fact` for models stating exactly what their documents
+state. That needed one hand-written, exactly-gated row in `_uncanonicalized`,
+the fourth resolver canonicalization the comparison folds out. The mechanism
+was already recorded in `harness.violated_keywords`'s own docstring; what no
+one had noticed is that it is *unreachable by the comparison until a document
+carrying `uniqueItems` emits*, which is this ticket and nothing else.
+
+**P11 was incomplete in the same way.** `core/provenance.json` is one of the 19,
+and emitting it exposed a second defect in a second step's row: a
+`PropertyCount(minimum=1)` on a class with D8's `extra="ignore"` **refuses an
+instance the document accepts**, because the model drops the undeclared key the
+document counts. The document admits `{"": null}` for `render_guidance`; the
+class refused it on `minProperties`. The rule's own docstring named the
+behaviour as a ceiling and called it harmless; it is not harmless, it is a model
+narrower than its schema. Fixed at the root — `_count` writes a minimum only
+where the document states `additionalProperties` — which moved
+`PropertyCount`'s population 61 → 57.
+
+### What the design did not take into consideration
+
+Three things, and all three are the same shape: **a keyword whose population was
+empty had no instrument standing behind it, and the first document to reach it
+pays for every mechanism it touches.**
+
+1. **`uniqueItems` is the one D6 keyword `harness.FACTS` compares.** The other
+   five families — `min`/`maxProperties`, `dependencies`, the combinators, the
+   conditional, `not` — are in no direction of the schema comparison at all. So
+   D6's "a rule narrows the constructor" and §6's "the comparison is what grades
+   the generated code" disagree about exactly one keyword, and the plan does not
+   say which wins. The answer taken here is that a rule-borne fact must still be
+   STATED in the rendered schema, because the rendered schema is a claim about
+   what the model accepts and the rule makes the claim true. **If that is wrong,
+   the alternative is a comparison row admitting the omission — and then the
+   other five families need the same decision written down before one of them
+   reaches a graded pair.**
+2. **The schema comparison reads the RESOLVED document, and the resolver derives
+   facts.** Three canonicalizations were already folded out, each discovered by
+   the first document to reach it. This is the fourth and the first that ADDS a
+   fact. There is no reason to think it is the last, and nothing enumerates
+   them — §6 says a check is exhaustive over a population or does not exist, but
+   the population of "facts `canonicalish` invents" has never been measured.
+   One measurement that would close it: compare every raw node against its
+   resolved node over the whole bundle, and pin the delta per keyword.
+3. **A rule's soundness depends on D8's `extra`, and D6 does not say so.** D6
+   derives rules from keywords and D8 derives `extra` from the document, and the
+   two were decided independently. `minProperties` is the case where they
+   interact: under `ignore` the rule counts fewer keys than the document does, so
+   it refuses a valid instance. The general statement D6 is missing is that **a
+   rule may only read state the model KEPT** — and `extra` is what decides what
+   was kept.
+
+### The two numbers that are not mine to pin
+
+`test_the_step_result_is_counted_over_the_whole_population`'s instance floor
+(`>= 34900`) still passes on a larger population, so it is now stale-low rather
+than wrong; raising it needs a reading of a figure the suite's own comment says
+is not reproducible, so it is left alone and named here.
+
+And `salesagent-j3k2l.24`'s merge note — *a `SchemaRef` names a node AS THE
+DOCUMENT APPLIES IT* — bears on one assertion I added: the grade test reads the
+class's own node out of the RAW bundle document at its pointer and compares the
+rule set to what that node's properties declare. If a class's node becomes the
+COMPOSED node, a `uniqueItems` arriving through a conjunct will make the
+document side smaller than the rule side. The fix is one line (read the node the
+way `harness._composed` reads it); I have not pre-applied it against a tree I
+cannot measure.
