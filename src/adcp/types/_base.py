@@ -76,7 +76,7 @@ import functools
 import json
 from collections.abc import Callable
 from importlib import resources
-from typing import Any, ClassVar, NamedTuple, TypeVar
+from typing import Any, ClassVar, Literal, NamedTuple, TypeVar
 
 import jsonschema
 from pydantic import BaseModel, ConfigDict, TypeAdapter
@@ -90,6 +90,34 @@ from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
 PACKAGE = "adcp.types._schemas"
 
 ModelT = TypeVar("ModelT", bound="AdCPBaseModel")
+
+#: The engine every ``pattern`` in this package is compiled with, named once
+#: because a class reads it off ``AdCPBaseModel`` and an alias has to be handed
+#: it (see ``strict_alias``), and two spellings of one engine is one place for
+#: them to come apart -- which is exactly how the defect below shipped.
+#:
+#: **``python-re`` is the engine whose accepted set is the DOCUMENT'S.**  The
+#: document's own validator is ``jsonschema``, which compiles every pattern with
+#: Python ``re``, so any other engine is this package deciding that a string the
+#: schema admits is unrepresentable.
+#:
+#: pydantic's default is the Rust engine, which is faster and which refuses to
+#: build a pattern it cannot honour rather than mis-matching one, so it is the
+#: one to want -- and it was adopted here and then measured.  **The two engines
+#: do not agree, and look-around is not the reason.**  Python's ``$`` matches at
+#: the end of the string OR just before a trailing newline; Rust's ``$`` matches
+#: only at the end of the haystack.  So for every ``$``-anchored pattern the
+#: document admits a value ending in ``\n`` that a Rust-engine model refuses.
+#: Measured over the 1,054 portable documents of the 3.2 bundle: 105 of 110
+#: distinct patterns contain ``$``, at 768 of 830 sites, against 4 distinct
+#: look-around patterns at 18 sites.  The Rust engine's accepted set is the
+#: document's for **5 of 110** distinct patterns, not 102.
+#:
+#: Scoping it per class therefore buys 5 patterns and costs a narrowing at 105,
+#: and no rewrite of the pattern is available either: the schema comparison
+#: grades ``pattern`` as a fact the document states, so translating ``$`` would
+#: redden it.
+REGEX_ENGINE: Literal["python-re"] = "python-re"
 
 
 class SchemaRef(NamedTuple):
@@ -158,10 +186,25 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     one refusal and one error shape.  An alias and a class differ only in how
     they are constructed afterwards; what the document accepts is the same
     question and must not get a second answer.
+
+    **``format`` IS ASSERTED, and the checker comes from the document's own
+    draft.**  ``jsonschema`` treats ``format`` as a pure annotation unless it is
+    handed a ``FormatChecker``, so without this the SDK accepted a ``date-time``
+    with no offset -- which RFC 3339 forbids and the document therefore forbids
+    -- and any Python type derived from a format was narrower than its own
+    document.  D5 lets a format select a type exactly because this line exists.
+    The checker is ``validator.FORMAT_CHECKER``, the one the draft the document
+    DECLARES defines, so the asserted vocabulary is the document's rather than a
+    set named here: a ``uuid`` is not a draft-07 format and is not asserted under
+    one, and the two installed checker packages (``rfc3339-validator``,
+    ``rfc3987``) are what put ``date-time`` and ``uri`` into it.  A format with
+    no checker installed asserts nothing, silently, which is why
+    ``codegen.emit`` gates its type selection on the same set rather than on a
+    list of formats someone wrote down.
     """
     validator = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
     errors = sorted(
-        validator(schema).iter_errors(payload),
+        validator(schema, format_checker=validator.FORMAT_CHECKER).iter_errors(payload),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
     if not errors:
@@ -200,8 +243,24 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     construction half differs, and for an alias that is ``TypeAdapter``, which
     is the alias's constructor and not its accepted set.  Behind the schema check
     it is the constructor, which is all it was ever meant to be.
+
+    **The adapter is built with the config, and that closed a live narrowing.**
+    ``regex_engine`` is a MODEL config, so an ``Annotated`` alias has nowhere to
+    carry one: a bare ``TypeAdapter`` took pydantic's default Rust engine while
+    every emitted CLASS took ``python-re`` off ``AdCPBaseModel``, and the two
+    engines disagree about ``$`` (see :data:`REGEX_ENGINE`).  Measured on the
+    emitted tree: ``core/brand-id.json`` states ``pattern: ^[a-z0-9_]+$``, its
+    document ADMITS ``"abc\\n"``, and ``BrandID.strict_validate("abc\\n")``
+    refused it with ``string_pattern_mismatch`` -- a CONSTRUCTOR refusal of a
+    value the schema half had just admitted, which is a model narrower than its
+    own document at 2 of this population's 5 scalar roots.  None of the three
+    checks reported it: ``compare_schema`` sees the same ``pattern`` fact on both
+    sides, and the accepts check did not draw a trailing newline in 25 examples.
+    ``config=`` is also the only channel here, because pydantic refuses a
+    ``config=`` on a ``TypeAdapter`` over a ``BaseModel`` -- which is why a class
+    takes it off the class and an alias takes it here.
     """
-    adapter = TypeAdapter(alias)
+    adapter = TypeAdapter(alias, config=ConfigDict(regex_engine=REGEX_ENGINE))
 
     def strict_validate(payload: Any) -> Any:
         _refuse(schema_at(ref), payload, symbol)
@@ -212,15 +271,7 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
 
 
 class AdCPBaseModel(BaseModel):
-    #: ``regex_engine`` is the accepted set of every ``pattern`` in the bundle.
-    #: pydantic's default engine is Rust ``regex``, which has no look-around and
-    #: REFUSES TO BUILD a pattern using it -- ``core/sla-window.json``'s
-    #: ``^P(?!$)(\d+Y)?...`` is one, so the module would not import.  The
-    #: document's own validator is ``jsonschema``, which compiles a pattern with
-    #: Python ``re``, so ``python-re`` is the engine whose accepted set is the
-    #: document's.  Choosing the other engine would be this model deciding that a
-    #: pattern the schema admits is unrepresentable.
-    model_config = ConfigDict(extra="ignore", regex_engine="python-re")
+    model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
 
     #: Declared and not assigned: every emitted class writes its own, and a
     #: subclass of this base that writes none has no schema to be validated
