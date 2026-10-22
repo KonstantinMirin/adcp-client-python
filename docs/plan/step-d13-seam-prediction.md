@@ -176,9 +176,24 @@ to make a node another step's row answers for reachable:
 
 ### The suite
 
-110 of the suite's 560 tests run in 78 s and are green; the three that drive the
-harness over every graded pair were measured directly with the same `check_pair` the
-tests call — 428 pairs, 417 `pass`, 11 `no_constraint_to_step`, **0 narrowings** — and
-their expectations set from that measurement. The full 560-test run takes upwards of
-45 minutes on a contended machine, because it drives the harness over every pair three
-times and the merged N is 9x the base's.
+**All 560 collected tests pass**, run in four non-overlapping slices that together
+are the whole collection: 50 (`test_enum` + `test_emit_product` + `test_import_rule`,
+22 s), 448 (`test_every_class_passes_all_three_checks`, 252 s), 1 + 1 (the two
+whole-population harness tests, 255 s and 509 s) and 60 (the rest of `test_emit`,
+58 s).
+
+A single `pytest tests` run of all 560 did not finish inside an hour and was
+abandoned twice. That is not a defect in the merge, and it is worth the next lane
+knowing: the file drives the harness over EVERY graded pair three times — the
+per-pair parametrization, the `no_constraint_to_step` census and the step result —
+and the merged N is 9x the base's, so the suite's cost went from 189 s at N=289 to
+roughly 20 minutes uncontended. Five other lanes' suites were on the machine for most
+of this session, which turned that into an hour. The three whole-population tests are
+the cost; collapsing them to one pass over the pairs is the obvious fix and is not
+this ticket's.
+
+One correction the slicing caught: the step-result numbers were first read from a
+tree one emission behind (428 pairs rather than 448), because the last regeneration
+came after the measurement. Re-measured on the committed tree and the test passes
+against it. **Re-read the instrument's input at the moment of the claim** — the tree
+moved under a number I had already written down.
