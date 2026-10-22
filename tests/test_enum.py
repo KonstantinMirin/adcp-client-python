@@ -204,9 +204,11 @@ def test_an_enum_node_is_a_class_over_an_enum_base_and_is_not_also_assigned() ->
     are the document's ``enum`` array, in order, exactly.
     """
     classes = emitted_enum_classes()
-    assert len(classes) == 270, len(classes)  # 213 roots + 13 inline
+    # 271 and 214, one more of each than before `salesagent-j3k2l.23`: admitting the
+    # `notes` beside `enums/task-type.json`'s enum emits its `TaskType`.
+    assert len(classes) == 271, len(classes)  # 214 roots + 57 inline
     roots = [d for d in root_enums() if d in {c[0] for c in classes}]
-    assert len(roots) == 213, len(roots)
+    assert len(roots) == 214, len(roots)
 
     for document in roots:
         doc = bundle.read(BUNDLE, document)
@@ -257,7 +259,9 @@ def test_a_member_name_is_upper_cased_and_that_is_why_the_module_parses() -> Non
             names += 1
             if isinstance(value, str) and value in ("pass", "global"):
                 keywords_seen.add(value)
-    assert names == 1954, names
+    # 1,992 and not 1,954: `TaskType` is 38 members, and it is a class the tree
+    # carries since `salesagent-j3k2l.23` admitted the `notes` beside its enum.
+    assert names == 1992, names
     assert keywords_seen == {"pass", "global"}, keywords_seen
 
     for word in sorted(keywords_seen):
@@ -314,7 +318,9 @@ def test_the_injectivity_check_binds_to_the_function_that_actually_runs() -> Non
                 nodes += 1
             else:  # the one colliding node's document refuses before this is read
                 assert document not in emit.emit(BUNDLE, population()).emitted, (document, pointer)
-    assert nodes == 270, nodes
+    # 271 and not 270: `enums/task-type.json` emits since `salesagent-j3k2l.23`, so
+    # its root `enum` is one more node the walk reaches.
+    assert nodes == 271, nodes
 
 
 def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
@@ -359,7 +365,11 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                     assert _text(got.get(member)) == _text(text), (document, pointer, member)
                 else:
                     assert got.get(member) == text, (document, pointer, member)
-    assert (nodes, entries, multiline) == (132, 1097, 10), (nodes, entries, multiline)
+    # (133, 1135, 10) and not (132, 1097, 10): one more node, and 38 more entries,
+    # which is `enums/task-type.json`'s own `enumDescriptions` -- one per member of
+    # the `TaskType` that `salesagent-j3k2l.23` emits. `multiline` is unchanged
+    # because all 38 of its descriptions are one line.
+    assert (nodes, entries, multiline) == (133, 1135, 10), (nodes, entries, multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
