@@ -590,7 +590,9 @@ def _group_asset_discriminator(value: Any) -> str:
         if isinstance(value, dict)
         else getattr(value, 'asset_type', '')
     )
-    return asset_type if asset_type in _KNOWN_BASE_GROUP_ASSET_TYPES else '_unknown'
+    if isinstance(asset_type, str) and asset_type in _KNOWN_BASE_GROUP_ASSET_TYPES:
+        return asset_type
+    return '_unknown'
 
 
 GroupFormatAssetUnion = Annotated[
@@ -2408,7 +2410,9 @@ def _format_asset_discriminator(value: Any) -> str:
         if isinstance(value, dict)
         else getattr(value, 'asset_type', '')
     )
-    return asset_type if asset_type in _KNOWN_BASE_INDIVIDUAL_ASSET_TYPES else '_unknown'
+    if isinstance(asset_type, str) and asset_type in _KNOWN_BASE_INDIVIDUAL_ASSET_TYPES:
+        return asset_type
+    return '_unknown'
 
 
 FormatAssetUnion = Annotated[

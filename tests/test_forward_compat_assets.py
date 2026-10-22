@@ -18,7 +18,7 @@ without the test noticing, which is how these four came to be wrong.
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types import (
     FormatAssetUnion,
@@ -326,6 +326,26 @@ class TestUnknownFormatAssetContract:
             }
         )
         assert asset.asset_type not in _declared_asset_types(format_module.BaseIndividualAsset)
+
+
+class TestMalformedAssetTypeIsAValidationError:
+    """A non-string ``asset_type`` must fail validation, not crash the discriminator."""
+
+    @pytest.mark.parametrize("asset_type", [["image"], {"kind": "image"}, 7, None])
+    @pytest.mark.parametrize(
+        ("union", "item"),
+        [
+            pytest.param(FormatAssetUnion, {"item_type": "individual"}, id="individual"),
+            pytest.param(GroupFormatAssetUnion, {}, id="group"),
+        ],
+    )
+    def test_routes_to_the_fallback_and_is_refused(
+        self, union: object, item: dict, asset_type: object
+    ) -> None:
+        with pytest.raises(ValidationError):
+            TypeAdapter(union).validate_python(
+                {**item, "asset_id": "logo", "required": True, "asset_type": asset_type}
+            )
 
 
 class TestPublicAPIExports:

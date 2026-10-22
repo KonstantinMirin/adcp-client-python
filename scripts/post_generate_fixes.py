@@ -7817,7 +7817,9 @@ def {union.discriminator}(value: Any) -> str:
         if isinstance(value, dict)
         else getattr(value, 'asset_type', '')
     )
-    return asset_type if asset_type in {vocabulary} else '_unknown'
+    if isinstance(asset_type, str) and asset_type in {vocabulary}:
+        return asset_type
+    return '_unknown'
 
 
 {union.alias} = Annotated[
