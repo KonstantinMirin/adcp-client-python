@@ -167,6 +167,19 @@ class Class:
     description: str | None = None
     #: D7: ``forbid``, ``allow``, or ``None`` to leave the base's default.
     extra: str | None = None
+    #: The classes this one derives from, in rendered order.  Empty leaves
+    #: ``custom_base_class`` in place, which is ``AdCPBaseModel`` and is what every
+    #: ordinary document's class gets.  D7 derives these from a composition and §4's
+    #: union row derives them from the shape -- a base is ``(BranchDispatchMixin,
+    #: AdCPBaseModel)`` and a branch is its base.  Naming any of them REPLACES
+    #: ``custom_base_class``, so a caller that wants ``AdCPBaseModel`` in the list says so.
+    bases: tuple[str, ...] = ()
+    #: Lines appended to the class body verbatim, after ``__adcp_schema__``.  The channel
+    #: for a fact the emitter has to write onto a class because it is not recoverable at
+    #: run time (``_branch_models``, ``_ROOT_REQUIRED``, ``_branch_combinator``), and the
+    #: one thing in this module that is text rather than a decision -- which is why it is a
+    #: parameter here rather than a second renderer somewhere else.
+    body_lines: tuple[str, ...] = ()
 
 
 @dataclass
@@ -263,7 +276,9 @@ def render(decided: Class) -> Rendered:
             path=f"#/{decided.name}", original_name=decided.name, name=decided.name
         ),
         fields=[_field(p) for p in decided.properties],
-        base_classes=[],
+        base_classes=[
+            Reference(path=f"#/{b}", original_name=b, name=b) for b in decided.bases
+        ],
         custom_base_class="adcp.types._base.AdCPBaseModel",
         description=decided.description or None,
         extra_template_data=extra_template_data,
@@ -272,10 +287,15 @@ def render(decided: Class) -> Rendered:
     # code.  ``repr`` of a ``SchemaRef`` is a valid Python expression naming the
     # type, so there is no spelling of the ref in this module to drift from the
     # one in ``_base``.
+    #
+    # ``_append_internal_template_data`` APPENDS to a list, measured on 0.86.0, so a
+    # caller's own lines follow the ref rather than replacing it.
     model._append_internal_template_data(  # noqa: SLF001 -- dmcg's own channel; see the module docstring
         "class_body_lines",
         f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}",
     )
+    for line in decided.body_lines:
+        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001
     out = Rendered(text=model.render().rstrip("\n"))
     for imp in model.imports:
         if imp.from_ and imp.import_:

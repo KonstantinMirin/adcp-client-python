@@ -207,6 +207,30 @@ def references_a_property(doc: dict) -> bool:
     return bool(rs) and all(_is_property_or_items(p) for p, _ in rs)
 
 
+#: The two union keywords, in the order a root carrying one is read.
+UNION = ("oneOf", "anyOf")
+
+
+def union_keyword(doc: dict) -> str | None:
+    """The union keyword at this document's ROOT, or ``None``.
+
+    Here rather than in ``codegen.lower.union`` so there is ONE implementation: the
+    dispatch selector below and the lowering's own reading of the keyword are the same
+    function, and a lowering cannot come to claim a document the selector does not count.
+    ``union`` imports this; the reverse would be a cycle, because a lowering imports
+    ``emit`` and ``emit`` imports this module.
+    """
+    return next((kw for kw in UNION if isinstance(doc.get(kw), list)), None)
+
+
+def union_root(doc: dict) -> bool:
+    """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
+
+    156 of the 3.2 bundle's 1,054 portable documents, and 0 of them carry both.
+    """
+    return union_keyword(doc) is not None
+
+
 def _is_property_or_items(pointer: str) -> bool:
     parts = [p for p in pointer.split("/") if p]
     if not parts or parts[0] != "properties":

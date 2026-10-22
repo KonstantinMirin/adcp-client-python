@@ -903,12 +903,59 @@ def _text(x: Any) -> Any:
     return " ".join(x.split()) if isinstance(x, str) else x
 
 
+#: The JSON type name of a Python value, by its EXACT type, so ``True`` is ``"boolean"``
+#: and not ``"integer"``.
+_JSON_TYPE = {
+    str: "string",
+    bool: "boolean",
+    int: "integer",
+    float: "number",
+    type(None): "null",
+    dict: "object",
+    list: "array",
+}
+
+
+def _entails_type(doc: dict, value: Any) -> bool:
+    """Does the document's own node already admit ONLY instances of ``value``?
+
+    Asked of the node, not answered from a list of excused sites, and it answers ``False``
+    for a node that says nothing -- so a model that invents a type is still reported.  Two
+    derivations, because two shapes in this bundle constrain an instance's type without
+    naming it:
+
+    * a ``const``.  ``{"const": "platform"}`` admits exactly the string ``"platform"``, so
+      ``type: string`` beside it forbids nothing the node already admits.  pydantic renders
+      a ``Literal`` as ``{"const": ..., "type": ...}`` and there is no spelling of a
+      literal that omits the type.
+    * a ``oneOf``/``anyOf`` whose EVERY branch declares the same ``type``.  Draft-07
+      requires an instance to satisfy a branch, so a root that states no ``type`` of its
+      own and whose branches all state ``object`` admits only objects.  §4's union base is
+      a pydantic model and so renders ``type: object``; 7 of this bundle's union roots
+      state the branches' type and not their own.
+
+    **This is not a tolerance for "the model states more".**  It is the question
+    :func:`_narrows_nothing` already exists to ask -- whether the accepted set moved -- and
+    it is decided from the document.  ``tests/test_emit.py`` asserts, at every site the
+    rule excuses, that the document really does refuse an instance of every other type,
+    and that a typeless node with no such derivation is still reported.
+    """
+    if "const" in doc:
+        return _JSON_TYPE.get(type(doc["const"])) == value
+    for combinator in ("oneOf", "anyOf"):
+        branches = doc.get(combinator)
+        if isinstance(branches, list) and branches:
+            return all(isinstance(b, dict) and b.get("type") == value for b in branches)
+    return False
+
+
 def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     """Does a model-only fact narrow the document's accepted set, or not?
 
     A fact the model states and the document does not is reported, because that
-    is how a model NARROWER than its document shows up.  Two kinds narrow
-    nothing, and they are 57 of the 57 model-only facts this population has:
+    is how a model NARROWER than its document shows up.  Three kinds narrow
+    nothing; two of them are 57 of the 57 model-only facts step 1's and step 2's
+    population has, and the third arrived with step 5's union roots:
 
     * **``default: null``**, 56 of them.  D4 renders an optional property
       ``T | None = None``, because a Python attribute holds ``None`` for an
@@ -932,9 +979,14 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
       silence permits, which is a narrowing, and it is also how a class that
       forbids where its own document is silent would show up -- D8 maps silence
       to ``ignore``, which states nothing.
+    * **a ``type`` the node's own content already forces**, which
+      :func:`_entails_type` decides from the document.  A typeless node with nothing
+      forcing it is still reported.
     """
     if keyword == "default":
         return value is None and "null" not in str(doc.get("type", ""))
+    if keyword == "type":
+        return _entails_type(doc, value)
     return keyword == "additionalProperties" and value is True
 
 
