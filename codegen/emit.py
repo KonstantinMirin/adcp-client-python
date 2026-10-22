@@ -63,6 +63,7 @@ does, with two hash seeds.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import keyword
 import sys
@@ -376,9 +377,55 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
-def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
-    """Append the class for an object node, children first, and return its name."""
+def lower_object(
+    node: dict,
+    name: str,
+    pointer: str,
+    mod: Module,
+    *,
+    bases: tuple[str, ...] = (),
+    decided: dict[str, Decided] | None = None,
+    body_lines: tuple[str, ...] = (),
+) -> str:
+    """Append the class for an object node, children first, and return its name.
+
+    The three keyword arguments are what a COMPOSITION needs and a leaf object does not,
+    and each defaults to the leaf's answer, so step 1's and step 2's call sites are
+    unchanged and so is every module they emit:
+
+    * ``bases`` -- the classes this one derives from (``compiler.Class.bases``).  Empty
+      leaves ``AdCPBaseModel``.  D7's ``allOf`` row and §4's union row both need it.
+    * ``decided`` -- a per-property type the CALLER has already decided, by property key.
+      It exists so a lowering that owns a keyword for one position can apply it there
+      without claiming the keyword everywhere: §4's union row turns a branch's ``const``
+      into a ``Literal``, and putting that into ``decide_type`` instead would emit a
+      ``const`` row for step 1's and step 2's own populations too and collide with
+      whichever step claims D2's ``const`` row in full.
+    * ``body_lines`` -- lines appended to the class body after ``__adcp_schema__``, for a
+      fact that is not recoverable at run time.
+    """
     _check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    if node.get("type") != "object":
+        # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON Schema
+        # applies ``properties`` only to objects and asserts nothing about anything else,
+        # so `{"properties": {"a": {"type": "string"}}, "required": ["a"]}` admits
+        # ``"hello"`` and ``42`` -- measured with `jsonschema` on exactly that node.  No
+        # class can, so the model is NARROWER than its document, which is the defect P3
+        # removes.
+        #
+        # This condition read ``in (None, "object")`` and 0 of the 43 documents emitted
+        # before this step exercise the ``None`` arm -- every one of them declares
+        # ``type: object`` -- so the tolerance was latent rather than relied on.  Step 5's
+        # union BRANCHES are the first population to reach it, and they reach it in the
+        # worst way: the accepts check reports ``model_type`` on a valid instance, which
+        # is the model refusing a payload the document admits.
+        raise Refusal(
+            "type",
+            pointer,
+            f"an object node must declare type: object; this one declares "
+            f"{node.get('type', '<absent>')!r}, so the document admits a non-object that "
+            "no class can",
+        )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
@@ -391,7 +438,7 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             f"required names no property declares: {undeclared} (step 7's rule, not a field)",
         )
 
-    decided: list[compiler.Property] = []
+    fields: list[compiler.Property] = []
     spelled: dict[str, str] = {}
     for key, sub in props.items():
         if not isinstance(sub, dict):
@@ -403,7 +450,7 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        decided_type = decide_type(sub, at, name + class_name(key), mod)
+        decided_type = (decided or {}).get(key) or decide_type(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = compiler.MISSING
         if "default" in sub:
@@ -425,7 +472,7 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
                 )
             default = sub["default"]
         doc = sub.get("description")
-        decided.append(
+        fields.append(
             compiler.Property(
                 name=fname,
                 wire=key,
@@ -445,10 +492,12 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
         compiler.Class(
             name=name,
             ref=schema_ref(mod.document, pointer),
-            properties=tuple(decided),
+            properties=tuple(fields),
             description=description if isinstance(description, str) and description else None,
             # D7; absent leaves the base's default in place
             extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            bases=bases,
+            body_lines=body_lines,
         )
     )
     mod.imports |= rendered.imports
@@ -489,6 +538,58 @@ def render(mod: Module, symbol: str) -> str:
     return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
 
 
+# --------------------------------------------------------------------------- #
+# the dispatch table (§ Layout)
+# --------------------------------------------------------------------------- #
+#: A lowering: it appends this document's classes to the module and returns the symbol the
+#: module exports.
+Lowering = Callable[[dict, str, "Module"], str]
+
+
+def _is_object_root(doc: dict) -> bool:
+    """D2's object row: a root with ``properties``.
+
+    The union exclusion is what keeps this row and step 5's DISJOINT, and it is not a
+    precedence rule dressed up as a predicate: a root ``oneOf``/``anyOf`` makes the
+    document a union whatever else it declares, and 88 of the bundle's 156 union roots
+    also declare ``properties``.  Without the clause the table has two rows claiming 88
+    documents, which § Layout calls a build failure.
+    """
+    return (
+        "properties" in doc and doc.get("type") in (None, "object") and not bundle.union_root(doc)
+    )
+
+
+def _is_scalar_root(doc: dict) -> bool:
+    """D2's root-scalar row.  Union-excluded for the same reason, and it is reached: the
+    bundle has one union root declaring a non-object ``type``."""
+    kind = doc.get("type")
+    return isinstance(kind, str) and kind in SCALAR and not bundle.union_root(doc)
+
+
+@functools.cache
+def dispatch() -> tuple[tuple[Callable[[dict], bool], Lowering], ...]:
+    """The ``(selector, lowering)`` pairs, UNORDERED.
+
+    A document selected by two rows is a build failure and not a precedence puzzle, so the
+    rows are disjoint by construction and :func:`lower_document` raises rather than
+    choosing.  A selector is its step's own population test, which is what stops a row
+    claiming a document its step does not count -- step 5's is ``bundle.union_root``, and
+    the same function is what its lowering reads the keyword with.
+
+    The lowering modules are imported HERE and not at module scope: each one imports this
+    module for the walk it extends (``lower_object``, ``Module``, ``Decided``), so a
+    module-scope import either way round is a cycle.  Cached, so the import happens once.
+    """
+    from codegen.lower import union
+
+    return (
+        (_is_object_root, _lower_object_root),
+        (_is_scalar_root, _lower_scalar_root),
+        (bundle.union_root, union.lower_union),
+    )
+
+
 def lower_document(
     document: str, doc: dict, bind: Callable[[str, str], tuple[str, str]] = _no_binder
 ) -> tuple[Module, str]:
@@ -499,59 +600,70 @@ def lower_document(
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
     mod = Module(document=document, bind=bind, asserted=asserted_formats(doc))
-    kind = doc.get("type")
-    if "properties" in doc and kind in (None, "object"):
-        lower_object(doc, symbol, "", mod)
-    elif isinstance(kind, str) and kind in SCALAR:
-        # D2's root-scalar row, which this step needs because a reference TARGET is
-        # one 100 times over: `core/creative-revision-id.json` is a string with
-        # `minLength`/`maxLength` and has no field to hang itself on.  An alias,
-        # not a class -- a wrapper class would be a second name for the same node
-        # (P2) and would make every referencing model carry an object where the
-        # document carries a string.  A root array and a root mapping are step 6's
-        # rows and still refuse below.
-        #
-        # The ANNOTATION is still the compiler's: the same field rendering a class
-        # property gets, read off the field instead of out of a class body, so a
-        # constraint on an alias and a constraint on a property cannot come to be
-        # spelled two ways.  What is ours is the two module-level STATEMENTS, and
-        # §1 says why: no compiler template has a slot for a line beside an alias.
-        #
-        # KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
-        # per-class ``regex_engine`` a look-around pattern needs, and
-        # ``strict_alias`` builds its ``TypeAdapter`` at import.  A scalar root
-        # carrying look-around would therefore fail to IMPORT once the base stops
-        # forcing ``python-re``.  Measured over this step's population: 5 scalar
-        # roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the
-        # default engine compiles) and 0 carrying look-around, so no document
-        # here reaches it.  The failure is an ImportError at the gate rather than
-        # a silent widening, so the upgrade path is for the step whose population
-        # reaches one: either refuse such a document by name, or wrap the alias
-        # in a ``RootModel`` that has a config slot.
-        decided_type = decide_type(doc, "", symbol, mod)
-        description = doc.get("description")
-        rendered = compiler.render_alias(
-            symbol,
-            decided_type.type,
-            decided_type.constraints,
-            description=description if isinstance(description, str) and description else None,
-            format=decided_type.format,
+    chosen = [low for selector, low in dispatch() if selector(doc)]
+    if len(chosen) > 1:
+        raise RuntimeError(
+            f"{document}: selected by {len(chosen)} dispatch rows "
+            f"({', '.join(f.__name__ for f in chosen)}); the table is unordered, so this "
+            "is a build failure and not a precedence question"
         )
-        mod.imports |= rendered.imports
-        mod.imports.add((BASE_MODULE, "strict_alias"))
-        ref = schema_ref(document, "")
-        mod.declare(
-            symbol,
-            "",
-            f"__adcp_schema__ = {ref!r}\n\n"
-            f"{rendered.text}\n\n\n"
-            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-        )
-    else:
+    if not chosen:
         raise Refusal(
-            "type", "", "this step emits an object root with properties, or a scalar root"
+            "type", "", "no dispatch row selects this document: an object root with "
+            "properties, a scalar root and a union root are the rows that exist"
         )
+    chosen[0](doc, symbol, mod)
     return mod, symbol
+
+
+def _lower_object_root(doc: dict, symbol: str, mod: Module) -> str:
+    return lower_object(doc, symbol, "", mod)
+
+
+def _lower_scalar_root(doc: dict, symbol: str, mod: Module) -> str:
+    """D2's root-scalar row, which step 2 needs because a reference TARGET is one 100
+    times over: ``core/creative-revision-id.json`` is a string with
+    ``minLength``/``maxLength`` and has no field to hang itself on.  An alias, not a class
+    -- a wrapper class would be a second name for the same node (P2) and would make every
+    referencing model carry an object where the document carries a string.  A root array
+    and a root mapping are step 6's rows and no row selects them.
+
+    The ANNOTATION is still the compiler's: the same field rendering a class property gets,
+    read off the field instead of out of a class body, so a constraint on an alias and a
+    constraint on a property cannot come to be spelled two ways.  What is ours is the two
+    module-level STATEMENTS, and §1 says why: no compiler template has a slot for a line
+    beside an alias.
+
+    KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the per-class
+    ``regex_engine`` a look-around pattern needs, and ``strict_alias`` builds its
+    ``TypeAdapter`` at import.  A scalar root carrying look-around would therefore fail to
+    IMPORT once the base stops forcing ``python-re``.  Measured over step 2's population:
+    5 scalar roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the default
+    engine compiles) and 0 carrying look-around, so no document here reaches it.  The
+    failure is an ImportError at the gate rather than a silent widening, so the upgrade
+    path is for the step whose population reaches one: either refuse such a document by
+    name, or wrap the alias in a ``RootModel`` that has a config slot.
+    """
+    decided_type = decide_type(doc, "", symbol, mod)
+    description = doc.get("description")
+    rendered = compiler.render_alias(
+        symbol,
+        decided_type.type,
+        decided_type.constraints,
+        description=description if isinstance(description, str) and description else None,
+        format=decided_type.format,
+    )
+    mod.imports |= rendered.imports
+    mod.imports.add((BASE_MODULE, "strict_alias"))
+    ref = schema_ref(mod.document, "")
+    mod.declare(
+        symbol,
+        "",
+        f"__adcp_schema__ = {ref!r}\n\n"
+        f"{rendered.text}\n\n\n"
+        f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
+    )
+    return symbol
 
 
 # --------------------------------------------------------------------------- #
