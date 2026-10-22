@@ -507,6 +507,25 @@ A step that wants to change one of these reports it and stops.
   A row's selector is its step's population test in `codegen.bundle`, so a row cannot claim a
   document its step does not count, and `lower_document` **fails** on a document two rows select
   rather than letting insertion order decide.
+- **D14 — a check is exhaustive over a population, or it does not exist.** The suite contains
+  the harness grading every class against the schema it names, and assertions computed over the
+  whole bundle or the whole emitted tree. Nothing else.
+
+  **A check that matches a spelling is deleted rather than extended.** There are infinitely many
+  ways to write the thing it bans and it tests one, so it buys nothing and costs a parse. An
+  import ban resolved by AST is the clearest case: `importlib.import_module("codegen.emit")`
+  walks past it. Where such a rule matters, make it structural instead — the shared machinery
+  living in `compiler.py` is what makes a lowering unable to close the import cycle, and no
+  check is needed once that holds.
+
+  **A behaviour asserted on one example is upgraded or deleted.** If a `date-time` with no
+  offset must be refused by the schema half, that is a claim about every format-bearing site,
+  and it is asserted over all of them or not at all. One worked example is an illustration, not
+  a check.
+
+  This bounds the suite permanently: nobody adds a check because something went wrong once. A
+  defect either shows up in the harness's own verdict over the population, or the thing that
+  prevents it is structural, or it is accepted and named in §9.
 
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
 `codegen/compiler.py` drives the compiler; `codegen/lower/<kind>.py` is one module per D2 row. A
