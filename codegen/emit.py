@@ -165,7 +165,7 @@ PACKAGE = "adcp.types._schemas"
 #: fact, each naming itself.
 #:
 #: What follows is the reasoning for the type being ours rather than pydantic's at
-#: the https arm, which the amendment did not change.  D5 admits
+#: the https branch, which the amendment did not change.  D5 admits
 #: a STANDARD type only when it states the document's own facts AND accepts the
 #: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
 #: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
@@ -325,12 +325,12 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
 
     if "const" in node:
         # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
-        # enum arm's reason: a ``const`` pins the VALUE, and the value's own JSON
+        # enum branch's reason: a ``const`` pins the VALUE, and the value's own JSON
         # type is what the node admits whether the document spells a ``type`` word or
         # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
         # single-member enumeration in JSON Schema's vocabulary and nothing in this
         # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
-        # arms do not overlap and their order here is not a precedence.
+        # branches do not overlap and their order here is not a precedence.
         check_keywords(node, pointer, lower_const.HANDLED)
         return lower_const.decide(node, pointer)
 

@@ -603,21 +603,39 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
 def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
 
-    ``no_constraint_to_step`` is the one verdict other than ``pass`` allowed
-    through, and only where the document genuinely states no keyword ``steps()``
-    can step -- asserted here against ``steps()`` itself rather than taken on
-    trust.  Such a pair is still graded by the accepts check and by the schema
-    comparison, and the assertion below requires the comparison to have compared
-    something, so it is not a pair nothing looked at.
+    Two verdicts other than ``pass`` are allowed through, and each is asserted
+    against its own evidence rather than taken on trust:
+
+    * ``no_constraint_to_step``, where the document genuinely states no keyword
+      ``steps()`` can step -- asserted against ``steps()`` itself;
+    * ``no_instrument``, where a check could not DRAW an instance, so the
+      obstruction is ``hypothesis`` and not the model -- asserted by requiring each
+      cause to name a shape (a format beside a pattern, or the keyword that
+      contradicts a witness) and not merely to exist.
+
+    **The schema comparison is asserted for EVERY pair, including an undrawable
+    one**, and that is what keeps the second exit from being a hole: the comparison
+    needs no generator, it runs on both of them, and it is the only check that
+    separates a faithful model from a wide one.
     """
     pair = pair_of(row)
     rep = check_pair(pair, max_steps=None)
     assert rep.missing_formats == []
-    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
     assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.differs)
-    bad = [(r.keyword, r.pointer, r.outcome, r.counterexample, r.harness) for r in rep.refuses]
+    if rep.accepts.outcome != "strategy_error":
+        assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+    bad = [
+        (r.keyword, r.pointer, r.outcome, r.counterexample, r.harness)
+        for r in rep.refuses
+        if not r.undrawable
+    ]
     assert [b for b in bad if b[2] not in ("pass", "no_evidence")] == []
-    if rep.outcome != "pass":
+    if rep.outcome == "no_instrument":
+        assert rep.no_instrument, rep.name
+        for cause in rep.no_instrument:
+            assert "Unsatisfiable" in cause, cause
+            assert ": format " in cause or "contradicted by" in cause, cause
+    elif rep.outcome != "pass":
         assert rep.outcome == "no_constraint_to_step", rep.outcome
         assert steps(pair.schema) == []
         assert rep.comparison.compared > 0
@@ -819,7 +837,7 @@ def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
     assert disagrees.outcome == "model_drops_a_fact"
     assert any("/maxLength" in d for d in disagrees.differs), disagrees.differs
 
-    # 10. and the pattern row serves this arm too, which is what lets a document
+    # 10. and the pattern row serves this branch too, which is what lets a document
     #     with a non-https pattern take HttpUrl at all.
     host_only = compare_schema({**bare, "pattern": "^https://[^/?#@]+$"}, HttpUrl)
     assert host_only.outcome == "pass", (host_only.missing, host_only.added)
@@ -1074,8 +1092,8 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 arms.setdefault(fmt, set()).add(name)
 
     assert seen == {"date-time": 28, "uri": 28, "email": 2, "date": 4}, seen
-    # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
-    # graded by an empty loop: `AdCPUrl` at the one position whose document states
+    # **BOTH branches of D5's `uri` row are reached by this population**, so neither
+    # is graded by an empty loop: `AdCPUrl` at the one position whose document states
     # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
     # A format whose type is a function of the format alone selects exactly one.
     assert arms == {
@@ -1297,8 +1315,8 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
     assert (len(diverges), sum(diverges.values())) == (27, 82), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
-    # The one that agrees is the one with no `$` to disagree about.
-    assert "$" not in next(iter(agrees)), agrees
+    # The ones that agree are the ones with no `$` to disagree about.
+    assert all("$" not in p for p in agrees), agrees
     assert all("$" in p for p in diverges), diverges
 
 
@@ -1409,6 +1427,26 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     assert len(reports) == 481, len(reports)
     assert sum(1 for r in reports if r.outcome == "pass") == 469
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
+    # **`no_instrument` IS COUNTED AND IS NOT RATCHETED**, and that is the decision
+    # rather than a gap. The three outcomes PARTITION the population, which is the
+    # invariant asserted here; the no_instrument COUNT is reported by the partition
+    # and bounded by nothing. A shrink-only bound assumes a fixed or shrinking
+    # population and the emitted tree grows every merge, so a new batch of documents
+    # can legitimately bring new undrawable pairs and the bound would redden on
+    # correct work. It can only shrink once `hypothesis` draws these shapes, which is
+    # unscheduled, so shrink-only is unachievable in principle and not merely early.
+    #
+    # What IS asserted of each one is that it names a CAUSE specific enough to act
+    # on, because this is the population the eventual generator work starts from.
+    instrument = [r for r in reports if r.outcome == "no_instrument"]
+    assert sum(1 for r in reports if r.outcome in ("pass", "no_constraint_to_step")) + len(
+        instrument
+    ) == len(reports), sorted({r.outcome for r in reports})
+    for rep in instrument:
+        assert rep.no_instrument, rep.name
+        for cause in rep.no_instrument:
+            assert "Unsatisfiable" in cause, (rep.name, cause)
+            assert ": format " in cause or "contradicted by" in cause, (rep.name, cause)
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
     # rather than schema facts, and seven careful readings of it, on trees whose
@@ -1476,7 +1514,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
             # read as this document's own silence.  Measured: 1 such class
             # (``core/async-response-refs/media-buy/accept-proposal-async-response-working.json``
             # over ``core/compact-task-working.json``, whose own document says
-            # ``true``), and ``allow`` is the only value this arm admits -- a
+            # ``true``), and ``allow`` is the only value this branch admits -- a
             # ``forbid`` inherited where the document is silent would be a
             # narrowing and still fails.
             assert row.model.model_config["extra"] == "allow", (row.ref, declared)
@@ -2121,7 +2159,9 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "anyOf": 5,  # a nested union
         "if": 2,  # step 7 (D6)
         "enum": 2,  # a member type no enumeration base exists for
-        "const": 2,
+        # The `const` row is GONE: D2's const row lowers the keyword in full
+        # (`codegen.lower.const`), so a branch that pinned a value is now reported
+        # against the keyword that actually stops it -- its own scalar `type`.
         "oneOf": 1,
         "additionalProperties": 1,
         "type": 1,  # a root stating no type whose branch states none either
@@ -2944,7 +2984,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         if isinstance(node.get("type"), list) and set(node) & carried
     ] == []
 
-    # A null arm refuses too, and for the grader rather than the rendering.
+    # A null branch refuses too, and for the grader rather than the rendering.
     with pytest.raises(Refusal) as caught:
         emit.lower_document(
             "mn.json",
@@ -3902,7 +3942,7 @@ def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
         assert r.pointer == "/properties/k", r
         assert f"a const of {name} has no Literal" in r.detail, r
 
-    # ... and the null node written the other way round IS answered, by the arm that
+    # ... and the null node written the other way round IS answered, by the branch that
     # owns that node kind
     _, text = _constructed(
         {
@@ -3957,7 +3997,7 @@ def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
       ``bundle.declares_its_own_root_kind``, and the table's partition is untouched;
     * the vocabulary beside a ``const`` is ``type`` and ``description`` and nothing
       else, which is what makes ``HANDLED`` two keywords;
-    * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two arms do
+    * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two branches do
       not overlap and their order there is not a precedence;
     * **0 documents refuse on ``const``** over the whole portable population -- the
       row claims D2's keyword in full, so there is no deferral left.

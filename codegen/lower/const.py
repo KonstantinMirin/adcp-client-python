@@ -2,7 +2,7 @@
 
 A ``const`` is a single-member enumeration in JSON Schema's vocabulary, and
 ``Literal`` is the Python spelling of one.  The row is reached from
-``emit._decide`` before ``type`` is read, for the same reason the ``enum`` arm is:
+``emit._decide`` before ``type`` is read, for the same reason the ``enum`` branch is:
 the pinned VALUE is what the node admits, and its own JSON type follows from the
 value whether the document spells a ``type`` word or not.
 
@@ -14,10 +14,10 @@ rather than a result of one:
 * **0** of them at a document ROOT -- which is why this row is not an entry in
   ``emit.ROWS`` and adds no selector to ``codegen.bundle``.  A root carrying one is
   already selected by ``bundle.is_scalar_root`` (its ``type`` names a scalar and it
-  declares no kind of its own) and would reach this arm through D2's alias row, so
+  declares no kind of its own) and would reach this branch through D2's alias row, so
   the upgrade path for a bundle that grows one is an exclusion clause rather than a
   new row;
-* **0** carrying an ``enum`` beside the ``const``, so the two arms do not overlap
+* **0** carrying an ``enum`` beside the ``const``, so the two branches do not overlap
   and their order in ``_decide`` is not a precedence;
 * the whole key vocabulary is ``const`` (826), ``const type`` (397),
   ``const description type`` (257) and ``const description`` (6).  **Nothing else
@@ -108,7 +108,7 @@ HANDLED = frozenset({"type", "const"})
 #:
 #: ``null`` has a second reason of its own, and it is why admitting it would be wrong
 #: even if the slot took it: ``{"const": null}`` and ``{"type": "null"}`` are ONE node
-#: kind written two ways, and ``_decide``'s own ``null`` arm owns it.
+#: kind written two ways, and ``_decide``'s own ``null`` branch owns it.
 #:
 #: Measured over the bundle's 1,486 const nodes: 1,310 ``str``, 161 ``bool``, 15
 #: ``int`` -- so both refusals have a population of 0 and are reached only by a
