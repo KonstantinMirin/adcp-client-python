@@ -318,12 +318,25 @@ A step that wants to change one of these reports it and stops.
   `core/platform_extension_ref.py` failed to import, which is where a future attempt will find it
   too.
 
-  **A document's `pattern` on such a field is not carried on the annotation.** The bundle states
-  eight distinct patterns across 73 of its 300 `uri` uses, and `UrlConstraints` expresses only
-  the first — `^https://` at 47 sites. The other 26 say things it has no field for: no userinfo,
-  not `localhost`, not an IP literal, host-only, a single pinned host. Rather than let the field
-  type vary by how strict a schema author happened to be, every `format: uri` field is
-  `AdCPUrl` and the pattern stays with the schema half.
+  **A document's `pattern` on such a field is not carried on the annotation**, whichever of the
+  two types the field takes. The bundle states eight distinct patterns across 73 of its 300 `uri`
+  uses, and `UrlConstraints` expresses only the first — `^https://` at 47 sites. The other 26 say
+  things it has no field for: no userinfo, not `localhost`, not an IP literal, host-only, a single
+  pinned host. The pattern stays with the schema half.
+
+  **The https arm is the 47 patterns that are EXACTLY `^https://`, as a literal set and not as a
+  rule about regexes.** Three populations are easy to conflate here, and the difference is 47
+  against 72: 47 patterns are exactly `^https://`; 25 more begin with it and then say more; 1 is
+  `^https?://` and admits http on purpose. Only the first set takes `AdCPUrl`.
+
+  This is deliberately a smaller set than "the document restricts the scheme to https" would
+  select, for two reasons. **It costs nothing**, because at those 25 positions the document
+  already refuses every non-https value, so `strict_validate` refuses one on either arm and
+  neither type is narrower than its document there — only the bare constructor's strictness
+  differs, and D4 already says what the constructor does. And **a literal set can be audited
+  where a predicate cannot**: deciding "does this regex restrict the scheme" is a new mechanism
+  with no falsifiable population, and it would quietly take in the `^https?://` position whose
+  author admitted http deliberately.
 
   **Nothing widens, because `strict_validate` validates against the document first.** Measured
   against the strictest of the eight patterns: `https://localhost/x`, `https://10.0.0.1/x` and
