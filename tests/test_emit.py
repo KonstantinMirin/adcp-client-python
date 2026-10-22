@@ -1090,7 +1090,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 28, "uri": 28, "email": 2, "date": 4}, seen
+    assert seen == {"date-time": 30, "uri": 29, "email": 2, "date": 4}, seen
     # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
     # graded by an empty loop: `AdCPUrl` at the one position whose document states
     # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
@@ -1119,7 +1119,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 62, stated
+    assert stated == 65, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1286,7 +1286,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (29, 85), distinct
+    assert (len(distinct), sum(distinct.values())) == (30, 86), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1312,7 +1312,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (27, 82), diverges
+    assert (len(diverges), sum(diverges.values())) == (28, 83), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -1423,8 +1423,8 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 484, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 472
+    assert len(reports) == 503, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 491
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
@@ -1442,9 +1442,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # reddens. An equality would assert a reproducibility the instrument does not
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
-    assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4859  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1128  # model-only facts examined
+    # Re-measured on the merged tree rather than carried over or minimised: this run
+    # reads 49,766, and the floor sits ~0.7% under it -- about twice the 0.4% spread
+    # the seven readings above show -- so a collapse reddens and a reread does not.
+    assert sum(r.graded_instances for r in reports) >= 49400  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 6167  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1624  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
@@ -1456,7 +1459,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so it is larger than the annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 74
+    assert sum(len(r.comparison.url_typed) for r in reports) == 76
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -2677,7 +2680,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 mappings += 1
                 constrained += bool({"propertyNames", "patternProperties"} & set(node))
                 del pointer
-    assert mappings == 138, mappings
+    assert mappings == 191, mappings
     assert constrained == 0, constrained
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
@@ -3304,13 +3307,13 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 62, len(declared)  # the derived shapes + AdCPUrl + HttpUrl
+    assert len(declared) == 67, len(declared)  # the derived shapes + AdCPUrl + HttpUrl
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
-    assert sum(len(where) for where in imported.values()) == 201, imported
+    assert sum(len(where) for where in imported.values()) == 211, imported
     # And the one name that is a decision really is annotating fields.
     assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
-    assert len(imported[constraints_module.HTTP_URL]) == 23, sorted(imported[constraints_module.HTTP_URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 24, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:

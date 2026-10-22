@@ -316,7 +316,7 @@ def test_no_document_in_the_bundle_reaches_the_refusal_any_more() -> None:
     """
     out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
     assert len(out.emitted) + len(out.refusals) == 1054
-    assert len(out.emitted) == 406
+    assert len(out.emitted) == 425
     assert [d for d, r in out.refusals.items() if "nothing enclosing it" in r["detail"]] == []
 
 

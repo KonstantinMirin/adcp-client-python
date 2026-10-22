@@ -1142,7 +1142,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
         for d, r in out.refusals.items()
         if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
     }
-    assert len(inside) == 7, inside
+    assert len(inside) == 8, inside
     assert inside["core/response-payload-jws-envelope.json"] == (
         "/definitions/response_payload/properties/typ"
     )
