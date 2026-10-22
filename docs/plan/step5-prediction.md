@@ -193,3 +193,73 @@ The comparison. If the root's facts cannot be put beside the `anyOf` through any
 that is not the emitter copying the document into the model, then either the base is not
 the graded model for the document or this step emits nothing, and both are findings worth
 more than the +10.
+
+---
+
+# The grade
+
+Written after the measurement, against the predictions above, at tip `aedd5a55a`.
+Baseline for every delta: `482e7bc63`, N = 43, 44 pairs, 72 passed.
+
+| # | predicted | measured | grade |
+|---|---|---|---|
+| 1 | ΔN = +10, interval +6 to +14 | **ΔN = +6** (N = 49 of 1,054) | inside the interval, 4 off the central estimate — **low end** |
+| 2 | `allOf` the largest refusal keyword, ≥ 55 | `allOf` 64 of 150 | **right** |
+| 3 | the comparison reddens first, reporting `missing` `/type` and `/description` | it reddened first, reporting **`added` `/type`** — the opposite direction | **right about the risk, wrong about the direction** |
+| 4 | all four paths work; `Base(**data)` is the one missed without `__new__` | confirmed, and the measurement is sharper than the prediction: without `__new__`, `Base(**data)` returns a **Base** and pydantic warns "a custom validator is returning a value other than self" | **right** |
+| 4b | `model_dump_json` raises before the wrap serializer, and raises still if the key is on the `definitions` node | the first half confirmed (`PydanticSerializationError: Circular reference detected`, and `model_dump()` silently returns the instance); the second half is **unreachable in this population** — all 6 bases' own schemas come back `model`, never `definitions` | **half right, half ungraded and now named** |
+| 5 | a bare-`$ref` branch refuses; cost 5 of the 44 | refuses; the by-keyword profile reports `$ref` **11** of 150, because the refusal also catches roots whose OTHER blockers were cleared first | **right, cost understated** |
+| 6 | root `properties` needs no refusal of its own | **wrong.** It needs one, for exactly the reason the prediction named as the thing that would force it: a branch class inheriting the root's fields states facts `#/<kw>/<i>` does not. 23 of 150 refuse there | **wrong** |
+| 7 | the 43 modules stay byte-identical and the 44 pairs stay green | 51 tracked `.py` files unchanged; 65 pairs, 63 pass, 2 `no_constraint_to_step`, 0 added facts | **right** |
+
+## What the prediction missed entirely
+
+**A node carrying `properties` and no `type` admits a non-object.** `lower_object` read
+`type in (None, "object")`, 0 of the 43 documents emitted before this step exercise the
+`None` arm, and step 5's union branches are the first population to reach it — as
+`accepts:model_refused_valid` with `model_type` on a valid instance, which is a model
+narrower than its own document. 20 of the 150 refusals are this, and it cost 3 documents
+that were emitting before the fix (`core/activation-key.json`,
+`core/deployment.json`, `core/reporting-write-destination.json`). That is the whole of the
+gap between the first measurement's +9 and the final +6, and it is a defect found rather
+than a document lost.
+
+## The perturbations, each run and each with what it reddened
+
+Over the step's own selection, 80 tests, baseline 0 failed. The full file's
+`test_the_step_result_is_counted_over_the_whole_population` is excluded because its
+refuses-check denominator is a function of what ran before it in the process.
+
+| # | perturbation | reddened | predicted |
+|---|---|---|---|
+| P1 | rename `__get_pydantic_core_schema__` away | 4: the four paths, `model_dump_json`, the no-branch refusal, the `definitions` unit test | yes |
+| P2 | `__new__` stops dispatching | **1: the four-paths test alone** | yes, exactly |
+| P3 | the declaring test becomes `cls not in cls._branch_models` | **1: the consumer-subclass test alone** | yes, exactly |
+| P4 | drop the wrap serializer | 2: `model_dump_json`, the `definitions` unit test | yes |
+| P5 | set `serialization` on the `definitions` node | **1: the `definitions` unit test alone, and nothing in the population** | yes — and this is the finding: the clause has 0 sites in the tree |
+| P6 | `_no_branch` ignores `_ROOT_REQUIRED` | 1: the combinator/required split | yes |
+| P7a | the lowering hard-codes `"oneOf"` | **nothing** | yes — predicted in the test's own docstring. All 6 emitted roots are `oneOf`, so the emitted text is identical |
+| P7b | the mixin ignores the emitted combinator | 1: the `anyOf` fixture | the fixture exists because P7a reddens nothing |
+| P8 | a branch `const` widened to `Any` | 10 branch pairs on **`comparison:model_drops_a_fact` with the accepts check PASSING**, plus the four-paths test | §6's claim re-measured on this step's population; the four-paths red is extra and says the const pin is load-bearing for dispatch too |
+| P9 | a nameless branch named after its parent | **1: the refuse-by-name test, and the population is unchanged at 49** | the second half is the finding: D3's branch refusal has 0 sites in the bundle, which is why it has a fixture bundle |
+| P10 | `_entails_type` returns `True` always | 1: the excused-sites test | the control for the one shared-grader change |
+| P11 | restore `type in (None, "object")` | 10, including 4 branch pairs on `accepts:model_refused_valid` | the measurement that forced the refusal |
+
+A first attempt at P8 widened EVERY branch property and is recorded as a mistake rather
+than a result: it took N from 49 to 67, because `Any` refuses nothing, so it moved the
+population instead of the annotations and nothing it reddened was about the annotations.
+
+## The three clauses with 0 sites in the emitted population, named
+
+Each is live code graded only by a unit fixture, and each is stated here so nobody has to
+rediscover it:
+
+1. **`_ROOT_REQUIRED` is `()` for all 6.** A root with required fields declares the
+   properties they name, and a root `properties` refuses.
+2. **The `definitions` unwrap in the core-schema hook.** All 6 bases' own schemas are
+   `model` nodes: a base declares no fields, so it has nothing to hoist. §4's "most roots
+   come back as a `definitions` node" is true of a base WITH fields and false of every base
+   this step emits.
+3. **The `anyOf` arm of `_branch_combinator`, and D3's branch-name refusal.** All 6 roots
+   are `oneOf`, and every nameless branch in the bundle sits beside a keyword that refuses
+   first.
