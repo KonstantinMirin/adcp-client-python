@@ -65,6 +65,7 @@ union branch, a pattern-matched key -- and the control still counts it.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import json
 import re
@@ -1182,6 +1183,12 @@ class RefusesResult:
     #: ``harness`` carries the same names, so a report that prints only the one
     #: line still names them; see ``contradicting``.
     collides: tuple[str, ...] = ()
+    #: Set only where the whole GROUP admitted nothing and one position alone did
+    #: bite: the position the instance was pushed out of.  ``positions`` still
+    #: holds every position stating the fact, so the pair of them says the
+    #: denominator came from one statement of it rather than all -- which is why
+    #: it is recorded instead of left to be inferred from a smaller count.
+    stepped_at: str = ""
 
     @property
     def outcome(self) -> str:
@@ -1314,6 +1321,28 @@ def check_refuses(
 ) -> RefusesResult:
     """The refuses check: an instance violating exactly ``step.keyword`` is refused.
 
+    **A WITNESS group that admits nothing is retried one position at a time**,
+    because the obligation is to grade the KEYWORD at that location and a group
+    is a claim about how many positions state it, not part of the obligation.
+    Measured on ``core/inventory-list-application.json``, the only pair in the
+    emitted 448 that reaches this: a ``required`` group over ``/oneOf/0`` and
+    ``/oneOf/1`` dropping ``list_type``, which is the root ``discriminator``'s own
+    propertyName.  Forbidding it in BOTH branches leaves the root ``oneOf``
+    nothing to pick and the stepped document admits nothing; forbidding it in ONE
+    leaves the other branch requiring it, so exactly one branch can match -- 6 of
+    25 examples bite and the ORIGINAL refuses every one of them on ``required``.
+
+    That is not a weaker step. The mutation stays exclusive at the position it is
+    applied to; what shrinks is the DENOMINATOR, because the instance is pushed
+    out of one statement of the fact and not all of them, and the control counts
+    the rest. The lane that introduced grouping across a branch hop said so of
+    that case already: the ORIGINAL document decides, so a group that pushes out
+    only some branches reports a fired control and never a false pass.
+
+    A COMPLEMENT step is NOT retried. Its emptiness is the document's own
+    property rather than a witness the harness chose badly, so narrowing it would
+    turn an honest ``no_evidence`` into a different question.
+
     ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
     for why the default is on and why it touches only the generated-from document.
 
@@ -1325,6 +1354,48 @@ def check_refuses(
     document's, which is the obligation, and says nothing about whether the
     annotations underneath would have refused too.  ``compare_schema`` is what
     grades those.
+    """
+    whole = _refuses_once(
+        schema,
+        accept,
+        step,
+        examples=examples,
+        custom_formats=custom_formats,
+        force_path_to_site=force_path_to_site,
+    )
+    if whole.outcome != "harness_error" or len(step.positions) == 1:
+        return whole
+    for one in step.positions:
+        narrowed = _refuses_once(
+            schema,
+            accept,
+            dataclasses.replace(step, positions=(one,)),
+            examples=examples,
+            custom_formats=custom_formats,
+            force_path_to_site=force_path_to_site,
+        )
+        if narrowed.refused or narrowed.accepted_invalid:
+            # The fact is still stated at every position; only one was pushed out,
+            # so the report keeps the group and names the position that bit.
+            narrowed.positions = step.positions
+            narrowed.stepped_at = one
+            return narrowed
+    return whole  # every position alone admits nothing too; report the group
+
+
+def _refuses_once(
+    schema: dict,
+    accept: Callable[[Any], Any],
+    step: Step,
+    *,
+    examples: int,
+    custom_formats: Mapping[str, Any],
+    force_path_to_site: bool,
+) -> RefusesResult:
+    """One attempt at ``step``, over exactly the positions it holds.
+
+    Private, because which positions an attempt pushes out is ``check_refuses``'s
+    decision and nothing outside it should be able to ask for a subset.
     """
     res = RefusesResult(
         keyword=step.keyword,

@@ -371,6 +371,79 @@ def test_an_unsteppable_site_is_reported_rather_than_passed() -> None:
     assert rep.outcome.startswith("refuses:harness_error")
 
 
+def test_a_group_that_admits_nothing_is_retried_one_position_at_a_time() -> None:
+    """The obligation is the KEYWORD at a location, not the size of the group.
+
+    Two ``oneOf`` branches telling themselves apart by a discriminating ``const``
+    both state ``required: ['kind', 'label']``, so each member is one step over
+    two positions.  Dropping ``kind`` at BOTH positions forbids it in both
+    branches, an instance without it then matches neither, and the root ``oneOf``
+    has nothing to pick -- the group admits nothing.  Dropping it at ONE leaves
+    the other branch requiring it, so exactly one branch can match and the step
+    grades.  Measured first on
+    ``core/inventory-list-application.json#``, the only pair of the emitted 448
+    that reaches this: the group was `harness_error` with a zero denominator and
+    refused an otherwise-green pair over a witness the harness had chosen badly.
+
+    Both members run on the one document, so the two arms differ in the judged
+    dimension -- whether the whole group admits anything -- and in nothing else.
+    ``stepped_at`` is the evidence: empty where the group itself bit, and the one
+    position where it did not.  A denominator alone would not separate them.
+    """
+    branch = {
+        "type": "object",
+        "properties": {"kind": {"const": "a"}, "label": {"type": "string"}},
+        "required": ["kind", "label"],
+        "additionalProperties": False,
+    }
+    document = {
+        "$schema": DRAFT,
+        "type": "object",
+        "oneOf": [
+            dict(branch),
+            {**branch, "properties": {"kind": {"const": "b"}, "label": {"type": "string"}}},
+        ],
+    }
+    by_member = {
+        s.describe.split("'")[1]: s for s in steps(document) if s.keyword == "required"
+    }
+    assert sorted(by_member) == ["kind", "label"]
+    assert all(len(s.positions) == 2 for s in by_member.values())  # noqa: PLR2004
+
+    results = {
+        member: check_refuses(document, lambda _i: None, step, examples=20)
+        for member, step in by_member.items()
+    }
+
+    # `label` is pushed out of both branches at once and the discriminator still
+    # tells them apart, so the group itself bites and nothing is narrowed.
+    whole = results["label"]
+    assert whole.harness == "", whole.harness
+    assert whole.refused + whole.accepted_invalid > 0
+    assert whole.stepped_at == ""
+    assert whole.positions == ("/oneOf/0", "/oneOf/1")
+
+    # `kind` IS the discriminator, so the group admits nothing and one position
+    # alone is what grades it.  The fact is still stated at both.
+    retried = results["kind"]
+    assert retried.harness == "", retried.harness
+    assert retried.refused + retried.accepted_invalid > 0
+    assert retried.stepped_at in ("/oneOf/0", "/oneOf/1")
+    assert retried.positions == ("/oneOf/0", "/oneOf/1")
+    assert "required" in retried.violated  # the ORIGINAL refuses on the stepped keyword
+
+    rep = check_pair(
+        Pair(
+            name="retried",
+            schema=document,
+            model=Faithful,
+            accept=lambda _i: None,
+        ),
+        max_steps=None,
+    )
+    assert [r.outcome for r in rep.refuses if r.outcome == "harness_error"] == []
+
+
 # --------------------------------------------------------------------------- #
 # the mechanics the group needs
 # --------------------------------------------------------------------------- #
