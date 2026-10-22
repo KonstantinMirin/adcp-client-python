@@ -344,6 +344,30 @@ The 5 live positions, named: `core/error.json`'s discriminator `value`, and
 `http_status_code` and `response_time_ms` — the last three were not in the bead's
 population at all and came with the document.
 
+## What the full run found that no targeted run could
+
+Six failures, and the split matters: **five metric constants and one latent
+defect.** All six sit in `test_emit.py`'s expensive tests, which only a full run
+reaches — the cheap modules (`test_enum.py`, `test_emit_product.py`,
+`test_fragment_ref.py`, `test_import_rule.py`) were green on targeted runs
+throughout, which is exactly why targeted runs are not a gate.
+
+The latent one is worth naming on its own.
+`test_a_format_selects_a_type_where_the_schema_half_asserts_it` asserted
+`node["type"] in emit.SCALAR` at every format site. That **hashes** the value, a
+list is unhashable, and so a node declaring `["string", "null"]` beside a
+`format` killed the test with a `TypeError` rather than failing an assertion. It
+could not fire before this branch, because no document with a list `type` and a
+`format` had ever emitted. The assertion now reads the ARMS, which is what the
+emitter reads: `multi_type` cuts the node to one type at a time carrying only
+what that type can hold, `ARM["string"]` holds `format` and `ARM["null"]` holds
+nothing.
+
+**The test count moves and it is fully accounted for: 611 → 634.**
+`test_every_class_passes_all_three_checks` is parametrized over `graded()`, so
+the pair count IS an item count: 484 − 462 = 22 new items, plus the 1 test this
+row adds. 611 + 23 = 634, with no item lost.
+
 ## The invariant the brief names, measured rather than assumed
 
 A required-nullable field whose value is `None` **does** survive to the wire:
