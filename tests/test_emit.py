@@ -2075,8 +2075,16 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
-    ``allOf`` dominating is the measurement that says this step is not the bottleneck:
-    64 of the 150 are waiting on step 4.
+
+    **``allOf`` still dominates and no longer means "waiting on step 4".**  It used to:
+    the keyword screen refused a root ``allOf`` with "a later D2 row does", naming step
+    4's product row.  That row claims 0 of these documents -- ``composes_at_the_root``
+    excludes a root carrying a union -- so the deferral named a row that was never going
+    to see them.  All 46 are now THIS module's own refusals, and the split is exactly 37
+    + 9: 37 roots where the ``allOf`` is a conjunction with every branch and no pointer
+    addresses the conjunction (``ROOT_CONJUNCTS``), and 9 branches that compose and need
+    a conjunct reader D13 keeps out of this lowering's reach (``_plan``).  So the
+    profile's largest row has moved from a queue to a bill, which is what it is for.
     """
     out = emit.emit(BUNDLE, population())
     roots = union_roots()
@@ -2098,17 +2106,23 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         assert row["keyword"] and row["pointer"], document
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
-        "allOf": 52,  # step 4
+        # 46 and not 52, and the six that left did not become emissions: with ``allOf``
+        # handled by the keyword screen, the screen reaches past it to the keyword that
+        # also blocks the root -- 3 to ``not``, 1 to ``dependencies`` -- and the two
+        # property-position compositions that now lower take their documents to a
+        # ``$ref`` CHAIN refusal naming the target that stopped them.
+        "allOf": 46,  # 37 a root conjunct, 9 a composing branch -- both this row's own
+        "$ref": 14,  # a bare-$ref branch, or a chain naming the target that refused
         "properties": 13,  # a root conjunct; see lower/union.py's docstring
-        "$ref": 12,  # a bare-$ref branch has no node to declare a subclass from
         "type": 12,  # a node with properties and no type admits a non-object
-        "not": 7,  # step 7 (D6) at a position the rules row does not reach
+        "not": 10,  # step 7 (D6) at a position the rules row does not reach
         "anyOf": 5,  # a nested union
         "uniqueItems": 5,  # step 7 (D6)
         "const": 2,
         "enum": 2,  # a member type no enumeration base exists for
         "if": 2,  # step 7 (D6)
         "additionalProperties": 1,
+        "dependencies": 1,  # step 7 (D6)
         "enumMetadata": 1,
         "oneOf": 1,
         # The `pattern` row is GONE: it was "a constraint inside a container", and
