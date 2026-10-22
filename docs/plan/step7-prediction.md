@@ -185,3 +185,173 @@ D1–D12 are untouched. Two things I am REPORTING rather than acting on, both in
 final report: the dispatch table named in the plan's Layout paragraph does not exist at
 this base, and the brief's `ΔN ≈ +1` disagrees with its own instruction to add a
 selector.
+
+---
+
+# Graded
+
+Measured at tip `438240878`, branch `emit/s7-rules-v2`. Every number below is from the
+tree at that commit; the suite is **90 passed** against the merge gate's 72.
+
+## P1 — ΔN. Range right, centre wrong, selector population badly wrong
+
+| | predicted | measured |
+|---|---|---|
+| ΔN | +12 (range +5..+20) | **+7** |
+| N | 55 | **50** |
+| selector population | 48 | **5** |
+| the one already in the named population | `core/format-id.json` | `core/format-id.json` |
+
+The ΔN **range held and the centre was 5 out**. The brief's carried-forward +1 is
+refuted: +1 is what a step 7 with no population row delivers, and the brief also
+instructed me to add one.
+
+**The selector population prediction was wrong by a factor of ten, and the derivation
+is the defect.** I predicted 48 from "35 non-combinator step-7-first documents + 30
+required-only combinator roots" without intersecting that against the selector's own
+first clause. 25 of the 30 roots carry a `$ref` or an `allOf` somewhere else in the
+document, so the clause that keeps step 7 out of steps 2 and 4 excludes them. I had both
+populations measured and did not intersect them.
+
+The 7 new documents, by the row that reached each:
+
+| document | row | family |
+|---|---|---|
+| `core/format-id.json` | leaf (step 1) | `dependencies` |
+| `core/demographic-predicate.json` | reference (step 2) | unblocked by its target |
+| `core/budget-range.json` | rule (step 7) | `anyOf` over `required` |
+| `core/demographic-age-range.json` | rule | `anyOf` over `required` |
+| `core/forecast-range.json` | rule | `anyOf` over `required` |
+| `core/webhook-challenge-response.json` | rule | `anyOf` + `not` |
+| `media-buy/proposal-budget-constraint.json` | rule | `anyOf` over `required` |
+
+## P2 — the floor. Correct, and confirmed by hash rather than by eye
+
+- **94 of 94** files the base tree carried are byte-identical at HEAD, compared by
+  `git rev-parse <sha>:<path>` blob hash per file, not by reading a diff. 14 added.
+- The 44 pairs over those 43 documents now report **3,758 graded instances and 486
+  facts compared** — byte-for-byte the base totals, 42 `pass` and 2
+  `no_constraint_to_step`, 157 step sites. So the whole increase to 5,054 and 583 is
+  the 7 new pairs, and **no existing pair's denominator moved in either direction**.
+- The two sites that could have gained a step are both guarded out as predicted:
+  `core/operator-identity.json`'s `additionalProperties: {"not": {}}` is an empty
+  `not` (a document admitting nothing) and its `maxProperties` sits on a node closed
+  to exactly its declared keys.
+
+## P3 — the step counts. Low by 20%, and one family for a reason I caused
+
+| family | predicted | measured | documents |
+|---|---|---|---|
+| `uniqueItems` | 479 | **479** | 198 |
+| `not` | 460 | **469** | 192 |
+| `if`/`then`/`else` | 550 | **643** (then 585, else 58) | 186 / 44 |
+| `oneOf`/`anyOf` | 400 | **662** (oneOf 212, anyOf 450) | 165 / 200 |
+| `dependencies` | 65 | **85** | 27 |
+| `minProperties` | 40 | **48** | 40 |
+| `maxProperties` | 15 | **19** | 10 |
+| total | 2,009 | **2,405** | |
+
+`uniqueItems` exact. The `oneOf`/`anyOf` miss is mine and not the bundle's: I predicted
+400 on the assumption of a satisfiability screen, then measured the screen at 63.7 s
+against 0.0 s over 120 documents for **0 of 2,205 sites rejected** and removed it. Every
+occurrence now gets a step and an unreachable one reports `no_evidence`.
+
+Pre-existing keywords for the denominator: 13,418 rows over the same 1,054 documents, so
+15,823 in all.
+
+## P4 — "every rule is graded". 3 of 6 carry an emitted rule, not 5 of 6
+
+Predicted 5 of 6 families with an emitted carrier. **Measured 3**: `Dependencies` (3
+rules), `ForbiddenGroups` (2), `RequiredGroups` (10).
+
+`PropertyCount` and `ConditionalRequired` have none, and the cause is the one the brief
+named for ΔN, which I failed to apply to this prediction as well: **every bundle
+document stating a `min`/`maxProperties` or a conditional also states an array property
+or an `enum`**, which are steps 6 and 3. Measured document by document on all ten:
+
+```
+core/deadline-policy.json          refuses on type at /properties/material_stages
+core/overlay.json                  refuses on enum at /properties/bounds/properties/unit
+core/installment-deadlines.json    refuses on type at /properties/material_deadlines
+core/principal-state.json          refuses on type at /properties/notification_configs
+governance/audience-constraints.json           type at /properties/include
+media-buy/acceptance-context.json              type at /properties/subjects
+media-buy/product-discovery-criteria.json      type at /properties/product_ids
+core/agent-notification-config.json            type at /properties/event_types
+core/frequency-cap-interval-constraints.json   $ref at /properties/unit
+core/requirements/image-asset-requirements.json  type at /properties/pixel_ratios
+```
+
+`NegatedConditional` is written at 42 nodes over 37 documents, all of them inside an
+`allOf` conjunct, which is not a class in this tree at all.
+
+So those three are graded where they CAN be, and the report says which: the lowering
+against real bundle nodes (`test_every_rule_kind_is_written_from_a_real_bundle_node`,
+pinning each kind's population) and each dataclass against two plain arguments
+(`test_each_rule_kind_refuses_on_two_plain_arguments`, 19 rows, both directions). That
+is a different situation from `uniqueItems`, which has no rule kind at all.
+
+The short-circuit prediction HELD and gained a correction: patching
+`RuleBound._enforce_adcp_rules` is **inert**, because pydantic compiles a
+`model_validator` into the class's core schema at class creation — probed, and
+`model_validate` still refused. The live short-circuit is the module-level
+`_runtime.refuse`, which the compiled validator looks up on every call, and
+`_base._refuse` holds its own reference so the schema half keeps refusing. With it
+patched out, each rule payload builds and all three rule-carrying pairs grade
+identically.
+
+## P5 — `force_path` through `then`/`else`. Correct
+
+Unforced **26 of 80** in a fresh process and **32 of 80** under the suite; forced
+**0 of 80** in both. Predicted 20–60% unforced and exactly 0 forced. The test pins the
+forced side exactly and bounds the unforced side, because the forced side is the hop's
+claim and has nothing left for the context to move.
+
+## P6 — the non-changes. Three right, the census direction wrong
+
+- `required` naming a property no `properties` entry declares stays a refusal: census
+  `required 1`. Correct.
+- `media-buy/change-term.json` untouched. Correct.
+- The conditional-value ceiling is a committed test: `conforms` is False,
+  `violated_keywords` is exactly `["maximum"]`, the root's rules are the dependency
+  alone, and `rules.lower` of the region node returns `[]`. Correct.
+- **The census direction was wrong.** Predicted `anyOf` 23 → 28 and `oneOf` 9 → 12, on
+  the reasoning that a document refusing early would now reach its combinator.
+  Measured **`anyOf` 23 → 1** and **`oneOf` 9 → 5**, because the lowering CLAIMS a
+  required-only combinator instead of refusing it — the opposite effect, from the
+  change I was predicting about. The four families predicted to 0 went to 0.
+
+Whole-population standalone census after step 7, 54 lower and 1,000 refuse (was 47 and
+1,007):
+
+```
+allOf 286, enum 268, type 234, $ref 108, const 70, definitions 14, $defs 5,
+discriminator 5, oneOf 5, anyOf 1, propertyNames 1, notes 1, required 1, last_updated 1
+```
+
+`not` 16, `dependencies` 9, `minProperties` 7 and `if` 3 are **gone**. `$ref` rose 94 →
+108 and `type` 213 → 234: documents that used to stop at a step-7 keyword now reach a
+later row's, which is the step's real deliverable for step 8.
+
+## P7 — the perturbations. One wrong in the safe direction, one a bad probe
+
+| perturbation | predicted red | measured |
+|---|---|---|
+| `Dependencies.errors` inverted | the `format-id` `model_validate` test, **no pair** | 5 tests, **including the `core/format-id.json#` pair**. A rule that narrows IS visible to the accepts check: it draws an instance the document admits and the constructor refuses it (`model_refused_valid`). My prediction was wrong in the safe direction, and the instrument is better than I claimed. |
+| `_runtime.refuse` patched out | every `model_validate` rule test, no pair | correct, and now a committed test. The method-level patch is inert; see P4. |
+| `RequiredGroups` `anyOf` never refuses | the `anyOf` `model_validate` test | correct: 3 tests, 0 pairs |
+| the `then`/`else` hop deleted from `force_path` | forced control 0 → a majority | correct: 0 → **32 of 80**, exactly the unforced rate, plus the family-bites test |
+| the `uniqueItems` step forces no duplicate | **inert on every binding grade**; its own exclusivity assertion only | correct, and recorded as a BAD PROBE rather than a pass: 6 of 20 → 1 of 20, 89 of 90 green. 0 of the 479 sites is on an emitted pair. |
+| the selector widened to claim an `allOf` document | the two-rows-select-one-document failure | **BAD PROBE.** Only the population pin reddened and there was NO collision, because `is_leaf_object` excludes `allOf` too. Replaced: widening clause 2 to accept `rules.KEYWORDS` claims documents step 1 already claims and reddens `test_no_document_is_claimed_by_two_rows`, naming 6+ overlapping documents. That is the probe that grades the clause. |
+
+## Scorecard
+
+| | right | wrong |
+|---|---|---|
+| P1 ΔN | the range, and the one named document | the centre by 5; the selector population by 10x, from a derivation I had the inputs to do |
+| P2 floor | all of it, by blob hash and by denominator | — |
+| P3 steps | `uniqueItems` exact; five families within 25% | the total low by 20%; `oneOf`/`anyOf` wrong because I predicted a screen I then removed |
+| P4 graded | the short-circuit | 5 of 6 predicted, 3 of 6 measured |
+| P5 force_path | both rates | — |
+| P6 non-changes | three of four | the census direction |
+| P7 probes | 4 of 6 | 1 wrong in the safe direction, 1 a bad probe that was replaced |
