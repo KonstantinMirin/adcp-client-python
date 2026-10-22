@@ -1946,13 +1946,15 @@ def _normalize(
     if "$ref" in node:
         name = str(node["$ref"]).rsplit("/", 1)[-1]
         target = defs.get(name)
+        # ``declared_null`` deliberately does NOT travel through here.  It would be an
+        # arm with no site: measured over the graded population, 5 positions have a
+        # document declaring ``null`` and **all 5 render as an ``anyOf``, 0 as a
+        # ``$ref``** -- pydantic names a nested CLASS that way, and a class is not a
+        # null arm.  A derivation matching nothing is green for free, and this one
+        # also fails SAFE if such a position ever appears: the fold does not fire, so
+        # the document's ``type`` reads as missing and the pair reddens.
         outer = {k: v for k, v in node.items() if k != "$ref"}
-        # ``declared_null`` travels through a ``$ref``, because the target IS this
-        # node -- pydantic hoists a nested class and names it here, and the document
-        # fact belongs to the position rather than to the spelling.
-        if target is None:
-            return outer
-        return {**_normalize(target, defs, depth + 1, declared_null=declared_null), **outer}
+        return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
     branches = node.get("anyOf")
     if isinstance(branches, list) and branches and all(isinstance(b, dict) for b in branches):
         live = [b for b in branches if b.get("type") != "null"]
