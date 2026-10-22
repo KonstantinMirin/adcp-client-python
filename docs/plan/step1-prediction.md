@@ -380,3 +380,98 @@ here and was not a pair at all before (it had no row in `_bindings.json`, so it
 had no `strict_validate` and nothing could grade it), and its node carries
 **11** facts at a walked position -- counted once in its own pair and once in the
 root's descent.
+
+---
+
+# The two partitions, and what the format rule moved
+
+## 38 classes against 44 pairs: the 6 are the five aliases and one nested class
+
+An independent enumeration that walks each module's `__all__` and takes the
+classes finds **38 classes and 457 facts**.  Both are a proper part of the 44 and
+486 reported here, and the partition is exact:
+
+| | pairs | facts compared |
+|---|---|---|
+| root classes, named in `__all__` | **38** | **457** |
+| root ALIASES -- D2's root-scalar row, not classes | 5 | 18 |
+| nested classes, absent from `__all__` | 1 | 11 |
+| total | **44** | **486** |
+
+The five aliases are `core/brand-id.json`, `core/creative-revision-id.json`,
+`core/property-id.json`, `core/reporting-file-object-ref.json` and
+`core/reporting-native-version-ref.json`.  Each is a scalar root, so D2 makes it
+an `Annotated` alias rather than a class: `isinstance(x, type)` is false for one,
+its `__adcp_schema__` is on the MODULE, and its entry point is the module's
+`strict_validate`.  An enumeration keyed on classes cannot see them, and a class
+is the wrong thing to look for -- the pair is still a (document, model) pair and
+the schema comparison runs against `TypeAdapter(alias).json_schema()`.
+
+The nested class is `core/truncation-sentinel.json#/properties/_truncation`, and
+it is absent from `__all__` on purpose: the module exports its root.
+
+**No `(document, pointer)` is graded twice** -- asserted, not assumed.  But
+`compared` counts fact COMPARISONS and not distinct document facts, and the
+nested node's 11 facts are compared twice over: once as its own pair and once
+when the root pair descends through the model's `$ref` into `$defs`.  Both
+comparisons are of the same class against the same node, so the second adds no
+information; it is 11 of the 486.
+
+## 142 predicted descriptions against 104 emitted: the object nodes are docstrings
+
+| | count |
+|---|---|
+| `description` keys in the 43 raw documents, at any node | **142** |
+| of those on an OBJECT node | 39 |
+| of those anywhere else | 103 |
+| class docstrings in the emitted text | **39** |
+| `description=` occurrences in the emitted text | **104** |
+
+So 142 = 39 + 103, and the emitted text carries 39 docstrings and 104
+`description=`.  The two off-by-one entries are both explained:
+
+- **104 against 103**: `core/truncation-sentinel.json`'s `_truncation` is an
+  object node WITH a description, so its description is emitted twice -- once as
+  the nested class's docstring and once as the parent field's `description=`.
+  It is one key in the document and two occurrences in the text.
+- **148 against 142**: 148 counts `description` at a position the comparison
+  walks over the RESOLVED documents, and resolution inlines a target's
+  description into each referrer, so a target's description is counted again
+  inside every document that references it.
+
+The prediction's "142 dropped descriptions" was therefore wrong in two ways at
+once, and they partly cancelled: 39 of the 142 were already carried by the text
+emitter as docstrings, and the number that matters is the 108 the comparison
+found missing over the resolved documents.
+
+## The format rule, which removed the table
+
+D5 at `8abf1ccfc` settles the narrowing recorded above: **until `format` is
+asserted on both sides, a format keyword stays an annotation and selects no
+Python type.**  `jsonschema` asserts nothing for a draft-07 format without a
+checker, and the checker available here covers `date`, `email`, `ipv4`, `ipv6`,
+`regex`, `time` and `uuid` -- not `date-time`, not `uri` -- so enabling one does
+not close it either.
+
+`AwareDatetime` is backed out, and so are `datetime.date` and `AnyUrl`, which the
+text emitter had used all along.  All **14** format sites (`date-time` 7, `uri`
+5, `date` 2) now carry the format in `json_schema_extra` on the node's own
+scalar type.  The model is exactly as wide as its document at each of them,
+where before each was narrower by an amount no check reported.  Nothing else
+moved: 44 pairs, 42 passing, 2 `no_constraint_to_step`, 486 facts, 0 missing, 0
+differing.
+
+## One row of the D5 table was understated
+
+The grade above says "same integers, different fact" of both `minimum: 1` rows.
+Measured, that is true of the integer row and false of the number row:
+
+| document | type | probe | document | model | |
+|---|---|---|---|---|---|
+| `{integer, minimum: 1}` | `PositiveInt` | `0` | refuses | refuses | fact mismatch only |
+| `{number, minimum: 1}` | `PositiveFloat` | `0.5` | **refuses** | **accepts** | **a widening** |
+
+`PositiveFloat` is `Gt(0)`, so it admits `0.5`, which `{number, minimum: 1}`
+refuses.  That is a defect the refuses check would catch rather than a reporting
+nuisance, and the two rows need different answers: the integer row is
+unqualified, the number row is banned.
