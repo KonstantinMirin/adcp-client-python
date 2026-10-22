@@ -142,8 +142,37 @@ that lowers is `core/version-envelope.json` (`AdCPVersionEnvelope`), named at
 
 ## Grading
 
-Branch tip `6ec81e303`. Three commits: the prediction, `codegen/compiler.py` on its own
-(a sibling lane holds the lowerings), then the mechanism, then the one fix below.
+Branch tip `bf1a1ed6b`, nine commits off `fc9a880`: the prediction, `codegen/compiler.py` on
+its own (a sibling lane holds the lowerings), the mechanism, then the fixes and the test work
+below.
+
+**The suite, whole, final line and nothing sampled:**
+
+```
+5 failed, 588 passed in 1218.28s (0:20:18)
+```
+
+```
+FAILED tests/test_emit.py::test_the_step_result_is_counted_over_the_whole_population
+FAILED tests/test_emit.py::test_the_harness_steps_every_one_of_d6s_six_families
+FAILED tests/test_emit.py::test_a_step_of_a_whole_instance_keyword_bites_the_document_that_states_it
+FAILED tests/test_emit.py::test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded
+FAILED tests/test_harness_steps.py::test_an_unsteppable_site_is_reported_rather_than_passed
+```
+
+**Those five are inherited, and they are the five the integrator named before this branch
+existed** -- four step-path failures from a merge of `fix/refuses-conjunct-step` into
+`emit/from-scratch` that auto-merged `codegen/harness.py` textually, plus the
+`graded_instances` constant one revision behind. This branch touches none of
+`codegen/harness.py`, `tests/test_emit.py`, `tests/test_harness_steps.py` or `codegen/lower/*`,
+so they are topologically not its. **Zero additional failures**, and no step-path verdict
+(`pass`, `no_constraint_to_step`, `graded_instances`) is measured or relied on anywhere in this
+file.
+
+The run was launched at `3d71f02d4`; the two commits after it touch only
+`tests/test_fragment_ref.py`, one of them AST-identical whitespace (proved by `ast.dump`) and
+one strengthening a single assertion. `tests/test_fragment_ref.py` was run on its own at
+`bf1a1ed6b`: **16 passed**.
 
 | # | predicted | measured | |
 |---|---|---|---|
