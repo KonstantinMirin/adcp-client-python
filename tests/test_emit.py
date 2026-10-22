@@ -26,6 +26,7 @@ from __future__ import annotations
 import ast
 import functools
 import importlib
+import inspect
 import json
 import os
 import pkgutil
@@ -41,6 +42,7 @@ from unittest import mock
 
 import jsonschema
 import pytest
+from datamodel_code_generator.types import DataType
 from hypothesis import given, HealthCheck, Phase, settings
 from hypothesis import strategies as st
 from unittest.mock import patch
@@ -57,6 +59,7 @@ from adcp.types._base import (
 from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
+from codegen.lower import const as lower_const
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -3747,3 +3750,373 @@ def test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded() -> 
     assert carried == [], carried
     assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
     assert not any("UniqueItems" in source for source in RULE_KIND_POPULATION)
+
+
+# --------------------------------------------------------------------------- #
+# D2's `const` row: a pinned value is a `Literal` (salesagent-j3k2l.16)
+# --------------------------------------------------------------------------- #
+def _const_nodes() -> list[tuple[str, str, dict]]:
+    """Every ``const`` node in the bundle, at a schema position, with its pointer.
+
+    Derived from ``bundle.nodes`` rather than from a key search, for that walk's own
+    reason: a ``const`` holds INSTANCE data, so a value inside one may itself be an
+    object with a property named ``const``.
+    """
+    return [
+        (document, pointer, node)
+        for document in bundle.portable(BUNDLE)
+        for pointer, node in bundle.nodes(bundle.read(BUNDLE, document))
+        if "const" in node
+    ]
+
+
+def test_a_const_node_is_a_literal_over_the_value_it_pins() -> None:
+    """The row, end to end on a document written here, and graded in both directions.
+
+    The value's own JSON type is what the node admits, so the three shapes the bundle
+    writes are all here -- a ``const`` with the document's ``type`` word beside it,
+    one without, and a boolean -- and the pair is graded by ``compare_schema``, which
+    is the check that says the model neither drops nor adds a fact.
+    """
+    doc = {
+        "title": "Pinned",
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "typed": {"type": "string", "const": "collection_list_changed"},
+            "typeless": {"const": "asap"},
+            "flag": {"type": "boolean", "const": True},
+        },
+        "required": ["typed", "typeless", "flag"],
+    }
+    model, text = _constructed(doc)
+    # the import is the COMPILER's: the row adds none, and dmcg reports the one its
+    # own rendering needs.
+    assert "from typing import ClassVar, Literal" in text, text
+    assert "typed: Literal['collection_list_changed']" in text, text
+    assert "typeless: Literal['asap']" in text, text
+    assert "flag: Literal[True]" in text, text
+
+    comparison = compare_schema(doc, model)
+    assert comparison.outcome == "pass", comparison
+    assert comparison.added == [], comparison.added
+    assert comparison.missing == [], comparison.missing
+    assert comparison.differs == [], comparison.differs
+
+    # and the Literal is the accepted set, not an annotation: the pinned value in,
+    # anything else out.
+    accept = _accept_of(doc, model)
+    assert accept({"typed": "collection_list_changed", "typeless": "asap", "flag": True})
+    with pytest.raises(Exception):  # noqa: B017, PT011 -- either half may refuse first
+        accept({"typed": "something_else", "typeless": "asap", "flag": True})
+
+
+def test_a_pinned_value_carrying_a_dot_renders_whole() -> None:
+    """The regression this row was built on top of, and it is the compiler's seam.
+
+    The annotation used to be spelled in the WALK -- ``Type(f"Literal[{value!r}]",
+    local=True)``, in ``lower.union._literal`` -- and reached dmcg as a ``Reference``
+    PATH, where ``treat_dot_as_module`` reads a dot as a module qualifier and keeps
+    the last segment.  ``Literal['account.status_changed']`` rendered as
+    ``status_changed']`` and ``core/account_status_changed_webhook.py`` did not parse.
+    Measured the other way on the same type manager: ``data_type(literals=[...])``
+    renders the value whole, escapes it, and reports its own import.
+
+    **0 of the 25 distinct Literals the old spelling actually emitted carries a dot**,
+    which is why the defect was latent -- while **103 of the bundle's ``const``
+    values, over 37 documents, do**.  Both denominators are asserted, because the
+    first alone reads as a claim about the bundle and the second alone does not say
+    why nothing caught it.
+    """
+    dotted = [v for _, _, n in _const_nodes() if isinstance(v := n["const"], str) and "." in v]
+    assert len(dotted) == 103, len(dotted)
+    emitted_dotted = [
+        node["const"]
+        for g in graded()
+        for _, node in bundle.nodes(schema_at(SchemaRef(g.ref.document, "#")))
+        if isinstance(node.get("const"), str) and "." in node["const"]
+    ]
+    assert emitted_dotted, "no dotted pin reaches the tree; this regression is ungraded"
+
+    model, text = _constructed(
+        {
+            "title": "Dotted",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "notification_type": {"type": "string", "const": "account.status_changed"}
+            },
+            "required": ["notification_type"],
+        }
+    )
+    assert "Literal['account.status_changed']" in text, text
+    assert (
+        model.model_json_schema()["properties"]["notification_type"]["const"]
+        == "account.status_changed"
+    )
+    # the quoting is the compiler's too, which a hand-built f-string would also own
+    _, quoted = _constructed(
+        {
+            "title": "Quoted",
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"k": {"type": "string", "const": "it's"}},
+            "required": ["k"],
+        }
+    )
+    assert 'Literal["it\'s"]' in quoted, quoted
+
+
+def _const_refusal(node: dict) -> Refusal:
+    """The refusal a document whose one property is ``node`` lowers to."""
+    doc = {"title": "Bad", "type": "object", "properties": {"k": node}, "required": ["k"]}
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document("bad.json", doc)
+    return caught.value
+
+
+def test_a_const_that_cannot_be_a_literal_is_refused_by_name() -> None:
+    """Fire probe for both of the row's refusals, each made to fail.
+
+    Both have a population of 0 in this bundle
+    (``test_the_const_row_claims_no_root_and_lowers_every_const_node`` asserts the
+    value types), so a hand-built node is the only way to reach either -- and a
+    refusal nothing reaches is a refusal nobody has read.
+
+    ``codegen.lower.const.LITERALS`` is also graded against the COMPILER's own slot
+    rather than taken on trust, because that is where it comes from: a pin bump that
+    widened or narrowed ``DataType.literals`` would otherwise leave the row refusing
+    a value the compiler can now spell, or admitting one it cannot.
+    """
+    annotation = str(DataType.model_fields["literals"].annotation)
+    assert {t.__name__ for t in lower_const.LITERALS} == {
+        name for name in ("bool", "int", "str", "float", "bytes") if f"[{name}," in annotation
+    }, annotation
+
+    # the four types the slot has no spelling for: without the refusal each of these
+    # is a pydantic ValidationError raised inside dmcg, naming no document.
+    for value, name in (({}, "dict"), ([], "list"), (None, "NoneType"), (1.5, "float")):
+        node = {"const": value} if value is not None else {"type": "null", "const": None}
+        r = _const_refusal(node)
+        assert r.keyword == "const", r
+        assert r.pointer == "/properties/k", r
+        assert f"a const of {name} has no Literal" in r.detail, r
+
+    # ... and the null node written the other way round IS answered, by the arm that
+    # owns that node kind
+    _, text = _constructed(
+        {
+            "title": "Nulled",
+            "type": "object",
+            "properties": {"k": {"type": "null"}},
+            "required": ["k"],
+        }
+    )
+    assert "k: None" in text, text
+
+    # a const its own type REFUSES: the node admits nothing, so a Literal of the
+    # value would be a model wider than its schema.
+    r = _const_refusal({"type": "string", "const": 3})
+    assert r.keyword == "const", r
+    assert "the node admits nothing" in r.detail, r
+    # ... and the same node with an agreeing type word does NOT refuse
+    model, _ = _constructed(
+        {
+            "title": "Agrees",
+            "type": "object",
+            "properties": {"k": {"type": "integer", "const": 3}},
+            "required": ["k"],
+        }
+    )
+    assert model.model_json_schema()["properties"]["k"]["const"] == 3
+
+
+def test_a_keyword_beside_a_const_refuses_rather_than_being_dropped() -> None:
+    """The row's screen, probed by making it fail.
+
+    :data:`codegen.lower.const.HANDLED` is two keywords because two is the whole
+    vocabulary the bundle writes beside a ``const``, asserted over all 1,486 nodes
+    below.  A third would be a constraint applied to a value the ``Literal`` has
+    already pinned, and dropping it silently is the defect P3 removes -- so it
+    refuses, by the keyword's own name.
+    """
+    assert lower_const.HANDLED == frozenset({"type", "const"})
+    r = _const_refusal({"type": "string", "const": "x", "minLength": 2})
+    assert r.keyword == "minLength", r
+    assert r.pointer == "/properties/k", r
+
+
+def test_the_const_row_claims_no_root_and_lowers_every_const_node() -> None:
+    """The row's population, and why it is NOT an entry in ``emit.ROWS``.
+
+    Four facts, each asserted over the whole bundle rather than over the emitted
+    tree, because the claim is about the row's reach and not about today's tree:
+
+    * **0 of the 1,054 documents carries a ``const`` at its ROOT**, so there is no
+      root kind for a row to claim, nothing goes into
+      ``bundle.declares_its_own_root_kind``, and the table's partition is untouched;
+    * the vocabulary beside a ``const`` is ``type`` and ``description`` and nothing
+      else, which is what makes ``HANDLED`` two keywords;
+    * no node writes both an ``enum`` and a ``const``, so ``_decide``'s two arms do
+      not overlap and their order there is not a precedence;
+    * **0 documents refuse on ``const``** over the whole portable population -- the
+      row claims D2's keyword in full, so there is no deferral left.
+    """
+    nodes = _const_nodes()
+    assert len(nodes) == 1486, len(nodes)
+    assert len({d for d, _, _ in nodes}) == 347
+    assert [(d, p) for d, p, _ in nodes if p == ""] == []
+
+    beside: set[str] = set()
+    for _, _, node in nodes:
+        beside |= {k for k in node if k != "const" and not k.startswith("x-")}
+    assert beside == {"type", "description"}, beside
+    assert [(d, p) for d, p, n in nodes if "enum" in n] == []
+
+    out = emit.emit(BUNDLE, bundle.portable(BUNDLE))
+    assert len(out.emitted) + len(out.refusals) == 1054
+    on_const = {d: r for d, r in out.refusals.items() if r["keyword"] == "const"}
+    assert on_const == {}, on_const
+
+
+def test_the_document_type_word_is_not_restated_beside_the_literal() -> None:
+    """Measured on the pinned compiler, because the comparison is SYMMETRIC.
+
+    A one-member ``Literal`` renders ``const`` AND the type word of its own accord --
+    not a one-member ``enum``, and not the ``const`` alone -- so there is nothing for
+    the row to restate and restating it is what would add a fact.  Asserted against
+    pydantic here rather than assumed, because which of the three it renders is a
+    function of the version and the whole admission below rests on it.
+
+    The 832 TYPELESS const nodes are then the only place the model states a fact the
+    document does not, and ``harness._entails_type`` already derives that one from the
+    document's own ``const``.  Both halves are asserted: the derivation fires at every
+    one of them, and it is gated on the VALUE rather than on the keyword -- a model
+    claiming the wrong type over a ``const`` still reddens.
+    """
+    from codegen.harness import _entails_type
+
+    assert TypeAdapter(Literal["x"]).json_schema() == {"const": "x", "type": "string"}
+    assert TypeAdapter(Literal[3]).json_schema() == {"const": 3, "type": "integer"}
+    assert TypeAdapter(Literal[True]).json_schema() == {"const": True, "type": "boolean"}
+
+    typeless = [(d, p, n) for d, p, n in _const_nodes() if "type" not in n]
+    assert len(typeless) == 832, len(typeless)
+
+    # the derivation fires for every one of them, read off the DOCUMENT
+    for document, pointer, node in typeless:
+        rendered = TypeAdapter(Literal[node["const"]]).json_schema()["type"]
+        assert _entails_type(node, rendered) is True, (document, pointer, rendered)
+
+    # and it is the VALUE gate doing the work: with the gate dropped the rule would
+    # admit a model claiming any type at all, which is what this asserts it does not.
+    assert _entails_type({"const": "x"}, "integer") is False
+    assert _entails_type({"const": True}, "integer") is False
+    narrower = compare_schema(
+        {"type": "object", "properties": {"k": {"const": "x"}}, "required": ["k"]},
+        TypeAdapter(Annotated[int, Field(ge=0)]),
+    )
+    assert narrower.outcome != "pass", narrower
+
+    # In its OWN document the resolver leaves a const node whole, unlike an enum
+    # node -- so the ``description`` and the ``type`` are still there to compare.
+    node = bundle.resolved(BUNDLE, "collection/collection-list-changed-webhook.json")
+    event = node["properties"]["event"]
+    assert event["const"] == "collection_list_changed"
+    assert event["type"] == "string"
+    assert event["description"]
+
+
+def test_a_const_node_inlined_through_a_ref_loses_its_annotations() -> None:
+    """The one hand-written comparison row this step adds, and why it is one row.
+
+    ``canonicalish`` reduces a node whose value set is FINITE to that set alone and
+    drops every annotation at it.  That is already folded out for an ``enum`` node
+    (``harness._narrows_nothing``'s third bullet); a ``const`` is a ONE-MEMBER enum
+    and gets the same rewrite -- but only when the node is INLINED through a
+    ``$ref``, which is why the test above sees a whole node and this one does not.
+
+    Both halves of the drop are measured here, and they are decided in two
+    different places on purpose: the ``type`` half by ``_entails_type``'s existing
+    ``const`` arm (a DERIVATION from the document's own value), the ``description``
+    half by the new row.  The row is gated on the document stating a ``const`` at
+    that node, and the gate is probed by asking the rule about a node that states
+    none.
+    """
+    from codegen.harness import _narrows_nothing
+
+    # the resolver, measured both ways round on the live pair
+    own = bundle.resolved(BUNDLE, "core/agent-encryption-key.json")["properties"]["kty"]
+    assert own["const"] == "OKP"
+    assert own["type"] == "string"
+    assert own["description"]
+    through = bundle.resolved(BUNDLE, "core/authorized-agent-base.json")
+    inlined = through["properties"]["encryption_keys"]["items"]["properties"]["kty"]
+    assert inlined == {"const": "OKP"}, inlined
+
+    # the row fires, and the gate is what makes it fire
+    assert _narrows_nothing("description", "any text", {"const": "OKP"}) is True
+    assert _narrows_nothing("description", "any text", {"type": "string"}) is False
+    assert _narrows_nothing("description", "any text", {}) is False
+    # it excuses the DESCRIPTION and nothing else at the same node
+    assert _narrows_nothing("default", "OKP", {"const": "OKP"}) is False
+    assert _narrows_nothing("minLength", 1, {"const": "OKP"}) is False
+    # and the type half is still the derivation's, not this row's
+    assert _narrows_nothing("type", "string", {"const": "OKP"}) is True
+    assert _narrows_nothing("type", "integer", {"const": "OKP"}) is False
+
+    # the other direction is untouched: a model that DROPS the document's own
+    # description still reddens, which is the defect that matters
+    dropped = compare_schema(
+        {
+            "type": "object",
+            "properties": {"k": {"const": "OKP", "description": "d"}},
+            "required": ["k"],
+            "additionalProperties": False,
+        },
+        _constructed(
+            {
+                "title": "NoDoc",
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"k": {"type": "string", "const": "OKP"}},
+                "required": ["k"],
+            }
+        )[0],
+    )
+    assert dropped.outcome == "model_drops_a_fact", dropped
+    assert any("description" in m for m in dropped.missing), dropped.missing
+
+
+def test_the_const_row_has_exactly_one_lowering() -> None:
+    """DRY, as a structural claim rather than as a reading.
+
+    ``lower.union._literal`` was D2's ``const`` row scoped to one branch property,
+    written there because nothing claimed the keyword in full.  This claims it in
+    full, so the second copy is gone and so is the ``decided=`` plumbing that existed
+    for its one caller -- a keyword with two lowerings is two places for the refusal
+    set and the rendered annotation to disagree, and they did disagree: the dot
+    mangling above was in one of them.
+    """
+    assert not hasattr(lower_union, "_literal")
+    assert "decided" not in inspect.signature(compiler.fields).parameters
+    assert "decided" not in inspect.signature(compiler.lower_object).parameters
+    # union still NAMES the keyword, and only in its branch screen: that row is an
+    # attribution row (a bare const branch is a scalar branch) and not a lowering.
+    # Asserted by resolving the name rather than by grepping for the word, which
+    # "constrains" would match: the one place a Literal can be BUILT is the row.
+    assert "const" in lower_union.BRANCH_HANDLED
+    builds = [
+        name
+        for name, module in (("compiler", compiler), ("union", lower_union), ("const", lower_const))
+        for node in ast.walk(ast.parse(inspect.getsource(module)))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "Type"
+        and any(k.arg == "literals" for k in node.keywords)
+    ]
+    assert builds == ["const"], builds
+    # and the one document it attributes refuses on its own keyword, not on a deferral
+    r = emit.emit(BUNDLE, ["core/start-timing.json"]).refusals["core/start-timing.json"]
+    assert (r["keyword"], r["pointer"]) == ("type", "/oneOf/0"), r
+    assert "a branch of type 'string' is step 6" in r["detail"], r

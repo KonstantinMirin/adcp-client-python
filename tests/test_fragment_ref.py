@@ -624,7 +624,15 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     on a keyword of their own (``pattern``, ``allOf``, ``definitions``, and a chain).
     A refusal that names the wrong cause sends the next reader to the wrong file.
     """
-    target = {"title": "Refuses", "type": "object", "properties": {"a": {"const": "x"}}}
+    # The refusing keyword is ``allOf``, which is one of the four real causes above.
+    # It was ``const`` until D2's ``const`` row landed (salesagent-j3k2l.16) and the
+    # fixture stopped refusing -- a fixture built on a keyword the emitter is about to
+    # lower grades the chain only until that happens, and then grades nothing.
+    target = {
+        "title": "Refuses",
+        "type": "object",
+        "properties": {"a": {"allOf": [{"type": "string"}]}},
+    }
     referrer = {
         "title": "Chains",
         "type": "object",
@@ -638,7 +646,7 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     # looked up, and a message naming only the file does not say which of its nodes
     # was wanted.
     assert "core/refuses.json#/properties/a is refused" in r["detail"], r
-    assert "const" in r["detail"], r
+    assert "allOf" in r["detail"], r
 
     # A reference with NO fragment names the document alone, unchanged -- which is
     # every one of the bundle's 214 existing chain refusals.

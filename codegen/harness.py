@@ -1733,9 +1733,37 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     * **a ``type`` the node's own content already forces**, which
       :func:`_entails_type` decides from the document.  A typeless node with nothing
       forcing it is still reported.
+    * **a ``description`` AT A NODE THE DOCUMENT GIVES A ``const``.**  The same
+      resolver canonicalization as the bullet above, at a ONE-MEMBER enum written
+      as a ``const``: ``canonicalish`` reduces a node whose value set is finite to
+      that set alone and drops every annotation at it.  Measured directly --
+      ``{"type": "string", "const": "OKP", "description": "d"}`` inlined through a
+      ``$ref`` comes back ``{"const": "OKP"}``, and so does the same node written
+      ``{"enum": ["OKP"]}`` -- and measured on the live pair both ways round:
+      ``core/agent-encryption-key.json``'s ``kty`` keeps its ``type`` and its
+      ``description`` in its OWN resolved document, and keeps neither inside
+      ``core/authorized-agent-base.json``, which references it.
+
+      So a faithful class whose field carries the document's ``description``
+      states a fact its referrer's resolved document no longer does.  The
+      ``type`` half of the same drop is already decided, by
+      :func:`_entails_type`'s ``const`` arm; this row is the ``description``
+      half and nothing else.  **It is gated on the document stating a ``const``
+      at that node**, so it excuses nothing anywhere else, and a ``description``
+      changes no accepted set in any direction -- while the
+      ``missing``/``differs`` half still catches a dropped or wrong one, which
+      is the defect that matters.
+
+      Measured over the emitted population: **3 such facts at 1 pair**
+      (``core/authorized-agent-base.json``'s ``crv``, ``kty`` and ``use``), all
+      three a ``description``, and **0 elsewhere**.  A ``default`` or any other
+      annotation at a const node has no row and is still reported: 0 of the
+      bundle's 1,486 const nodes carries one.
     """
     if "enum" in doc:
         return _implied_by_an_enum(keyword, value, doc["enum"])
+    if keyword == "description":
+        return "const" in doc
     if keyword == "default":
         return value is None and "null" not in str(doc.get("type", ""))
     if keyword == "type":

@@ -111,7 +111,7 @@ HANDLED = frozenset({"type", "const"})
 #: kind written two ways, and ``_decide``'s own ``null`` arm owns it.
 #:
 #: Measured over the bundle's 1,486 const nodes: 1,310 ``str``, 161 ``bool``, 15
-#: ``int`` -- so all three refusals have a population of 0 and are reached only by a
+#: ``int`` -- so both refusals have a population of 0 and are reached only by a
 #: hand-built node.
 LITERALS = (bool, int, str)
 
