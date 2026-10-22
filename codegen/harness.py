@@ -65,6 +65,8 @@ union branch, a pattern-matched key -- and the control still counts it.
 from __future__ import annotations
 
 import copy
+import dataclasses
+import hashlib
 import json
 import re
 from collections import Counter
@@ -285,6 +287,28 @@ class Step:
     describe: str  # human-readable "before -> after"
     _rewrite: Callable[[dict], None]
     positions: tuple[str, ...]  # every position stating this fact, outermost first
+    #: Whether the rewrite puts the document's OWN statement at this site back,
+    #: NEGATED -- so what it admits is exactly the set of instances the document
+    #: refuses there -- or merely one witness the harness chose.
+    #:
+    #: This is the only thing that separates the two reasons a stepped document
+    #: can admit nothing, and both have a test.  A COMPLEMENT that admits nothing
+    #: says the DOCUMENT admits no instance violating this keyword here: nothing
+    #: of the harness's choosing is in it, so the emptiness is the document's and
+    #: the honest verdict is the zero-denominator one (``no_evidence``) -- an
+    #: ``if`` whose condition implies its branch, a combinator exhaustive over its
+    #: own type.  A WITNESS that admits nothing says only that THIS witness does
+    #: not exist: ``maxLength 4`` is stepped to "exactly 5 characters", and a
+    #: ``const`` of four characters at the same instance location rules that out
+    #: while the document still refuses every five-character value.  The harness
+    #: cannot build the instance; the document has one.  That is a harness
+    #: limitation and is REPORTED (``harness_error``), with the contradicting
+    #: keyword named, because §6 forbids a green mark over an ungraded site.
+    #:
+    #: Set by the emitting branch, which is the one place that knows which of the
+    #: two it built.  A list consulted at the catch site would be a second answer
+    #: to the same question, and would go stale the first time a family is added.
+    complement: bool = False
 
     @property
     def pointer(self) -> str:
@@ -606,6 +630,84 @@ def instance_location(pointer: str) -> str:
     return "/" + "/".join(out)
 
 
+#: What a node can say that constrains NO value: a name, a note, a presence
+#: default.  Everything else at a node narrows what the node admits, so the
+#: complement of this set is "the keywords that could contradict a step" -- which
+#: is the honest way round, because a list of CONSTRAINTS would have to be
+#: complete and would go silently short of the vocabulary (``const`` is the
+#: fixture's own collider and is not a keyword ``steps`` can step).
+_ANNOTATION_ONLY = frozenset(
+    {
+        "$schema",
+        "$id",
+        "$comment",
+        "title",
+        "description",
+        "examples",
+        "default",
+        "deprecated",
+        "readOnly",
+        "writeOnly",
+        "enumDescriptions",
+    }
+)
+
+
+def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
+    """Every dict node of the document, with its pointer, by the same descent."""
+    out: list[tuple[str, dict]] = []
+    if isinstance(schema, list):
+        for i, v in enumerate(schema):
+            out += _nodes(v, f"{pointer}/{i}")
+        return out
+    if not isinstance(schema, dict):
+        return out
+    out.append((pointer or "/", schema))
+    for k, v in schema.items():
+        if k in _DESCEND_MAP and isinstance(v, dict):
+            for kk, vv in v.items():
+                out += _nodes(vv, f"{pointer}/{k}/{_esc(kk)}")
+        elif k in _DESCEND_ONE and isinstance(v, (dict, list)):
+            out += _nodes(v, f"{pointer}/{k}")
+        elif k in _DESCEND_LIST and isinstance(v, list):
+            out += _nodes(v, f"{pointer}/{k}")
+    return out
+
+
+def contradicting(schema: dict, step: Step) -> tuple[str, ...]:
+    """Every keyword stated at this step's instance location that it did not rewrite.
+
+    What a reader is owed when a witness step admits nothing: the step mutated one
+    keyword at one position, and something ELSE about the same place in an
+    instance ruled the mutation out.  ``pointer:keyword``, so the report names the
+    position as well as the keyword.
+
+    An EMPTY result is a finding of its own rather than a blank: it says the
+    contradiction is NOT at this instance location, so the step is not what the
+    reader should look at.  It does not say which of the other causes it is, and
+    the measured population holds at least two.  ``core/reference-renderer.json``
+    does not generate in its ORIGINAL resolved form -- it exhausts
+    ``hypothesis_jsonschema``'s filter before any step is applied -- so all 14 of
+    its unsteppable sites are that one fact and none is a collision.
+    ``core/media-buy-frequency-cap.json`` generates, and five of its sites report
+    an empty collider anyway: a ``maxProperties`` and the ``required`` names
+    ``force_path`` adds on the way down are at different nodes, so neither is at
+    the stepped site's location.  Do not read an empty result as either one.
+
+    Called only from the failure path, so the second walk costs one traversal per
+    site the check could not step rather than one per site.
+    """
+    location = instance_location(step.pointer)
+    stepped = set(step.positions)
+    return tuple(
+        f"{pointer}:{keyword}"
+        for pointer, node in _nodes(schema)
+        if pointer not in stepped and instance_location(pointer) == location
+        for keyword in sorted(node)
+        if keyword not in _ANNOTATION_ONLY
+    )
+
+
 def steps(schema: dict) -> list[Step]:
     """Every constraint FACT in the document, each as one exclusive step.
 
@@ -614,26 +716,58 @@ def steps(schema: dict) -> list[Step]:
     conjunction of the two can admit no instance at all (see ``Step``).
 
     **Two positions are the same fact when they state the same keyword at the same
-    instance location AND their rewrites are identical**, which is read off
-    ``describe`` -- the text is derived from the stated value by the emitting
-    branch, so equal descriptions mean interchangeable rewrites and the group can
-    apply any one of them at every position.  That is the whole admission rule,
-    and it is why a group can never manufacture a contradiction of its own: two
-    positions stating DIFFERENT bounds for one keyword are an intersection rather
-    than a restatement, they describe differently, and they stay separate steps
-    behaving exactly as they do today.
-    """
-    found: dict[tuple[str, str, str], list[str]] = {}
-    rewrites: dict[tuple[str, str, str], Callable[[dict], None]] = {}
+    instance location AND their rewrites are identical**, and the admission rule
+    says that directly: the key carries the VALUE the rewrite is derived from, so
+    equal keys mean interchangeable rewrites and the group can apply any one of
+    them at every position.  That is why a group can never manufacture a
+    contradiction of its own: two positions stating DIFFERENT bounds for one
+    keyword are an intersection rather than a restatement, so they key differently
+    and stay separate steps behaving exactly as they do today.
 
-    def emit(pointer: str, keyword: str, describe: str, rewrite: Callable[[dict], None]) -> None:
+    The stated value is in the key rather than read off ``describe`` because
+    MEASURED, ``describe`` does not determine the rewrite for the five families
+    whose rewrite READS the node it rewrites.  ``if/then -> the condition, the
+    branch negated`` holds no value at all, so
+    ``core/account-timezone-capability.json``'s four conjuncts -- four different
+    ``if`` conditions about one instance location -- grouped into ONE step whose
+    materialization demands ``mode`` be ``seller_fixed`` and ``account_fixed`` at
+    once.  That is unsatisfiable, so D6's ``then`` family went from 4 sites x 20
+    biting examples to one site grading nothing, and step 7's exit condition --
+    the harness steps every one of the six -- stopped holding.
+    ``core/macro-encoding.json`` is the same shape with three conjuncts, and
+    ``not`` lost a site the same way: ``not {"required": ["fixed_timezone"]}`` and
+    ``not {"required": ["supported_timezones"]}`` describe identically through
+    their key lists and are two facts.
+    """
+    Key = tuple[str, str, str, str]
+    found: dict[Key, list[str]] = {}
+    rewrites: dict[Key, Callable[[dict], None]] = {}
+    complements: dict[Key, bool] = {}
+
+    def emit(
+        pointer: str,
+        keyword: str,
+        describe: str,
+        rewrite: Callable[[dict], None],
+        *,
+        states: Any = None,
+        complement: bool = False,
+    ) -> None:
+        """Record one position of one fact.
+
+        ``states`` is the value the rewrite is derived from, and is passed by the
+        branches whose rewrite reads the node rather than closing over a bound.
+        ``None`` means the rewrite is a function of the keyword alone, so
+        ``describe`` already determines it.
+        """
         pointer = pointer or "/"
-        key = (instance_location(pointer), keyword, describe)
+        key = (instance_location(pointer), keyword, describe, _stated(states))
         if key in found:
             found[key].append(pointer)
             return
         found[key] = [pointer]
         rewrites[key] = rewrite
+        complements[key] = complement
 
     def rec(node: Any, pointer: str) -> None:
         if isinstance(node, list):
@@ -875,7 +1009,14 @@ def steps(schema: dict) -> list[Step]:
             def r(t: dict) -> None:
                 t.setdefault("allOf", []).append(t.pop("not"))
 
-            emit(pointer, "not", f"not {sorted(negated)} -> the same as a conjunct", r)
+            emit(
+                pointer,
+                "not",
+                f"not {sorted(negated)} -> the same as a conjunct",
+                r,
+                states=negated,
+                complement=True,
+            )
 
         if isinstance(node.get("if"), dict):
             # A conditional is "if C then T", so an instance violating exactly it
@@ -897,7 +1038,14 @@ def steps(schema: dict) -> list[Step]:
                         [condition if _k == "then" else {"not": condition}, {"not": taken}]
                     )
 
-                emit(pointer, keyword, f"if/{keyword} -> the condition, the branch negated", r)
+                emit(
+                    pointer,
+                    keyword,
+                    f"if/{keyword} -> the condition, the branch negated",
+                    r,
+                    states=[node["if"], branch],
+                    complement=True,
+                )
 
         for keyword in ("oneOf", "anyOf"):
             branches = node.get(keyword)
@@ -915,7 +1063,14 @@ def steps(schema: dict) -> list[Step]:
             def r(t: dict, _k: str = keyword) -> None:
                 t.setdefault("allOf", []).extend({"not": b} for b in t.pop(_k))
 
-            emit(pointer, keyword, f"{keyword} of {len(branches)} -> every branch negated", r)
+            emit(
+                pointer,
+                keyword,
+                f"{keyword} of {len(branches)} -> every branch negated",
+                r,
+                states=branches,
+                complement=True,
+            )
 
         for k, v in node.items():
             if k in _DESCEND_MAP and isinstance(v, dict):
@@ -929,14 +1084,29 @@ def steps(schema: dict) -> list[Step]:
     rec(schema, "")
     out: list[Step] = []
     for key, positions in found.items():
-        _, keyword, describe = key
+        _, keyword, describe, _stated_value = key
         # Shallowest first, so the position a report NAMES is the outermost one
         # stating the fact rather than whichever the document happens to spell
         # first -- `rec` follows the document's own key order, which would make
         # the reported pointer a function of how the file was written.
         ordered = sorted(positions, key=lambda p: (p.count("/"), p))
-        out.append(Step(keyword, describe, rewrites[key], tuple(ordered)))
+        out.append(
+            Step(keyword, describe, rewrites[key], tuple(ordered), complement=complements[key])
+        )
     return out
+
+
+def _stated(value: Any) -> str:
+    """A stable identity for the value a rewrite is derived from.
+
+    Digested rather than carried whole because the value is a SUBSCHEMA for every
+    branch that passes one -- a resolved document's ``anyOf`` branch list is
+    megabytes at the largest site -- and the key only ever needs equality.
+    """
+    if value is None:
+        return ""
+    text = json.dumps(value, sort_keys=True, default=str)
+    return hashlib.blake2b(text.encode(), digest_size=16).hexdigest()
 
 
 # --------------------------------------------------------------------------- #
@@ -1005,8 +1175,20 @@ class RefusesResult:
     harness: str = ""
     #: The stepped document admits no instance at all, so there is nothing that
     #: violates exactly this keyword here.  Recorded rather than silently dropped,
-    #: and NOT a harness error: see ``check_refuses``.
+    #: and NOT a harness error: see ``check_refuses``.  Written only for a
+    #: COMPLEMENT step, where the emptiness is the document's own property.
     unsatisfiable: str = ""
+    #: For a WITNESS step the harness could not build: the keywords stated at this
+    #: step's instance location that it did not rewrite, each with its position.
+    #: ``harness`` carries the same names, so a report that prints only the one
+    #: line still names them; see ``contradicting``.
+    collides: tuple[str, ...] = ()
+    #: Set only where the whole GROUP admitted nothing and one position alone did
+    #: bite: the position the instance was pushed out of.  ``positions`` still
+    #: holds every position stating the fact, so the pair of them says the
+    #: denominator came from one statement of it rather than all -- which is why
+    #: it is recorded instead of left to be inferred from a smaller count.
+    stepped_at: str = ""
 
     @property
     def outcome(self) -> str:
@@ -1139,6 +1321,28 @@ def check_refuses(
 ) -> RefusesResult:
     """The refuses check: an instance violating exactly ``step.keyword`` is refused.
 
+    **A WITNESS group that admits nothing is retried one position at a time**,
+    because the obligation is to grade the KEYWORD at that location and a group
+    is a claim about how many positions state it, not part of the obligation.
+    Measured on ``core/inventory-list-application.json``, the only pair in the
+    emitted 448 that reaches this: a ``required`` group over ``/oneOf/0`` and
+    ``/oneOf/1`` dropping ``list_type``, which is the root ``discriminator``'s own
+    propertyName.  Forbidding it in BOTH branches leaves the root ``oneOf``
+    nothing to pick and the stepped document admits nothing; forbidding it in ONE
+    leaves the other branch requiring it, so exactly one branch can match -- 6 of
+    25 examples bite and the ORIGINAL refuses every one of them on ``required``.
+
+    That is not a weaker step. The mutation stays exclusive at the position it is
+    applied to; what shrinks is the DENOMINATOR, because the instance is pushed
+    out of one statement of the fact and not all of them, and the control counts
+    the rest. The lane that introduced grouping across a branch hop said so of
+    that case already: the ORIGINAL document decides, so a group that pushes out
+    only some branches reports a fired control and never a false pass.
+
+    A COMPLEMENT step is NOT retried. Its emptiness is the document's own
+    property rather than a witness the harness chose badly, so narrowing it would
+    turn an honest ``no_evidence`` into a different question.
+
     ``force_path_to_site`` is passed to ``Step.materialize``; see ``force_path``
     for why the default is on and why it touches only the generated-from document.
 
@@ -1150,6 +1354,48 @@ def check_refuses(
     document's, which is the obligation, and says nothing about whether the
     annotations underneath would have refused too.  ``compare_schema`` is what
     grades those.
+    """
+    whole = _refuses_once(
+        schema,
+        accept,
+        step,
+        examples=examples,
+        custom_formats=custom_formats,
+        force_path_to_site=force_path_to_site,
+    )
+    if whole.outcome != "harness_error" or len(step.positions) == 1:
+        return whole
+    for one in step.positions:
+        narrowed = _refuses_once(
+            schema,
+            accept,
+            dataclasses.replace(step, positions=(one,)),
+            examples=examples,
+            custom_formats=custom_formats,
+            force_path_to_site=force_path_to_site,
+        )
+        if narrowed.refused or narrowed.accepted_invalid:
+            # The fact is still stated at every position; only one was pushed out,
+            # so the report keeps the group and names the position that bit.
+            narrowed.positions = step.positions
+            narrowed.stepped_at = one
+            return narrowed
+    return whole  # every position alone admits nothing too; report the group
+
+
+def _refuses_once(
+    schema: dict,
+    accept: Callable[[Any], Any],
+    step: Step,
+    *,
+    examples: int,
+    custom_formats: Mapping[str, Any],
+    force_path_to_site: bool,
+) -> RefusesResult:
+    """One attempt at ``step``, over exactly the positions it holds.
+
+    Private, because which positions an attempt pushes out is ``check_refuses``'s
+    decision and nothing outside it should be able to ask for a subset.
     """
     res = RefusesResult(
         keyword=step.keyword,
@@ -1187,19 +1433,35 @@ def check_refuses(
         )
         run()
     except Unsatisfiable as e:
-        # NO INSTANCE EXISTS that violates exactly this keyword at this site, so
-        # nothing was graded -- which is ``no_evidence``, the zero-denominator
-        # verdict, and NOT a harness error.  The distinction is not cosmetic: a
-        # harness error reddens the whole pair, so an unsatisfiable step would
-        # fail a class that is perfectly faithful.
+        # TWO DIFFERENT THINGS RAISE THIS and the verdict is not the same for
+        # them, so the step says which it is (``Step.complement``) rather than
+        # the catch site guessing from the exception, which is identical for
+        # both -- an empty strategy and a filter nothing clears, measured.
         #
-        # The step families that reach this are the two that NEGATE part of the
-        # document: an ``if``/``then`` whose condition implies its branch, and a
-        # combinator exhaustive over its own type (``anyOf`` of ``string`` and
-        # ``not string``).  Measured, ``hypothesis`` raises ``Unsatisfiable`` for
-        # both shapes -- an empty strategy and a filter nothing clears -- so one
-        # ``except`` covers them.
-        res.unsatisfiable = f"{type(e).__name__}: {e}"[:200]
+        # A COMPLEMENT step put the document's own statement back negated, so
+        # what it admits IS the set of instances the document refuses here.
+        # Empty means NO INSTANCE EXISTS that violates exactly this keyword at
+        # this site, so nothing was graded -- ``no_evidence``, the
+        # zero-denominator verdict, and NOT a harness error.  The distinction is
+        # not cosmetic: a harness error reddens the whole pair, so this would
+        # fail a class that is perfectly faithful.  The shapes are an
+        # ``if``/``then`` whose condition implies its branch and a combinator
+        # exhaustive over its own type (``anyOf`` of ``string`` and
+        # ``not string``).
+        #
+        # A WITNESS step substituted a bound the HARNESS chose, so empty means
+        # only that this witness does not exist -- the document still refuses
+        # what the keyword forbids, and the check simply could not build an
+        # instance.  That is reported, with the contradicting keyword named,
+        # because §6 forbids a green mark over a site nothing graded and
+        # ``no_evidence`` is in ``PairReport``'s admitted set.
+        detail = f"{type(e).__name__}: {e}"[:160]
+        if step.complement:
+            res.unsatisfiable = detail
+        else:
+            res.collides = contradicting(schema, step)
+            named = ", ".join(res.collides) or "nothing at this instance location"
+            res.harness = f"{detail} | contradicted by: {named}"[:300]
     except Exception as e:
         res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
