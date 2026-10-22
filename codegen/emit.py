@@ -73,6 +73,7 @@ does, with two hash seeds.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -95,6 +96,7 @@ from codegen.compiler import (
 )
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
+from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -335,6 +337,12 @@ def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     )
 
 
+def _union_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's union row (step 5): the base carrying ``BranchDispatchMixin``, one
+    subclass per branch, and the module trailer that installs the union."""
+    return lower_union.lower_union(doc, name, pointer, mod)
+
+
 #: **D2's rows, as the ``(selector, lowering)`` pairs D13 states, and the table is
 #: UNORDERED.**
 #:
@@ -363,6 +371,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
     (bundle.composes_at_the_root, lower_product.lower_root),
+    (bundle.union_root, _union_root),
 )
 
 

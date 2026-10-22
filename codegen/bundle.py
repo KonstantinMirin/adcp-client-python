@@ -19,6 +19,7 @@ from pathlib import Path
 
 from codegen import compiler
 from codegen.harness import resolve
+from codegen.lower import union
 
 #: Top-level directories holding projections of documents published elsewhere.
 PROJECTIONS = ("bundled", "mcp")
@@ -206,10 +207,16 @@ def declares_its_own_root_kind(doc: dict) -> bool:
 
     A root is exactly ONE kind, and each keyword here decides it whatever else the
     root declares: an ``enum`` at the root makes the document an enumeration though
-    its ``type`` names a scalar, and an ``allOf`` at the root makes it a composition
+    its ``type`` names a scalar; an ``allOf`` at the root makes it a composition
     though it declares ``properties`` as well -- a draft-07 root ``allOf`` applies
     to the whole instance, so a row that lowered the properties without the
-    conjuncts would drop the bases.
+    conjuncts would drop the bases; and a ``oneOf``/``anyOf`` at the root makes it a
+    union whatever else it declares, for the same reason read the other way round.
+
+    Measured, so each clause is known to be load-bearing rather than defensive:
+    without the union clause ``is_object_root`` and ``union_root`` both claim 35
+    documents and ``is_scalar_root`` and ``union_root`` both claim 1; without the
+    ``allOf`` clause the object row collides with step 4's.
 
     So the two GENERIC rows below are "none of these, and <shape>".  That is what
     makes ``emit.ROWS`` a partition by construction, and it is a fact about the
@@ -218,7 +225,7 @@ def declares_its_own_root_kind(doc: dict) -> bool:
     this function when it lands, and ``tests/test_emit.py`` asserts over the whole
     bundle that no document is claimed twice.
     """
-    return is_enum_root(doc) or isinstance(doc.get("allOf"), list)
+    return is_enum_root(doc) or isinstance(doc.get("allOf"), list) or union_root(doc)
 
 
 def is_object_root(doc: dict) -> bool:
@@ -298,6 +305,8 @@ def carries_an_enum(doc: dict) -> bool:
     of this to the root, and implies it.
     """
     return any("enum" in n for _, n in nodes(doc))
+
+
 def composes_at_the_root(doc: dict) -> bool:
     """Step 4's population: a root carrying ``allOf`` with NO union beside it.
 
@@ -319,6 +328,22 @@ def composes_at_the_root(doc: dict) -> bool:
     cannot come to claim a document the step does not count.
     """
     return isinstance(doc.get("allOf"), list) and not any(k in doc for k in ("oneOf", "anyOf"))
+
+
+def union_root(doc: dict) -> bool:
+    """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
+
+    156 of the 3.2 bundle's 1,054 portable documents, and 0 of them carry both.
+
+    ONE implementation of the keyword read, and it is the LOWERING'S:
+    ``lower.union.keyword`` is what the lowering reads the keyword with, and this
+    selector is built on that same function, so a row cannot come to claim a
+    document the selector does not count.  The lane had it the other way round --
+    the function here and the lowering importing this module -- which D13's import
+    rule forbids; ``bundle`` -> ``lower`` is the direction that works, and
+    ``states_an_object_rule`` reads ``rules.presence_only`` the same way.
+    """
+    return union.keyword(doc) is not None
 
 
 def _is_property_or_items(pointer: str) -> bool:

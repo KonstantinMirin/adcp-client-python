@@ -224,6 +224,19 @@ class Class:
     #: the same reason ``Type.local`` adds none: a cross-document import is
     #: derived from the two document paths (D1) and is the module writer's.
     bases: tuple[str, ...] = ()
+    #: The classes this one derives from, in rendered order.  Empty leaves
+    #: ``custom_base_class`` in place, which is ``AdCPBaseModel`` and is what every
+    #: ordinary document's class gets.  D7 derives these from a composition and §4's
+    #: union row derives them from the shape -- a base is ``(BranchDispatchMixin,
+    #: AdCPBaseModel)`` and a branch is its base.  Naming any of them REPLACES
+    #: ``custom_base_class``, so a caller that wants ``AdCPBaseModel`` in the list says so.
+    bases: tuple[str, ...] = ()
+    #: Lines appended to the class body verbatim, after ``__adcp_schema__``.  The channel
+    #: for a fact the emitter has to write onto a class because it is not recoverable at
+    #: run time (``_branch_models``, ``_ROOT_REQUIRED``, ``_branch_combinator``), and the
+    #: one thing in this module that is text rather than a decision -- which is why it is a
+    #: parameter here rather than a second renderer somewhere else.
+    body_lines: tuple[str, ...] = ()
 
 
 @dataclass
@@ -422,10 +435,15 @@ def render(decided: Class) -> Rendered:
     # code.  ``repr`` of a ``SchemaRef`` is a valid Python expression naming the
     # type, so there is no spelling of the ref in this module to drift from the
     # one in ``_base``.
+    #
+    # ``_append_internal_template_data`` APPENDS to a list, measured on 0.86.0, so a
+    # caller's own lines follow the ref rather than replacing it.
     model._append_internal_template_data(  # noqa: SLF001 -- dmcg's own channel; see the module docstring
         "class_body_lines",
         f"__adcp_schema__: ClassVar[SchemaRef] = {decided.ref!r}",
     )
+    for line in decided.body_lines:
+        model._append_internal_template_data("class_body_lines", line)  # noqa: SLF001
     out = Rendered(text=model.render().rstrip("\n"))
     for imp in model.imports:
         if imp.from_ and imp.import_:
@@ -666,6 +684,7 @@ def fields(
     *,
     inherited: Collection[str] = (),
     declared_at: Mapping[str, str] | None = None,
+    decided: Mapping[str, Decided] | None = None,
 ) -> list[Property]:
     """The decided properties for one property map, children declared first.
 
@@ -683,6 +702,13 @@ def fields(
     function only honours it.  ``declared_at`` gives the pointer a key was
     declared at where that is not ``<pointer>/properties/<key>``, which it is not
     for a key that came from a conjunct.
+
+    ``decided`` is a per-property type the CALLER has already decided, by property
+    key.  It exists so a lowering that owns a keyword for ONE position can apply it
+    there without claiming the keyword everywhere: the union row turns a branch's
+    ``const`` into a ``Literal``, and putting that into ``decide_type`` instead
+    would emit a ``const`` row for steps 1 and 2's own populations too and collide
+    with whichever step claims D2's ``const`` row in full.
     """
     undeclared = [r for r in required if r not in props and r not in inherited]
     if undeclared:
@@ -692,7 +718,7 @@ def fields(
             f"required names no property declares: {undeclared} (step 7's rule, not a field)",
         )
 
-    decided: list[Property] = []
+    built: list[Property] = []
     spelled: dict[str, str] = {}
     where = declared_at or {}
     for key, sub in props.items():
@@ -705,7 +731,7 @@ def fields(
                 "properties", at, f"{key!r} and {spelled[fname]!r} both spell the field {fname!r}"
             )
         spelled[fname] = key
-        decided_type = mod.decide(sub, at, name + class_name(key), mod)
+        decided_type = (decided or {}).get(key) or mod.decide(sub, at, name + class_name(key), mod)
         is_required = key in required
         default = MISSING
         if "default" in sub:
@@ -726,7 +752,7 @@ def fields(
                 )
             default = sub["default"]
         doc = sub.get("description")
-        decided.append(
+        built.append(
             Property(
                 name=fname,
                 wire=key,
@@ -738,7 +764,7 @@ def fields(
                 format=decided_type.format,
             )
         )
-    return decided
+    return built
 
 
 def declare_object(
@@ -750,6 +776,7 @@ def declare_object(
     shape: Shape,
     *,
     bases: tuple[str, ...] = (),
+    body_lines: tuple[str, ...] = (),
 ) -> str:
     """Assemble one class out of decided properties, and record what it declares.
 
@@ -773,6 +800,7 @@ def declare_object(
             # D8; absent leaves the base's default in place
             extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
             bases=bases,
+            body_lines=body_lines,
         )
     )
     mod.shapes[name] = shape
@@ -780,17 +808,63 @@ def declare_object(
     return name
 
 
-def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
-    """Append the class for an object node, children first, and return its name."""
+def lower_object(
+    node: dict,
+    name: str,
+    pointer: str,
+    mod: Module,
+    *,
+    bases: tuple[str, ...] = (),
+    decided: Mapping[str, Decided] | None = None,
+    body_lines: tuple[str, ...] = (),
+) -> str:
+    """Append the class for an object node, children first, and return its name.
+
+    The three keyword arguments are what a COMPOSITION needs and a leaf object does
+    not, and each defaults to the leaf's answer, so steps 1 and 2's call sites are
+    unchanged and so is every module they emit.  :func:`fields` documents
+    ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
+    """
     check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    if node.get("type") != "object":
+        # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
+        # Schema applies ``properties`` only to objects and asserts nothing about
+        # anything else, so ``{"properties": {"a": {"type": "string"}}, "required":
+        # ["a"]}`` admits ``"hello"`` and ``42`` -- measured with ``jsonschema`` on
+        # exactly that node.  No class can, so the model is NARROWER than its
+        # document, which is the defect P3 removes.
+        #
+        # This condition read ``in (None, "object")`` and 0 of the 43 documents
+        # emitted before step 5 exercise the ``None`` arm -- every one of them
+        # declares ``type: object`` -- so the tolerance was latent rather than
+        # relied on.  Step 5's union BRANCHES are the first population to reach it,
+        # and they reach it in the worst way: the accepts check reports
+        # ``model_type`` on a valid instance, which is the model refusing a payload
+        # the document admits.
+        raise Refusal(
+            "type",
+            pointer,
+            f"an object node must declare type: object; this one declares "
+            f"{node.get('type', '<absent>')!r}, so the document admits a non-object that "
+            "no class can",
+        )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
-    decided = fields(props, required, pointer, name, mod)
-    return declare_object(node, name, pointer, mod, decided, Shape(props, frozenset(required)))
+    built = fields(props, required, pointer, name, mod, decided=decided)
+    return declare_object(
+        node,
+        name,
+        pointer,
+        mod,
+        built,
+        Shape(props, frozenset(required)),
+        bases=bases,
+        body_lines=body_lines,
+    )
 
 
 def bind_without_a_model(mod: Module, symbol: str, rendered: Rendered) -> str:

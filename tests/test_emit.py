@@ -35,7 +35,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Annotated, Any, NamedTuple
+from typing import Annotated, Any, ClassVar, Literal, NamedTuple
+from unittest import mock
 
 import jsonschema
 import pytest
@@ -43,8 +44,15 @@ from hypothesis import given, HealthCheck, Phase, settings
 from hypothesis import strategies as st
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
-from adcp.types._base import AdCPBaseModel, REGEX_ENGINE, SchemaRef, schema_at
+from adcp.types._base import (
+    AdCPBaseModel,
+    BranchDispatchMixin,
+    REGEX_ENGINE,
+    SchemaRef,
+    schema_at,
+)
 from codegen import bundle, compiler, emit
+from codegen.lower import union as lower_union
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
@@ -64,11 +72,18 @@ BUNDLE = REPO / "schemas" / "cache" / "3.2"
 TREE = REPO / emit.TREE
 
 
+#: Cached because each of these re-reads all 1,054 documents and the two keyword
+#: selectors walk every schema position in each: over 400 tests calling them, the
+#: uncached suite spends minutes re-deriving a population that is a function of the
+#: bundle alone.  ``graded()`` is cached for the same reason -- it imports the whole
+#: emitted tree, and a union root's ``model_rebuild(force=True)`` is not cheap.
+@functools.cache
 def leaves() -> list[str]:
     """Step 1's population: an object root with no reference anywhere in it."""
     return [d for d in bundle.portable(BUNDLE) if bundle.is_leaf_object(bundle.read(BUNDLE, d))]
 
 
+@functools.cache
 def referencing() -> list[str]:
     """Step 2's population: every reference is a property's own schema or its items."""
     return [
@@ -76,11 +91,13 @@ def referencing() -> list[str]:
     ]
 
 
+@functools.cache
 def enums() -> list[str]:
     """Step 3's population: an ``enum`` at a schema position anywhere in it."""
     return [d for d in bundle.portable(BUNDLE) if bundle.carries_an_enum(bundle.read(BUNDLE, d))]
 
 
+@functools.cache
 def composing() -> list[str]:
     """Step 4's population: a root ``allOf`` with no union beside it."""
     return [
@@ -88,6 +105,17 @@ def composing() -> list[str]:
     ]
 
 
+@functools.cache
+def union_roots() -> list[str]:
+    """Step 5's population: a document whose root carries ``oneOf`` or ``anyOf``.
+
+    Read off ``bundle.union_root``, which is also the step's DISPATCH selector, so the
+    population this file counts and the population the table claims are one function.
+    """
+    return [d for d in bundle.portable(BUNDLE) if bundle.union_root(bundle.read(BUNDLE, d))]
+
+
+@functools.cache
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure.
@@ -98,7 +126,9 @@ def population() -> list[str]:
     overlap is a property of the POPULATION and not of the dispatch table, whose
     rows read a document's ROOT and claim 0 documents in common (asserted below).
     """
-    return sorted(set(leaves()) | set(referencing()) | set(enums()) | set(composing()))
+    return sorted(
+        set(leaves()) | set(referencing()) | set(enums()) | set(composing()) | set(union_roots())
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -187,7 +217,7 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # Not the sum: the selectors OVERLAP, and the overlaps are counted below
     # rather than assumed.  The union is the denominator; no selector here is a
     # ROW for another's shape, so nothing is counted twice by the table.
-    assert len(population()) == 900
+    assert len(population()) == 991
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
@@ -196,6 +226,19 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # union is smaller than the sum, so a reader cannot add 85 + 249 + 535.
     assert len(set(leaves()) & set(enums())) == 26
     assert len(set(referencing()) & set(enums())) == 94
+    assert len(union_roots()) == 156
+    assert set(population()) < set(whole), "the step's population is not a part of the bundle"
+    assert PAGINATION in leaves()
+    assert "error-details/creative-revision-content-mismatch.json" in referencing()
+    assert "core/signal-id.json" in union_roots()
+    # 0 union roots carry BOTH keywords, so the keyword the lowering reads is unambiguous
+    # for every document the selector claims.
+    assert [
+        d
+        for d in union_roots()
+        if {"oneOf", "anyOf"} <= set(bundle.read(BUNDLE, d))
+        and all(isinstance(bundle.read(BUNDLE, d)[k], list) for k in ("oneOf", "anyOf"))
+    ] == []
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
@@ -752,7 +795,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
-    (23 sites: ``date-time`` 11, ``uri`` 10, ``date`` 2), because that is the
+    (33 sites: ``date-time`` 17, ``uri`` 14, ``date`` 2), because that is the
     denominator the rule is stated over.
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
@@ -792,15 +835,16 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
 
-    assert seen == {"date-time": 11, "uri": 10, "date": 2}, seen
+    assert seen == {"date-time": 17, "uri": 14, "date": 2}, seen
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
     # pass by looking at nothing.
-    # Every pair and not only the roots: 2 of the 23 sites sit inside a nested
-    # object (``core/insertion-order.json#/properties/terms``), and a loop over
-    # roots alone reaches 21 -- so it would assert the rule over a denominator
-    # smaller than the one the first half just counted.
+    #
+    # Over EVERY class the tree carries, not only the root-pointer ones.  Restricted to
+    # roots it graded 14 of the 18 census sites above, and the 4 it missed are the ones
+    # step 5 added: a union root has no properties of its own, so every format in one of
+    # those documents is on a BRANCH class, whose pointer is not ``#``.
     stated = 0
     for g in graded():
         doc = schema_at(g.ref)
@@ -811,7 +855,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 23, stated
+    assert stated == 33, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -978,7 +1022,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (14, 27), distinct
+    assert (len(distinct), sum(distinct.values())) == (17, 35), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1004,7 +1048,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (12, 24), diverges
+    assert (len(diverges), sum(diverges.values())) == (15, 32), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -1115,12 +1159,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 286, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 283
+    assert len(reports) == 312, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 309
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 3
-    assert sum(r.graded_instances for r in reports) == 7508  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 1490  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 141  # model-only facts examined
+    assert sum(r.graded_instances for r in reports) == 11784  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 1778  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 160  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
@@ -1150,7 +1194,10 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
         assert row.model.model_config["extra"] == want, (row.ref, declared)
         counted["silent" if declared == "silent" else want] += 1
     assert counted["forbid"] and counted["allow"], counted
-    assert counted["silent"] == 2, counted
+    # Two leaf objects plus the 7 union BASES, which are silent by construction:
+    # ``lower/union.py`` refuses a root that states its own ``additionalProperties``,
+    # so a base never has one to carry and takes this default.
+    assert counted["silent"] == 9, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1360,6 +1407,604 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
         }
         assert used <= _pydantic_names(local) | ANNOTATION_KWARGS, (document, sorted(used))
     assert graded_properties, "no referencing property was graded"
+
+
+# --------------------------------------------------------------------------- #
+# step 5: union roots (§4)
+# --------------------------------------------------------------------------- #
+def emitted_unions() -> list[str]:
+    """The union roots the committed tree holds, read off the tree and the selector."""
+    return sorted({g.ref.document for g in graded()} & set(union_roots()))
+
+
+def test_a_union_root_emits_a_base_plus_one_subclass_per_branch() -> None:
+    """§4's shape, on the AST of every emitted union module.
+
+    Four claims, each of which a previous generator got wrong at scale:
+
+    * **the root's name binds the BASE**, never a union alias.  Censused over this
+      bundle's 156 union roots, the previous tree bound 100 root names to an alias, so a
+      caller had nothing to ``isinstance`` against.  Asserted as: the module's ``__all__``
+      is the root's own name, that name is a CLASS, and it derives
+      ``BranchDispatchMixin``;
+    * **one subclass per branch**, exactly -- as many branch classes as the document has
+      branches, each deriving the base, each naming its own ``#/<kw>/<i>``;
+    * the base declares the three facts the mixin reads;
+    * the module installs the union, because the branches do not exist while the base is
+      being built.
+
+    Everything compared is derived: the branch count from the document, the symbol from
+    the module's own ``__all__``, the pointers from the classes themselves.
+    """
+    assert emitted_unions(), "no union root was emitted; this test grades nothing"
+    for document in emitted_unions():
+        doc = bundle.read(BUNDLE, document)
+        kw = lower_union.keyword(doc)
+        symbol = _symbol(document)
+        tree = ast.parse(_source(document))
+        classes = {c.name: c for c in tree.body if isinstance(c, ast.ClassDef)}
+
+        assert symbol in classes, (document, symbol)
+        bases = [b.id for b in classes[symbol].bases if isinstance(b, ast.Name)]
+        assert bases == ["BranchDispatchMixin", "AdCPBaseModel"], (document, bases)
+
+        branch_classes = sorted(
+            name
+            for name, node in classes.items()
+            if [b.id for b in node.bases if isinstance(b, ast.Name)] == [symbol]
+        )
+        assert len(branch_classes) == len(doc[kw]), (document, branch_classes, len(doc[kw]))
+
+        declared = {
+            t.target.id
+            for t in classes[symbol].body
+            if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
+        }
+        assert {"__adcp_schema__", "_branch_models", "_ROOT_REQUIRED"} <= declared, (
+            document,
+            sorted(declared),
+        )
+        methods = {f.name for f in classes[symbol].body if isinstance(f, ast.FunctionDef)}
+        assert "_branch_combinator" in methods, (document, sorted(methods))
+
+        # the trailer: the union is installed after the branches are defined
+        assigned = [
+            ast.unparse(n)
+            for n in tree.body
+            if isinstance(n, ast.Assign) or isinstance(n, ast.Expr)
+        ]
+        assert f"{symbol}.model_rebuild(force=True)" in assigned, (document, assigned)
+        assert any(a.startswith(f"{symbol}._branch_models = (") for a in assigned), (
+            document,
+            assigned,
+        )
+
+
+def test_the_base_the_root_name_binds_is_the_class_every_branch_descends_from() -> None:
+    """The run-time half of the claim above, read off the live classes.
+
+    The AST test says the module TEXT has the shape; this says the imported objects do,
+    and that the three emitted facts carry the document's own values.  ``_ROOT_REQUIRED``
+    is asserted EMPTY and that is reported rather than hidden: ``lower/union.py`` refuses
+    a root that declares its own ``required``, so no document in this step's population
+    produces a non-empty one, and the field is graded by the mixin's unit test below
+    rather than by the tree.
+    """
+    assert emitted_unions()
+    for document in emitted_unions():
+        doc = bundle.read(BUNDLE, document)
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        branches = base._branch_models
+
+        assert "_branch_models" in base.__dict__, document
+        assert len(branches) == len(doc[lower_union.keyword(doc)]), document
+        for branch in branches:
+            assert issubclass(branch, base) and branch is not base, (document, branch)
+            assert "_branch_models" not in branch.__dict__, (document, branch)
+            assert branch.__adcp_schema__.document == document, (document, branch)
+        assert base._branch_combinator() == lower_union.keyword(doc), document
+        assert base._ROOT_REQUIRED == (), document
+
+
+def _module_of(document: str) -> str:
+    return f"{emit.PACKAGE}.{emit.module_path(document).replace('/', '.')}"
+
+
+def test_a_payload_resolves_to_its_branch_on_all_four_paths() -> None:
+    """§4's exit condition, over every emitted union root and every one of its branches.
+
+    The four paths are not interchangeable and the specification says why: a core-schema
+    hook covers the three pydantic validates THROUGH -- a nested field, a ``TypeAdapter``,
+    ``model_validate`` -- and reaches ``Base(**data)`` not at all, because
+    ``BaseModel.__init__`` validates with ``self_instance=self`` and the object is already
+    allocated.  So all four are asserted, on the same payload, for each arm.
+
+    The payload is DRAWN from the branch's own node rather than written, so this cannot
+    pass by hand-picking an instance that happens to resolve.  ``strict_validate`` is the
+    fifth path and is graded by ``check_pair``; it is included here because it is the
+    production entry point and it must agree with the other four about the class.
+    """
+    assert emitted_unions()
+    graded_arms = 0
+    for document in emitted_unions():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+
+        class Holder(BaseModel):
+            v: base  # type: ignore[valid-type]
+
+        adapter = TypeAdapter(base)
+        for branch in base._branch_models:
+            payload = _an_instance(schema_at(branch.__adcp_schema__))
+            assert type(base.model_validate(payload)) is branch, (document, branch, payload)
+            assert type(adapter.validate_python(payload)) is branch, (document, branch)
+            assert type(Holder.model_validate({"v": payload}).v) is branch, (document, branch)
+            assert type(base(**payload)) is branch, (document, branch)
+            assert type(base.strict_validate(payload)) is branch, (document, branch)
+            graded_arms += 1
+    assert graded_arms == sum(
+        len(bundle.read(BUNDLE, d)[lower_union.keyword(bundle.read(BUNDLE, d))])
+        for d in emitted_unions()
+    ), graded_arms
+
+
+def _an_instance(schema: dict) -> Any:
+    """One instance the schema admits, drawn rather than written."""
+    drawn: list[Any] = []
+
+    @settings(
+        max_examples=1,
+        deadline=None,
+        database=None,
+        derandomize=True,
+        phases=[Phase.generate],
+        suppress_health_check=list(HealthCheck),
+    )
+    @given(st.data())
+    def body(data: st.DataObject) -> None:
+        from hypothesis_jsonschema import from_schema
+
+        drawn.append(data.draw(from_schema(schema)))
+
+    body()
+    return drawn[0]
+
+
+def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:
+    """§4's declaring-class test, and the thing membership cannot express.
+
+    The base is the class that DECLARES ``_branch_models``.  A subclass declared
+    elsewhere -- which is how D7 says a consumer refines an emitted class -- inherits the
+    attribute and so is NOT the base, and gets its own model shape back.  Membership
+    (``cls in cls._branch_models``) admits both "is a branch" and "is an unrelated
+    subclass", and it is only the second that matters once the schema is being replaced:
+    under membership a consumer's refinement would be validated as the union and come
+    back as a BRANCH, discarding the consumer's own fields.
+
+    Asserted on every emitted union root, with the refinement declared here -- outside the
+    generated module, which is the position the rule is about.
+    """
+    assert emitted_unions()
+    for document in emitted_unions():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        branch = base._branch_models[0]
+
+        class Refinement(base):  # type: ignore[misc, valid-type]
+            mine: int | None = None
+
+        assert "_branch_models" not in Refinement.__dict__
+        arm = _an_instance(schema_at(branch.__adcp_schema__))
+        got = Refinement.model_validate({**arm, "mine": 7})
+        assert type(got) is Refinement, (document, type(got))
+        assert got.mine == 7, document
+        # and the branches still get their own shape, which is the other half of the rule.
+        # The arm's OWN payload, because a branch whose node declares
+        # ``additionalProperties: false`` refuses ``mine`` -- correctly, and that is a fact
+        # about the branch's document rather than about the dispatch.
+        assert type(branch.model_validate(arm)) is branch, document
+
+
+def test_model_dump_json_on_a_union_base_instance_does_not_raise() -> None:
+    """§4's fourth part: the union is the validator and never the serializer.
+
+    Put it in the serialization slot and the class has no serializer for an instance of
+    itself -- the union's serializer matches no branch, infers a model, finds the same
+    union and recurses.  Measured on a fixture while this was being built:
+    ``model_dump_json`` raises ``PydanticSerializationError: Circular reference detected``
+    and ``model_dump()`` silently returns the model INSTANCE instead of a dict, which is
+    the worse of the two because nothing reports it.
+
+    Both halves are asserted, on a BASE instance (reached through ``model_construct``,
+    since every validating path returns a branch) and on a BRANCH reached through a
+    base-typed field -- the second is what fails if the wrap serializer holds the base's
+    model schema ALONE rather than the branches' union with the base last.
+    """
+    assert emitted_unions()
+    for document in emitted_unions():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+
+        class Holder(BaseModel):
+            v: base  # type: ignore[valid-type]
+
+        assert json.loads(base.model_construct().model_dump_json()) == {}
+        assert base.model_construct().model_dump() == {}
+
+        branch = base._branch_models[0]
+        payload = _an_instance(schema_at(branch.__adcp_schema__))
+        instance = base.strict_validate(payload)
+        # the arm's own fields survive the base-typed field, which is what the union in
+        # the serialization slot buys and the base's model schema alone loses
+        dumped = json.loads(Holder(v=instance).model_dump_json())["v"]
+        assert set(payload) <= set(dumped), (document, sorted(payload), sorted(dumped))
+
+
+def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary() -> None:
+    """``_branch_combinator()``, and why it is a fact the emitter has to write.
+
+    A document satisfying no branch fails each branch at FIELD validation, where pydantic
+    reports ``missing`` -- a keyword the document does not use.  The mixin re-labels that
+    with the document's own combinator, which is not recoverable at run time from the
+    branches.
+
+    Graded two ways, because the tree does not exercise both arms: every emitted union
+    root is ``oneOf`` (6 of 6), so the ``anyOf`` arm is graded on a fixture.  Said rather
+    than left to be discovered: hard-coding ``"oneOf"`` in the lowering would redden
+    nothing in the population and only the fixture below.
+    """
+    assert emitted_unions()
+    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_unions()} == {"oneOf"}
+    for document in emitted_unions():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        with pytest.raises(ValidationError) as caught:
+            base.model_validate({"__adcp_harness__": "no branch admits this"})
+        assert [e["type"] for e in caught.value.errors()] == ["oneOf"], (
+            document,
+            caught.value.errors(),
+        )
+
+    # the anyOf arm, and the _ROOT_REQUIRED split, neither of which the population reaches
+    class AnyOfBase(BranchDispatchMixin, AdCPBaseModel):
+        __adcp_schema__ = SchemaRef("fixture.json", "#")
+        _branch_models: ClassVar[tuple[type, ...]] = ()
+        _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ("root_key",)
+
+        @classmethod
+        def _branch_combinator(cls) -> str:
+            return "anyOf"
+
+        root_key: str | None = None
+
+    class Arm(AnyOfBase):
+        __adcp_schema__ = SchemaRef("fixture.json", "#/anyOf/0")
+        tag: Literal["arm"]
+
+    AnyOfBase._branch_models = (Arm,)
+    AnyOfBase.model_rebuild(force=True)
+
+    with pytest.raises(ValidationError) as caught:
+        AnyOfBase.model_validate({"root_key": "present", "tag": "wrong"})
+    assert [e["type"] for e in caught.value.errors()] == ["anyOf"]
+
+    # ... and ``_ROOT_REQUIRED`` is what separates the two kinds on that same path: the
+    # payload below also satisfies no branch, and the reason the DOCUMENT refuses it is a
+    # field the root requires, not the choice of arm.  pydantic reports neither -- it
+    # reports one ``missing`` per field per branch -- which is why the root's required set
+    # has to be written onto the class.
+    with pytest.raises(ValidationError) as caught:
+        AnyOfBase.model_validate({"tag": "wrong"})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("required", ("root_key",))]
+    # The control: a payload that DOES satisfy the arm is accepted, so the two refusals
+    # above are not a base that refuses everything.
+    assert type(AnyOfBase.model_validate({"root_key": "p", "tag": "arm"})) is Arm
+
+
+def test_the_serializer_is_set_on_the_schema_the_wrapper_holds_and_not_on_a_definitions_node() -> None:
+    """§4's last sentence, which the emitted population does not reach.
+
+    §4 says the ``serialization`` key goes on the schema the wrapper HOLDS because "most
+    roots come back as a ``definitions`` node wrapping the ``function-wrap``", and a
+    ``serialization`` key on a ``definitions`` node is not consulted.  **Measured on this
+    step's own output, none of the 6 bases does**: ``handler(source)`` returns
+    ``{"type": "model"}`` for all six, because ``lower/union.py`` refuses a root that
+    declares its own properties, so an emitted base has no field to reference anything and
+    its schema has no definitions to hoist.
+
+    So the clause is live code with 0 sites in the tree, and it is graded here instead --
+    by handing the hook a handler that returns a ``definitions`` node and asserting where
+    the key landed.  Said rather than left implicit: perturbing the unwrap reddens this
+    test and nothing else.
+    """
+    from pydantic_core import core_schema
+
+    model_node = core_schema.model_schema(
+        A2UIBoundValueStub := type("A2UIBoundValueStub", (), {}), core_schema.any_schema()
+    )
+    wrapped_in_definitions = core_schema.definitions_schema(model_node, [core_schema.int_schema()])
+
+    class Handler:
+        def __call__(self, source: Any) -> Any:
+            return json.loads(json.dumps(wrapped_in_definitions, default=str)) or wrapped_in_definitions
+
+        def generate_schema(self, obj: Any) -> Any:
+            return core_schema.any_schema()
+
+    class Fixture(BranchDispatchMixin):
+        _branch_models: ClassVar[tuple[type, ...]] = (A2UIBoundValueStub,)
+
+    got = Fixture.__get_pydantic_core_schema__(Fixture, Handler())
+    assert got["type"] == "definitions", got["type"]
+    assert "serialization" not in got, "a serialization key on a definitions node is not consulted"
+    assert got["schema"]["type"] == "function-wrap", got["schema"]["type"]
+    assert got["schema"]["serialization"]["type"] == "function-wrap"
+
+    # and the other arm: a plain model schema comes back as the function-wrap itself
+    class PlainHandler(Handler):
+        def __call__(self, source: Any) -> Any:
+            return core_schema.model_schema(A2UIBoundValueStub, core_schema.any_schema())
+
+    plain = Fixture.__get_pydantic_core_schema__(Fixture, PlainHandler())
+    assert plain["type"] == "function-wrap", plain["type"]
+    assert plain["serialization"]["type"] == "function-wrap"
+
+    # the measurement the docstring states, re-taken here so it cannot go stale silently
+    assert emitted_unions()
+    for document in emitted_unions():
+        base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
+        assert base.model_fields == {}, (document, sorted(base.model_fields))
+
+
+def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointer() -> None:
+    """D3's last rule, which is to refuse.
+
+    A branch is named by its ``title``, else by the discriminator ``const``, else by its
+    sorted required set.  A branch with none of those has no identity, and the rule a
+    previous generator reached for -- name the sole classed branch after its PARENT --
+    makes a class name a function of what its siblings happen to be, so adding a branch
+    renames an unrelated class.
+
+    Graded on a bundle of its own, because the refusal has to be reachable with every
+    OTHER keyword satisfied: in the 3.2 bundle a nameless branch always sits beside a
+    keyword that refuses first, so a test over the bundle would assert the wrong refusal.
+    The control is the same document with a title added, which emits.
+    """
+    nameless = {
+        "title": "Nameless",
+        "type": "object",
+        "oneOf": [
+            {"type": "object", "properties": {"a": {"type": "string"}}},
+            {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]},
+        ],
+    }
+    (BUNDLE_FIXTURE := Path(tempfile.mkdtemp())) / "x.json"
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(nameless))
+    out = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert out.emitted == {}
+    assert out.refusals["x.json"]["keyword"] == "title", out.refusals
+    assert out.refusals["x.json"]["pointer"] == "/oneOf/0", out.refusals
+
+    titled = json.loads(json.dumps(nameless))
+    titled["oneOf"][0]["title"] = "The First Arm"
+    (BUNDLE_FIXTURE / "x.json").write_text(json.dumps(titled))
+    control = emit.emit(BUNDLE_FIXTURE, ["x.json"])
+    assert control.refusals == {}, control.refusals
+    assert "TheFirstArm" in control.files["x.py"], control.files["x.py"]
+    shutil.rmtree(BUNDLE_FIXTURE)
+
+
+def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
+    """The step's own arithmetic: 156 union roots, 7 emitted and 149 refused, each named.
+
+    The by-keyword profile is asserted as a WHOLE rather than as a total, because the
+    profile is the readable result of the step -- it says which later step unblocks what.
+    ``allOf`` dominating is the measurement that says this step is not the bottleneck:
+    64 of the 150 are waiting on step 4.
+    """
+    out = emit.emit(BUNDLE, population())
+    roots = union_roots()
+    emitted = [d for d in roots if d in out.emitted]
+    refused = [d for d in roots if d in out.refusals]
+    assert len(roots) == 156
+    # 7 and not the 6 this lane measured alone: ``core/reporting-control-total.json``
+    # carries a nested ``enum``, so it emits only with step 3's row beside this one --
+    # joint unblocking, which no single lane could reach.
+    assert len(emitted) == 7, emitted
+    assert len(refused) == 149
+    assert len(emitted) + len(refused) == len(roots)
+    assert emitted == emitted_unions()
+
+    profile: dict[str, int] = {}
+    for document in refused:
+        row = out.refusals[document]
+        assert row["keyword"] and row["pointer"], document
+        profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
+    assert profile == {
+        "allOf": 64,  # step 4
+        "properties": 23,  # a root conjunct; see lower/union.py's docstring
+        "type": 21,  # a node with properties and no type admits a non-object
+        "$ref": 10,  # a bare-$ref branch has no node to declare a subclass from
+        "not": 9,  # step 7 (D6)
+        "definitions": 7,
+        "anyOf": 3,  # a nested union
+        "enum": 2,  # step 3
+        "if": 2,  # step 7 (D6)
+        "$defs": 2,
+        "const": 2,
+        "oneOf": 1,
+        "additionalProperties": 1,
+        "dependencies": 1,  # step 7 (D6)
+        "enumMetadata": 1,
+    }, profile
+
+
+def test_an_object_node_with_properties_and_no_type_refuses_because_it_admits_a_non_object() -> None:
+    """The narrowing step 5's branches were the first population to reach.
+
+    JSON Schema applies ``properties`` only to objects and asserts nothing about anything
+    else, so ``{"properties": {...}, "required": [...]}`` with no ``type`` ADMITS a
+    string and a number.  No class can, so the model is narrower than its document -- and
+    it is the accepts check that reports it, as ``model_type`` on a valid instance.
+
+    ``lower_object`` read ``type in (None, "object")`` until this step, and 0 of the 43
+    documents emitted before it exercise the ``None`` arm, so the tolerance was latent.
+    Both halves are asserted here: that the document really does admit a non-object, and
+    that the emitter now refuses at ``type``.
+
+    Two union roots left the emitted set when this was fixed --
+    ``core/activation-key.json`` and ``core/reporting-write-destination.json``, whose
+    branches declare no ``type`` -- and both were reporting
+    ``accepts:model_refused_valid`` before it.
+    """
+    node = {"properties": {"a": {"type": "string"}}, "required": ["a"]}
+    for admitted in ("hello", 42, [1], {"a": "x"}):
+        assert jsonschema.Draft7Validator(node).is_valid(admitted), admitted
+
+    into = Path(tempfile.mkdtemp())
+    (into / "x.json").write_text(json.dumps({"title": "X", **node}))
+    out = emit.emit(into, ["x.json"])
+    assert out.refusals["x.json"]["keyword"] == "type", out.refusals
+    (into / "x.json").write_text(json.dumps({"title": "X", "type": "object", **node}))
+    assert emit.emit(into, ["x.json"]).refusals == {}  # the control: type: object emits
+    shutil.rmtree(into)
+
+    # and no document emitted before this step relied on the tolerance
+    assert [d for d in sorted({g.ref.document for g in graded()})
+            if bundle.read(BUNDLE, d).get("type") is None and "properties" in bundle.read(BUNDLE, d)] == []
+
+
+def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> None:
+    """``harness._entails_type``, in both directions, and why it is not a tolerance.
+
+    §4's base is a pydantic model, so it renders ``type: object``; 7 of this bundle's
+    union roots state their branches' type and not their own, and a ``const`` property
+    renders ``{"const": ..., "type": ...}`` where the document states only the ``const``.
+    Both are facts the model states and the document does not, which the symmetric
+    comparison reports as a narrowing -- correctly, as a rule, and wrongly for these,
+    because the document's own node already admits only instances of that type.
+
+    So the predicate is asked of the DOCUMENT and this grades it three ways:
+
+    * every site the rule excuses in the committed tree really does have a document that
+      refuses an instance of every other type -- asserted against ``jsonschema``, not
+      asserted of the rule;
+    * a typeless node with nothing forcing a type is still reported;
+    * the two derivations are each reached, so neither is dead.
+    """
+    from codegen.harness import _entails_type
+
+    # Direction 1: every site the rule excuses in the committed tree, with the DOCUMENT
+    # asked whether it really refuses an instance of every other type.  The sites are
+    # enumerated off the tree rather than listed, so a new one is graded by itself.
+    excused: list[tuple[SchemaRef, str, str]] = []
+    for g in graded():
+        if not isinstance(g.model, type):
+            continue
+        doc = schema_at(g.ref)
+        nodes = [("", doc), *sorted((doc.get("properties") or {}).items())]
+        for where, node in nodes:
+            if not isinstance(node, dict) or "type" in node:
+                continue
+            for kind in sorted(_NOT_OF_TYPE):
+                if not _entails_type(node, kind):
+                    continue
+                excused.append((g.ref, where, kind))
+                for other in _NOT_OF_TYPE[kind]:
+                    assert not jsonschema.Draft7Validator(node).is_valid(other), (
+                        g.ref,
+                        where,
+                        kind,
+                        other,
+                    )
+    kinds = {k for _, _, k in excused}
+    # 6 union bases whose root states no ``type`` of its own, plus the 2 const-pinned
+    # branch properties of ``core/destination.json`` whose node states only the ``const``.
+    assert len(excused) == 8, excused
+    assert kinds == {"object", "string"}, kinds
+    assert sum(1 for _, where, _ in excused if where == "") == 6, excused
+    assert sum(1 for _, where, _ in excused if where != "") == 2, excused
+
+    # direction 2: nothing forcing a type is still reported
+    assert _entails_type({"properties": {"a": {"type": "string"}}}, "object") is False
+    assert _entails_type({}, "string") is False
+    assert _entails_type({"minLength": 1}, "string") is False
+    # a combinator whose branches disagree, or which leaves one typeless, forces nothing
+    assert _entails_type({"oneOf": [{"type": "object"}, {"type": "string"}]}, "object") is False
+    assert _entails_type({"oneOf": [{"type": "object"}, {}]}, "object") is False
+    # ... and the comparison still reddens for a model that invents one
+    narrower = compare_schema(
+        {"properties": {"a": {}}},
+        TypeAdapter(Annotated[str, Field(min_length=1)]),
+    )
+    assert narrower.outcome != "pass", narrower
+
+    # direction 3: both derivations are reached
+    assert _entails_type({"const": "platform"}, "string") is True
+    assert _entails_type({"const": 3}, "integer") is True
+    assert _entails_type({"const": True}, "boolean") is True  # and not "integer"
+    assert _entails_type({"const": True}, "integer") is False
+    assert _entails_type({"oneOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
+    assert _entails_type({"anyOf": [{"type": "object"}, {"type": "object"}]}, "object") is True
+
+
+#: A value of every type other than the keyed one, for the refusal check above.
+_NOT_OF_TYPE = {
+    "string": [1, True, {}, [], None],
+    "object": ["s", 1, True, [], None],
+    "integer": ["s", {}, [], None, 1.5],
+    "number": ["s", {}, [], None],
+    "boolean": ["s", {}, [], None],
+    "array": ["s", 1, True, {}, None],
+    "null": ["s", 1, True, {}, []],
+}
+
+
+def test_the_dispatch_table_is_unordered_so_two_rows_claiming_one_document_is_a_build_failure() -> None:
+    """§ Layout: a document selected by two rows is a build failure, not a precedence
+    puzzle.
+
+    The rows in the table are disjoint -- which is what the union clause in
+    ``bundle.declares_its_own_root_kind`` is for: without it ``is_object_root`` and
+    ``union_root`` both claim 35 documents and ``is_scalar_root`` and ``union_root`` both
+    claim 1.  That disjointness is asserted over the whole bundle below, and the failure
+    ITSELF is graded on a table built to collide, because no bundle document can reach it.
+    """
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        selecting = [low.__name__ for selector, low in emit.ROWS if selector(doc)]
+        assert len(selecting) <= 1, (document, selecting)
+    # the control: every row of the table selects something, so the assertion above is not
+    # satisfied by a table nothing matches
+    claimed = {low.__name__: 0 for _, low in emit.ROWS}
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for selector, low in emit.ROWS:
+            if selector(doc):
+                claimed[low.__name__] += 1
+    assert all(claimed.values()), claimed
+
+    from codegen.lower import union
+
+    collides = ((lambda d: True, emit._object_root), (lambda d: True, emit._union_root))
+    with mock.patch.object(emit, "ROWS", collides):
+        with pytest.raises(emit.AmbiguousRoot, match="all select this root"):
+            emit.lower_document(PAGINATION, bundle.read(BUNDLE, PAGINATION))
+
+
+def test_a_union_lowering_is_reached_only_through_the_table_and_the_table_is_the_population() -> None:
+    """A row cannot claim a document its step does not count.
+
+    The selector IS the population test -- ``bundle.union_root`` is both the dispatch row's
+    predicate and what ``union_roots()`` counts here -- and the lowering reads its keyword
+    through ``lower.union.keyword``, which is where it lives and which the selector is
+    built ON -- D13's import rule makes the lowering own the read and ``bundle`` read it.  So
+    there is no second definition of "is a union root" for the two to disagree through.
+    """
+    from codegen.lower import union
+
+    assert union.keyword is not None
+    rows = [low for selector, low in emit.ROWS if selector is bundle.union_root]
+    assert rows == [emit._union_root], rows
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        assert bundle.union_root(doc) == (union.keyword(doc) is not None), document
 
 
 def _pydantic_names(json_schema_keywords: set[str]) -> set[str]:
