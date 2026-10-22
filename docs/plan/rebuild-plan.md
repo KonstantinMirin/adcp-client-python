@@ -310,8 +310,7 @@ A step that wants to change one of these reports it and stops.
   the packages that make the bundle's formats checkable: `rfc3339-validator` for `date-time`
   and `rfc3987` for `uri`, beside the `date`, `email`, `ipv4`, `ipv6`, `regex`, `time` and
   `uuid` checkers `jsonschema` carries. Without them 749 of the bundle's 807 format uses go
-  ungraded — `date-time` 438, `uri` 300, `hostname` 10, `uri-template` 1, counted over the
-  1,057 documents outside `bundled/` and `mcp/` — and a format-derived type is then narrower
+  ungraded — `date-time` 438, `uri` 300, `hostname` 10, `uri-template` 1,  — and a format-derived type is then narrower
   than its document, which no check reports because the accepts check draws through
   `hypothesis_jsonschema` and that honours the format when generating.
 
@@ -332,17 +331,11 @@ A step that wants to change one of these reports it and stops.
   as a mapping value: once it has a symbol, `dict[str, Tags]` is a plain reference and needs
   nothing from the compiler.
 
-  **The key census, re-measured.** Over the 1,054 portable documents at TYPE positions — never
-  under `not`, `if`, `then` or `else`, where a `required` or a `propertyNames` is a rule and no
-  mapping is lowered — two independent instruments agree on `propertyNames` with a `pattern`
+  **The key census, re-measured.** At TYPE positions, two independent instruments agree on `propertyNames` with a `pattern`
   (13), with a length bound (3), with an `anyOf` (1), and with an `enum` (1), and differ on
   `propertyNames` with a `$ref` (5 or 7), `patternProperties` (12 or 14) and the sites saying
   nothing about keys (63 or 128). Where they differ the plan carries the range, because a
   figure two instruments disagree about is not a fact yet.
-
-  An earlier revision of this paragraph gave 16, 22, 9, 38, 4, 86, 1 and 193. Those were
-  counted over all 1,625 files including the `bundled/` and `mcp/` projections, which are the
-  same documents again, so each was inflated between three and twenty times.
 
   **The mechanism's reachable population is zero today.** Over the keyword-clean documents the
   emitter currently reaches there are 0 `propertyNames` and 0 `patternProperties` sites, so
@@ -361,8 +354,7 @@ A step that wants to change one of these reports it and stops.
   constraint. The counts, and the one row where two instruments disagree, are in D5.
 
   **An `enum` under `propertyNames` closes the key set, and the document is refused by name
-  with the key set in the detail.** An earlier revision made it a model whose keys are its
-  fields. Its single TYPE-position site is `core/store-item.json#/properties/hours`, and that
+  with the key set in the detail.** Its single TYPE-position site is `core/store-item.json#/properties/hours`, and that
   document refuses on another keyword before any mapping is lowered — so the model would reach
   no document and no pair would grade it, which is the same reasoning that refuses the
   root-array row rather than emitting a class nothing reaches. Build it when a document reaches
@@ -494,8 +486,7 @@ A step that wants to change one of these reports it and stops.
   exception class defined there has two identities and `except Refusal` misses the one a
   lowering raised.
 
-- **D13 — the dispatch seam, stated exactly.** Three lanes invented three seams because an
-  earlier revision named a table that did not exist. The seam is:
+- **D13 — the dispatch seam.**
 
   - **The table lives in `codegen/emit.py`** as `ROWS`, a tuple of `(selector, lowering)` pairs,
     unordered. `emit` imports each lowering.
@@ -531,6 +522,21 @@ population test, so a row cannot claim a document its step does not count.
 
 The bundle size is read from the bundle, never written here. N is the emitted count and the
 refusal list is its complement.
+
+**Every measurement in this build is taken over `schemas/cache/<version>/` excluding the
+`bundled/` and `mcp/` directories.** Those two are projections of the same documents, so
+counting them multiplies every figure. A number quoted without that exclusion is void.
+
+Three further rules for any count, because each has produced a wrong figure:
+
+- **Walk `$defs` and `definitions`.** A walk that descends only `properties`, `items`,
+  `additionalProperties`, `not`, `propertyNames`, `allOf`, `anyOf`, `oneOf`, `if`, `then`,
+  `else`, `patternProperties` and `contains` is blind to the internal nodes of 46 documents.
+- **Count TYPE positions separately from rule positions.** Under `not`, `if`, `then` or `else`
+  a keyword is a rule (D6) and no type is lowered from it, so a census that mixes the two is
+  counting two different things.
+- **A figure two instruments disagree about is not a fact.** Carry the range and say both, or
+  leave the number out. Do not pick one.
 
 The harness runs three checks, two of which keep the names the code gives them.
 
@@ -600,13 +606,11 @@ is generic, so it lands in step 1.
 - **The lazy loading of the public surface.** Step 10 generates the contents of a package's
   `__init__`, not the mechanism by which it loads.
 
-**One rule is deliberately superseded.** An earlier design made the flat root a second total
-import path — `adcp.types.<Class>` resolving for every class, alongside the per-domain path.
-This specification keeps **one** path (§1): a class is reachable at
-`adcp.types.<domain>.<Class>` and nowhere else, with a generated class-name-to-module mapping
-for mechanical resolution. Two spellings for one class make an import non-deterministic in the
-way that matters. The collision rule from that design survives intact: a class name bound to
-two nodes is a build failure naming both nodes, never a rename table.
+**`docs/plan/sdk-type-generation.md` P8 does not bind.** It makes the flat root a second total
+import path, `adcp.types.<Class>` resolving for every class alongside the per-domain one. This
+specification keeps one path (§1) and that clause of P8 is superseded; the rest of P8 binds,
+including its collision rule — a class name bound to two nodes is a build failure naming both,
+never a rename table.
 
 ## 9. Not settled
 
