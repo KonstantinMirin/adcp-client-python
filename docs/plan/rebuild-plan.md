@@ -120,6 +120,23 @@ class PaginationRequest(AdCPBaseModel):
 `SchemaRef` is a document path plus a JSON pointer, because a nested class is a subschema and
 answers for its own node rather than the whole document.
 
+**A `SchemaRef` names a node AS THE DOCUMENT APPLIES IT**, not the subschema read alone. The
+pairing was fixed at `(document, pointer)` without saying how the pointer RESOLVES, and a bare
+pointer walk is a different schema from the one the document applies at that location: draft-07
+applies a root's `type: object` to every `oneOf` branch beneath it, so a branch read alone
+admits a non-object its document refuses. That gap was latent while it could not be reached —
+for every class emitted before union branches existed, the bare node and the applied node
+coincided, because each either declares its own `type` or sits under a `properties` hop. Ten
+documents reached it: each declares `type: "object"` at its root and was refused one combinator
+hop below for not restating it.
+
+**The consequence is that a check and a resolution must agree, or relaxing either one is a
+defect.** Admitting the branch while the resolution still returned the bare node produced four
+pairs reporting `accepts:model_refused_valid` with an `added` fact apiece — the model saying
+`object` where the resolved schema said nothing. Given that resolution the original refusal was
+CORRECT, so fixing only the check would have been the forbidden relaxation reached from the
+other side.
+
 That reference is what makes the runtime contract and the test instrument generic:
 
 - **`strict_validate`**, once on `AdCPBaseModel`: read `cls.__adcp_schema__`, validate the
