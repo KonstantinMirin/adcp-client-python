@@ -615,7 +615,9 @@ def test_no_document_of_the_bundle_declares_two_symbols_at_one_pointer() -> None
     ``Module.declared`` a map a reference can read."""
     out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
     double = {
-        d: r for d, r in out.refusals.items() if "two nodes are declared at this pointer" in r["detail"]
+        d: r
+        for d, r in out.refusals.items()
+        if "two nodes are declared at this pointer" in r["detail"]
     }
     assert double == {}, double
 
