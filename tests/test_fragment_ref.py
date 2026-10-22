@@ -1,9 +1,20 @@
-"""An absolute ``$ref`` that names a NODE inside another document.
+"""A ``$ref`` that names a NODE -- inside another document, or inside this one.
 
-`salesagent-j3k2l.14`.  A separate module from ``tests/test_emit.py`` because this
-grades one mechanism end to end -- the ``#`` reading, the resolver's store, the name
-a referenced node gets, and the import a referring module writes -- and because
-``test_emit`` holds the metric constants that are re-measured once per epic.
+`salesagent-j3k2l.14` (the absolute half) and `salesagent-j3k2l.20` (the local half).
+A separate module from ``tests/test_emit.py`` because this grades one mechanism end to
+end -- the ``#`` reading, the resolver's store, the name a referenced node gets, and
+the import a referring module writes -- and because ``test_emit`` holds the metric
+constants that are re-measured once per epic.
+
+**One module for both halves because they are one mechanism split by the document
+half.** ``bundle.split_ref`` reads the ``#`` once; ``bundle.named_nodes`` asks for a
+symbol once, keyed on the document the reference RESOLVES AGAINST -- the one its
+document half names, or the referrer when that half is empty; ``Module.declared`` maps
+pointer to symbol once; and D3's nested rule names the node once.  They part company at
+the last step and only there: an absolute reference becomes an IMPORT of a symbol the
+target module declares (``emit.emit``'s binder), and a local one is a lookup in the
+module being written (``compiler.local_reference``).  Grading them in two files would
+be two records of one ``#``.
 
 **The population this mechanism serves is almost entirely GATED BEHIND OTHER STEPS,
 and that is why the constructed-bundle cases below exist.**  Measured at the sha this
@@ -83,8 +94,14 @@ def kwargs_of(annotation: ast.AST) -> set[str]:
     }
 
 
-def constraint_aliases() -> dict[str, set[str]]:
+def constraint_aliases(source: str | None = None) -> dict[str, set[str]]:
     """``adcp.types.constraints`` symbol -> the ``Field(...)`` keywords it states.
+
+    ``source`` is the alias module's TEXT, defaulting to the committed one.  A caller
+    emitting its own bundle passes that run's ``Emitted.beside`` entry instead, for the
+    reason stated above about reading a fresh emission: a constructed bundle resolves a
+    shape the committed module has no reason to carry, and grading against the
+    committed file there would read a population this run did not emit.
 
     D5's rung 3 gave a constrained scalar a THIRD place to live. A node's own alias
     used to carry its constraints as kwargs; now the alias names a type in
@@ -93,7 +110,7 @@ def constraint_aliases() -> dict[str, set[str]]:
     reference keeps the claim -- the constraint is reachable from the alias, and it
     is still nowhere near the property -- without weakening either half of it.
     """
-    source = Path("src/adcp/types/constraints.py").read_text()
+    source = Path("src/adcp/types/constraints.py").read_text() if source is None else source
     out: dict[str, set[str]] = {}
     for node in ast.parse(source).body:
         if isinstance(node, ast.Assign) and len(node.targets) == 1:
@@ -264,9 +281,12 @@ def test_a_local_reference_resolves_against_the_referrer_with_no_store_entry() -
     inlining -- and those three (``core/bidding-policy-capability.json``,
     ``core/placement-presentation.json``,
     ``governance/reported-outcome-error.json``) carry 4, 8 and 10 of them.  All three
-    are refused in the lowering on ``definitions``, so no pair grades a document with
-    a reference left in it; the step whose population emits one meets this, and the
-    answer there is a recursive model, not a deeper resolver.
+    are still refused in the lowering, so no pair grades a document with a reference
+    left in it -- but no longer on ``definitions``: since `salesagent-j3k2l.20` they
+    refuse on ``allOf``, ``const`` and ``maxProperties``, each inside the section the
+    walk now descends.  The answer when one of them emits is a recursive model, not a
+    deeper resolver, and ``compiler.local_reference`` refuses the cycle by name until
+    there is one.
     """
     local = [
         d
@@ -300,20 +320,57 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     byte compare would then grade whichever that was.  So the same document emitted
     ALONE and emitted with everything else produces the same module -- asserted here
     on the one named document that lowers.
+
+    A LOCAL reference satisfies P7 for a sharper reason, and `salesagent-j3k2l.20` is
+    why it is in here now: the document asking and the document asked are the same
+    file, so no other document of the bundle can affect the answer at all.
     """
     named = bundle.named_nodes(BUNDLE)
-    assert len(named) == 19, sorted(named)
-    assert sum(len(p) for p in named.values()) == 76, sum(len(p) for p in named.values())
+    # 54 documents and 216 pointers, in three parts that are asserted separately
+    # below: 19 / 76 from the ABSOLUTE fragment references, 45 / 157 from the LOCAL
+    # ones, and 10 / 17 counted in both because the same document -- in 17 cases the
+    # same pointer -- is named by each kind.
+    assert len(named) == 54, sorted(named)
+    assert sum(len(p) for p in named.values()) == 216, sum(len(p) for p in named.values())
     assert named["core/version-envelope.json"] == frozenset(
         {"/properties/adcp_version", "/properties/adcp_major_version"}
     )
-    # A LOCAL reference contributes nothing here: it names a node of its own document,
-    # so there is no import and no cross-module symbol.
-    # ``core/bidding-policy-capability.json`` references only itself, 4 times, and a
-    # scan that read a local ref as naming a document would list it with those four
-    # pointers -- so its ABSENCE is the assertion, and the 76 above is the other half
-    # (counting the bundle's 154 local refs in would not leave 76).
-    assert "core/bidding-policy-capability.json" not in named, sorted(named)
+
+    # The two kinds, split by the document half the way ``split_ref`` splits it, so a
+    # regression that dropped either arm reddens with the arm named rather than moving
+    # one total.
+    halves: dict[bool, dict[str, set[str]]] = {True: {}, False: {}}
+    known = set(bundle.portable(BUNDLE))
+    for document in known:
+        for _, uri in bundle.references(bundle.read(BUNDLE, document)):
+            head, pointer = bundle.split_ref(uri)
+            if not pointer:
+                continue
+            target = bundle.document_for(head, known) if head else document
+            if target is not None:
+                halves[bool(head)].setdefault(target, set()).add(pointer)
+    absolute, local_refs = halves[True], halves[False]
+    assert (len(absolute), sum(len(p) for p in absolute.values())) == (19, 76)
+    assert (len(local_refs), sum(len(p) for p in local_refs.values())) == (45, 157)
+    both = set(absolute) & set(local_refs)
+    assert len(both) == 10, sorted(both)
+    assert sum(len(absolute[d] & local_refs[d]) for d in both) == 17
+
+    # ``core/bidding-policy-capability.json`` references only itself, 4 times.  It is
+    # here now, under its OWN name and its own four pointers -- which is the whole of
+    # `salesagent-j3k2l.20`'s bundle-side change, and the assertion was its ABSENCE
+    # before that.
+    assert named["core/bidding-policy-capability.json"] == frozenset(
+        {
+            "/definitions/max_bid_with_cost_per",
+            "/definitions/max_bid_with_roas",
+            "/definitions/policy_profile",
+            "/definitions/scope_capability",
+        }
+    ), sorted(named["core/bidding-policy-capability.json"])
+    # And it is not listed as a TARGET of anything else: a local reference names its
+    # own document and never another, so no absolute half resolved to it.
+    assert "core/bidding-policy-capability.json" not in absolute
 
     document = "core/version-envelope.json"
     alone = emit.emit(BUNDLE, [document])
@@ -594,19 +651,22 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     assert "core/refuses.json is refused" in refusal_for(root, "core/plain.json")["detail"]
 
 
-def test_a_local_fragment_reference_is_refused_by_name_pointer_and_keyword(
+def test_a_local_pointer_naming_no_node_of_this_document_is_refused_with_it_named(
     tmp_path: Path,
 ) -> None:
-    """The import half for a pointer into the document ITSELF is not built.
+    """A local reference resolves against the REFERRER, so a pointer naming nothing in
+    the referrer names nothing at all.
 
-    0 of the documents that lower carry one: all 45 that do refuse on
-    ``definitions``/``$defs``, the keyword such a reference points through.  So the
-    symbol would be one the module is in the middle of writing, and the refusal says
-    so by name rather than a later step finding a silent drop.
+    This is :func:`compiler.local_reference`'s own "no such node", and it is the local
+    twin of ``test_a_fragment_naming_a_node_the_walk_never_reaches_is_refused_with_it_named``
+    above.  It must not fall back to the root: binding a pointer to the document's own
+    root class would hand the property a model for the WHOLE document where the
+    document names one node of it -- wider than its schema, and silent.
+
+    The document carries NO section at all, which is the whole of the fixture: the
+    pointer is spelled as if one existed, so the only thing this document cannot lower
+    is the reference.
     """
-    # No ``definitions`` section: that keyword refuses first in every real document
-    # carrying one, so including it here would grade THAT refusal and this one would
-    # never fire.  The reference is the only thing this document cannot lower.
     doc = {
         "title": "Points At Itself",
         "type": "object",
@@ -617,6 +677,13 @@ def test_a_local_fragment_reference_is_refused_by_name_pointer_and_keyword(
     assert r["keyword"] == "$ref", r
     assert r["pointer"] == "/properties/x", r
     assert "#/definitions/inner" in r["detail"], r
+    assert "names no node of this document" in r["detail"], r
+
+    # And a section that exists without the entry reads the same way: the section is
+    # not what is missing, the NODE is.
+    doc = {**doc, "definitions": {"other": {"type": "string"}}}
+    root = write_bundle(tmp_path / "b", {"core/selfref.json": doc})
+    assert "names no node of this document" in refusal_for(root, "core/selfref.json")["detail"]
 
 
 def test_two_symbols_at_one_pointer_is_refused_rather_than_ordered() -> None:
@@ -692,3 +759,417 @@ def test_the_emitted_module_imports_and_the_aliased_fields_still_decide() -> Non
         with pytest.raises(ValidationError) as err:
             refuse()
         assert key in str(err.value), (key, str(err.value)[:200])
+
+
+# --------------------------------------------------------------------------- #
+# the LOCAL half (`salesagent-j3k2l.20`): a pointer into the document being written
+# --------------------------------------------------------------------------- #
+#: A document whose root references its own ``definitions`` entries, in the three
+#: shapes the bundle's 157 local-section entries take: an object (which D2 makes a
+#: class), a constrained scalar (an annotation, so it needs a name of its own), and one
+#: nothing references at all.
+#:
+#: The constrained scalar is the same ``{string, minLength: 2, maxLength: 9}`` shape
+#: :data:`TARGET` uses for the absolute half, deliberately: the two halves then grade
+#: one node shape, so a divergence between them is a divergence in the mechanism rather
+#: than in the fixture.
+SECTIONS = {
+    "title": "Catalog",
+    "type": "object",
+    "properties": {
+        "slot": {"$ref": "#/definitions/slot"},
+        "code": {"$ref": "#/definitions/code"},
+        # A SECOND reference to one entry: the memo answers it, so no second symbol
+        # appears for one node.
+        "also_code": {"$ref": "#/definitions/code"},
+        "plain": {"type": "string"},
+    },
+    "required": ["slot"],
+    "definitions": {
+        "slot": {"type": "object", "properties": {"a": {"type": "string"}}, "required": ["a"]},
+        "code": {"type": "string", "minLength": 2, "maxLength": 9},
+        "unused": {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]},
+    },
+}
+
+
+def declared_in(source: str) -> dict[str, ast.AST]:
+    """Every module-level name a rendered module BINDS, in body order.
+
+    A class, an ``Annotated`` alias and an annotated assignment alike, because D2 makes
+    a referenced node any of the three and the claims below are about the SYMBOL rather
+    than about which shape it took.
+    """
+    out: dict[str, ast.AST] = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.ClassDef):
+            out[node.name] = node
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            out[node.target.id] = node.value if node.value is not None else node
+        elif isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            out[node.targets[0].id] = node.value
+    return out
+
+
+def fields_of(source: str, name: str) -> dict[str, ast.AST]:
+    """``field -> annotation`` for the class ``name`` of a rendered module."""
+    cls = next(
+        c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name
+    )
+    return {
+        t.target.id: t.annotation
+        for t in cls.body
+        if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
+    }
+
+
+def schema_ref_of(source: str, name: str) -> str:
+    """The ``__adcp_schema__`` expression in the class ``name``'s own body."""
+    cls = next(
+        c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name
+    )
+    return next(
+        ast.unparse(t.value)
+        for t in cls.body
+        if isinstance(t, ast.AnnAssign) and getattr(t.target, "id", None) == "__adcp_schema__"
+    )
+
+
+def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
+    tmp_path: Path,
+) -> None:
+    """The exit condition for the local half, and every claim here is load-bearing.
+
+    A local reference resolves against the REFERRER, so there is no module to import
+    from: the symbol is one THIS module declares, the property NAMES it, and no import
+    is written for it.  Each half passes while another fails -- a symbol nothing names
+    is dead code, a property restating the entry's bound spells the fact twice, and an
+    import of a local symbol is an ``ImportError`` no AST assertion sees.
+    """
+    root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
+    out = emit.emit(root, ["core/catalog.json"])
+    assert out.refusals == {}, out.refusals
+    # The closure is this document ALONE: a local reference names no other document.
+    assert sorted(out.emitted) == ["core/catalog.json"], out.emitted
+
+    source = out.files["core/catalog.py"]
+    declared = declared_in(source)
+    # D3's nested rule with the document as the parent: root symbol + the entry's key.
+    assert "CatalogSlot" in declared, sorted(declared)
+    assert "CatalogCode" in declared, sorted(declared)
+    assert isinstance(declared["CatalogSlot"], ast.ClassDef), "an object entry is a class"
+
+    imported = {
+        a.name
+        for n in ast.walk(ast.parse(source))
+        if isinstance(n, ast.ImportFrom)
+        for a in n.names
+    }
+    assert not {"CatalogSlot", "CatalogCode"} & imported, sorted(imported)
+
+    fields = fields_of(source, "Catalog")
+    for key, symbol in (
+        ("slot", "CatalogSlot"),
+        ("code", "CatalogCode"),
+        ("also_code", "CatalogCode"),
+    ):
+        got = fields[key]
+        assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
+        # Nothing but a name and an annotation rides on the property: the entry's own
+        # bound has nowhere else in the module to hide.
+        extra = kwargs_of(got) - {"description", "alias", "default", "json_schema_extra"}
+        assert extra == set(), (key, sorted(extra))
+    # One symbol for one node, though two properties name it.
+    assert source.count("CatalogCode = ") == 1, source
+    # The bound IS reachable from the alias -- here through the type D5 names it once
+    # as, read off THIS run's alias module rather than the committed one.
+    named = constraint_aliases(out.beside["constraints.py"])
+    assert {"min_length", "max_length"} <= stated_by(declared["CatalogCode"], named), named
+
+    # Each entry's symbol is bound BEFORE the root class that uses it, which is what
+    # declaring on demand buys: the module is valid Python read top to bottom.
+    names = list(declared)
+    assert names.index("CatalogSlot") < names.index("Catalog"), names
+    assert names.index("CatalogCode") < names.index("Catalog"), names
+
+
+def test_a_local_entry_that_is_a_class_names_its_own_pointer_and_not_the_roots(
+    tmp_path: Path,
+) -> None:
+    """Section 2's rule, at a pointer no pair had ever named before this step.
+
+    A declared node carries ``__adcp_schema__`` naming ITS OWN node -- this document,
+    and the pointer of the entry -- never the root's ``#``.  There is no binding table
+    and no adapter, so the class finds its schema through its own attribute and a
+    grader cannot be aimed at the wrong node.
+    """
+    root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
+    out = emit.emit(root, ["core/catalog.json"])
+    entry = schema_ref_of(out.files["core/catalog.py"], "CatalogSlot")
+    assert "core/catalog.json" in entry, entry
+    assert "#/definitions/slot" in entry, entry
+    # And the root's is the ROOT's, so the two are not one string.
+    root_ref = schema_ref_of(out.files["core/catalog.py"], "Catalog")
+    assert "#/definitions" not in root_ref, root_ref
+    assert root_ref != entry
+
+    # The pointer LANDS in the document the run writes beside the module, which is what
+    # ``strict_validate`` reads: a ref naming a node the package cannot resolve would
+    # be a class that raises on every validation instead of grading.
+    written = json.loads(out.files["core/catalog.json"])
+    assert node_at(written, "/definitions/slot") is not NOTHING
+    assert node_at(written, "/definitions/slot")["properties"] == {"a": {"type": "string"}}
+
+
+def test_an_entry_nothing_references_is_not_declared(tmp_path: Path) -> None:
+    """**`salesagent-j3k2l.20`'s deliberate decision, asserted in both directions.**
+
+    ``definitions`` and ``$defs`` assert nothing about an instance, so an entry no
+    reference reaches cannot change what the document accepts or refuses -- and
+    declaring it would emit a class no field names, nothing imports and ``__all__``
+    does not export.  Its only reachable effect is the wrong one: a keyword inside a
+    DEAD section would refuse the whole document.
+
+    Measured on the bundle: 11 of the 157 entries in the 40 documents this step
+    unblocks are referenced by nothing, and all 11 sit in ``a2ui/si-catalog.json``,
+    whose 24 ``$ref``\\ s are all inside that dead section -- so declaring them would
+    also pull that target's whole closure into a module no instance reaches.
+
+    The second direction is what makes the first non-vacuous: the same keyword in a
+    REFERENCED entry still refuses, so the pass below is the skip and not a hole in the
+    keyword screen.
+    """
+    root = write_bundle(tmp_path, {"core/catalog.json": SECTIONS})
+    out = emit.emit(root, ["core/catalog.json"])
+    assert "CatalogUnused" not in declared_in(out.files["core/catalog.py"])
+    assert "Unused" not in out.files["core/catalog.py"]
+
+    dead = {
+        **SECTIONS,
+        "definitions": {
+            **SECTIONS["definitions"],
+            # ``const`` is D2's own unlanded row and the keyword 7 of the 40 refuse on
+            # today, so this is the real shape rather than an invented one.
+            "unused": {"type": "object", "properties": {"b": {"const": "x"}}, "required": ["b"]},
+        },
+    }
+    root = write_bundle(tmp_path / "b", {"core/catalog.json": dead})
+    assert emit.emit(root, ["core/catalog.json"]).refusals == {}
+
+    live = {
+        **SECTIONS,
+        "definitions": {
+            **SECTIONS["definitions"],
+            "slot": {"type": "object", "properties": {"a": {"const": "x"}}, "required": ["a"]},
+        },
+    }
+    root = write_bundle(tmp_path / "c", {"core/catalog.json": live})
+    r = refusal_for(root, "core/catalog.json")
+    assert r["keyword"] == "const", r
+    assert r["pointer"] == "/definitions/slot/properties/a", r
+
+
+def test_a_local_reference_to_an_entry_declared_later_costs_nothing(tmp_path: Path) -> None:
+    """Declared ON DEMAND, so a FORWARD reference needs no topological order.
+
+    20 of the bundle's local references name an entry their own document lists after
+    the one referring to it, across 4 documents (``brand.json`` 7,
+    ``core/placement-presentation.json`` 5, ``core/registry-event.json`` 4,
+    ``core/bidding-policy-capability.json`` 4).  An eager pass over the section in
+    document order would need a sort over the reference graph to put each symbol in the
+    module before its user; asking for the symbol is what orders them instead.
+    """
+    doc = {
+        "title": "Chain",
+        "type": "object",
+        "properties": {"a": {"$ref": "#/definitions/first"}},
+        "required": ["a"],
+        "definitions": {
+            # ``first`` is listed FIRST and references ``second``.
+            "first": {
+                "type": "object",
+                "properties": {"x": {"$ref": "#/definitions/second"}},
+                "required": ["x"],
+            },
+            "second": {
+                "type": "object",
+                "properties": {"y": {"type": "string"}},
+                "required": ["y"],
+            },
+        },
+    }
+    root = write_bundle(tmp_path, {"core/chain.json": doc})
+    out = emit.emit(root, ["core/chain.json"])
+    assert out.refusals == {}, out.refusals
+    names = list(declared_in(out.files["core/chain.py"]))
+    assert {"ChainFirst", "ChainSecond", "Chain"} <= set(names), names
+    assert names.index("ChainSecond") < names.index("ChainFirst") < names.index("Chain"), names
+
+
+def test_a_local_reference_cycle_refuses_rather_than_recurring(tmp_path: Path) -> None:
+    """Two entries naming each other is a recursive type, and nothing here spells one.
+
+    0 documents of the bundle are in that position, which is why this refuses rather
+    than growing a forward-declaration scheme -- the same answer, and the same
+    in-flight shape, ``emit.emit`` already gives a cross-DOCUMENT reference cycle.
+    Probed by making it fail: with ``Module.resolving`` removed, both halves below
+    recurse to Python's own limit, which is a ``RecursionError`` at the gate rather
+    than a document refused by name.
+    """
+    doc = {
+        "title": "Loop",
+        "type": "object",
+        "properties": {"a": {"$ref": "#/definitions/one"}},
+        "required": ["a"],
+        "definitions": {
+            "one": {
+                "type": "object",
+                "properties": {"x": {"$ref": "#/definitions/two"}},
+                "required": ["x"],
+            },
+            "two": {
+                "type": "object",
+                "properties": {"y": {"$ref": "#/definitions/one"}},
+                "required": ["y"],
+            },
+        },
+    }
+    root = write_bundle(tmp_path, {"core/loop.json": doc})
+    r = refusal_for(root, "core/loop.json")
+    assert r["keyword"] == "$ref", r
+    # The whole chain is named, so the reader does not have to find the loop again.
+    assert "local reference cycle" in r["detail"], r
+    assert "#/definitions/one" in r["detail"] and "#/definitions/two" in r["detail"], r
+
+    # A SELF reference is the one-hop case and reads the same way.
+    doc = {
+        **doc,
+        "definitions": {
+            "one": {
+                "type": "object",
+                "properties": {"x": {"$ref": "#/definitions/one"}},
+                "required": ["x"],
+            }
+        },
+    }
+    root = write_bundle(tmp_path / "b", {"core/loop.json": doc})
+    assert "local reference cycle" in refusal_for(root, "core/loop.json")["detail"]
+
+
+def test_two_entry_keys_deriving_one_name_fail_the_build(tmp_path: Path) -> None:
+    """``class_name`` strips punctuation, so ``a_b`` and ``a.b`` derive one symbol.
+
+    This is why ``compiler.local_reference`` writes no identifier check of its own: an
+    identifier root concatenated with ``class_name``'s alphanumerics is always an
+    identifier, and what CAN go wrong is a collision, which ``Module.declare`` already
+    fails the build for by naming the symbol.  Probed by making it fail, because a rule
+    nothing can break is a finding about the rule.
+    """
+    doc = {
+        "title": "Collide",
+        "type": "object",
+        "properties": {
+            "p": {"$ref": "#/definitions/a_b"},
+            "q": {"$ref": "#/definitions/a.b"},
+        },
+        "required": ["p", "q"],
+        "definitions": {
+            "a_b": {"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+            "a.b": {"type": "object", "properties": {"y": {"type": "string"}}, "required": ["y"]},
+        },
+    }
+    root = write_bundle(tmp_path, {"core/collide.json": doc})
+    r = refusal_for(root, "core/collide.json")
+    assert r["keyword"] == "title", r
+    assert "CollideAB" in r["detail"], r
+
+
+def test_no_document_of_the_bundle_refuses_on_a_definition_section_any_more() -> None:
+    """`salesagent-j3k2l.20`'s exit condition, over the whole population.
+
+    ``definitions`` and ``$defs`` were 40 of the 653 refusals -- 35 and 5, every one at
+    the root, every one answering "a later D2 row does" with no such row scheduled
+    anywhere.  Each of the 40 now either emits or refuses on a keyword D2 NAMES and a
+    scheduled step owns, which is what a refusal is allowed to say.
+
+    The POPULATION is derived here rather than listed, because a keyword census alone
+    cannot tell a document that moved from one the selectors stopped claiming.
+    """
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert len(out.emitted) + len(out.refusals) == 1054
+    on_sections = {
+        d: r for d, r in out.refusals.items() if r["keyword"] in ("definitions", "$defs")
+    }
+    assert on_sections == {}, on_sections
+
+    roots = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if any(isinstance(bundle.read(BUNDLE, d).get(k), dict) for k in bundle.DEFINITIONS)
+    ]
+    assert len(roots) == 45, roots
+    for document in roots:
+        r = out.refusals.get(document)
+        if r is None:
+            continue
+        assert r["keyword"] not in ("definitions", "$defs"), (document, r)
+        assert r["keyword"] and r["pointer"] and r["detail"], (document, r)
+
+
+def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
+    """The POSITIVE path on the real bundle, which the committed tree cannot grade.
+
+    0 of the 40 documents emit yet -- each is held by a keyword another step owns
+    (``if`` 10, ``const`` 7, ``$ref`` 4, ``anyOf`` 3, ``properties`` 3, and 13 more
+    across eight keywords) -- so no section entry reaches the committed tree and the
+    constructed bundles above are what grade the declaration itself.  What the real
+    bundle grades is the WALK, in the two places it is observable:
+
+    * a refusal at a pointer INSIDE a section is proof the walk descended one.  7
+      documents are in that position, and none was before: every pointer under
+      ``definitions`` used to be unreachable.
+    * a refusal that moved from the root to a property means the walk got FURTHER, and
+      the closure then reaches what those earlier properties name.
+      ``governance/policy-entry.json`` is the case: it refused at ``/`` on ``$defs``
+      before any of its 8 property references was read, and now refuses at
+      ``/properties/acceptance_profile`` -- so the three enum documents its earlier
+      properties name are emitted over step 1, 2 and 4's population, and no member of
+      that population references two of the three from anywhere else.
+    """
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    inside = {
+        d: r["pointer"]
+        for d, r in out.refusals.items()
+        if r["pointer"].lstrip("/").split("/")[0] in bundle.DEFINITIONS
+    }
+    assert len(inside) == 7, inside
+    assert inside["core/response-payload-jws-envelope.json"] == (
+        "/definitions/response_payload/properties/typ"
+    )
+
+    entry = out.refusals["governance/policy-entry.json"]
+    assert entry["pointer"] == "/properties/acceptance_profile", entry
+    read = lambda d: bundle.read(BUNDLE, d)  # noqa: E731
+    pop = sorted(
+        {
+            d
+            for d in bundle.portable(BUNDLE)
+            if bundle.is_leaf_object(read(d))
+            or bundle.references_a_property(read(d))
+            or bundle.composes_at_the_root(read(d))
+        }
+    )
+    reached = set(emit.emit(BUNDLE, pop).emitted)
+    known = set(bundle.portable(BUNDLE))
+    for document in (
+        "enums/governance-domain.json",
+        "enums/policy-category.json",
+        "enums/policy-enforcement.json",
+    ):
+        assert document in reached, document
+        # And the reference that reaches it is one of policy-entry's own.
+        assert document in {
+            bundle.document_for(bundle.split_ref(u)[0], known)
+            for _, u in bundle.references(read("governance/policy-entry.json"))
+            if bundle.split_ref(u)[0]
+        }, document
