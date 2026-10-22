@@ -990,7 +990,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
 
-    assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 2}, seen
+    assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 4}, seen
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
@@ -1010,7 +1010,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 57, stated
+    assert stated == 59, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1177,7 +1177,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (24, 66), distinct
+    assert (len(distinct), sum(distinct.values())) == (28, 78), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1203,7 +1203,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (22, 63), diverges
+    assert (len(diverges), sum(diverges.values())) == (26, 75), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -1381,7 +1381,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     # root that states its own ``additionalProperties``, so a base never has one to
     # carry and takes this default.  The other members are mapping and container
     # roots whose own document is silent too.
-    assert counted["silent"] == 16, counted
+    assert counted["silent"] == 17, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1991,8 +1991,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # 156: roots emit only once another step's row is beside this one -- a nested
     # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
     # combinators left for step 7.  Joint unblocking, which no single lane reaches.
-    assert len(emitted) == 10, emitted
-    assert len(refused) == 116
+    assert len(emitted) == 11, emitted
+    assert len(refused) == 115
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2017,7 +2017,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "oneOf": 1,
         "additionalProperties": 1,
         "enumMetadata": 1,
-        "pattern": 1,  # D5's alias module (a constraint inside a container)
+        # The `pattern` row is GONE: it was "a constraint inside a container", and
+        # D5's alias module names that type now, so the document emits instead.
     }, profile
 
 
@@ -2103,9 +2104,9 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     # One per union base whose root states no ``type`` of its own, plus the 2
     # const-pinned branch properties of ``core/destination.json`` whose node states
     # only the ``const``.
-    assert len(excused) == 10, excused
+    assert len(excused) == 11, excused
     assert kinds == {"object", "string"}, kinds
-    assert sum(1 for _, where, _ in excused if where == "") == 8, excused
+    assert sum(1 for _, where, _ in excused if where == "") == 9, excused
     assert sum(1 for _, where, _ in excused if where != "") == 2, excused
 
     # direction 2: nothing forcing a type is still reported
@@ -2423,8 +2424,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 46, arrays
-    assert bounded == 24, bounded
+    assert arrays == 64, arrays
+    assert bounded == 30, bounded
 
 
 def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
@@ -2466,7 +2467,7 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     # keyword and no other, so admitting it would emit them wide.
     out = emit.emit(BUNDLE, population())
     blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    assert len(blocked) == 45, sorted(blocked)
+    assert len(blocked) == 46, sorted(blocked)
     assert "core/acceptance-policy-profile-ids.json" in out.refusals
 
 
