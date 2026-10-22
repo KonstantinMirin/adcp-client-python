@@ -1058,7 +1058,23 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             if not isinstance(fmt, str):
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
-            assert node["type"] in emit.SCALAR, (document, pointer)
+            # **A MULTI-TYPE node carries a format too, and this used to RAISE on
+            # one.**  ``node["type"] in emit.SCALAR`` hashes the value, and a list is
+            # unhashable, so the site died with a ``TypeError`` rather than failing an
+            # assertion -- latent until a document declaring ``["string", "null"]``
+            # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
+            # per-ARM: ``lower.containers.multi_type`` cuts the node to one type at a
+            # time carrying only what that type can hold (``ARM["string"]`` holds
+            # ``format``), so the format selects the type of the arm that defines it
+            # and the ``null`` arm takes none of it.  Asserted over the arms, which is
+            # what the emitter actually reads.
+            kinds = node["type"] if isinstance(node["type"], list) else [node["type"]]
+            assert [k for k in kinds if k != "null"], (document, pointer, kinds)
+            assert all(k in emit.SCALAR or k == "null" for k in kinds), (
+                document,
+                pointer,
+                kinds,
+            )
             # The chooser is asked with THIS NODE, because D5 makes a `uri` field's
             # type a function of the document's own `pattern` -- so a test that read
             # one path per format would grade only whichever arm it happened to
