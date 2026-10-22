@@ -120,7 +120,7 @@ ROOT_HANDLED = frozenset(
 #: Probed by patching this row to do exactly that over all 41 -- 0 emit, and the blockers
 #: are elsewhere: 35 refuse on the root ``properties`` below, 4 on a branch ``not``, 1 on a
 #: branch ``type`` and 1 on ``dependencies``.  So the reachable population of a
-#: conjunct-binding arm here is 0 today, which is the same ground D5 refuses an ``enum``
+#: conjunct-binding branch here is 0 today, which is the same ground D5 refuses an ``enum``
 #: under ``propertyNames`` on and the product row omits a ``required``-only conjunct on.
 ROOT_CONJUNCTS = ("allOf", "properties", "required", "additionalProperties")
 
@@ -338,7 +338,7 @@ def _plan(branch: Any, pointer: str, root: str, doc: dict, mod: compiler.Module)
         # (D13), so this row cannot reach it -- a branch composes once that reader is
         # shared machinery in ``compiler``, which is where D13 puts machinery two rows
         # need.  ``mod.decide`` is not the way round it: it would declare a composition
-        # class that does not descend from this base, so the arm would not answer
+        # class that does not descend from this base, so the branch would not answer
         # ``isinstance``, which is the same reason a bare ``$ref`` branch refuses above.
         #
         # Measured over the 9 documents in this position: 2 compose nothing but bare

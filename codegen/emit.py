@@ -338,8 +338,21 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # to the whole instance, so a node that composes is a composition whatever
         # else it declares, and lowering the ``properties`` without the conjuncts
         # would drop the bases.  After ``$ref`` and ``enum``, which both close the
-        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the arm
+        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the branch
         # above refuses one), and an ``enum`` closes the value set.
+        #
+        # **Every position this reaches is one whose INSTANCE is its own**, which is
+        # what makes reading the node here the node the DOCUMENT applies: a
+        # ``properties``, ``items`` or ``definitions`` entry is applied to a value one
+        # level down, where an ``allOf`` conjunct, a union branch and an ``if``/``then``
+        # position share the enclosing node's instance and so inherit its ``type``.
+        # Measured over the whole portable population: 307 compositions are lowered,
+        # 287 at a root and 20 below one, and **0 of the 20 sit at a shared-instance
+        # position** -- 12 at ``properties/<key>``, 7 at an ``items`` and 1 at a
+        # ``definitions`` entry.  The nearest miss is
+        # ``core/budget-allocation.json#/oneOf/1/properties/optimization_goals/items``,
+        # whose pointer crosses a branch two instances up and whose own node is an
+        # array element.
         return Decided(
             compiler.Type(
                 lower_product.lower_composition(node, name_hint, pointer, mod), local=True

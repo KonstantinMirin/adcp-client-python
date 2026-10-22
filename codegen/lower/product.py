@@ -5,7 +5,7 @@ D2's product row.  **The node need not be a root**, and the lowering never asked
 that it be one: it takes ``(node, name, pointer, module)`` like every other
 lowering (D13), reads the pointer it is handed, and ``declare_object`` names
 whatever node that is.  A document ROOT reaches it through ``emit.ROWS``; a
-composition at a property or deeper reaches it through ``emit._decide``'s own arm,
+composition at a property or deeper reaches it through ``emit._decide``'s own branch,
 because ``ROWS`` dispatches on ROOT KIND and a node that is not a root has no row
 to be and no selector to select it.  Measured over the 3.2 bundle: of the 67
 documents whose composition this step was deferring, 41 carry it at a root -- all
