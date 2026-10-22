@@ -200,7 +200,7 @@ A root scalar is an annotation and not a class (D2), so it has no class to carry
 A step that wants to change one of these reports it and stops.
 
 - **D1 — the module is the document path, and it is private.** `core/date-range.json` →
-  `src/adcp/types/_schemas/core/date_range.py`. The public surface is generated (step 9) and
+  `src/adcp/types/_schemas/core/date_range.py`. The public surface is generated (step 10) and
   keyed on the class name, which comes from the schema `title`. A consumer's import therefore
   survives an upstream file rename; the document path is a build input, not an API.
 - **D2 — what becomes a class.** An object with `properties` → a model. An `enum` node →
@@ -527,9 +527,10 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 | 5 | **Union roots** — the base carries `BranchDispatchMixin` and declares `_branch_models`, `_ROOT_REQUIRED` and `_branch_combinator`; one subclass per branch; the declaring module calls `model_rebuild(force=True)`; the root name binds the base (§4) | a payload resolves to its branch on all four paths — nested field, `TypeAdapter`, `model_validate`, `Base(**data)`; a consumer's subclass of the base keeps its own schema; `model_dump_json` on a base instance does not raise; a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
 | 6 | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
-| 8 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 3–7 |
-| 9 | **Public surface** — one per-domain package per bundle directory, generated, PEP 562 lazy; no aggregate re-export; a class name bound to two nodes in one domain is a build failure; the build emits a class-name-to-module mapping as a lookup table | `from adcp.types.<domain> import X` is the only spelling that reaches a class, and the mapping resolves any class name to exactly one module | after 8 |
-| 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; any compiler patch we carry filed upstream | `tox` green | last |
+| 8 | **Name a constrained type once** — the resolution order in D5, with `adcp.types.constraints` holding the aliases that belong to no document; a standard type admitted only with both its measurements shown | the emitted tree's inline repeats drop to the shapes that occur once; N does not drop | after 3–7 |
+| 9 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 8 |
+| 10 | **Public surface** — one per-domain package per bundle directory, generated, PEP 562 lazy; no aggregate re-export; a class name bound to two nodes in one domain is a build failure; the build emits a class-name-to-module mapping as a lookup table | `from adcp.types.<domain> import X` is the only spelling that reaches a class, and the mapping resolves any class name to exactly one module | after 8 |
+| 11 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; any compiler patch we carry filed upstream | `tox` green | last |
 
 **Order is by risk.** Step 1 comes first because it is the only step that can invalidate the
 split: if our walk cannot hand the compiler a declaration it renders faithfully on the simplest
@@ -543,7 +544,7 @@ is generic, so it lands in step 1.
 - **`BranchDispatchMixin`'s four-path dispatch, and the `anyOf`/`oneOf` keyword on its
   refusals.** 19 roots carry it today. A step adds roots to it; no step removes one, and no step
   reduces it to fewer than four paths.
-- **The lazy loading of the public surface.** Step 9 generates the contents of a package's
+- **The lazy loading of the public surface.** Step 10 generates the contents of a package's
   `__init__`, not the mechanism by which it loads.
 
 **One rule is deliberately superseded.** An earlier design made the flat root a second total
