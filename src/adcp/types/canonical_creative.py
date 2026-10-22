@@ -1327,7 +1327,7 @@ class PackageRequest(_LegacyPackageRequest, CanonicalBoundaryModel):
 class PackageUpdate(_LegacyPackageUpdate, CanonicalBoundaryModel):
     """Canonical package update; creatives are canonical assets."""
 
-    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
+    creatives: list[CreativeAsset] | None = _inherit(_LegacyPackageUpdate, "creatives")  # type: ignore[assignment]
     # See PackageRequest.targeting_overlay above.
     targeting_overlay: TargetingOverlayMutationInMaterializedJson = mutation_overlay_field(
         _LegacyPackageUpdate
@@ -1539,8 +1539,9 @@ UpdateMediaBuyResponse = UpdateMediaBuyResponse1 | UpdateMediaBuyResponse2 | Upd
 class SyncCreativesRequest(_LegacySyncCreativesRequest, CanonicalBoundaryModel):
     """Canonical creative sync request; creatives are canonical assets."""
 
-    # Requiredness is version-specific: AdCP 3.2 permits assignment-only syncs.
-    creatives: list[CreativeAsset] | None = Field(default=None, min_length=1)  # type: ignore[assignment]
+    # Requiredness is version-specific: AdCP 3.2 permits assignment-only syncs,
+    # so optionality, like the item bounds, comes from the generated parent.
+    creatives: list[CreativeAsset] | None = _inherit(_LegacySyncCreativesRequest, "creatives")  # type: ignore[assignment]
 
 
 class ListCreativesRequest(_LegacyListCreativesRequest, CanonicalBoundaryModel):

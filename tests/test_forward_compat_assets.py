@@ -7,17 +7,18 @@ every asset_type the pin DOES have a class for still parses as that class.
 The novel value is DERIVED, not written down. Four tests here used
 ``pixel_tracker`` as their stand-in novel type and asserted it parsed as
 ``UnknownFormatAsset``. ``pixel_tracker`` is declared by the pinned schema and
-has a generated class (``Assets26``), so those assertions were encoding
-salesagent-d2wuv: the vocabulary the union routed by was a hand-written literal
-that had fallen 7 behind the generated classes, and the test agreed with the
-literal. A hardcoded "novel" value can become declared by a schema refresh
-without the test noticing; a derived one cannot.
+has had a generated class all along, so those assertions were encoding the
+defect: the vocabulary the union routed by was a hand-written frozenset in
+aliases.py that had fallen 7 behind the generated individual classes and 9
+behind the group ones, and the tests agreed with the frozenset instead of with
+the schema. A hardcoded "novel" value can become declared by a schema refresh
+without the test noticing, which is how these four came to be wrong.
 """
 
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types import (
     FormatAssetUnion,
@@ -57,10 +58,12 @@ def _declared_asset_types(base: type) -> dict[str, type]:
 
 
 def _an_undeclared_asset_type(base: type) -> str:
-    """An ``asset_type`` this pin has no class for, derived from the ones it has."""
-    declared = _declared_asset_types(base)
+    """An ``asset_type`` this pin has no class for, checked against the ones it has."""
     candidate = "x_future_asset_type"
-    assert candidate not in declared, "the derived novel value became declared"
+    assert candidate not in _declared_asset_types(base), (
+        f"{candidate!r} became a declared asset_type; pick another stand-in, and "
+        "check whether the tests below were grading routing or only acceptance"
+    )
     return candidate
 
 
@@ -275,7 +278,7 @@ class TestUnknownFormatAssetContract:
         with pytest.raises(ValidationError):
             UnknownFormatAsset.model_validate(
                 {
-                    "asset_type": "pixel_tracker",
+                    "asset_type": _UNDECLARED_INDIVIDUAL,
                     "item_type": "individual",
                     "required": False,
                     # asset_id missing
@@ -288,7 +291,7 @@ class TestUnknownFormatAssetContract:
             UnknownFormatAsset.model_validate(
                 {
                     "asset_id": "track",
-                    "asset_type": "pixel_tracker",
+                    "asset_type": _UNDECLARED_INDIVIDUAL,
                     "item_type": "individual",
                     # required missing
                 }
@@ -307,31 +310,42 @@ class TestUnknownFormatAssetContract:
             )
 
     def test_unknown_format_asset_is_unknown_form(self):
-        """UnknownFormatAsset is not a known asset type by construction."""
+        """UnknownFormatAsset carries an asset_type this pin has no class for.
+
+        The vocabulary is derived, not restated. This assertion used to list 14
+        asset types by hand — the same stale frozenset the union routed by, in a
+        second copy, which is why ``pixel_tracker`` satisfied it while being a
+        type the schema declares and the generator had a class for.
+        """
         asset = UnknownFormatAsset.model_validate(
             {
                 "asset_id": "x",
-                "asset_type": "pixel_tracker",
+                "asset_type": _UNDECLARED_INDIVIDUAL,
                 "item_type": "individual",
                 "required": False,
             }
         )
-        assert asset.asset_type not in (
-            "image",
-            "video",
-            "audio",
-            "text",
-            "markdown",
-            "html",
-            "css",
-            "javascript",
-            "vast",
-            "daast",
-            "url",
-            "webhook",
-            "brief",
-            "catalog",
-        )
+        assert asset.asset_type not in _declared_asset_types(format_module.BaseIndividualAsset)
+
+
+class TestMalformedAssetTypeIsAValidationError:
+    """A non-string ``asset_type`` must fail validation, not crash the discriminator."""
+
+    @pytest.mark.parametrize("asset_type", [["image"], {"kind": "image"}, 7, None])
+    @pytest.mark.parametrize(
+        ("union", "item"),
+        [
+            pytest.param(FormatAssetUnion, {"item_type": "individual"}, id="individual"),
+            pytest.param(GroupFormatAssetUnion, {}, id="group"),
+        ],
+    )
+    def test_routes_to_the_fallback_and_is_refused(
+        self, union: object, item: dict, asset_type: object
+    ) -> None:
+        with pytest.raises(ValidationError):
+            TypeAdapter(union).validate_python(
+                {**item, "asset_id": "logo", "required": True, "asset_type": asset_type}
+            )
 
 
 class TestPublicAPIExports:
@@ -353,14 +367,17 @@ class TestDeclaredAssetTypesAreNotDegraded:
     """Every asset_type this pin generated a class for must reach that class.
 
     The open union exists so an asset_type defined AFTER this pin survives. It
-    must not swallow the ones defined at it. The vocabulary it routes by was a
-    hand-written literal 7 behind the generated individual classes and 9 behind
-    the group ones, so seven individual and nine group types arrived as
+    must not swallow the ones defined at it. The vocabulary it routed by was a
+    hand-written frozenset 7 behind the generated individual classes and 9
+    behind the group ones, so seven individual and nine group types arrived as
     UnknownFormatAsset / UnknownGroupAsset with their typed fields in
-    __pydantic_extra__ (salesagent-d2wuv). The vocabulary is now derived from the
-    branches themselves, and this grades that end to end.
+    __pydantic_extra__, while the generated classes for all of them sat unused.
+    The vocabulary is now emitted from the arms themselves, and this grades that
+    end to end — at the PARSE level, because the callable discriminator reads
+    the vocabulary before pydantic reaches the arms, so counting arms says
+    nothing about where a document lands.
 
-    Parametrized over the derived vocabulary rather than a list, so an asset type
+    Parametrized over the generated classes rather than a list, so an asset type
     a schema refresh adds is covered the moment its class is generated.
     """
 
@@ -414,3 +431,42 @@ class TestDeclaredAssetTypesAreNotDegraded:
         assert type(slot) is expected
         assert not isinstance(slot, UnknownGroupAsset)
         assert not (slot.__pydantic_extra__ or {})
+
+    def test_the_derivation_covers_what_the_pinned_schema_declares(self) -> None:
+        """The parametrized population is the schema's, not a subset of it.
+
+        Without this, a generator that stopped emitting a class for one asset
+        type would shrink the population above and stay green — the two tests
+        would grade fewer rows and say nothing about the one that vanished.
+        """
+        import json
+        from pathlib import Path
+
+        from adcp.validation.version import resolve_bundle_key
+
+        root = Path(__file__).parent.parent
+        pinned = (root / "src/adcp/ADCP_VERSION").read_text().strip()
+        schema_path = root / "schemas/cache" / resolve_bundle_key(pinned) / "core/format.json"
+        assert schema_path.is_file(), f"no pinned format schema at {schema_path}"
+        arms = json.loads(schema_path.read_text())["properties"]["assets"]["items"]["oneOf"]
+
+        def slot(item_type: str) -> dict:
+            matching = [
+                arm
+                for arm in arms
+                if arm.get("properties", {}).get("item_type", {}).get("const") == item_type
+            ]
+            assert len(matching) == 1, f"expected one {item_type!r} arm, got {len(matching)}"
+            return matching[0]
+
+        # The two arms nest to different depths and are selected by their
+        # item_type const, not by position.
+        individual = {a["properties"]["asset_type"]["const"] for a in slot("individual")["oneOf"]}
+        group = {
+            a["properties"]["asset_type"]["const"]
+            for a in slot("repeatable_group")["properties"]["assets"]["items"]["oneOf"]
+        }
+        assert individual, "the individual arm declares no asset_type consts"
+        assert group, "the repeatable-group arm declares no asset_type consts"
+        assert set(_declared_asset_types(format_module.BaseIndividualAsset)) == individual
+        assert set(_declared_asset_types(format_module.BaseGroupAsset)) == group

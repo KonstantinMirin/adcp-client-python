@@ -43,7 +43,6 @@
     "fix_unchanged_literal_defaults": true,
     "fix_optional_boolean_literal_defaults": true,
     "enforce_root_constraints": true,
-    "widen_conjunct_read_literal_defaults": true,
     "fix_reporting_request_selectors": true,
     "fix_reporting_capability_defaults": true,
     "fix_protocol_envelope_status_default": true,
@@ -77,6 +76,7 @@
     "emit_open_asset_unions": true,
     "declare_compatibility_annotations": true,
     "emit_branch_classes": true,
+    "widen_conjunct_read_literal_defaults": true,
     "declare_root_schema_module_exports": true,
     "strip_extra_blank_lines_at_eof": true
   }

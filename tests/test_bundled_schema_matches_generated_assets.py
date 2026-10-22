@@ -63,7 +63,7 @@ GRADING the second count.
 
 So ``_parses_to`` asks pydantic to deserialize one schema-valid document per
 declared type and reports the class it produced. Fire-probed as a pair, on this
-tree, by deleting ``'pixel_tracker'`` from ``_KNOWN_BASEINDIVIDUALASSET_TYPES`` in
+tree, by deleting ``'pixel_tracker'`` from ``_KNOWN_BASE_INDIVIDUAL_ASSET_TYPES`` in
 the generated ``core/format.py`` and leaving all 21 arms intact:
 
     test_every_declared_asset_type_is_routable[individual]            PASSED

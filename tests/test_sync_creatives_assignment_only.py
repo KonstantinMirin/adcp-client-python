@@ -10,8 +10,9 @@ from pydantic import ValidationError
 
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller
-from adcp.types import CreativeAsset, SyncCreativesRequest
-from adcp.validation import ValidationHookConfig, validate_request
+from adcp.types import CreativeAsset, PackageUpdate, SyncCreativesRequest
+from adcp.types.domains.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
+from adcp.validation import ValidationHookConfig, get_schema, validate_request
 
 _BASE = {
     "adcp_version": "3.2",
@@ -87,6 +88,80 @@ def test_asset_sync_still_parses_canonical_creatives() -> None:
 
 def test_public_schema_allows_omitting_creatives() -> None:
     assert "creatives" not in SyncCreativesRequest.model_json_schema()["required"]
+
+
+def _bundled_creatives_node() -> dict[str, Any]:
+    bundle = get_schema("sync_creatives", "request", version="3.2")
+    assert bundle is not None
+    node: dict[str, Any] = bundle["properties"]["creatives"]
+    return node
+
+
+def _published_creatives_node() -> dict[str, Any]:
+    """The ``creatives`` node as the public model advertises it, flattened.
+
+    An optional field spells itself ``T | None``, which publishes
+    ``anyOf: [T, {"type": "null"}]`` and leaves the description beside the
+    union rather than inside the arm. Folding the sole non-null arm into its
+    siblings is what lets the constraints be read at one level, and keeps this
+    helper correct for a declaration that publishes no null arm at all.
+    """
+    node = SyncCreativesRequest.model_json_schema()["properties"]["creatives"]
+    arms = [arm for arm in node.get("anyOf", [node]) if arm != {"type": "null"}]
+    assert len(arms) == 1, arms
+    return {**{key: value for key, value in node.items() if key != "anyOf"}, **arms[0]}
+
+
+def test_public_schema_keeps_the_bundled_constraints_on_creatives() -> None:
+    """Omitting ``creatives`` must not cost the array its own schema.
+
+    ``required`` alone does not grade this: a redeclaration that replaces the
+    generated ``FieldInfo`` wholesale drops ``maxItems`` and the description
+    while leaving ``required`` exactly as this file's sibling test wants it.
+    """
+    published = _published_creatives_node()
+    bundled = _bundled_creatives_node()
+    graded = ("type", "description", "minItems", "maxItems")
+
+    assert {key: published.get(key) for key in graded} == {key: bundled[key] for key in graded}
+
+
+def test_sync_refuses_more_creatives_than_the_bundle_permits() -> None:
+    """The ceiling is enforced, not merely advertised."""
+    ceiling = _bundled_creatives_node()["maxItems"]
+    payload = {
+        **_BASE,
+        "creatives": [
+            {"creative_id": f"cr_{index}", "name": "Banner", "format_kind": "image", "assets": {}}
+            for index in range(ceiling + 1)
+        ],
+    }
+
+    with pytest.raises(ValidationError) as caught:
+        SyncCreativesRequest.model_validate(payload)
+    assert caught.value.errors()[0]["loc"] == ("creatives",)
+    assert caught.value.errors()[0]["type"] == "too_long"
+    outcome = validate_request("sync_creatives", payload, version="3.2")
+    assert any(
+        issue.pointer == "/creatives" and issue.keyword == "maxItems" for issue in outcome.issues
+    )
+
+
+def test_package_update_keeps_the_generated_creatives_constraints() -> None:
+    """``PackageUpdate`` narrows ``creatives`` the same way and must not lose its ceiling."""
+    generated = _LegacyPackageUpdate.model_fields["creatives"]
+    canonical = PackageUpdate.model_fields["creatives"]
+    assert canonical.metadata == generated.metadata
+    assert canonical.description == generated.description
+
+    ceiling = next(m.max_length for m in generated.metadata if hasattr(m, "max_length"))
+    creative = {"creative_id": "cr", "name": "Banner", "format_kind": "image", "assets": {}}
+    with pytest.raises(ValidationError) as caught:
+        PackageUpdate.model_validate(
+            {"package_id": "pkg_1", "creatives": [creative] * (ceiling + 1)}
+        )
+    assert caught.value.errors()[0]["loc"] == ("creatives",)
+    assert caught.value.errors()[0]["type"] == "too_long"
 
 
 class _AssignmentHandler(ADCPHandler[Any]):

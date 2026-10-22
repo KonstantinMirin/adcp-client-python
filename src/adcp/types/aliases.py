@@ -1902,18 +1902,20 @@ WebhookFormatGroupAsset = _WebhookFormatGroupAssetInternal
 #     via UnknownFormatAsset / UnknownGroupAsset fallback branches.
 #
 # The callable Discriminator + Tag pattern is the Pydantic v2 ≥2.5 canonical
-# approach for open discriminated unions. The unions are now GENERATED into
+# approach for open discriminated unions. Both unions are GENERATED into
 # core/format.py by _OPEN_ASSET_UNIONS in scripts/post_generate_fixes.py, and
-# Format.assets / Assets29.assets carry them by generation, so these are
-# re-exports rather than definitions.
+# Format.assets and the repeatable group's assets carry them by generation, so
+# the four names below are re-exports rather than definitions.
 #
-# The vocabulary is why that matters. It was two hand-written frozensets here --
-# 14 individual and 12 group members -- beside a generated union of 21 and 21,
-# so seven individual asset types the PINNED schema declares (zip, display_tag,
-# published_post, card, pixel_tracker, vast_tracker, daast_tracker) and nine
-# group types parsed as the unknown branch, with their generated classes unused.
-# The generator knows every branch's asset_type literal because it emitted it.
-# See salesagent-d2wuv.
+# The vocabulary is why that matters. It used to be two hand-written frozensets
+# here — 14 individual and 12 group members — beside a generated union of 21 and
+# 21, and the callable discriminator reads the frozenset BEFORE pydantic reaches
+# the arms. So seven individual asset types the pinned schema declares (zip,
+# display_tag, published_post, card, pixel_tracker, vast_tracker, daast_tracker)
+# and nine group types parsed as the unknown arm, with their generated classes
+# sitting unused. The generator knows every arm's asset_type literal because it
+# emitted that literal, so there is nothing left here to declare and nothing to
+# go stale.
 
 from adcp.types.domains.core.format import (
     FormatAssetUnion,
@@ -2574,8 +2576,9 @@ __all__ = [
     # Forward-compat fallback branches (novel asset_type values parse as these)
     "UnknownFormatAsset",
     "UnknownGroupAsset",
-    # Open union types, generated into core/format.py and carried by Format.assets
-    # / Assets29.assets by generation (_OPEN_ASSET_UNIONS in post_generate_fixes.py)
+    # Open union types, generated into core/format.py and carried by
+    # Format.assets / the repeatable group's assets by generation
+    # (_OPEN_ASSET_UNIONS in scripts/post_generate_fixes.py)
     "FormatAssetUnion",
     "GroupFormatAssetUnion",
     "ImageFormatAsset",
