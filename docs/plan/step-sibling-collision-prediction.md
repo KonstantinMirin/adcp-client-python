@@ -134,13 +134,17 @@ Measured on `sdk/j3k2l13-exclusive-step`. Every number says the population it is
 The suite at the delivered tip, in full:
 
 ```
-FAILED tests/test_emit.py::test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none
-FAILED tests/test_emit.py::test_every_class_passes_all_three_checks[core/inventory-list-application.json#]
 FAILED tests/test_emit.py::test_the_step_result_is_counted_over_the_whole_population
 FAILED tests/test_emit.py::test_the_harness_steps_every_one_of_d6s_six_families
 FAILED tests/test_emit.py::test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded
-5 failed, 572 passed in 853.44s (0:14:13)
+3 failed, 575 passed in 849.69s (0:14:09)
 ```
+
+All three are the integrator's stale constants. The run before the retry commit was
+`5 failed, 572 passed in 853.44s`, its two extra failures being
+`test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none` and
+`test_every_class_passes_all_three_checks[core/inventory-list-application.json#]` — both the one
+lost pair, both now green.
 
 The same five, with the same reasons, as the run at the fix commit before its docstring-only
 amend (`5 failed, 572 passed in 1097.62s`); `git diff 486e83a8d 4b5ba8892 -- codegen/harness.py`
@@ -159,9 +163,9 @@ than it would have been at the starting sha.
 | # | prediction | measured | verdict |
 |---|---|---|---|
 | 1 | 0 of the sites become steppable through same-node sibling exclusion; 2 sites stop being unsteppable, both grouped `then` | 0 same-node mechanism written. `core/macro-encoding.json` 2 unsteppable -> 1, `core/creative-approval-scope.json` 3 -> 2; both deltas are the `then` group splitting | **right** |
-| 2 | 0 pairs move from refused to pass | 0 moved that way, and **1 moved the other way**: `core/inventory-list-application.json#` went `pass` -> `refuses:harness_error`, so the 448 pairs are 436 `pass`, not 437 | **wrong**, and the miss is the point — see below |
-| 3 | `no_constraint_to_step` stays 11 | the excused list is 12 entries: the same 11 plus `core/inventory-list-application.json#`, which is a `refuses:harness_error` and not a 12th `no_constraint_to_step` | **right on the count, and incomplete** — I predicted the count and not the list, and it is the list that is asserted |
-| 4 | `graded_instances` rises above the committed 31923 | not isolated: the whole-population test asserts `pass == 437` first and stops there, so the sum was never reached on this tree | **ungraded** |
+| 2 | 0 pairs move from refused to pass | 0 moved that way. The fix commit moved **1 the other way** — `core/inventory-list-application.json#` to `refuses:harness_error`, 436 `pass` — and the retry commit returns it, so the delivered tip is **437 `pass`** | **wrong at the fix commit, right at the tip**, and the miss is what found the retry — see below |
+| 3 | `no_constraint_to_step` stays 11 | 11, measured. The excused list was 12 at the fix commit and is the committed 11 at the tip, every one with `step_sites=0` | **right**, though I predicted the count and it is the list that is asserted |
+| 4 | `graded_instances` rises above the committed 31923 | **32,059** at the tip (32,053 at the fix commit), against the committed 31923 and the brief's 32,031 baseline. Also measured: `compared` 4,276, `model_facts` 896, `added` 0, all unchanged | **right** |
 | 5 | `test_a_step_of_a_whole_instance_keyword_bites_the_document_that_states_it` fully green, `then` (80, 80), `not` (60, 60) | passes. Measured directly: `then (80, 80, 4 sites)`, `not (60, 60, 3 sites)`, every other family unchanged | **right** |
 | 6 | `STEP7_SITES` keeps exactly one mismatching row, `uniqueItems` | **five** rows mismatch: `anyOf` 444/450, `minProperties` 47/48, `not` 439/469, `then` 582/585, `uniqueItems` 462/479. The test reports only `uniqueItems` because its loop asserts in dict insertion order and stops at the first failure | **wrong** |
 | 7 | both conflicting tests pass, unweakened, neither fixture changed | `tests/test_harness_steps.py` 17 of 17 pass, including `test_an_unsteppable_site_is_reported_rather_than_passed`; `test_an_unsatisfiable_step_is_no_evidence_and_not_a_harness_error` passes. No fixture touched | **right** |
@@ -170,8 +174,10 @@ than it would have been at the starting sha.
 
 ## Prediction 2 is the one worth reading
 
-I predicted the metric could not lose a pair and it lost one, which is the defect the bead
-describes doing exactly what the bead says it does. `core/inventory-list-application.json#`
+I predicted the metric could not lose a pair and the fix commit lost one, which is the defect the
+bead describes doing exactly what the bead says it does. The third commit gets it back by
+grading the site rather than by admitting it ungraded; what follows is the diagnosis that found
+both. `core/inventory-list-application.json#`
 passed with one site silently ungraded: a `required` step over `/oneOf/0` and `/oneOf/1`
 dropping `list_type`, the root `discriminator`'s own propertyName. Both branches require it and
 their `const` values are what tell the branches apart, so the stepped document admits nothing
@@ -186,11 +192,12 @@ that settles a question I was unsure of while writing the fix: `required` is **n
 family, however exactly `not: {required: [k]}` negates the keyword at its own node, because the
 node is a `oneOf` branch and what the document refuses is decided above it.
 
-So the honest verdict is `harness_error`, the pair is refused by name with its collider named
-(`/:discriminator`, `/:oneOf`, `/:type`, `/:x-adcp-validation`), and N is 436 of 448 rather than
-437. There is no fix for the site: an instance omitting the discriminator violates `oneOf` as
-well, so none violates exactly this keyword, and the step cannot be made exclusive without
-inventing a constraint the document does not state.
+So for a group stepped at every position the honest verdict is `harness_error`, reported with its
+collider named (`/:discriminator`, `/:oneOf`, `/:type`, `/:x-adcp-validation`).
+
+**I then wrote "there is no fix for the site", and that was wrong.** I had answered "can this
+witness be built" when the question is "is the keyword graded at that pointer", and I had the
+measurement that answers it sitting in an earlier probe. The next section is the correction.
 
 ## What the measurement says about the bead's own mechanism
 
@@ -214,30 +221,131 @@ Measured over the 8 documents whose full step list ran, 115 steps: 68 graded, 38
 | `core/postal-country-system.json#/properties/system` `enum of 23` | ten `anyOf` branches' `enum`/`const` at `/anyOf/<i>/properties/system` |
 | `core/creative-approval-scope.json#/properties/approval_status/allOf/0` `enum of 4` | `/properties/approval_status/allOf/1:enum` |
 | `core/brand-response-authorization-result.json#/properties/trust` `enum of 2` | `/oneOf/0/properties/trust:const`, `/oneOf/1/properties/trust:const` |
-| `core/inventory-list-application.json#/oneOf/0` `required drops 'list_type'` | `/:discriminator`, `/:oneOf` |
-| `core/reference-renderer.json` — all 14 | **nothing at the instance location**: the ORIGINAL resolved document does not generate, so no step over it can |
+| `core/inventory-list-application.json#/oneOf/0` `required drops 'list_type'` | `/:discriminator`, `/:oneOf` — and this one is RECOVERED by the third commit; see below |
+| `core/reference-renderer.json` — 14 of its 17 steps | **nothing at the instance location**. The ORIGINAL resolved document does not generate, which is the obstacle these run into — but it is not a per-site explanation: 3 of its 17 steps do generate, the two `required` ones being those that drop the heavy nested subtree. See the correction below. |
 
 `core/catalog-item-availability-state.json`, `core/demographic-targeting-resolution.json`,
 `core/targeting.json` and `protocol/sync-principal-request.json` did not finish stepping inside
 the budget this ran under, so they are **unmeasured here**, not measured as clean.
 
-## Three constants this leaves red, and what each one needs
+---
+
+# The handed-back question: was the site really ungradeable?
+
+It was not, and "no fix exists for the site" was me answering "can this witness be built"
+instead of "is the keyword graded at that pointer". Measured.
+
+**The array has 7 members and `steps()` already emits one step per member**, so there is no
+witness to re-choose — `required: [a, b, c]` is three steps, not one step with a choice of
+property. At `/oneOf/0` and `/oneOf/1`, both:
+`['list_type', 'effect', 'agent_url', 'list_id', 'resolved_at', 'evaluated_at', 'summary']`.
+The root states `discriminator: {"propertyName": "list_type"}`, so the discriminator is
+`list_type`.
+
+**6 of the 7 members grade 25 of 25**, at the suite's own budget. Only `list_type` reported
+`harness_error`. Asked of the document directly, with one instance DRAWN and each member
+deleted in turn, all 7 deletions are refused and `required` is among the violated keywords every
+time. So the keyword at that pointer was never ungraded; one member-fact was.
+
+**And that member is gradeable too.** The step holds two positions because both branches state
+it. Stepping both forbids `list_type` in both branches, after which an instance omitting it
+matches neither and the root `oneOf` has nothing to pick. Stepping ONE leaves the other branch
+requiring it, so exactly one branch can match: 6 of 25 examples bite, and the original refuses
+every one on `{'oneOf': 6, 'required': 6}`. Landed as the third commit, which retries a witness
+group one position at a time before reporting it.
+
+Over the 448 emitted pairs with that in: **437 `pass`, 11 `no_constraint_to_step`, 0
+`harness_error`, 32,059 refuses-check instances, 4,276 document facts compared, 896 model-only
+facts, 0 narrowings.** No N is spent.
+
+## How narrow the fix is
+
+Over the 38 `harness_error` sites in 8 documents and 115 steps:
+
+| | count |
+|---|---|
+| `required` steps | 14 of 38 |
+| ...at a pointer where ANOTHER member of the same array IS graded | **6 of 14** |
+| holding more than one position, so the retry can reach them | **0 of 38** |
+
+By keyword: `required` 14, `enum` 7, `pattern` 5, `minimum` 3, `additionalProperties` 2,
+`dependencies` 2, `minItems` 2, `uniqueItems` 2, `minLength` 1.
+
+**So the retry reaches exactly one site in the whole measured population** — the emitted pair.
+It is as narrow as a fix gets. The 6 `required` sites with a graded sibling member are all in
+`core/reference-renderer.json`: five at `/`, where `required drops 'provenance'` grades, and one
+at `/properties/provenance`, where `drops 'source_repository'` grades. For those the keyword at
+the pointer is graded and only the individual member-fact is not; none of them holds a second
+position, so nothing recovers them.
+
+**A correction to my own earlier claim.** I said the original resolved
+`core/reference-renderer.json` not generating explains all 14 of its unsteppable sites. It does
+not: **3 of its 17 steps DO generate**, and the two that are `required` steps are the ones that
+drop `provenance` and `source_repository` — the heavy nested required subtree. Removing it makes
+the object generable. So the document's ungenerability is the obstacle those sites run into, not
+a blanket per-site explanation, and the docstring on `contradicting` says so.
+
+# The four documents that did not finish
+
+**The budget was wall clock**, cut at roughly 60 minutes per document at `examples=10` per site,
+while three other lanes were running their own suites on the same machine.
+
+**They are not a different problem.** Resolution is cheap and `steps()` is instant; the wall is
+site count times one strategy build over the resolved document:
+
+| document | raw | resolved | resolve | `steps()` sites |
+|---|---|---|---|---|
+| `core/catalog-item-availability-state.json` | 2,976 B | 16,488 B | 0.1 s | 61 |
+| `core/demographic-targeting-resolution.json` | 4,185 B | 21,112 B | 0.1 s | 139 |
+| `protocol/sync-principal-request.json` | 13,336 B | 53,515 B | 0.1 s | 117 |
+| `core/targeting.json` | 23,569 B | 144,448 B | 0.7 s | 737 |
+| `core/media-buy-frequency-cap.json` (the control, which finished) | 641 B | 3,487 B | 0.0 s | 23 |
+
+Three to thirty-two times the site count of the one that finished.
+
+**A longer budget does finish them, demonstrated rather than extrapolated.** Re-run on the final
+tree, `core/catalog-item-availability-state.json` completed: **61 steps in 1,245.7 s, 20.4 s per
+site** — 34 graded, 6 `no_evidence`, 21 `harness_error`, every one of the 21 with an EMPTY
+collider, so that document is a generation-cost case like `core/reference-renderer.json` and not
+a collision case. At that rate, and it is an upper bound because three other lanes held the
+machine: `protocol/sync-principal-request.json` ≈ 40 min, `core/demographic-targeting-resolution.json`
+≈ 47 min, `core/targeting.json` ≈ 4.2 h. Those three were cut again to give the suite the
+machine, so they stay **unmeasured** and are not claimed clean.
+
+With that document in, the full measured population is **9 documents, 176 steps: 102 graded, 59
+`harness_error`, 15 `no_evidence`**. The other 8 were stepped before the retry commit, which
+cannot have changed them: 0 of their 38 `harness_error` sites holds more than one position, and
+the retry only fires on a group that does.
+
+# The twelfth entry
+
+It was `core/inventory-list-application.json#`, and it was **not** a document that states
+nothing to step: 16 step sites and 375 graded instances, with outcome `refuses:harness_error`.
+Nor was it a bookkeeping artefact. `test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none`
+collects `outcome != "pass"` while its name says "the documents that state none", and its own
+docstring anticipates precisely this case — "A pair that landed there for any other reason — a
+model defect, a generator failure — would not satisfy this." It was the test working as
+designed, reporting a pair that landed there for another reason. With the retry in, the list is
+back to the committed 11, every one `no_constraint_to_step` with `step_sites=0`.
+
+## The two constants this leaves red, and the exact edits
 
 `tests/test_emit.py` is untouched on this branch — deliberately, because a sibling lane holds an
-uncommitted edit to it.
+uncommitted edit to it. Both remaining failures are the integrator's, and every figure either
+one needs is measured here.
 
-1. `STEP7_SITES`: five rows. `anyOf` 450 -> 444, `minProperties` 48 -> 47, `not` 469 -> 439,
-   `then` 585 -> 582, `uniqueItems` 479 -> 462. Every one is the grouping merging genuine
-   restatements, and the same five rows are what
-   `test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded` reads. The pre-fix
-   and post-fix census, same tree, same process, over the 1,054 portable documents:
-   `then` 224 -> 582, `not` 314 -> 439, `else` 45 -> 58, `anyOf` 438 -> 444, `oneOf` 210 -> 212;
-   D6's six families 1,844 -> 2,348 against a committed 2,405.
-2. `test_the_step_result_is_counted_over_the_whole_population`: `pass` 437 -> 436. The remaining
-   assertions in that test were never reached, so `no_constraint_to_step`, `graded_instances`,
-   `compared` and `model_facts` are unmeasured on this tree and need one run to settle.
-3. `test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none`: the expected
-   list needs `core/inventory-list-application.json#` — but it is a `refuses:harness_error` and
-   not a document that states nothing to step, so the test's own premise ("a pair that landed
-   there for any other reason would not satisfy this") says the list is the wrong place for it.
-   That is a decision about the metric, not a constant to bump, and it is not mine to take.
+1. **`STEP7_SITES`: five rows**, which is also the whole of why
+   `test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded` is red, since it
+   reads the same census. `anyOf` 450 -> 444, `minProperties` 48 -> 47, `not` 469 -> 439,
+   `then` 585 -> 582, `uniqueItems` 479 -> 462; the six-family total 2,405 -> 2,348. Every one is
+   the grouping merging genuine restatements. Only `uniqueItems` is reported by the test, because
+   its loop asserts in dict insertion order and stops at the first failure. The pre-fix and
+   post-fix census, same tree and same process, over the 1,054 portable documents:
+   `then` 224 -> 582, `not` 314 -> 439, `else` 45 -> 58, `anyOf` 438 -> 444, `oneOf` 210 -> 212.
+2. **`test_the_step_result_is_counted_over_the_whole_population`: one row.**
+   `graded_instances` 31923 -> **32,059**. Everything else in that test is already right at the
+   tip and measured: 448 pairs, 437 `pass`, 11 `no_constraint_to_step`, `compared` 4,276,
+   `model_facts` 896, `added` 0.
+
+`test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none` needs **no edit**:
+the list is the committed 11 again.
