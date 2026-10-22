@@ -553,6 +553,7 @@ def lower_document(
         decide=decide_type,
         asserted=asserted_formats(doc),
         named=named,
+        object_constrained=bundle.constrained_to_object(doc),
     )
     claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
     if len(claimed) > 1:
