@@ -348,7 +348,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                     assert _text(got.get(member)) == _text(text), (document, pointer, member)
                 else:
                     assert got.get(member) == text, (document, pointer, member)
-    assert (nodes, entries, multiline) == (132, 1097, 10), (nodes, entries, multiline)
+    assert (nodes, entries, multiline) == (134, 1107, 10), (nodes, entries, multiline)
 
     # The whole block is an annotation, so NO check in the harness grades it:
     # `enumDescriptions` is not a fact the comparison compares.  P2 in
@@ -409,7 +409,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
             assert bound[0].__name__ in named, (g.ref.document, key)
             sites += 1
             documents.add(g.ref.document)
-    assert (sites, len(documents)) == (32, 21), (sites, len(documents))
+    assert (sites, len(documents)) == (42, 29), (sites, len(documents))
 
 
 # --------------------------------------------------------------------------- #

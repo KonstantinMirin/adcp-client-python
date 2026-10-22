@@ -576,6 +576,10 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
         # constrained scalar inside a container, and this nested class of it
         # states no keyword `steps()` can step.
         "core/creative-brief.json#/properties/messaging",
+        # Added by this step: `core/creative-policy.json` was refused on a
+        # `uniqueItems`, and this nested class of it states no keyword `steps()`
+        # can step.
+        "core/creative-policy.json#/properties/provenance_requirements",
         "core/ext.json#",
         "core/media-buy-legacy-terms-ref.json#",
         "error-details/account-setup-required.json#",
@@ -1336,7 +1340,7 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
             doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
         ).validate(value)  # the document admits it
         assert g.accept(value) == value, (g.ref, value)  # and so does the alias
-    assert with_pattern == 5, with_pattern
+    assert with_pattern == 8, with_pattern
 
 
 @functools.lru_cache(maxsize=None)
@@ -2559,8 +2563,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 64, arrays
-    assert bounded == 30, bounded
+    assert arrays == 109, arrays
+    assert bounded == 62, bounded
 
 
 def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it() -> None:
@@ -3091,7 +3095,7 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
                 if isinstance(name, ast.Name) and name.id in aliases:
                     positions += 1
                     modules.add(rel)
-    assert (positions, len(modules)) == (10, 7), (positions, sorted(modules))
+    assert (positions, len(modules)) == (20, 12), (positions, sorted(modules))
 
 
 # --------------------------------------------------------------------------- #

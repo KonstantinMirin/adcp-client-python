@@ -188,7 +188,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 34 and not 31: the three documents `salesagent-j3k2l.20` added to N above are
     # reached through `governance/policy-entry.json`, which this row's own population
     # is what reaches, so removing the row loses them too.
-    assert len(with_row.emitted) - len(without.emitted) == 34
+    assert len(with_row.emitted) - len(without.emitted) == 33
     assert len(set(composing()) & set(with_row.emitted)) == 22
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
