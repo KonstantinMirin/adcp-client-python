@@ -295,6 +295,19 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         # graded against the stricter merged one, so the document is refused by
         # name rather than graded against a schema it does not mean.
         check_keywords(node, pointer, {"$ref"}, "a sibling of $ref, which draft-07 ignores")
+        # **The DOCUMENT HALF decides which of the two resolutions this is**, and the
+        # reading is ``bundle.split_ref``'s one reading of the ``#``.  An EMPTY half is
+        # a pointer into the document being written: there is no module to import from,
+        # and the symbol is one THIS module declares -- so it is a lookup in
+        # ``mod.declared`` rather than a binding, and ``compiler.local_reference`` declares
+        # the node if the walk has not reached it yet.  The branch is here and not
+        # inside ``emit.emit``'s binder, where it used to refuse, because a binder
+        # resolves a reference to a MODULE and a local reference names none; handing one
+        # to the binder was what made "a node of the module being written has no symbol
+        # to import yet" the answer for all 45 documents carrying one.
+        head, into = bundle.split_ref(node["$ref"])
+        if not head:
+            return compiler.local_reference(mod, into, pointer)
         target = mod.bind(node["$ref"], pointer)
         mod.imports.add((target.module, target.symbol))
         return Decided(compiler.Type(target.symbol, local=True))
@@ -549,10 +562,20 @@ def lower_document(
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
     mod = Module(
         document=document,
+        root=symbol,
         bind=bind,
         decide=decide_type,
         asserted=asserted_formats(doc),
         named=named,
+        # The SUBSCHEMA behind each named pointer, read off ``bundle.nodes`` -- the one
+        # schema-position walk ``bundle.named_nodes`` itself read the references off, so
+        # the pointer spelling (``~0``/``~1`` in a key included) is produced once and a
+        # local reference cannot miss a node because two walks escaped a key
+        # differently.  Keyed by pointer and narrowed to ``named``, which is what says
+        # this is for resolving a reference and not a general index of the document:
+        # a node nothing names needs no entry, and 11 of this bundle's 157 local-section
+        # entries are in that position (``compiler.local_reference``).
+        local={p: n for p, n in bundle.nodes(doc) if p in named},
     )
     claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
     if len(claimed) > 1:
@@ -625,18 +648,20 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             # a reference names.
             head, into = bundle.split_ref(uri)
             if not head:
-                # A LOCAL reference: it names a node of THIS document, so there is no
-                # module to import from and the symbol would have to be one this
-                # module is in the middle of writing.  Refused by name, pointer and
-                # the pointer it carries.  0 of the documents that lower reach this:
-                # all 45 carrying one refuse on ``definitions``/``$defs``, which is
-                # the keyword such a reference points through, so the import path for
-                # it is built by the step whose population reaches one.
+                # A LOCAL reference never arrives here.  It names a node of the
+                # document being written, so there is no module to import from and
+                # nothing for a binder to resolve: ``decide_type`` branches on the
+                # empty document half first and asks ``compiler.local_reference`` for the
+                # symbol this module declares.  This stays as the loud answer for a
+                # caller that reaches the binder another way, rather than being
+                # deleted and leaving ``document_for`` to return ``None`` and report a
+                # pointer as a document the bundle does not hold.
                 raise Refusal(
                     "$ref",
                     pointer,
-                    f"{uri} is a pointer into this document, and a node of the module "
-                    "being written has no symbol to import yet (a later step's row)",
+                    f"{uri} is a pointer into this document, which is not a binding at "
+                    "all -- the walk resolves one through compiler.local_reference and "
+                    "never through a binder",
                 )
             target = bundle.document_for(head, known)
             if target is None:

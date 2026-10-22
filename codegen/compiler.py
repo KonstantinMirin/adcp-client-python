@@ -548,6 +548,27 @@ ANNOTATIONS = frozenset(
     }
 )
 
+#: The two keywords holding a BAG OF NAMED SUBSCHEMAS, admitted at every node and
+#: separate from :data:`ANNOTATIONS` because the reason is different.
+#:
+#: Neither keyword asserts anything about an instance in any draft this bundle
+#: declares: a section is a place to PUT a subschema, and what it holds reaches an
+#: instance only through a ``$ref``.  So admitting one drops nothing -- the node a
+#: reference names is declared when the reference asks for it
+#: (:func:`local_reference`), and a node nothing references cannot change what the
+#: document accepts, which is the whole of what a refusal protects (P3).
+#:
+#: One place rather than a member of each row's own handled set, because the screen
+#: runs at 13 call sites across five modules and the answer is the same at every one:
+#: the section is not a root kind and not a row's business.  Measured on the 3.2
+#: bundle: 45 documents declare a section at their root and 1 declares one deeper
+#: (``brand/get-brand-identity-response.json#/oneOf/0/properties/fonts``), so a
+#: root-only admission would leave that one refusing on a keyword this now handles.
+#:
+#: ``codegen.bundle`` imports this set rather than restating it, which is the
+#: direction D13 fixes: ``bundle`` imports this module and never the other way.
+DEFINITION_SECTIONS = frozenset({"definitions", "$defs"})
+
 
 # --------------------------------------------------------------------------- #
 # names (D3)
@@ -683,6 +704,13 @@ def _no_decider(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 @dataclass
 class Module:
     document: str
+    #: The symbol the document's ROOT binds, which is D3's parent for a name derived
+    #: inside the module: :func:`local_reference` qualifies an entry's own key with it,
+    #: the way :func:`fields` qualifies a property's.  ``emit.lower_document`` sets it
+    #: from the title before the row runs.  Empty by default, so a document lowered
+    #: outside it derives a bare, unqualified name rather than one naming a root that
+    #: is not there -- the same shape as ``asserted`` and ``named`` being empty.
+    root: str = ""
     #: ``(uri, pointer) -> Target``; see ``emit.emit``.
     bind: Callable[[str, str], Target] = _no_binder
     #: ``(node, pointer, name_hint, mod) -> Decided``; see ``emit.decide_type``.
@@ -691,11 +719,20 @@ class Module:
     #: Empty by default, so a node lowered outside ``lower_document`` selects no
     #: format-derived type rather than one nothing checks.
     asserted: frozenset[str] = frozenset()
-    #: The pointers of THIS document's nodes that a ``$ref`` elsewhere in the bundle
-    #: NAMES; see ``bundle.named_nodes``.  Empty by default, so a document lowered
-    #: outside ``lower_document`` names no node for a referrer that is not there --
-    #: the same reason ``asserted`` is empty by default.
+    #: The pointers of THIS document's nodes that a ``$ref`` NAMES -- from elsewhere in
+    #: the bundle, or from this very document; see ``bundle.named_nodes``.  Empty by
+    #: default, so a document lowered outside ``lower_document`` names no node for a
+    #: referrer that is not there -- the same reason ``asserted`` is empty by default.
     named: frozenset[str] = frozenset()
+    #: The SUBSCHEMA at each of those pointers, for the ones a LOCAL reference reaches:
+    #: ``pointer -> node``.  A local reference resolves against the REFERRING document,
+    #: so the node it names is in this file and :func:`local_reference` needs it without a
+    #: binder and without a second reading of the document.  Keyed by the pointer
+    #: ``bundle.nodes`` yields, which is the same walk ``bundle.named_nodes`` read the
+    #: reference off, so there is no second pointer navigator and no second escaping
+    #: rule for a ``~0``/``~1`` in a key.  Empty by default: a document lowered outside
+    #: ``lower_document`` resolves no local reference rather than inventing a symbol.
+    local: Mapping[str, dict] = field(default_factory=dict)
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
@@ -705,7 +742,15 @@ class Module:
     #: :meth:`declare`, which EVERY declaration passes through, so a fragment
     #: reference reads one map rather than a second record something could forget to
     #: write.  This is how a ``$ref`` carrying a pointer finds the symbol to import.
+    #: It is also :func:`local_reference`'s MEMO, which is why that function needs no
+    #: record of its own: a node declared because the walk reached it and a node
+    #: declared because a local reference asked for it are one entry here.
     declared: dict[str, str] = field(default_factory=dict)
+    #: The pointers :func:`local_reference` is in the middle of declaring, innermost last.
+    #: A pointer meeting itself here is a local reference CYCLE, which refuses by name
+    #: rather than recurring -- the same shape, and the same reason, as ``emit.emit``'s
+    #: ``inflight`` list for a cross-document cycle.
+    resolving: list[str] = field(default_factory=list)
 
     #: D5's rung 3: ``alias symbol -> (the document's type word, its constraints)``
     #: for every constrained scalar this module resolved to a name in
@@ -760,7 +805,9 @@ def check_keywords(
     why: str = "this step lowers no such keyword (a later D2 row does)",
 ) -> None:
     for key in sorted(node):
-        if key in handled or key in ANNOTATIONS or key.startswith("x-"):
+        if key in handled or key in ANNOTATIONS or key in DEFINITION_SECTIONS:
+            continue
+        if key.startswith("x-"):
             continue
         raise Refusal(key, pointer, why)
 
@@ -1098,6 +1145,91 @@ def name_the_node(mod: Module, symbol: str, pointer: str, node: dict, decided: D
     """
     mod.add(symbol, pointer, _alias_for(symbol, node, decided))
     return Decided(Type(symbol, local=True))
+
+
+def local_reference(mod: Module, pointer: str, at: str) -> Decided:
+    """What a LOCAL ``$ref`` decides to: the node of THIS document that it names.
+
+    :func:`name_the_node`'s sibling, and the division is which document the reference
+    resolves against.  An ABSOLUTE fragment reference names a node of ANOTHER document,
+    so the referring module imports a symbol that module declared and
+    ``emit.emit``'s binder does the work.  A local one (``#/definitions/x`` -- an empty
+    document half, which ``bundle.split_ref`` is what hands back) names a node of the
+    document being written, so there is no module to import from and no binder to ask:
+    the symbol is one THIS module declares, and if it has not declared it yet, this is
+    what makes it.
+
+    **Declared when a reference asks, not ahead of time**, and three things follow that
+    an eager pass over the section would have to solve one at a time:
+
+    * a FORWARD reference costs nothing.  20 of the bundle's local references name an
+      entry the document lists after the one referring to it, in 4 documents; declaring
+      on demand puts every symbol in the module before its user by construction, where
+      an eager pass in document order would need a topological sort over the section.
+    * an entry nothing references is NOT declared, which is the decision rather than an
+      omission.  ``definitions`` and ``$defs`` assert nothing about an instance, so an
+      entry no reference reaches cannot change what the document accepts or refuses --
+      declaring it would emit a class no field names, nothing imports and ``__all__``
+      does not export, whose only reachable effect is that a keyword inside a DEAD
+      section could refuse the whole document.  Measured: 11 of the 157 entries in the
+      40 documents this step unblocks, all 11 in ``a2ui/si-catalog.json``, whose 24
+      ``$ref``\\ s all sit inside the dead section.
+    * a CYCLE refuses by name instead of recurring, through ``mod.resolving``.  0
+      documents are in that position today, which is why this is the rule rather than a
+      forward-declaration scheme: two entries naming each other is a recursive type,
+      and nothing here has a spelling for one.
+
+    **The NODE ITSELF decides what it becomes, and the decision is returned rather than
+    looked back up.**  ``mod.decide`` is the one per-node walk, so an object entry is a
+    class, an enumeration is an enumeration, and a scalar or an array is an annotation
+    that :func:`name_the_node` gives this very symbol to -- the pointer is in
+    ``mod.named``, which is what put it in ``mod.local`` in the first place.  Each one
+    therefore carries ITS OWN pointer: a class through :func:`declare_object`'s
+    ``schema_ref(mod.document, pointer)``, and nothing is written against the referring
+    document's.
+
+    Returning the decision is what makes the ONE case with no declaration correct
+    instead of a ``KeyError``: an entry that is ITSELF a ``$ref`` decides to the symbol
+    the module IMPORTED for its target, which nothing declared here.  That is the right
+    answer within one module -- the import is already in the module and there is no
+    export to re-export -- and it is the opposite of the cross-module case, where
+    section 2's rule demands the symbol be one the TARGET declares and ``emit.emit``'s
+    binder refuses a pointer at such a node.  It is also why ``mod.declared`` is a
+    sufficient memo rather than a required one: such an entry is simply re-decided, to
+    the same imported symbol, and ``mod.imports`` is a set.  Measured, so the arm is
+    known live rather than defensive: 4 of the bundle's 405 local reference sites name
+    such an entry, in 2 documents (``brand.json#/definitions/logo_slot`` and
+    ``core/registry-event.json#/$defs/badgeRole``, each named twice).
+
+    The NAME is D3's nested rule with the document as the parent: the root's symbol plus
+    ``class_name`` of the entry's own key, which is the pointer's last segment
+    unescaped.  **No identifier check here, and that is a proof rather than an
+    omission**: ``class_name`` returns alphanumerics only, ``emit.lower_document``
+    refuses a title that derives no identifier before any row runs, so ``mod.root``
+    always begins with a letter and the concatenation is always an identifier.  What
+    CAN go wrong is two keys deriving one name (``a_b`` and ``a.b``), and
+    :meth:`Module.declare` already fails the build naming both -- including the key
+    whose characters are all non-alphanumeric, which derives the root's own name.
+    Measured spellable for all 163 of the bundle's entry keys.
+    """
+    if pointer in mod.declared:
+        return Decided(Type(mod.declared[pointer], local=True))
+    if pointer in mod.resolving:
+        raise Refusal(
+            "$ref",
+            at,
+            f"a local reference cycle: #{' -> #'.join([*mod.resolving, pointer])}",
+        )
+    node = mod.local.get(pointer)
+    if node is None:
+        raise Refusal("$ref", at, f"#{pointer} names no node of this document")
+    key = pointer.rsplit("/", 1)[-1].replace("~1", "/").replace("~0", "~")
+    symbol = mod.root + class_name(key)
+    mod.resolving.append(pointer)
+    try:
+        return mod.decide(node, pointer, symbol, mod)
+    finally:
+        mod.resolving.pop()
 
 
 def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
