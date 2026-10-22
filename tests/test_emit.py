@@ -1384,8 +1384,15 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 462, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 450
+    # 465 and not 462: ``core/attribution-window.json`` now emits, because a
+    # composition BELOW a root reaches the product lowering through ``emit._decide``
+    # (``ROWS`` dispatches on root kind, so a node that is not a root has no row to
+    # be).  Its three pairs are the root plus the two ``allOf`` property nodes
+    # ``#/properties/post_click`` and ``#/properties/post_view``, each a subclass of
+    # ``Duration`` with its own ``__adcp_schema__`` and no field of its own -- all
+    # three ``pass``, with 0 missing, 0 differs and 0 added.
+    assert len(reports) == 465, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 453
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
