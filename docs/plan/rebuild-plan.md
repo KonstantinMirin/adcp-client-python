@@ -566,6 +566,16 @@ The harness runs three checks, two of which keep the names the code gives them.
 3. **The schema comparison**: the class's own `model_json_schema()` against the document
    `__adcp_schema__` names.
 
+**The accepts check draws its instances and replays the document's own.** `hypothesis-jsonschema`
+generates against the document, and 168 schema positions across 142 of the 1,057 documents also
+carry `examples`, holding 553 payloads the spec states are valid. Those payloads are a
+population, so the check feeds every one of them rather than sampling. `strict_validate`'s schema
+half answers first, which splits the two outcomes without extra machinery: a published payload
+the DOCUMENT refuses is a spec defect, reported by document and pointer and never charged to the
+class; one the document accepts and the class refuses is ours. Generated instances stay sampled
+at a stated `max_examples`, and `Phase.explicit` is not in the phase list because no `@example`
+exists for it to run.
+
 The first two call `strict_validate`, whose schema half answers first, so neither exercises the
 annotations. A class carrying `Any` on every field and a faithful one produce **identical
 reports**: on `core/pagination-request.json`, both accept, both refuse 75 of 75 instances, both
