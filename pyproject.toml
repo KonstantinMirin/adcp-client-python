@@ -2,12 +2,18 @@
 name = "adcp-emit"
 version = "0.0.0"
 description = "Emit the AdCP SDK types from the schema bundle."
+# The FLOOR is 3.11 because D2 makes an `enum` node a `StrEnum`, which is 3.11.
+# The alternative, `class X(str, Enum)`, gives a member whose `str()` is
+# "MatchType.BROAD" rather than "broad", which is not what a wire type means by
+# being a string -- so the floor moves rather than the decision. Reversible in
+# this one line if D2 is re-decided.
+#
 # Capped because the two pins have to hold together: `datamodel-code-generator`
 # requires `pydantic>=2.14` on 3.15 and up, and the pydantic pin below is exact
 # to a minor because the rendered annotation and the error shape are both a
 # function of it. 3.15 is unreleased; the cap is lifted by moving the pydantic
 # pin, not by floating the compiler.
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     # The harness grades a (JSON Schema document, Python class) pair. These four
     # are everything it imports, and the emitter adds nothing to them.

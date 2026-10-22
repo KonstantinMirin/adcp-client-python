@@ -207,6 +207,22 @@ def references_a_property(doc: dict) -> bool:
     return bool(rs) and all(_is_property_or_items(p) for p, _ in rs)
 
 
+def carries_an_enum(doc: dict) -> bool:
+    """Step 3's population: an ``enum`` at a SCHEMA POSITION anywhere in it.
+
+    Root and inline together, because D2 gives both the same row and the lowering
+    makes no distinction -- 214 of the bundle's documents carry one at the root
+    and 535 carry one somewhere, over 1,069 enum nodes.
+
+    Position is the whole of it, which is why this reads ``nodes`` rather than
+    searching for the key: an ``enum`` holds INSTANCE data, so a value inside one
+    may itself be an object with a property named ``enum``, and a blanket walk
+    would count a document that has none.  ``emit.is_enum_root`` is the narrowing
+    of this to the root, and implies it.
+    """
+    return any("enum" in n for _, n in nodes(doc))
+
+
 def _is_property_or_items(pointer: str) -> bool:
     parts = [p for p in pointer.split("/") if p]
     if not parts or parts[0] != "properties":

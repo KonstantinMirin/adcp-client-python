@@ -75,6 +75,7 @@ from pydantic import BaseModel
 
 from adcp.types._base import SchemaRef
 from codegen import bundle, compiler, harness
+from codegen.lower import enum as lower_enum
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -275,6 +276,16 @@ class Module:
         self.names.add(name)
         self.blocks.append(block)
 
+    def add(self, name: str, pointer: str, rendered: compiler.Rendered) -> None:
+        """Declare a rendered block and take the imports it needs.
+
+        The two halves of putting a compiled class into a module, in one place:
+        every D2 row that renders a class does exactly this, and a row that took
+        the text and forgot the imports would emit a module that does not import.
+        """
+        self.imports |= rendered.imports
+        self.declare(name, pointer, rendered.text)
+
 
 def _check_keywords(
     node: dict,
@@ -332,6 +343,16 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         module, symbol = mod.bind(node["$ref"], pointer)
         mod.imports.add((module, symbol))
         return Decided(compiler.Type(symbol, local=True))
+
+    if "enum" in node:
+        # D2's enumeration row, reached before ``type`` is read at all: the base
+        # comes from the members (``lower.enum.BASES``), which is what admits the
+        # bundle's 164 typeless enum nodes.  A root enum reaches the same row
+        # through the dispatch table below.
+        _check_keywords(node, pointer, lower_enum.HANDLED)
+        decided = lower_enum.decide(node, name_hint, pointer)
+        mod.add(name_hint, pointer, compiler.render_enum(decided))
+        return Decided(compiler.Type(name_hint, local=True))
 
     kind = node.get("type")
 
@@ -441,18 +462,20 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
     if isinstance(node.get("additionalProperties"), dict):
         raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
     description = node.get("description")
-    rendered = compiler.render(
-        compiler.Class(
-            name=name,
-            ref=schema_ref(mod.document, pointer),
-            properties=tuple(decided),
-            description=description if isinstance(description, str) and description else None,
-            # D7; absent leaves the base's default in place
-            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
-        )
+    mod.add(
+        name,
+        pointer,
+        compiler.render(
+            compiler.Class(
+                name=name,
+                ref=schema_ref(mod.document, pointer),
+                properties=tuple(decided),
+                description=description if isinstance(description, str) and description else None,
+                # D7; absent leaves the base's default in place
+                extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            )
+        ),
     )
-    mod.imports |= rendered.imports
-    mod.declare(name, pointer, rendered.text)
     return name
 
 
@@ -489,6 +512,147 @@ def render(mod: Module, symbol: str) -> str:
     return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
 
 
+def _bind_root_without_a_model(mod: Module, symbol: str, rendered: compiler.Rendered) -> None:
+    """The module-level half of a root that is not an ``AdCPBaseModel``.
+
+    D2 gives two root kinds no class to hang ``strict_validate`` on: a scalar root
+    is an ``Annotated`` alias, and an enumeration cannot carry a class-body line
+    at all because ``Enum.jinja2`` has no ``class_body_lines`` slot and D9 forbids
+    writing one in afterwards.  Both therefore bind the SAME two halves at module
+    scope -- the reference, and ``strict_alias`` over it -- so a class, an alias
+    and an enumeration cannot come to answer differently about what their own
+    document accepts.  ``strict_alias`` reaches the document through ``schema_at``
+    and refuses through ``_refuse``, which is exactly what
+    ``AdCPBaseModel.strict_validate`` does.
+
+    One function and not two, because the two rows differ only in the rendered
+    text between the statements.  ``tests/test_emit.py`` reads the pairing off the
+    module for both.
+    """
+    ref = schema_ref(mod.document, "")
+    mod.imports |= rendered.imports
+    mod.imports.add((BASE_MODULE, "SchemaRef"))
+    mod.imports.add((BASE_MODULE, "strict_alias"))
+    mod.declare(
+        symbol,
+        "",
+        f"__adcp_schema__ = {ref!r}\n\n"
+        f"{rendered.text}\n\n\n"
+        f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
+    )
+
+
+def is_object_root(doc: dict) -> bool:
+    """D2's object row: an object with ``properties``."""
+    return "properties" in doc and doc.get("type") in (None, "object")
+
+
+def is_scalar_root(doc: dict) -> bool:
+    """D2's scalar row: a scalar, and NOT an enumeration.
+
+    ``"enum" not in doc`` is the load-bearing clause and not a belt: all 214 of
+    the bundle's root enums declare ``type: "string"``, so without it the scalar
+    row and the enumeration row claim the same 214 documents and the table has an
+    ambiguity at a sixth of the population.  With it, the three rows claim 0
+    documents in common over all 1,054 -- which ``tests/test_emit.py`` asserts
+    both ways round.
+    """
+    return isinstance(doc.get("type"), str) and doc["type"] in SCALAR and "enum" not in doc
+
+
+def is_enum_root(doc: dict) -> bool:
+    """D2's enumeration row: the root itself carries an ``enum`` (step 3).
+
+    Implies ``bundle.carries_an_enum``, which is step 3's POPULATION test, so this
+    row cannot claim a document the step does not count.
+    """
+    return "enum" in doc
+
+
+def _lower_object_root(doc: dict, symbol: str, mod: Module) -> None:
+    lower_object(doc, symbol, "", mod)
+
+
+def _lower_scalar_root(doc: dict, symbol: str, mod: Module) -> None:
+    """D2's root-scalar row, which step 2 needs because a reference TARGET is one
+    100 times over: ``core/creative-revision-id.json`` is a string with
+    ``minLength``/``maxLength`` and has no field to hang itself on.  An alias, not
+    a class -- a wrapper class would be a second name for the same node (P2) and
+    would make every referencing model carry an object where the document carries
+    a string.
+
+    The ANNOTATION is still the compiler's: the same field rendering a class
+    property gets, read off the field instead of out of a class body, so a
+    constraint on an alias and a constraint on a property cannot come to be
+    spelled two ways.  What is ours is the two module-level STATEMENTS, and §1
+    says why: no compiler template has a slot for a line beside an alias.
+
+    KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
+    per-class ``regex_engine`` a look-around pattern needs, and ``strict_alias``
+    builds its ``TypeAdapter`` at import.  A scalar root carrying look-around
+    would therefore fail to IMPORT once the base stops forcing ``python-re``.
+    Measured over step 2's population: 5 scalar roots, 2 carrying a ``pattern``
+    (both ``^[a-z0-9_]+$``, which the default engine compiles) and 0 carrying
+    look-around, so no document there reaches it.  The failure is an ImportError
+    at the gate rather than a silent widening, so the upgrade path is for the step
+    whose population reaches one: either refuse such a document by name, or wrap
+    the alias in a ``RootModel`` that has a config slot.
+    """
+    decided_type = decide_type(doc, "", symbol, mod)
+    description = doc.get("description")
+    _bind_root_without_a_model(
+        mod,
+        symbol,
+        compiler.render_alias(
+            symbol,
+            decided_type.type,
+            decided_type.constraints,
+            description=description if isinstance(description, str) and description else None,
+            format=decided_type.format,
+        ),
+    )
+
+
+def _lower_enum_root(doc: dict, symbol: str, mod: Module) -> None:
+    """D2's enumeration row at a document root (step 3).
+
+    The same decision an inline enum gets (``decide_type`` above reaches
+    ``lower.enum`` too), with the module-level binding a root needs around it.
+    """
+    _check_keywords(doc, "", lower_enum.HANDLED)
+    _bind_root_without_a_model(
+        mod, symbol, compiler.render_enum(lower_enum.decide(doc, symbol, ""))
+    )
+
+
+#: D2's rows, as the ``(selector, lowering)`` pairs §5 Layout states, and
+#: **UNORDERED**: a document two selectors claim raises :class:`AmbiguousRoot`
+#: rather than taking the first row, because deciding which row wins is a decision
+#: and a precedence hides it.  A selector reads the document's ROOT and is its
+#: step's population test narrowed to that root, so a row cannot claim a document
+#: its step does not count.
+#:
+#: A document NO row claims is refused by name and keyword: 144 of the bundle's
+#: 1,054 are root arrays, root mappings, ``allOf`` roots and union roots, which
+#: are steps 4-7's rows.
+ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, Module], None]], ...] = (
+    (is_object_root, _lower_object_root),
+    (is_scalar_root, _lower_scalar_root),
+    (is_enum_root, _lower_enum_root),
+)
+
+
+class AmbiguousRoot(Exception):
+    """Two D2 rows claim one document.
+
+    A BUILD FAILURE and not a ``Refusal``: a refusal is the designed outcome of a
+    keyword this emitter does not lower, and this is the emitter disagreeing with
+    itself about which row owns a node kind.  Recording it as a refusal would put
+    it in the refusal report, where it would read as a document the bundle is
+    responsible for.
+    """
+
+
 def lower_document(
     document: str, doc: dict, bind: Callable[[str, str], tuple[str, str]] = _no_binder
 ) -> tuple[Module, str]:
@@ -499,58 +663,14 @@ def lower_document(
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
     mod = Module(document=document, bind=bind, asserted=asserted_formats(doc))
-    kind = doc.get("type")
-    if "properties" in doc and kind in (None, "object"):
-        lower_object(doc, symbol, "", mod)
-    elif isinstance(kind, str) and kind in SCALAR:
-        # D2's root-scalar row, which this step needs because a reference TARGET is
-        # one 100 times over: `core/creative-revision-id.json` is a string with
-        # `minLength`/`maxLength` and has no field to hang itself on.  An alias,
-        # not a class -- a wrapper class would be a second name for the same node
-        # (P2) and would make every referencing model carry an object where the
-        # document carries a string.  A root array and a root mapping are step 6's
-        # rows and still refuse below.
-        #
-        # The ANNOTATION is still the compiler's: the same field rendering a class
-        # property gets, read off the field instead of out of a class body, so a
-        # constraint on an alias and a constraint on a property cannot come to be
-        # spelled two ways.  What is ours is the two module-level STATEMENTS, and
-        # §1 says why: no compiler template has a slot for a line beside an alias.
-        #
-        # KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
-        # per-class ``regex_engine`` a look-around pattern needs, and
-        # ``strict_alias`` builds its ``TypeAdapter`` at import.  A scalar root
-        # carrying look-around would therefore fail to IMPORT once the base stops
-        # forcing ``python-re``.  Measured over this step's population: 5 scalar
-        # roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the
-        # default engine compiles) and 0 carrying look-around, so no document
-        # here reaches it.  The failure is an ImportError at the gate rather than
-        # a silent widening, so the upgrade path is for the step whose population
-        # reaches one: either refuse such a document by name, or wrap the alias
-        # in a ``RootModel`` that has a config slot.
-        decided_type = decide_type(doc, "", symbol, mod)
-        description = doc.get("description")
-        rendered = compiler.render_alias(
-            symbol,
-            decided_type.type,
-            decided_type.constraints,
-            description=description if isinstance(description, str) and description else None,
-            format=decided_type.format,
+    claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
+    if len(claimed) > 1:
+        raise AmbiguousRoot(
+            f"{document}: {', '.join(s.__name__ for s, _ in claimed)} all claim this root"
         )
-        mod.imports |= rendered.imports
-        mod.imports.add((BASE_MODULE, "strict_alias"))
-        ref = schema_ref(document, "")
-        mod.declare(
-            symbol,
-            "",
-            f"__adcp_schema__ = {ref!r}\n\n"
-            f"{rendered.text}\n\n\n"
-            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-        )
-    else:
-        raise Refusal(
-            "type", "", "this step emits an object root with properties, or a scalar root"
-        )
+    if not claimed:
+        raise Refusal("type", "", "no D2 row claims this root (a later step's row does)")
+    claimed[0][1](doc, symbol, mod)
     return mod, symbol
 
 
