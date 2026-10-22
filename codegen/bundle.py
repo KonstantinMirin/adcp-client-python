@@ -109,8 +109,34 @@ def references(node: object) -> list[tuple[str, str]]:
     return [(p, n["$ref"]) for p, n in nodes(node) if isinstance(n.get("$ref"), str)]
 
 
-def document_for(uri: str, documents: Collection[str]) -> str | None:
-    """The bundle document an absolute ``$ref`` URI names, or ``None``.
+def split_ref(uri: str) -> tuple[str, str]:
+    """A ``$ref`` URI as ``(the document it names, the JSON Pointer into it)``.
+
+    THE ONE READING OF THE ``#``, and all three callers need it: ``document_for``
+    matches the document half, ``resolved`` keys its store on it, and the emitter's
+    reference binder needs both halves because a fragment reference becomes an
+    IMPORT and an import needs the module AND the symbol.  Two readings of the same
+    delimiter is how a binder and a resolver come to disagree about which document a
+    reference names.
+
+    A LOCAL reference (``#/definitions/x``) has an EMPTY document half, which is the
+    two cases a caller distinguishes on: a pointer into the referrer, not a document
+    this bundle fails to hold.
+
+    A POINTER and not an arbitrary fragment: draft-07 also admits a plain-name
+    fragment (``#foo``, resolved against an ``$id``), and this bundle holds none --
+    all 154 of its local refs and all 76 of its fragment-bearing absolute refs spell
+    a pointer, which starts with ``/`` or is empty.  A plain-name fragment would
+    arrive as a pointer naming no node and be refused for naming none, which is the
+    right outcome by the wrong reason; the step whose bundle carries one reads
+    ``$id``.
+    """
+    head, _, pointer = uri.partition("#")
+    return head, pointer
+
+
+def document_for(document_uri: str, documents: Collection[str]) -> str | None:
+    """The bundle document a ``$ref``'s DOCUMENT HALF names, or ``None``.
 
     Derived from the bundle's own file set rather than from the URI's spelling: the
     longest trailing run of path segments that IS a document in this bundle.  That
@@ -119,18 +145,68 @@ def document_for(uri: str, documents: Collection[str]) -> str | None:
     version segment" would be a version literal in disguise -- it would also be
     wrong for a bundle that publishes under a different base.
 
-    MEASURED on the 3.2 bundle: of 968 distinct targets, 738 carry no fragment and
-    every one of them resolves, with exactly one matching suffix each -- so the
-    "longest" is not covering an ambiguity, there is none to cover.  The remaining
-    230 carry a fragment and are ``None`` here: a fragment names a NODE inside a
-    document, which needs a name of its own, so it is a later step's row and this
-    step refuses it.
+    **The DOCUMENT HALF, which the caller takes off the URI with** :func:`split_ref`.
+    This function read ``if "#" in uri: return None`` and called a fragment a later
+    step's row; this is that row, and the row turns out not to live here. A fragment
+    reference needs BOTH halves -- it becomes an import of a symbol the target module
+    declares, so the import needs the module AND the symbol -- so the caller splits
+    once and uses both, and this reads no ``#`` at all.  Doing the split here as well
+    would be a second reading of the delimiter that no live call could reach, since
+    every caller arrives pre-split.
+
+    A LOCAL reference (``#/definitions/x``) has an EMPTY document half, and the caller
+    branches on that before asking: it names a node of the REFERRER, so no bundle
+    document is being named.  ``resolved`` skips one and ``harness.resolve`` resolves
+    it against the referrer with no store entry (probed: an empty store inlines
+    ``#/definitions/x``).
+
+    MEASURED on the 3.2 bundle: 968 distinct ``$ref`` URIs -- 738 absolute with no
+    fragment, 76 absolute carrying one, 154 local.  All 814 absolute ones resolve to
+    a document, with exactly one matching suffix each, so the "longest" is not
+    covering an ambiguity; there is none to cover.  All 76 fragment pointers name a
+    node that exists in the document they resolve to.  (The 230 an earlier revision
+    of this docstring called "carrying a fragment" is 76 + 154: it counted the local
+    refs in with the absolute ones, which is why it read as 230 unresolvable targets
+    rather than as 76 nodes and 154 self-references.)
     """
-    if "#" in uri:
-        return None
-    parts = uri.split("://", 1)[-1].split("/")
+    parts = document_uri.split("://", 1)[-1].split("/")
     found = [s for i in range(len(parts)) if (s := "/".join(parts[i:])) in documents]
     return max(found, key=len) if found else None
+
+
+def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
+    """For each document, the pointers of its nodes that a ``$ref`` ELSEWHERE names.
+
+    A fragment reference becomes an IMPORT of a symbol the target module declares
+    (section 2's rule), so the target module has to declare one -- and a node that
+    D2 makes an annotation rather than a class has no symbol unless something asks
+    for it.  This is what asks.
+
+    **A function of the BUNDLE and not of the run's document set**, which is the
+    whole reason it is computed here rather than from the ``$ref``\\ s the run's own
+    documents happen to carry.  P7 makes the output a function of (bundle, document
+    set, this package); a module whose CONTENT varied with which other documents
+    were named would satisfy that letter and break its point -- the committed
+    ``core/version_envelope.py`` would differ from the one the README's
+    one-document command writes, at the same bundle, and the gate's byte compare
+    would then be against whichever population last ran.
+
+    Reads every portable document once.  Measured on the 3.2 bundle: 76 pointers
+    across 19 documents, from 113 reference sites in 34 documents.  Local references
+    are NOT here: one names a node of its own document, so there is no import and no
+    cross-module symbol -- see :func:`split_ref`.
+    """
+    known = set(portable(bundle_dir))
+    out: dict[str, set[str]] = {}
+    for document in sorted(known):  # sorted, like ``portable``: P7
+        for _, uri in references(read(bundle_dir, document)):
+            head, pointer = split_ref(uri)
+            if not head or not pointer:
+                continue
+            target = document_for(head, known)
+            if target is not None:
+                out.setdefault(target, set()).add(pointer)
+    return {d: frozenset(p) for d, p in out.items()}
 
 
 def resolved(bundle_dir: Path, document: str) -> dict:
@@ -174,15 +250,41 @@ def resolved(bundle_dir: Path, document: str) -> dict:
     store: dict[str, dict] = {}
     queue = [doc]
     while queue:
-        for _, uri in references(queue.pop()):
-            if uri in store:
+        for pointer, uri in references(queue.pop()):
+            # **The store is keyed on the DOCUMENT URI and holds the whole
+            # document; the resolver follows the fragment itself.**  Keying on the
+            # full URI is what this did, and it is why a fragment-bearing reference
+            # failed even with its target read in: probed on
+            # ``hypothesis_jsonschema``'s resolver, a store holding the target
+            # under ``<uri>#/properties/cat`` raises ``_RefResolutionError`` ("does
+            # not fetch remote references") while the same target under ``<uri>``
+            # inlines the node at the pointer.  So the ``None`` was never the only
+            # gate -- the key was the other half.
+            #
+            # A LOCAL reference is SKIPPED rather than looked up: it names a node of
+            # this document, and ``LocalResolver`` is built with ``referrer=doc``,
+            # so it resolves one with no store entry at all.  Looking it up instead
+            # raised for 93 of the 1,054 portable documents, and 63 of those carry
+            # no absolute fragment reference at all -- a document whose only
+            # unresolvable reference was a pointer into itself.
+            head = split_ref(uri)[0]
+            if not head or head in store:
                 continue
-            target = document_for(uri, known)
+            target = document_for(head, known)
             if target is None:
-                raise ValueError(f"{document}: {uri} names no document of {bundle_dir}")
-            store[uri] = read(bundle_dir, target)
-            queue.append(store[uri])
-    return resolve(doc, store=store) if store else doc
+                raise ValueError(
+                    f"{document}: {uri} at {pointer or '/'} names no document of {bundle_dir}"
+                )
+            store[head] = read(bundle_dir, target)
+            queue.append(store[head])
+    # ``references(doc)`` and not ``store``: a document whose only reference is a
+    # pointer into ITSELF builds an empty store and still has a ``$ref`` to inline,
+    # so the old ``if store`` would hand it back with the reference left in -- which
+    # is the one thing this function exists to prevent.  13 documents are in that
+    # position (45 carry a local reference, and the other 32 carry an absolute one as
+    # well, so their store is not empty).  A document with no reference of its own is
+    # handed back as read, and nothing resolves a bundle.
+    return resolve(doc, store=store) if references(doc) else doc
 
 
 # --------------------------------------------------------------------------- #

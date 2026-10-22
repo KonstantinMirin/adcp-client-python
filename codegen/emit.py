@@ -189,6 +189,31 @@ def relative_module(frm: str, to: str) -> str:
 # the walk: what each node IS
 # --------------------------------------------------------------------------- #
 def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
+    """What one schema node IS, plus a SYMBOL where another document names the node.
+
+    The decision is :func:`_decide`'s, unchanged.  What is here is the one thing a
+    node reached by a fragment reference needs and a node reached only by its parent
+    does not: a name in this module, so the referring module imports a symbol rather
+    than copying a schema (section 2's rule).
+
+    It wraps rather than living inside ``_decide`` because it applies to every arm
+    equally -- an array, a scalar, a mapping and a multi-type node are all annotations
+    with no name -- and ``_decide`` returns from ten places, so putting the test in
+    there would be ten tests or one more wrapper.  A class or an enumeration comes
+    back ``local`` already, having declared itself under this very ``name_hint``, so
+    nothing is named twice and no second symbol appears for one node.
+
+    ``mod.named`` is a function of the BUNDLE (``bundle.named_nodes``), not of the
+    run's document set, so whether a node gets a name does not depend on who else was
+    emitted.
+    """
+    decided = _decide(node, pointer, name_hint, mod)
+    if pointer in mod.named and not decided.type.local:
+        return compiler.name_the_node(mod, name_hint, pointer, node, decided)
+    return decided
+
+
+def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
     """What one schema node IS: a Python type, and what constrains it.
 
     Nullability is NOT a question here (D4).  This returns the node's own type,
@@ -395,7 +420,10 @@ class AmbiguousRoot(Exception):
 
 
 def lower_document(
-    document: str, doc: dict, bind: Callable[[str, str], Target] = _no_binder
+    document: str,
+    doc: dict,
+    bind: Callable[[str, str], Target] = _no_binder,
+    named: frozenset[str] = frozenset(),
 ) -> tuple[Module, str]:
     # D2's shape rows dispatch through ``codegen.lower.ROWS``, one module per row.
     # Imported inside the function because a row's module imports this module's
@@ -410,7 +438,11 @@ def lower_document(
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
     mod = Module(
-        document=document, bind=bind, decide=decide_type, asserted=asserted_formats(doc)
+        document=document,
+        bind=bind,
+        decide=decide_type,
+        asserted=asserted_formats(doc),
+        named=named,
     )
     claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
     if len(claimed) > 1:
@@ -458,27 +490,77 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     out = Emitted()
     packages: set[str] = set()
     known = set(bundle.portable(bundle_dir))
+    # Read once per run, from the BUNDLE rather than from ``documents``: a module's
+    # content must not depend on who else was named (see ``bundle.named_nodes``).
+    named = bundle.named_nodes(bundle_dir)
     lowered: dict[str, tuple[Module, str, dict]] = {}
     refused: dict[str, Refusal] = {}
     inflight: list[str] = []
 
     def bind(referencing: str) -> Callable[[str, str], Target]:
         def do(uri: str, pointer: str) -> Target:
-            target = bundle.document_for(uri, known)
-            if target is None:
+            # A reference is a (document, node) pair, and the node half is what a
+            # FRAGMENT carries.  Both halves come from one reading of the ``#``
+            # (``bundle.split_ref``), the same one ``bundle.resolved`` keys its store
+            # on, so the binder and the resolver cannot disagree about which document
+            # a reference names.
+            head, into = bundle.split_ref(uri)
+            if not head:
+                # A LOCAL reference: it names a node of THIS document, so there is no
+                # module to import from and the symbol would have to be one this
+                # module is in the middle of writing.  Refused by name, pointer and
+                # the pointer it carries.  0 of the documents that lower reach this:
+                # all 45 carrying one refuse on ``definitions``/``$defs``, which is
+                # the keyword such a reference points through, so the import path for
+                # it is built by the step whose population reaches one.
                 raise Refusal(
                     "$ref",
                     pointer,
-                    f"{uri} names no document of this bundle (a fragment names a node "
-                    "inside one, which needs a name of its own: a later step's row)",
+                    f"{uri} is a pointer into this document, and a node of the module "
+                    "being written has no symbol to import yet (a later step's row)",
+                )
+            target = bundle.document_for(head, known)
+            if target is None:
+                raise Refusal(
+                    "$ref", pointer, f"{uri} names no document of this bundle"
                 )
             try:
                 mod, symbol = lower(target)  # the target emits first, or this refuses with it
             except Refusal as r:
                 raise Refusal("$ref", pointer, f"its target {target} is refused: {r}") from r
+            if into:
+                # The fragment names a NODE, so the symbol is the one the target
+                # module declared AT THAT POINTER rather than its root.  The target
+                # declares one because ``bundle.named_nodes`` told it to.
+                #
+                # Two kinds of pointer have no symbol, and both are REFUSED with the
+                # fragment named rather than bound to the root -- binding to the root
+                # would import a class for the WHOLE document where the document names
+                # one node of it, which is a model wider than its schema and silent:
+                #
+                #  * a pointer the target's walk never reaches.  17 of the bundle's 76
+                #    named nodes are ``definitions`` entries, which no row descends.
+                #  * a pointer whose node is ITSELF a ``$ref``.  The symbol there is
+                #    one the target module IMPORTED rather than declared, so binding it
+                #    would make this a re-export, and section 2's rule is an import of a
+                #    symbol the target DECLARES.  10 of the 76, in 3 documents, all 3
+                #    refused on a keyword of their own -- so 0 are reachable and the
+                #    step whose population reaches one decides whether the chain is
+                #    followed to the declaring module.
+                if into not in mod.declared:
+                    raise Refusal(
+                        "$ref",
+                        pointer,
+                        f"{uri}: its target {target} declares no symbol at {into} "
+                        "(the walk either does not reach that node, or the node is "
+                        "itself a $ref whose symbol that module imports rather than "
+                        "declares)",
+                    )
+                symbol = mod.declared[into]
             # ``shape`` is ``None`` for a target that is not a class -- D2's
-            # root-scalar alias -- which is what lets a composing row refuse it
-            # as a base rather than writing a module that cannot be imported.
+            # root-scalar alias, and a named node that is not one either -- which is
+            # what lets a composing row refuse it as a base rather than writing a
+            # module that cannot be imported.
             return Target(relative_module(referencing, target), symbol, mod.shapes.get(symbol))
 
         return do
@@ -494,7 +576,9 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
         inflight.append(document)
         doc = bundle.read(bundle_dir, document)
         try:
-            mod, symbol = lower_document(document, doc, bind(document))
+            mod, symbol = lower_document(
+                document, doc, bind(document), named.get(document, frozenset())
+            )
         except Refusal as r:
             refused[document] = r
             raise
