@@ -6,18 +6,27 @@ The SDK is a set of pydantic classes, one per schema node that needs one, genera
 AdCP schema bundle. A consumer reaches them through one import surface:
 
 ```python
-from adcp.types import PaginationRequest          # or
-from adcp.types.core import PaginationRequest     # the same object
+from adcp.types.core import PaginationRequest     # the one import spelling
 
 req = PaginationRequest.strict_validate(payload)  # the schema decides, then construct
 req = PaginationRequest(max_results=50)           # pydantic constructs, annotations only
 ```
 
+There is **one import path per class**, mirroring the document's own place in the bundle.
+There is no aggregate re-export: `adcp.types` is a package, not a namespace holding a thousand
+names, because a second spelling is a second thing to keep in agreement for no gain.
+
 Three properties hold for every emitted class:
 
-- It inherits `AdCPBaseModel`.
+- It inherits `AdCPBaseModel`, which implements `strict_validate` once for every class.
 - It carries `__adcp_schema__`, the document and JSON pointer it was generated from.
 - It accepts exactly what its schema accepts, through `strict_validate`.
+
+A union document gives a base class plus one subclass per branch. **Receiving a payload
+resolves to the correct branch**: a discriminated union where the document tags its branches
+with a `const`, a plain union otherwise, so a caller gets the branch type rather than the base
+and can `isinstance` against either. A consumer subclasses the base to extend the envelope and
+the branches resolve underneath it.
 
 ## 2. The build
 
@@ -30,15 +39,15 @@ these fields, these constraints, these defaults, this base — and it emits the 
 
 ```
 schema document -> our walk -> a class declaration -> the compiler -> Python
-                   (ours)                             (our fork of dmcg)
+                   (ours)                              (dmcg, pinned)
 ```
 
 The compiler's **parser never runs**. Deciding names and structure from a schema is our half;
 the compiler's half is rendering a declaration it is handed.
 
-**The compiler is a fork we own** (D10). When it cannot express something, we add the
-expression to the fork and offer it upstream. Nothing is ever worked around in the emitted
-output.
+**A gap in the compiler is fixed in the compiler** (D10), never worked around in the emitted
+output. **No gap is open**: naming a constrained type (D5) is what removed the one that looked
+like a compiler limitation, because a named type is a plain reference wherever it appears.
 
 ## 3. Driving the compiler
 
@@ -60,13 +69,12 @@ extras=, alias=)`. Each input has exactly one channel:
 - A property key Python cannot carry goes in `alias=`.
 
 `Constraints` declares each field under its JSON-Schema alias with `populate_by_name` off, so
-the JSON-Schema spelling is the only one that sets anything. The fork may add
-`populate_by_name` so both spellings work; until it does, write `minimum`/`maximum`.
+the JSON-Schema spelling is the only one that sets anything, so write `minimum`/`maximum`.
 
 ### Where a gap is fixed
 
-A gap in the compiler is fixed in the fork (D10), never routed around in our walk and never in
-the emitted output. Before reaching for the fork, check whether the gap is one of these, which
+A gap in the compiler is fixed in the compiler (D10), never routed around in our walk and never
+in the emitted output. Before calling something a gap, check whether it is one of these, which
 are not compiler gaps at all:
 
 - **A constraint that will not nest.** Naming the type is the fix, not a compiler change.
@@ -80,10 +88,10 @@ are not compiler gaps at all:
   by a `const` property that every branch declares and requires. Requiredness as a discriminant
   is not a rendering problem; it is a rule (D6).
 
-A fork change is therefore the answer to a rendering the compiler genuinely cannot produce. No
-such gap is open: the one convenience available is teaching `Constraints` to accept the pydantic
-spelling as well as the JSON-Schema one, which the specification does not need because §3 fixes
-the spelling.
+**No gap is open.** Every limitation measured so far turned out to be one of the three above.
+A real one — a rendering the compiler cannot produce from a declaration we can state — is fixed
+by patching the compiler and offering the patch upstream, and a fork exists only once something
+needs it. Until then it is a pinned dependency.
 
 ## 4. The emitted class
 
@@ -108,10 +116,17 @@ That reference is what makes the runtime contract and the test instrument generi
 So there is **no adapter, no binding table, and no name-keyed lookup**. A class cannot be paired
 with a document other than its own.
 
-`AdCPBaseModel` also sets `regex_engine="python-re"`. pydantic's default Rust engine refuses to
-compile a pattern using look-around and the bundle contains such patterns, so the default engine
-makes those modules fail to import. The document's own validator compiles patterns with Python
-`re`, so `python-re` is the engine whose accepted set matches the schema's.
+**The regex engine is derived per class.** pydantic's default Rust engine is the one to want —
+it is faster and it refuses to compile a pattern it cannot honour rather than quietly
+mis-matching. It has no look-around, and 4 of the bundle's 106 distinct patterns use look-around
+at 107 sites across 27 documents, so a class carrying one of those sets
+`regex_engine="python-re"` and every other class takes the default. No pattern in the bundle
+uses a backreference or a named group, so look-around is the whole of the incompatibility and
+102 of 106 patterns compile under Rust.
+
+Both engines agree with the schema's own accepted set for those 102, and the schema half
+compiles with Python `re` in either case, so the split costs no divergence: a class uses the
+weaker engine exactly when its own patterns require it.
 
 A root scalar is an annotation and not a class (D2), so it has no class to carry
 `strict_validate`. Its module binds the same two halves as a module-level function over the same
@@ -216,11 +231,13 @@ A step that wants to change one of these reports it and stops.
   declaring `additionalProperties: false`, and the `forbid` derived from that document is what
   refuses it.
 - **D9 — nothing rewrites emitted output.** A defect is fixed in the schema input before the
-  compiler reads it, or in the fork. `make validate-generated` byte-compares the committed tree
+  compiler reads it, or in the compiler. `make validate-generated` byte-compares the committed tree
   to a fresh run.
-- **D10 — the compiler is our fork, pinned by commit.** The pipeline is `f(schemas, pinned
-  compiler)` and both arguments are ours to change. An extension that proves itself is offered
-  upstream as a pull request; the fork is where it lands first, not where it stays.
+- **D10 — the compiler is pinned, and a gap in it is fixed in it.** The pipeline is
+  `f(schemas, pinned compiler)` and both arguments are ours to change: a defect is fixed in the
+  schema we hand it or in the compiler itself, never in the output. A fix we carry is offered
+  upstream as a pull request, and a fork exists only once something needs one. No gap is open
+  today, so the pin is an ordinary released version.
 - **D11 — the bundle directory is an argument.** `python -m codegen.emit --bundle <dir>`. No
   version literal in `codegen/`.
 - **D12 — `Refusal` lives in the package every lowering imports**, never in a module that is
@@ -229,7 +246,7 @@ A step that wants to change one of these reports it and stops.
   lowering raised.
 
 **Layout.** `codegen/emit.py` holds the CLI, the module writer and the refusal report;
-`codegen/compiler.py` drives the fork; `codegen/lower/<kind>.py` is one module per D2 row. A
+`codegen/compiler.py` drives the compiler; `codegen/lower/<kind>.py` is one module per D2 row. A
 dispatch table of `(selector, lowering)` pairs connects them, and a document selected by two
 rows is a build failure rather than a question of precedence. A selector is its step's
 population test, so a row cannot claim a document its step does not count.
@@ -278,11 +295,11 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 | 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
 | 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | no emitted field shadows a typed base field; a composed `ge`/`le` inherits | yes — `lower/product.py` |
 | 5 | **Union roots** — base, branches, alias; `discriminator` where the tag is a `const` present and required on every branch, plain union with a rule otherwise; the root name binds the base, never the alias | a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
-| 6 | **Containers and mappings** — the fork carries a constraint on a nested container (§3); a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation | yes — `lower/containers.py` |
+| 6 | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
 | 8 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 3–7 |
-| 9 | **Public surface** — `adcp/types/__init__.py` and per-domain packages generated, PEP 562 lazy; a class name bound to two nodes is a build failure | `from adcp.types import X` and `from adcp.types.<domain> import X` are the same object | after 8 |
-| 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; the fork's extensions filed upstream | `tox` green | last |
+| 9 | **Public surface** — one per-domain package per bundle directory, generated, PEP 562 lazy; no aggregate re-export; a class name bound to two nodes in one domain is a build failure | `from adcp.types.<domain> import X` is the only spelling and resolves to the class the domain's document names | after 8 |
+| 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; any compiler patch we carry filed upstream | `tox` green | last |
 
 **Order is by risk.** Step 1 comes first because it is the only step that can invalidate the
 split: if our walk cannot hand the compiler a declaration it renders faithfully on the simplest
