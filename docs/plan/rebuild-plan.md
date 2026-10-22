@@ -262,24 +262,68 @@ A step that wants to change one of these reports it and stops.
   subschema that must not match). Those six are the whole population. Everything else is an
   annotation, which pydantic enforces on the constructor without a rule. A rule narrows the
   constructor; acceptance stays with the schema (D4).
-- **D7 — bases are derived, and a consumer's own marker is mixed in.** An `allOf` of `$ref`s
-  makes those referenced classes the bases, so every base an emitted class has is a schema its
-  document composes. The SDK emits no marker hierarchy of its own — no `AdcpRequest` or
-  `AdcpResponse` — because assigning one means classifying documents by something other than
-  what they say, and the generator has no such fact to read.
-
-  A consumer that needs one declares it and mixes it in:
+- **D7 — bases are derived, and the message markers come from the task registry.** An `allOf`
+  of `$ref`s makes those referenced classes the bases, so every base an emitted class has is a
+  schema its document composes. A response composing the two envelopes inherits them:
 
   ```python
-  class GetProductsRequest(BuyerRequest, LibraryGetProductsRequest): ...
+  class CreateMediaBuyResponse1(AdcpResponse, AdcpVersionEnvelope, ProtocolEnvelope): ...
   ```
 
-  `BuyerRequest` is the consumer's marker, `LibraryGetProductsRequest` the generated class, and
-  a registry generic in `Req: BuyerRequest` then type-checks every row. This is the supported
-  extension point, and the declaring-class test in §4 is what makes it hold: a subclass declared
-  elsewhere is not the base, so it keeps its own schema rather than being replaced by a union.
-  **An emitted class must stay subclassable for exactly this reason**, which is a constraint on
-  the generator and not a convenience.
+  `AdcpVersionEnvelope` and `ProtocolEnvelope` are generated from `core/version-envelope.json`
+  and `core/protocol-envelope.json` like any other document. The root `allOf` applies to the
+  whole document in draft-07, so it reaches **every branch** of a root `oneOf` — a generator
+  that applies the bases to some branches and not others is wrong, and that is the defect §4's
+  dispatch and this row exist together to prevent.
+
+  **`AdcpRequest` and `AdcpResponse` are the SDK's own markers, and membership is derived.**
+  `index.json` carries the task registry — `schemas/<domain>/tasks`, each task naming
+  `request: {$ref}` and `response: {$ref}` — which is 77 tasks over 77 request documents and 77
+  response documents, disjoint. A document the registry names as a task's request gets
+  `AdcpRequest`; a response gets `AdcpResponse`. Nothing is classified by filename, and a
+  document the registry does not name gets neither.
+
+  Both markers derive from `_AdcpMessage`, and all three are hand-written in
+  `src/adcp/types/_base.py` beside `AdCPBaseModel`:
+
+  - **A marker declares no fields and is not a `BaseModel`.** A field there would land on every
+    task message's wire type — `adcp_version` would appear on a request whose schema declares no
+    version field, inventing a spec field.
+  - **The envelope pins are read through methods, never properties.** pydantic does not let a
+    model field shadow a property of the same name: the value is stored and `model_dump` shows
+    it, while attribute access returns the property, so every tool declaring `context` would
+    read `None` silently.
+  - **`version_fields()`, `protocol_fields()` and `payload_fields()` answer from the MRO**, not
+    from a per-class table, so fields stay flat exactly as on the wire and provenance is which
+    ancestor declared them. Each is empty unless the class actually descends from that envelope,
+    because a schema that *inlines* `adcp_version` shares the name but not the stratum. A class
+    with no envelope ancestry answers the empty set, and the answer changes by itself when its
+    schema starts composing the envelope.
+  - **`issubclass(model, AdcpRequest)` is the registration-time proof** that a model is
+    spec-derived rather than a hand-written parallel: a field test passes for a forged model,
+    descent does not. That is what lets a consumer's registry be generic in the request type.
+  - The envelope classes are imported into `_base.py` **lazily**, because every generated module
+    imports `_base` and a module-level import of the generated tree there is a cycle.
+
+  **Envelope and payload are two strata, and the bundle states both.** Over the registry's 77
+  tasks: 76 of 77 requests compose `version-envelope`, and 70 responses compose
+  `version-envelope` with 67 also composing `protocol-envelope`. So a task message is its
+  envelope bases plus its own properties, and the three classifiers read that partition off the
+  MRO rather than off a list. The residue is small and named rather than papered over: 1 request
+  and 5 responses compose nothing, 7 responses omit the version envelope and 10 the protocol
+  envelope.
+
+  **The SDK never adds an envelope a document does not compose.** Where a document composes
+  none, its envelope strata are empty and everything is payload — the honest answer, and one
+  that changes by itself if the bundle starts composing. A missing envelope is a bundle defect
+  to fix upstream, never a field the generator invents.
+
+  A consumer refines on top by mixing in its own class —
+  `class GetProductsRequest(BuyerRequest, LibraryGetProductsRequest)` — and the declaring-class
+  test in §4 is what makes that hold: a subclass declared elsewhere is not the base, so it keeps
+  its own schema rather than being replaced by a union. **An emitted class must stay
+  subclassable for exactly this reason**, which is a constraint on the generator rather than a
+  convenience.
 - **D8 — `extra` follows the schema, and nothing else.** `additionalProperties: false` →
   `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; **absent →
   `ignore`**. Absent and `true` are different statements: `true` says additional properties are
