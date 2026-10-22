@@ -314,25 +314,27 @@ Without it, `make validate-generated`'s byte compare and every snapshot are mean
 *Order being total* is necessary; *which order was chosen* is cosmetic.
 `tests/test_code_generation.py:3189::test_codegen_input_order_is_total` (pin) enforces it.
 
-### P8 — Two public paths, one name per type: the flat root and the domain
+### P8 — One public path, one name per type: the domain
 
 The export surface is exactly this, and nothing else is public:
 
 ```python
-from adcp.types import MediaBuyStatus          # the flat root: every public type
-from adcp.types.media_buy import MediaBuyStatus  # the domain path: the same object
+from adcp.types.media_buy import MediaBuyStatus  # the domain path: the only path
 ```
 
-- **`adcp.types.<Class>`** is the flat root and binds every public generated type. It is the
-  form a caller reaches for and the one TypeScript already has.
-- **`adcp.types.<domain>.<Class>`** is the same object under its domain, for a reader who wants
-  the domain stated and for an editor completing within one area.
+- **`adcp.types.<domain>.<Class>`** is the one path to a public generated type. The domain comes
+  from the document's own place in the bundle, so the import states where the type came from.
+- **There is no flat root.** `adcp.types` is a package, not a namespace binding every type. Two
+  spellings for one class are two things to keep in agreement, and they make an import
+  non-deterministic in the way that matters: a reader cannot tell from the import which document
+  a class came from. A build-emitted mapping from class name to module serves mechanical
+  resolution, and nothing imports through it.
 - **The schema module is private.** `adcp.types.<domain>.<schema>.<Class>` goes away, along with
-  the `domains` token. A name has one object and two paths to it; there is no third path, nothing
-  under an underscore, and no path that exists only for a name the domain could not bind.
+  the `domains` token. A name has one object and one path to it; there is nothing under an
+  underscore, and no path that exists only for a name the domain could not bind.
 
-One name per type is what makes both paths work, and the build enforces it rather than hoping
-for it: **generation fails on a name that is not unique at the root.** That is the same refusal
+One name per type is what makes the path work, and the build enforces it rather than hoping for
+it: **generation fails on a name that is not unique within its domain.** That is the same refusal
 P1 applies to a root it cannot derive, and it is why the flattening is safe to do -- a collision
 cannot reach a release.
 
@@ -795,7 +797,7 @@ one the language cannot state at runtime, which is the point of §3.1.
 | DX6 | A caller extends a response type with their own fields | **FAIL** 98 of 260 | **PASS** by language |
 | DX7 | A semantic name resolves to the class the schema describes | **FAIL** | **PASS** |
 | DX8 | No positional name appears in the surface a caller imports | **FAIL** 39 + 949 | **PASS** 1 |
-| DX9 | A caller imports a type as `adcp.types.<Class>` or `adcp.types.<domain>.<Class>`, and no deeper path is public | **FAIL** the public path is `adcp.types.domains.<domain>[.<schema>].<Class>`; 332 names bind more than one shape so no flat root is possible at the pin; nothing refuses a deeper import | **PASS** flat root export, 1 level; Python reaches parity under P8 |
+| DX9 | A caller imports a type as `adcp.types.<domain>.<Class>`, and no deeper path is public | **FAIL** the public path is `adcp.types.domains.<domain>[.<schema>].<Class>`; 332 names bind more than one shape so no flat root is possible at the pin; nothing refuses a deeper import | **PASS** 1 level under its domain; Python reaches parity under P8 |
 | DX10 | Nothing in the SDK names a spec version as a literal | **FAIL** symlink alias | not examined |
 | DX11 | A caller validates a document against a root with branches and gets the branch's class back, on every path (`Root(**d)`, `model_validate`, nested, `TypeAdapter`) | **PARTIAL** 19 roots dispatch; the response roots are plain unions with hand guards | **n/a** types are erased; a discriminated union is compile-time and the guard is hand-written |
 | DX12 | A refusal names the JSON-Schema keyword that failed, so it can be projected onto `core/error.json`'s `issues[].keyword` without a mapping table | **PARTIAL** 55 of 104 error types mapped; 4 reachable types unmapped, 2 mis-mapped on dicts | **n/a** Zod issues carry Zod codes |
@@ -1235,7 +1237,7 @@ the result; (5) and (6) are independent of all of them.
 5. **Qualify every nested name (P1), then flatten (P8).** A nested definition takes its name
    from its parent and its property, so `MediaBuyStatus` replaces the thirteenth `Status`, and
    generation fails on a nested name it cannot qualify. With every name unique, the public
-   surface becomes `adcp.types.<Class>` and `adcp.types.<domain>.<Class>`, the schema modules
+   surface becomes `adcp.types.<domain>.<Class>`, the schema modules
    and the `domains` token go private, and the hand-written modules merge into their domains
    under item 2's rule. Strictly after (4): flattening before the copies are collapsed would
    mint 332 collisions and force a choice between them, where flattening after moves names that
@@ -1328,14 +1330,14 @@ renamed domain-path class and nowhere else.
 - Every class named by its schema title (`CreateMediaBuyRequest`, `Product`, `Warning`, …)
   keeps its name. The resolution rules name branches, not roots, and the parent prefix they
   use is the generator's own root name (§5 item 1), so the change renames no root.
-- **Every module path that resolves at the pin keeps resolving through the deprecation window,
-  and `adcp.types.<Class>` keeps resolving forever.** The flat root is the path that survives;
-  P8 makes it total, so a caller already importing from `adcp.types` is unaffected by the
-  flattening. `adcp.types.domains.<d>` and `adcp.types.domains.<d>.<schema>` become deprecated
-  aliases that emit a `DeprecationWarning` on attribute access and resolve for the window, then
-  go in the following major. The curated partials `adcp.types.media_buy` / `.creative` /
-  `.signals` / `.protocol` / `.buyer` / `.seller` keep their paths permanently -- P8 merges the
-  generated domain INTO them, so the path is the one that stays and only its contents grow.
+- **`adcp.types.<domain>.<Class>` is the path that survives**, and it is the only public one.
+  `adcp.types.domains.<d>` and `adcp.types.domains.<d>.<schema>` become deprecated aliases that
+  emit a `DeprecationWarning` on attribute access and resolve for the window, then go in the
+  following major. The curated partials `adcp.types.media_buy` / `.creative` / `.signals` /
+  `.protocol` / `.buyer` / `.seller` keep their paths permanently -- P8 merges the generated
+  domain INTO them, so the path is the one that stays and only its contents grow. A caller
+  importing a bare name from `adcp.types` has no supported path and migrates to the domain one,
+  which the build-emitted class-name-to-module mapping resolves mechanically.
   Generation subdirectories and underscore modules were never a contract and are refused.
 - The `generated_poc` → `domains` deprecation window, closing in v10 as the pin states. Nothing
   in §5 opens a second one over the same paths.
