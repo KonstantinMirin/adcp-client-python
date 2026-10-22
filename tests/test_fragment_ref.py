@@ -320,20 +320,57 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     byte compare would then grade whichever that was.  So the same document emitted
     ALONE and emitted with everything else produces the same module -- asserted here
     on the one named document that lowers.
+
+    A LOCAL reference satisfies P7 for a sharper reason, and `salesagent-j3k2l.20` is
+    why it is in here now: the document asking and the document asked are the same
+    file, so no other document of the bundle can affect the answer at all.
     """
     named = bundle.named_nodes(BUNDLE)
-    assert len(named) == 19, sorted(named)
-    assert sum(len(p) for p in named.values()) == 76, sum(len(p) for p in named.values())
+    # 54 documents and 216 pointers, in three parts that are asserted separately
+    # below: 19 / 76 from the ABSOLUTE fragment references, 45 / 157 from the LOCAL
+    # ones, and 10 / 17 counted in both because the same document -- in 17 cases the
+    # same pointer -- is named by each kind.
+    assert len(named) == 54, sorted(named)
+    assert sum(len(p) for p in named.values()) == 216, sum(len(p) for p in named.values())
     assert named["core/version-envelope.json"] == frozenset(
         {"/properties/adcp_version", "/properties/adcp_major_version"}
     )
-    # A LOCAL reference contributes nothing here: it names a node of its own document,
-    # so there is no import and no cross-module symbol.
-    # ``core/bidding-policy-capability.json`` references only itself, 4 times, and a
-    # scan that read a local ref as naming a document would list it with those four
-    # pointers -- so its ABSENCE is the assertion, and the 76 above is the other half
-    # (counting the bundle's 154 local refs in would not leave 76).
-    assert "core/bidding-policy-capability.json" not in named, sorted(named)
+
+    # The two kinds, split by the document half the way ``split_ref`` splits it, so a
+    # regression that dropped either arm reddens with the arm named rather than moving
+    # one total.
+    halves: dict[bool, dict[str, set[str]]] = {True: {}, False: {}}
+    known = set(bundle.portable(BUNDLE))
+    for document in known:
+        for _, uri in bundle.references(bundle.read(BUNDLE, document)):
+            head, pointer = bundle.split_ref(uri)
+            if not pointer:
+                continue
+            target = bundle.document_for(head, known) if head else document
+            if target is not None:
+                halves[bool(head)].setdefault(target, set()).add(pointer)
+    absolute, local_refs = halves[True], halves[False]
+    assert (len(absolute), sum(len(p) for p in absolute.values())) == (19, 76)
+    assert (len(local_refs), sum(len(p) for p in local_refs.values())) == (45, 157)
+    both = set(absolute) & set(local_refs)
+    assert len(both) == 10, sorted(both)
+    assert sum(len(absolute[d] & local_refs[d]) for d in both) == 17
+
+    # ``core/bidding-policy-capability.json`` references only itself, 4 times.  It is
+    # here now, under its OWN name and its own four pointers -- which is the whole of
+    # `salesagent-j3k2l.20`'s bundle-side change, and the assertion was its ABSENCE
+    # before that.
+    assert named["core/bidding-policy-capability.json"] == frozenset(
+        {
+            "/definitions/max_bid_with_cost_per",
+            "/definitions/max_bid_with_roas",
+            "/definitions/policy_profile",
+            "/definitions/scope_capability",
+        }
+    ), sorted(named["core/bidding-policy-capability.json"])
+    # And it is not listed as a TARGET of anything else: a local reference names its
+    # own document and never another, so no absolute half resolved to it.
+    assert "core/bidding-policy-capability.json" not in absolute
 
     document = "core/version-envelope.json"
     alone = emit.emit(BUNDLE, [document])

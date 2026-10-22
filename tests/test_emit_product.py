@@ -170,7 +170,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population is 188 on the merged table (43 when this lane measured
     # it alone, before the other four steps' rows were beside it), and the row moves
     # it by 0.
-    assert len(with_row.emitted) == 214, "N, over a bundle of 1,054"
+    # 217 and not 214: `salesagent-j3k2l.20` moved `governance/policy-entry.json`'s
+    # refusal off the root -- it stopped at `$defs` before any of its 8 property
+    # references was read -- so the closure now reaches the three enum documents its
+    # earlier properties name. The row itself still moves N by 0.
+    assert len(with_row.emitted) == 217, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
@@ -179,7 +183,11 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # 31 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    assert len(with_row.emitted) - len(without.emitted) == 31
+    #
+    # 34 and not 31: the three documents `salesagent-j3k2l.20` added to N above are
+    # reached through `governance/policy-entry.json`, which this row's own population
+    # is what reaches, so removing the row loses them too.
+    assert len(with_row.emitted) - len(without.emitted) == 34
     assert len(set(composing()) & set(with_row.emitted)) == 22
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted

@@ -2091,23 +2091,27 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         assert row["keyword"] and row["pointer"], document
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
-        "allOf": 51,  # step 4
-        "type": 11,  # a node with properties and no type admits a non-object
-        "$ref": 10,  # a bare-$ref branch has no node to declare a subclass from
-        "properties": 10,  # a root conjunct; see lower/union.py's docstring
-        "definitions": 7,
+        "allOf": 52,  # step 4
+        "properties": 13,  # a root conjunct; see lower/union.py's docstring
+        "$ref": 12,  # a bare-$ref branch has no node to declare a subclass from
+        "type": 12,  # a node with properties and no type admits a non-object
         "not": 7,  # step 7 (D6) at a position the rules row does not reach
+        "anyOf": 5,  # a nested union
         "uniqueItems": 5,  # step 7 (D6)
-        "anyOf": 3,  # a nested union
+        "const": 2,
         "enum": 2,  # a member type no enumeration base exists for
         "if": 2,  # step 7 (D6)
-        "$defs": 2,
-        "const": 2,
-        "oneOf": 1,
         "additionalProperties": 1,
         "enumMetadata": 1,
+        "oneOf": 1,
         # The `pattern` row is GONE: it was "a constraint inside a container", and
         # D5's alias module names that type now, so the document emits instead.
+        #
+        # The `definitions` (7) and `$defs` (2) rows are GONE as well, and their 9
+        # documents are redistributed across the rows above rather than emitted:
+        # `salesagent-j3k2l.20` admits a section at every node and declares the entries
+        # a `$ref` names, so each of the 9 now refuses on the keyword that actually
+        # stopped it -- in a branch, in a conjunct, or inside the section itself.
     }, profile
 
 
@@ -2556,7 +2560,10 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     # keyword and no other, so admitting it would emit them wide.
     out = emit.emit(BUNDLE, population())
     blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    assert len(blocked) == 46, sorted(blocked)
+    # 47 and not 46: `salesagent-j3k2l.20` admits a `definitions` section, so
+    # `core/reporting-coverage.json` reaches its own `uniqueItems` instead of stopping
+    # at the section it declares beside its properties.
+    assert len(blocked) == 47, sorted(blocked)
     assert "core/acceptance-policy-profile-ids.json" in out.refusals
 
 
