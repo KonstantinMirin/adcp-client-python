@@ -620,11 +620,17 @@ def test_a_keyword_at_the_root_beside_the_conjunct_list_refuses() -> None:
     """The root may carry its own ``properties``, ``required``, ``type`` and
     ``additionalProperties`` beside ``allOf``, and nothing else.
 
-    64 of the 287 refuse first on ``if`` and 15 on ``definitions``, both at the
-    root: they are step 7's and a later row's, and this row reports them rather
-    than lowering a document whose conditional it ignores.
+    64 of the 287 refuse first on ``if`` at the root: that is step 7's keyword, and
+    this row reports it rather than lowering a document whose conditional it ignores.
+
+    ``definitions`` was in this list and is NOT a keyword this row reports any more.
+    15 of the 287 refused on it here; since `salesagent-j3k2l.20` a section is admitted
+    at every node by ``compiler.check_keywords`` -- it asserts nothing about an
+    instance, and the entries a ``$ref`` names are declared when it asks -- so the 15
+    now refuse on whatever is inside the conjunct or the section, which is this row's
+    own honest-attribution point one level deeper.
     """
-    for keyword in ("if", "definitions", "not", "minProperties"):
+    for keyword in ("if", "not", "minProperties"):
         doc = {"title": "Probe", "type": "object", "allOf": [{"$ref": "x"}], keyword: {}}
         with pytest.raises(Refusal) as caught:
             _lower(doc)
