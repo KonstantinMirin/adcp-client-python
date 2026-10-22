@@ -1,0 +1,303 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "One metric the seller commits to report for a commercial product term. Vendor identity uses BrandKey so the compact lifecycle does not inline brand or provenance documents.",
+  "discriminator": {
+    "propertyName": "scope"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "metric_id": {
+          "enum": [
+            "cpm",
+            "ctr",
+            "grps",
+            "roas",
+            "leads",
+            "plays",
+            "reach",
+            "saves",
+            "spend",
+            "views",
+            "clicks",
+            "follows",
+            "downloads",
+            "frequency",
+            "brand_lift",
+            "units_sold",
+            "conversions",
+            "engagements",
+            "impressions",
+            "ooh_metrics",
+            "quartile_25",
+            "quartile_50",
+            "quartile_75",
+            "viewability",
+            "dooh_metrics",
+            "foot_traffic",
+            "quartile_100",
+            "quartile_data",
+            "viewable_rate",
+            "cost_per_click",
+            "profile_visits",
+            "viewed_seconds",
+            "completed_views",
+            "completion_rate",
+            "conversion_lift",
+            "engagement_rate",
+            "conversion_value",
+            "time_based_views",
+            "brand_search_lift",
+            "new_to_brand_rate",
+            "new_to_brand_units",
+            "commissionable_value",
+            "cost_per_acquisition",
+            "viewable_impressions",
+            "incremental_sales_lift",
+            "measurable_impressions",
+            "cost_per_completed_view",
+            "viewed_seconds_histogram",
+            "viewed_seconds_percentiles"
+          ]
+        },
+        "qualifier": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Compact qualifier set that distinguishes incompatible reporting definitions for the same metric ID.",
+          "maxProperties": 5,
+          "properties": {
+            "attribution_methodology": {
+              "enum": [
+                "modeled",
+                "panel_based",
+                "probabilistic",
+                "deterministic_purchase"
+              ]
+            },
+            "attribution_window": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            },
+            "completion_source": {
+              "enum": [
+                "seller_attested",
+                "vendor_attested"
+              ]
+            },
+            "lift_dimension": {
+              "enum": [
+                "ad_recall",
+                "awareness",
+                "favorability",
+                "consideration",
+                "purchase_intent"
+              ]
+            },
+            "viewability_standard": {
+              "enum": [
+                "mrc",
+                "groupm"
+              ]
+            }
+          },
+          "title": "Canonical Metric Qualifier",
+          "type": "object"
+        },
+        "scope": {
+          "const": "standard",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope",
+        "metric_id"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "effective_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "metric_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Identifier for a vendor-defined metric within the vendor's vocabulary. Stable lookup key; the vendor publishes the canonical list (with category, methodology, and standard alignment) in `brand.json` `agents[type='measurement']`. Lowercase with underscores so a future enum promotion into `available-metric.json` is a literal string lift. Identifier is namespaced by the vendor \u2014 the same `metric_id` may mean different things in different vendors' vocabularies.",
+          "examples": [
+            "attention_units",
+            "gco2e_per_impression",
+            "demographic_reach",
+            "co_view_index",
+            "incremental_lift_percent"
+          ],
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Vendor Metric ID",
+          "type": "string",
+          "x-entity": "vendor_metric"
+        },
+        "qualifier": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Compact qualifier set that distinguishes incompatible reporting definitions for the same metric ID.",
+          "maxProperties": 5,
+          "properties": {
+            "attribution_methodology": {
+              "enum": [
+                "modeled",
+                "panel_based",
+                "probabilistic",
+                "deterministic_purchase"
+              ]
+            },
+            "attribution_window": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "additionalProperties": {
+                "not": {}
+              },
+              "description": "A time duration expressed as an interval and unit. Used for frequency cap windows, attribution windows, reach optimization windows, time budgets, and other time-based settings. When unit is 'campaign', interval must be 1 \u2014 the window spans the full campaign flight.",
+              "maxProperties": 2,
+              "properties": {
+                "interval": {
+                  "description": "Number of time units. Must be 1 when unit is 'campaign'.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "unit": {
+                  "enum": [
+                    "days",
+                    "hours",
+                    "minutes",
+                    "seconds",
+                    "campaign"
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "unit"
+              ],
+              "title": "Duration",
+              "type": "object"
+            },
+            "completion_source": {
+              "enum": [
+                "seller_attested",
+                "vendor_attested"
+              ]
+            },
+            "lift_dimension": {
+              "enum": [
+                "ad_recall",
+                "awareness",
+                "favorability",
+                "consideration",
+                "purchase_intent"
+              ]
+            },
+            "viewability_standard": {
+              "enum": [
+                "mrc",
+                "groupm"
+              ]
+            }
+          },
+          "title": "Canonical Metric Qualifier",
+          "type": "object"
+        },
+        "scope": {
+          "const": "vendor",
+          "type": "string"
+        },
+        "vendor": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+          "maxProperties": 3,
+          "properties": {
+            "brand_id": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+              "examples": [
+                "tide",
+                "cheerios",
+                "air_jordan",
+                "nike",
+                "pampers"
+              ],
+              "pattern": "^[a-z0-9_]+$",
+              "title": "Brand ID",
+              "type": "string",
+              "x-entity": "advertiser_brand"
+            },
+            "countries": {
+              "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+              "items": {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "domain": {
+              "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "title": "Brand Key",
+          "type": "object"
+        }
+      },
+      "required": [
+        "scope",
+        "vendor",
+        "metric_id"
+      ]
+    }
+  ],
+  "title": "Canonical Reporting Commitment",
+  "type": "object"
+}

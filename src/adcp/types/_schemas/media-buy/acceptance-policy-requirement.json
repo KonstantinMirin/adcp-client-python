@@ -1,0 +1,383 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A typed prerequisite or restriction attached to a conditional seller-acceptance rule. The kind is coarse and machine-actionable; exact obligations remain in the referenced registry policies.",
+  "discriminator": {
+    "propertyName": "kind"
+  },
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "declaration": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "category_declaration",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "advertiser_verification",
+          "type": "string"
+        },
+        "verification_scheme": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "criteria": {
+          "description": "Stable criteria such as domestic_entity, citizen_or_resident, official_election_authority, or eligible_agency.",
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "advertiser_eligibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "criteria"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "criteria": {
+          "description": "Stable restrictions such as no_foreign_funding or sponsor_identity_required.",
+          "items": {
+            "pattern": "^[a-z][a-z0-9_.:-]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "funding_restriction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "criteria"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "credential": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "certification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "credential": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "license",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "prior_authorization",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "account_setup",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "sales_assisted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "format": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "disclosure",
+          "type": "string"
+        },
+        "placement": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "targeting_restriction",
+          "type": "string"
+        },
+        "restricted_attributes": {
+          "items": {
+            "enum": [
+              "age",
+              "health_data",
+              "genetic_data",
+              "biometric_data",
+              "familial_status",
+              "religious_beliefs",
+              "political_opinions",
+              "racial_ethnic_origin",
+              "trade_union_membership",
+              "sex_life_sexual_orientation"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "creative_restriction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "destination_restriction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "description"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "format_ids": {
+          "deprecated": true,
+          "description": "Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true,
+          "x-deprecated-in": "3.2.0",
+          "x-removed-in": "4.0.0"
+        },
+        "kind": {
+          "const": "format_restriction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "ends_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "const": "time_restriction",
+          "type": "string"
+        },
+        "starts_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "const": "transparency_reporting",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "ext": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+          "title": "Extension Object",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_.:-]*$",
+          "type": "string"
+        },
+        "kind": {
+          "const": "custom",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "description"
+      ]
+    }
+  ],
+  "title": "Acceptance Policy Requirement",
+  "type": "object"
+}

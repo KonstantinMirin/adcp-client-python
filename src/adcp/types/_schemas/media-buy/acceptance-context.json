@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Buyer-declared facts used for coarse seller acceptance matching during product and proposal discovery. Sellers may infer omitted facts, but uncertainty never implies acceptance.",
+  "minProperties": 1,
+  "properties": {
+    "advertiser_industry": {
+      "enum": [
+        "cpg",
+        "pets",
+        "dating",
+        "gaming",
+        "retail",
+        "finance",
+        "telecom",
+        "cannabis",
+        "education",
+        "automotive",
+        "healthcare",
+        "technology",
+        "home_garden",
+        "real_estate",
+        "cpg.household",
+        "education.k12",
+        "food_beverage",
+        "gaming.mobile",
+        "gaming.esports",
+        "recruitment_hr",
+        "sports_fitness",
+        "fashion_apparel",
+        "finance.banking",
+        "beauty_cosmetics",
+        "energy_utilities",
+        "gambling_betting",
+        "retail.ecommerce",
+        "technology.ai_ml",
+        "automotive.luxury",
+        "cpg.personal_care",
+        "finance.insurance",
+        "gaming.console_pc",
+        "finance.investment",
+        "travel_hospitality",
+        "healthcare.wellness",
+        "media_entertainment",
+        "technology.hardware",
+        "technology.software",
+        "government_nonprofit",
+        "food_beverage.alcohol",
+        "home_garden.furniture",
+        "professional_services",
+        "fashion_apparel.luxury",
+        "finance.cryptocurrency",
+        "real_estate.commercial",
+        "gambling_betting.casino",
+        "real_estate.residential",
+        "telecom.mobile_carriers",
+        "retail.department_stores",
+        "sports_fitness.equipment",
+        "transportation_logistics",
+        "beauty_cosmetics.haircare",
+        "beauty_cosmetics.skincare",
+        "education.online_learning",
+        "food_beverage.restaurants",
+        "healthcare.pharmaceutical",
+        "media_entertainment.music",
+        "travel_hospitality.cruise",
+        "travel_hospitality.hotels",
+        "beauty_cosmetics.fragrance",
+        "education.higher_education",
+        "energy_utilities.renewable",
+        "fashion_apparel.sportswear",
+        "healthcare.medical_devices",
+        "telecom.internet_providers",
+        "travel_hospitality.tourism",
+        "media_entertainment.film_tv",
+        "professional_services.legal",
+        "travel_hospitality.airlines",
+        "automotive.electric_vehicles",
+        "automotive.parts_accessories",
+        "food_beverage.packaged_goods",
+        "government_nonprofit.charity",
+        "home_garden.home_improvement",
+        "media_entertainment.podcasts",
+        "sports_fitness.teams_leagues",
+        "government_nonprofit.political",
+        "media_entertainment.publishing",
+        "gambling_betting.sports_betting",
+        "media_entertainment.live_events",
+        "professional_services.consulting"
+      ]
+    },
+    "advertiser_jurisdictions": {
+      "description": "Jurisdictions in which the advertiser is established or legally organized. This is distinct from where an ad will be delivered.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "advertiser_roles": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9_]*$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "delivery_jurisdictions": {
+      "description": "Jurisdictions in which the proposed advertising will be delivered. Seller acceptance rules' jurisdictions and jurisdiction_groups match this field.",
+      "items": {
+        "pattern": "^[A-Z]{2}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "ext": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Extension object for platform-specific, vendor-namespaced parameters. Extensions are always optional and must be namespaced under a vendor/platform key (e.g., ext.gam, ext.roku). Used for custom capabilities, partner-specific configuration, and features being proposed for standardization.",
+      "title": "Extension Object",
+      "type": "object"
+    },
+    "subjects": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "subject_category": {
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "type": "string",
+            "x-entity": "governance_policy_category"
+          },
+          "subject_facets": {
+            "items": {
+              "pattern": "^[a-z][a-z0-9_]*$",
+              "type": "string",
+              "x-entity": "governance_policy_category_facet"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "subject_category"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "title": "Acceptance Context",
+  "type": "object",
+  "x-adcp-validation": {
+    "unique_by": [
+      {
+        "field": "subject_category",
+        "path": "subjects"
+      }
+    ]
+  }
+}

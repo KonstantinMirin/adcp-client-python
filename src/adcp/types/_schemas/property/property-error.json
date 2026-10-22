@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Error information for a property that could not be evaluated",
+  "properties": {
+    "code": {
+      "description": "Error code",
+      "enum": [
+        "PROPERTY_NOT_FOUND",
+        "PROPERTY_NOT_MONITORED",
+        "LIST_NOT_FOUND",
+        "LIST_ACCESS_DENIED",
+        "METHODOLOGY_NOT_SUPPORTED",
+        "JURISDICTION_NOT_SUPPORTED"
+      ],
+      "type": "string"
+    },
+    "message": {
+      "description": "Human-readable error message",
+      "type": "string"
+    },
+    "property": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "The property that caused the error",
+      "properties": {
+        "identifiers": {
+          "description": "Array of identifiers for this property",
+          "items": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "domain",
+                  "rss_url",
+                  "venue_id",
+                  "bundle_id",
+                  "screen_id",
+                  "subdomain",
+                  "ios_bundle",
+                  "network_id",
+                  "station_id",
+                  "facility_id",
+                  "fire_tv_asin",
+                  "podcast_guid",
+                  "roku_store_id",
+                  "google_play_id",
+                  "samsung_app_id",
+                  "android_package",
+                  "apple_tv_bundle",
+                  "apple_podcast_id",
+                  "apple_app_store_id",
+                  "openooh_venue_type",
+                  "spotify_collection_id"
+                ]
+              },
+              "value": {
+                "description": "The identifier value. For domain type: 'example.com' matches base domain plus www and m subdomains; 'edition.example.com' matches that specific subdomain; '*.example.com' matches ALL subdomains but NOT base domain",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "name": {
+          "description": "Human-readable property name",
+          "type": "string"
+        },
+        "property_id": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Unique identifier for this property (optional). Enables referencing properties by ID instead of repeating full objects.",
+          "examples": [
+            "cnn_ctv_app",
+            "homepage",
+            "mobile_ios",
+            "instagram"
+          ],
+          "pattern": "^[a-z0-9_]+$",
+          "title": "Property ID",
+          "type": "string",
+          "x-entity": "property"
+        },
+        "property_type": {
+          "enum": [
+            "dooh",
+            "radio",
+            "ctv_app",
+            "podcast",
+            "website",
+            "linear_tv",
+            "mobile_app",
+            "desktop_app",
+            "ai_assistant",
+            "streaming_audio"
+          ]
+        },
+        "publisher_domain": {
+          "description": "Domain where adagents.json should be checked for authorization validation. Optional in adagents.json (file location implies domain).",
+          "type": "string"
+        },
+        "supported_channels": {
+          "description": "Advertising channels this property supports (e.g., ['display', 'olv', 'social']). Publishers declare which channels their inventory aligns with. Properties may support multiple channels. See the Media Channel Taxonomy for definitions.",
+          "items": {
+            "enum": [
+              "ctv",
+              "olv",
+              "ooh",
+              "dooh",
+              "email",
+              "print",
+              "radio",
+              "cinema",
+              "gaming",
+              "search",
+              "social",
+              "display",
+              "podcast",
+              "affiliate",
+              "linear_tv",
+              "influencer",
+              "retail_media",
+              "streaming_audio",
+              "product_placement",
+              "sponsored_intelligence"
+            ]
+          },
+          "maxItems": 20,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tags": {
+          "description": "Tags for categorization and grouping (e.g., network membership, content categories)",
+          "items": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "description": "Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.",
+            "examples": [
+              "ctv",
+              "premium",
+              "news",
+              "sports",
+              "meta_network",
+              "social_media"
+            ],
+            "pattern": "^[a-z0-9_]+$",
+            "title": "Property Tag",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "identifiers",
+        "name",
+        "property_type"
+      ],
+      "title": "Property",
+      "type": "object"
+    }
+  },
+  "required": [
+    "code",
+    "message"
+  ],
+  "title": "Property Error",
+  "type": "object"
+}
