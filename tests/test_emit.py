@@ -24,10 +24,12 @@ derives it from ``adcp.get_adcp_spec_version()`` (D9, P9).
 from __future__ import annotations
 
 import ast
+import functools
 import importlib
 import json
 import os
 import pkgutil
+import re
 import shutil
 import subprocess
 import sys
@@ -35,10 +37,13 @@ import tempfile
 from pathlib import Path
 from typing import Annotated, Any, NamedTuple
 
+import jsonschema
 import pytest
-from pydantic import Field, TypeAdapter, ValidationError
+from hypothesis import given, HealthCheck, Phase, settings
+from hypothesis import strategies as st
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
-from adcp.types._base import AdCPBaseModel, SchemaRef, schema_at
+from adcp.types._base import AdCPBaseModel, REGEX_ENGINE, SchemaRef, schema_at
 from codegen import bundle, emit
 from codegen.harness import (
     AcceptsResult,
@@ -49,7 +54,9 @@ from codegen.harness import (
     RefusesResult,
     check_pair,
     compare_schema,
+    conforms,
     steps,
+    violated_keywords,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -329,8 +336,6 @@ def test_a_zero_refuses_check_denominator_is_not_reportable_as_a_pass() -> None:
     did.  Every step reports ``harness_error``, the denominator is 0, and the
     pair's verdict is a refusal rather than a pass.
     """
-    import jsonschema
-
     schema = schema_at(SchemaRef(PAGINATION, "#"))
     model = pagination().model
 
@@ -459,7 +464,6 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
       comparison cannot close it, and neither can the accepts check, whose
       generator honours the format.
     """
-    import jsonschema
     from pydantic import AwareDatetime
 
     doc = {
@@ -495,64 +499,399 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
 
     assert check_accepts(doc, accept, examples=50).outcome == "model_refused_valid"
 
-    # The third cell: a narrowing with no fact behind it.
+    # The third cell: a narrowing with no fact behind it -- and the two answers
+    # that close it.  ``AwareDatetime``'s rendered schema IS
+    # ``{"type": "string", "format": "date-time"}``, so a fact comparison can
+    # never separate it from a plain annotated string, and the accepts check
+    # cannot either because the generator honours the format.  What decides it is
+    # whether the DOCUMENT asserts the format, and that is a property of the
+    # validator the schema half builds, not of the model.
     stamp = {"type": "string", "format": "date-time"}
     assert compare_schema(stamp, AwareDatetime).outcome == "pass"
     naive = "2020-01-01T00:00:00"
-    jsonschema.Draft7Validator(stamp).validate(naive)  # the document admits it
     with pytest.raises(ValidationError):
-        TypeAdapter(AwareDatetime).validate_python(naive)  # and the model does not
+        TypeAdapter(AwareDatetime).validate_python(naive)  # the type refuses it
+
+    # The control: a validator with NO checker admits it, which is the state the
+    # whole narrowing argument rested on and the reason `_refuse` passes one.
+    jsonschema.Draft7Validator(stamp).validate(naive)
+    # And the closure: with the draft's own checker -- what `_refuse` and the
+    # harness both now build -- the document refuses it too, so the type states
+    # the document's own rule rather than a stricter one.
+    with pytest.raises(jsonschema.ValidationError) as refused:
+        jsonschema.Draft7Validator(
+            stamp, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
+        ).validate(naive)
+    assert refused.value.validator == "format"
 
 
-def test_a_format_states_a_fact_and_never_selects_a_python_type() -> None:
+def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     """D5's format rule, over every format site the population has.
 
-    Draft-07 ``format`` is an annotation and ``jsonschema`` asserts nothing for
-    it without a checker -- and the checker available here covers ``date``,
-    ``email``, ``ipv4``, ``ipv6``, ``regex``, ``time`` and ``uuid``, not
-    ``date-time`` and not ``uri``.  So a Python type derived from a format is
-    narrower than the document as it is graded, and none of the three checks
-    reports the difference: the accepts check draws through
-    ``hypothesis_jsonschema``, which honours the format and produced an offset in
-    200 of 200 instances.
+    ``format: date-time`` references RFC 3339, where the offset is MANDATORY, so
+    the document requires a timezone and ``AwareDatetime`` states the document's
+    own rule.  That only holds because the schema half passes a format checker:
+    a draft-07 ``format`` that nothing checks asserts nothing, and a type derived
+    from one would be narrower than its document as graded.  So the rule has two
+    sides and this grades both, over a population selected off the bundle:
 
-    Two halves, because either alone is satisfied by doing the wrong thing:
+    * a format the document's own draft can DECIDE and for which a type is named
+      selects that type, asserted on the AST by the type's import being present
+      and by no ``json_schema_extra`` carrying that format in the same module --
+      so the fact lives in exactly one place;
+    * every other format rides as an annotation on the node's own scalar type,
+      so the first side cannot be satisfied by dropping the format.
 
-    * the annotation at a format site is the node's OWN scalar type, asserted on
-      the AST by the absence of any format-derived name from the module's
-      imports -- so ``AwareDatetime``, ``datetime`` and ``AnyUrl`` cannot reach
-      one;
-    * the format is still STATED on the model's own schema, so the first half
-      cannot be satisfied by dropping the format instead of annotating it.
+    And in both cases the format reaches the model's OWN schema, asserted site by
+    site against the document, which is where the schema comparison grades it.
+
+    ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
+    moves this test's expectation with it; what is pinned is the population
+    (14 sites: ``date-time`` 7, ``uri`` 5, ``date`` 2), because that is the
+    denominator the rule is stated over.
     """
-    banned = {"AwareDatetime", "NaiveDatetime", "AnyUrl", "AnyHttpUrl", "datetime", "date"}
-    sites = 0
+    checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
+    # The two dependencies `pyproject` names are what put these in the draft's
+    # own checker; without them the gate below selects no type at all.
+    assert {"date-time", "uri"} <= checked, sorted(checked)
+    assert set(emit.FORMAT_TYPES) <= checked, sorted(emit.FORMAT_TYPES - checked)
+
+    seen: dict[str, int] = {}
     for document in sorted({g.ref.document for g in graded()}):
+        tree = ast.parse(_source(document))
         imported = {
-            a.name
-            for n in ast.walk(ast.parse(_source(document)))
+            ("." * n.level + (n.module or ""), a.name)
+            for n in ast.walk(tree)
             if isinstance(n, ast.ImportFrom)
             for a in n.names
         }
-        assert not (imported & banned), (document, sorted(imported & banned))
+        annotated_formats = {
+            value.value
+            for n in ast.walk(tree)
+            if isinstance(n, ast.Dict)
+            for key, value in zip(n.keys, n.values, strict=True)
+            if isinstance(key, ast.Constant) and key.value == "format"
+            if isinstance(value, ast.Constant)
+        }
         for pointer, node in bundle.nodes(bundle.read(BUNDLE, document)):
-            if isinstance(node.get("format"), str):
-                sites += 1
-                assert node["type"] in emit.SCALAR, (document, pointer)
-    assert sites == 14, sites  # date-time 7, uri 5, date 2
+            fmt = node.get("format")
+            if not isinstance(fmt, str):
+                continue
+            seen[fmt] = seen.get(fmt, 0) + 1
+            assert node["type"] in emit.SCALAR, (document, pointer)
+            selected = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            if selected is None:
+                assert fmt in annotated_formats, (document, pointer, fmt)
+            else:
+                module, name = selected.rsplit(".", 1)
+                assert (module, name) in imported, (document, pointer, selected)
+                assert fmt not in annotated_formats, (document, pointer, fmt)
 
+    assert seen == {"date-time": 7, "uri": 5, "date": 2}, seen
+
+    # Either way the fact is on the model's own schema, at the site the document
+    # states it, which is what `compare_schema` reads.  Counted, so this cannot
+    # pass by looking at nothing.
     stated = 0
     for g in graded():
-        emitted = (
-            g.model.model_json_schema()
-            if isinstance(g.model, type)
-            else TypeAdapter(g.model).json_schema()
-        )
-        for node in [emitted, *(emitted.get("properties") or {}).values()]:
-            for branch in node.get("anyOf") or [node]:
-                stated += 1 if isinstance(branch, dict) and "format" in branch else 0
-            stated += 1 if "format" in node and node.get("anyOf") else 0
-    assert stated, "no format reached a model schema; the comparison grades nothing here"
+        if g.ref.pointer != "#":
+            continue
+        doc = schema_at(g.ref)
+        emitted = g.model.model_json_schema() if isinstance(g.model, type) else TypeAdapter(
+            g.model
+        ).json_schema()
+        for key, sub in (doc.get("properties") or {}).items():
+            if not isinstance(sub.get("format"), str):
+                continue
+            mine = _unwrap(emitted["properties"][emit.field_name(key)], emitted.get("$defs", {}))
+            assert mine.get("format") == sub["format"], (g.ref, key, mine)
+            stated += 1
+    assert stated == 14, stated
+
+
+def _unwrap(node: dict, defs: dict) -> dict:
+    """One property node of a model's schema, with D4's ``T | None`` folded out.
+
+    The same two folds ``harness._normalize`` does and for the same reasons -- an
+    optional property renders as a two-branch ``anyOf`` and a referenced type is
+    hoisted into ``$defs``.  Written here rather than imported because the
+    harness's is private to the comparison; both are three lines and neither is a
+    decision.
+    """
+    if "$ref" in node:
+        outer = {k: v for k, v in node.items() if k != "$ref"}
+        return {**_unwrap(defs[str(node["$ref"]).rsplit("/", 1)[-1]], defs), **outer}
+    branches = node.get("anyOf")
+    if isinstance(branches, list):
+        live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
+        if len(live) == 1 and len(branches) == 2:  # noqa: PLR2004 -- T | None only
+            return {**_unwrap(live[0], defs), **{k: v for k, v in node.items() if k != "anyOf"}}
+    return node
+
+
+def test_a_date_time_with_no_offset_is_refused_by_the_schema_half() -> None:
+    """The format assertion, proved on a real emitted class and in both halves.
+
+    A previous lane backed ``AwareDatetime`` and friends out at 14 sites because
+    they were narrower than their documents AS GRADED, and that was the right
+    call against a grader that asserted nothing for ``format``.  Re-adopting them
+    is only correct if the SCHEMA now refuses what the type refuses, so that is
+    what is asserted here rather than the type's own behaviour:
+
+    * ``strict_validate`` refuses an offsetless timestamp, and the error's
+      ``type`` is ``format`` -- the DOCUMENT's keyword, so the refusal came from
+      the schema half and not from the constructor, which would report
+      ``datetime_from_date_parsing``;
+    * the two halves agree on the whole corpus, in both directions, including
+      a leap second (RFC 3339 syntax admits ``23:59:60`` and
+      ``rfc3339-validator`` refuses it, as pydantic does);
+    * and the accepts check still passes on that pair, because the generator
+      honours the format -- so the re-adoption costs no instance.
+    """
+    g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
+    model, doc = g.model, schema_at(g.ref)
+    assert doc["properties"]["start"]["format"] == "date-time"
+
+    aware = "2020-06-01T12:00:00Z"
+    naive = "2020-06-01T12:00:00"
+    model.strict_validate({"start": aware, "end": aware})  # the document admits it
+    with pytest.raises(ValidationError) as caught:
+        model.strict_validate({"start": naive, "end": aware})
+    assert [(e["type"], e["loc"]) for e in caught.value.errors()] == [("format", ("start",))]
+
+    # Both halves, over the same corpus, in both directions.  The type is read
+    # off the model rather than named here, so this grades what was emitted.
+    stamp = TypeAdapter(model.model_fields["start"].annotation)
+    checker = jsonschema.Draft7Validator.FORMAT_CHECKER
+    corpus = [
+        aware,
+        naive,
+        "2020-06-01t12:00:00z",
+        "2020-06-01T12:00:00+05:30",
+        "2020-06-01T12:00:00.123456789Z",
+        "2020-06-01T23:59:60Z",
+        "2020-06-01",
+        "not a timestamp",
+    ]
+    verdicts = []
+    for value in corpus:
+        schema_says = checker.conforms(value, "date-time")
+        try:
+            stamp.validate_python(value)
+            type_says = True
+        except ValidationError:
+            type_says = False
+        assert schema_says == type_says, (value, schema_says, type_says)
+        verdicts.append(schema_says)
+    assert True in verdicts and False in verdicts, verdicts  # not vacuous either way
+
+    rep = check_pair(pair_of(g), max_steps=None)
+    assert rep.missing_formats == []
+    assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
+    assert rep.comparison.outcome == "pass", (rep.comparison.missing, rep.comparison.added)
+
+
+def test_the_harness_and_the_runtime_decide_a_format_the_same_way() -> None:
+    """One schema, one verdict: the control and the refusal cannot disagree.
+
+    The refuses check asks the ORIGINAL document which keyword bit
+    (``violated_keywords``) and treats an instance nothing bit as grading nothing
+    (``conforms``, the control).  ``strict_validate``'s schema half asks the same
+    document.  If those two build validators with different vocabularies, a step
+    is excused on the strength of a keyword one of them cannot see -- so the
+    harness passes the same ``FORMAT_CHECKER`` ``_refuse`` does, and this is what
+    says so.
+
+    Measured without it: the suite went fully green, because the one place a
+    format reaches the control is the ``pattern`` step's candidate screen and the
+    corpus now clears that screen either way.  So the agreement had no instrument
+    at all and this is it.  A ``format``-violating instance is the one case
+    ``steps()`` cannot produce on its own, so it is written here rather than
+    drawn.
+    """
+    g = next(r for r in graded() if r.ref == SchemaRef("core/datetime-range.json", "#"))
+    doc = schema_at(g.ref)
+    aware = "2020-06-01T12:00:00Z"
+    naive = {"start": "2020-06-01T12:00:00", "end": aware}
+
+    # the control's two predicates
+    assert conforms(doc, naive) is False
+    assert violated_keywords(doc, naive) == ["format"]
+    # ... and the runtime's, on the same document, naming the same keyword
+    with pytest.raises(ValidationError) as caught:
+        g.accept(naive)
+    assert [e["type"] for e in caught.value.errors()] == ["format"]
+
+    # The control also has to stay able to say YES, or the agreement above is
+    # satisfied by a harness that refuses everything.
+    assert conforms(doc, {"start": aware, "end": aware}) is True
+    assert violated_keywords(doc, {"start": aware, "end": aware}) == []
+
+
+def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() -> None:
+    """Which engine every pattern is compiled with, and WHY it is not derivable.
+
+    The engine was going to be derived per class: pydantic's default is Rust,
+    which is faster and refuses to build a pattern it cannot honour rather than
+    mis-matching one, and its only gap was understood to be look-around -- so a
+    class carrying one of the bundle's 4 look-around patterns would take
+    ``python-re`` and the other 102 of 106 would take the default.  The premise
+    was that the accepted sets agree for those 102, and this test is the
+    assertion of it rather than the assumption.  **It does not hold.**
+
+    Python's ``$`` matches at the end of the string OR just before a trailing
+    newline; Rust's ``$`` matches only at the end of the haystack.  The document
+    is validated by ``jsonschema``, which compiles with Python ``re``, so for
+    every ``$``-anchored pattern the document admits a value ending in ``\\n``
+    that a Rust-engine model refuses -- a model NARROWER than its own document,
+    and invisible to all three checks: ``compare_schema`` sees the same
+    ``pattern`` fact on both sides, and the accepts check has to draw the
+    trailing newline to see it.
+
+    So ``python-re`` stays on the base, because it is the engine whose accepted
+    set is the document's, and this test is what will redden if the split is
+    tried again without answering ``$``.  Measured here over the population's own
+    patterns, and reported with both denominators.
+    """
+    assert AdCPBaseModel.model_config["regex_engine"] == REGEX_ENGINE == "python-re"
+
+    distinct: dict[str, int] = {}
+    for document in sorted({g.ref.document for g in graded()}):
+        for _, node in bundle.nodes(bundle.read(BUNDLE, document)):
+            pattern = node.get("pattern")
+            if isinstance(pattern, str):
+                distinct[pattern] = distinct.get(pattern, 0) + 1
+    assert (len(distinct), sum(distinct.values())) == (11, 19), distinct
+
+    no_build: dict[str, int] = {}
+    diverges: dict[str, int] = {}
+    agrees: dict[str, int] = {}
+    for pattern, sites in sorted(distinct.items()):
+        if not _default_engine_builds(pattern):
+            # It refuses to BUILD rather than mis-matching, which is the one
+            # thing about the default engine that was right -- and the document's
+            # engine compiles the same pattern, so the schema half still decides.
+            no_build[pattern] = sites
+            assert _pattern_model(pattern, "python-re") is not None, pattern
+            continue
+        where = agrees
+        for drawn in _matching(pattern):
+            value = drawn.rstrip("\n") + "\n"
+            if re.search(pattern, value) is None:
+                continue  # the document refuses it too; nothing to diverge about
+            # the document admits it, so the engine the document is compiled with
+            # must admit it, and that is the one this package uses
+            assert _accepts(pattern, REGEX_ENGINE, value), (pattern, value)
+            if not _accepts(pattern, None, value):
+                where = diverges
+        where[pattern] = sites
+
+    assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
+    assert (len(diverges), sum(diverges.values())) == (9, 16), diverges
+    assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
+    # The one that agrees is the one with no `$` to disagree about.
+    assert "$" not in next(iter(agrees)), agrees
+    assert all("$" in p for p in diverges), diverges
+
+
+def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> None:
+    """The regression for a live narrowing the engine measurement found.
+
+    ``regex_engine`` is a MODEL config, so D2's root-scalar alias has nowhere to
+    carry one: ``strict_alias`` built a bare ``TypeAdapter``, which took
+    pydantic's default Rust engine, while every emitted CLASS took ``python-re``
+    off ``AdCPBaseModel``.  So the two halves of ``strict_validate`` disagreed on
+    an alias: ``core/brand-id.json`` states ``pattern: ^[a-z0-9_]+$``, its
+    document ADMITS ``"abc\\n"``, the schema half admitted it and the constructor
+    then refused it with ``string_pattern_mismatch``.
+
+    Graded over every alias the tree carries rather than on the one document that
+    showed it, with the admitting value DERIVED from each alias's own pattern,
+    and with the document asked each time -- so this cannot pass by asserting
+    what the model happens to do.
+    """
+    aliases = [g for g in graded() if not isinstance(g.model, type)]
+    assert aliases, "no alias was graded"
+    with_pattern = 0
+    for g in aliases:
+        doc = schema_at(g.ref)
+        pattern = doc.get("pattern")
+        if not isinstance(pattern, str):
+            continue
+        with_pattern += 1
+        value = _matching(pattern)[0].rstrip("\n") + "\n"
+        jsonschema.Draft7Validator(
+            doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
+        ).validate(value)  # the document admits it
+        assert g.accept(value) == value, (g.ref, value)  # and so does the alias
+    assert with_pattern == 2, with_pattern  # core/brand-id.json, core/property-id.json
+
+
+@functools.lru_cache(maxsize=None)
+def _pattern_model(pattern: str, engine: str | None) -> type[BaseModel]:
+    """A one-field carrier for ``pattern`` under ``engine``.
+
+    A model and not a bare ``TypeAdapter``, because ``regex_engine`` is a MODEL
+    config -- which is the whole reason the engine is a per-class decision and
+    not a per-field one.  ``engine=None`` sets nothing and so takes pydantic's
+    default, which is the Rust engine; naming ``"rust-regex"`` explicitly would
+    grade a spelling rather than the default.
+    """
+    config = ConfigDict(regex_engine=engine) if engine else ConfigDict()
+
+    class Carrier(BaseModel):
+        model_config = config
+        v: Annotated[str, Field(pattern=pattern)]
+
+    return Carrier
+
+
+def _default_engine_builds(pattern: str) -> bool:
+    """Can pydantic's DEFAULT engine compile this pattern?
+
+    The real predicate, asked of the engine itself.  A textual look-around test
+    would be a second implementation of the incompatibility, and the thing worth
+    knowing is not whether a pattern contains ``(?!`` but whether the engine
+    refuses it -- which is the behaviour that makes the default the one to want.
+    """
+    try:
+        _pattern_model(pattern, None)
+    except Exception:  # pydantic-core refuses to build it
+        return False
+    return True
+
+
+def _accepts(pattern: str, engine: str | None, value: str) -> bool:
+    try:
+        _pattern_model(pattern, engine)(v=value)
+    except ValidationError:
+        return False
+    return True
+
+
+def _matching(pattern: str, examples: int = 2) -> list[str]:
+    """Strings the pattern matches, DRAWN rather than written.
+
+    Written candidates for 11 patterns would be 11 guesses about what each one
+    means, and a wrong guess shows up as a pattern graded only on misses -- which
+    is why the comparison above requires both verdicts to appear.
+    """
+    out: list[str] = []
+
+    @settings(
+        max_examples=examples,
+        deadline=None,
+        database=None,
+        derandomize=True,
+        phases=[Phase.generate],
+        suppress_health_check=list(HealthCheck),
+    )
+    @given(st.from_regex(pattern))
+    def body(value: str) -> None:
+        out.append(value)
+
+    body()
+    return out
 
 
 def test_the_step_result_is_counted_over_the_whole_population() -> None:

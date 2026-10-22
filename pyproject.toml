@@ -13,6 +13,20 @@ dependencies = [
     # are everything it imports, and the emitter adds nothing to them.
     "pydantic>=2.13.0,<2.14",
     "jsonschema>=4.20.0",
+    # `jsonschema` asserts NOTHING for a draft-07 `format` unless its checker for
+    # that format is installed, and D5 lets a format select a Python type only
+    # where the schema half asserts it.  These two are what make the bundle's
+    # formats checkable: `rfc3339-validator` registers `date-time` (and `time`)
+    # and `rfc3987` registers `uri` (and `uri-reference`, `iri`,
+    # `iri-reference`); `date`, `email`, `idn-email`, `ipv4`, `ipv6` and `regex`
+    # come with `jsonschema` itself.  Runtime dependencies and not dev ones,
+    # because `strict_validate` is what decides acceptance (D4): without them a
+    # deployed SDK accepts a `date-time` with no offset and an `AwareDatetime`
+    # field would then be narrower than the document it names.  Measured on the
+    # 1,054 portable documents of the 3.2 bundle, they move `date-time` (437
+    # uses) and `uri` (300) from ungraded to graded, which is 737 of 806.
+    "rfc3339-validator>=0.1.4",
+    "rfc3987>=1.3.8",
     # D10: the compiler. `f(schemas, pinned compiler)` has two arguments and this
     # is the second, so it is pinned exactly rather than floated -- the rendered
     # text is a function of the version, and the byte compare in `test_emit` is

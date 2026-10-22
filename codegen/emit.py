@@ -74,7 +74,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from adcp.types._base import SchemaRef
-from codegen import bundle, compiler
+from codegen import bundle, compiler, harness
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -90,24 +90,57 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 #: see ``compiler.CONSTRAINTS`` and gate 1 there.
 CONSTRAINTS = compiler.CONSTRAINTS
 
-#: ``format`` SELECTS NO PYTHON TYPE, and D5 says why: draft-07 ``format`` is an
-#: annotation, so ``jsonschema`` asserts nothing for it without a format checker,
-#: and the checker available here covers ``date``, ``email``, ``ipv4``, ``ipv6``,
-#: ``regex``, ``time`` and ``uuid`` -- not ``date-time`` and not ``uri``.  Any
-#: Python type derived from a format is therefore NARROWER than the document as
-#: it is graded: ``AwareDatetime`` refuses a timestamp with no offset,
-#: ``datetime.datetime`` refuses a string that is not a timestamp at all, and
-#: ``AnyUrl`` refuses the empty string and adds a ``minLength: 1`` its document
-#: does not state.  None of those narrowings is reported by any of the three
-#: checks: the accepts check draws through ``hypothesis_jsonschema``, which
-#: honours the format and produced an offset in 200 of 200 instances.
+#: **``format`` SELECTS A TYPE, and the schema half asserts it** (D5).
 #:
-#: So a format stays an ANNOTATION on the node's own scalar type -- carried into
-#: ``json_schema_extra``, where the schema comparison grades it as the fact the
-#: document states -- until ``format`` is asserted on both sides.  One path for
-#: every format, which is also why there is no table: a format this population
-#: does not use needs no row, and the 14 sites that do use one (``date-time`` 7,
-#: ``uri`` 5, ``date`` 2) take the same path as the rest.
+#: ``format: date-time`` references RFC 3339, where the time offset is MANDATORY,
+#: so the document itself requires a timezone and ``AwareDatetime`` states the
+#: document's own rule rather than a stricter one.  That reading only holds
+#: because the schema half now PASSES A FORMAT CHECKER (``_base._refuse``,
+#: ``harness._validating``): a draft-07 ``format`` that nothing checks asserts
+#: nothing, and a type derived from one would be narrower than its document as
+#: graded -- which is the state a previous lane correctly backed these types out
+#: of, and the apparent disagreement was the grader rather than the types.
+#: Measured both ways on the same checker: of six RFC 3339 edge values --
+#: offsetless, lowercase ``t``/``z``, a leap second, a ``+05:30`` offset,
+#: nanosecond precision -- ``AwareDatetime`` and ``rfc3339-validator`` agree on
+#: all six, including refusing the leap second.
+#:
+#: A row exists only where the draft's own checker can DECIDE the format, which
+#: :func:`asserted_formats` reads off the document's declared draft.  So removing
+#: ``rfc3339-validator`` from the dependencies does not leave an unasserted
+#: narrowing behind: the row stops selecting and the node falls back to its own
+#: scalar type with the format as an annotation.
+#:
+#: **``uri`` is not here on purpose, and the omission is a decision.**  D5 admits
+#: a standard type only when it states the document's own facts AND accepts the
+#: document's own set, and ``AnyUrl`` fails both halves.  It renders
+#: ``minLength: 1``, which no ``format: uri`` document states, so the SYMMETRIC
+#: schema comparison reports it as a fact the model adds -- a narrowing.  It also
+#: NORMALIZES (``HTTP://A.example/X`` comes back ``http://a.example/X``), so the
+#: SDK would hand a consumer a value the sender did not send.  And ``uri`` is the
+#: one format in this bundle that co-occurs with a string constraint -- at 1 of
+#: this population's 5 ``uri`` sites and 73 of the bundle's 300 -- where a
+#: ``pattern`` has no rendering against a URL type at all.  So ``uri`` keeps the
+#: node's own ``str`` with the format as an annotation, which states exactly the
+#: document's two facts and accepts exactly the set ``rfc3987`` decides.
+#: Silencing the comparison instead -- a ``WithJsonSchema`` hiding the
+#: ``minLength`` -- would make the model's rendered schema a claim nobody graded.
+FORMAT_TYPES = {
+    "date-time": "pydantic.AwareDatetime",
+    "date": "datetime.date",
+}
+
+
+def asserted_formats(doc: dict) -> frozenset[str]:
+    """The formats the DOCUMENT'S OWN draft has an installed checker for.
+
+    Derived, not listed: ``validator_for`` reads the draft off the document's
+    ``$schema`` and ``FORMAT_CHECKER`` is that draft's own vocabulary, narrowed
+    to what is installed.  Both halves of ``strict_validate`` assert through the
+    same attribute, so the set this walk gates on and the set the runtime
+    enforces are one set and cannot drift.
+    """
+    return frozenset(harness.validator_for(doc).FORMAT_CHECKER.checkers)
 
 #: Keywords that annotate a node without constraining an instance.  ``default``
 #: and ``description`` are carried by the compiler (they are rendering, and
@@ -224,6 +257,10 @@ class Module:
     document: str
     #: ``(uri, pointer) -> (import module, symbol)``; see ``emit``.
     bind: Callable[[str, str], tuple[str, str]] = _no_binder
+    #: The formats this document's own draft asserts; see ``asserted_formats``.
+    #: Empty by default, so a node lowered outside ``lower_document`` selects no
+    #: format-derived type rather than one nothing checks.
+    asserted: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
@@ -327,10 +364,15 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     _check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
-    # The node's own scalar type, and the format as an annotation beside it.  One
-    # path for every format, for the reason above the empty table: a type derived
-    # from a format is narrower than the document as it is graded, and no check
-    # reports the difference.
+    # A format SELECTS a type where one is named for it and the document's own
+    # draft can decide it (D5, and the comment above FORMAT_TYPES).  The type
+    # then states the format in its own rendered schema, so ``format`` is left
+    # unset here and the compiler adds no annotation -- which is what keeps the
+    # fact in exactly one place.  Where no type is selected the format rides as
+    # an annotation on the node's own scalar type, and the schema comparison
+    # grades it there.
+    if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
+        return Decided(compiler.Type(FORMAT_TYPES[fmt]), constraints)
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
@@ -456,7 +498,7 @@ def lower_document(
     symbol = class_name(title)
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
-    mod = Module(document=document, bind=bind)
+    mod = Module(document=document, bind=bind, asserted=asserted_formats(doc))
     kind = doc.get("type")
     if "properties" in doc and kind in (None, "object"):
         lower_object(doc, symbol, "", mod)
@@ -474,6 +516,18 @@ def lower_document(
         # constraint on an alias and a constraint on a property cannot come to be
         # spelled two ways.  What is ours is the two module-level STATEMENTS, and
         # §1 says why: no compiler template has a slot for a line beside an alias.
+        #
+        # KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
+        # per-class ``regex_engine`` a look-around pattern needs, and
+        # ``strict_alias`` builds its ``TypeAdapter`` at import.  A scalar root
+        # carrying look-around would therefore fail to IMPORT once the base stops
+        # forcing ``python-re``.  Measured over this step's population: 5 scalar
+        # roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the
+        # default engine compiles) and 0 carrying look-around, so no document
+        # here reaches it.  The failure is an ImportError at the gate rather than
+        # a silent widening, so the upgrade path is for the step whose population
+        # reaches one: either refuse such a document by name, or wrap the alias
+        # in a ``RootModel`` that has a config slot.
         decided_type = decide_type(doc, "", symbol, mod)
         description = doc.get("description")
         rendered = compiler.render_alias(

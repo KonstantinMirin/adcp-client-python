@@ -146,13 +146,14 @@ class Property:
     description: str | None = None
     #: JSON Schema spelling, per gate 1.
     constraints: Mapping[str, Any] = field(default_factory=dict)
-    #: The document's ``format``, which rides as ``json_schema_extra`` and never
-    #: as a type (D5).  It states the fact without changing what is accepted,
-    #: which is exactly right: draft-07 ``format`` is an annotation and
-    #: ``jsonschema`` asserts nothing for it without a checker, so a Python type
-    #: derived from one is narrower than the document as it is graded.  Dropping
-    #: it instead loses a fact the document states, which the schema comparison
-    #: grades.
+    #: The document's ``format``, where the walk did NOT turn it into a type.
+    #: D5 lets a format select one (``emit.FORMAT_TYPES``), and a selected type
+    #: states the format in its own rendered schema -- so this field is the other
+    #: case, and it rides as ``json_schema_extra`` so the fact reaches the
+    #: model's schema where the comparison grades it.  The two are exclusive by
+    #: construction (``emit.Decided``): a format is in the type or in here, and
+    #: never in both and never nowhere.  Dropping it would lose a fact the
+    #: document states.
     format: str | None = None
 
 

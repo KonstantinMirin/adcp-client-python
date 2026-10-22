@@ -177,11 +177,48 @@ def strategy(schema: dict, custom_formats: Mapping[str, Any]) -> st.SearchStrate
     return from_schema(schema, custom_formats=dict(custom_formats))
 
 
+def validator_for(schema: dict) -> Any:
+    """The validator the document's own ``$schema`` names.
+
+    One function so the three places below cannot come to validate with
+    different vocabularies, and so ``format`` is asserted in all of them: see
+    ``_validating``.
+    """
+    return jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+
+
+def _validating(cls: Any, schema: dict) -> Any:
+    """A validator instance that ASSERTS ``format``, with the draft's own checker.
+
+    ``jsonschema`` treats ``format`` as a pure annotation unless it is handed a
+    ``FormatChecker``, and the consequence is not a missing nicety: the whole
+    accepted set of a formatted node went ungraded, so a model carrying a
+    format-derived Python type was narrower than its own document and no check
+    reported it.  The accepts check could not, because
+    ``hypothesis_jsonschema`` HONOURS a format it knows when generating -- it
+    produced an offset in 200 of 200 ``date-time`` instances -- and the schema
+    comparison could not, because the type states exactly the fact the document
+    states.
+
+    The checker is ``cls.FORMAT_CHECKER``, the one the declared draft defines,
+    rather than ``jsonschema.FormatChecker()``.  That is the faithful reading:
+    the global registry carries every checker any draft defines, so it would
+    assert ``uuid`` against a draft-07 document, which draft-07 does not define
+    as a format -- the SDK inventing a constraint.  Which formats the draft's own
+    checker can actually decide depends on what is installed, and ``pyproject``
+    names the two packages that make this bundle's own formats decidable
+    (``rfc3339-validator``, ``rfc3987``).  The emitter gates its type selection
+    on the same set, so the two halves cannot disagree about which formats are
+    asserted.
+    """
+    return cls(schema, format_checker=cls.FORMAT_CHECKER)
+
+
 def conforms(schema: dict, instance: Any, *, validator_cls=None) -> bool | None:
     """True / False, or None when the document is not usable as a validator."""
-    cls = validator_cls or jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+    cls = validator_cls or validator_for(schema)
     try:
-        cls(schema).validate(instance)
+        _validating(cls, schema).validate(instance)
         return True
     except jsonschema.ValidationError:
         return False
@@ -200,9 +237,9 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
     contradict.  Asking the validator which keyword bit makes the attribution
     exact instead of assumed.
     """
-    cls = validator_cls or jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+    cls = validator_cls or validator_for(schema)
     out: list[str] = []
-    for err in cls(schema).iter_errors(instance):
+    for err in _validating(cls, schema).iter_errors(instance):
         for e in [err, *err.context] if err.context else [err]:
             if isinstance(e.validator, str):
                 out.append(e.validator)
@@ -293,7 +330,24 @@ _FORCE_NAMED = ("properties", "dependentSchemas")
 #: Candidate instances for a ``pattern`` step, tried in order.  Short, so a
 #: ``maxLength`` beside the pattern does not rule them all out, and spread across
 #: character classes, so a pattern restricting to one of them still has a miss.
-_PATTERN_MISSES = ("!", "A", "0", " ", "", "\x00", "__adcp_harness__")
+#:
+#: The last member is the one axis the first seven do not cover and ``format``
+#: being asserted introduced: a sibling ``format`` has to ADMIT the candidate
+#: too, and none of the first seven is a well-formed value of any format.
+#: Measured at ``core/platform-extension-ref.json#/properties/uri``, which
+#: states ``format: uri`` beside ``pattern: ^https://``: once the checker was
+#: passed, all seven failed the ``conforms`` screen, the site got no step at all,
+#: and the refuses-check denominator fell by that step's 25 instances -- the
+#: pattern went from graded to ungraded without any pair reporting a failure.
+#: An absolute URI with a scheme the pattern refuses clears both screens and
+#: grades it again.  It is LAST so a shorter candidate still wins wherever one
+#: clears, which is every other pattern site in this population.
+#:
+#: ``uri`` is the only format in this bundle that co-occurs with a string
+#: constraint at any scale -- 73 of its 300 uses, against 4 for ``email``, 2 for
+#: ``hostname`` and 0 for ``date-time`` and ``date`` -- so one member is the
+#: whole of what this axis needs today.
+_PATTERN_MISSES = ("!", "A", "0", " ", "", "\x00", "__adcp_harness__", "http://a.example/")
 
 
 def force_path(schema: dict, pointer: str) -> dict:
@@ -745,7 +799,7 @@ def check_refuses(
     """
     res = RefusesResult(keyword=step.keyword, pointer=step.pointer, describe=step.describe)
     cf = dict(custom_formats)
-    validator_cls = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
+    validator_cls = validator_for(schema)
 
     def body(instance: Any) -> None:
         res.examples += 1
