@@ -96,6 +96,7 @@ from codegen.compiler import (
     declare_alias,
     lower_object,
 )
+from codegen.lower import const as lower_const
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
@@ -321,6 +322,17 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         decided = lower_enum.decide(node, name_hint, pointer)
         mod.add(name_hint, pointer, compiler.render_enum(decided))
         return Decided(compiler.Type(name_hint, local=True))
+
+    if "const" in node:
+        # D2's ``const`` row, IN FULL, and reached before ``type`` is read for the
+        # enum arm's reason: a ``const`` pins the VALUE, and the value's own JSON
+        # type is what the node admits whether the document spells a ``type`` word or
+        # not -- 832 of the bundle's 1,486 const nodes spell none.  A ``const`` is a
+        # single-member enumeration in JSON Schema's vocabulary and nothing in this
+        # bundle writes both (0 of the 1,486 carry an ``enum`` beside it), so the two
+        # arms do not overlap and their order here is not a precedence.
+        check_keywords(node, pointer, lower_const.HANDLED)
+        return lower_const.decide(node, pointer)
 
     kind = node.get("type")
 
