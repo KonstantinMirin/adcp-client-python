@@ -101,7 +101,7 @@ per row, in D5's URL-row shape — never a widened or derived rule.
 
 ## What I am building
 
-One arm in `emit._decide`, before `type` is read, in the shape the `enum` arm
+One branch in `emit._decide`, before `type` is read, in the shape the `enum` arm
 already has:
 
 ```python
@@ -224,7 +224,7 @@ with its selector in `codegen.bundle`."** Measured over the whole bundle:
 kind in this bundle, so there is no root for a row to claim, nothing to add to
 `bundle.declares_its_own_root_kind`, and no selector to write. The change belongs
 in the WALK — `emit._decide`, beside the `$ref`, `enum`, typeless, `null`, array,
-mapping and scalar arms that are already there and are already not rows. `ROWS`
+mapping and scalar branches that are already there and are already not rows. `ROWS`
 stays at six and the partition (1,033 claimed once, 21 by none, 0 twice) is
 untouched by construction rather than by a check.
 
@@ -247,7 +247,7 @@ was written**: 0 of the 25 distinct Literals it actually emitted carries a dot,
 while 103 of the bundle's const values, over 37 documents, do. The fix is inside
 the design, not around it — `Type.literals` carries the value and dmcg's own
 `literals` slot renders it, escapes it (`"it's"` comes back `Literal["it's"]`) and
-reports the `typing.Literal` import. What the design was missing was one arm on
+reports the `typing.Literal` import. What the design was missing was one branch on
 the carrier, not a mechanism.
 
 **(b) The resolver-canonicalization folds were written for `enum` and not for its
@@ -347,3 +347,43 @@ nothing has to be re-derived:
 | `test_enum.py:806` | a count | **193** |
 
 Every one of the 23 is in group 1, 2 or 3; there is no fourth group.
+
+## 26 vs 27: both numbers are right, about two different populations
+
+**Every number in this file is measured against base `63dc1bb68`**, which is the
+trunk this branch started from. `.20` and `.24` have since merged and the trunk now
+measures 406 / 648 and 481 pairs, so none of these is a delta against today's trunk.
+
+Enumerated by name rather than differenced:
+
+| population | count |
+|---|---|
+| THE 75 — base refusals whose keyword is `const` | 75 |
+| NEWLY EMITTED — head emitted minus base emitted | **27** |
+| of the 75, now emitted | **26** |
+| of the 75, still refused | **49** |
+| newly emitted and NOT one of the 75 | **1** |
+
+`26 + 49 = 75`, and `26 + 1 = 27 = 428 − 401`. The 27th newly-emitted document is
+`core/authorized-agent-base.json`, and **at base it refused on `$ref`**, not on
+`const`: its detail reads *"its target core/agent-encryption-key.json is refused:
+/properties/kty: const: …"*. It is a CHAIN unlock, so it lives in the `$ref` bucket
+and was never a member of the 75.
+
+So `75 − 48 = 27` presumes every newly-emitted document came out of the 75, which
+counts the chain unlock twice — once inside the 75 and once in the `$ref` bucket it
+actually belongs to.
+
+**The census that produced 48 proves this itself.** `$ref` moves 228 → 257, which is
+**+29**, not +30. 30 of the 49 still-refused documents now name `$ref` as their next
+keyword, which is +30 into that bucket; the −1 that brings it to +29 is
+`core/authorized-agent-base.json` LEAVING the `$ref` bucket by emitting. Had the 27th
+newly-emitted document come out of the 75 instead, `$ref` would read 258.
+
+**It is not the union reorder.** `core/start-timing.json` is in the 75, is still
+refused, and moved only its KEYWORD — `const` at base, `type` at the tip ("a branch
+of type 'string' is step 6"). It never crossed the emit/re-refuse line, so it cannot
+account for a difference of one in that split.
+
+The honest way to say both numbers at once: **27 documents newly emit, 26 of them
+from the 75, and 49 of the 75 still refuse on a next keyword.**
