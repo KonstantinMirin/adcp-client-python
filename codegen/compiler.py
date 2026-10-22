@@ -835,6 +835,7 @@ def declare_object(
     *,
     bases: tuple[str, ...] = (),
     body_lines: tuple[str, ...] = (),
+    imports: set[tuple[str, str]] | None = None,
 ) -> str:
     """Assemble one class out of decided properties, and record what it declares.
 
@@ -886,6 +887,8 @@ def declare_object(
         )
     )
     mod.shapes[name] = shape
+    if imports:
+        mod.imports |= imports
     mod.add(name, pointer, rendered)
     return name
 
@@ -907,8 +910,24 @@ def lower_object(
     unchanged and so is every module they emit.  :func:`fields` documents
     ``decided``; ``bases`` and ``body_lines`` are :class:`Class`'s own.
     """
+    # D6's six families are handled HERE and not refused: a rule attaches to the
+    # nearest class, so an object node is the only node that can carry one.  Imported
+    # on use, because ``codegen.lower.rules`` imports this module for ``ANNOTATIONS``
+    # -- the one place the two halves meet, and the lowering's direction is the one
+    # D13 fixes, so this side is the lazy one.
+    from codegen.lower import rules
+
     check_keywords(
-        node, pointer, {"type", "properties", "required", "additionalProperties", "propertyNames"}
+        node,
+        pointer,
+        {
+            "type",
+            "properties",
+            "required",
+            "additionalProperties",
+            "propertyNames",
+            *rules.KEYWORDS,
+        },
     )
     if node.get("type") != "object":
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
@@ -935,6 +954,14 @@ def lower_object(
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
+    # A property the node declares only under a conditional still arrives on the
+    # wire, so the class needs a field to carry it.  Collected by the rules lowering,
+    # which is what reads the conditional, and merged in BEFORE the walk over
+    # ``props`` so such a property is typed from its own declaration rather than left
+    # off the model -- a required name the model does not declare is a class narrower
+    # than its document on both acceptance paths.
+    stated = rules.lower(node)
+    props = {**props, **{k: v for k, v in stated.properties.items() if k not in props}}
     required = node.get("required", [])
     if not isinstance(required, list) or not all(isinstance(r, str) for r in required):
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
@@ -947,7 +974,8 @@ def lower_object(
         built,
         Shape(props, frozenset(required)),
         bases=bases,
-        body_lines=body_lines,
+        body_lines=(*body_lines, *(b for b in (rules.block(stated.rules),) if b)),
+        imports=stated.imports,
     )
 
 

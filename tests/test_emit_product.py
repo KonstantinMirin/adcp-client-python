@@ -169,17 +169,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population is 188 on the merged table (43 when this lane measured
     # it alone, before the other four steps' rows were beside it), and the row moves
     # it by 0.
-    assert len(with_row.emitted) == 188, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 202, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 20 of the 287 are emitted BY this row, and removing it loses
-    # 24 modules -- the 20 plus the 4 reached only through one of their references.
+    # documents follow: 21 of the 287 are emitted BY this row, and removing it loses
+    # 29 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    assert len(with_row.emitted) - len(without.emitted) == 24
-    assert len(set(composing()) & set(with_row.emitted)) == 20
+    assert len(with_row.emitted) - len(without.emitted) == 29
+    assert len(set(composing()) & set(with_row.emitted)) == 21
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )

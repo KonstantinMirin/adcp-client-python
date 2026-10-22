@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "dependencies": {
+    "cloud": [
+      "region"
+    ],
+    "region": [
+      "cloud"
+    ]
+  },
+  "description": "Provider-interpreted recipient identity for a seller-hosted share. Examples include a sharing identifier or organization/account pair. The value is an identifier, never a credential.",
+  "properties": {
+    "cloud": {
+      "enum": [
+        "aws",
+        "gcp",
+        "azure"
+      ]
+    },
+    "identity": {
+      "maxLength": 512,
+      "minLength": 1,
+      "type": "string"
+    },
+    "region": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "identity"
+  ],
+  "title": "Delivery Recipient",
+  "type": "object"
+}

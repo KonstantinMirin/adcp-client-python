@@ -54,12 +54,14 @@ from adcp.types._base import (
     SchemaRef,
     schema_at,
 )
+from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
+    check_refuses,
     ComparisonResult,
     Pair,
     PairReport,
@@ -70,6 +72,7 @@ from codegen.harness import (
     steps,
     violated_keywords,
 )
+from codegen.lower import rules
 
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "schemas" / "cache" / "3.2"
@@ -137,6 +140,7 @@ def population() -> list[str]:
         | set(composing())
         | set(union_roots())
         | set(container_roots())
+        | set(object_rules())
     )
 
 
@@ -148,6 +152,14 @@ def container_roots() -> list[str]:
     point: a row cannot claim a document its step does not count.
     """
     return [d for d in bundle.portable(BUNDLE) if bundle.is_container_root(bundle.read(BUNDLE, d))]
+
+
+@functools.cache
+def object_rules() -> list[str]:
+    """Step 7's population: an object root whose composition is a presence rule."""
+    return [
+        d for d in bundle.portable(BUNDLE) if bundle.states_an_object_rule(bundle.read(BUNDLE, d))
+    ]
 
 
 
@@ -238,7 +250,7 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # Not the sum: the selectors OVERLAP, and the overlaps are counted below
     # rather than assumed.  The union is the denominator; no selector here is a
     # ROW for another's shape, so nothing is counted twice by the table.
-    assert len(population()) == 996
+    assert len(population()) == 981
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
@@ -247,7 +259,10 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # union is smaller than the sum, so a reader cannot add 85 + 249 + 535.
     assert len(set(leaves()) & set(enums())) == 26
     assert len(set(referencing()) & set(enums())) == 94
-    assert len(union_roots()) == 156
+    # 126 and not 156: ``union_root`` now yields the 30 roots whose combinator holds
+    # ``required`` GROUPS to the object row, because those are rules and not unions
+    # (step 7, and ``test_step_sevens_population_reaches_the_object_row_and_no_other``).
+    assert len(union_roots()) == 126
     assert "core/signal-id.json" in union_roots()
     # 0 union roots carry BOTH keywords, so the keyword the lowering reads is unambiguous
     # for every document the selector claims.
@@ -266,6 +281,30 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     # steps' floor structurally safe rather than re-measured: a container root is
     # neither a leaf object nor a referencing one, so no document stops being named.
     assert not set(container_roots()) & (set(leaves()) | set(referencing()))
+    assert len(object_rules()) == 5
+    assert "core/budget-range.json" in object_rules()
+
+
+def test_step_sevens_population_reaches_the_object_row_and_no_other() -> None:
+    """The step-5/step-7 boundary, asserted on the selectors rather than assumed.
+
+    Step 7 adds no ROW: a rule attaches to the nearest class, so its documents are
+    lowered by the object row with ``rules.lower`` inside
+    ``compiler.lower_object``.  That only works if the object row CLAIMS them, and
+    it did not: a root whose ``oneOf`` holds ``required`` groups carries a union
+    keyword, so ``union_root`` claimed all 5 and ``is_object_root`` claimed none --
+    and step 5's row refuses a branch declaring no property, so step 7's whole
+    population was selected by a row that refuses it.
+
+    ``bundle.union_root`` now asks ``rules.presence_only`` as well, and this is the
+    assertion that keeps it: every document of step 7's population is claimed by
+    exactly one row, and that row is the object one.
+    """
+    assert object_rules(), "step 7's population is empty; this would be vacuous"
+    for document in object_rules():
+        doc = bundle.read(BUNDLE, document)
+        claiming = [s.__name__ for s, _ in emit.ROWS if s(doc)]
+        assert claiming == ["is_object_root"], (document, claiming)
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
@@ -837,7 +876,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
-    (50 sites: ``date-time`` 24, ``uri`` 22, ``email`` 2, ``date`` 2), because that is the
+    (57 sites: ``date-time`` 26, ``uri`` 27, ``email`` 2, ``date`` 2), because that is the
     denominator the rule is stated over.
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
@@ -877,7 +916,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
 
-    assert seen == {"date-time": 24, "uri": 22, "email": 2, "date": 2}, seen
+    assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 2}, seen
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
@@ -897,7 +936,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 50, stated
+    assert stated == 57, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1064,7 +1103,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (23, 53), distinct
+    assert (len(distinct), sum(distinct.values())) == (24, 66), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1090,7 +1129,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (21, 50), diverges
+    assert (len(diverges), sum(diverges.values())) == (22, 63), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -1201,12 +1240,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 421, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 410
+    assert len(reports) == 428, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 417
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 11
-    assert sum(r.graded_instances for r in reports) == 26970  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 3847  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 821  # model-only facts examined
+    assert sum(r.graded_instances for r in reports) == 28414  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 3944  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 838  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
@@ -1260,7 +1299,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     # root that states its own ``additionalProperties``, so a base never has one to
     # carry and takes this default.  The other members are mapping and container
     # roots whose own document is silent too.
-    assert counted["silent"] == 14, counted
+    assert counted["silent"] == 16, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1854,7 +1893,7 @@ def test_a_branch_with_no_derivable_name_refuses_its_document_by_name_and_pointe
 
 
 def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_keyword() -> None:
-    """The step's own arithmetic: 156 union roots, 7 emitted and 149 refused, each named.
+    """The step's own arithmetic: 126 union roots, 10 emitted and 116 refused, each named.
 
     The by-keyword profile is asserted as a WHOLE rather than as a total, because the
     profile is the readable result of the step -- it says which later step unblocks what.
@@ -1865,13 +1904,13 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     roots = union_roots()
     emitted = [d for d in roots if d in out.emitted]
     refused = [d for d in roots if d in out.refusals]
-    assert len(roots) == 156
-    # 8 and not the 6 this lane measured alone: two roots emit only once another
-    # step's row is beside this one -- ``core/reporting-control-total.json`` carries a
-    # nested ``enum`` (step 3) and ``core/inventory-list-application.json`` a nested
-    # container (step 6).  Joint unblocking, which no single lane could reach.
-    assert len(emitted) == 8, emitted
-    assert len(refused) == 148
+    assert len(roots) == 126
+    # 10 and not the 6 this lane measured alone, over a population of 126 and not
+    # 156: roots emit only once another step's row is beside this one -- a nested
+    # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
+    # combinators left for step 7.  Joint unblocking, which no single lane reaches.
+    assert len(emitted) == 10, emitted
+    assert len(refused) == 116
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -1881,12 +1920,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         assert row["keyword"] and row["pointer"], document
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
-        "allOf": 65,  # step 4
-        "properties": 23,  # a root conjunct; see lower/union.py's docstring
+        "allOf": 51,  # step 4
         "type": 11,  # a node with properties and no type admits a non-object
         "$ref": 10,  # a bare-$ref branch has no node to declare a subclass from
-        "not": 10,  # step 7 (D6)
+        "properties": 10,  # a root conjunct; see lower/union.py's docstring
         "definitions": 7,
+        "not": 7,  # step 7 (D6) at a position the rules row does not reach
         "uniqueItems": 5,  # step 7 (D6)
         "anyOf": 3,  # a nested union
         "enum": 2,  # a member type no enumeration base exists for
@@ -1895,9 +1934,7 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "const": 2,
         "oneOf": 1,
         "additionalProperties": 1,
-        "dependencies": 1,  # step 7 (D6)
         "enumMetadata": 1,
-        "minProperties": 1,  # step 7 (D6)
         "pattern": 1,  # D5's alias module (a constraint inside a container)
     }, profile
 
@@ -1984,9 +2021,9 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     # One per union base whose root states no ``type`` of its own, plus the 2
     # const-pinned branch properties of ``core/destination.json`` whose node states
     # only the ``const``.
-    assert len(excused) == 9, excused
+    assert len(excused) == 10, excused
     assert kinds == {"object", "string"}, kinds
-    assert sum(1 for _, where, _ in excused if where == "") == 7, excused
+    assert sum(1 for _, where, _ in excused if where == "") == 8, excused
     assert sum(1 for _, where, _ in excused if where != "") == 2, excused
 
     # direction 2: nothing forcing a type is still reported
@@ -2065,14 +2102,24 @@ def test_a_union_lowering_is_reached_only_through_the_table_and_the_table_is_the
     built ON -- D13's import rule makes the lowering own the read and ``bundle`` read it.  So
     there is no second definition of "is a union root" for the two to disagree through.
     """
-    from codegen.lower import union
+    from codegen.lower import rules, union
 
     assert union.keyword is not None
     rows = [low for selector, low in emit.ROWS if selector is bundle.union_root]
     assert rows == [emit._union_root], rows
     for document in bundle.portable(BUNDLE):
         doc = bundle.read(BUNDLE, document)
-        assert bundle.union_root(doc) == (union.keyword(doc) is not None), document
+        # The row's selector is the lowering's own read NARROWED by step 7's: a
+        # combinator of ``required`` groups carries the keyword and is a rule, not a
+        # union, and ``bundle.union_root`` is where the two steps' readings meet
+        # (a lowering cannot import another lowering, D13).  So the selector implies
+        # the keyword and not the reverse, and the gap is exactly the presence-only
+        # roots -- asserted in both directions, so neither can drift.
+        if bundle.union_root(doc):
+            assert union.keyword(doc) is not None, document
+        elif union.keyword(doc) is not None:
+            kw = union.keyword(doc)
+            assert rules.presence_only({kw: doc[kw]}), document
 
 
 def _pydantic_names(json_schema_keywords: set[str]) -> set[str]:
@@ -2226,8 +2273,8 @@ def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() 
         n = sum(1 for selector, _ in emit.ROWS if selector(doc))
         by_count[n] = by_count.get(n, 0) + 1
     assert sorted(by_count) == [0, 1], by_count  # never two
-    assert by_count[1] == 1047, by_count  # the six rows' own population
-    assert by_count[0] == 7, by_count  # no row yet: a later step's
+    assert by_count[1] == 1033, by_count  # the six rows' own population
+    assert by_count[0] == 21, by_count  # no row yet: a later step's
 
     both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
     assert bundle.is_object_root(both)
@@ -2280,8 +2327,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 44, arrays
-    assert bounded == 22, bounded
+    assert arrays == 46, arrays
+    assert bounded == 24, bounded
 
 
 def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
@@ -2323,7 +2370,7 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     # keyword and no other, so admitting it would emit them wide.
     out = emit.emit(BUNDLE, population())
     blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    assert len(blocked) == 38, sorted(blocked)
+    assert len(blocked) == 45, sorted(blocked)
     assert "core/acceptance-policy-profile-ids.json" in out.refusals
 
 
@@ -2383,7 +2430,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 mappings += 1
                 constrained += bool({"propertyNames", "patternProperties"} & set(node))
                 del pointer
-    assert mappings == 110, mappings
+    assert mappings == 124, mappings
     assert constrained == 0, constrained
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
@@ -2783,9 +2830,20 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     (tmp_path / "ok.json").write_text(
         json.dumps({"title": "Ok", "type": "object", "properties": {"a": {"type": "string"}}})
     )
+    # ``allOf`` and not ``not``: this fixture used ``not: {}``, which step 7 now
+    # LOWERS (a ``not`` is a rule or the schema's own statement, never a refusal),
+    # so the fixture stopped refusing anything and the test passed on a bundle
+    # with no refusal in it.  ``allOf`` is step 4's row and still refuses, and
+    # whichever row claims it next will move this fixture again -- which is the
+    # point: the fixture has to name a keyword the tree genuinely cannot lower.
     (tmp_path / "no.json").write_text(
         json.dumps(
-            {"title": "No", "type": "object", "properties": {"a": {"type": "string"}}, "not": {}}
+            {
+                "title": "No",
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                "allOf": [{"required": ["a"]}],
+            }
         )
     )
     into = tmp_path / "out"
@@ -2810,7 +2868,12 @@ def test_the_cli_reports_a_refusal_rather_than_raising_it(tmp_path) -> None:
     assert "Traceback" not in done.stderr, done.stderr
     assert done.returncode == 1, (done.returncode, done.stdout, done.stderr)
     assert "refused no.json" in done.stdout, done.stdout
-    assert "on not:" in done.stdout, done.stdout
+    # ``on required:`` and not ``on allOf:``: step 4's row claims this root now, so
+    # the walk reaches the conjunct and names the keyword that actually stopped it --
+    # a ``required``-only conjunct, which has no base to subclass and no properties to
+    # declare.  The fixture still refuses, which is all this test needs; the keyword
+    # moves with whichever row claims the root, and the comment above says so.
+    assert "on required:" in done.stdout, done.stdout
     assert (into / "ok.py").exists()
     assert not (into / "no.py").exists()
 
@@ -2843,3 +2906,454 @@ def test_a_reference_cycle_refuses_rather_than_recurring(tmp_path) -> None:
     for document, row in out.refusals.items():
         assert row["keyword"] == "$ref", (document, row)
         assert "cycle" in row["detail"], (document, row)
+
+
+# --------------------------------------------------------------------------- #
+# step 7: D6's six keyword families
+# --------------------------------------------------------------------------- #
+#: One reference-free bundle document per step-7 keyword, chosen by SEARCHING the
+#: bundle for the first document that carries the keyword and no ``$ref`` -- so
+#: each is cheap to read and self-contained, and the selection is recorded here
+#: rather than re-run, because a pinned case is what a later bundle change can be
+#: seen to move.  ``then`` and ``else`` are listed separately because they are two
+#: steps with two different rewrites, not one keyword with two spellings.
+STEP7_CASES = {
+    "uniqueItems": "core/acceptance-policy-profile-ids.json",
+    "not": "core/account-timezone-capability.json",
+    "then": "core/account-timezone-capability.json",
+    "else": "core/reporting-consumer-status.json",
+    "anyOf": "core/account-authorization.json",
+    "oneOf": "a2ui/bound-value.json",
+    "dependencies": "core/canvas-constraint.json",
+    "minProperties": "a2ui/component.json",
+    "maxProperties": "a2ui/component.json",
+}
+
+#: Step 7's EXIT condition, as a number per family: how many sites ``steps()``
+#: finds over the whole 1,054-document portable population.  **Every one of these
+#: was 0** before this step -- the nine keywords the harness stepped were wholly
+#: disjoint from D6's six families, so every rule the step lowers would have been
+#: graded by nothing in either direction.
+STEP7_SITES = {
+    "uniqueItems": (479, 198),
+    "not": (469, 192),
+    "then": (585, 186),
+    "else": (58, 44),
+    "anyOf": (450, 200),
+    "oneOf": (212, 165),
+    "dependencies": (85, 27),
+    "minProperties": (48, 40),
+    "maxProperties": (19, 10),
+}
+
+
+@functools.lru_cache(maxsize=1)
+def _step_census() -> dict[str, tuple[int, int]]:
+    """``keyword -> (sites, documents)`` over every portable document.
+
+    Read off ``steps()`` itself, over the bundle, so a family that stopped being
+    stepped shows as a 0 rather than as a test nobody noticed had gone quiet.
+    """
+    sites: dict[str, int] = {}
+    documents: dict[str, set[str]] = {}
+    for document in bundle.portable(BUNDLE):
+        for s in steps(bundle.read(BUNDLE, document)):
+            sites[s.keyword] = sites.get(s.keyword, 0) + 1
+            documents.setdefault(s.keyword, set()).add(document)
+    return {k: (v, len(documents[k])) for k, v in sites.items()}
+
+
+def test_the_harness_steps_every_one_of_d6s_six_families() -> None:
+    """The step's exit condition, with both denominators for each family.
+
+    D6 names six families and the harness stepped NONE of them: its nine keywords
+    were ``min``/``maxItems``, ``min``/``maxLength``, ``minimum``, ``maximum``,
+    ``required``, ``additionalProperties``, ``pattern`` and ``enum``, and step 7's
+    set is disjoint from that one.  So a rule could be emitted, carried, and wrong
+    in either direction with nothing to report it -- the bundle's 485
+    ``uniqueItems`` occurrences were 0 of 5,545 site rows.
+
+    Pinned per family rather than summed: a total can stay put while one family
+    falls to zero, and the family is the unit D6 is stated in.
+    """
+    census = _step_census()
+    for keyword, (expected_sites, expected_documents) in STEP7_SITES.items():
+        assert census.get(keyword) == (expected_sites, expected_documents), (
+            keyword,
+            census.get(keyword),
+        )
+    families = {
+        "oneOf/anyOf over required": ("oneOf", "anyOf"),
+        "if/then/else": ("then", "else"),
+        "dependencies": ("dependencies",),
+        "min/maxProperties": ("minProperties", "maxProperties"),
+        "uniqueItems": ("uniqueItems",),
+        "not": ("not",),
+    }
+    assert len(families) == 6
+    for family, keywords in families.items():
+        assert sum(census[k][0] for k in keywords) > 0, family
+    assert sum(census[k][0] for ks in families.values() for k in ks) == 2405
+
+
+def test_a_step_of_a_whole_instance_keyword_bites_the_document_that_states_it() -> None:
+    """The step as an INSTRUMENT: does it produce an instance the document refuses?
+
+    Graded without any model, because that is the question: ``check_refuses``
+    calls ``violated_keywords`` on the ORIGINAL document and counts an instance it
+    does not refuse as the control firing.  ``accept`` here refuses nothing, so
+    everything the step pushed out is read off ``examples - control_fired``.
+
+    One family is deliberately NOT exclusive and is asserted as such.  Forcing a
+    duplicate is the one thing draft-07 cannot say, so where the item schema's
+    value set is not countable the ``uniqueItems`` step draws two elements from one
+    schema and most draws differ: 6 of 20 bite on the pinned case and the control
+    counts the other 14.  One refusal is enough to grade a site; reporting that as
+    exclusive would be the claim that is false.
+    """
+    bit: dict[str, tuple[int, int]] = {}
+    for keyword, document in STEP7_CASES.items():
+        schema = bundle.read(BUNDLE, document)
+        chosen = [s for s in steps(schema) if s.keyword == keyword]
+        assert chosen, (keyword, document)
+        examples = fired = 0
+        for s in chosen:
+            r = check_refuses(schema, lambda _instance: None, s, examples=20)
+            assert not r.harness, (keyword, s.pointer, r.harness)
+            examples += r.examples
+            fired += r.control_fired
+        bit[keyword] = (examples - fired, examples)
+    assert bit == {
+        "uniqueItems": (6, 20),  # two draws from one schema: not exclusive, by design
+        "not": (60, 60),
+        "then": (80, 80),
+        "else": (20, 20),
+        "anyOf": (20, 20),
+        "oneOf": (20, 20),
+        "dependencies": (20, 20),
+        "minProperties": (20, 20),
+        "maxProperties": (20, 20),
+    }, bit
+
+
+def test_an_unsatisfiable_step_is_no_evidence_and_not_a_harness_error() -> None:
+    """A step with no violating instance graded nothing; it did not break.
+
+    The two families that NEGATE part of a document can produce an unsatisfiable
+    stepped document -- an ``if`` whose condition implies its branch, a
+    combinator exhaustive over its type.  ``hypothesis`` raises ``Unsatisfiable``
+    and ``check_refuses`` records it as the zero-denominator verdict, because
+    reporting it as a harness error reddens the whole PAIR and a class with no
+    violating instance at one site is not thereby unfaithful.
+
+    Screening those sites out of ``steps()`` was tried and removed: asking
+    ``canonicalish`` about the rewritten node cost 63.7 s against 0.0 s over 120
+    documents and rejected 0 of 2,205 sites, so it was 500x the cost for no
+    decision.  The classification is where the knowledge is cheap.
+    """
+    exhaustive = {
+        "title": "Exhaustive",
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "anyOf": [{"required": ["a"]}, {"not": {"required": ["a"]}}],
+    }
+    (s,) = [x for x in steps(exhaustive) if x.keyword == "anyOf"]
+    r = check_refuses(exhaustive, lambda _instance: None, s, examples=10)
+    assert r.unsatisfiable, r
+    assert not r.harness, r.harness
+    assert r.outcome == "no_evidence"
+    assert r.refused + r.accepted_invalid == 0
+
+
+def test_force_path_holds_a_sibling_if_through_then_and_else() -> None:
+    """A site under a ``then`` is reachable only if its sibling ``if`` matches.
+
+    Nothing made it match: ``hypothesis_jsonschema`` draws the minimal object and
+    the condition is a ``const`` on an optional key, so the four ``maximum`` sites
+    under ``core/canvas-constraint.json``'s ``then`` were graded by the control
+    rather than by the model.  ``force_path`` now adds the condition as a conjunct
+    of the node holding it, negated for an ``else``.
+
+    Both rates, from the same inputs in the same process, which is what
+    ``force=False`` exists for.
+
+    **The forced side is pinned exactly and the unforced side is bounded**, and
+    that asymmetry is measured rather than cautious: the unforced rate is 26 of 80
+    in a fresh process and 32 of 80 under the suite, because
+    ``hypothesis``'s derandomized stream is not identical across the two contexts.
+    The forced rate is 0 of 80 in both, which is the hop's actual claim -- it
+    makes the site reachable on EVERY example, so there is nothing left for the
+    context to move.  Pinning 26 would be pinning the context.
+    """
+    document = "core/canvas-constraint.json"
+    raw = bundle.read(BUNDLE, document)
+    schema = bundle.resolved(BUNDLE, document) if bundle.references(raw) else raw
+    under = [s for s in steps(schema) if "/then/" in s.pointer]
+    assert len(under) == 4, [s.pointer for s in under]
+    assert {s.keyword for s in under} == {"maximum"}
+    rates = {}
+    for forced in (False, True):
+        examples = fired = 0
+        for s in under:
+            r = check_refuses(
+                schema, lambda _instance: None, s, examples=20, force_path_to_site=forced
+            )
+            examples += r.examples
+            fired += r.control_fired
+        rates[forced] = (fired, examples)
+    assert rates[True] == (0, 80), rates
+    assert rates[False][1] == 80, rates
+    assert 20 <= rates[False][0] <= 60, rates  # a substantial minority, both contexts
+
+
+#: Every emitted class that carries a rule, with a payload that violates exactly
+#: that rule and the JSON Schema keyword both halves must name.  The payloads are
+#: written here and not drawn, because a rule is about key PRESENCE and no
+#: generator draws from the document's complement.
+RULE_VIOLATIONS = (
+    ("core/format-id.json", {"agent_url": "https://a.example/", "id": "x", "width": 1},
+     "dependencies"),
+    ("core/budget-range.json", {"currency": "USD"}, "anyOf"),
+    ("core/webhook-challenge-response.json", {"challenge": "A" * 40, "token": "A" * 40}, "not"),
+)
+
+
+def _root(document: str) -> Any:
+    return next(g for g in graded() if g.ref == SchemaRef(document, "#")).model
+
+
+def test_a_rule_narrows_the_constructor_and_both_halves_name_one_keyword() -> None:
+    """D6 and D4 together, on the classes that carry a rule.
+
+    A rule narrows ``model_validate``; the document decides acceptance through
+    ``strict_validate``.  Both must refuse the same payload and both must report
+    the DOCUMENT'S OWN keyword as the error ``type`` -- which is why
+    ``_base._refuse`` and the after-validator raise through one function.  Two
+    error shapes for one keyword is what that shares away.
+    """
+    for document, payload, keyword in RULE_VIOLATIONS:
+        model = _root(document)
+        for how in ("model_validate", "strict_validate"):
+            with pytest.raises(ValidationError) as caught:
+                getattr(model, how)(payload)
+            assert [e["type"] for e in caught.value.errors()] == [keyword], (
+                document,
+                how,
+                caught.value.errors(),
+            )
+
+
+def test_only_the_model_validate_path_observes_a_rule() -> None:
+    """A rule is INVISIBLE to the three checks, measured by removing it.
+
+    Every pair is offered its instance through ``strict_validate``, whose schema
+    half validates against the document -- so the refusal is implied by the
+    control whatever the rules say, and ``compare_schema`` reads
+    ``model_json_schema()``, which a ``ClassVar`` does not reach.  With the
+    after-validator returning before it evaluates anything, each payload above is
+    ACCEPTED by the constructor and every rule-carrying pair still grades green.
+
+    That is the whole justification for a rule being class data rather than a
+    schema fragment, and it is the reason the tests above are the only instrument
+    that can see one.
+
+    **The short-circuit is the module-level ``refuse`` and NOT the validator
+    method**, and that is measured rather than chosen: pydantic compiles a
+    ``model_validator`` into the class's core schema at class creation, so
+    assigning over ``RuleBound._enforce_adcp_rules`` renames something nothing
+    calls -- probed, and ``model_validate`` still refused.  The compiled validator
+    looks ``refuse`` up in ``_runtime``'s globals on every call, so patching that
+    name disables exactly the rule half.  ``_base._refuse`` holds its own
+    reference from an ``import ... from``, so the SCHEMA half keeps refusing,
+    which is what lets the two be separated at all.
+    """
+    carriers = sorted({document for document, _payload, _keyword in RULE_VIOLATIONS})
+    before = [check_pair(pair_of(g), max_steps=None) for g in graded()
+              if g.ref.document in carriers and g.ref.pointer == "#"]
+    assert len(before) == len(carriers) == 3
+    assert all(r.outcome == "pass" for r in before), [(r.name, r.outcome) for r in before]
+
+    runtime = sys.modules[RuleBound.__module__]
+    original = runtime.refuse
+    try:
+        runtime.refuse = lambda _name, _errors: None
+        accepted = 0
+        for document, payload, keyword in RULE_VIOLATIONS:
+            _root(document).model_validate(payload)  # the rule half is gone: it builds
+            with pytest.raises(ValidationError) as caught:
+                _root(document).strict_validate(payload)  # the schema half still refuses
+            assert caught.value.errors()[0]["type"] == keyword, document
+            accepted += 1
+        assert accepted == 3
+        after = [check_pair(pair_of(g), max_steps=None) for g in graded()
+                 if g.ref.document in carriers and g.ref.pointer == "#"]
+        assert [r.outcome for r in after] == [r.outcome for r in before]
+    finally:
+        runtime.refuse = original
+
+    for document, payload, keyword in RULE_VIOLATIONS:
+        with pytest.raises(ValidationError) as caught:
+            _root(document).model_validate(payload)
+        assert caught.value.errors()[0]["type"] == keyword, document
+
+
+#: Every rule kind, with the population of nodes the LOWERING writes it from and
+#: how many of those are a node ``lower_object`` can reach today (an object node
+#: with ``properties``).  The second number is why three kinds have no emitted
+#: carrier in this tree: a node inside an ``allOf`` conjunct is not a class here.
+RULE_KIND_POPULATION = {
+    "ForbiddenGroups": (398, 171, 167),
+    "RequiredGroups": (297, 161, 70),
+    "ConditionalRequired": (294, 128, 12),
+    "PropertyCount": (61, 44, 29),
+    "Dependencies": (60, 27, 58),
+    "NegatedConditional": (42, 37, 0),
+}
+
+
+def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
+    """The lowering, graded over the bundle rather than over an invented fixture.
+
+    Three of the six rule kinds have NO emitted carrier in this tree, and the
+    reason is structural rather than an oversight: every document in the bundle
+    that states a ``min``/``maxProperties`` or a conditional ALSO states an array
+    property or an ``enum``, which are steps 6 and 3 -- measured document by
+    document on all ten of them.  A ``NegatedConditional`` is written only at
+    nodes inside an ``allOf`` conjunct, which is not a class here at all.
+
+    So they are graded where they CAN be: the lowering against real nodes (here),
+    and each dataclass against two plain arguments (below), which is exactly why
+    ``Rule.errors`` takes ``keys`` and ``values`` and never a model.  That is a
+    different situation from ``uniqueItems``, which has no rule kind at all
+    because there is no array lowering to carry one -- a rule nothing writes is
+    dead code, and a rule written from 294 real nodes with no class to sit on yet
+    is a rule waiting for step 6.
+    """
+    everywhere: dict[str, int] = {}
+    documents: dict[str, set[str]] = {}
+    reachable: dict[str, int] = {}
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        for _pointer, node in bundle.nodes(doc):
+            if not isinstance(node, dict):
+                continue
+            for source in rules.lower(node).rules:
+                kind = source.split("(", 1)[0]
+                everywhere[kind] = everywhere.get(kind, 0) + 1
+                documents.setdefault(kind, set()).add(document)
+                if "properties" in node:
+                    reachable[kind] = reachable.get(kind, 0) + 1
+    measured = {
+        kind: (everywhere[kind], len(documents[kind]), reachable.get(kind, 0))
+        for kind in everywhere
+    }
+    assert measured == RULE_KIND_POPULATION, measured
+    assert len(measured) == 6, "a rule kind nothing writes is dead code"
+
+
+def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
+    """Each dataclass, graded without pydantic and without a document.
+
+    ``Rule.errors(keys, values)`` is the whole protocol, which is what makes the
+    three kinds with no emitted carrier gradeable at all.  Each row is the rule,
+    the keys that arrived, and the JSON Schema keyword it must name -- or ``None``
+    where the instance satisfies it, so each kind is exercised in both directions
+    and a rule that refuses everything could not pass this.
+    """
+    from adcp.types._runtime import (
+        ConditionalRequired,
+        Dependencies,
+        ForbiddenGroups,
+        Match,
+        NegatedConditional,
+        PropertyCount,
+        RequiredGroups,
+    )
+
+    cases = [
+        (Dependencies("width", ("height",)), {"width"}, "dependencies"),
+        (Dependencies("width", ("height",)), {"width", "height"}, None),
+        (Dependencies("width", ("height",)), {"height"}, None),
+        (PropertyCount(minimum=2), {"a"}, "minProperties"),
+        (PropertyCount(minimum=2), {"a", "b"}, None),
+        (PropertyCount(maximum=1), {"a", "b"}, "maxProperties"),
+        (PropertyCount(maximum=1), {"a"}, None),
+        (ForbiddenGroups((("a", "b"),)), {"a", "b"}, "not"),
+        (ForbiddenGroups((("a", "b"),)), {"a"}, None),
+        (RequiredGroups((("a",), ("b",)), "anyOf"), set(), "anyOf"),
+        (RequiredGroups((("a",), ("b",)), "anyOf"), {"b"}, None),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), {"a", "b"}, "oneOf"),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), {"a"}, None),
+        (RequiredGroups((("a",), ("b",)), "oneOf"), set(), "oneOf"),
+        (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u"}, "required"),
+        (ConditionalRequired((Match("u", True, ("p",)),), require=("x",)), {"u", "x"}, None),
+        (ConditionalRequired((Match("u", True, ("p",)),), forbid=("x",)), {"u", "x"}, "not"),
+        (NegatedConditional((Match("u", True, ("p",)),), require=("x",)), {"u"}, None),
+        (NegatedConditional((Match("u", True, ("p",)),), require=("x",)), set(), "required"),
+    ]
+    seen: set[str] = set()
+    for rule, keys, keyword in cases:
+        values = {k: "p" for k in keys}
+        got = [e[0] for e in rule.errors(frozenset(keys), values)]
+        assert got == ([keyword] if keyword else []), (rule, keys, got)
+        seen.add(type(rule).__name__)
+    assert seen == set(RULE_KIND_POPULATION), seen
+
+
+def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> None:
+    """The ceiling D6 accepts, measured rather than written in a docstring.
+
+    A rule is expressible only as a statement about key PRESENCE.
+    ``core/canvas-constraint.json``'s ``if unit == "percent" then x.maximum = 100``
+    is a statement about a VALUE, so it gets no rule: the constructor builds the
+    violating payload and the schema half refuses the same payload on ``maximum``.
+
+    Refusing the document for it instead would cost the whole ``if`` population --
+    186 documents state one -- for a constraint the accepted set already enforces.
+    """
+    document = "core/canvas-constraint.json"
+    schema = bundle.read(BUNDLE, document)
+    violating = {
+        "constraint": "safe_area",
+        "region": {"x": 101, "y": 0, "width": 1, "height": 1, "unit": "percent"},
+    }
+    assert conforms(schema, violating) is False
+    assert violated_keywords(schema, violating) == ["maximum"]
+    # The root's own rules are the dependency and nothing else: the conditional
+    # sits at /properties/region/allOf/0 and says `x.maximum = 100`, which is a
+    # statement about a VALUE and so reduces to no rule at all.
+    assert rules.lower(schema).rules == [
+        "Dependencies('breakpoint_id', ('state_id',))"
+    ], rules.lower(schema).rules
+    region = schema["properties"]["region"]
+    assert isinstance(region["allOf"][0]["if"], dict)
+    assert rules.lower(region).rules == [], rules.lower(region).rules
+    # and the document is not emitted at all, so the pair above is a harness
+    # control rather than a class: it refuses on `enum`, which is step 3's row.
+    assert document in emit.emit(BUNDLE, [document]).refusals
+
+
+def test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded() -> None:
+    """A bad probe, recorded as one.
+
+    ``uniqueItems`` is 479 stepped sites over 198 documents and **0 of them is on
+    an emitted pair**: every host is an array node, which is step 6's row, or sits
+    behind an ``allOf``.  So breaking the step's duplicate forcing reddens its own
+    exclusivity assertion and leaves every binding grade green -- which is a
+    finding about the instrument's REACH and not a pass, and the reason there is
+    no ``UniqueItems`` rule kind to write.
+
+    Asserted both ways so the claim cannot go stale silently: the keyword is
+    stepped, and no document the tree emits carries it.
+    """
+    census = _step_census()
+    assert census["uniqueItems"] == (479, 198)
+    carried = [
+        f"{document}{pointer or '/'}"
+        for document in sorted({g.ref.document for g in graded()})
+        for pointer, node in bundle.nodes(schema_at(SchemaRef(document, "#")))
+        if isinstance(node, dict) and "uniqueItems" in node
+    ]
+    assert carried == [], carried
+    assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
+    assert not any("UniqueItems" in source for source in RULE_KIND_POPULATION)

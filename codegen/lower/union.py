@@ -113,6 +113,14 @@ def keyword(doc: dict) -> str | None:
     A root carrying BOTH keywords would be ambiguous; the bundle has 0 of them and
     the keyword check below refuses one anyway, because the first would be handled
     and the second left unmentioned.
+
+    **This answers "which keyword", not "is this document step 5's".**  A combinator
+    of ``required`` GROUPS carries one of these keywords and is a RULE on one class
+    (D6, step 7) rather than a union: a branch declaring no property has no shape to
+    subclass, which :func:`_plan` refuses by name.  Which ROW owns such a document is
+    a fact about the selectors and is decided in ``bundle.union_root``, where both
+    steps' readings can be consulted -- a lowering imports ``compiler`` and
+    ``refusal`` and nothing else of this package (D13), so it cannot read step 7's.
     """
     return next((kw for kw in UNION if isinstance(doc.get(kw), list)), None)
 

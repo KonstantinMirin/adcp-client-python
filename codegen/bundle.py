@@ -19,7 +19,7 @@ from pathlib import Path
 
 from codegen import compiler
 from codegen.harness import resolve
-from codegen.lower import union
+from codegen.lower import rules, union
 
 #: Top-level directories holding projections of documents published elsewhere.
 PROJECTIONS = ("bundled", "mcp")
@@ -366,7 +366,17 @@ def union_root(doc: dict) -> bool:
     rule forbids; ``bundle`` -> ``lower`` is the direction that works, and
     ``states_an_object_rule`` reads ``rules.presence_only`` the same way.
     """
-    return union.keyword(doc) is not None
+    # A combinator of ``required`` GROUPS is not a union, and that clause is the
+    # step-5/step-7 boundary.  A branch declaring no property has no shape to
+    # subclass -- ``lower.union._plan`` refuses exactly that -- so such a root is a
+    # rule on one class (D6) and step 7's lowering reads it inside
+    # ``compiler.lower_object``.  Measured: all 5 of the bundle's presence-only roots
+    # were claimed by this row and by none other, so step 7's whole population was
+    # selected by a row that refuses it.  Both readings are each step's own --
+    # ``union.keyword`` and ``rules.presence_only`` -- and they meet HERE because a
+    # lowering cannot import another lowering (D13).
+    kw = union.keyword(doc)
+    return kw is not None and not rules.presence_only({kw: doc[kw]})
 
 
 def _is_property_or_items(pointer: str) -> bool:
@@ -374,3 +384,37 @@ def _is_property_or_items(pointer: str) -> bool:
     if not parts or parts[0] != "properties":
         return False
     return len(parts) == 2 or (len(parts) == 3 and parts[2] == "items")
+
+
+def states_an_object_rule(doc: dict) -> bool:
+    """Step 7's population: an object root whose composition is a rule about PRESENCE.
+
+    The three clauses, and each one is what makes this selector DISJOINT from another
+    step's rather than a matter of precedence -- a document two rows select is a build
+    failure, so the disjointness has to be a property of the predicates and not a
+    convention:
+
+    * no ``$ref``, ``allOf``, ``definitions`` or ``$defs`` anywhere.  That is steps 2
+      and 4 and a later row, and it is also what keeps this out of
+      :func:`references_a_property`, which selects on a reference EXISTING.
+    * at least one ``if``/``then``/``else``/``not``/``oneOf``/``anyOf``.  Those six are
+      exactly the keywords :func:`is_leaf_object` excludes, so a document satisfying
+      this clause is not step 1's.  ``dependencies``, ``min``/``maxProperties`` and
+      ``uniqueItems`` do NOT appear in that clause on purpose: ``is_leaf_object``
+      already selects a document carrying only those, so claiming one here would be
+      the two-rows failure.  ``core/format-id.json`` is such a document -- step 1's
+      row, refused there until this step, emitted there now.
+    * every combinator in it is ``required``-only (``rules.presence_only``).  That is
+      the step-5 boundary: a combinator of SHAPES is a union root and step 5's, a
+      combinator of ``required`` groups has no shape to subclass and is a rule.  The
+      test is the lowering's own reading, so a row cannot claim a document its step
+      cannot lower.
+    """
+    if "properties" not in doc or doc.get("type") not in (None, "object"):
+        return False
+    kw = schema_keywords(doc)
+    if kw & {"$ref", "allOf", *DEFINITIONS}:
+        return False
+    if not kw & {*CONDITIONAL, "oneOf", "anyOf"}:
+        return False
+    return all(rules.presence_only(n) for _, n in nodes(doc))

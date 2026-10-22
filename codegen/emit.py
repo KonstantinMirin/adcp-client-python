@@ -97,6 +97,7 @@ from codegen.compiler import (
 from codegen.lower import enum as lower_enum
 from codegen.lower import product as lower_product
 from codegen.lower import containers as lower_containers
+from codegen.lower import rules as lower_rules
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 
@@ -255,7 +256,11 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
 
-    check_keywords(node, pointer, {"type", "format", *CONSTRAINTS})
+    # ``rules.ON_A_VALUE`` is the step-7 keyword that can land on a node with no
+    # object to carry a rule tuple: a ``not`` over a ``const`` or an ``enum`` is an
+    # excluded VALUE, which D4 leaves to the schema half exactly as it leaves a
+    # conditional that narrows one.  Carrying it is not refusing it.
+    check_keywords(node, pointer, {"type", "format", *CONSTRAINTS, *lower_rules.ON_A_VALUE})
     constraints = {k: node[k] for k in CONSTRAINTS if k in node}
     fmt = node.get("format") if isinstance(node.get("format"), str) else None
     # A format SELECTS a type where one is named for it and the document's own
@@ -274,11 +279,12 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 # the module text (D8: the emitter owns its layout)
 # --------------------------------------------------------------------------- #
 def _import_rank(module: str) -> int:
-    """stdlib, the third-party library, this package's own base, then a sibling
-    module of this tree (always relative, so always ``.``-prefixed)."""
+    """stdlib, the third-party library, this package's own hand-written modules,
+    then a sibling module of this tree (always relative, so always
+    ``.``-prefixed)."""
     if module.startswith("."):
         return 3
-    if module == BASE_MODULE:
+    if module in (BASE_MODULE, lower_rules.RUNTIME_MODULE):
         return 2
     return 1 if module == "pydantic" else 0
 
