@@ -23,6 +23,9 @@ So a row answers for its own node kind and is handed everything else:
 
 * the NAME is an input (D3: "a name is an input to a lowering and is never
   computed inside one");
+* the keyword SCREEN is run by the caller, over the set the row declares as
+  ``HANDLED`` -- one screen for every row, so a keyword cannot be silently dropped
+  by one row's private copy of it;
 * the nested-node decision arrives on the :class:`codegen.compiler.Module` the row
   is handed, as ``mod.decide``, the same way reference resolution arrives as
   ``mod.bind`` -- so a lowering decides a child without naming ``emit``;

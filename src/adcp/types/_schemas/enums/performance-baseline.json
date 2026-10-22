@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "The expectation represented by performance_index = 1.0. Naming the baseline makes normalized feedback interpretable without disclosing the underlying benchmark value.",
+  "enum": [
+    "campaign_target",
+    "control_group",
+    "seller_history",
+    "buyer_portfolio",
+    "market_benchmark",
+    "other"
+  ],
+  "title": "Performance Baseline",
+  "type": "string"
+}

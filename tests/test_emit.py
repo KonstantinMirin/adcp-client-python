@@ -76,10 +76,22 @@ def referencing() -> list[str]:
     ]
 
 
+def enums() -> list[str]:
+    """Step 3's population: an ``enum`` at a schema position anywhere in it."""
+    return [d for d in bundle.portable(BUNDLE) if bundle.carries_an_enum(bundle.read(BUNDLE, d))]
+
+
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
-    does not need to be: ``emit`` walks ``$ref`` and emits the closure."""
-    return sorted(set(leaves()) | set(referencing()))
+    does not need to be: ``emit`` walks ``$ref`` and emits the closure.
+
+    The union of the steps' own selectors, which OVERLAP by design -- a leaf
+    object with an inline enum belongs to step 1 and to step 3 alike, and 26
+    leaves and 94 referencing documents are already inside step 3's 535.  The
+    overlap is a property of the POPULATION and not of the dispatch table, whose
+    rows read a document's ROOT and claim 0 documents in common (asserted below).
+    """
+    return sorted(set(leaves()) | set(referencing()) | set(enums()))
 
 
 # --------------------------------------------------------------------------- #
@@ -163,10 +175,16 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     whole = bundle.portable(BUNDLE)
     assert len(leaves()) == 85
     assert len(referencing()) == 249
-    assert len(population()) == 334
+    assert len(enums()) == 535
+    assert len(population()) == 749
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
+    assert "enums/match-type.json" in enums()
+    # The selectors overlap, and the overlap is counted rather than assumed: the
+    # union is smaller than the sum, so a reader cannot add 85 + 249 + 535.
+    assert len(set(leaves()) & set(enums())) == 26
+    assert len(set(referencing()) & set(enums())) == 94
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
@@ -406,6 +424,7 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
     """
     excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
+        "core/media-buy-legacy-terms-ref.json#",
         "error-details/audience-too-small.json#",
         "error-details/budget-too-low.json#",
     ]
@@ -722,7 +741,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
-    (14 sites: ``date-time`` 7, ``uri`` 5, ``date`` 2), because that is the
+    (23 sites: ``date-time`` 11, ``uri`` 10, ``date`` 2), because that is the
     denominator the rule is stated over.
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
@@ -762,26 +781,38 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
 
-    assert seen == {"date-time": 7, "uri": 5, "date": 2}, seen
+    assert seen == {"date-time": 11, "uri": 10, "date": 2}, seen
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
     # pass by looking at nothing.
+    # Every pair and not only the roots: 2 of the 23 sites sit inside a nested
+    # object (``core/insertion-order.json#/properties/terms``), and a loop over
+    # roots alone reaches 21 -- so it would assert the rule over a denominator
+    # smaller than the one the first half just counted.
     stated = 0
     for g in graded():
-        if g.ref.pointer != "#":
-            continue
         doc = schema_at(g.ref)
-        emitted = g.model.model_json_schema() if isinstance(g.model, type) else TypeAdapter(
-            g.model
-        ).json_schema()
+        emitted = _model_schema(g.model)
         for key, sub in (doc.get("properties") or {}).items():
             if not isinstance(sub.get("format"), str):
                 continue
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 14, stated
+    assert stated == 23, stated
+
+
+def _model_schema(model: Any) -> dict:
+    """One model's own JSON schema, whichever kind of model it is.
+
+    The same predicate ``harness.compare_schema`` uses, and it has to be the same
+    one: ``isinstance(model, type)`` alone is not it, because D2's enumeration row
+    emits a CLASS that is not a pydantic model and has no ``model_json_schema``.
+    """
+    if isinstance(model, type) and hasattr(model, "model_json_schema"):
+        return model.model_json_schema()
+    return TypeAdapter(model).json_schema()
 
 
 def _unwrap(node: dict, defs: dict) -> dict:
@@ -936,7 +967,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (11, 19), distinct
+    assert (len(distinct), sum(distinct.values())) == (14, 27), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -962,7 +993,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (9, 16), diverges
+    assert (len(diverges), sum(diverges.values())) == (12, 24), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -999,7 +1030,7 @@ def test_a_root_scalar_alias_is_compiled_with_the_same_engine_as_a_class() -> No
             doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
         ).validate(value)  # the document admits it
         assert g.accept(value) == value, (g.ref, value)  # and so does the alias
-    assert with_pattern == 2, with_pattern  # core/brand-id.json, core/property-id.json
+    assert with_pattern == 4, with_pattern  # brand-id, locale-tag, media-buy-change-term-id, property-id
 
 
 @functools.lru_cache(maxsize=None)
@@ -1073,12 +1104,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 44, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 42
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 2
-    assert sum(r.graded_instances for r in reports) == 3758  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 486  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 57  # model-only facts examined
+    assert len(reports) == 286, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 283
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 3
+    assert sum(r.graded_instances for r in reports) == 7508  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 1490  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 141  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
@@ -1101,14 +1132,14 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
 
     counted = {"forbid": 0, "allow": 0, "silent": 0}
     for row in graded():
-        if not isinstance(row.model, type):
-            continue  # an alias has no class config
+        if not (isinstance(row.model, type) and issubclass(row.model, AdCPBaseModel)):
+            continue  # an alias and an enumeration have no model config
         declared = schema_at(row.ref).get("additionalProperties", "silent")
         want = {False: "forbid", True: "allow", "silent": "ignore"}[declared]
         assert row.model.model_config["extra"] == want, (row.ref, declared)
         counted["silent" if declared == "silent" else want] += 1
     assert counted["forbid"] and counted["allow"], counted
-    assert counted["silent"] == 1, counted
+    assert counted["silent"] == 2, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1215,8 +1246,16 @@ def _source(document: str) -> str:
     return (TREE / f"{emit.module_path(document)}.py").read_text()
 
 
+@functools.lru_cache(maxsize=None)
 def _symbol(document: str) -> str:
-    """The name the emitted module exports, read off the module itself."""
+    """The name the emitted module exports, read off the module itself.
+
+    Memoized because it RUNS THE EMITTER: at step 2's 43 documents the repeated
+    runs were affordable and at step 3's 282 they are not, and the two tests
+    below ask for the same target's symbol once per referencing property.  The
+    answer is a function of (bundle, document) alone, so the memo cannot hide a
+    change.
+    """
     (symbol,) = importlib.import_module(emit.emit(BUNDLE, [document]).emitted[document]).__all__
     return symbol
 
@@ -1333,11 +1372,17 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
     string.  The alias carries its document's own ``description``, which an
     earlier rendering dropped at all five of this population's scalar roots
     because an alias has no docstring slot -- a ``Field(description=...)`` does.
+
+    The population is ``bundle.is_scalar_root`` itself and not ``type in SCALAR``,
+    because those are two different sets: all 214 of the bundle's root enums
+    declare ``type: "string"``, and D2 makes them CLASSES.  Reading the row's own
+    selector is what keeps this test from asserting the scalar row's outcome over
+    the enumeration row's documents.
     """
     graded_aliases = 0
     for document in sorted({g.ref.document for g in graded()}):
         doc = bundle.read(BUNDLE, document)
-        if doc.get("type") not in emit.SCALAR:
+        if not bundle.is_scalar_root(doc):
             continue
         tree = ast.parse(_source(document))
         assigned = {

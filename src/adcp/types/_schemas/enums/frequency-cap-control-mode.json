@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "A supported package frequency-cap control shape.",
+  "enum": [
+    "max_impressions",
+    "suppress",
+    "max_impressions_and_suppress"
+  ],
+  "title": "Frequency Cap Control Mode",
+  "type": "string"
+}

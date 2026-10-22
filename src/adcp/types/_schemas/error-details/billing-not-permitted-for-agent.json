@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Recommended details shape for BILLING_NOT_PERMITTED_FOR_AGENT errors. Returned when the seller's declared `supported_billing` capability accepts the requested value but the calling buyer agent's commercial relationship with the seller does not (e.g., the agent is onboarded as passthrough-only \u2014 no payments relationship \u2014 so `agent` and `advertiser` reject). The shape is deliberately minimal: it returns the value that was rejected and at most one suggested retry value (typically `operator`). It MUST NOT carry the agent's full permitted-billing subset, the agent's other commercial state (rate cards, payment terms, credit limit, billing entity), or any per-account state \u2014 those are commercial-state oracles. Sellers MUST NOT add ad-hoc keys to this object: any field carrying per-agent commercial state is forbidden, even if `additionalProperties` would permit it. The recovery contract is: if `suggested_billing` is present, the agent MAY retry autonomously with that value; if absent, the rejection is terminal-pending-onboarding and the agent MUST surface to a human at the buyer to complete payments-relationship onboarding with the seller offline.",
+  "examples": [
+    {
+      "rejected_billing": "agent",
+      "suggested_billing": "operator"
+    },
+    {
+      "rejected_billing": "advertiser"
+    }
+  ],
+  "properties": {
+    "rejected_billing": {
+      "enum": [
+        "agent",
+        "operator",
+        "advertiser"
+      ]
+    },
+    "suggested_billing": {
+      "enum": [
+        "agent",
+        "operator",
+        "advertiser"
+      ]
+    }
+  },
+  "required": [
+    "rejected_billing"
+  ],
+  "title": "Billing Not Permitted For Agent Details",
+  "type": "object"
+}

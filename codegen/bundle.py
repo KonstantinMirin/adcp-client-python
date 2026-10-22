@@ -207,8 +207,30 @@ def is_object_root(doc: dict) -> bool:
 
 
 def is_scalar_root(doc: dict) -> bool:
-    """D2's root-scalar row: a root whose ``type`` names one scalar."""
-    return isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR
+    """D2's root-scalar row: a root whose ``type`` names one scalar, and NOT an
+    enumeration.
+
+    ``"enum" not in doc`` is the load-bearing clause and not a belt: all 214 of the
+    bundle's root enums declare ``type: "string"``, so without it the scalar row and
+    the enumeration row claim the same 214 documents and the table has an ambiguity
+    at a sixth of the population.
+    """
+    return (
+        isinstance(doc.get("type"), str) and doc["type"] in compiler.SCALAR and "enum" not in doc
+    )
+
+
+def is_enum_root(doc: dict) -> bool:
+    """D2's enumeration row: the root itself carries an ``enum`` (step 3).
+
+    A DIFFERENT predicate from step 3's population test :func:`carries_an_enum`,
+    and it IMPLIES it -- the root carrying an enum is a node carrying an enum -- so
+    the row cannot claim a document the step does not count.  That implication is
+    the relationship and ``tests/test_enum.py`` asserts it over the whole bundle;
+    the two are not interchangeable, because 535 documents carry an enum somewhere
+    and only 214 carry one at the root.
+    """
+    return "enum" in doc
 
 
 def is_leaf_object(doc: dict) -> bool:
@@ -233,6 +255,22 @@ def references_a_property(doc: dict) -> bool:
     """
     rs = references(doc)
     return bool(rs) and all(_is_property_or_items(p) for p, _ in rs)
+
+
+def carries_an_enum(doc: dict) -> bool:
+    """Step 3's population: an ``enum`` at a SCHEMA POSITION anywhere in it.
+
+    Root and inline together, because D2 gives both the same row and the lowering
+    makes no distinction -- 214 of the bundle's documents carry one at the root
+    and 535 carry one somewhere, over 1,069 enum nodes.
+
+    Position is the whole of it, which is why this reads ``nodes`` rather than
+    searching for the key: an ``enum`` holds INSTANCE data, so a value inside one
+    may itself be an object with a property named ``enum``, and a blanket walk
+    would count a document that has none.  ``emit.is_enum_root`` is the narrowing
+    of this to the root, and implies it.
+    """
+    return any("enum" in n for _, n in nodes(doc))
 
 
 def _is_property_or_items(pointer: str) -> bool:

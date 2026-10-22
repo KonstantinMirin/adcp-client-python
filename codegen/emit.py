@@ -92,6 +92,7 @@ from codegen.compiler import (
     declare_alias,
     lower_object,
 )
+from codegen.lower import enum as lower_enum
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -211,6 +212,16 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         mod.imports.add((target.module, target.symbol))
         return Decided(compiler.Type(target.symbol, local=True))
 
+    if "enum" in node:
+        # D2's enumeration row, reached before ``type`` is read at all: the base
+        # comes from the members (``lower.enum.BASES``), which is what admits the
+        # bundle's 164 typeless enum nodes.  A root enum reaches the same row
+        # through the dispatch table below.
+        check_keywords(node, pointer, lower_enum.HANDLED)
+        decided = lower_enum.decide(node, name_hint, pointer)
+        mod.add(name_hint, pointer, compiler.render_enum(decided))
+        return Decided(compiler.Type(name_hint, local=True))
+
     kind = node.get("type")
 
     if kind is None:
@@ -308,6 +319,20 @@ def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
     return declare_alias(mod, name, doc, decide_type(doc, pointer, name, mod))
 
 
+def _enum_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
+    """D2's enumeration row at a document root (step 3).
+
+    The same decision an inline enum gets -- :func:`decide_type` reaches
+    ``lower.enum`` too -- with the module-level binding a root needs around it,
+    because ``Enum.jinja2`` has no ``class_body_lines`` slot for the
+    ``__adcp_schema__`` line and D9 forbids writing one in afterwards.
+    """
+    check_keywords(doc, pointer, lower_enum.HANDLED)
+    return compiler.bind_without_a_model(
+        mod, name, compiler.render_enum(lower_enum.decide(doc, name, pointer))
+    )
+
+
 #: **D2's rows, as the ``(selector, lowering)`` pairs D13 states, and the table is
 #: UNORDERED.**
 #:
@@ -334,6 +359,7 @@ def _scalar_root(doc: dict, name: str, pointer: str, mod: Module) -> str:
 ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str]], ...] = (
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
+    (bundle.is_enum_root, _enum_root),
 )
 
 

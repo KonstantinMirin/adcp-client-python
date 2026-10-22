@@ -79,10 +79,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from datamodel_code_generator import PythonVersion
+from datamodel_code_generator.model import DataModelFieldBase
+from datamodel_code_generator.model.enum import Enum as DmcgEnum
+from datamodel_code_generator.model.enum import EnumMemberValue, IntEnum, StrEnum
 from datamodel_code_generator.model.pydantic_v2 import BaseModel, DataModelField
 from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
+from datamodel_code_generator.types import DataType
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
@@ -99,7 +103,14 @@ SCALAR = {"string": "str", "integer": "int", "number": "float", "boolean": "bool
 #: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
 #: and never inferred from the interpreter running the emitter -- the output is a
 #: function of (bundle, document set, this package) and of nothing else (P7).
-TARGET = PythonVersion.PY_310
+#:
+#: It MOVED with the floor rather than being left behind: D2's ``StrEnum`` is
+#: 3.11, so ``pyproject`` raised ``requires-python`` and this would otherwise
+#: have stated a floor the project no longer has.  Measured byte-neutral over the
+#: whole emitted population -- 0 of 575 files differ between PY_310 and PY_311 --
+#: so the two can be kept in agreement for free, which is the only reason to
+#: touch it at all.
+TARGET = PythonVersion.PY_311
 
 #: The JSON Schema keywords this module passes to ``constraints=``, in the
 #: document's own spelling, which is gate 1.  Everything else a document can say
@@ -295,6 +306,99 @@ def render_alias(
         if imp.from_ and imp.import_:
             out.imports.add((imp.from_, imp.import_))
     out.imports.add(("adcp.types._base", "SchemaRef"))
+    return out
+
+
+#: D2's two enumeration bases, keyed by the member type the WALK decided, in the
+#: document's own vocabulary (``codegen.lower.enum.BASES`` produces the key).
+#:
+#: The class is chosen rather than derived from a ``type_`` argument: dmcg's
+#: ``Enum.__init__`` reads ``type_`` only to ADD a ``str``/``int`` base class
+#: beside the enumeration one, so passing it renders ``class X(str, StrEnum)`` --
+#: which is the pre-3.11 spelling ``StrEnum`` exists to replace, and whose members
+#: ``str()`` as ``"X.BROAD"`` rather than as ``"broad"``.
+#:
+#: ``boolean`` and ``number`` are absent because the compiler has no base for
+#: them; ``codegen.lower.enum`` refuses such a node by name, with ``bool``
+#: carrying its own reason.
+_ENUM_BASES: dict[str, type[DmcgEnum]] = {"string": StrEnum, "integer": IntEnum}
+
+
+@dataclass(frozen=True)
+class Member:
+    """One decided enumeration member: the name the walk chose, and its value."""
+
+    name: str
+    value: Any
+    #: The document's ``enumDescriptions`` entry for this value, where it has one.
+    #: It reaches the rendered class as the member's own docstring, which is the
+    #: compiler's own slot for it -- 137 of the bundle's enum nodes carry the
+    #: block and a previous attempt dropped every one of them, for the same
+    #: reason the hand-rolled renderer dropped 142 property descriptions: nothing
+    #: compares an annotation that changes no accepted set.
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class Enumeration:
+    """One decided enumeration.  ``kind`` names the base, in JSON Schema's words.
+
+    No ``ref``, and that is the one place an enumeration differs from
+    :class:`Class`: ``Enum.jinja2`` has no ``class_body_lines`` slot, so an
+    ``__adcp_schema__`` line cannot reach an enum's class body through the
+    compiler at all -- and D9 forbids writing it in afterwards.  A ROOT enum
+    therefore binds the reference and ``strict_validate`` at module level, which
+    is what D2's root-scalar row already does for the same reason (a node with no
+    ``AdCPBaseModel`` to hang a classmethod on).  An INLINE enum is a type its
+    parent's field names, like any annotation.
+    """
+
+    name: str
+    kind: str
+    members: tuple[Member, ...]
+    description: str | None = None
+
+
+def _member(member: Member) -> DataModelFieldBase:
+    """One member as the compiler's field.
+
+    ``EnumMemberValue`` is dmcg's own carrier for a string member, and it is what
+    renders the value as a Python literal with the escaping the compiler owns
+    (quotes, backslashes, newlines, the null byte).  A bare ``str`` would reach
+    the template as that text and would be read as a rendered default.
+
+    ``use_inline_field_description`` is what puts the description in the class
+    body: a single-line one becomes ``\"\"\"text\"\"\"`` under the member, and a
+    multi-line one an indented triple-quoted block.
+    """
+    return DataModelFieldBase(
+        name=member.name,
+        data_type=DataType(),
+        default=EnumMemberValue(member.value) if isinstance(member.value, str) else member.value,
+        required=True,
+        extras={"description": member.description} if member.description else {},
+        use_inline_field_description=True,
+    )
+
+
+def render_enum(decided: Enumeration) -> Rendered:
+    """The Python for one decided enumeration, and the imports it needs.
+
+    The members' NAMES are rendered verbatim (``{{ field.name }}``): the compiler
+    names nothing here, which is why ``codegen.lower.enum`` owns the naming and
+    why the injectivity check binds to its function.
+    """
+    model = _ENUM_BASES[decided.kind](
+        reference=Reference(
+            path=f"#/{decided.name}", original_name=decided.name, name=decided.name
+        ),
+        fields=[_member(m) for m in decided.members],
+        description=decided.description or None,
+    )
+    out = Rendered(text=model.render().rstrip("\n"))
+    for imp in model.imports:
+        if imp.from_ and imp.import_:
+            out.imports.add((imp.from_, imp.import_))
     return out
 
 
@@ -527,6 +631,16 @@ class Module:
         self.names.add(name)
         self.blocks.append(block)
 
+    def add(self, name: str, pointer: str, rendered: Rendered) -> None:
+        """Declare one rendered block and take its imports.
+
+        The two always happen together -- a block whose imports were not merged
+        renders a module that does not import -- so they are one call, and a
+        caller cannot do the first and forget the second.
+        """
+        self.imports |= rendered.imports
+        self.declare(name, pointer, rendered.text)
+
 
 def check_keywords(
     node: dict,
@@ -661,9 +775,8 @@ def declare_object(
             bases=bases,
         )
     )
-    mod.imports |= rendered.imports
     mod.shapes[name] = shape
-    mod.declare(name, pointer, rendered.text)
+    mod.add(name, pointer, rendered)
     return name
 
 
@@ -678,6 +791,39 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
         raise Refusal("required", pointer, f"required is {required!r}, not a list of names")
     decided = fields(props, required, pointer, name, mod)
     return declare_object(node, name, pointer, mod, decided, Shape(props, frozenset(required)))
+
+
+def bind_without_a_model(mod: Module, symbol: str, rendered: Rendered) -> str:
+    """The module-level half of a root that is not an ``AdCPBaseModel``.
+
+    D2 gives two root kinds no class to hang ``strict_validate`` on: a scalar root
+    is an ``Annotated`` alias, and an enumeration cannot carry a class-body line at
+    all because ``Enum.jinja2`` has no ``class_body_lines`` slot and D9 forbids
+    writing one in afterwards.  Both therefore bind the SAME two halves at module
+    scope -- the reference, and ``strict_alias`` over it -- so a class, an alias and
+    an enumeration cannot come to answer differently about what their own document
+    accepts.  ``strict_alias`` reaches the document through ``schema_at`` and
+    refuses through ``_refuse``, which is exactly what
+    ``AdCPBaseModel.strict_validate`` does.
+
+    One function and not two, because the rows differ only in the rendered text
+    BETWEEN the statements.  ``tests/test_emit.py`` reads the pairing off the module
+    for both.
+    """
+    ref = schema_ref(mod.document, "")
+    mod.imports.add((BASE_MODULE, "SchemaRef"))
+    mod.imports.add((BASE_MODULE, "strict_alias"))
+    mod.add(
+        symbol,
+        "",
+        Rendered(
+            text=f"__adcp_schema__ = {ref!r}\n\n"
+            f"{rendered.text}\n\n\n"
+            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
+            imports=rendered.imports,
+        ),
+    )
+    return symbol
 
 
 def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
@@ -708,21 +854,14 @@ def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> str:
     ``RootModel`` that has a config slot.
     """
     description = doc.get("description")
-    rendered = render_alias(
+    return bind_without_a_model(
+        mod,
         symbol,
-        decided.type,
-        decided.constraints,
-        description=description if isinstance(description, str) and description else None,
-        format=decided.format,
+        render_alias(
+            symbol,
+            decided.type,
+            decided.constraints,
+            description=description if isinstance(description, str) and description else None,
+            format=decided.format,
+        ),
     )
-    mod.imports |= rendered.imports
-    mod.imports.add((BASE_MODULE, "strict_alias"))
-    ref = schema_ref(mod.document, "")
-    mod.declare(
-        symbol,
-        "",
-        f"__adcp_schema__ = {ref!r}\n\n"
-        f"{rendered.text}\n\n\n"
-        f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-    )
-    return symbol
