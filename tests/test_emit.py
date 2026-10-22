@@ -2967,6 +2967,103 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
 
 
+def test_a_declared_null_is_never_read_as_absence() -> None:
+    """``["string", "null"]`` and an OPTIONAL ``{"type": "string"}`` are different
+    documents, and D4 renders BOTH as ``str | None``.
+
+    So the model's own schema does not say which document it came from, and the
+    comparison used to decide by unwrapping any single ``null`` branch as absence
+    -- which erased the declared fact and made the two cases one cell. A faithful
+    model was reported as dropping its ``type``, and a model that DROPPED the
+    declared null was reported identically, so neither could be graded.
+    ``lower.containers.multi_type`` refused a ``null`` arm by name for exactly
+    that reason.
+
+    **This is the test that reddens if a declared null is ever read as absence
+    again**, and it is written as the pairs the two readings disagree about rather
+    than as an assertion about ``_normalize``'s internals: the fix has to keep the
+    unwrap that D4 needs AND report a dropped declaration, and only a test holding
+    both at once can tell a correct fold from a silencer.
+    """
+    declared = {
+        "title": "D",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "null"]}},
+    }
+    optional = {"title": "O", "type": "object", "properties": {"v": {"type": "string"}}}
+    optional_nullable = {
+        "title": "ON",
+        "type": "object",
+        "properties": {"v": {"type": ["string", "null"]}},
+    }
+    four = {
+        "title": "F",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "number", "boolean", "null"]}},
+    }
+
+    class ReqNullable(AdCPBaseModel):
+        v: str | None
+
+    class OptNullable(AdCPBaseModel):
+        v: str | None = None
+
+    class NullDropped(AdCPBaseModel):
+        v: str
+
+    class Four(AdCPBaseModel):
+        v: str | float | bool | None
+
+    class FourNullDropped(AdCPBaseModel):
+        v: str | float | bool
+
+    # The two documents that render the same annotation both pass, which is the
+    # whole point: the comparison now tells them apart instead of conflating them.
+    assert compare_schema(declared, ReqNullable).outcome == "pass"
+    assert compare_schema(optional, OptNullable).outcome == "pass"
+    assert compare_schema(optional_nullable, OptNullable).outcome == "pass"
+    assert compare_schema(four, Four).outcome == "pass"
+
+    # **AND THE FOLD IS NOT A SILENCER.** A model that drops the document's own
+    # declared ``null`` is reported, in both shapes of the fold -- one live branch
+    # beside the null, and three.
+    for doc, model in ((declared, NullDropped), (optional_nullable, NullDropped),
+                       (four, FourNullDropped)):
+        res = compare_schema(doc, model)
+        assert res.outcome == "model_drops_a_fact", (doc["title"], res)
+        assert [d.split(": ")[0] for d in res.differs] == ["/properties/v/type"], res.differs
+
+    # The SECOND half, and the one the bead does not name: the ``default`` D4
+    # renders for an optional property. ``_narrows_nothing`` read the node's
+    # declared null as a proxy for the REQUIRED axis, and the proxy is wrong in
+    # both directions -- so it reads ``required`` now. Four cells of one rule.
+    for kind in (["string", "null"], "string"):
+        assert harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+            "default", None, {"type": kind}, required=False
+        ), kind
+        assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+            "default", None, {"type": kind}, required=True
+        ), kind
+    # An invented value is still an added claim whatever the presence axis says.
+    assert not harness._narrows_nothing(  # noqa: SLF001 -- the rule under test
+        "default", "x", {"type": "string"}, required=False
+    )
+
+    # And the axis reaches the rule from the comparison rather than sitting there
+    # inert: a model stating ``default: null`` at a key the document DEMANDS is
+    # reported. ``json_schema_extra`` is how a required field renders one at all --
+    # a pydantic field with a real default is not required, which is the same
+    # reason ``compiler.fields`` refuses a document default on a required property.
+    class ReqDefaulted(AdCPBaseModel):
+        v: str | None = Field(..., json_schema_extra={"default": None})
+
+    res = compare_schema(declared, ReqDefaulted)
+    assert res.outcome == "model_adds_a_fact", res
+    assert [a.split(": ")[0] for a in res.added] == ["/properties/v/default"], res.added
+
+
 def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
     """D5's alias module, read from the side it was built for, and the residual.
 
