@@ -75,7 +75,7 @@ from typing import Any, TypeGuard
 import jsonschema
 from hypothesis import HealthCheck, Phase, given, settings
 from hypothesis import strategies as st
-from hypothesis.errors import HypothesisException
+from hypothesis.errors import HypothesisException, Unsatisfiable
 from hypothesis_jsonschema import from_schema
 from hypothesis_jsonschema._canonicalise import HypothesisRefResolutionError
 from hypothesis_jsonschema._resolve import LocalResolver, resolve_all_refs
@@ -322,9 +322,10 @@ def at(doc: Any, pointer: str) -> Any:
 # ``contains`` subschema already apply to every instance; a union branch is a
 # partial barrier the generator clears on its own (the control pair takes its
 # branch on 18 of 40 examples, and one is enough to grade); and a pattern-matched key, a
-# ``not`` / ``if`` / ``then`` / ``else`` / ``propertyNames`` subschema or a
-# ``$defs`` entry has no instance location to make mandatory at all, so a site
-# beneath one stays unreachable and the control still counts it as ungraded.
+# ``not`` / ``propertyNames`` subschema or a ``$defs`` entry has no instance
+# location to make mandatory at all, so a site beneath one stays unreachable and
+# the control still counts it as ungraded.  A ``then`` / ``else`` DOES have one --
+# its sibling ``if`` -- and ``force_path`` adds it as a conjunct; see the hop.
 _FORCE_NAMED = ("properties", "dependentSchemas")
 
 #: Candidate instances for a ``pattern`` step, tried in order.  Short, so a
@@ -408,6 +409,26 @@ def force_path(schema: dict, pointer: str) -> dict:
             _at_least(node, "minProperties", "maxProperties", 1)
             node = node[k]
             i += 1
+        elif k in ("then", "else") and isinstance(node.get("if"), dict):
+            # A ``then`` applies only to an instance its sibling ``if`` MATCHES, and
+            # nothing made the ``if`` match: ``hypothesis_jsonschema`` draws the
+            # minimal object, the condition is usually a ``const`` on an optional
+            # key, and a site under ``then`` was then graded by the control instead
+            # of by the model.  ``core/canvas-constraint.json``'s
+            # ``if unit == "percent" then x.maximum = 100`` is the inventory's one
+            # ``maximum`` triple, and this is the hop it needed.
+            #
+            # So the condition is added as a CONJUNCT of the node holding it --
+            # negated for an ``else``, which is what reaches that branch.  Same rule
+            # as every other hop here: make the way down mandatory in the
+            # generated-from document only, and leave the ORIGINAL to decide what an
+            # instance violates.
+            condition = copy.deepcopy(node["if"])
+            node.setdefault("allOf", []).append(
+                condition if k == "then" else {"not": condition}
+            )
+            node = node[k]
+            i += 1
         else:
             node = node[int(k)] if isinstance(node, list) else node[k]
             i += 1
@@ -416,6 +437,69 @@ def force_path(schema: dict, pointer: str) -> dict:
 
 def _is_index(part: str | None) -> TypeGuard[str]:
     return part is not None and part.isdigit()
+
+
+def _whole(value: Any) -> int | None:
+    """``value`` if it is a JSON integer, which ``True`` is not."""
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _distinct_values(items: Any) -> int | None:
+    """How many values ``items`` admits, when that is a countable number.
+
+    The one thing a ``uniqueItems`` step needs and draft-07 cannot state: with a
+    known bound, asking for bound + 1 elements forces a repeat, so the step is
+    EXCLUSIVE.  ``None`` means the schema admits more values than can be exhausted
+    and the step falls back to repeated draws from one schema, which is not
+    exclusive and does not pretend to be.
+    """
+    if not isinstance(items, dict):
+        return None  # a tuple-validation list: each slot has its own schema
+    if "const" in items:
+        return 1
+    if isinstance(items.get("enum"), list):
+        return len(items["enum"]) or None
+    return {"boolean": 2, "null": 1}.get(items.get("type"))
+
+
+def _admits_nothing(schema: Any) -> bool:
+    """Whether ``schema`` admits no instance at all, by the GENERATOR'S own reading.
+
+    ``hypothesis_jsonschema`` is what will be asked to generate from the stepped
+    document, so its canonical form is the authority on what is satisfiable; a list
+    of spellings maintained here would be a second answer that drifts.  That matters
+    for every step below that negates part of a document: a negation whose
+    conjunction with the rest is unsatisfiable produces a HARNESS ERROR, which
+    reports as a red pair rather than as the ungraded site it is.  The name is
+    private, so degrade to the literal rather than break on an upgrade.
+    """
+    try:
+        from hypothesis_jsonschema._canonicalise import FALSEY, canonicalish
+    except ImportError:  # pragma: no cover
+        return schema is False
+    try:
+        return bool(canonicalish(schema) == FALSEY)
+    except Exception:  # a schema the canonicaliser cannot reduce is not known-empty
+        return False
+
+
+def _admits_more_than(node: dict, n: int) -> bool:
+    """Whether the node admits an object of MORE than ``n`` properties.
+
+    A closed object admits only the keys it declares, so a ``maxProperties`` at or
+    above that count cannot be pushed past: the site is genuinely unreachable, and a
+    step that asked for ``n + 1`` keys anyway would report an unsatisfiable strategy
+    in place of the ungraded site it is.  Measured on
+    ``core/operator-identity.json``'s ``operator_unit``, which is also the reason
+    the test is "closed" and not "``additionalProperties`` is ``False``": that node
+    spells closed as ``{"additionalProperties": {"not": {}}}``, a subschema no
+    instance satisfies, and a check against the literal read it as open.
+    """
+    extra = node.get("additionalProperties")
+    if extra is None or not _admits_nothing(extra):
+        return True
+    declared = node.get("properties")
+    return isinstance(declared, dict) and len(declared) > n
 
 
 def _at_least(node: Any, floor_kw: str, ceiling_kw: str, n: int) -> None:
@@ -580,6 +664,145 @@ def steps(schema: dict) -> list[Step]:
 
             emit(pointer, "enum", f"enum of {len(e)} -> a non-member", r)
 
+        # ----------------------------------------------------------------- #
+        # D6's six families: what a document says about an instance AS A WHOLE
+        # ----------------------------------------------------------------- #
+        # NONE OF THESE HAD A STEP BEFORE THIS.  The nine keywords above were the
+        # whole of ``steps()``, and step 7's six families are WHOLLY DISJOINT from
+        # them -- so every rule the step lowers would have been graded by nothing,
+        # in either direction, and the bundle's 485 ``uniqueItems`` occurrences
+        # were 0 of 5,545 site rows.  Two of the nine steps ``pop``
+        # ``uniqueItems`` to stay satisfiable, which is how its absence went
+        # unnoticed.
+        if node.get("uniqueItems") is True:
+            # Forcing a duplicate is the one thing draft-07 cannot say directly, so
+            # the step says it two ways.  PIGEONHOLE where the item schema admits a
+            # countable set of values (``const``, ``enum``, ``boolean``, ``null``):
+            # ask for one more element than there are values and a repeat is
+            # unavoidable, so the step is exclusive.  Otherwise EXACTLY ``slots``
+            # elements drawn from one schema, which is NOT exclusive and does not
+            # pretend to be -- the first example of ``{"type": "string"}`` is
+            # ``["", ""]`` and later ones differ, so the site is graded by that
+            # example and the control counts the rest.  One refusal is a pass;
+            # ``no_evidence`` is what a site with none reports.
+            bound = _distinct_values(node.get("items"))
+            ceiling = _whole(node.get("maxItems"))
+            slots = max(2, _whole(node.get("minItems")) or 0)
+            if bound is not None and (ceiling is None or ceiling > bound):
+
+                def r(t: dict, _n: int = bound + 1) -> None:
+                    t.pop("uniqueItems", None)
+                    t["minItems"] = _n
+                    t.pop("maxItems", None)
+
+                emit(pointer, "uniqueItems", f"uniqueItems over {bound} values -> {bound + 1}", r)
+            elif ceiling is None or ceiling >= slots:
+
+                def r(t: dict, _n: int = slots) -> None:
+                    t.pop("uniqueItems", None)
+                    t["minItems"] = _n
+                    t["maxItems"] = _n
+
+                emit(pointer, "uniqueItems", f"uniqueItems true -> {slots} draws, one schema", r)
+
+        dependencies = node.get("dependencies")
+        if isinstance(dependencies, dict):
+            own = [k for k in node.get("required", []) if isinstance(k, str)]
+            for trigger in sorted(dependencies):
+                names = dependencies[trigger]
+                if not isinstance(names, list):
+                    continue  # the schema-valued form; its own keywords step themselves
+                for dependent in names:
+                    if not isinstance(dependent, str) or dependent == trigger:
+                        continue
+                    if dependent in own or trigger in own:
+                        continue  # the node already settles presence; nothing to push out
+
+                    def r(t: dict, _k: str = trigger, _d: str = dependent) -> None:
+                        rest = {k: v for k, v in t.get("dependencies", {}).items() if k != _k}
+                        t["dependencies"] = rest
+                        if not rest:
+                            t.pop("dependencies")
+                        t["required"] = sorted({*t.get("required", []), _k})
+                        t["not"] = {"required": [_d]}  # every instance omits the dependent
+
+                    emit(pointer, "dependencies", f"{trigger!r} present, {dependent!r} not", r)
+
+        n = node.get("minProperties")
+        req = len([k for k in node.get("required", []) if isinstance(k, str)])
+        if isinstance(n, int) and not isinstance(n, bool) and n > max(req, 0):
+            # ``n > len(required)`` is the step's own satisfiability: an object with
+            # at most n-1 keys still has to carry every required one, and a
+            # ``minProperties`` no larger than the required count is already implied
+            # by ``required`` -- stepping it would grade ``required`` under another
+            # name.
+            def r(t: dict, _n: int = n) -> None:
+                t.pop("minProperties", None)
+                t["maxProperties"] = _n - 1
+
+            emit(pointer, "minProperties", f"minProperties {n} -> maxProperties {n - 1}", r)
+
+        n = node.get("maxProperties")
+        if isinstance(n, int) and not isinstance(n, bool) and _admits_more_than(node, n):
+
+            def r(t: dict, _n: int = n) -> None:
+                t.pop("maxProperties", None)
+                t["minProperties"] = _n + 1
+
+            emit(pointer, "maxProperties", f"maxProperties {n} -> minProperties {n + 1}", r)
+
+        negated = node.get("not")
+        if isinstance(negated, dict) and negated:
+            # The general step, and the only one that needs no reading of the
+            # subschema at all: the thing the document FORBIDS becomes a CONJUNCT,
+            # so every instance satisfies it and the original refuses on ``not``.
+            # An empty ``not`` is skipped because the document then admits nothing
+            # and there is no instance to draw.
+            def r(t: dict) -> None:
+                t.setdefault("allOf", []).append(t.pop("not"))
+
+            emit(pointer, "not", f"not {sorted(negated)} -> the same as a conjunct", r)
+
+        if isinstance(node.get("if"), dict):
+            # A conditional is "if C then T", so an instance violating exactly it
+            # satisfies C and violates T.  Both legs are stated as conjuncts and the
+            # conditional itself is dropped, which makes the step exclusive: every
+            # instance drawn matches the condition and fails the branch.  The
+            # ``else`` leg is the same with C negated.
+            for keyword in ("then", "else"):
+                branch = node.get(keyword)
+                if not isinstance(branch, dict) or not branch:
+                    continue
+
+                def r(t: dict, _k: str = keyword) -> None:
+                    condition = t.pop("if")
+                    taken = t.pop(_k)
+                    t.pop("then", None)
+                    t.pop("else", None)
+                    t.setdefault("allOf", []).extend(
+                        [condition if _k == "then" else {"not": condition}, {"not": taken}]
+                    )
+
+                emit(pointer, keyword, f"if/{keyword} -> the condition, the branch negated", r)
+
+        for keyword in ("oneOf", "anyOf"):
+            branches = node.get(keyword)
+            if not isinstance(branches, list) or not branches:
+                continue
+            # Violating a combinator means matching NO branch, which is a violation
+            # of ``anyOf`` (at least one) and of ``oneOf`` (exactly one) alike.  So
+            # every branch is negated as a conjunct.  A combinator exhaustive over
+            # its own type has an UNSATISFIABLE negation and no violating instance
+            # exists; the step is still emitted and ``check_refuses`` reports it as
+            # ``no_evidence``, which is what a site with no instance is.  Screening
+            # it here was tried and REMOVED: ``canonicalish`` on the rewritten node
+            # cost 63.7 s against 0.0 s for 120 documents and rejected 0 of 2,205
+            # sites, so it was 500x for no decision.
+            def r(t: dict, _k: str = keyword) -> None:
+                t.setdefault("allOf", []).extend({"not": b} for b in t.pop(_k))
+
+            emit(pointer, keyword, f"{keyword} of {len(branches)} -> every branch negated", r)
+
         for k, v in node.items():
             if k in _DESCEND_MAP and isinstance(v, dict):
                 for kk, vv in v.items():
@@ -653,6 +876,10 @@ class RefusesResult:
     counterexample: str = ""
     counterexample_violated: list[str] = field(default_factory=list)
     harness: str = ""
+    #: The stepped document admits no instance at all, so there is nothing that
+    #: violates exactly this keyword here.  Recorded rather than silently dropped,
+    #: and NOT a harness error: see ``check_refuses``.
+    unsatisfiable: str = ""
 
     @property
     def outcome(self) -> str:
@@ -827,6 +1054,20 @@ def check_refuses(
             run
         )
         run()
+    except Unsatisfiable as e:
+        # NO INSTANCE EXISTS that violates exactly this keyword at this site, so
+        # nothing was graded -- which is ``no_evidence``, the zero-denominator
+        # verdict, and NOT a harness error.  The distinction is not cosmetic: a
+        # harness error reddens the whole pair, so an unsatisfiable step would
+        # fail a class that is perfectly faithful.
+        #
+        # The step families that reach this are the two that NEGATE part of the
+        # document: an ``if``/``then`` whose condition implies its branch, and a
+        # combinator exhaustive over its own type (``anyOf`` of ``string`` and
+        # ``not string``).  Measured, ``hypothesis`` raises ``Unsatisfiable`` for
+        # both shapes -- an empty strategy and a filter nothing clears -- so one
+        # ``except`` covers them.
+        res.unsatisfiable = f"{type(e).__name__}: {e}"[:200]
     except Exception as e:
         res.harness = f"{type(e).__name__}: {e}"[:300]
     return res
@@ -938,6 +1179,44 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
     return keyword == "additionalProperties" and value is True
 
 
+#: The two value sets draft-07 can write as a ``type`` and ``canonicalish`` rewrites
+#: into an enumeration of their members.
+_FINITE = ({"enum": [False, True]}, "boolean"), ({"const": None}, "null")
+
+
+def _uncanonicalized(doc: dict) -> tuple[dict, bool]:
+    """The document's node with the resolver's FINITE-TYPE rewrite undone.
+
+    ``resolve`` is ``hypothesis_jsonschema``'s own resolver, used here deliberately
+    so the schema the runtime decides with is the schema the harness grades, and it
+    canonicalizes while inlining.  For a type whose value set is finite it writes
+    the set out and **drops every annotation at that node**: measured,
+    ``{"type": "boolean", "description": "..."}`` resolves to
+    ``{"enum": [false, true]}`` and ``{"type": "null", "description": "..."}`` to
+    ``{"const": null}``.  Every other type keeps its keys --
+    ``{"type": "string", "description": "d"}`` and
+    ``{"type": "integer", "minimum": 1, "description": "d"}`` both come back whole
+    -- so this is one mechanism at two shapes and not a general licence.
+
+    The ``type`` is RESTORED, because ``enum: [false, true]`` IS ``type: boolean``:
+    the same accepted set, written two ways, and the second is the resolver's
+    spelling rather than the document's.  The dropped ``description`` cannot be
+    restored and is NOT copied off the model -- a fixture derived from the thing it
+    grades cannot falsify anything.  The flag says the node was rewritten, and
+    :func:`compare_schema` admits a model-only ``description`` at exactly such a
+    node and nowhere else, so the hole is one shape wide and named.
+
+    This is the third canonicalization the comparison folds out, beside ``_closed``
+    and the ``additionalProperties: true`` arm of ``_narrows_nothing``.  Reached for
+    the first time by ``core/demographic-predicate.json``, whose referenced
+    ``include_unknown`` is a plain boolean.
+    """
+    for canonical, kind in _FINITE:
+        if doc == canonical:
+            return {"type": kind}, True
+    return doc, False
+
+
 def _closed(x: Any) -> Any:
     """``additionalProperties``, with the one canonicalization folded out.
 
@@ -1037,6 +1316,7 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
         if not isinstance(doc, dict):
             return
         got = _normalize(got, defs)
+        doc, rewritten = _uncanonicalized(doc)
         for kw in FACTS:
             if kw not in doc:
                 continue
@@ -1061,7 +1341,11 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
             if kw in doc or kw not in got:
                 continue
             res.model_facts += 1
-            if _narrows_nothing(kw, got[kw], doc):
+            # ``rewritten and kw == "description"``: the resolver dropped the
+            # node's annotations when it wrote the finite type out as its members,
+            # so the model states a description its RESOLVED document no longer
+            # does.  Admitted at that node only; see ``_uncanonicalized``.
+            if _narrows_nothing(kw, got[kw], doc) or (rewritten and kw == "description"):
                 continue
             res.added.append(f"{pointer}/{kw}: the model says {got[kw]!r}, the document nothing")
 
