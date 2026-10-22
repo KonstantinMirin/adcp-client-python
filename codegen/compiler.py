@@ -87,6 +87,7 @@ from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
 from datamodel_code_generator.types import DataType
+from jsonschema import Draft7Validator
 from pydantic import BaseModel as PydanticBaseModel
 
 from adcp.types._base import SchemaRef
@@ -528,11 +529,11 @@ def render(decided: Class) -> Rendered:
 # --------------------------------------------------------------------------- #
 # the machinery a lowering is handed (D13)
 # --------------------------------------------------------------------------- #
-#: Keywords that annotate a node without constraining an instance.  ``default``
-#: and ``description`` are carried by the compiler (they are rendering, and
-#: rendering is what the compiler is for); the rest have nowhere to go and are
-#: never a reason to refuse.
-ANNOTATIONS = frozenset(
+#: DRAFT-07's own annotation keywords: names the draft DEFINES and that annotate a
+#: node without constraining an instance.  ``default`` and ``description`` are
+#: carried by the compiler (they are rendering, and rendering is what the compiler
+#: is for); the rest have nowhere to go and are never a reason to refuse.
+_DRAFT_ANNOTATIONS = frozenset(
     {
         "$schema",
         "$id",
@@ -547,6 +548,65 @@ ANNOTATIONS = frozenset(
         "writeOnly",
     }
 )
+
+#: THE BUNDLE'S OWN annotation names: names draft-07 does not define at all, which
+#: this bundle uses to annotate a node, ENUMERATED and never derived from a prefix.
+#:
+#: An unknown keyword that COULD CONSTRAIN an instance must keep refusing, because
+#: that refusal is what keeps the generator from emitting a class quietly wider than
+#: its author meant.  So membership here is by name and by measurement.
+#:
+#: **The census, over all 1,054 portable documents** (every key at a schema position
+#: that draft-07 does not define, is not ``x-*``, and is not already admitted; all
+#: 1,054 declare draft-07, so one draft decides the vocabulary): 24 names over 251
+#: sites.  Two are admitted here:
+#:
+#: * ``notes`` -- 2 sites, 2 documents, both at a root, a list of English sentences
+#:   in each.  It annotates the document for a reader.
+#: * ``enumMetadata`` -- 4 sites, 4 documents, all at a root.  ``lower.enum.HANDLED``
+#:   already admitted it on the reason written there -- it states nothing about an
+#:   instance, the ``enum`` having already closed the value set -- for the three
+#:   whose root IS an enum.  The fourth (``core/media-buy-available-action-id.json``)
+#:   is a UNION root, which that set does not reach.  Admitting it HERE is the same
+#:   decision in one place rather than two, so it is removed from that set.
+#:
+#: And twenty-two are not, each for a stated reason:
+#:
+#: * ``enumDescriptions`` (137 sites, 135 documents) is CARRIED, not ignored: the
+#:   enum row reads it into the member docstrings.  Admitting it here would delete a
+#:   fact the SDK emits.
+#: * ``discriminator`` (81 sites, 73 documents, 7 refusals) COULD CONSTRAIN AN
+#:   INSTANCE -- in OpenAPI it selects which branch a payload resolves to, a job §4
+#:   gives to ``DataType.discriminator``.  It keeps refusing.
+#: * ``errorMessage`` (2 sites, 1 document) constrains nothing, and its document
+#:   refuses on ``if`` first, so admitting it would change no outcome.  Nothing is
+#:   admitted on no evidence.
+#: * The other 19 -- ``version``, ``lastUpdated``, ``last_updated``, ``mappings``,
+#:   ``vocabulary``, ``governance``, ``extensions``, ``_generated``,
+#:   ``_generatedAt``, ``adcp_version``, ``architecture``, ``asset_types``,
+#:   ``baseUrl``, ``prerelease``, ``protocol_layers``, ``published_version``,
+#:   ``stability``, ``usage_notes``, ``versioning`` -- ARE NOT ANNOTATIONS.  They are
+#:   a document's own INSTANCE DATA at a schema root: five registry, vocabulary and
+#:   index documents carry their payload beside their schema.  Measured: 4 of those 5
+#:   refuse on ``type`` ("no D2 row selects this root") and not on a payload key at
+#:   all, so admitting the 19 changes nothing for them and buys the fifth
+#:   (``registries/v1-canonical-mapping.json``) by calling a registry's 300-line
+#:   ``mappings`` payload an annotation.  That is the blanket allowance in another
+#:   shape, and the set would then grow by a data field name per registry.  The fifth
+#:   stays refused, which is a designed outcome.
+BUNDLE_ANNOTATIONS = frozenset({"notes", "enumMetadata"})
+
+#: The ONE set every reader asks, so the two halves above cannot drift apart from a
+#: second literal.  Read by :func:`check_keywords` and by the three places that ask
+#: what a node DECLARES (``lower.union._plan``, ``lower.product._own``,
+#: ``lower.rules._own``) -- the same question, since a key that annotates without
+#: constraining is not a declaration either.
+ANNOTATIONS = _DRAFT_ANNOTATIONS | BUNDLE_ANNOTATIONS
+
+#: Every name draft-07 DEFINES, read off the draft's own meta-schema rather than
+#: typed here, and used for one thing: to tell a keyword no row lowers YET from a
+#: name no row can EVER lower (:func:`check_keywords`).
+DRAFT07 = frozenset(Draft7Validator.META_SCHEMA["properties"])
 
 #: The two keywords holding a BAG OF NAMED SUBSCHEMAS, admitted at every node and
 #: separate from :data:`ANNOTATIONS` because the reason is different.
@@ -809,18 +869,44 @@ class Module:
         self.declare(name, pointer, rendered.text)
 
 
+def _why(key: str) -> str:
+    """Why this key stopped the walk, and the two answers are not the same claim.
+
+    A key draft-07 DEFINES is a keyword some D2 row owns, so "a later row does" is
+    a schedule and the bead for it exists.  A key draft-07 does not define has no
+    row to be scheduled -- it is not a schema keyword, so there is no lowering to
+    write -- and answering "a later D2 row does" about one PROMISES AN UNSCHEDULED
+    ROW.  Measured on the base tree (``5d92cf2c0``, 406 emitted and 648 refused of
+    1,054): 11 of the 648 refusals answered that about a
+    non-keyword (``discriminator`` 7, ``notes`` 2, ``enumMetadata`` 1,
+    ``last_updated`` 1), and the four this bead names were three distinct names at
+    a root with no row anywhere that could ever claim them.
+
+    So the admission decision and the refusal REASON are the one bug read twice:
+    :data:`BUNDLE_ANNOTATIONS` names the non-keywords that annotate, and this names
+    what a refusal says about the rest.
+    """
+    if key in DRAFT07:
+        return "this step lowers no such keyword (a later D2 row does)"
+    return (
+        "draft-07 defines no such keyword, so no D2 row lowers it and none is "
+        "scheduled; a non-keyword that ANNOTATES a node is named in "
+        "compiler.BUNDLE_ANNOTATIONS and this is not one of those names"
+    )
+
+
 def check_keywords(
     node: dict,
     pointer: str,
     handled: set[str],
-    why: str = "this step lowers no such keyword (a later D2 row does)",
+    why: str | None = None,
 ) -> None:
     for key in sorted(node):
         if key in handled or key in ANNOTATIONS or key in DEFINITION_SECTIONS:
             continue
         if key.startswith("x-"):
             continue
-        raise Refusal(key, pointer, why)
+        raise Refusal(key, pointer, why or _why(key))
 
 
 # --------------------------------------------------------------------------- #
