@@ -165,8 +165,17 @@ class Class:
     ref: SchemaRef
     properties: tuple[Property, ...]
     description: str | None = None
-    #: D7: ``forbid``, ``allow``, or ``None`` to leave the base's default.
+    #: D8: ``forbid``, ``allow``, or ``None`` to leave the base's default.
     extra: str | None = None
+    #: D7: the symbols this class's document COMPOSES, in the conjunct order the
+    #: document lists them.  Empty leaves ``custom_base_class``, which is
+    #: ``AdCPBaseModel`` and is every class with nothing to compose; a non-empty
+    #: tuple replaces it, and ``AdCPBaseModel`` arrives through the bases because
+    #: every base is itself an emitted class.  The symbols are names the module
+    #: writer has already imported -- the compiler adds no import for a base, for
+    #: the same reason ``Type.local`` adds none: a cross-document import is
+    #: derived from the two document paths (D1) and is the module writer's.
+    bases: tuple[str, ...] = ()
 
 
 @dataclass
@@ -263,7 +272,7 @@ def render(decided: Class) -> Rendered:
             path=f"#/{decided.name}", original_name=decided.name, name=decided.name
         ),
         fields=[_field(p) for p in decided.properties],
-        base_classes=[],
+        base_classes=[Reference(path=f"#/{b}", original_name=b, name=b) for b in decided.bases],
         custom_base_class="adcp.types._base.AdCPBaseModel",
         description=decided.description or None,
         extra_template_data=extra_template_data,
