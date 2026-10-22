@@ -195,10 +195,10 @@ def resolved(bundle_dir: Path, document: str) -> dict:
 # row's selector and the list of documents step 6 names.
 #
 # Disjointness is by construction and is asserted in ``tests/test_emit.py``: a root
-# with ``properties`` is an object and a root whose ``type`` is one scalar name is a
-# scalar.  A root that is neither -- an array, a propertyless object, an enum, a
-# ``oneOf``, an ``allOf`` -- has no row yet and is refused by name, which is steps
-# 3 to 6.
+# with ``properties`` is an object, a root whose ``type`` is one scalar name is a
+# scalar, and a root that is an array, a propertyless object or a list of types is a
+# container.  A root that is none of the three -- an enum, a ``oneOf``, an ``allOf``
+# -- has no row yet and is refused by name, which is steps 3, 4 and 5.
 
 
 def is_object_root(doc: dict) -> bool:
@@ -209,6 +209,21 @@ def is_object_root(doc: dict) -> bool:
 def is_scalar_root(doc: dict) -> bool:
     """D2's root-scalar row: a root whose ``type`` names one scalar."""
     return doc.get("type") in ("string", "integer", "number", "boolean")
+
+
+def is_container_root(doc: dict) -> bool:
+    """Step 6's row, and step 6's population: a root that is a container.
+
+    An array (D2's ``RootModel[list[X]]`` row), a mapping (an object declaring no
+    property), or a multi-type node.  Measured over the 3.2 bundle: 32 mapping
+    roots, 5 array roots and 0 multi-type roots, overlapping neither
+    :func:`is_leaf_object` nor :func:`references_a_property` in a single document --
+    so naming these adds 37 documents to the emitted population and removes none.
+    """
+    kind = doc.get("type")
+    if isinstance(kind, list):
+        return True
+    return kind == "array" or (kind == "object" and "properties" not in doc)
 
 
 def is_leaf_object(doc: dict) -> bool:

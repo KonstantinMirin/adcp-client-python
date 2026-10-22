@@ -75,6 +75,7 @@ from pydantic import BaseModel
 
 from adcp.types._base import SchemaRef
 from codegen import bundle, compiler, harness
+from codegen.lower import containers
 from codegen.refusal import Refusal
 
 #: Where a document's module lands, relative to the repository root.
@@ -344,7 +345,7 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
         return Decided(compiler.Type("typing.Any"))  # D2's typeless row
 
     if isinstance(kind, list):
-        raise Refusal("type", pointer, f"a multi-type node ({kind}) is step 6")
+        return containers.multi_type(node, pointer, name_hint, mod)
 
     if kind == "null":
         _check_keywords(node, pointer, {"type"})
@@ -352,13 +353,11 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 
     if kind == "object":
         if "properties" not in node:
-            raise Refusal(
-                "type", pointer, "an object node with no properties is a mapping, step 6"
-            )
+            return containers.mapping(node, pointer, name_hint, mod)
         return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
 
     if kind == "array":
-        raise Refusal("type", pointer, "an array node is step 6")
+        return containers.array(node, pointer, name_hint, mod)
 
     if kind not in SCALAR:
         raise Refusal("type", pointer, f"unknown type {kind!r}")
@@ -390,7 +389,9 @@ def _key_statement(node: dict) -> dict:
 
 def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
     """Append the class for an object node, children first, and return its name."""
-    _check_keywords(node, pointer, {"type", "properties", "required", "additionalProperties"})
+    _check_keywords(
+        node, pointer, {"type", "properties", "required", "additionalProperties", "propertyNames"}
+    )
     props = node["properties"]
     if not isinstance(props, dict) or not props:
         raise Refusal("properties", pointer, "an object node with no property declared")
@@ -450,8 +451,20 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             )
         )
 
-    if isinstance(node.get("additionalProperties"), dict):
-        raise Refusal("additionalProperties", pointer, "a typed additionalProperties is step 6")
+    # D8's typed row, which is step 6's: a property the class does not DECLARE is
+    # validated against the document's own value schema, through pydantic's
+    # ``__pydantic_extra__``.  The TYPE is the same ``dict[K, V]`` a mapping node
+    # lowers to and is decided by the same row, so an extras store and a mapping
+    # cannot come to read ``additionalProperties`` two different ways.
+    ap = node.get("additionalProperties")
+    extra_type = None
+    if isinstance(ap, dict) and ap:
+        extra_type = containers.mapping(
+            {"type": "object", "additionalProperties": ap, **_key_statement(node)},
+            pointer,
+            name,
+            mod,
+        ).type
     description = node.get("description")
     rendered = compiler.render(
         compiler.Class(
@@ -463,7 +476,8 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             # ``additionalProperties`` is ``allow`` with the type beside it: the
             # properties are part of the document, so they are retained, and
             # ``__pydantic_extra__`` is what validates them.
-            extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
+            extra="allow" if extra_type is not None else {False: "forbid", True: "allow"}.get(ap),
+            extra_type=extra_type,
         )
     )
     mod.imports |= rendered.imports
@@ -586,6 +600,7 @@ def _scalar_root(doc: dict, symbol: str, mod: Module) -> None:
 ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, Module], None]], ...] = (
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
+    (bundle.is_container_root, containers.root),
 )
 
 

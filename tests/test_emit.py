@@ -34,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import types
 from pathlib import Path
 from typing import Annotated, Any, NamedTuple
 
@@ -41,10 +42,13 @@ import jsonschema
 import pytest
 from hypothesis import given, HealthCheck, Phase, settings
 from hypothesis import strategies as st
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from unittest.mock import patch
+
+from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
 
 from adcp.types._base import AdCPBaseModel, REGEX_ENGINE, SchemaRef, schema_at
-from codegen import bundle, emit
+from codegen import bundle, compiler, emit
+from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
     check_accepts,
@@ -76,10 +80,19 @@ def referencing() -> list[str]:
     ]
 
 
+def container_roots() -> list[str]:
+    """Step 6's population: the document's ROOT is a container.
+
+    Also step 6's row in ``emit.ROWS``, and the two being one predicate is the
+    point: a row cannot claim a document its step does not count.
+    """
+    return [d for d in bundle.portable(BUNDLE) if bundle.is_container_root(bundle.read(BUNDLE, d))]
+
+
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure."""
-    return sorted(set(leaves()) | set(referencing()))
+    return sorted(set(leaves()) | set(referencing()) | set(container_roots()))
 
 
 # --------------------------------------------------------------------------- #
@@ -163,10 +176,16 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     whole = bundle.portable(BUNDLE)
     assert len(leaves()) == 85
     assert len(referencing()) == 249
-    assert len(population()) == 334
+    assert len(container_roots()) == 37  # 32 mapping roots, 5 array roots, 0 multi-type
+    assert len(population()) == 371
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()
+    assert "core/ext.json" in container_roots()
+    # Step 6's population only GROWS the named set, which is what makes the earlier
+    # steps' floor structurally safe rather than re-measured: a container root is
+    # neither a leaf object nor a referencing one, so no document stops being named.
+    assert not set(container_roots()) & (set(leaves()) | set(referencing()))
 
 
 def test_every_named_document_is_either_emitted_or_refused_by_name_and_keyword() -> None:
@@ -406,9 +425,21 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
     """
     excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
+        "core/context.json#",
+        "core/ext.json#",
+        "error-details/account-setup-required.json#",
         "error-details/audience-too-small.json#",
         "error-details/budget-too-low.json#",
+        "error-details/conflict.json#",
+        "error-details/creative-rejected.json#",
     ]
+    # Step 6 added two of them and they are the two it ought to add: a mapping root
+    # is ``dict[str, Any]`` over an ``additionalProperties: true`` document, which
+    # states no keyword ``steps()`` can step.  The accepts check and the schema
+    # comparison still grade both, which the loop below requires.
+    assert {"core/context.json#", "core/ext.json#"} <= {
+        f"{g.ref.document}{g.ref.pointer}" for g in excused
+    }
     for g in excused:
         assert steps(schema_at(g.ref)) == [], g.ref
         rep = check_pair(pair_of(g), max_steps=None)
@@ -547,7 +578,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
 
     ``emit.FORMAT_TYPES`` is read rather than restated, so a row added or removed
     moves this test's expectation with it; what is pinned is the population
-    (14 sites: ``date-time`` 7, ``uri`` 5, ``date`` 2), because that is the
+    (17 sites: ``date-time`` 8, ``uri`` 7, ``date`` 2), because that is the
     denominator the rule is stated over.
     """
     checked = emit.asserted_formats(bundle.read(BUNDLE, PAGINATION))
@@ -587,7 +618,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
 
-    assert seen == {"date-time": 7, "uri": 5, "date": 2}, seen
+    assert seen == {"date-time": 8, "uri": 7, "date": 2}, seen
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
@@ -606,7 +637,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][emit.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 14, stated
+    assert stated == 17, stated
 
 
 def _unwrap(node: dict, defs: dict) -> dict:
@@ -761,7 +792,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (11, 19), distinct
+    assert (len(distinct), sum(distinct.values())) == (13, 23), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -787,7 +818,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (9, 16), diverges
+    assert (len(diverges), sum(diverges.values())) == (11, 20), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -898,12 +929,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 44, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 42
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 2
-    assert sum(r.graded_instances for r in reports) == 3758  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 486  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 57  # model-only facts examined
+    assert len(reports) == 76, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 69
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 7
+    assert sum(r.graded_instances for r in reports) == 6833  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 1057  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 240  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
 
 
@@ -1186,6 +1217,503 @@ def test_a_scalar_root_emits_an_annotated_alias_and_not_a_class() -> None:
     assert emitted["minLength"] == doc["minLength"]
     assert emitted["maxLength"] == doc["maxLength"]
     assert emitted["description"] == doc["description"]
+
+
+# --------------------------------------------------------------------------- #
+# step 6: containers and mappings
+# --------------------------------------------------------------------------- #
+def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any, str]:
+    """Lower a document written HERE, and return its model and the module text.
+
+    A constructed document is not in the shipped package, so ``_document`` cannot
+    read it and ``strict_validate`` has no schema -- which is why a constructed pair
+    is graded by ``compare_schema`` and by an ``accept`` the test builds from the same
+    document, exactly as the narrowing fixture above is.  Everything else is the real
+    pipeline: the walk decides, the compiler renders, and the text is executed rather
+    than inspected, so a test cannot pass on a rendering that does not run.
+
+    ``binds`` supplies a symbol for a ``$ref``, keyed by the target's document path.
+    The import the walk emits names a sibling MODULE, which does not exist here, so
+    the symbol is pre-bound in the namespace instead -- the import itself is asserted
+    separately, off ``mod.imports``.
+    """
+    targets = binds or {}
+
+    def bind(uri: str, pointer: str) -> tuple[str, str]:
+        for path, (name, _type) in targets.items():
+            if uri.endswith(path):
+                return f".{path.rsplit('/', 1)[-1].removesuffix('.json')}", name
+        raise AssertionError(f"the fixture binds no target for {uri}")
+
+    mod, symbol = emit.lower_document("constructed.json", doc, bind)
+    text = emit.render(mod, symbol)
+    module = types.ModuleType("_constructed_fixture")
+    module.__dict__.update({name: type_ for name, type_ in targets.values()})
+    # Registered, because ``from __future__ import annotations`` makes every
+    # annotation a string and pydantic resolves it against the defining module's
+    # globals -- a bare ``exec`` dict has no module to be found through.
+    sys.modules[module.__name__] = module
+    try:
+        exec(  # noqa: S102 -- executing the compiler's own output is the point
+            "\n".join(line for line in text.splitlines() if not line.startswith("from .")),
+            module.__dict__,
+        )
+    finally:
+        del sys.modules[module.__name__]
+    return module.__dict__[symbol], text
+
+
+def _accept_of(doc: dict, model: Any) -> Any:
+    """The entry point a constructed pair is offered instances through.
+
+    The schema half first and the constructor second, which is the order
+    ``strict_validate`` uses -- so the accepts check here measures the same thing it
+    measures on a shipped class.
+    """
+
+    def accept(payload: Any) -> Any:
+        jsonschema.Draft7Validator(
+            doc, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
+        ).validate(payload)
+        return model.model_validate(payload) if isinstance(model, type) else payload
+
+    return accept
+
+
+def test_the_dispatch_table_is_a_partition_and_a_collision_is_a_build_failure() -> None:
+    """``emit.ROWS`` is unordered, so disjointness is the property that makes it work.
+
+    Both halves, because the first alone passes for a table whose rows happen not to
+    overlap on THIS bundle and the second alone passes for a table nothing selects:
+
+    * over the whole bundle, no document is selected by more than one row -- and the
+      count selected by exactly one is asserted, so the partition is not satisfied by
+      a table that selects nothing;
+    * a document two rows DO select raises rather than picking one, which is the
+      difference between a build failure and a precedence puzzle.
+
+    The second is graded on a selector added here, because the bundle has no document
+    that collides -- which is the whole claim of the first half, so a fixture is the
+    only way to reach the branch.
+    """
+    documents = bundle.portable(BUNDLE)
+    by_count: dict[int, int] = {}
+    for document in documents:
+        doc = bundle.read(BUNDLE, document)
+        n = sum(1 for selector, _ in emit.ROWS if selector(doc))
+        by_count[n] = by_count.get(n, 0) + 1
+    assert sorted(by_count) == [0, 1], by_count  # never two
+    assert by_count[1] == 947, by_count  # the three rows' own population
+    assert by_count[0] == 107, by_count  # enum, oneOf, anyOf and allOf roots: steps 3-5
+
+    both = {"title": "Both", "type": "object", "properties": {"a": {"type": "string"}}}
+    assert bundle.is_object_root(both)
+    rows = (*emit.ROWS, (lambda _doc: True, emit._object_root))  # noqa: SLF001 -- the collision fixture
+    with patch.object(emit, "ROWS", rows), pytest.raises(RuntimeError) as caught:
+        emit.lower_document("both.json", both)
+    assert "2 rows of the dispatch table select this document" in str(caught.value)
+    assert "is_object_root" in str(caught.value)
+
+
+def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
+    """Step 6's first defect, over every array site the emitted population has.
+
+    The generator this pipeline replaces read ``minItems`` on a named property and
+    carried it and read the same keyword on a mapping value and dropped it.  So the
+    assertion is on WHICH NODE the bound landed on, site by site, derived from the
+    document rather than from a list:
+
+    * the document's ``minItems``/``maxItems`` reach the model's own schema at the
+      ARRAY, where pydantic spells them ``minItems``/``maxItems`` again;
+    * the element's node carries no length fact the document does not state there,
+      which is what "not on its elements" means -- a bound moved down renders
+      ``minLength`` on the item and the array unbounded.
+
+    Both denominators are asserted, so neither half can pass by looking at nothing.
+    """
+    arrays = 0
+    bounded = 0
+    for row in graded():
+        if row.ref.pointer != "#" or not isinstance(row.model, type):
+            continue
+        doc = schema_at(row.ref)
+        emitted = row.model.model_json_schema()
+        for key, sub in (doc.get("properties") or {}).items():
+            if sub.get("type") != "array":
+                continue
+            arrays += 1
+            mine = _unwrap(emitted["properties"][emit.field_name(key)], emitted.get("$defs", {}))
+            assert mine.get("type") == "array", (row.ref, key, mine)
+            for keyword in ("minItems", "maxItems"):
+                assert mine.get(keyword) == sub.get(keyword), (row.ref, key, keyword, mine)
+                bounded += keyword in sub
+            item = _unwrap(mine.get("items") or {}, emitted.get("$defs", {}))
+            declared = sub.get("items") or {}
+            for keyword in ("minLength", "maxLength", "minItems", "maxItems"):
+                assert item.get(keyword) == declared.get(keyword), (row.ref, key, keyword, item)
+    # The denominator is TOP-LEVEL array properties of an emitted root, which is
+    # 11 of the 12 array nodes the emitted documents carry -- the twelfth is nested
+    # inside another array's items and has no property node of its own to compare
+    # at, so it is graded by the schema comparison and not here.  Stated so the
+    # number is not read as "every array".
+    assert arrays == 11, arrays
+    assert bounded == 2, bounded
+
+
+def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
+    """Why ``uniqueItems`` is step 7's rule (D6) and not this row's constraint.
+
+    The reason is a measurement and not a reading of D6: ``Constraints`` declares
+    ``unique_items`` under the alias ``uniqueItems``, so the keyword is ACCEPTED and
+    sets the field -- and the renderer then emits no ``Field`` at all, because
+    pydantic v2 removed ``unique_items``.  Carrying it through ``constraints=`` would
+    therefore be a model wider than its document, silently.
+
+    Three cells: the keyword sets the constraints model, the rendering drops it, and
+    the walk refuses rather than emitting the drop.  The first two are what make the
+    third the only safe answer, so deleting any of them leaves the reason unstated.
+    """
+    from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
+
+    assert Constraints.model_fields["unique_items"].alias == "uniqueItems"
+    assert Constraints(uniqueItems=True).model_fields_set == {"unique_items"}
+
+    listed = compiler.Type(container="list", of=(compiler.Type("str"),))
+    kept = compiler.render_alias("Kept", listed, {"minItems": 1})
+    dropped = compiler.render_alias("Dropped", listed, {"uniqueItems": True})
+    assert "min_length=1" in kept.text, kept.text
+    assert "Field" not in dropped.text, dropped.text  # the fact has no rendering
+
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "u.json",
+            {
+                "title": "U",
+                "type": "object",
+                "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
+            },
+        )
+    assert (caught.value.keyword, caught.value.pointer) == ("uniqueItems", "/properties/a")
+
+    # And it is load-bearing on the bundle: these documents are refused for this
+    # keyword and no other, so admitting it would emit them wide.
+    out = emit.emit(BUNDLE, population())
+    blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
+    assert len(blocked) == 17, sorted(blocked)
+    assert "core/acceptance-policy-profile-ids.json" in out.refusals
+
+
+def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrapped() -> None:
+    """D2's ``RootModel[list[X]]`` row, and why it is a refusal rather than a class.
+
+    All five root arrays of the bundle refuse on a keyword of a later step, so a
+    ``RootModel`` base would be a class no document reaches and no pair grades.  The
+    row therefore refuses -- and it lowers the ELEMENT first, so a real document
+    reports its own blocker rather than the shape.
+
+    Asserted on all five by name, with the keyword each one actually refuses on read
+    off the run.  The shape refusal underneath is reached only by a document built to
+    have nothing else wrong with it, which is the second half.
+    """
+    out = emit.emit(BUNDLE, population())
+    roots = [d for d in bundle.portable(BUNDLE) if bundle.read(BUNDLE, d).get("type") == "array"]
+    assert len(roots) == 5, roots
+    assert all(d in out.refusals for d in roots), [d for d in roots if d not in out.refusals]
+    assert {out.refusals[d]["keyword"] for d in roots} == {"uniqueItems", "discriminator"}
+    # 4 of 5 on `uniqueItems` at the root; the fifth inside its own `items`.
+    assert sum(out.refusals[d]["keyword"] == "uniqueItems" for d in roots) == 4
+    (odd,) = [d for d in roots if out.refusals[d]["keyword"] != "uniqueItems"]
+    assert odd == "media-buy/product-refinement.json"
+    assert out.refusals[odd]["pointer"].startswith("/items"), out.refusals[odd]
+
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "r.json", {"title": "R", "type": "array", "items": {"type": "string"}}
+        )
+    assert (caught.value.keyword, caught.value.pointer) == ("type", "/")
+    assert "RootModel[list[X]]" in caught.value.detail
+    assert "str is the element type" in caught.value.detail
+
+
+def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
+    """D5's key rule, and the honest denominator for it.
+
+    **No mapping site in the emitted population constrains its key.** Measured over
+    the whole emitted set: every mapping the committed tree carries is
+    ``dict[str, ...]``, and that is the document's own reading rather than a default
+    -- silence about keys means every string, and typing it further would be the SDK
+    inventing a constraint.  So the key rule is graded on constructed documents, and
+    the zero is asserted rather than left for a reader to infer from a green mark.
+
+    The one key kind that needs no name is the one that is graded behaviourally: a
+    ``propertyNames`` ``$ref`` NAMES the key type, so the key is that type, the module
+    IMPORTS it, and the model then refuses a key the key type refuses.  The kinds that
+    would need D5's alias module refuse by name, and so does a closed key set.
+    """
+    constrained = 0
+    mappings = 0
+    for row in graded():
+        doc = schema_at(row.ref)
+        for pointer, node in bundle.nodes(doc):
+            if node.get("type") == "object" and "properties" not in node:
+                mappings += 1
+                constrained += bool({"propertyNames", "patternProperties"} & set(node))
+                del pointer
+    assert mappings == 37, mappings
+    assert constrained == 0, constrained
+
+    # A $ref key: the key IS that type, imported, and it refuses what the type
+    # refuses.  The bound symbol is an ``Annotated`` alias because that is what a
+    # root-scalar reference TARGET actually is in this pipeline -- and a key type has
+    # to be hashable, which a ``RootModel`` wrapper is not.
+    Tag = Annotated[str, Field(pattern="^[a-z]+$")]
+    doc = {
+        "title": "Keyed",
+        "type": "object",
+        "properties": {
+            "m": {
+                "type": "object",
+                "propertyNames": {"$ref": "https://x/core/tag.json"},
+                "additionalProperties": {"type": "integer"},
+            }
+        },
+    }
+    model, text = _constructed(doc, binds={"core/tag.json": ("Tag", Tag)})
+    assert "dict[Tag, int]" in text, text
+    mod, _ = emit.lower_document("constructed.json", doc, lambda *_: (".tag", "Tag"))
+    assert (".tag", "Tag") in mod.imports
+    model.model_validate({"m": {"abc": 1}})  # the key type admits it
+    with pytest.raises(ValidationError):
+        model.model_validate({"m": {"ABC": 1}})  # and refuses what it refuses
+
+    # A constrained key would need D5's alias module, which this row does not build.
+    for key_node, keyword in (
+        ({"type": "string", "pattern": "^a"}, "pattern"),
+        ({"type": "string", "minLength": 2}, "minLength"),
+        ({"anyOf": [{"pattern": "^a"}, {"$ref": "https://x/core/tag.json"}]}, "anyOf"),
+    ):
+        with pytest.raises(Refusal) as caught:
+            emit.lower_document(
+                "k.json",
+                {
+                    "title": "K",
+                    "type": "object",
+                    "properties": {"m": {"type": "object", "propertyNames": key_node}},
+                },
+            )
+        assert caught.value.keyword == keyword, (key_node, caught.value.keyword)
+
+    # A closed key set is a MODEL and not a mapping (D5), and its one type-position
+    # site in this bundle sits in a document that refuses on `enum` first.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "e.json",
+            {
+                "title": "E",
+                "type": "object",
+                "properties": {
+                    "m": {"type": "object", "propertyNames": {"enum": ["mon", "tue"]}}
+                },
+            },
+        )
+    assert caught.value.keyword == "enum"
+    assert "MODEL whose keys are its fields" in caught.value.detail
+    hours = bundle.read(BUNDLE, "core/store-item.json")
+    assert "enum" in hours["properties"]["hours"]["propertyNames"]
+    # The document is refused, and on an even earlier blocker than its key set -- a
+    # ``$ref`` whose target carries an ``enum``.  Which keyword fires first is not the
+    # claim; that no document reaches the closed-key-set row is.
+    assert "core/store-item.json" in emit.emit(BUNDLE, ["core/store-item.json"]).refusals
+
+
+def test_a_typed_additional_properties_is_a_typed_pydantic_extra() -> None:
+    """D8's typed row, graded on a constructed document because 0 reach it.
+
+    Measured: 727 documents mention ``additionalProperties`` and 51 carry a typed one,
+    and every one of the 51 also carries a keyword of step 3, 4, 5 or 7 -- so no
+    document this step can emit has one.  The mechanism is built anyway because it is
+    this row's named defect, and the zero is asserted so the row cannot be read as
+    covered by the bundle.
+    """
+    typed = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if any(
+            isinstance(n.get("additionalProperties"), dict) and n["additionalProperties"]
+            for _, n in bundle.nodes(bundle.read(BUNDLE, d))
+        )
+    ]
+    assert len(typed) == 51, len(typed)
+    mentions = [
+        d
+        for d in bundle.portable(BUNDLE)
+        if "additionalProperties" in bundle.schema_keywords(bundle.read(BUNDLE, d))
+    ]
+    assert len(mentions) == 727, len(mentions)
+    out = emit.emit(BUNDLE, population())
+    assert not set(typed) & set(out.emitted), sorted(set(typed) & set(out.emitted))
+
+    doc = {
+        "title": "Typed",
+        "type": "object",
+        "properties": {"a": {"type": "string"}},
+        "additionalProperties": {"type": "integer"},
+    }
+    model, text = _constructed(doc)
+    assert model.model_config["extra"] == "allow"
+    assert "__pydantic_extra__: dict[str, int]" in text, text
+    model.model_validate({"a": "x", "extra": 3})
+    with pytest.raises(ValidationError):
+        model.model_validate({"a": "x", "extra": "not an int"})
+
+
+def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
+    """Step 6's second defect: draft-07 applies a constraint to its own type only.
+
+    Two live sites, both ``["number", "string"]`` on ``error-details/conflict.json``
+    and both carrying no other keyword -- so the per-arm SPLIT has no live site and is
+    graded on a constructed document.  Both denominators stated.
+
+    Three cells, and the middle one is the defect:
+
+    * a keyword lands on the arm whose type defines it, and the arm beside it is
+      unconstrained -- the model admits a short string where the document does;
+    * the same keyword applied to every arm makes the model NARROWER, which the
+      accepts check sees;
+    * a keyword no arm can carry constrains nothing and refuses by name, rather than
+      being dropped into a model wider than its document.
+    """
+    live = [
+        (row.ref, key)
+        for row in graded()
+        if row.ref.pointer == "#" and isinstance(row.model, type)
+        for key, sub in (schema_at(row.ref).get("properties") or {}).items()
+        if isinstance(sub.get("type"), list)
+    ]
+    assert len(live) == 2, live
+    for ref, key in live:
+        doc = schema_at(ref)
+        model = next(r.model for r in graded() if r.ref == ref)
+        node = model.model_json_schema()["properties"][emit.field_name(key)]
+        # pydantic has no spelling for a type LIST but a union, so the document's
+        # ``["number", "string"]`` comes back as branches.  Compared on the branch
+        # types, with D4's null branch (presence, not a type claim) dropped.
+        branches = [b["type"] for b in node["anyOf"] if b.get("type") != "null"]
+        assert sorted(branches) == sorted(doc["properties"][key]["type"]), (ref, key, node)
+        # ... and the harness's own normalization folds it to the document's spelling,
+        # which is what makes the schema comparison pass on these two.
+        assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
+
+    # The bare case renders as a union of the document's own types, and nothing else.
+    doc = {
+        "title": "Multi",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["number", "string"]}},
+    }
+    model, text = _constructed(doc)
+    assert "v: float | str" in text, text
+    accept = _accept_of(doc, model)
+    assert check_accepts(doc, accept, examples=50).outcome == "pass"
+    assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
+
+    # **A CONSTRAINED arm refuses, and this is the rendering that forces it.**  The
+    # split needs the bound on the ARM, the compiler's ``DataType`` carries no
+    # constraint, so the keyword reaches the FIELD and bounds the whole union -- the
+    # string's ``minLength`` applied to the integer arm.  Measured here on the
+    # compiler directly, so the refusal has its reason beside it rather than a
+    # reference to one.
+    escaped = compiler.render_alias(
+        "Escaped",
+        compiler.Type(container="union", of=(compiler.Type("str"), compiler.Type("int"))),
+        {"minLength": 4},
+    )
+    assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "ms.json",
+            {
+                "title": "MS",
+                "type": "object",
+                "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
+            },
+        )
+    assert caught.value.keyword == "minLength", caught.value.keyword
+    assert "'string' arm" in caught.value.detail, caught.value.detail
+
+    # A null arm refuses too, and for the grader rather than the rendering.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "mn.json",
+            {
+                "title": "MN",
+                "type": "object",
+                "properties": {"v": {"type": ["string", "null"]}},
+            },
+        )
+    assert caught.value.keyword == "type"
+    assert "cannot tell a DECLARED null" in caught.value.detail
+
+    # A keyword no arm can carry constrains nothing, so it refuses by name.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "m.json",
+            {
+                "title": "M",
+                "type": "object",
+                "properties": {"v": {"type": ["boolean", "null"], "minLength": 1}},
+            },
+        )
+    assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
+
+
+def test_a_constraint_inside_a_container_refuses_rather_than_being_dropped() -> None:
+    """D5's shared alias module is not built here, and this is the population.
+
+    A constraint on what is INSIDE a container has no slot in the compiler's
+    ``DataType``, so putting the node in ``list[...]`` would drop the fact and widen
+    the model.  D5's answer is to resolve the inner type to a name; its first two
+    rungs miss here and the third is a module this row does not land.
+
+    So it refuses, and the refusal names the constraint.  Measured: 1 distinct
+    constraint at 3 sites in 3 documents, and the bundle names it at no titled scalar
+    root -- checked by content equality over all of them, which is D3's only
+    deduplication, so this is not a claim about spellings.
+    """
+    out = emit.emit(BUNDLE, population())
+    inner = {
+        d: r for d, r in out.refusals.items() if "D5" in r["detail"] and "alias module" in r["detail"]
+    }
+    # ONE of the three reports it, and that is the arithmetic rather than a shortfall:
+    # a document reports its FIRST blocker, and the other two refuse earlier on a
+    # ``$ref`` whose target carries an ``enum``.  Both are asserted, so this cannot
+    # pass by the inner-constraint refusal having stopped firing.
+    assert sorted(inner) == ["property/property-list-filters.json"], sorted(inner)
+    assert {r["keyword"] for r in inner.values()} == {"pattern"}
+    for masked in ("brand/rights-terms.json", "brand/search-brands-request.json"):
+        assert out.refusals[masked]["keyword"] == "$ref", out.refusals[masked]
+        assert "enum" in out.refusals[masked]["detail"], out.refusals[masked]
+
+    # One constraint over the three, and the bundle gives it no name.
+    facts = set()
+    for document in inner:
+        for _, node in bundle.nodes(bundle.read(BUNDLE, document)):
+            if node.get("type") != "array" or not isinstance(node.get("items"), dict):
+                continue
+            item = node["items"]
+            if set(emit.CONSTRAINTS) & set(item):
+                facts.add(json.dumps({k: v for k, v in item.items() if k in ("type", "pattern")}, sort_keys=True))
+    assert facts == {'{"pattern": "^[A-Z]{2}$", "type": "string"}'}, facts
+    named_by_the_bundle = {
+        json.dumps(
+            {k: v for k, v in bundle.read(BUNDLE, d).items() if k in ("type", "pattern")},
+            sort_keys=True,
+        )
+        for d in bundle.portable(BUNDLE)
+        if bundle.is_scalar_root(bundle.read(BUNDLE, d))
+        and isinstance(bundle.read(BUNDLE, d).get("title"), str)
+    }
+    assert not facts & named_by_the_bundle, facts & named_by_the_bundle
 
 
 # --------------------------------------------------------------------------- #

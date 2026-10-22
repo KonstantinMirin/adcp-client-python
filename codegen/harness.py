@@ -967,9 +967,24 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
       ``T | None``, because the attribute holds ``None`` for an omitted key.
       pydantic states that as a union; the document states the type and leaves
       presence to ``required``.  Unwrapping the null branch compares like with
-      like, and it is safe: a document that genuinely admits null says so with
-      ``"type": ["string", "null"]`` or a union, which is a later step's row and
-      arrives as a multi-member ``anyOf`` that is not unwrapped here.
+      like.
+    * **A union of BARE types is a ``type`` LIST.**  draft-07 lets a node name
+      several types at once and pydantic has no spelling for that but a union, so
+      ``{"type": ["number", "string"]}`` comes back
+      ``{"anyOf": [{"type": "number"}, {"type": "string"}]}`` -- one fact in two
+      spellings, and without this fold the model was reported as stating no
+      ``type`` at all.  Measured on ``error-details/conflict.json``, whose two
+      multi-type properties were the first in the emitted population: the
+      comparison said ``model_drops_a_fact`` twice for a model that states exactly
+      what its document states.
+
+      The fold applies only where EVERY branch is a bare ``{"type": X}``.  A
+      branch carrying anything else is a union of constrained types rather than a
+      type list, and folding it would throw that branch's constraint away -- so
+      such a union is left alone and compares as it is.  It also cannot excuse an
+      omission in either direction: a model listing more types than the document
+      still differs after the fold, and a model listing fewer never folds into a
+      match.
     * **The outer keys win.**  ``default`` and ``description`` sit outside the
       ``anyOf`` and the type facts inside the branch.
     """
@@ -981,12 +996,14 @@ def _normalize(node: Any, defs: Mapping[str, Any], depth: int = 0) -> dict:
         outer = {k: v for k, v in node.items() if k != "$ref"}
         return {**_normalize(target, defs, depth + 1), **outer} if target is not None else outer
     branches = node.get("anyOf")
-    if isinstance(branches, list) and len(branches) == 2:  # noqa: PLR2004 -- T | None only
-        live = [b for b in branches if isinstance(b, dict) and b.get("type") != "null"]
-        nulls = [b for b in branches if isinstance(b, dict) and b.get("type") == "null"]
-        if len(live) == 1 and len(nulls) == 1:
-            outer = {k: v for k, v in node.items() if k != "anyOf"}
+    if isinstance(branches, list) and branches and all(isinstance(b, dict) for b in branches):
+        live = [b for b in branches if b.get("type") != "null"]
+        nulls = [b for b in branches if b.get("type") == "null"]
+        outer = {k: v for k, v in node.items() if k != "anyOf"}
+        if len(nulls) == 1 and len(live) == 1:
             return {**_normalize(live[0], defs, depth + 1), **outer}
+        if len(nulls) <= 1 and len(live) > 1 and all(set(b) == {"type"} for b in live):
+            return {"type": [b["type"] for b in live], **outer}
     return node
 
 
