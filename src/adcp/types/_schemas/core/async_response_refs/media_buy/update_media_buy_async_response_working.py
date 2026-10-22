@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ...context import ContextObject
 from ...ext import ExtensionObject
@@ -19,10 +20,10 @@ class UpdateMediaBuyWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/async-response-refs/media-buy/update-media-buy-async-response-working.json', pointer='#')
-    percentage: Annotated[float | None, Field(description='Completion percentage (0-100)', ge=0.0, le=100.0)] = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
     current_step: Annotated[str | None, Field(description='Current step or phase of the operation')] = None
-    total_steps: Annotated[int | None, Field(description='Total number of steps in the operation', ge=1)] = None
-    step_number: Annotated[int | None, Field(description='Current step number', ge=1)] = None
+    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
+    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

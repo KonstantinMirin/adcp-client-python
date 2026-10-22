@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 
@@ -16,10 +16,10 @@ class PriceGuidance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/price-guidance.json', pointer='#')
-    p25: Annotated[float | None, Field(description='25th percentile of recent winning bids', ge=0.0)] = None
-    p50: Annotated[float | None, Field(description='Median of recent winning bids', ge=0.0)] = None
-    p75: Annotated[float | None, Field(description='75th percentile of recent winning bids', ge=0.0)] = None
-    p90: Annotated[float | None, Field(description='90th percentile of recent winning bids', ge=0.0)] = None
+    p25: Annotated[NonNegativeFloat | None, Field(description='25th percentile of recent winning bids')] = None
+    p50: Annotated[NonNegativeFloat | None, Field(description='Median of recent winning bids')] = None
+    p75: Annotated[NonNegativeFloat | None, Field(description='75th percentile of recent winning bids')] = None
+    p90: Annotated[NonNegativeFloat | None, Field(description='90th percentile of recent winning bids')] = None
 
 
 __all__ = ["PriceGuidance"]

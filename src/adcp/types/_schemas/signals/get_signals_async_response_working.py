@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max100
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -19,7 +20,7 @@ class GetSignalsWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-async-response-working.json', pointer='#')
-    percentage: Annotated[float | None, Field(description='Progress percentage of the signal discovery operation.', ge=0.0, le=100.0)] = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Progress percentage of the signal discovery operation.')] = None
     current_step: Annotated[str | None, Field(description='Current step in the signal discovery process, such as `querying_providers`, `ranking_signals`, or `checking_deployments`.')] = None
     total_steps: Annotated[int | None, Field(description='Total number of steps in the signal discovery process.')] = None
     step_number: Annotated[int | None, Field(description='Current step number (1-indexed).')] = None

@@ -1518,6 +1518,11 @@ class ComparisonResult:
     missing: list[str] = field(default_factory=list)  # the model states nothing
     differs: list[str] = field(default_factory=list)  # the model states something else
     added: list[str] = field(default_factory=list)  # the document states nothing
+    #: D5's URL-type row, which is a CATEGORY OF ITS OWN and weaker than every
+    #: other admission here -- see :func:`_url_typed`.  Counted separately and
+    #: never folded into ``missing`` or into the implied-fact rows, so a reader can
+    #: see how many facts this row excuses and at which positions.
+    url_typed: list[str] = field(default_factory=list)
     detail: str = ""
 
     @property
@@ -1582,6 +1587,96 @@ def _entails_type(doc: dict, value: Any) -> bool:
         if isinstance(branches, list) and branches:
             return all(isinstance(b, dict) and b.get("type") == value for b in branches)
     return False
+
+
+#: The two facts a pydantic URL type renders OF ITS OWN, each with the exact value
+#: it renders, and each admitted by its own hand-written row below.  Written as
+#: ``keyword -> value`` and compared for equality, so the rows admit THESE TWO
+#: FACTS and not "a bound on a URL type": a rule that admitted any added bound
+#: would be invisible and permanent, which is what D5 forbids of a hand-written
+#: row.  Measured on pydantic 2.13.5 -- ``AnyUrl`` renders the first, ``HttpUrl``
+#: renders both, and no document in the bundle states either at a ``uri`` node.
+URL_IMPLIED = {"minLength": 1, "maxLength": 2083}
+
+
+def _url_typed(got: Mapping[str, Any]) -> bool:
+    """Is the MODEL's node at this position a pydantic URL type?
+
+    Read off the model's own rendered schema and not off what the emitter
+    intended, because the comparison grades the model.  Every one of pydantic's
+    22 URL types renders ``{"type": "string", "format": "uri", "minLength": 1}``
+    -- ``HttpUrl`` adds ``maxLength: 2083`` and the rest add nothing -- and an
+    ``Annotated[str, ...]`` carrying a ``format`` annotation renders the first two
+    and never the ``minLength``, so those three keys are the signature and a plain
+    ``str`` cannot wear it by accident.  Measured on pydantic 2.13.5.
+
+    ``minLength`` and not ``maxLength`` is what the signature turns on, because
+    D5 selects BOTH arms: ``AdCPUrl`` at the 47 positions whose document restricts
+    the scheme to https, ``HttpUrl`` everywhere else, and only one of the two
+    renders the ``maxLength``.
+    """
+    return (
+        got.get("type") == "string" and got.get("format") == "uri" and got.get("minLength") == 1
+    )
+
+
+def _schema_half_enforces(keyword: str, doc: Mapping[str, Any], got: Mapping[str, Any]) -> bool:
+    """D5's URL-type row: the schema half enforces this keyword and the annotation
+    does not restate it.
+
+    **This is a category of its own and it is WEAKER than every other admission in
+    this module, which is why it is not one of them.**  The enum rows admit a fact
+    the document's own members IMPLY -- the fact is still true of the model. This
+    row admits a fact the model does not state AT ALL, on the ground that
+    ``strict_validate`` validates the document before the constructor ever runs,
+    so the accepted set of the ENTRY POINT still carries it.  Folding it into
+    :func:`_narrows_nothing` would make a genuine omission look like a derivation,
+    so it has its own counter (``ComparisonResult.url_typed``) and its own gate.
+
+    D5 makes a ``format: uri`` field's type FOLLOW THE DOCUMENT'S OWN PATTERN --
+    ``AdCPUrl`` (``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``)
+    at the 47 positions whose pattern is ``^https://``, and ``HttpUrl`` everywhere
+    else, because ``AdCPUrl`` everywhere refused ``http://``, ``urn:`` and ``file:``
+    values the document ADMITS at 228 of the bundle's 300 ``uri`` positions. Either
+    way no URL type can carry a ``pattern`` at all, so the document's own pattern
+    stays with the schema half. Three facts follow, and this category admits exactly
+    those three, each gated and each in its own row:
+
+    * the document's ``pattern`` is not on the annotation. Gated on the keyword
+      being ``pattern``, the document stating ``format: uri``, and the model's node
+      being a URL type (:func:`_url_typed`). Any other dropped keyword -- a
+      ``maxLength``, a ``minLength`` the document states, an ``enum`` -- still lands
+      in ``missing``. Measured over the emitted population: 1 of 30 ``format: uri``
+      positions states a ``pattern`` (``core/platform-extension-ref.json``'s
+      ``/properties/uri``, ``^https://``) and 0 state any other string constraint,
+      so a ``maxLength`` falling through this gate costs no document today and
+      would redden rather than pass if one appeared.
+    * the ``minLength: 1`` every pydantic URL type renders, which no document
+      states. Gated on the value being exactly ``1`` at such a node.
+    * the ``maxLength: 2083`` ``HttpUrl`` renders, which no document states either.
+      Gated on the value being exactly ``2083``.
+
+    **The last two are TWO rows and not one widened one.** :data:`URL_IMPLIED` holds
+    the two keyword/value pairs and they are compared for equality, so a model
+    stating any OTHER bound on a URL type is still reported. A rule reading "a bound
+    on a URL type is admitted" would be shorter and would admit a third bound nobody
+    decided, invisibly and for good -- which is the thing D5 says a hand-written row
+    must never do. Each of these names itself and can be audited.
+
+    **A note on what these rows do NOT excuse.** ``format: uri`` is RFC 3986, which
+    admits every scheme, so ``HttpUrl`` still refuses ``urn:`` and ``file:`` values
+    the document admits -- 227 of the bundle's 300 ``uri`` positions stay narrower
+    than their document, which is the ceiling D5 accepts after ``AdCPUrl``
+    everywhere was measured at 228 and withdrawn. Nothing in this harness grades
+    it: ``allowed_schemes`` has no rendering in pydantic's schema output, so there
+    is no keyword on either side; ``format`` is not a step keyword, so ``steps()``
+    returns ``[]``; and ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https``
+    in 200 of 200 derandomized examples. That instrument gap is
+    ``salesagent-j3k2l.10``'s. These rows are about the keywords, not about that.
+    """
+    if not _url_typed(got) or doc.get("format") != "uri":
+        return False
+    return keyword == "pattern"
 
 
 def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
@@ -1955,6 +2050,15 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
             res.compared += 1
             where = f"{pointer}/{kw}"
             if kw not in got:
+                # D5's URL-type row, and its own counter: the schema half enforces
+                # this keyword and the annotation does not restate it.  Counted as
+                # ``compared`` above, because the fact WAS looked for.
+                if _schema_half_enforces(kw, doc, got):
+                    res.url_typed.append(
+                        f"{where}: the document says {doc[kw]!r}; the model is a URL type "
+                        "and the schema half enforces it"
+                    )
+                    continue
                 res.missing.append(f"{where}: the document says {doc[kw]!r}")
                 continue
             a, b = doc[kw], got[kw]
@@ -1997,6 +2101,28 @@ def compare_schema(schema: dict, model: Any) -> ComparisonResult:
             # documents state ``default: true`` and ``default: false`` and whose
             # resolved nodes state neither.  ``description`` needs no gate: it
             # changes no accepted set in any direction.
+            # D5's URL-type rows for the facts a URL type ADDS, one row per fact,
+            # each naming itself and each gated on its own exact value
+            # (:data:`URL_IMPLIED`).  ``minLength: 1`` is rendered by every pydantic
+            # URL type and ``maxLength: 2083`` by ``HttpUrl``, which D5 selects at
+            # every ``uri`` position whose document does not restrict the scheme to
+            # https; no document in the bundle states either at such a node.
+            #
+            # TWO ROWS AND NOT ONE WIDENED ROW, deliberately: a rule reading "a bound
+            # on a URL type is admitted" would admit a third bound nobody decided,
+            # invisibly and for good. These admit these two values and nothing else,
+            # so a model stating any other bound is still reported.
+            if (
+                kw in URL_IMPLIED
+                and got[kw] == URL_IMPLIED[kw]
+                and _url_typed(got)
+                and doc.get("format") == "uri"
+            ):
+                res.url_typed.append(
+                    f"{pointer}/{kw}: the model says {URL_IMPLIED[kw]}, which "
+                    + ("any URL type renders" if kw == "minLength" else "HttpUrl renders")
+                )
+                continue
             if (
                 _narrows_nothing(kw, got[kw], doc)
                 or (rewritten and kw == "description")

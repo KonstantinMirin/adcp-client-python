@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
 from ..core.identifier import Identifier
@@ -47,7 +48,7 @@ class ValidationResultFeaturesItem(AdCPBaseModel):
     policy_id: Annotated[str | None, Field(description='Optional attribution — when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Property-list agents populate when the validation was motivated by a specific policy. See /docs/governance/policy-attribution.')] = None
     explanation: Annotated[str | None, Field(description='Directional human-readable explanation of the result.')] = None
     requirement: Annotated[ValidationResultFeaturesItemRequirement | None, Field(description='The feature requirement that was not met. MAY be present on failed features when the caller authored the requirement (e.g., feature_requirements on a property list). The buyer set these thresholds — echoing them back enables fix-and-retry loops without looking up the list definition.')] = None
-    confidence: Annotated[float | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.', ge=0.0, le=1.0)] = None
+    confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator confidence in this result (0-1). Distinguishes certain verdicts from ambiguous ones.')] = None
 
 
 class ValidationResult(AdCPBaseModel):
@@ -61,7 +62,7 @@ class ValidationResult(AdCPBaseModel):
     identifier: Annotated[Identifier, Field(description='The identifier that was validated')]
     record_id: Annotated[str | None, Field(description='Client-provided ID from the delivery record (if provided)')] = None
     status: Annotated[ValidationResultStatus, Field(description='Validation status: compliant (in list), non_compliant (not in list), not_covered (identifier recognized but no data available), unidentified (identifier type not resolvable by this governance agent)')]
-    impressions: Annotated[int, Field(description='Number of impressions from this record', ge=0)]
+    impressions: Annotated[NonNegativeInt, Field(description='Number of impressions from this record')]
     features: Annotated[list[ValidationResultFeaturesItem] | None, Field(description='Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures — this is contract data, not evaluator IP.')] = None
     authorization: Annotated[AuthorizationResult | None, Field(description='Authorization validation result (only present if sales_agent_url was provided in the delivery record)')] = None
     ext: ExtensionObject | None = None

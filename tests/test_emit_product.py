@@ -39,8 +39,9 @@ from typing import Any
 import pydantic
 import pytest
 
-from adcp.types import _base
+from adcp.types import _base, constraints
 from codegen import bundle, compiler, emit
+from codegen import constraints as constraints_module
 from codegen.harness import Pair, check_pair, steps
 from codegen.lower import product
 from codegen.refusal import Refusal
@@ -169,17 +170,17 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # N over this population is 188 on the merged table (43 when this lane measured
     # it alone, before the other four steps' rows were beside it), and the row moves
     # it by 0.
-    assert len(with_row.emitted) == 202, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 214, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On
     # the merged table steps 3, 5 and 6's rows emit those targets, so the composing
-    # documents follow: 21 of the 287 are emitted BY this row, and removing it loses
-    # 29 modules -- the emitted documents plus those reached only through a reference.
+    # documents follow: 22 of the 287 are emitted BY this row, and removing it loses
+    # 31 modules -- the emitted documents plus those reached only through a reference.
     # That is joint unblocking measured from this side -- the row's own 0 was a fact
     # about which other rows existed, not about the row.
-    assert len(with_row.emitted) - len(without.emitted) == 29
-    assert len(set(composing()) & set(with_row.emitted)) == 21
+    assert len(with_row.emitted) - len(without.emitted) == 31
+    assert len(set(composing()) & set(with_row.emitted)) == 22
     assert set(without.refusals) - set(with_row.refusals) == set(composing()) & set(
         with_row.emitted
     )
@@ -275,6 +276,30 @@ def _probe(tmp_path: Path, *, own: dict[str, Any], name: str) -> Path:
     return at
 
 
+def install_run_aliases(out: emit.Emitted, monkeypatch) -> list[str]:
+    """Install a RUN's own D5 aliases onto ``adcp.types.constraints``, reversibly.
+
+    Returns the symbols it added, so a caller can assert the probe reached the row
+    at all rather than trusting that it did.
+
+    Nothing is overwritten and nothing can be: an alias's NAME is a function of its
+    constraint (``codegen.constraints.symbol``, with ``check_injective`` failing the
+    build if two shapes ever derive one name), so a symbol present in both the
+    bundle's module and a probe run's module is the same annotated type in both.
+    Only the names the installed module lacks are added, and ``monkeypatch``
+    removes them when the test ends.
+    """
+    namespace: dict[str, Any] = {}
+    exec(out.beside["constraints.py"], namespace)  # noqa: S102 -- the emitter's own output
+    added = []
+    for symbol, value in namespace.items():
+        if symbol.startswith("_") or not symbol[:1].isupper() or hasattr(constraints, symbol):
+            continue
+        monkeypatch.setattr(constraints, symbol, value, raising=False)
+        added.append(symbol)
+    return sorted(added)
+
+
 def _emit_probe(tmp_path: Path, monkeypatch, *, own: dict[str, Any], name: str):
     """Emit the probe bundle, import its tree, and return (class, module text, schema).
 
@@ -284,6 +309,14 @@ def _emit_probe(tmp_path: Path, monkeypatch, *, own: dict[str, Any], name: str):
     replaces the whole cached function rather than seeding it, so the real cache
     is untouched and nothing of the probe outlives the test -- a probe binding
     that outlived its test is a measured failure of this project's.
+
+    **D5's alias module is reached the same way and takes the same kind of
+    patch.**  An emitted module names ``adcp.types.constraints`` ABSOLUTELY, just
+    as it names ``adcp.types._base``, so the probe's tree imports the INSTALLED
+    module -- which declares the aliases the BUNDLE's shapes derive and not the
+    probe's, and the probe marker's ``minLength: 2`` derives one the bundle has no
+    site for.  The probe RUN emitted its own alias module
+    (``Emitted.beside``), so that is what is installed, for this test only.
     """
     at = _probe(tmp_path, own=own, name=name)
     documents = sorted(str(p.relative_to(at)) for p in at.rglob("*.json"))
@@ -291,6 +324,7 @@ def _emit_probe(tmp_path: Path, monkeypatch, *, own: dict[str, Any], name: str):
     assert out.refusals == {}, out.refusals
     tree = tmp_path / "pkg" / name
     emit.write(out, tree)
+    install_run_aliases(out, monkeypatch)
     monkeypatch.setattr(
         _base, "_document", lambda document: json.loads((tree / document).read_text())
     )
@@ -344,8 +378,20 @@ def test_a_subclass_never_restates_an_inherited_field(tmp_path, monkeypatch) -> 
         name="s4shadow",
         own={"adcp_major_version": SHADOW, "label": {"type": "string", "minLength": 2}},
     )
+    # A DECLARED field is a name in the class body, read without reference to how
+    # its annotation is spelled: D5 puts a constraint on the TYPE, so a declared
+    # field is now ``label: StrMinLen2`` and the previous instrument -- which
+    # looked for ``": Annotated"`` -- found none and passed an EMPTY list against
+    # ``["label"]``.  An instrument keyed on the rendering reports a restatement
+    # that is there as absent the moment the rendering moves, which is the
+    # direction that matters: it would have said this rule holds while a subclass
+    # shadowed every inherited field.
     body = [line for line in text.splitlines() if line.startswith("    ") and ":" in line]
-    declared = [line.strip().split(":")[0] for line in body if ": Annotated" in line]
+    declared = [
+        name
+        for name in (line.strip().split(":")[0] for line in body)
+        if name.isidentifier() and not name.startswith("__")
+    ]
     assert declared == ["label"], text
     assert "adcp_major_version" not in text, "the inherited field is restated"
     # P2: no second spelling of anything the base states.
@@ -415,6 +461,15 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
     and adds at least one -- so the subclass's declaration is the intersection and
     nothing of the base's is dropped.  2 of the population's 100 restatement
     sites are this.
+
+    **Asserted on the live metadata, and on the symbol the constraint DERIVES.**
+    D5 puts a constraint on the type, so the module no longer spells
+    ``min_length=2, max_length=8`` in this class at all -- it names a type that
+    carries both. Asserting the old text would pass only while the rendering
+    stood still, and asserting the alias's name alone would grade a string; so
+    the name is asked of ``codegen.constraints`` rather than written here (a
+    literal would pin whatever the namer currently does), and the bounds
+    themselves are read off the field, which is what the widening would move.
     """
     cls, text, _ = _emit_probe(
         tmp_path,
@@ -425,7 +480,14 @@ def test_a_narrowing_restatement_is_declared_by_the_subclass(tmp_path, monkeypat
             "label": {"type": "string", "minLength": 2},
         },
     )
-    assert "max_length=8" in text and "min_length=2" in text
+    named = constraints_module.symbol("string", {"minLength": 2, "maxLength": 8})
+    assert f"kind: Annotated[{named}" in text, text
+    live = cls.model_fields["kind"].metadata
+    bounds = {
+        attr: getattr(m, attr) for m in live for attr in ("min_length", "max_length") if hasattr(m, attr)
+    }
+    assert bounds == {"min_length": 2, "max_length": 8}, live
+    assert len(live) == 2, live  # and nothing else was invented alongside them
     assert cls.model_validate({"kind": "ab", "label": "xy"}).kind == "ab"
     for bad in ("a", "abcdefghi"):  # the base's floor, then the subclass's ceiling
         with pytest.raises(pydantic.ValidationError):

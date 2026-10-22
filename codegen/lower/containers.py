@@ -21,20 +21,19 @@ name instead, and the refusal carries what the document said:
   its ``items``.  So a ``RootModel`` base would be a class no document reaches and no
   pair grades.  :func:`root` lowers the element FIRST, so the refusal names the
   element type the row would have wrapped rather than just the shape.
-* **D5's shared alias module for a constraint the bundle does not name.**  A
-  constraint on what is INSIDE a container has no slot in the compiler's
-  ``DataType``, and D5's answer is to resolve the inner type to a name: one the
-  bundle itself gives a titled root, then one pydantic gives, then an alias we emit
-  in one module.  Measured over the reachable population: **1 distinct constraint at
-  3 sites in 3 documents**, ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` under
-  ``brand/rights-terms.json``, ``brand/search-brands-request.json`` and
-  ``property/property-list-filters.json``.  The bundle names it at no titled scalar
-  root (checked by content equality over all 229 of them, which is D3's only
-  deduplication) and pydantic names no type for it, so only the third rung covers it
-  -- a new emitted module, a new import path, and a name D5 requires to be derived
-  from the constraint and never from a concept.  Landing that for one constraint is
-  the wrong size for this row, so an inner constraint refuses by name with the
-  constraint in the detail and D5's alias module is its own step.
+* **An inner constraint this module cannot name.**  A constraint on what is INSIDE
+  a container has no slot in the compiler's ``DataType``, and D5's answer is to
+  resolve the inner type to a NAME -- one the bundle itself gives a titled root,
+  then one pydantic gives, then an alias emitted in ``adcp.types.constraints``.
+  **That module now exists** (``codegen/constraints.py``), so ``decide_type``
+  hands this module an inner type whose constraints are already on the type and
+  :func:`_inner` sees none: ``dict[str, StrMinLen1]`` and
+  ``list[StrMatchingEFC12812]`` are plain references and need nothing from the
+  compiler, which is what D5 says naming the type buys.  :func:`_inner` still
+  refuses what is still unnameable -- a constraint keyword
+  ``codegen.constraints.SPELLING`` has no word for, and a ``format`` no type is
+  selected for -- because those would be DROPPED rather than carried, and the
+  detail names the constraint so the refusal says what would have to be named.
 * **A closed key set as a model.**  ``propertyNames`` with an ``enum`` closes the
   keys, and D5 reads a closed key set as a model whose keys are its fields.  Its one
   type-position site is ``core/store-item.json#/properties/hours``, and that document
@@ -94,9 +93,12 @@ def _inner(decided: Decided, pointer: str, what: str) -> compiler.Type:
     A constraint or a format on an inner node has nowhere to go: the compiler's
     ``DataType`` carries neither, so putting the node inside ``list[...]`` or
     ``dict[str, ...]`` would drop the fact and widen the model.  D5's answer is to
-    name the inner type; this module's docstring says why that module is not built
-    here and what its population is.  Refusing names the constraint, so the detail
-    says what would have to be named.
+    name the inner type, and ``codegen.constraints`` now does -- so what reaches
+    here with constraints still on it is a shape that module has no spelling for,
+    and what reaches here with a ``format`` still on it is a format no type is
+    selected for.  Both would be dropped, so both refuse, and the detail names the
+    constraint that would have to be named.  This module's docstring carries the
+    population.
     """
     if decided.constraints or decided.format is not None:
         stated = {**decided.constraints, **({"format": decided.format} if decided.format else {})}
@@ -251,17 +253,14 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     silently makes the model wider than its document, and applying it to every arm
     makes it narrower.  Both halves of that are this row's named defect.
 
-    **And an arm that DOES carry a constraint refuses too, which is the same compiler
-    gap D5 names and not a third rule.**  The split only exists if the constraint can
-    sit on the arm -- ``Annotated[str, Field(min_length=4)] | int`` -- and the
-    compiler's ``DataType`` carries no constraints, so the keyword would reach the
-    FIELD instead and bound the whole union: ``Annotated[str | int,
-    Field(min_length=4)]``, which applies the string's bound to the integer arm.
-    Measured on a constructed ``["string", "integer"]`` with ``minLength: 4``, which
-    is exactly the narrowing this row exists to remove, so it refuses until D5's
-    alias module can name the arm.  It costs nothing today: both multi-type sites in
-    the emitted population are bare ``["number", "string"]`` with no other keyword,
-    and the 31 others sit in documents refused for another reason.
+    **And an arm that DOES carry a constraint refuses, but no longer for the
+    rendering's sake.**  The split only exists if the constraint can sit on the arm,
+    and the compiler's ``DataType`` carries none -- so before D5's alias module the
+    keyword reached the FIELD and bounded the whole union, ``Annotated[str | int,
+    Field(min_length=4)]``, applying the string's bound to the integer arm. The alias
+    module removed that: ``StrMinLen4 | int`` is what it lowers to, and that model's
+    accepted set IS the document's. The refusal stands on the GRADER instead, and the
+    body below carries the measurement.
 
     **A ``null`` arm REFUSES, and the reason is the grader rather than the
     rendering.**  ``None`` is a perfectly good arm and the compiler folds it with
@@ -301,6 +300,38 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
         {"type", *carried},
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
     )
+    stated = sorted(set(node) & carried)
+    if stated:
+        # **A CONSTRAINED arm refuses, and the reason is now the GRADER rather than
+        # the rendering.**  D5's alias module removed the rendering obstacle -- the
+        # arm's own type carries its own bound, so ``StrMinLen4 | int`` is what this
+        # lowers to and the string's keyword no longer reaches the field and bounds
+        # the integer arm.  Measured: that model's accepted set IS the document's.
+        #
+        # What has no answer is grading it.  ``harness._normalize`` folds a model's
+        # ``anyOf`` back into the document's ``type`` LIST only where EVERY branch is
+        # a bare ``{"type": X}`` -- a constrained branch is not one, and folding it
+        # would throw that branch's constraint away -- so the comparison reads such a
+        # model as stating neither the ``type`` list nor the constraint, and reports a
+        # faithful node as dropping two facts.  Measured on exactly the document this
+        # paragraph describes.
+        #
+        # Emitting a node no check can grade is the widening this pipeline exists to
+        # remove, which is the same reasoning the ``null`` arm below refuses on. It
+        # costs no document: of the 56 multi-type nodes in the named population's
+        # documents, **0 in an EMITTED document state anything beyond ``type``**, and
+        # the 36 that do sit in documents refused for another reason. It is lifted by
+        # teaching the comparison to compare a constrained union branch-wise, which
+        # is the harness's row and not this one's.
+        raise Refusal(
+            stated[0],
+            pointer,
+            f"{sorted(kinds)} states {stated}, which D5's alias module can now put on "
+            "the arm's own type -- but the schema comparison folds a model's anyOf "
+            "back into a type LIST only where every branch is a bare type, so a "
+            "constrained branch reads as dropping both the type list and the "
+            "constraint and the node would be emitted ungraded",
+        )
     arms: list[compiler.Type] = []
     for kind in kinds:
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}

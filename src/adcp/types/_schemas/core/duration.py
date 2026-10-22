@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import IntMin1
 
 
 class DurationUnit(StrEnum):
@@ -28,7 +29,7 @@ class Duration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/duration.json', pointer='#')
-    interval: Annotated[int, Field(description="Number of time units. Must be 1 when unit is 'campaign'.", ge=1)]
+    interval: Annotated[IntMin1, Field(description="Number of time units. Must be 1 when unit is 'campaign'.")]
     unit: Annotated[DurationUnit, Field(description="Time unit. 'seconds' for sub-minute precision. 'campaign' spans the full campaign flight.")]
 
 

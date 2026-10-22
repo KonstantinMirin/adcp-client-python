@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import IntMin1
 
 
 class CanonicalProjectionSlotOverride(AdCPBaseModel):
@@ -19,7 +20,7 @@ class CanonicalProjectionSlotOverride(AdCPBaseModel):
     asset_group_id: Annotated[str, Field(description='Asset group identifier from `asset-group-vocabulary.json` (e.g., `generation_prompt`, `creative_brief`, `image_main`, `video_main`).')]
     asset_type: Annotated[str, Field(description='Asset type — `image`, `video`, `audio`, `text`, `html`, `javascript`, `url`, `zip`, `brief`, `catalog`, `published_post`, or another canonical slot asset type.')]
     required: Annotated[bool | None, Field(description='Whether the slot is required in the projected declaration.')] = False
-    max_chars: Annotated[int | None, Field(description='Max character count for text slots.', ge=1)] = None
+    max_chars: Annotated[IntMin1 | None, Field(description='Max character count for text slots.')] = None
     consumed_for_production: Annotated[bool | None, Field(description="When false, slot is for moderation/review only and is NOT consumed by the seller's renderer (e.g., a brand-safety brief that informs review but doesn't appear in the rendered ad).")] = True
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
@@ -15,7 +15,7 @@ class DeadlinePolicyMaterialStagesItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/deadline-policy.json', pointer='#/properties/material_stages/items')
     stage: Annotated[str, Field(description="Stage identifier. Standard values: 'draft' (needs seller processing), 'final' (production-ready).")]
-    lead_days: Annotated[int, Field(description='Days before scheduled_at this stage is due', ge=0)]
+    lead_days: Annotated[NonNegativeInt, Field(description='Days before scheduled_at this stage is due')]
     label: Annotated[str | None, Field(description='What the seller needs at this stage')] = None
 
 
@@ -30,8 +30,8 @@ class DeadlinePolicy(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    booking_lead_days: Annotated[int | None, Field(description='Days before scheduled_at by which the placement must be booked', ge=0)] = None
-    cancellation_lead_days: Annotated[int | None, Field(description='Days before scheduled_at by which cancellation is penalty-free', ge=0)] = None
+    booking_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which the placement must be booked')] = None
+    cancellation_lead_days: Annotated[NonNegativeInt | None, Field(description='Days before scheduled_at by which cancellation is penalty-free')] = None
     material_stages: Annotated[list[DeadlinePolicyMaterialStagesItem] | None, Field(description='Default material submission stages. Items MUST be in chronological order (earliest due first). Agents compute due_at as: installment.scheduled_at minus lead_days.', min_length=1)] = None
     business_days_only: Annotated[bool | None, Field(description='When true, lead_days counts business days (Mon-Fri) rather than calendar days. Defaults to false.')] = False
 

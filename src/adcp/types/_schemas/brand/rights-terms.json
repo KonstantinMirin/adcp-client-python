@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Contractual terms for a rights grant. Shared between acquire_rights and update_rights responses.",
+  "properties": {
+    "amount": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "end_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "exclusivity": {
+      "additionalProperties": true,
+      "description": "Exclusivity terms if applicable",
+      "properties": {
+        "countries": {
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "impression_cap": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "overage_cpm": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "period": {
+      "enum": [
+        "daily",
+        "annual",
+        "weekly",
+        "monthly",
+        "one_time",
+        "quarterly"
+      ]
+    },
+    "pricing_option_id": {
+      "type": "string"
+    },
+    "start_date": {
+      "format": "date",
+      "type": "string"
+    },
+    "uses": {
+      "items": {
+        "enum": [
+          "name",
+          "sync",
+          "voice",
+          "likeness",
+          "editorial",
+          "signature",
+          "commercial",
+          "catchphrase",
+          "endorsement",
+          "motion_capture",
+          "background_music",
+          "ai_generated_image"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "amount",
+    "currency",
+    "uses"
+  ],
+  "title": "Rights Terms",
+  "type": "object",
+  "x-status": "experimental"
+}

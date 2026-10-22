@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching4D6E1599, StrMinLen1
 
 from ..enums.restricted_attribute import RestrictedAttribute
 
@@ -15,9 +16,9 @@ class PolicyCategoryDefinitionFacetsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-category-definition.json', pointer='#/properties/facets/items')
-    facet_id: Annotated[str, Field(pattern='^[a-z][a-z0-9_]*$')]
-    name: Annotated[str, Field(min_length=1)]
-    description: Annotated[str, Field(min_length=1)]
+    facet_id: StrMatching4D6E1599
+    name: StrMinLen1
+    description: StrMinLen1
 
 
 class PolicyCategoryDefinitionRegulatoryFrameworksItem(AdCPBaseModel):
@@ -39,7 +40,7 @@ class PolicyCategoryDefinition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/policy-category-definition.json', pointer='#')
-    category_id: Annotated[str, Field(description='Unique identifier for this category. Used in plan.policy_categories, signal-definition.policy_categories, and policy-entry.policy_categories.', pattern='^[a-z][a-z0-9_]*$')]
+    category_id: Annotated[StrMatching4D6E1599, Field(description='Unique identifier for this category. Used in plan.policy_categories, signal-definition.policy_categories, and policy-entry.policy_categories.')]
     name: Annotated[str, Field(description="Human-readable name (e.g., 'Children-Directed Content').")]
     description: Annotated[str, Field(description='What this category covers. Defines the boundary — what campaigns or data fall under this category.')]
     facets: Annotated[list[PolicyCategoryDefinitionFacetsItem] | None, Field(description='Registry-defined distinctions within the category that materially affect policy applicability or seller acceptance. Facets refine a category without creating a new top-level policy category.', min_length=1)] = None

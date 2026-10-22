@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching43E30B32
 
 
 class OfferPriceModel(StrEnum):
@@ -28,8 +29,8 @@ class OfferPrice(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/offer-price.json', pointer='#')
-    amount: Annotated[float, Field(description='Price amount in the specified currency', ge=0.0)]
-    currency: Annotated[str | None, Field(description='ISO 4217 currency code', pattern='^[A-Z]{3}$')] = 'USD'
+    amount: Annotated[NonNegativeFloat, Field(description='Price amount in the specified currency')]
+    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code')] = 'USD'
     model: Annotated[OfferPriceModel, Field(description='Pricing model for this offer')]
 
 

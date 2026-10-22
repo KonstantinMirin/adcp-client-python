@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMinLen1
 
 from .collection_ref import CollectionReference
 
@@ -19,7 +20,7 @@ class InstallmentReference(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment-ref.json', pointer='#')
     collection_ref: CollectionReference
-    installment_id: Annotated[str, Field(description='Installment ID within the referenced collection.', min_length=1)]
+    installment_id: Annotated[StrMinLen1, Field(description='Installment ID within the referenced collection.')]
 
 
 __all__ = ["InstallmentReference"]

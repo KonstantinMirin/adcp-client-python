@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
@@ -20,9 +20,9 @@ class ForecastRange(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('mid',), ('low', 'high')), 'anyOf'),
     )
-    low: Annotated[float | None, Field(description='Conservative (low-end) forecast value', ge=0.0)] = None
-    mid: Annotated[float | None, Field(description='Expected (most likely) forecast value', ge=0.0)] = None
-    high: Annotated[float | None, Field(description='Optimistic (high-end) forecast value', ge=0.0)] = None
+    low: Annotated[NonNegativeFloat | None, Field(description='Conservative (low-end) forecast value')] = None
+    mid: Annotated[NonNegativeFloat | None, Field(description='Expected (most likely) forecast value')] = None
+    high: Annotated[NonNegativeFloat | None, Field(description='Optimistic (high-end) forecast value')] = None
 
 
 __all__ = ["ForecastRange"]

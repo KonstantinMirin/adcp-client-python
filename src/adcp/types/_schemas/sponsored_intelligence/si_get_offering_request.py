@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.constraints import IntMin1Max50
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -24,7 +25,7 @@ class SIGetOfferingRequest(AdCPVersionEnvelope):
     intent: Annotated[str | None, Field(description="Optional natural language description of user intent for personalized results (e.g., 'mens size 14 near Cincinnati'). Must be anonymous - no PII.")] = None
     context: ContextObject | None = None
     include_products: Annotated[bool | None, Field(description='Whether to include matching products in the response')] = False
-    product_limit: Annotated[int | None, Field(description='Maximum number of matching products to return', ge=1, le=50)] = 5
+    product_limit: Annotated[IntMin1Max50 | None, Field(description='Maximum number of matching products to return')] = 5
     ext: ExtensionObject | None = None
 
 

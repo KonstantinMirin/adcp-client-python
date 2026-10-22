@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching97BF2BBF
 
 
 class DeliveryProvider(AdCPBaseModel):
@@ -16,7 +17,7 @@ class DeliveryProvider(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-provider.json', pointer='#')
-    domain: Annotated[str, Field(description="Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.", pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$')]
+    domain: Annotated[StrMatching97BF2BBF, Field(description="Lowercase dotted provider domain, such as a provider's operating domain. Single-label and localhost-style names are invalid.")]
 
 
 __all__ = ["DeliveryProvider"]

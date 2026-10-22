@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import HttpUrl, StrMinLen1
 
 
 class InventoryListApplication(BranchDispatchMixin, AdCPBaseModel):
@@ -37,8 +38,8 @@ class PropertyListApplicationSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/0/properties/summary')
-    matched: Annotated[int, Field(description='Resolved entries that matched at least one property in this product.', ge=0)]
-    unmatched: Annotated[int, Field(description='Resolved entries that did not match a property in this product.', ge=0)]
+    matched: Annotated[NonNegativeInt, Field(description='Resolved entries that matched at least one property in this product.')]
+    unmatched: Annotated[NonNegativeInt, Field(description='Resolved entries that did not match a property in this product.')]
 
 
 class PropertyListApplication(InventoryListApplication):
@@ -48,8 +49,8 @@ class PropertyListApplication(InventoryListApplication):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/0')
     list_type: Annotated[Literal['property'], Field(description='The receipt describes a property list.')]
     effect: Annotated[PropertyListApplicationEffect, Field(description='Whether matching properties were retained as an allowlist or removed as a blocklist.')]
-    agent_url: Annotated[str, Field(description='Agent URL from the effective property-list targeting reference.', json_schema_extra={'format': 'uri'})]
-    list_id: Annotated[str, Field(description='Identifier from the effective property-list targeting reference.', min_length=1)]
+    agent_url: Annotated[HttpUrl, Field(description='Agent URL from the effective property-list targeting reference.')]
+    list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective property-list targeting reference.')]
     resolved_at: Annotated[AwareDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
     evaluated_at: Annotated[AwareDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
     summary: Annotated[PropertyListApplicationSummary, Field(description="Partition of every entry in the resolved list snapshot against this product's common pre-list inventory baseline.")]
@@ -71,8 +72,8 @@ class CollectionListApplicationSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/1/properties/summary')
-    matched: Annotated[int, Field(description='Resolved entries that matched at least one collection in this product.', ge=0)]
-    unmatched: Annotated[int, Field(description='Resolved entries that did not match a collection in this product.', ge=0)]
+    matched: Annotated[NonNegativeInt, Field(description='Resolved entries that matched at least one collection in this product.')]
+    unmatched: Annotated[NonNegativeInt, Field(description='Resolved entries that did not match a collection in this product.')]
 
 
 class CollectionListApplication(InventoryListApplication):
@@ -82,8 +83,8 @@ class CollectionListApplication(InventoryListApplication):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/1')
     list_type: Annotated[Literal['collection'], Field(description='The receipt describes a collection list.')]
     effect: Annotated[CollectionListApplicationEffect, Field(description='Whether matching collections were retained as an allowlist or removed as a blocklist.')]
-    agent_url: Annotated[str, Field(description='Agent URL from the effective collection-list targeting reference.', json_schema_extra={'format': 'uri'})]
-    list_id: Annotated[str, Field(description='Identifier from the effective collection-list targeting reference.', min_length=1)]
+    agent_url: Annotated[HttpUrl, Field(description='Agent URL from the effective collection-list targeting reference.')]
+    list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective collection-list targeting reference.')]
     resolved_at: Annotated[AwareDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
     evaluated_at: Annotated[AwareDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
     summary: Annotated[CollectionListApplicationSummary, Field(description="Partition of every entry in the resolved list snapshot against this product's common pre-list inventory baseline.")]

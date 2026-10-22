@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import HttpUrl, StrMaxLen255, StrMaxLen500, StrMinLen3MaxLen3
 
 
 class InsertionOrderTermsTotalBudget(AdCPBaseModel):
@@ -14,8 +15,8 @@ class InsertionOrderTermsTotalBudget(AdCPBaseModel):
     Total committed budget
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#/properties/terms/properties/total_budget')
-    amount: Annotated[float, Field(ge=0.0)]
-    currency: Annotated[str, Field(description='ISO 4217 currency code', max_length=3, min_length=3)]
+    amount: NonNegativeFloat
+    currency: Annotated[StrMinLen3MaxLen3, Field(description='ISO 4217 currency code')]
 
 
 class InsertionOrderTermsPaymentTerms(StrEnum):
@@ -37,8 +38,8 @@ class InsertionOrderTerms(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#/properties/terms')
-    advertiser: Annotated[str | None, Field(description='Advertiser name or identifier', max_length=500)] = None
-    publisher: Annotated[str | None, Field(description='Publisher name or identifier', max_length=500)] = None
+    advertiser: Annotated[StrMaxLen500 | None, Field(description='Advertiser name or identifier')] = None
+    publisher: Annotated[StrMaxLen500 | None, Field(description='Publisher name or identifier')] = None
     total_budget: Annotated[InsertionOrderTermsTotalBudget | None, Field(description='Total committed budget')] = None
     flight_start: Annotated[AwareDatetime | None, Field(description='Campaign start date')] = None
     flight_end: Annotated[AwareDatetime | None, Field(description='Campaign end date')] = None
@@ -53,10 +54,10 @@ class InsertionOrder(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#')
-    io_id: Annotated[str, Field(description='Unique identifier for this insertion order. Referenced by io_acceptance on create_media_buy.', max_length=255)]
+    io_id: Annotated[StrMaxLen255, Field(description='Unique identifier for this insertion order. Referenced by io_acceptance on create_media_buy.')]
     terms: Annotated[InsertionOrderTerms | None, Field(description='Summary fields echoed from the committed proposal for agent verification. Buyer agents use these to confirm the IO matches what was negotiated before a human signs. These are read-only summaries, not negotiation surfaces — deal terms live on products and packages.')] = None
-    terms_url: Annotated[str | None, Field(description='URL to a human-readable document containing the full insertion order terms', json_schema_extra={'format': 'uri'})] = None
-    signing_url: Annotated[str | None, Field(description='URL to an electronic signing service (e.g., DocuSign) for human signature workflows. When present, a human must sign before the buyer agent can proceed with create_media_buy.', json_schema_extra={'format': 'uri'})] = None
+    terms_url: Annotated[HttpUrl | None, Field(description='URL to a human-readable document containing the full insertion order terms')] = None
+    signing_url: Annotated[HttpUrl | None, Field(description='URL to an electronic signing service (e.g., DocuSign) for human signature workflows. When present, a human must sign before the buyer agent can proceed with create_media_buy.')] = None
     requires_signature: Annotated[bool, Field(description='Whether the buyer must accept this IO before creating a media buy. When true, create_media_buy requires an io_acceptance referencing this io_id.')]
 
 

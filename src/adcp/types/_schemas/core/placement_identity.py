@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import StrMatching32F5291C, StrMinLen1
 
 from .seller_agent_ref import SellerAgentReference
 
@@ -28,8 +29,8 @@ class PublisherCatalogPlacementIdentity(PlacementIdentity):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-identity.json', pointer='#/oneOf/0')
     kind: Literal['publisher_ref']
-    publisher_domain: Annotated[str, Field(description='Domain whose adagents.json declares placement_id.', pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')]
-    placement_id: Annotated[str, Field(min_length=1)]
+    publisher_domain: Annotated[StrMatching32F5291C, Field(description='Domain whose adagents.json declares placement_id.')]
+    placement_id: StrMinLen1
 
 
 class SellerInlinePlacementIdentity(PlacementIdentity):
@@ -39,7 +40,7 @@ class SellerInlinePlacementIdentity(PlacementIdentity):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-identity.json', pointer='#/oneOf/1')
     kind: Literal['seller_inline']
     seller_agent: Annotated[SellerAgentReference, Field(description='Sales agent that defines and maintains the inline placement namespace.')]
-    placement_id: Annotated[str, Field(description="Stable placement ID within the defining sales agent's namespace. The agent MUST NOT reuse it for a different semantic placement.", min_length=1)]
+    placement_id: Annotated[StrMinLen1, Field(description="Stable placement ID within the defining sales agent's namespace. The agent MUST NOT reuse it for a different semantic placement.")]
 
 
 PlacementIdentity._branch_models = (PublisherCatalogPlacementIdentity, SellerInlinePlacementIdentity,)

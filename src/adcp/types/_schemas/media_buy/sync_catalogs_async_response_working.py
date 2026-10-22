@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -19,14 +20,14 @@ class SyncCatalogsWorking(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-catalogs-async-response-working.json', pointer='#')
-    percentage: Annotated[float | None, Field(description='Completion percentage (0-100)', ge=0.0, le=100.0)] = None
+    percentage: Annotated[FloatMin0Max100 | None, Field(description='Completion percentage (0-100)')] = None
     current_step: Annotated[str | None, Field(description="Current step or phase of the operation (e.g., 'Fetching product feed', 'Validating items', 'Platform review')")] = None
-    total_steps: Annotated[int | None, Field(description='Total number of steps in the operation', ge=1)] = None
-    step_number: Annotated[int | None, Field(description='Current step number', ge=1)] = None
-    catalogs_processed: Annotated[int | None, Field(description='Number of catalogs processed so far', ge=0)] = None
-    catalogs_total: Annotated[int | None, Field(description='Total number of catalogs to process', ge=0)] = None
-    items_processed: Annotated[int | None, Field(description='Total number of catalog items processed across all catalogs', ge=0)] = None
-    items_total: Annotated[int | None, Field(description='Total number of catalog items to process across all catalogs', ge=0)] = None
+    total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation')] = None
+    step_number: Annotated[IntMin1 | None, Field(description='Current step number')] = None
+    catalogs_processed: Annotated[NonNegativeInt | None, Field(description='Number of catalogs processed so far')] = None
+    catalogs_total: Annotated[NonNegativeInt | None, Field(description='Total number of catalogs to process')] = None
+    items_processed: Annotated[NonNegativeInt | None, Field(description='Total number of catalog items processed across all catalogs')] = None
+    items_total: Annotated[NonNegativeInt | None, Field(description='Total number of catalog items to process across all catalogs')] = None
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar
+from typing import Any, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMinLen1
 
 
 class RepresentationRejectionCode(StrEnum):
@@ -28,9 +29,9 @@ class RepresentationRejection(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/representation-rejection.json', pointer='#')
-    representation_id: Annotated[str, Field(min_length=1)]
+    representation_id: StrMinLen1
     code: RepresentationRejectionCode
-    message: Annotated[str, Field(min_length=1)]
+    message: StrMinLen1
     details: dict[str, Any] | None = None
 
 

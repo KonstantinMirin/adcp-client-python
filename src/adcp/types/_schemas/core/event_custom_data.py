@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMatching43E30B32
 
 from .ext import ExtensionObject
 
@@ -16,8 +17,8 @@ class EventCustomDataContentsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-custom-data.json', pointer='#/properties/contents/items')
     id: Annotated[str, Field(description='Product or content identifier')]
-    quantity: Annotated[int | None, Field(description='Quantity of this item', ge=1)] = None
-    price: Annotated[float | None, Field(description='Price per unit of this item', ge=0.0)] = None
+    quantity: Annotated[IntMin1 | None, Field(description='Quantity of this item')] = None
+    price: Annotated[NonNegativeFloat | None, Field(description='Price per unit of this item')] = None
     brand: Annotated[str | None, Field(description='Brand name of this item')] = None
 
 
@@ -29,17 +30,17 @@ class EventCustomData(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-custom-data.json', pointer='#')
-    value: Annotated[float | None, Field(description='Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.', ge=0.0)] = None
-    currency: Annotated[str | None, Field(description='ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.', pattern='^[A-Z]{3}$')] = None
+    value: Annotated[NonNegativeFloat | None, Field(description='Monetary value of the event. For an event source that declares value_currencies, currency is required and MUST appear in that list. Legacy sources without the new contract remain schema-compatible but are ineligible for canonical ROAS.')] = None
+    currency: Annotated[StrMatching43E30B32 | None, Field(description='ISO 4217 currency code. For a source declaring value_currencies, monetary records MUST carry a currency from that list.')] = None
     order_id: Annotated[str | None, Field(description='Unique order or transaction identifier')] = None
     content_ids: Annotated[list[str] | None, Field(description="Item identifiers for catalog attribution. Values are matched against catalog items using the identifier type declared by the catalog's content_id_type field (e.g., SKUs, GTINs, or vertical-specific IDs like job_id).")] = None
     content_type: Annotated[str | None, Field(description="Category of content associated with the event (e.g., 'product', 'job', 'hotel'). Corresponds to the catalog type when used for catalog attribution.")] = None
     content_name: Annotated[str | None, Field(description='Name of the product or content')] = None
     content_category: Annotated[str | None, Field(description='Category of the product or content')] = None
-    num_items: Annotated[int | None, Field(description='Number of items in the event', ge=0)] = None
+    num_items: Annotated[NonNegativeInt | None, Field(description='Number of items in the event')] = None
     search_string: Annotated[str | None, Field(description='Search query for search events')] = None
-    progress_percent: Annotated[float | None, Field(description='Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.', ge=0.0, le=100.0)] = None
-    progress_seconds: Annotated[float | None, Field(description='Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.', ge=0.0)] = None
+    progress_percent: Annotated[FloatMin0Max100 | None, Field(description='Content progress percentage reached, primarily for `watch_milestone` events. Use 25, 50, 75, or 100 for quartiles, or another publisher-defined threshold. Do not use `value` for non-monetary progress.')] = None
+    progress_seconds: Annotated[NonNegativeFloat | None, Field(description='Content progress duration reached in seconds, primarily for `watch_milestone` events. Use when the milestone is time-based rather than percentage-based.')] = None
     contents: Annotated[list[EventCustomDataContentsItem] | None, Field(description='Per-item details for e-commerce events')] = None
     ext: ExtensionObject | None = None
 

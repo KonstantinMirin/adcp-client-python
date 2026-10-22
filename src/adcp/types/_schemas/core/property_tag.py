@@ -6,11 +6,12 @@ from typing import Annotated
 from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
+from adcp.types.constraints import StrMatchingE02C3DE8
 
 
 __adcp_schema__ = SchemaRef(document='core/property-tag.json', pointer='#')
 
-PropertyTag = Annotated[str, Field(description='Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.', pattern='^[a-z0-9_]+$')]
+PropertyTag = Annotated[StrMatchingE02C3DE8, Field(description='Tag for categorizing publisher properties. Must be lowercase alphanumeric with underscores only.')]
 
 
 strict_validate = strict_alias(__adcp_schema__, "PropertyTag", PropertyTag)

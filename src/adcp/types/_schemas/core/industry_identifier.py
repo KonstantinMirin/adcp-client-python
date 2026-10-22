@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMaxLen64
 
 from ..enums.creative_identifier_type import CreativeIdentifierType
 
@@ -19,7 +20,7 @@ class IndustryIdentifier(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/industry-identifier.json', pointer='#')
     type: CreativeIdentifierType
-    value: Annotated[str, Field(description="The identifier value (e.g., 'ABCD1234000H' for Ad-ID). Preserve the value exactly as the traffic or clearance system expects it.", max_length=64)]
+    value: Annotated[StrMaxLen64, Field(description="The identifier value (e.g., 'ABCD1234000H' for Ad-ID). Preserve the value exactly as the traffic or clearance system expects it.")]
 
 
 __all__ = ["IndustryIdentifier"]

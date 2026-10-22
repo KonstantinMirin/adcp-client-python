@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching02AE7B1E, StrMatching81D52C51, StrMatchingC09B4F04, StrMatchingEFC12812, StrMaxLen100, StrMaxLen20, StrMaxLen200, StrMaxLen254, StrMaxLen30, StrMaxLen50
 
 from .ext import ExtensionObject
 
@@ -19,11 +20,11 @@ class BusinessEntityAddress(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/address')
-    street: Annotated[str, Field(description='Street address including building number', max_length=200)]
-    city: Annotated[str, Field(max_length=100)]
-    postal_code: Annotated[str, Field(max_length=20)]
-    region: Annotated[str | None, Field(description='State, province, or region', max_length=100)] = None
-    country: Annotated[str, Field(description='ISO 3166-1 alpha-2 country code', pattern='^[A-Z]{2}$')]
+    street: Annotated[StrMaxLen200, Field(description='Street address including building number')]
+    city: StrMaxLen100
+    postal_code: StrMaxLen20
+    region: Annotated[StrMaxLen100 | None, Field(description='State, province, or region')] = None
+    country: Annotated[StrMatchingEFC12812, Field(description='ISO 3166-1 alpha-2 country code')]
 
 
 class BusinessEntityContactsItemRole(StrEnum):
@@ -52,9 +53,9 @@ class BusinessEntityContactsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/contacts/items')
     role: Annotated[BusinessEntityContactsItemRole, Field(description="Contact's functional role in the business relationship")]
-    name: Annotated[str | None, Field(description='Full name of the contact', max_length=200)] = None
-    email: Annotated[str | None, Field(json_schema_extra={'format': 'email'}, max_length=254)] = None
-    phone: Annotated[str | None, Field(max_length=30)] = None
+    name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact')] = None
+    email: Annotated[StrMaxLen254 | None, Field(json_schema_extra={'format': 'email'})] = None
+    phone: StrMaxLen30 | None = None
 
 
 class BusinessEntityBank(AdCPBaseModel):
@@ -65,11 +66,11 @@ class BusinessEntityBank(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/bank')
-    account_holder: Annotated[str, Field(description='Name on the bank account', max_length=200)]
-    iban: Annotated[str | None, Field(description='International Bank Account Number (SEPA markets)', pattern='^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$')] = None
-    bic: Annotated[str | None, Field(description='Bank Identifier Code / SWIFT code (SEPA markets)', pattern='^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')] = None
-    routing_number: Annotated[str | None, Field(description='Bank routing number for non-SEPA markets (e.g., US ABA routing number, Canadian transit/institution number)', max_length=30)] = None
-    account_number: Annotated[str | None, Field(description='Bank account number for non-SEPA markets', max_length=30)] = None
+    account_holder: Annotated[StrMaxLen200, Field(description='Name on the bank account')]
+    iban: Annotated[StrMatchingC09B4F04 | None, Field(description='International Bank Account Number (SEPA markets)')] = None
+    bic: Annotated[StrMatching02AE7B1E | None, Field(description='Bank Identifier Code / SWIFT code (SEPA markets)')] = None
+    routing_number: Annotated[StrMaxLen30 | None, Field(description='Bank routing number for non-SEPA markets (e.g., US ABA routing number, Canadian transit/institution number)')] = None
+    account_number: Annotated[StrMaxLen30 | None, Field(description='Bank account number for non-SEPA markets')] = None
 
 
 class BusinessEntity(AdCPBaseModel):
@@ -80,10 +81,10 @@ class BusinessEntity(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#')
-    legal_name: Annotated[str, Field(description='Registered legal name of the business entity', max_length=200)]
-    vat_id: Annotated[str | None, Field(description='VAT identification number (e.g., DE123456789 for Germany, FR12345678901 for France). Required for B2B invoicing in the EU. Must be normalized: no spaces, dots, or dashes.', pattern='^[A-Z]{2}[A-Z0-9]{2,13}$')] = None
-    tax_id: Annotated[str | None, Field(description='Tax identification number for jurisdictions that do not use VAT (e.g., US EIN)', max_length=30)] = None
-    registration_number: Annotated[str | None, Field(description='Company registration number (e.g., HRB 12345 for German Handelsregister)', max_length=50)] = None
+    legal_name: Annotated[StrMaxLen200, Field(description='Registered legal name of the business entity')]
+    vat_id: Annotated[StrMatching81D52C51 | None, Field(description='VAT identification number (e.g., DE123456789 for Germany, FR12345678901 for France). Required for B2B invoicing in the EU. Must be normalized: no spaces, dots, or dashes.')] = None
+    tax_id: Annotated[StrMaxLen30 | None, Field(description='Tax identification number for jurisdictions that do not use VAT (e.g., US EIN)')] = None
+    registration_number: Annotated[StrMaxLen50 | None, Field(description='Company registration number (e.g., HRB 12345 for German Handelsregister)')] = None
     address: Annotated[BusinessEntityAddress | None, Field(description='Postal address for invoicing and legal correspondence')] = None
     contacts: Annotated[list[BusinessEntityContactsItem] | None, Field(description='Contacts for billing, legal, and operational matters. Contains personal data subject to GDPR and equivalent regulations. Implementations MUST use this data only for invoicing and account management.', max_length=10)] = None
     bank: Annotated[BusinessEntityBank | None, Field(description='Bank account details for payment processing. Write-only: included in requests to provide payment coordinates, but MUST NOT be echoed in responses. Sellers store these details and confirm receipt without returning them.')] = None

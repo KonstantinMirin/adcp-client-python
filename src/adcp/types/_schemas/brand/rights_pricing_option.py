@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import IntMin1, StrMatching43E30B32
 
 from ..core.ext import ExtensionObject
 from ..enums.pricing_model import PricingModel
@@ -23,12 +24,12 @@ class RightsPricingOption(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-pricing-option.json', pointer='#')
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option. Referenced in acquire_rights and report_usage.')]
     model: Annotated[PricingModel, Field(description='Pricing model (cpm, flat_rate, etc.)')]
-    price: Annotated[float, Field(description='Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.', ge=0.0)]
-    currency: Annotated[str, Field(description='ISO 4217 currency code', pattern='^[A-Z]{3}$')]
+    price: Annotated[NonNegativeFloat, Field(description='Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.')]
+    currency: Annotated[StrMatching43E30B32, Field(description='ISO 4217 currency code')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).', min_length=1)]
     period: Annotated[RightsBillingPeriod | None, Field(description='Billing period for flat_rate and time-based models')] = None
-    impression_cap: Annotated[int | None, Field(description='Maximum impressions included in this pricing option per period', ge=1)] = None
-    overage_cpm: Annotated[float | None, Field(description='CPM rate applied to impressions exceeding the impression_cap', ge=0.0)] = None
+    impression_cap: Annotated[IntMin1 | None, Field(description='Maximum impressions included in this pricing option per period')] = None
+    overage_cpm: Annotated[NonNegativeFloat | None, Field(description='CPM rate applied to impressions exceeding the impression_cap')] = None
     description: Annotated[str | None, Field(description='Human-readable description of this pricing option')] = None
     ext: ExtensionObject | None = None
 

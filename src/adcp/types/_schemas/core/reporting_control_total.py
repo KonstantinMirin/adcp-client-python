@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import StrMatching60986A4B, StrMatchingD4234346, StrMinLen1MaxLen128Matching367B2A35, StrMinLen1MaxLen32
 
 
 class ReportingControlTotal(BranchDispatchMixin, AdCPBaseModel):
@@ -25,10 +26,10 @@ class IntegerReportingControlTotal(ReportingControlTotal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/0')
-    name: Annotated[str, Field(max_length=128, min_length=1, pattern='^[A-Za-z][A-Za-z0-9_.:-]{0,127}$')]
-    value: Annotated[str, Field(description='Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.', pattern='^-?(?:0|[1-9][0-9]*)$')]
+    name: StrMinLen1MaxLen128Matching367B2A35
+    value: Annotated[StrMatchingD4234346, Field(description='Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.')]
     value_type: Literal['integer']
-    unit: Annotated[str | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.', max_length=32, min_length=1)] = None
+    unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.')] = None
 
 
 class DecimalReportingControlTotal(ReportingControlTotal):
@@ -36,10 +37,10 @@ class DecimalReportingControlTotal(ReportingControlTotal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/1')
-    name: Annotated[str, Field(max_length=128, min_length=1, pattern='^[A-Za-z][A-Za-z0-9_.:-]{0,127}$')]
-    value: Annotated[str, Field(description='Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.', pattern='^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$')]
+    name: StrMinLen1MaxLen128Matching367B2A35
+    value: Annotated[StrMatching60986A4B, Field(description='Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.')]
     value_type: Literal['decimal']
-    unit: Annotated[str | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.', max_length=32, min_length=1)] = None
+    unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.')] = None
 
 
 ReportingControlTotal._branch_models = (IntegerReportingControlTotal, DecimalReportingControlTotal,)

@@ -83,6 +83,33 @@ def kwargs_of(annotation: ast.AST) -> set[str]:
     }
 
 
+def constraint_aliases() -> dict[str, set[str]]:
+    """``adcp.types.constraints`` symbol -> the ``Field(...)`` keywords it states.
+
+    D5's rung 3 gave a constrained scalar a THIRD place to live. A node's own alias
+    used to carry its constraints as kwargs; now the alias names a type in
+    ``constraints`` and that type carries them, so an assertion reading only the
+    alias's own kwargs reads a spelling D5 deliberately moved. Following the
+    reference keeps the claim -- the constraint is reachable from the alias, and it
+    is still nowhere near the property -- without weakening either half of it.
+    """
+    source = Path("src/adcp/types/constraints.py").read_text()
+    out: dict[str, set[str]] = {}
+    for node in ast.parse(source).body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                out[target.id] = kwargs_of(node.value)
+    return out
+
+
+def stated_by(annotation: ast.AST, named: dict[str, set[str]]) -> set[str]:
+    """The keywords an annotation states, directly or through a named constrained
+    type it references."""
+    reached = {n.id for n in ast.walk(annotation) if isinstance(n, ast.Name)}
+    return kwargs_of(annotation).union(*(named.get(n, set()) for n in reached), set())
+
+
 # --------------------------------------------------------------------------- #
 # the reading of the ``#``
 # --------------------------------------------------------------------------- #
@@ -336,7 +363,8 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
         ("adcp_version", "AdCPVersionEnvelopeAdcpVersion", {"pattern"}),
         ("adcp_major_version", "AdCPVersionEnvelopeAdcpMajorVersion", {"ge", "le"}),
     ):
-        on_alias = kwargs_of(aliases[symbol])
+        named = constraint_aliases()
+        on_alias = stated_by(aliases[symbol], named)
         on_field = kwargs_of(fields[key])
         assert stated <= on_alias, (symbol, sorted(on_alias))
         assert not stated & on_field, (key, sorted(on_field))

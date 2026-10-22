@@ -80,6 +80,25 @@ PYTHONPATH=. uv run --no-sync python -m codegen.emit \
 PYTHONPATH=. uv run --no-sync python -m pytest tests/test_emit.py
 ```
 
+That command writes no `--package`, so it leaves D5's alias module
+(`src/adcp/types/constraints.py`) alone — and that is deliberate rather than an
+omission. The alias module is ONE file over the WHOLE run: a run over one
+document resolves that document's constrained types and no others, so writing it
+would replace the committed module with a shorter one and leave every other
+module importing a symbol that is gone. `--package` therefore has no default,
+and the command says on stdout which file it did not write. To regenerate the
+whole tree, name the population and the package together:
+
+```bash
+PYTHONPATH=.:tests uv run --no-sync python -c \
+  'from codegen import emit; from test_emit import population; from pathlib import Path; \
+   out = emit.emit(Path("schemas/cache/3.2"), population()); \
+   emit.write(out, Path("src/adcp/types/_schemas"), Path("src/adcp/types"))'
+```
+
+`tests/test_emit.py::test_the_committed_tree_is_what_a_fresh_run_emits` compares
+both against a fresh emission, byte for byte, so a stale file fails at the gate.
+
 ## Merging back
 
 This is an orphan branch with no shared history, by design: an agent reading it

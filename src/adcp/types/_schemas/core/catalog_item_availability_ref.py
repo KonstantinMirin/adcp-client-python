@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMinLen1MaxLen255
 
 
 class CatalogItemAvailabilityReference(AdCPBaseModel):
@@ -16,9 +17,9 @@ class CatalogItemAvailabilityReference(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catalog-item-availability-ref.json', pointer='#')
-    catalog_id: Annotated[str, Field(description='Buyer-assigned catalog ID.', max_length=255, min_length=1)]
-    catalog_generation: Annotated[str, Field(description='Opaque seller-issued token for the referenced catalog incarnation. It remains stable across ordinary upserts and feed refreshes, changes when a deleted catalog_id is recreated, and MUST never be reused for that account and catalog_id.', max_length=255, min_length=1)]
-    item_id: Annotated[str, Field(description='Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.', max_length=255, min_length=1)]
+    catalog_id: Annotated[StrMinLen1MaxLen255, Field(description='Buyer-assigned catalog ID.')]
+    catalog_generation: Annotated[StrMinLen1MaxLen255, Field(description='Opaque seller-issued token for the referenced catalog incarnation. It remains stable across ordinary upserts and feed refreshes, changes when a deleted catalog_id is recreated, and MUST never be reused for that account and catalog_id.')]
+    item_id: Annotated[StrMinLen1MaxLen255, Field(description='Exact canonical item key used by Catalog.ids. For typed catalogs this is the type-specific identifier field; for product, inventory, and promotion catalogs it is the stable normalized source identifier retained during ingestion.')]
 
 
 __all__ = ["CatalogItemAvailabilityReference"]

@@ -56,6 +56,7 @@ from adcp.types._base import (
 )
 from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
+from codegen import constraints as constraints_module
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -545,6 +546,10 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
     excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
         "core/context.json#",
+        # Added by D5's alias module: `core/creative-brief.json` was refused on a
+        # constrained scalar inside a container, and this nested class of it
+        # states no keyword `steps()` can step.
+        "core/creative-brief.json#/properties/messaging",
         "core/ext.json#",
         "core/media-buy-legacy-terms-ref.json#",
         "error-details/account-setup-required.json#",
@@ -677,6 +682,126 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
             stamp, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
         ).validate(naive)
     assert refused.value.validator == "format"
+
+
+def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
+    """D5's URL-type rows, broken on purpose at every gate they have.
+
+    The category admits THREE facts and nothing else, each in its own row and each
+    gated, and it counts them in a field of its own
+    (``ComparisonResult.url_typed``) rather than in ``missing`` or in ``added`` --
+    because it is the one admission here that excuses a fact the model does not
+    state at all, and folding it into the implied-fact rows would make a genuine
+    omission look like a derivation.
+
+    Ten cells. The first two are what the rows are for on the ``AdCPUrl`` arm; 3-5
+    are the perturbations that must still redden, and each of them passed before the
+    gates were written as they are; 6 says the counting is separate; and 7-10 are
+    the ``HttpUrl`` arm D5's amendment added, including the one that keeps the
+    second row from becoming "any bound on a URL type is admitted".
+    """
+    from pydantic import AnyUrl, HttpUrl, UrlConstraints
+
+    AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
+    bare = {"type": "string", "format": "uri"}
+    patterned = {**bare, "pattern": "^https://"}
+
+    # 1. the model-only ``minLength: 1`` any URL type renders, over a document
+    #    that states only the type and the format.
+    one = compare_schema(bare, AdCPUrl)
+    assert one.outcome == "pass", (one.added, one.missing, one.differs)
+    assert one.url_typed == ["/minLength: the model says 1, which any URL type renders"]
+    assert one.added == [] and one.missing == []
+
+    # 2. the document's own ``pattern``, which the annotation cannot carry at all
+    #    -- ``Annotated[AnyUrl, Field(pattern=...)]`` raises when pydantic builds
+    #    the schema -- and which the schema half enforces instead.
+    two = compare_schema(patterned, AdCPUrl)
+    assert two.outcome == "pass", (two.added, two.missing, two.differs)
+    assert len(two.url_typed) == 2, two.url_typed
+    assert any("the schema half enforces it" in line for line in two.url_typed)
+    assert two.missing == [] and two.added == []
+    # The fact was still COUNTED as looked for: the row stops it landing in
+    # ``missing``, it does not stop it being graded.
+    assert two.compared == one.compared + 1
+
+    # 3. BROKEN ON PURPOSE -- a plain ``str`` cannot wear the row.  It renders the
+    #    type and the format and no ``minLength``, so it is not a URL type and the
+    #    dropped ``pattern`` is reported.
+    plain = compare_schema(patterned, Annotated[str, Field(json_schema_extra={"format": "uri"})])
+    assert plain.outcome == "model_drops_a_fact"
+    assert plain.url_typed == []
+    assert any("/pattern" in m for m in plain.missing), plain.missing
+
+    # 4. BROKEN ON PURPOSE -- any OTHER keyword the document states is still
+    #    reported, because the row names ``pattern`` and nothing else.  This is
+    #    the gate that keeps ``emit.decide_type``'s refusal honest: a
+    #    ``format: uri`` node stating a ``maxLength`` refuses at emission rather
+    #    than going missing here.
+    capped = compare_schema({**bare, "maxLength": 20}, AdCPUrl)
+    assert capped.outcome == "model_drops_a_fact"
+    assert any("/maxLength" in m for m in capped.missing), capped.missing
+
+    # 5. BROKEN ON PURPOSE -- ``_url_typed``'s signature requires ``minLength: 1``
+    #    exactly, so a model stating a DIFFERENT ``minLength`` at a ``uri`` node is
+    #    not a URL type and none of the three rows reaches it.  That is the gate
+    #    that keeps the category off an ordinary annotated ``str`` carrying a bound.
+    floored = compare_schema(
+        bare, Annotated[str, Field(min_length=2, json_schema_extra={"format": "uri"})]
+    )
+    assert floored.outcome == "model_adds_a_fact", floored.url_typed
+    assert floored.url_typed == []
+    assert any("/minLength" in a for a in floored.added), floored.added
+
+    # 6. and a document that states the ``minLength`` ITSELF is compared, not
+    #    excused: the row is about a fact the document does not state.
+    stated = compare_schema({**bare, "minLength": 1}, AdCPUrl)
+    assert stated.outcome == "pass"
+    assert stated.url_typed == [], stated.url_typed
+    assert stated.compared == one.compared + 1
+
+    # ---- the HttpUrl arm, which D5's amendment selects at every uri position whose
+    # ---- document does not restrict the scheme to https ----------------------
+    assert TypeAdapter(HttpUrl).json_schema() == {
+        "type": "string",
+        "format": "uri",
+        "minLength": 1,
+        "maxLength": 2083,
+    }, "the two facts the second row exists for"
+
+    # 7. BOTH added facts are admitted, each by its own row, and `added` stays empty.
+    http = compare_schema(bare, HttpUrl)
+    assert http.outcome == "pass", (http.added, http.missing, http.differs)
+    assert sorted(line.split(": ")[0] for line in http.url_typed) == [
+        "/maxLength",
+        "/minLength",
+    ], http.url_typed
+    assert any("HttpUrl renders" in line for line in http.url_typed)
+    assert http.added == [] and http.missing == []
+
+    # 8. BROKEN ON PURPOSE -- the second row is NOT "a bound on a URL type is
+    #    admitted".  A URL type carrying any OTHER maxLength is a fact the model
+    #    adds, and this is the cell that would pass under a widened row.
+    other = compare_schema(bare, Annotated[AnyUrl, UrlConstraints(max_length=1024)])
+    assert other.outcome == "model_adds_a_fact", other.url_typed
+    assert any("/maxLength" in a for a in other.added), other.added
+
+    # 9. BROKEN ON PURPOSE -- a document that states the maxLength ITSELF is
+    #    compared, and a document stating a DIFFERENT one differs rather than being
+    #    excused.  That second case is what `emit.decide_type` refuses by name: the
+    #    bundle has 4 such positions, all `maxLength: 2048`.
+    agrees = compare_schema({**bare, "maxLength": 2083}, HttpUrl)
+    assert agrees.outcome == "pass"
+    assert [line for line in agrees.url_typed if "/maxLength" in line] == []
+    disagrees = compare_schema({**bare, "maxLength": 2048}, HttpUrl)
+    assert disagrees.outcome == "model_drops_a_fact"
+    assert any("/maxLength" in d for d in disagrees.differs), disagrees.differs
+
+    # 10. and the pattern row serves this arm too, which is what lets a document
+    #     with a non-https pattern take HttpUrl at all.
+    host_only = compare_schema({**bare, "pattern": "^https://[^/?#@]+$"}, HttpUrl)
+    assert host_only.outcome == "pass", (host_only.missing, host_only.added)
+    assert len(host_only.url_typed) == 3, host_only.url_typed
 
 
 def test_the_comparison_reads_a_root_allof_the_way_the_schema_half_reads_it() -> None:
@@ -883,9 +1008,12 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # The two dependencies `pyproject` names are what put these in the draft's
     # own checker; without them the gate below selects no type at all.
     assert {"date-time", "uri"} <= checked, sorted(checked)
-    assert set(emit.FORMAT_TYPES) <= checked, sorted(emit.FORMAT_TYPES - checked)
+    assert set(emit.FORMAT_TYPES) <= checked, sorted(set(emit.FORMAT_TYPES) - checked)
 
     seen: dict[str, int] = {}
+    #: format -> the type names it actually selected over this population.  More
+    #: than one means the DOCUMENT chose, which is D5's `uri` row.
+    arms: dict[str, set[str]] = {}
     for document in sorted({g.ref.document for g in graded()}):
         tree = ast.parse(_source(document))
         imported = {
@@ -908,15 +1036,31 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
             assert node["type"] in emit.SCALAR, (document, pointer)
-            selected = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
-            if selected is None:
+            # The chooser is asked with THIS NODE, because D5 makes a `uri` field's
+            # type a function of the document's own `pattern` -- so a test that read
+            # one path per format would grade only whichever arm it happened to
+            # name, and would have passed unchanged while the other arm went
+            # unimported.
+            choose = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            if choose is None:
                 assert fmt in annotated_formats, (document, pointer, fmt)
             else:
+                selected = choose(node)
                 module, name = selected.rsplit(".", 1)
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
+                arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 2}, seen
+    assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 4}, seen
+    # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
+    # graded by an empty loop: `AdCPUrl` at the one position whose document states
+    # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
+    # A format whose type is a function of the format alone selects exactly one.
+    assert arms == {
+        "date-time": {"AwareDatetime"},
+        "date": {"date"},
+        "uri": {"AdCPUrl", "HttpUrl"},
+    }, arms
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
@@ -936,7 +1080,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 57, stated
+    assert stated == 59, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1103,7 +1247,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (24, 66), distinct
+    assert (len(distinct), sum(distinct.values())) == (28, 78), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1129,7 +1273,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (22, 63), diverges
+    assert (len(diverges), sum(diverges.values())) == (26, 75), diverges
     assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
@@ -1240,28 +1384,40 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 448, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 437
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 11
+    assert len(reports) == 462, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 450
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
-    # rather than schema facts, and six careful readings of it on source I could
-    # not distinguish gave 31,923 / 32,031 / 32,037 / 32,045 / 32,045 / 32,059 --
-    # ruled out against hash seed (four runs, three seeds, identical over a fixed
-    # subset), enumeration order (sorted, reversed, shuffled, identical),
-    # untracked emitted files (tracked == on disk), and worker count. The five
-    # other figures in this test reproduced EXACTLY between two independent
-    # instruments, which is why they are equalities and this is not.
+    # rather than schema facts, and seven careful readings of it, on trees whose
+    # source I could not distinguish, gave 31,923 / 32,031 / 32,037 / 32,045 /
+    # 32,045 / 32,059 / 34,935 -- the last on the named-type tree, which moved the
+    # population legitimately. Ruled out against hash seed (four runs, three
+    # seeds, identical over a fixed subset), enumeration order (sorted, reversed,
+    # shuffled, identical), untracked emitted files (tracked == on disk), and
+    # worker count. The five other figures here reproduced EXACTLY between two
+    # independent instruments, which is why they are equalities and this is not.
     #
     # A floor still carries the denominator: it says the refuses check reached a
     # class at least this many times, so a collapse or a large regression still
     # reddens. An equality would assert a reproducibility the instrument does not
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
-    assert sum(r.graded_instances for r in reports) >= 31900  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4276  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 896  # model-only facts examined
+    assert sum(r.graded_instances for r in reports) >= 34900  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 4658  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1104  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
+    assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
+    assert sum(len(r.comparison.differs) for r in reports) == 0
+    # D5's URL-type rows, the one category that excuses a fact the model does not
+    # state, and 72 is the sum of its three: 36 `minLength: 1` (every URL type
+    # renders it), 35 `maxLength: 2083` (`HttpUrl` renders it, and 35 of the 36
+    # positions take that arm), and the ONE `pattern` the bundle states on a
+    # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
+    # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
+    # A position inside a nested class is graded twice, at its own pair and at its
+    # parent's, so 36 is larger than the 27 annotation sites the tree has.
+    assert sum(len(r.comparison.url_typed) for r in reports) == 72
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -1314,7 +1470,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     # root that states its own ``additionalProperties``, so a base never has one to
     # carry and takes this default.  The other members are mapping and container
     # roots whose own document is silent too.
-    assert counted["silent"] == 16, counted
+    assert counted["silent"] == 17, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1924,8 +2080,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # 156: roots emit only once another step's row is beside this one -- a nested
     # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
     # combinators left for step 7.  Joint unblocking, which no single lane reaches.
-    assert len(emitted) == 10, emitted
-    assert len(refused) == 116
+    assert len(emitted) == 11, emitted
+    assert len(refused) == 115
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -1950,7 +2106,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "oneOf": 1,
         "additionalProperties": 1,
         "enumMetadata": 1,
-        "pattern": 1,  # D5's alias module (a constraint inside a container)
+        # The `pattern` row is GONE: it was "a constraint inside a container", and
+        # D5's alias module names that type now, so the document emits instead.
     }, profile
 
 
@@ -2036,9 +2193,9 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     # One per union base whose root states no ``type`` of its own, plus the 2
     # const-pinned branch properties of ``core/destination.json`` whose node states
     # only the ``const``.
-    assert len(excused) == 10, excused
+    assert len(excused) == 11, excused
     assert kinds == {"object", "string"}, kinds
-    assert sum(1 for _, where, _ in excused if where == "") == 8, excused
+    assert sum(1 for _, where, _ in excused if where == "") == 9, excused
     assert sum(1 for _, where, _ in excused if where != "") == 2, excused
 
     # direction 2: nothing forcing a type is still reported
@@ -2234,13 +2391,27 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     text = emit.render(mod, symbol)
     module = types.ModuleType("_constructed_fixture")
     module.__dict__.update({name: type_ for name, type_ in targets.values()})
+    # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
+    # below -- and a constructed document can derive a shape the INSTALLED module
+    # has no site for, which is an ``ImportError`` here rather than a test failure
+    # anyone can read.  The RUN's own alias module is the emitter's output, so it is
+    # executed into this namespace and its import line dropped: the same pre-binding
+    # a ``$ref`` target gets, for the same reason, and the annotation stays the
+    # compiler's.
+    if mod.aliases:
+        exec(constraints_module.declare(mod.aliases), module.__dict__)  # noqa: S102
+    alias_import = f"from {constraints_module.MODULE} import"
     # Registered, because ``from __future__ import annotations`` makes every
     # annotation a string and pydantic resolves it against the defining module's
     # globals -- a bare ``exec`` dict has no module to be found through.
     sys.modules[module.__name__] = module
     try:
         exec(  # noqa: S102 -- executing the compiler's own output is the point
-            "\n".join(line for line in text.splitlines() if not line.startswith("from .")),
+            "\n".join(
+                line
+                for line in text.splitlines()
+                if not line.startswith("from .") and not line.startswith(alias_import)
+            ),
             module.__dict__,
         )
     finally:
@@ -2342,8 +2513,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 46, arrays
-    assert bounded == 24, bounded
+    assert arrays == 64, arrays
+    assert bounded == 30, bounded
 
 
 def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
@@ -2385,7 +2556,7 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     # keyword and no other, so admitting it would emit them wide.
     out = emit.emit(BUNDLE, population())
     blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    assert len(blocked) == 45, sorted(blocked)
+    assert len(blocked) == 46, sorted(blocked)
     assert "core/acceptance-policy-profile-ids.json" in out.refusals
 
 
@@ -2667,29 +2838,72 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert check_accepts(doc, accept, examples=50).outcome == "pass"
     assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
 
-    # **A CONSTRAINED arm refuses, and this is the rendering that forces it.**  The
-    # split needs the bound on the ARM, the compiler's ``DataType`` carries no
-    # constraint, so the keyword reaches the FIELD and bounds the whole union -- the
-    # string's ``minLength`` applied to the integer arm.  Measured here on the
-    # compiler directly, so the refusal has its reason beside it rather than a
-    # reference to one.
+    # **A CONSTRAINED arm is NAMED, and this is the rendering that forces it to be.**
+    # The split needs the bound on the ARM; the compiler's ``DataType`` carries no
+    # constraint, so a keyword left on the node reaches the FIELD and bounds the whole
+    # union -- the string's ``minLength`` applied to the integer arm. Measured here on
+    # the compiler directly, so the alternative has its own evidence rather than a
+    # reference to it.
     escaped = compiler.render_alias(
         "Escaped",
         compiler.Type(container="union", of=(compiler.Type("str"), compiler.Type("int"))),
         {"minLength": 4},
     )
     assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
+
+    # **D5's alias module removed that obstacle, and the node STILL refuses -- on the
+    # grader rather than on the rendering.**  Both halves are asserted, because the
+    # refusal's reason changed and a test that only re-asserted the refusal would not
+    # have noticed.
+    armed = {
+        "title": "MS",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
+    }
+    named = constraints_module.symbol("string", {"minLength": 4})
+
+    # Half one: the arm IS nameable now, and that model's accepted set is the
+    # document's -- the integer arm takes no string bound. Built by hand from the
+    # alias the emitter would have used, because the emitter refuses to reach it.
+    arm_alias = {"StrMinLen4": None}
+    exec(constraints_module.declare({named: ("string", {"minLength": 4})}), arm_alias)  # noqa: S102
+
+    class Armed(AdCPBaseModel):
+        v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
+
+    assert Armed.model_validate({"v": 1}).v == 1
+    assert Armed.model_validate({"v": "abcd"}).v == "abcd"
+    with pytest.raises(ValidationError):
+        Armed.model_validate({"v": "abc"})  # the string arm keeps its own bound
+
+    # Half two, and the reason the row refuses anyway: the comparison folds a model's
+    # ``anyOf`` into a document's type LIST only where every branch is a bare type, so
+    # it reads this FAITHFUL model as dropping both facts.  Emitting a node no check
+    # can grade is what the refusal prevents.
+    blind = compare_schema(armed, Armed)
+    assert blind.outcome == "model_drops_a_fact", blind
+    assert {m.split(": ")[0] for m in blind.missing} == {
+        "/properties/v/type",
+        "/properties/v/minLength",
+    }, blind.missing
+
     with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "ms.json",
-            {
-                "title": "MS",
-                "type": "object",
-                "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
-            },
-        )
+        emit.lower_document("ms.json", armed)
     assert caught.value.keyword == "minLength", caught.value.keyword
-    assert "'string' arm" in caught.value.detail, caught.value.detail
+    assert "every branch is a bare type" in caught.value.detail, caught.value.detail
+    # And it costs no document: 0 multi-type node in an EMITTED document states
+    # anything beyond its ``type``, which is why this is graded on a constructed one.
+    from codegen.lower import containers as lower_containers
+
+    emitted = emit.emit(BUNDLE, population()).emitted
+    carried = frozenset().union(*lower_containers.ARM.values())
+    assert [
+        (d, p)
+        for d in emitted
+        for p, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list) and set(node) & carried
+    ] == []
 
     # A null arm refuses too, and for the grader rather than the rendering.
     with pytest.raises(Refusal) as caught:
@@ -2717,60 +2931,83 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
 
 
-def test_a_constraint_inside_a_container_refuses_rather_than_being_dropped() -> None:
-    """D5's shared alias module is not built here, and this is the population.
+def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
+    """D5's alias module, read from the side it was built for, and the residual.
 
     A constraint on what is INSIDE a container has no slot in the compiler's
     ``DataType``, so putting the node in ``list[...]`` would drop the fact and widen
-    the model.  D5's answer is to resolve the inner type to a name; its first two
-    rungs miss here and the third is a module this row does not land.
+    the model.  **This test used to assert the REFUSAL that stood in for the answer**
+    -- 15 documents over 8 distinct inner constraints, with the detail naming what
+    D5's alias module would have to name -- and the alias module is what retires it.
+    Naming the inner type is the whole of the fix: once the constraint is on the
+    type, ``dict[str, StrMinLen1]`` and ``list[StrMatchingEFC12812]`` are plain
+    references and ``_inner`` sees nothing to carry.
 
-    So it refuses, and the refusal names the constraint.  Measured on the merged
-    tree: 15 documents report it, over 8 distinct inner constraints, and the bundle
-    names NONE of the 8 at a titled scalar root -- checked by content equality over
-    all of them, which is D3's only deduplication, so this is not a claim about
-    spellings.  (This lane measured 1 constraint at 3 documents alone; with steps
-    3-5's rows beside it the walk reaches further before refusing, so the
-    inner-constraint refusal is the first blocker far more often.)
+    Three halves, because the row did not disappear:
+
+    * the inner type IS named, at 10 container positions in 7 modules;
+    * the two documents the previous revision of this test named BY NAME as refused
+      on an inner ``^[A-Z]{2}$`` now emit;
+    * and what still refuses is a ``format`` no type is selected for, which would
+      be DROPPED rather than carried -- 3 documents, all three on
+      ``format: hostname`` inside an array's ``items``.
+
+    That the inner fact survives into the model's rendered schema is graded by
+    ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
+    document's ``items`` keywords against the model's at every array property, so
+    it is not restated here.
     """
     out = emit.emit(BUNDLE, population())
     inner = {
-        d: r for d, r in out.refusals.items() if "D5" in r["detail"] and "alias module" in r["detail"]
+        d: r
+        for d, r in out.refusals.items()
+        if "D5" in r["detail"] and "no constraint inside a container" in r["detail"]
     }
-    # 15 documents report it, where this lane measured 1 of 3: with steps 3-5's rows
-    # beside this one the walk reaches further into each document before refusing, so
-    # the inner-constraint refusal is the FIRST blocker far more often.  The keyword
-    # set is asserted as a whole rather than as a count, because it says which
-    # constraint D5's alias module would have to name.
-    assert len(inner) == 15, sorted(inner)
-    assert {r["keyword"] for r in inner.values()} == {"$ref", "format", "minimum", "pattern"}
-    # The two this lane saw masked by an earlier ``$ref`` now report the inner
-    # constraint themselves, which is the same movement read from the other side.
-    for unmasked in ("brand/rights-terms.json", "brand/search-brands-request.json"):
-        assert out.refusals[unmasked]["keyword"] == "pattern", out.refusals[unmasked]
-        assert "^[A-Z]{2}$" in out.refusals[unmasked]["detail"], out.refusals[unmasked]
+    # Down from 15, and every survivor is a FORMAT rather than a constraint keyword:
+    # a format with no selected type has nowhere to go inside a container, and the
+    # comparison would not see it go (the accepts check draws through
+    # `hypothesis_jsonschema`, which honours a format it knows).
+    assert len(inner) == 3, sorted(inner)
+    assert {r["keyword"] for r in inner.values()} == {"format"}
+    for document, row in inner.items():
+        node = bundle.read(BUNDLE, document)
+        for part in row["pointer"].strip("/").split("/"):
+            node = node[part]
+        assert node["format"] == "hostname", (document, node)
+        assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
+        assert "hostname" in row["detail"], row
 
-    # Eight constraints over the fifteen, and the bundle gives none of them a name.
-    facts = set()
-    for document in inner:
-        for _, node in bundle.nodes(bundle.read(BUNDLE, document)):
-            if node.get("type") != "array" or not isinstance(node.get("items"), dict):
+    # The two the previous revision asserted as REFUSED, now emitted -- read off the
+    # run rather than off the tree, so this cannot pass on a stale file.
+    for was_refused in ("brand/rights-terms.json", "property/property-list-filters.json"):
+        assert was_refused in out.emitted, was_refused
+        assert was_refused not in out.refusals, out.refusals.get(was_refused)
+
+    # And the naming, counted: a container position whose INNER type is a symbol the
+    # module imports from `adcp.types.constraints`.
+    positions, modules = 0, set()
+    for rel, text in sorted(out.files.items()):
+        if not rel.endswith(".py"):
+            continue
+        parsed = ast.parse(text)
+        aliases = {
+            alias.name
+            for n in ast.walk(parsed)
+            if isinstance(n, ast.ImportFrom) and n.module == constraints_module.MODULE
+            for alias in n.names
+        }
+        for n in ast.walk(parsed):
+            if not (
+                isinstance(n, ast.Subscript)
+                and isinstance(n.value, ast.Name)
+                and n.value.id in ("list", "dict")
+            ):
                 continue
-            item = node["items"]
-            if set(emit.CONSTRAINTS) & set(item):
-                facts.add(json.dumps({k: v for k, v in item.items() if k in ("type", "pattern")}, sort_keys=True))
-    assert len(facts) == 8, sorted(facts)
-    assert '{"pattern": "^[A-Z]{2}$", "type": "string"}' in facts, sorted(facts)
-    named_by_the_bundle = {
-        json.dumps(
-            {k: v for k, v in bundle.read(BUNDLE, d).items() if k in ("type", "pattern")},
-            sort_keys=True,
-        )
-        for d in bundle.portable(BUNDLE)
-        if bundle.is_scalar_root(bundle.read(BUNDLE, d))
-        and isinstance(bundle.read(BUNDLE, d).get("title"), str)
-    }
-    assert not facts & named_by_the_bundle, facts & named_by_the_bundle
+            for name in ast.walk(n.slice):
+                if isinstance(name, ast.Name) and name.id in aliases:
+                    positions += 1
+                    modules.add(rel)
+    assert (positions, len(modules)) == (10, 7), (positions, sorted(modules))
 
 
 # --------------------------------------------------------------------------- #
@@ -2787,7 +3024,12 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     change rather than the inputs.
     """
     out = emit.emit(BUNDLE, population())
-    emit.write(out, tmp_path)
+    # The alias module is written BESIDE the tree, because an alias belongs to no
+    # document and so has no domain to live under (D5), and it is public where
+    # ``_schemas`` is not.  ``write`` takes that directory explicitly and has no
+    # default for it, so a run over part of the population cannot replace the
+    # committed module with a shorter one -- see ``emit.write``.
+    emit.write(out, tmp_path / "_schemas", tmp_path)
 
     def tree(root: Path) -> dict[str, str]:
         return {
@@ -2796,10 +3038,107 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
             if p.is_file() and "__pycache__" not in p.parts
         }
 
-    committed, fresh = tree(TREE), tree(tmp_path)
+    committed, fresh = tree(TREE), tree(tmp_path / "_schemas")
     assert sorted(fresh) == sorted(committed)
     for rel in sorted(fresh):
         assert fresh[rel] == committed[rel], rel
+    assert sorted(out.beside) == ["constraints.py"], sorted(out.beside)
+    for rel in sorted(out.beside):
+        assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+
+
+def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> None:
+    """Broken on purpose, because the guard cannot otherwise be reached.
+
+    An alias's name is DERIVED, so two distinct constraints colliding is possible
+    in principle -- a SHA-256 prefix collision is the realistic way -- and the
+    damage is the worst kind: one alias annotating two fields, stating on one of
+    them a constraint its own document does not. No bundle input can produce the
+    collision, so the digest is forced to a constant and the real emitter is run.
+
+    The ``_digest`` patch is also the control for the opposite mistake. The
+    collision is caught at the ASSIGNMENT: a dict keyed by name cannot catch it
+    afterwards, because the second write replaces the first and any later check
+    re-derives the survivor and agrees with itself. Before ``record`` existed
+    this run emitted a tree with one alias at two shapes and a GREEN suite.
+    """
+    monkeypatch.setattr(constraints_module, "_digest", lambda pattern: "C0111DED")
+    with pytest.raises(constraints_module.AliasCollision) as caught:
+        emit.emit(BUNDLE, population())
+    assert "StrMatchingC0111DED" in str(caught.value), str(caught.value)
+    assert "two distinct constraints" in str(caught.value)
+
+    # The control: with the real digest, the same run resolves the same shapes and
+    # does not raise -- so the guard is firing on the collision and not on the run.
+    monkeypatch.undo()
+    assert len(emit.emit(BUNDLE, population()).beside) == 1
+
+
+def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_named() -> None:
+    """D5's alias module, in BOTH directions, with its denominators.
+
+    ``test_the_emitted_tree_still_declares_every_module_it_imports`` (in
+    ``tests/test_enum.py``) holds this obligation for a RELATIVE import and skips
+    an absolute one, and an emitted module names ``adcp.types.constraints``
+    absolutely -- so that test does not cover this edge and this one does. The
+    failure it exists for is real and was met: a run whose alias module was not
+    written left every module importing a symbol that did not exist, and the
+    probe trees raised ``ImportError`` on ``StrMinLen2``.
+
+    PROBED, by deleting one declared alias: the import direction reddens, but as
+    an ``ImportError`` while this MODULE is collected rather than here -- the
+    tree is imported at module scope to build the pairing. So that direction is
+    a second statement of something already loud, and what this test adds is the
+    REVERSE direction, the absolute-import spelling, and the denominators.
+
+    The reverse direction is the one that catches the opposite defect: a module
+    holding an alias no document needs. It is EMPTY today, and ``AdCPUrl`` is
+    the one name that could legitimately sit in it -- D5 declares that one
+    whatever the run met, so a consumer can import it -- but it does not,
+    because ``FORMAT_TYPES`` points 23 modules' fields at it.
+    """
+    imported: dict[str, set[str]] = {}
+    for module in sorted(TREE.rglob("*.py")):
+        tree = ast.parse(module.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == constraints_module.MODULE:
+                assert not node.level, (module, "an alias is imported absolutely")
+                for alias in node.names:
+                    imported.setdefault(alias.name, set()).add(str(module.relative_to(TREE)))
+
+    # A name this module provides is one it ASSIGNS or one it RE-EXPORTS.  D5's two
+    # URL arms are one of each: ``AdCPUrl`` is ours and is an assignment, and
+    # ``HttpUrl`` is pydantic's, re-exported here with no assignment so that nothing
+    # in this package restates what pydantic defines -- the import IS the
+    # declaration, and both arms are then named in the one module a consumer reads.
+    module = ast.parse((TREE.parent / "constraints.py").read_text())
+    declared = {
+        node.targets[0].id
+        for node in module.body
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+    }
+    reexported = {
+        alias.asname or alias.name
+        for node in module.body
+        if isinstance(node, ast.ImportFrom) and node.module == "pydantic"
+        for alias in node.names
+    }
+    assert constraints_module.HTTP_URL in reexported, reexported
+    declared |= {constraints_module.HTTP_URL}
+    assert declared, "the alias module declares nothing"
+    assert set(imported) - declared == set(), "imported and not declared"
+    assert declared - set(imported) == set(), "declared and never named"
+
+    # The denominators, so neither direction can pass over an empty set: every
+    # alias is reachable at this one path and nowhere else (no flat root, no
+    # second spelling), and the module is not a dumping ground.
+    assert len(declared) == 60, len(declared)  # 58 derived + AdCPUrl + the HttpUrl re-export
+    # (module, alias) pairs, which is NOT the site count: a module importing one
+    # alias for five of its fields contributes one pair.
+    assert sum(len(where) for where in imported.values()) == 190, imported
+    # And the one name that is a decision really is annotating fields.
+    assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 22, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:

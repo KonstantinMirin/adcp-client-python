@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import HttpUrl, StrMinLen1
 
 
 class CollectionListReference(AdCPBaseModel):
@@ -16,8 +17,8 @@ class CollectionListReference(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-list-ref.json', pointer='#')
-    agent_url: Annotated[str, Field(description='URL of the agent managing the collection list', json_schema_extra={'format': 'uri'})]
-    list_id: Annotated[str, Field(description='Identifier for the collection list within the agent', min_length=1)]
+    agent_url: Annotated[HttpUrl, Field(description='URL of the agent managing the collection list')]
+    list_id: Annotated[StrMinLen1, Field(description='Identifier for the collection list within the agent')]
     auth_token: Annotated[str | None, Field(description='JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.')] = None
 
 

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
 
 
 class PlacementEvidence(AdCPBaseModel):
@@ -16,10 +17,10 @@ class PlacementEvidence(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-evidence.json', pointer='#')
-    url: Annotated[str, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package', json_schema_extra={'format': 'uri'})]
+    url: Annotated[HttpUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
     captured_at: Annotated[AwareDatetime | None, Field(description='When the artifact was captured')] = None
-    latitude: Annotated[float | None, Field(description='Capture location latitude', ge=-90.0, le=90.0)] = None
-    longitude: Annotated[float | None, Field(description='Capture location longitude', ge=-180.0, le=180.0)] = None
+    latitude: Annotated[FloatMinNeg90Max90 | None, Field(description='Capture location latitude')] = None
+    longitude: Annotated[FloatMinNeg180Max180 | None, Field(description='Capture location longitude')] = None
     notes: Annotated[str | None, Field(description="Context that doesn't fit the structured fields (e.g., 'shot from the eastbound approach at 40mph equivalent')")] = None
 
 
