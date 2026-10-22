@@ -380,19 +380,20 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     which is the whole reason the base's own default is asserted here rather than
     left to follow from 43 classes that state their own.
 
-    ``allow`` and not ``ignore`` for the silent case: both accept the unknown
-    key, so this is a question about retention and not about the accepted set,
-    and ``allow`` keeps a field a newer sender adds instead of dropping it.
-    Nothing reads an environment to decide it.
+    ``ignore`` and not ``allow`` for the silent case, because absent and ``true``
+    are different statements: ``true`` says an additional property is part of the
+    document and is retained, while silence says only that one is permitted, so it
+    is accepted and dropped.  Both accept the same payloads, so this is retention
+    and not the accepted set.  Nothing reads an environment to decide it.
     """
-    assert AdCPBaseModel.model_config["extra"] == "allow"
+    assert AdCPBaseModel.model_config["extra"] == "ignore"
 
     counted = {"forbid": 0, "allow": 0, "silent": 0}
     for row in graded():
         if not isinstance(row.model, type):
             continue  # an alias has no class config
         declared = schema_at(row.ref).get("additionalProperties", "silent")
-        want = {False: "forbid", True: "allow", "silent": "allow"}[declared]
+        want = {False: "forbid", True: "allow", "silent": "ignore"}[declared]
         assert row.model.model_config["extra"] == want, (row.ref, declared)
         counted["silent" if declared == "silent" else want] += 1
     assert counted["forbid"] and counted["allow"], counted

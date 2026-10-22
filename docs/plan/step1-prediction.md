@@ -328,3 +328,55 @@ without moving any number anyone reads.
 ## D11 is now D12
 
 Same rule, new number. The code and the probe are unchanged.
+
+---
+
+# Correction: the red end was measured on the wrong tree
+
+The grade above says the schema comparison was "red on **8 of 44** pairs" on the
+tree as committed at the base.  **That is wrong, and the number was not a
+measurement of the base tree at all.**  It was taken from an intermediate state
+of this step's OWN tree -- after the compiler was already carrying property
+descriptions and defaults, and before the alias descriptions, the `format`
+annotation and the `additionalProperties` canonicalization were handled.  So it
+reported this step's remaining work, not the renderer it replaced.  The tell was
+in the grade and I did not read it: 8 is neither 3 nor 142, and the grade claimed
+both numbers one paragraph earlier.
+
+Measured properly, by pointing the same `compare_schema` at the text emitter's
+tree at `11a9b2828` (`docs/plan/step1-compare-base-tree.py`, one command):
+
+| | base tree (`11a9b2828`) | this step |
+|---|---|---|
+| pairs | 43 | 44 |
+| the comparison passes | **1** | **44** |
+| the comparison refuses | **42** | 0 |
+| facts compared | 475 | 486 |
+| the model states nothing | **108** | 0 |
+| the model states otherwise | **4** | 0 |
+
+By keyword, the 112: **`description` 108**, **`default` 3**, **`format` 1**.
+
+The partition, which is what the prediction got half right:
+
+- Of the **148** `description` facts at a position the comparison walks, the text
+  emitter carried **40** and dropped **108**.  The 40 are the object nodes: it
+  wrote a class docstring per object, and pydantic puts `__doc__` into the
+  schema's `description`.  The prediction's "142 dropped descriptions" counted
+  every `description` key in the 43 documents rather than the ones at a walked
+  position, and did not notice that the object ones were already carried.
+- The **3** `default` facts are all **differing**, not missing: the text emitter
+  rendered an optional as `= None`, which STATES a default of null, so the model
+  said `None` where the document says `50`, `True` and `False`.  "Dropped the
+  defaults" is the weaker claim; it stated the wrong ones.
+- The **1** `format` is `core/platform-extension-ref.json`'s `uri`, where a
+  `pattern` sits beside the format so the format's own type is not used.
+- The one pair that passes is `media-buy/acceptance-policy-profile-ref.json`,
+  whose document states no `description` at any walked position.
+
+The 11-fact difference between 475 and 486 is accounted for exactly: the nested
+class `core/truncation-sentinel.json#/properties/_truncation` is its own pair
+here and was not a pair at all before (it had no row in `_bindings.json`, so it
+had no `strict_validate` and nothing could grade it), and its node carries
+**11** facts at a walked position -- counted once in its own pair and once in the
+root's descent.

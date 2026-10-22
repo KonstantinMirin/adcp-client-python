@@ -21,11 +21,14 @@ class names ``"#"``.
 
 ``AdCPBaseModel`` carries the config a document says nothing about.  D8 derives
 ``extra`` from ``additionalProperties`` alone: ``false`` -> ``forbid``, ``true``
--> ``allow``, and a document that declares neither gets this base's ``allow``,
-because JSON Schema permits an additional property by default.  ``allow`` rather
-than ``ignore``, so a field a newer sender adds survives a round trip instead of
-being dropped; the accepted set is the same either way, and which of the two is
-chosen is a question about retention.
+-> ``allow``, and a document that declares neither gets this base's ``ignore``.
+
+**Absent and ``true`` are different statements.**  ``true`` says an additional
+property is part of the document, so it is retained; silence says only that one
+is permitted, so it is accepted and dropped.  Retaining a property the document
+never mentions would be this SDK adding a claim the schema does not make.  Both
+answers accept the same payloads, so the choice is about retention and not about
+the accepted set.
 
 **Nothing here reads an environment and no generated class carries a policy its
 document does not state.**  A consumer wanting stricter or looser behaviour than
@@ -217,7 +220,7 @@ class AdCPBaseModel(BaseModel):
     #: Python ``re``, so ``python-re`` is the engine whose accepted set is the
     #: document's.  Choosing the other engine would be this model deciding that a
     #: pattern the schema admits is unrepresentable.
-    model_config = ConfigDict(extra="allow", regex_engine="python-re")
+    model_config = ConfigDict(extra="ignore", regex_engine="python-re")
 
     #: Declared and not assigned: every emitted class writes its own, and a
     #: subclass of this base that writes none has no schema to be validated
