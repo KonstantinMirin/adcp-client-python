@@ -932,10 +932,62 @@ def _narrows_nothing(keyword: str, value: Any, doc: dict) -> bool:
       silence permits, which is a narrowing, and it is also how a class that
       forbids where its own document is silent would show up -- D8 maps silence
       to ``ignore``, which states nothing.
+    * **``type``, ``description`` and ``default`` AT A NODE THE DOCUMENT GIVES AN
+      ``enum``.**  The third resolver canonicalization, and the same resolver as
+      the second: ``canonicalish`` reduces an enum node to its ``enum`` ALONE,
+      dropping ``type``, ``title``, ``description`` and ``default`` -- measured
+      directly, ``{"type": "string", "enum": ["a", "b"], "description": "d",
+      "default": "a"}`` canonicalizes to ``{"enum": ["a", "b"]}``, while the same
+      node with ``minLength`` in place of the ``enum`` keeps all four.  So a
+      faithful enumeration states three facts its own resolved document no longer
+      does, and none of the three can narrow the ``enum``, which pins the accepted
+      set exactly.  Measured over this population: 42 such facts at 12 pairs
+      (``type`` 20, ``description`` 20, ``default`` 2), and **every one of them at
+      a node the document gives an enum** -- 0 elsewhere.
+
+      Each is still gated on the value, so the row cannot excuse a real
+      narrowing: the ``type`` has to be the one the document's own members imply
+      (a model claiming ``integer`` over a string enum reddens), and the
+      ``default`` has to BE one of the members (a default outside the document's
+      set is the generator inventing a value, and reddens).  A ``description``
+      changes no accepted set in any direction, so there is nothing further to
+      ask of it -- and the ``missing``/``differs`` half still catches a dropped or
+      wrong one, which is the defect that matters.
     """
+    if "enum" in doc:
+        return _implied_by_an_enum(keyword, value, doc["enum"])
     if keyword == "default":
         return value is None and "null" not in str(doc.get("type", ""))
     return keyword == "additionalProperties" and value is True
+
+
+#: The JSON Schema type name for each Python member type an ``enum`` can hold.
+#: ``bool`` before ``int``, because ``bool`` is a subclass of it.
+_MEMBER_TYPES: tuple[tuple[type, str], ...] = (
+    (bool, "boolean"),
+    (int, "integer"),
+    (float, "number"),
+    (str, "string"),
+)
+
+
+def _implied_by_an_enum(keyword: str, value: Any, members: Any) -> bool:
+    """Is a model-only fact implied by the ``enum`` the document states?
+
+    See ``_narrows_nothing``'s third bullet.  ``None`` is excused for ``default``
+    on the same ground as everywhere else -- it is how Python spells an omitted
+    key -- and anything the three rows do not name is reported.
+    """
+    if not isinstance(members, list) or not members:
+        return False
+    if keyword == "description":
+        return True
+    if keyword == "default":
+        return value is None or any(type(value) is type(m) and value == m for m in members)
+    if keyword == "type":
+        implied = {next((n for t, n in _MEMBER_TYPES if type(m) is t), None) for m in members}
+        return len(implied) == 1 and value in implied
+    return False
 
 
 def _closed(x: Any) -> Any:
