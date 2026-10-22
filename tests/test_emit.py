@@ -2301,13 +2301,27 @@ def _constructed(doc: dict, *, binds: dict[str, Any] | None = None) -> tuple[Any
     text = emit.render(mod, symbol)
     module = types.ModuleType("_constructed_fixture")
     module.__dict__.update({name: type_ for name, type_ in targets.values()})
+    # D5's aliases are reached by an ABSOLUTE import, so they survive the strip
+    # below -- and a constructed document can derive a shape the INSTALLED module
+    # has no site for, which is an ``ImportError`` here rather than a test failure
+    # anyone can read.  The RUN's own alias module is the emitter's output, so it is
+    # executed into this namespace and its import line dropped: the same pre-binding
+    # a ``$ref`` target gets, for the same reason, and the annotation stays the
+    # compiler's.
+    if mod.aliases:
+        exec(constraints_module.declare(mod.aliases), module.__dict__)  # noqa: S102
+    alias_import = f"from {constraints_module.MODULE} import"
     # Registered, because ``from __future__ import annotations`` makes every
     # annotation a string and pydantic resolves it against the defining module's
     # globals -- a bare ``exec`` dict has no module to be found through.
     sys.modules[module.__name__] = module
     try:
         exec(  # noqa: S102 -- executing the compiler's own output is the point
-            "\n".join(line for line in text.splitlines() if not line.startswith("from .")),
+            "\n".join(
+                line
+                for line in text.splitlines()
+                if not line.startswith("from .") and not line.startswith(alias_import)
+            ),
             module.__dict__,
         )
     finally:
@@ -2734,29 +2748,72 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert check_accepts(doc, accept, examples=50).outcome == "pass"
     assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
 
-    # **A CONSTRAINED arm refuses, and this is the rendering that forces it.**  The
-    # split needs the bound on the ARM, the compiler's ``DataType`` carries no
-    # constraint, so the keyword reaches the FIELD and bounds the whole union -- the
-    # string's ``minLength`` applied to the integer arm.  Measured here on the
-    # compiler directly, so the refusal has its reason beside it rather than a
-    # reference to one.
+    # **A CONSTRAINED arm is NAMED, and this is the rendering that forces it to be.**
+    # The split needs the bound on the ARM; the compiler's ``DataType`` carries no
+    # constraint, so a keyword left on the node reaches the FIELD and bounds the whole
+    # union -- the string's ``minLength`` applied to the integer arm. Measured here on
+    # the compiler directly, so the alternative has its own evidence rather than a
+    # reference to it.
     escaped = compiler.render_alias(
         "Escaped",
         compiler.Type(container="union", of=(compiler.Type("str"), compiler.Type("int"))),
         {"minLength": 4},
     )
     assert "Annotated[str | int, Field(min_length=4)]" in escaped.text, escaped.text
+
+    # **D5's alias module removed that obstacle, and the node STILL refuses -- on the
+    # grader rather than on the rendering.**  Both halves are asserted, because the
+    # refusal's reason changed and a test that only re-asserted the refusal would not
+    # have noticed.
+    armed = {
+        "title": "MS",
+        "type": "object",
+        "required": ["v"],
+        "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
+    }
+    named = constraints_module.symbol("string", {"minLength": 4})
+
+    # Half one: the arm IS nameable now, and that model's accepted set is the
+    # document's -- the integer arm takes no string bound. Built by hand from the
+    # alias the emitter would have used, because the emitter refuses to reach it.
+    arm_alias = {"StrMinLen4": None}
+    exec(constraints_module.declare({named: ("string", {"minLength": 4})}), arm_alias)  # noqa: S102
+
+    class Armed(AdCPBaseModel):
+        v: arm_alias[named] | int  # type: ignore[name-defined,valid-type]
+
+    assert Armed.model_validate({"v": 1}).v == 1
+    assert Armed.model_validate({"v": "abcd"}).v == "abcd"
+    with pytest.raises(ValidationError):
+        Armed.model_validate({"v": "abc"})  # the string arm keeps its own bound
+
+    # Half two, and the reason the row refuses anyway: the comparison folds a model's
+    # ``anyOf`` into a document's type LIST only where every branch is a bare type, so
+    # it reads this FAITHFUL model as dropping both facts.  Emitting a node no check
+    # can grade is what the refusal prevents.
+    blind = compare_schema(armed, Armed)
+    assert blind.outcome == "model_drops_a_fact", blind
+    assert {m.split(": ")[0] for m in blind.missing} == {
+        "/properties/v/type",
+        "/properties/v/minLength",
+    }, blind.missing
+
     with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "ms.json",
-            {
-                "title": "MS",
-                "type": "object",
-                "properties": {"v": {"type": ["string", "integer"], "minLength": 4}},
-            },
-        )
+        emit.lower_document("ms.json", armed)
     assert caught.value.keyword == "minLength", caught.value.keyword
-    assert "'string' arm" in caught.value.detail, caught.value.detail
+    assert "every branch is a bare type" in caught.value.detail, caught.value.detail
+    # And it costs no document: 0 multi-type node in an EMITTED document states
+    # anything beyond its ``type``, which is why this is graded on a constructed one.
+    from codegen.lower import containers as lower_containers
+
+    emitted = emit.emit(BUNDLE, population()).emitted
+    carried = frozenset().union(*lower_containers.ARM.values())
+    assert [
+        (d, p)
+        for d in emitted
+        for p, node in bundle.nodes(bundle.read(BUNDLE, d))
+        if isinstance(node.get("type"), list) and set(node) & carried
+    ] == []
 
     # A null arm refuses too, and for the grader rather than the rendering.
     with pytest.raises(Refusal) as caught:
@@ -2784,60 +2841,83 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert caught.value.keyword in ("minLength", "type"), caught.value.keyword
 
 
-def test_a_constraint_inside_a_container_refuses_rather_than_being_dropped() -> None:
-    """D5's shared alias module is not built here, and this is the population.
+def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -> None:
+    """D5's alias module, read from the side it was built for, and the residual.
 
     A constraint on what is INSIDE a container has no slot in the compiler's
     ``DataType``, so putting the node in ``list[...]`` would drop the fact and widen
-    the model.  D5's answer is to resolve the inner type to a name; its first two
-    rungs miss here and the third is a module this row does not land.
+    the model.  **This test used to assert the REFUSAL that stood in for the answer**
+    -- 15 documents over 8 distinct inner constraints, with the detail naming what
+    D5's alias module would have to name -- and the alias module is what retires it.
+    Naming the inner type is the whole of the fix: once the constraint is on the
+    type, ``dict[str, StrMinLen1]`` and ``list[StrMatchingEFC12812]`` are plain
+    references and ``_inner`` sees nothing to carry.
 
-    So it refuses, and the refusal names the constraint.  Measured on the merged
-    tree: 15 documents report it, over 8 distinct inner constraints, and the bundle
-    names NONE of the 8 at a titled scalar root -- checked by content equality over
-    all of them, which is D3's only deduplication, so this is not a claim about
-    spellings.  (This lane measured 1 constraint at 3 documents alone; with steps
-    3-5's rows beside it the walk reaches further before refusing, so the
-    inner-constraint refusal is the first blocker far more often.)
+    Three halves, because the row did not disappear:
+
+    * the inner type IS named, at 10 container positions in 7 modules;
+    * the two documents the previous revision of this test named BY NAME as refused
+      on an inner ``^[A-Z]{2}$`` now emit;
+    * and what still refuses is a ``format`` no type is selected for, which would
+      be DROPPED rather than carried -- 3 documents, all three on
+      ``format: hostname`` inside an array's ``items``.
+
+    That the inner fact survives into the model's rendered schema is graded by
+    ``test_an_arrays_bound_is_the_lists_and_not_its_elements``, which compares the
+    document's ``items`` keywords against the model's at every array property, so
+    it is not restated here.
     """
     out = emit.emit(BUNDLE, population())
     inner = {
-        d: r for d, r in out.refusals.items() if "D5" in r["detail"] and "alias module" in r["detail"]
+        d: r
+        for d, r in out.refusals.items()
+        if "D5" in r["detail"] and "no constraint inside a container" in r["detail"]
     }
-    # 15 documents report it, where this lane measured 1 of 3: with steps 3-5's rows
-    # beside this one the walk reaches further into each document before refusing, so
-    # the inner-constraint refusal is the FIRST blocker far more often.  The keyword
-    # set is asserted as a whole rather than as a count, because it says which
-    # constraint D5's alias module would have to name.
-    assert len(inner) == 15, sorted(inner)
-    assert {r["keyword"] for r in inner.values()} == {"$ref", "format", "minimum", "pattern"}
-    # The two this lane saw masked by an earlier ``$ref`` now report the inner
-    # constraint themselves, which is the same movement read from the other side.
-    for unmasked in ("brand/rights-terms.json", "brand/search-brands-request.json"):
-        assert out.refusals[unmasked]["keyword"] == "pattern", out.refusals[unmasked]
-        assert "^[A-Z]{2}$" in out.refusals[unmasked]["detail"], out.refusals[unmasked]
+    # Down from 15, and every survivor is a FORMAT rather than a constraint keyword:
+    # a format with no selected type has nowhere to go inside a container, and the
+    # comparison would not see it go (the accepts check draws through
+    # `hypothesis_jsonschema`, which honours a format it knows).
+    assert len(inner) == 3, sorted(inner)
+    assert {r["keyword"] for r in inner.values()} == {"format"}
+    for document, row in inner.items():
+        node = bundle.read(BUNDLE, document)
+        for part in row["pointer"].strip("/").split("/"):
+            node = node[part]
+        assert node["format"] == "hostname", (document, node)
+        assert node["format"] not in emit.FORMAT_TYPES, "a selected type would not refuse"
+        assert "hostname" in row["detail"], row
 
-    # Eight constraints over the fifteen, and the bundle gives none of them a name.
-    facts = set()
-    for document in inner:
-        for _, node in bundle.nodes(bundle.read(BUNDLE, document)):
-            if node.get("type") != "array" or not isinstance(node.get("items"), dict):
+    # The two the previous revision asserted as REFUSED, now emitted -- read off the
+    # run rather than off the tree, so this cannot pass on a stale file.
+    for was_refused in ("brand/rights-terms.json", "property/property-list-filters.json"):
+        assert was_refused in out.emitted, was_refused
+        assert was_refused not in out.refusals, out.refusals.get(was_refused)
+
+    # And the naming, counted: a container position whose INNER type is a symbol the
+    # module imports from `adcp.types.constraints`.
+    positions, modules = 0, set()
+    for rel, text in sorted(out.files.items()):
+        if not rel.endswith(".py"):
+            continue
+        parsed = ast.parse(text)
+        aliases = {
+            alias.name
+            for n in ast.walk(parsed)
+            if isinstance(n, ast.ImportFrom) and n.module == constraints_module.MODULE
+            for alias in n.names
+        }
+        for n in ast.walk(parsed):
+            if not (
+                isinstance(n, ast.Subscript)
+                and isinstance(n.value, ast.Name)
+                and n.value.id in ("list", "dict")
+            ):
                 continue
-            item = node["items"]
-            if set(emit.CONSTRAINTS) & set(item):
-                facts.add(json.dumps({k: v for k, v in item.items() if k in ("type", "pattern")}, sort_keys=True))
-    assert len(facts) == 8, sorted(facts)
-    assert '{"pattern": "^[A-Z]{2}$", "type": "string"}' in facts, sorted(facts)
-    named_by_the_bundle = {
-        json.dumps(
-            {k: v for k, v in bundle.read(BUNDLE, d).items() if k in ("type", "pattern")},
-            sort_keys=True,
-        )
-        for d in bundle.portable(BUNDLE)
-        if bundle.is_scalar_root(bundle.read(BUNDLE, d))
-        and isinstance(bundle.read(BUNDLE, d).get("title"), str)
-    }
-    assert not facts & named_by_the_bundle, facts & named_by_the_bundle
+            for name in ast.walk(n.slice):
+                if isinstance(name, ast.Name) and name.id in aliases:
+                    positions += 1
+                    modules.add(rel)
+    assert (positions, len(modules)) == (10, 7), (positions, sorted(modules))
 
 
 # --------------------------------------------------------------------------- #

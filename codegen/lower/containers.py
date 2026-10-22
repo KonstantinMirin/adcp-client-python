@@ -253,18 +253,14 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     silently makes the model wider than its document, and applying it to every arm
     makes it narrower.  Both halves of that are this row's named defect.
 
-    **And an arm that DOES carry a constraint refuses too, which is the same compiler
-    gap D5 names and not a third rule.**  The split only exists if the constraint can
-    sit on the arm -- ``Annotated[str, Field(min_length=4)] | int`` -- and the
-    compiler's ``DataType`` carries no constraints, so the keyword would reach the
-    FIELD instead and bound the whole union: ``Annotated[str | int,
-    Field(min_length=4)]``, which applies the string's bound to the integer arm.
-    Measured on a constructed ``["string", "integer"]`` with ``minLength: 4``, which
-    is exactly the narrowing this row exists to remove.  **D5's alias module now
-    names the arm**, so ``StrMinLen4 | int`` is what an arm carrying a constraint
-    lowers to and the split works as the docstring above describes; :func:`_inner`
-    refuses only an arm whose constraint ``codegen.constraints`` has no spelling
-    for.
+    **And an arm that DOES carry a constraint refuses, but no longer for the
+    rendering's sake.**  The split only exists if the constraint can sit on the arm,
+    and the compiler's ``DataType`` carries none -- so before D5's alias module the
+    keyword reached the FIELD and bounded the whole union, ``Annotated[str | int,
+    Field(min_length=4)]``, applying the string's bound to the integer arm. The alias
+    module removed that: ``StrMinLen4 | int`` is what it lowers to, and that model's
+    accepted set IS the document's. The refusal stands on the GRADER instead, and the
+    body below carries the measurement.
 
     **A ``null`` arm REFUSES, and the reason is the grader rather than the
     rendering.**  ``None`` is a perfectly good arm and the compiler folds it with
@@ -304,6 +300,38 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
         {"type", *carried},
         f"no arm of {sorted(kinds)} can carry it, so it constrains nothing",
     )
+    stated = sorted(set(node) & carried)
+    if stated:
+        # **A CONSTRAINED arm refuses, and the reason is now the GRADER rather than
+        # the rendering.**  D5's alias module removed the rendering obstacle -- the
+        # arm's own type carries its own bound, so ``StrMinLen4 | int`` is what this
+        # lowers to and the string's keyword no longer reaches the field and bounds
+        # the integer arm.  Measured: that model's accepted set IS the document's.
+        #
+        # What has no answer is grading it.  ``harness._normalize`` folds a model's
+        # ``anyOf`` back into the document's ``type`` LIST only where EVERY branch is
+        # a bare ``{"type": X}`` -- a constrained branch is not one, and folding it
+        # would throw that branch's constraint away -- so the comparison reads such a
+        # model as stating neither the ``type`` list nor the constraint, and reports a
+        # faithful node as dropping two facts.  Measured on exactly the document this
+        # paragraph describes.
+        #
+        # Emitting a node no check can grade is the widening this pipeline exists to
+        # remove, which is the same reasoning the ``null`` arm below refuses on. It
+        # costs no document: of the 56 multi-type nodes in the named population's
+        # documents, **0 in an EMITTED document state anything beyond ``type``**, and
+        # the 36 that do sit in documents refused for another reason. It is lifted by
+        # teaching the comparison to compare a constrained union branch-wise, which
+        # is the harness's row and not this one's.
+        raise Refusal(
+            stated[0],
+            pointer,
+            f"{sorted(kinds)} states {stated}, which D5's alias module can now put on "
+            "the arm's own type -- but the schema comparison folds a model's anyOf "
+            "back into a type LIST only where every branch is a bare type, so a "
+            "constrained branch reads as dropping both the type list and the "
+            "constraint and the node would be emitted ungraded",
+        )
     arms: list[compiler.Type] = []
     for kind in kinds:
         cut = {"type": kind, **{k: v for k, v in node.items() if k in ARM[kind]}}
