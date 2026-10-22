@@ -10,7 +10,8 @@ from pydantic import ValidationError
 
 from adcp.server.base import ADCPHandler, ToolContext
 from adcp.server.mcp_tools import create_tool_caller
-from adcp.types import CreativeAsset, SyncCreativesRequest
+from adcp.types import CreativeAsset, PackageUpdate, SyncCreativesRequest
+from adcp.types.domains.media_buy.package_update import PackageUpdate as _LegacyPackageUpdate
 from adcp.validation import ValidationHookConfig, get_schema, validate_request
 
 _BASE = {
@@ -144,6 +145,23 @@ def test_sync_refuses_more_creatives_than_the_bundle_permits() -> None:
     assert any(
         issue.pointer == "/creatives" and issue.keyword == "maxItems" for issue in outcome.issues
     )
+
+
+def test_package_update_keeps_the_generated_creatives_constraints() -> None:
+    """``PackageUpdate`` narrows ``creatives`` the same way and must not lose its ceiling."""
+    generated = _LegacyPackageUpdate.model_fields["creatives"]
+    canonical = PackageUpdate.model_fields["creatives"]
+    assert canonical.metadata == generated.metadata
+    assert canonical.description == generated.description
+
+    ceiling = next(m.max_length for m in generated.metadata if hasattr(m, "max_length"))
+    creative = {"creative_id": "cr", "name": "Banner", "format_kind": "image", "assets": {}}
+    with pytest.raises(ValidationError) as caught:
+        PackageUpdate.model_validate(
+            {"package_id": "pkg_1", "creatives": [creative] * (ceiling + 1)}
+        )
+    assert caught.value.errors()[0]["loc"] == ("creatives",)
+    assert caught.value.errors()[0]["type"] == "too_long"
 
 
 class _AssignmentHandler(ADCPHandler[Any]):
