@@ -153,3 +153,75 @@ in common over all 1,054, and **214** in common if the scalar row drops `"enum" 
 
 A perturbation that reddens nothing is a finding about the instrument, and P2 and P4 are
 predicted to be exactly that before either is run.
+
+---
+
+# Graded, at `98fc569bd`
+
+Measured in `/Users/konst/projects/acp-s3`'s own venv on branch `emit/s3-enum-v2`, base
+`482e7bc63`. **337 tests pass in 119 s** (baseline on the merged base: 72 in 61 s).
+
+## The numbers
+
+| claim | predicted | measured |
+|---|---|---|
+| population, named | 749 | **749** |
+| — leaves / referencing / enum carriers | 85 / 249 / 535 | **85 / 249 / 535** |
+| emitted documents (N) | 282 | **282** |
+| refused documents | 486 | **486** |
+| emitted + refused | 768 | **768** |
+| ΔN against the same 749-document population | +238 | **+238** (44 → 282) |
+| ΔN against the committed tree | +239 | **+239** (43 → 282) |
+| the `enum` refusal bucket | 262 → 0 | **262 → 0** |
+| root enums emitting | 213 of 214 | **213 of 214** |
+| the one refusal | `enums/task-type.json` at `/` on `notes` | **exactly that** |
+| its cascade cost | 0 (7 referrers, 6 in population) | **0** (7, 6) |
+| the 43 committed modules | byte-unchanged | **byte-unchanged**, 0 tracked files modified under `src/` |
+| the refusal buckets I said I was not modelling | `type` 95 → 142 | **142** |
+| `graded()` needs no change | yes | **yes** |
+
+**Right, and the reason it is right is worth keeping**: 282 came from a screen that treated
+`enum` as an annotation (279) plus the 3 `enumMetadata` documents, and both addends landed.
+The screen was accurate here because `emit` already walks `$ref` transitively, so it models
+the cascade; the earlier attempt's screen was wrong by 23 in the other direction because it
+asked only about a document's own keywords.
+
+## Where I was wrong
+
+Every number I named as unpredictable, and nothing else:
+
+| counter | measured |
+|---|---|
+| graded pairs | **286** (282 roots + 4 nested). I predicted "282 + 10 to 30 nested"; it is 4 |
+| refuses-check instances | 7,508 (was 3,758) |
+| document facts compared | 1,490 (was 486) |
+| model-only facts examined | 141 (was 57), of which **0** narrow |
+| pairs excused `no_constraint_to_step` | 3 (was 2) — `core/media-buy-legacy-terms-ref.json` joins |
+| format sites | 23 (`date-time` 11, `uri` 10, `date` 2); was 14 |
+| distinct patterns / sites | 14 / 27; was 11 / 19 |
+
+## Two things the prediction did not contain at all
+
+1. **`canonicalish` collapses an enum node to its `enum` alone**, so a faithful enumeration
+   states `type`, `description` and `default` that its own RESOLVED document no longer does:
+   42 facts at 12 pairs, every one at a node the document gives an enum and 0 elsewhere.
+   That forced the one instrument edit, in `harness._narrows_nothing`, on its own commit.
+   Nothing in §9's six perturbations would have found it; the symmetric comparison did, on
+   the first run.
+2. **`IntEnum` is reached by 0 emitted documents.** All 3 integer enum nodes sit in
+   documents that refuse on `const` first, so the second base is graded on a node written in
+   the test rather than on the bundle. The prediction counted the 3 nodes as an input and
+   never asked whether they emit.
+
+## The perturbations
+
+| # | predicted | measured |
+|---|---|---|
+| P1 lower-case the member names | the tree does not import; the upper-case test | **2 freshly emitted modules do not parse** (`enums/binary_verdict.py` on `pass`, `error_details/rate_limited.py` on `global`) + 3 tests red |
+| P2 drop `enumDescriptions` | nothing in the three checks; only my own test | **exactly that.** accepts `pass`, refuses `['pass']`, comparison `pass`, verdict `pass`, with every one of 1,151 entries gone. Red: the byte-compare, and — once the tree is regenerated under it — the descriptions test |
+| P3 the enum widening (scalar instead of an enumeration) | the schema comparison, `model_drops_a_fact`; CONTRADICTING the carried-forward finding | **confirmed, and the finding is corrected.** Root (`brand/verification-status.json`): `comparison:model_drops_a_fact`, `/enum` and `/description` missing, 1 graded instance. Inline (`core/keyword-target.json`): `accepts:model_refused_valid` AND `/properties/match_type/enum` missing, 150 graded instances |
+| P4 delete the injectivity refusal | only the synthetic test | **exactly that: 1 test red, the tree byte-unchanged.** No bundle document reaches it |
+| P5 drop `"enum" not in doc` from the scalar row | 214 documents claimed twice → the build failure | **16 tests red**, and `AmbiguousRoot: enums/match-type.json: is_scalar_root, is_enum_root all claim this root` |
+| P6 mangle one member's value | the accepts check, direction 1 | **`accepts:model_refused_valid` on both controls**, and the comparison reddens too |
+
+Restored with file tools after each; `git diff` clean, and the suite back to 337 passing.
