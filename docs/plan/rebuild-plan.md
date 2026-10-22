@@ -295,6 +295,15 @@ A step that wants to change one of these reports it and stops.
   accepts them — which is what D4 already says the constructor does. Request-forgery defence is
   a layer of its own in the SDK and in the consuming application, not a job the annotation does.
 
+  **Known ceiling: `AdCPUrl` does not round-trip.** `https://x.example` validates to
+  `https://x.example/`, and `https://A.example/Path/MiXeD?Q=1#F` to
+  `https://a.example/Path/MiXeD?Q=1#F`. Lowercasing the host is RFC 3986-equivalent; the
+  appended trailing slash is a different string, so a consumer that compares, signs or keys on
+  the value sees something the sender did not send. Accepted, because a parsed URL is what the
+  field is for and the alternative is a bare `str` that states less. The upgrade path, if a
+  consumer ever needs the exact bytes, is to carry the sender's string beside the parsed value
+  rather than to weaken the type.
+
   **This needs a comparison row of a new kind, and it is weaker than the others.** The enum rows
   admit a fact the document's own members *imply*. This one admits a fact the model does not
   state at all, on the ground that the entry point enforces it — so the row is "the schema half
