@@ -1081,7 +1081,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 28, "uri": 28, "email": 2, "date": 4}, seen
+    assert seen == {"date-time": 43, "uri": 35, "email": 2, "date": 4}, seen
     # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
     # graded by an empty loop: `AdCPUrl` at the one position whose document states
     # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
@@ -1110,7 +1110,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 62, stated
+    assert stated == 84, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1277,7 +1277,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (29, 85), distinct
+    assert (len(distinct), sum(distinct.values())) == (37, 110), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1303,8 +1303,8 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
         where[pattern] = sites
 
     assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (27, 82), diverges
-    assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
+    assert (len(diverges), sum(diverges.values())) == (35, 104), diverges
+    assert (len(agrees), sum(agrees.values())) == (1, 4), agrees
     # The one that agrees is the one with no `$` to disagree about.
     assert "$" not in next(iter(agrees)), agrees
     assert all("$" in p for p in diverges), diverges
@@ -1414,9 +1414,9 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 481, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 469
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
+    assert len(reports) == 551, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 538
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 13
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
     # rather than schema facts, and seven careful readings of it, on trees whose
@@ -1434,8 +1434,8 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
     assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4859  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1128  # model-only facts examined
+    assert sum(r.comparison.compared for r in reports) == 6252  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1505  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
@@ -1447,7 +1447,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
     # A position inside a nested class is graded twice, at its own pair and at its
     # parent's, so 36 is larger than the 27 annotation sites the tree has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 74
+    assert sum(len(r.comparison.url_typed) for r in reports) == 104
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -1500,7 +1500,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     # root that states its own ``additionalProperties``, so a base never has one to
     # carry and takes this default.  The other members are mapping and container
     # roots whose own document is silent too.
-    assert counted["silent"] == 22, counted
+    assert counted["silent"] == 35, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1948,21 +1948,25 @@ def test_a_payload_no_branch_admits_is_refused_in_the_documents_own_vocabulary()
     with the document's own combinator, which is not recoverable at run time from the
     branches.
 
-    Graded two ways, because the tree does not exercise both arms: every emitted union
-    root is ``oneOf`` (6 of 6), so the ``anyOf`` arm is graded on a fixture.  Said rather
-    than left to be discovered: hard-coding ``"oneOf"`` in the lowering would redden
-    nothing in the population and only the fixture below.
+    **The tree now exercises both combinators, so the loop below reads each document's
+    own.**  It was 6 of 6 ``oneOf``, which is why the loop hard-coded ``"oneOf"`` and
+    the ``anyOf`` branch was graded only on the fixture at the end --
+    ``salesagent-j3k2l.19`` emits ``core/canonical-account-ref.json``, whose root
+    combinator is ``anyOf``, and the hard-coded expectation reddened on it. Asserting
+    the DOCUMENT'S keyword instead is what the test claims in the first place: a
+    refusal names the document's own vocabulary. The fixture stays, because it is now
+    a second grader of the ``anyOf`` branch rather than the only one, and it is also
+    what grades ``_ROOT_REQUIRED``.
     """
     assert emitted_unions()
-    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_unions()} == {"oneOf"}
+    assert {lower_union.keyword(bundle.read(BUNDLE, d)) for d in emitted_unions()} == {"anyOf", "oneOf"}
     for document in emitted_unions():
         base = getattr(importlib.import_module(_module_of(document)), _symbol(document))
         with pytest.raises(ValidationError) as caught:
             base.model_validate({"__adcp_harness__": "no branch admits this"})
-        assert [e["type"] for e in caught.value.errors()] == ["oneOf"], (
-            document,
-            caught.value.errors(),
-        )
+        assert [e["type"] for e in caught.value.errors()] == [
+            lower_union.keyword(bundle.read(BUNDLE, document))
+        ], (document, caught.value.errors())
 
     # the anyOf arm, and the _ROOT_REQUIRED split, neither of which the population reaches
     class AnyOfBase(BranchDispatchMixin, AdCPBaseModel):
@@ -2110,8 +2114,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # 156: roots emit only once another step's row is beside this one -- a nested
     # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
     # combinators left for step 7.  Joint unblocking, which no single lane reaches.
-    assert len(emitted) == 16, emitted
-    assert len(refused) == 110
+    assert len(emitted) == 19, emitted
+    assert len(refused) == 107
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2121,12 +2125,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         assert row["keyword"] and row["pointer"], document
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
-        "allOf": 52,  # step 4
+        "allOf": 54,  # step 4
         "$ref": 16,  # a bare-$ref branch has no node to declare a subclass from
         "properties": 13,  # a root conjunct; see lower/union.py's docstring
         "not": 7,  # step 7 (D6) at a position the rules row does not reach
-        "uniqueItems": 6,  # step 7 (D6)
-        "anyOf": 5,  # a nested union
+        "anyOf": 6,  # a nested union
         "if": 2,  # step 7 (D6)
         "enum": 2,  # a member type no enumeration base exists for
         "const": 2,
@@ -2135,6 +2138,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "type": 1,  # a root stating no type whose branch states none either
         "enumMetadata": 1,
         "maxLength": 1,  # D5: a string bound beside a format: uri
+        # **The ``uniqueItems`` row (6) is GONE**, and its documents are
+        # redistributed rather than emitted: `salesagent-j3k2l.19` lowers the keyword
+        # on the class that holds the array, so a branch stating it reaches its NEXT
+        # blocker -- `allOf` (+2), `$ref` (0, already 16) and `anyOf` (+1) -- while 3
+        # of the 6 emit. `emitted` rising 16 -> 19 is the half of that this profile
+        # cannot show, which is why both are asserted.
         # **``type`` is 1 and was 12**: 10 of these roots declared ``type: object``
         # and were refused at a branch of their own combinator, which
         # ``bundle.constrained_to_object`` is now the reading of. 2 of the 10 emit
@@ -2704,7 +2713,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 mappings += 1
                 constrained += bool({"propertyNames", "patternProperties"} & set(node))
                 del pointer
-    assert mappings == 138, mappings
+    assert mappings == 152, mappings
     assert constrained == 0, constrained
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
@@ -3095,7 +3104,7 @@ def test_a_constraint_inside_a_container_is_named_and_a_format_still_refuses() -
                 if isinstance(name, ast.Name) and name.id in aliases:
                     positions += 1
                     modules.add(rel)
-    assert (positions, len(modules)) == (20, 12), (positions, sorted(modules))
+    assert (positions, len(modules)) == (23, 13), (positions, sorted(modules))
 
 
 # --------------------------------------------------------------------------- #
@@ -3220,13 +3229,13 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 62, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
+    assert len(declared) == 73, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
-    assert sum(len(where) for where in imported.values()) == 201, imported
+    assert sum(len(where) for where in imported.values()) == 238, imported
     # And the one name that is a decision really is annotating fields.
-    assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
-    assert len(imported[constraints_module.HTTP_URL]) == 23, sorted(imported[constraints_module.HTTP_URL])
+    assert len(imported[constraints_module.URL]) == 3, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 25, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
