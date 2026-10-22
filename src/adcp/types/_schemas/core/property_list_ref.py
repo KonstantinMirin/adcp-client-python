@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMinLen1
 
 
 class PropertyListReference(AdCPBaseModel):
@@ -17,7 +17,7 @@ class PropertyListReference(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property-list-ref.json', pointer='#')
-    agent_url: Annotated[AdCPUrl, Field(description='URL of the agent managing the property list')]
+    agent_url: Annotated[HttpUrl, Field(description='URL of the agent managing the property list')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier for the property list within the agent')]
     auth_token: Annotated[str | None, Field(description='JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.')] = None
 

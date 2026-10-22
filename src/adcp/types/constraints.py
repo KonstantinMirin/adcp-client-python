@@ -14,19 +14,34 @@ are not thereby the same idea.  A ``pattern`` has no readable name that is not a
 concept, so it contributes eight hex digits of its own SHA-256.  Two distinct
 constraints deriving one name is a build failure rather than a shared alias.
 
-``AdCPUrl`` is the one name here that is a decision rather than a derivation:
-every ``format: uri`` field in this SDK is annotated with it.  A consumer who
-wants to parse a URL of their own can import it, and the document's own
-``pattern`` -- the bundle states eight distinct ones across 73 of its 300 ``uri``
-uses, and ``UrlConstraints`` expresses only the first -- stays with the schema
-half, which ``strict_validate`` applies before the constructor ever runs.
+Two names here are DECISIONS rather than derivations, and together they are this
+SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
+PATTERN.
+
+``AdCPUrl`` annotates a field whose document restricts the scheme to https
+(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
+and the document agree.
+
+``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
+place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
+withdrawn: ``format: uri`` is RFC 3986, so a document stating only
+``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
+``file:///`` as well, and refusing those made the SDK stricter than the spec it
+implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
+``file:``, which is a named ceiling rather than an oversight.
+
+Either way the document's own ``pattern`` stays with the schema half: the bundle
+states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
+carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
+applies the document before the constructor ever runs, so the accepted set at the
+entry point is the document's.
 """
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import AnyUrl, Field, UrlConstraints
+from pydantic import AnyUrl, Field, HttpUrl, UrlConstraints
 
 
 AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]

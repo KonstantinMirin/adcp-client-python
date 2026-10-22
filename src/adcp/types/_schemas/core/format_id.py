@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import AdCPUrl, FloatGt0, FloatMin1, IntMin1, StrMatchingA828669D
+from adcp.types.constraints import FloatGt0, FloatMin1, HttpUrl, IntMin1, StrMatchingA828669D
 
 
 class FormatReferenceStructuredObject(AdCPBaseModel):
@@ -23,7 +23,7 @@ class FormatReferenceStructuredObject(AdCPBaseModel):
         Dependencies('pixel_ratio', ('width', 'height')),
         Dependencies('width', ('height',)),
     )
-    agent_url: Annotated[AdCPUrl, Field(description="URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.")]
+    agent_url: Annotated[HttpUrl, Field(description="URL of the agent that defines this format (e.g., 'https://creative.adcontextprotocol.org' for standard formats, or 'https://publisher.com/.well-known/adcp/sales' for custom formats). Callers comparing two `format-id` values MUST canonicalize `agent_url` per the AdCP URL canonicalization rules before treating two formats as the same. See docs/reference/url-canonicalization.")]
     id: Annotated[StrMatchingA828669D, Field(description="Format identifier within the agent's namespace (e.g., 'display_static', 'video_hosted', 'audio_standard'). When used alone, references a template format. When combined with dimension/duration fields, creates a parameterized format ID for a specific variant.")]
     width: Annotated[IntMin1 | None, Field(description='Width in pixels for visual formats. When specified, height must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.')] = None
     height: Annotated[IntMin1 | None, Field(description='Height in pixels for visual formats. When specified, width must also be specified. Both fields together create a parameterized format ID for dimension-specific variants.')] = None

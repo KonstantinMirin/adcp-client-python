@@ -76,15 +76,62 @@ from codegen.compiler import Rendered
 #: for a relative import is that ``_schemas`` is private, and this is not).
 MODULE = "adcp.types.constraints"
 
-#: The one type that is a DECISION rather than a derivation, so it is declared
-#: whatever the run met.  D5: a ``format: uri`` field is ``AdCPUrl``, defined once
-#: as ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]`` -- named for
-#: provenance rather than after a standard, because pydantic exports 22 URL types
-#: and none is https-only, so ``HttpsUrl`` would read as an upstream export a
-#: reader cannot find.
+#: **A ``format: uri`` field's type FOLLOWS THE DOCUMENT'S OWN PATTERN** (D5), so
+#: there are two of them and :func:`url_type` chooses.  Both are decisions rather
+#: than derivations, so both are declared whatever the run met.
+#:
+#: ``AdCPUrl`` is ours: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``,
+#: named for provenance rather than after a standard, because pydantic exports 22
+#: URL types and none is https-only -- a name like ``HttpsUrl`` would read as an
+#: upstream export a reader cannot find.
 URL = "AdCPUrl"
 URL_LINE = f'{URL} = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]'
-URL_IMPORTS = {("typing", "Annotated"), ("pydantic", "AnyUrl"), ("pydantic", "UrlConstraints")}
+
+#: ``HttpUrl`` is pydantic's own, RE-EXPORTED here rather than imported from
+#: ``pydantic`` at each site.  The import is the declaration: no assignment, so
+#: nothing in this package restates what pydantic defines.  It is here and not
+#: left to ``pydantic`` because the SDK's ``uri`` decision is a SPLIT, and a
+#: consumer reading a module that declared only ``AdCPUrl`` would read the
+#: https-only arm as the whole rule.  One place names both arms.
+HTTP_URL = "HttpUrl"
+
+URL_IMPORTS = {
+    ("typing", "Annotated"),
+    ("pydantic", "AnyUrl"),
+    ("pydantic", "UrlConstraints"),
+    ("pydantic", HTTP_URL),
+}
+
+#: The one pattern that restricts a ``uri`` node's SCHEME to https and says nothing
+#: else, which is the gate D5 states and the one it counts: ``^https://`` at **47
+#: of the bundle's 300 ``uri`` positions**.  Compared for EQUALITY and not by
+#: prefix, because 47 is the figure the plan states and a prefix test matches 72 --
+#: the other 25 are patterns that pin a host, forbid userinfo, or exclude
+#: ``localhost`` and IP literals as well, and at those the document already refuses
+#: every non-https value, so the type's own scheme rule changes no accepted set at
+#: the entry point.  A literal to compare against can be audited; a predicate that
+#: tried to decide "does this regex restrict the scheme" could not.
+HTTPS_ONLY = "^https://"
+
+
+def url_type(node: Mapping[str, Any]) -> str:
+    """Which URL type a ``format: uri`` node selects, from the DOCUMENT (D5).
+
+    ``AdCPUrl`` where the document's own ``pattern`` is :data:`HTTPS_ONLY`, because
+    there the type and the document agree about the scheme.  ``HttpUrl`` everywhere
+    else, because ``AdCPUrl`` everywhere **narrowed the SDK below the pinned spec**:
+    ``format: uri`` is RFC 3986 and a bare ``{"type": "string", "format": "uri"}``
+    admits ``https://``, ``http://``, ``urn:`` and ``file:///`` alike, of which
+    ``AdCPUrl`` refuses three -- measured at 228 of 300 positions in 128 of 160
+    documents, and at 26 of 27 positions in documents the emitter emits today.
+
+    ``HttpUrl``'s own two ceilings are named at D5 and are accepted deliberately:
+    it still refuses ``urn:`` and ``file:``, leaving 227 of 300 positions narrower
+    than their document, and it renders ``maxLength: 2083`` and ``minLength: 1``
+    that no document states -- which is why ``harness.compare_schema`` carries one
+    hand-written row per added fact rather than a rule that admits any of them.
+    """
+    return f"{MODULE}.{URL if node.get('pattern') == HTTPS_ONLY else HTTP_URL}"
 
 #: The constraint keywords a SCALAR can carry, in the order a symbol spells them,
 #: each with the word it contributes.  The ORDER is fixed here and not read off a
@@ -333,10 +380,25 @@ are not thereby the same idea.  A ``pattern`` has no readable name that is not a
 concept, so it contributes eight hex digits of its own SHA-256.  Two distinct
 constraints deriving one name is a build failure rather than a shared alias.
 
-``AdCPUrl`` is the one name here that is a decision rather than a derivation:
-every ``format: uri`` field in this SDK is annotated with it.  A consumer who
-wants to parse a URL of their own can import it, and the document's own
-``pattern`` -- the bundle states eight distinct ones across 73 of its 300 ``uri``
-uses, and ``UrlConstraints`` expresses only the first -- stays with the schema
-half, which ``strict_validate`` applies before the constructor ever runs.
+Two names here are DECISIONS rather than derivations, and together they are this
+SDK's whole answer for ``format: uri``: a field's type FOLLOWS THE DOCUMENT'S OWN
+PATTERN.
+
+``AdCPUrl`` annotates a field whose document restricts the scheme to https
+(``pattern: ^https://``, 47 of the bundle's 300 ``uri`` positions).  There the type
+and the document agree.
+
+``HttpUrl`` -- pydantic's own, re-exported here so that both arms are named in one
+place -- annotates every other ``uri`` field.  ``AdCPUrl`` everywhere was tried and
+withdrawn: ``format: uri`` is RFC 3986, so a document stating only
+``{"type": "string", "format": "uri"}`` admits ``http://``, ``urn:`` and
+``file:///`` as well, and refusing those made the SDK stricter than the spec it
+implements -- at 228 of 300 positions.  ``HttpUrl`` still refuses ``urn:`` and
+``file:``, which is a named ceiling rather than an oversight.
+
+Either way the document's own ``pattern`` stays with the schema half: the bundle
+states eight distinct ones across 73 of its 300 ``uri`` uses, and no URL type can
+carry a ``pattern`` at all -- pydantic refuses to build one.  ``strict_validate``
+applies the document before the constructor ever runs, so the accepted set at the
+entry point is the document's.
 """'''

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
-from adcp.types.constraints import AdCPUrl
+from adcp.types.constraints import HttpUrl
 
 
 class Destination(BranchDispatchMixin, AdCPBaseModel):
@@ -37,7 +37,7 @@ class DestinationAgent(Destination):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/destination.json', pointer='#/oneOf/1')
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
-    agent_url: Annotated[AdCPUrl, Field(description='URL identifying the deployment agent (for sales agents, etc.)')]
+    agent_url: Annotated[HttpUrl, Field(description='URL identifying the deployment agent (for sales agents, etc.)')]
     account: Annotated[str | None, Field(description='Optional account identifier on the agent')] = None
 
 

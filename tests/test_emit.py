@@ -685,19 +685,22 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
 
 
 def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
-    """D5's URL-type row, broken on purpose at every gate it has.
+    """D5's URL-type rows, broken on purpose at every gate they have.
 
-    The row admits two facts and NOTHING ELSE, each gated, and it counts them in a
-    field of their own (``ComparisonResult.url_typed``) rather than in ``missing``
-    or in ``added`` -- because it is the one admission here that excuses a fact the
-    model does not state at all, and folding it into the implied-fact rows would
-    make a genuine omission look like a derivation.
+    The category admits THREE facts and nothing else, each in its own row and each
+    gated, and it counts them in a field of its own
+    (``ComparisonResult.url_typed``) rather than in ``missing`` or in ``added`` --
+    because it is the one admission here that excuses a fact the model does not
+    state at all, and folding it into the implied-fact rows would make a genuine
+    omission look like a derivation.
 
-    Six cells.  The first two are what the row is for; the next three are the
-    perturbations that must still redden, and each of them passed before the gates
-    were written as they are; the last says the counting is separate.
+    Ten cells. The first two are what the rows are for on the ``AdCPUrl`` arm; 3-5
+    are the perturbations that must still redden, and each of them passed before the
+    gates were written as they are; 6 says the counting is separate; and 7-10 are
+    the ``HttpUrl`` arm D5's amendment added, including the one that keeps the
+    second row from becoming "any bound on a URL type is admitted".
     """
-    from pydantic import AnyUrl, UrlConstraints
+    from pydantic import AnyUrl, HttpUrl, UrlConstraints
 
     AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
     bare = {"type": "string", "format": "uri"}
@@ -739,11 +742,16 @@ def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
     assert capped.outcome == "model_drops_a_fact"
     assert any("/maxLength" in m for m in capped.missing), capped.missing
 
-    # 5. BROKEN ON PURPOSE -- the ``minLength`` half is gated on the VALUE, so a
-    #    bound the type did not render is a fact the model adds.
-    floored = compare_schema(bare, Annotated[AnyUrl, UrlConstraints(max_length=2083)])
+    # 5. BROKEN ON PURPOSE -- ``_url_typed``'s signature requires ``minLength: 1``
+    #    exactly, so a model stating a DIFFERENT ``minLength`` at a ``uri`` node is
+    #    not a URL type and none of the three rows reaches it.  That is the gate
+    #    that keeps the category off an ordinary annotated ``str`` carrying a bound.
+    floored = compare_schema(
+        bare, Annotated[str, Field(min_length=2, json_schema_extra={"format": "uri"})]
+    )
     assert floored.outcome == "model_adds_a_fact", floored.url_typed
-    assert any("/maxLength" in a for a in floored.added), floored.added
+    assert floored.url_typed == []
+    assert any("/minLength" in a for a in floored.added), floored.added
 
     # 6. and a document that states the ``minLength`` ITSELF is compared, not
     #    excused: the row is about a fact the document does not state.
@@ -751,6 +759,49 @@ def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
     assert stated.outcome == "pass"
     assert stated.url_typed == [], stated.url_typed
     assert stated.compared == one.compared + 1
+
+    # ---- the HttpUrl arm, which D5's amendment selects at every uri position whose
+    # ---- document does not restrict the scheme to https ----------------------
+    assert TypeAdapter(HttpUrl).json_schema() == {
+        "type": "string",
+        "format": "uri",
+        "minLength": 1,
+        "maxLength": 2083,
+    }, "the two facts the second row exists for"
+
+    # 7. BOTH added facts are admitted, each by its own row, and `added` stays empty.
+    http = compare_schema(bare, HttpUrl)
+    assert http.outcome == "pass", (http.added, http.missing, http.differs)
+    assert sorted(line.split(": ")[0] for line in http.url_typed) == [
+        "/maxLength",
+        "/minLength",
+    ], http.url_typed
+    assert any("HttpUrl renders" in line for line in http.url_typed)
+    assert http.added == [] and http.missing == []
+
+    # 8. BROKEN ON PURPOSE -- the second row is NOT "a bound on a URL type is
+    #    admitted".  A URL type carrying any OTHER maxLength is a fact the model
+    #    adds, and this is the cell that would pass under a widened row.
+    other = compare_schema(bare, Annotated[AnyUrl, UrlConstraints(max_length=1024)])
+    assert other.outcome == "model_adds_a_fact", other.url_typed
+    assert any("/maxLength" in a for a in other.added), other.added
+
+    # 9. BROKEN ON PURPOSE -- a document that states the maxLength ITSELF is
+    #    compared, and a document stating a DIFFERENT one differs rather than being
+    #    excused.  That second case is what `emit.decide_type` refuses by name: the
+    #    bundle has 4 such positions, all `maxLength: 2048`.
+    agrees = compare_schema({**bare, "maxLength": 2083}, HttpUrl)
+    assert agrees.outcome == "pass"
+    assert [line for line in agrees.url_typed if "/maxLength" in line] == []
+    disagrees = compare_schema({**bare, "maxLength": 2048}, HttpUrl)
+    assert disagrees.outcome == "model_drops_a_fact"
+    assert any("/maxLength" in d for d in disagrees.differs), disagrees.differs
+
+    # 10. and the pattern row serves this arm too, which is what lets a document
+    #     with a non-https pattern take HttpUrl at all.
+    host_only = compare_schema({**bare, "pattern": "^https://[^/?#@]+$"}, HttpUrl)
+    assert host_only.outcome == "pass", (host_only.missing, host_only.added)
+    assert len(host_only.url_typed) == 3, host_only.url_typed
 
 
 def test_the_comparison_reads_a_root_allof_the_way_the_schema_half_reads_it() -> None:
@@ -957,9 +1008,12 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
     # The two dependencies `pyproject` names are what put these in the draft's
     # own checker; without them the gate below selects no type at all.
     assert {"date-time", "uri"} <= checked, sorted(checked)
-    assert set(emit.FORMAT_TYPES) <= checked, sorted(emit.FORMAT_TYPES - checked)
+    assert set(emit.FORMAT_TYPES) <= checked, sorted(set(emit.FORMAT_TYPES) - checked)
 
     seen: dict[str, int] = {}
+    #: format -> the type names it actually selected over this population.  More
+    #: than one means the DOCUMENT chose, which is D5's `uri` row.
+    arms: dict[str, set[str]] = {}
     for document in sorted({g.ref.document for g in graded()}):
         tree = ast.parse(_source(document))
         imported = {
@@ -982,15 +1036,31 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 continue
             seen[fmt] = seen.get(fmt, 0) + 1
             assert node["type"] in emit.SCALAR, (document, pointer)
-            selected = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
-            if selected is None:
+            # The chooser is asked with THIS NODE, because D5 makes a `uri` field's
+            # type a function of the document's own `pattern` -- so a test that read
+            # one path per format would grade only whichever arm it happened to
+            # name, and would have passed unchanged while the other arm went
+            # unimported.
+            choose = emit.FORMAT_TYPES.get(fmt) if fmt in checked else None
+            if choose is None:
                 assert fmt in annotated_formats, (document, pointer, fmt)
             else:
+                selected = choose(node)
                 module, name = selected.rsplit(".", 1)
                 assert (module, name) in imported, (document, pointer, selected)
                 assert fmt not in annotated_formats, (document, pointer, fmt)
+                arms.setdefault(fmt, set()).add(name)
 
     assert seen == {"date-time": 26, "uri": 27, "email": 2, "date": 4}, seen
+    # **BOTH arms of D5's `uri` row are reached by this population**, so neither is
+    # graded by an empty loop: `AdCPUrl` at the one position whose document states
+    # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
+    # A format whose type is a function of the format alone selects exactly one.
+    assert arms == {
+        "date-time": {"AwareDatetime"},
+        "date": {"date"},
+        "uri": {"AdCPUrl", "HttpUrl"},
+    }, arms
 
     # Either way the fact is on the model's own schema, at the site the document
     # states it, which is what `compare_schema` reads.  Counted, so this cannot
@@ -3017,11 +3087,25 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
                 for alias in node.names:
                     imported.setdefault(alias.name, set()).add(str(module.relative_to(TREE)))
 
+    # A name this module provides is one it ASSIGNS or one it RE-EXPORTS.  D5's two
+    # URL arms are one of each: ``AdCPUrl`` is ours and is an assignment, and
+    # ``HttpUrl`` is pydantic's, re-exported here with no assignment so that nothing
+    # in this package restates what pydantic defines -- the import IS the
+    # declaration, and both arms are then named in the one module a consumer reads.
+    module = ast.parse((TREE.parent / "constraints.py").read_text())
     declared = {
         node.targets[0].id
-        for node in ast.parse((TREE.parent / "constraints.py").read_text()).body
+        for node in module.body
         if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
     }
+    reexported = {
+        alias.asname or alias.name
+        for node in module.body
+        if isinstance(node, ast.ImportFrom) and node.module == "pydantic"
+        for alias in node.names
+    }
+    assert constraints_module.HTTP_URL in reexported, reexported
+    declared |= {constraints_module.HTTP_URL}
     assert declared, "the alias module declares nothing"
     assert set(imported) - declared == set(), "imported and not declared"
     assert declared - set(imported) == set(), "declared and never named"

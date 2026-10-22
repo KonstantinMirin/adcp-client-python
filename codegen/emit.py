@@ -129,7 +129,42 @@ PACKAGE = "adcp.types._schemas"
 #: narrowing behind: the row stops selecting and the node falls back to its own
 #: scalar type with the format as an annotation.
 #:
-#: **``uri`` selects ``AdCPUrl``, and it is rung 3 rather than rung 2.**  D5 admits
+#: **``uri`` SELECTS ITS TYPE FROM THE NODE, which is why this table holds
+#: choosers rather than paths.**  D5 makes a ``format: uri`` field's type follow the
+#: DOCUMENT'S OWN PATTERN -- ``AdCPUrl`` where the document restricts the scheme to
+#: https, ``HttpUrl`` everywhere else -- so the answer is a function of the node and
+#: not of the format alone.  ``date-time`` and ``date`` ignore their node, and they
+#: are expressed as choosers too rather than as a second shape beside one: a table
+#: with two kinds of value is a table every reader has to case-split.
+#:
+#: The former entry read ``uri`` -> ``AdCPUrl`` and it was WRONG, measured. D5 now
+#: records the whole of it; the short form is below.
+#:
+#: **``AdCPUrl`` everywhere narrowed the SDK below the pinned spec.**  ``format: uri``
+#: references RFC 3986, which admits every scheme, so a bare
+#: ``{"type": "string", "format": "uri"}`` admits ``https://``, ``http://``, ``urn:``
+#: and ``file:///`` alike -- and ``AdCPUrl`` refuses three of the four. Measured at
+#: **228 of the bundle's 300 ``uri`` positions, in 128 of 160 documents**, and at
+#: **26 of 27** positions in documents the emitter emits. End to end on a shipped
+#: class: ``core/placement-evidence.json#/properties/url`` states only the bare pair,
+#: the document admits ``{"url": "http://x.example/p"}``, and
+#: ``PlacementEvidence.strict_validate`` raised ``URL scheme should be 'https'``.
+#:
+#: **No check saw it**, which is why it stood: ``allowed_schemes`` has no rendering in
+#: pydantic's schema output, so the comparison has no keyword to compare; ``format``
+#: is not a step keyword, so ``steps()`` returns ``[]``; and
+#: ``hypothesis_jsonschema``'s ``uri`` strategy drew ``https`` in 200 of 200
+#: derandomized examples. That instrument gap is ``salesagent-j3k2l.10``'s, not this
+#: module's.
+#:
+#: **``HttpUrl``'s two ceilings are accepted deliberately and named at D5**: it still
+#: refuses ``urn:`` and ``file:``, so 227 of 300 positions stay narrower than their
+#: document, and it renders ``maxLength: 2083`` and ``minLength: 1`` that no document
+#: states -- which ``harness.compare_schema`` admits with one hand-written row per
+#: fact, each naming itself.
+#:
+#: What follows is the reasoning for the type being ours rather than pydantic's at
+#: the https arm, which the amendment did not change.  D5 admits
 #: a STANDARD type only when it states the document's own facts AND accepts the
 #: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
 #: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
@@ -148,22 +183,24 @@ PACKAGE = "adcp.types._schemas"
 #: what this avoids.  ``strict_validate`` applies the document before the
 #: constructor runs, so nothing widens.
 #:
-#: **KNOWN CEILING, measured here and not graded by any check in this harness.**
-#: ``format: uri`` is RFC 3986, which admits every scheme, so a bare
-#: ``{"type": "string", "format": "uri"}`` node admits ``http://x.example``,
-#: ``urn:isbn:0451450523`` and ``file:///etc/passwd`` -- all three of which
-#: ``AdCPUrl`` refuses.  At the 29 of this population's 30 ``uri`` positions whose
-#: document states no ``pattern``, the SDK is therefore NARROWER than its
-#: document.  The accepts check cannot see it: ``hypothesis_jsonschema``'s own
-#: ``uri`` strategy drew ``https://`` in 40 of 40 distinct instances, which is the
-#: same blindness ``_validating`` already records for ``date-time``.  D5 decides
-#: this knowingly -- a parsed URL is what the field is for -- and the measurement
-#: is recorded here because no test reports it.
-FORMAT_TYPES = {
-    "date-time": "pydantic.AwareDatetime",
-    "date": "datetime.date",
-    "uri": f"{constraints_module.MODULE}.{constraints_module.URL}",
+#: Each value is ``(node) -> dotted path``.  ``date-time`` and ``date`` ignore the
+#: node; ``uri`` is ``constraints.url_type``, which reads the document's own
+#: ``pattern``.
+FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
+    "date-time": lambda node: "pydantic.AwareDatetime",
+    "date": lambda node: "datetime.date",
+    "uri": constraints_module.url_type,
 }
+
+#: The formats whose selected type is a URL type, which is what the one refusal
+#: below is gated on.  DERIVED by asking each chooser rather than listed: a format
+#: whose chooser answers inside the alias module's namespace is a URL format, and a
+#: second list to keep in step would be a second place for this to drift.
+URL_FORMATS = frozenset(
+    fmt
+    for fmt, choose in FORMAT_TYPES.items()
+    if choose({}).startswith(f"{constraints_module.MODULE}.")
+)
 
 
 def asserted_formats(doc: dict) -> frozenset[str]:
@@ -290,8 +327,8 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     # an annotation on the node's own scalar type, and the schema comparison
     # grades it there.
     if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
-        selected = FORMAT_TYPES[fmt]
-        if selected == FORMAT_TYPES["uri"] and constraints:
+        selected = FORMAT_TYPES[fmt](node)
+        if fmt in URL_FORMATS and constraints:
             # **A URL type carries NO string constraint, and that is a measurement
             # rather than a choice.**  ``Annotated[AnyUrl, Field(pattern=...)]``
             # raises at validation -- "Unable to apply constraint 'pattern' ... for
@@ -300,24 +337,31 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
             # loud failure and not a silent drop, so type-plus-pattern is genuinely
             # unavailable.
             #
-            # D5 decides the either/or: the field is ``AdCPUrl`` and the document's
-            # ``pattern`` stays with the SCHEMA half, which ``strict_validate``
-            # applies before the constructor runs. ``harness.compare_schema``'s
-            # URL-type row is what grades the omission, and it is gated on
-            # ``pattern`` alone -- so any OTHER string constraint has no decision
-            # covering it and refuses by name rather than going missing. Measured
-            # over the emitted population: 1 of 30 ``format: uri`` positions states
-            # a ``pattern`` and 0 state anything else, so the refusal costs no
-            # document and exists for the one the bundle has not written yet.
+            # D5 decides the either/or: the ``pattern`` SELECTS the type (see
+            # ``constraints.url_type``) and then stays with the SCHEMA half, which
+            # ``strict_validate`` applies before the constructor runs.
+            # ``harness.compare_schema``'s URL-type rows grade the omission, and the
+            # one that admits a dropped keyword is gated on ``pattern`` ALONE -- so
+            # any OTHER string constraint has no decision covering it and refuses by
+            # name rather than going missing.
+            #
+            # Measured over the bundle's 300 ``uri`` positions: 227 state no string
+            # constraint, 69 state a ``pattern``, and **4 state a ``maxLength``
+            # beside the pattern** -- all four ``maxLength: 2048``, none of them in a
+            # document the emitter reaches today. Those four are what this refuses,
+            # and a ``maxLength: 2048`` document against ``HttpUrl``'s rendered
+            # ``maxLength: 2083`` would be a ``differs`` rather than a silent drop,
+            # so refusing is the only answer that is neither wrong nor invisible.
             unowned = sorted(set(constraints) - {"pattern"})
             if unowned:
                 raise Refusal(
                     unowned[0],
                     pointer,
-                    f"a format: uri node states {unowned}, and D5's AdCPUrl carries no "
-                    "string constraint at all -- pydantic refuses to apply one to a URL "
-                    "type -- while the comparison's URL-type row admits only a dropped "
-                    "pattern, so this keyword would go missing ungraded",
+                    f"a format: uri node states {unowned}, and a URL type carries no "
+                    "string constraint at all -- pydantic refuses to apply one -- while "
+                    "the comparison's URL-type rows admit only a dropped pattern and "
+                    "the two bounds a URL type renders of its own, so this keyword "
+                    "would go missing or differ ungraded",
                 )
             return Decided(compiler.Type(selected))
         return Decided(compiler.Type(selected), constraints)

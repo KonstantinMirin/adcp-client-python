@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
-from adcp.types.constraints import AdCPUrl
+from adcp.types.constraints import HttpUrl
 
 
 class OverlayVisual(AdCPBaseModel):
@@ -22,9 +22,9 @@ class OverlayVisual(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[AdCPUrl | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.')] = None
-    light: Annotated[AdCPUrl | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)')] = None
-    dark: Annotated[AdCPUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)')] = None
+    url: Annotated[HttpUrl | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.')] = None
+    light: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)')] = None
+    dark: Annotated[HttpUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)')] = None
 
 
 class OverlayBoundsUnit(StrEnum):

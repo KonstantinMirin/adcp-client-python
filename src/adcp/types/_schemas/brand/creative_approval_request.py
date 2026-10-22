@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMinLen16MaxLen255Matching1E5CF9EB
+from adcp.types.constraints import HttpUrl, StrMinLen16MaxLen255Matching1E5CF9EB
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -24,7 +24,7 @@ class CreativeApprovalRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-request.json', pointer='#')
     rights_id: Annotated[str, Field(description='Rights grant this creative was produced under')]
     creative_id: Annotated[str | None, Field(description='Buyer-assigned creative identifier. Equivalent to OpenRTB crid. Used to track approval status across resubmissions.')] = None
-    creative_url: Annotated[AdCPUrl, Field(description='URL where the creative asset can be retrieved for review')]
+    creative_url: Annotated[HttpUrl, Field(description='URL where the creative asset can be retrieved for review')]
     creative_format: Annotated[FormatReferenceStructuredObject | None, Field(description='Format of the creative being submitted')] = None
     description: Annotated[str | None, Field(description='Description of the creative for reviewer context')] = None
     metadata: Annotated[dict[str, Any] | None, Field(description='Additional creative metadata (duration, dimensions, target audience, etc.)')] = None

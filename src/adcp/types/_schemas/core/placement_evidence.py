@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, FloatMinNeg180Max180, FloatMinNeg90Max90
+from adcp.types.constraints import FloatMinNeg180Max180, FloatMinNeg90Max90, HttpUrl
 
 
 class PlacementEvidence(AdCPBaseModel):
@@ -17,7 +17,7 @@ class PlacementEvidence(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-evidence.json', pointer='#')
-    url: Annotated[AdCPUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
+    url: Annotated[HttpUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
     captured_at: Annotated[AwareDatetime | None, Field(description='When the artifact was captured')] = None
     latitude: Annotated[FloatMinNeg90Max90 | None, Field(description='Capture location latitude')] = None
     longitude: Annotated[FloatMinNeg180Max180 | None, Field(description='Capture location longitude')] = None

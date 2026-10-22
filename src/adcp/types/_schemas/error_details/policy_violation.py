@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
-from adcp.types.constraints import AdCPUrl, StrMatching4D6E1599, StrMinLen1
+from adcp.types.constraints import HttpUrl, StrMatching4D6E1599, StrMinLen1
 
 
 class PolicyViolationDetailsOrigin(StrEnum):
@@ -30,7 +30,7 @@ class PolicyViolationDetails(AdCPBaseModel):
     origin: Annotated[PolicyViolationDetailsOrigin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.')] = None
     policy_id: Annotated[str | None, Field(description='Shared policy-registry identifier for the violated policy. Use seller_policy_ref instead when the seller is not disclosing a registry policy.')] = None
     seller_policy_ref: Annotated[StrMinLen1 | None, Field(description='Opaque seller-scoped reference that lets support and audit records correlate an undisclosed policy without publishing its rules. This is not a shared policy-registry ID.')] = None
-    policy_url: Annotated[AdCPUrl | None, Field(description='URL where the full policy can be reviewed')] = None
+    policy_url: Annotated[HttpUrl | None, Field(description='URL where the full policy can be reviewed')] = None
     violated_rules: Annotated[list[str] | None, Field(description='Specific rules that were violated')] = None
     category: Annotated[StrMatching4D6E1599 | None, Field(description="Optional coarse policy category disclosed at the seller's discretion.")] = None
 
