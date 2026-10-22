@@ -213,6 +213,20 @@ A step that wants to change one of these reports it and stops.
   required set, else refuse the document by name and pointer. Nodes with identical content are
   one node; content equality is the only deduplication. A name is an input to a lowering and is
   never computed inside one.
+
+  **Two nodes are compared by content, never by title**, and the comparison must say where it
+  cuts a reference cycle. Two instruments that cut differently disagree about whether two nodes
+  are the same, and the fix is to fix the cycle rule in one instrument rather than to prefer
+  an answer.
+
+  **A name that shadows a Python builtin never claims the bare public slot.** `Warning`,
+  `Error`, `Format`, `Type` and `Id` are schema titles; the class keeps its schema name inside
+  its own module, and nothing exports a bare name that resolves to a builtin for a caller who
+  did not import it.
+
+  **Every public binding is derived by one rule, and the build refuses what the rule cannot
+  derive.** A refusal is the designed outcome, not a failure: it names the document and pointer
+  and is counted. There is no per-name table, no allowlist, and no hand-assigned exception.
 - **D4 — the schema decides acceptance.** `strict_validate` validates against the class's own
   schema and then constructs. `model_validate` and the constructor stay public and build without
   consulting the schema, so a caller that already has a conforming payload pays nothing.
@@ -403,6 +417,17 @@ denominator is healthy in both, so nothing looks wrong.
 **The schema comparison is what grades the generated code.** It is also the only check that
 sees a default or a description, because neither changes the accepted set.
 
+**Determinism is a precondition of grading, not something to fix later.** Two runs over the
+same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.
+
+**A test that fails while the emitted behaviour is unchanged is grading a spelling**, and it is
+the test that is wrong. A check asserts what a class accepts, refuses, or states about itself —
+never the text that expresses it.
+
+**A subclass inherits its parent's validators, and that is graded.** A consumer subclasses an
+emitted class to refine it, so a check confirms the parent's constraints still refuse what they
+refused. A subclass that silently loses a validator is the defect this catches.
+
 **A zero denominator is a refusal, not a pass.** A pair with
 `accepted_invalid + refused == 0` in the refuses check never reports `pass`, because no instance
 reached the class. That guards a pair nothing exercised; it does not catch a widening.
@@ -429,3 +454,41 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 split: if our walk cannot hand the compiler a declaration it renders faithfully on the simplest
 document in the bundle, nothing after it matters. `strict_validate` has no step of its own — it
 is generic, so it lands in step 1.
+
+## 8. What must not change
+
+- **A class keeps the name its schema title gives it.** A naming rule names branches and nested
+  nodes, never a root, so no root is renamed by any step here.
+- **`BranchDispatchMixin`'s four-path dispatch, and the `anyOf`/`oneOf` keyword on its
+  refusals.** 19 roots carry it today. A step adds roots to it; no step removes one, and no step
+  reduces it to fewer than four paths.
+- **The lazy loading of the public surface.** Step 9 generates the contents of a package's
+  `__init__`, not the mechanism by which it loads.
+
+**One rule is deliberately superseded.** An earlier design made the flat root a second total
+import path — `adcp.types.<Class>` resolving for every class, alongside the per-domain path.
+This specification keeps **one** path (§1): a class is reachable at
+`adcp.types.<domain>.<Class>` and nowhere else, with a generated class-name-to-module mapping
+for mechanical resolution. Two spellings for one class make an import non-deterministic in the
+way that matters. The collision rule from that design survives intact: a class name bound to
+two nodes is a build failure naming both nodes, never a rename table.
+
+## 9. Not settled
+
+Open questions. None is a licence to guess, and none is settled by this document.
+
+- **Where a reference-cycle comparison cuts.** Two instruments disagreed about whether two nodes
+  were identical, entirely because each cut a cycle at a different place. D3's content equality
+  has to state its rule.
+- **Whether any consumer outside this repository relies on a looser enum acceptance** than an
+  `allOf` intersection produces. Not examined.
+- **Whether the bundle declares one enum node or two** where the generated difference is only
+  suffixed duplicate members. The generated side looks spurious; the schema side was never
+  pinned.
+- **Why `account` is optional on `compliance/comply-test-controller-request.json`**, whose root
+  mixes `allOf`, `properties` and `required`. Eleven of 113 accepted-set disagreements in one
+  earlier measurement were this one file, and the mechanism is unknown.
+
+Settled since that list was written: `hypothesis-jsonschema` closes the positive-side gap, and
+the accepts check draws through it. 944 of 1,057 roots carry no `examples`, which was the size
+of the gap it closes.
