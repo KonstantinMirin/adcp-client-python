@@ -599,6 +599,32 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
         assert rep.comparison.compared > 0
 
 
+def _grades_a_cause(cause: str, where: str = "") -> None:
+    """A ``no_instrument`` cause has to be specific enough to ACT on.
+
+    Graded by SHAPE and not by a sentence: the first cut asserted the substring
+    ``"contradicted by"``, the gate fix reworded that half to ``"contradicts the
+    step"``, and all four undrawable pairs then reddened on the wording while the
+    pairs themselves were exactly as intended.  A test that pins prose grades the
+    prose.
+
+    Three obligations, each read off the structure:
+
+    * WHICH check could not draw -- the entry names ``accepts`` or ``refuses``;
+    * WHERE -- an accepts cause names the document's own format-beside-pattern
+      positions (there is no single node for hypothesis to blame, so the positions
+      are derived from the document), and a refuses cause names the pointer its step
+      sits at;
+    * WHY -- hypothesis's own exception name, which carries the filtered-draw count.
+    """
+    assert cause.startswith(("accepts: ", "refuses ")), (where, cause)
+    assert "Unsatisfiable" in cause or "RecursionError" in cause, (where, cause)
+    if cause.startswith("accepts: "):
+        assert ": format " in cause, (where, cause)
+    else:
+        assert " at /" in cause, (where, cause)
+
+
 @pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
 def test_every_class_passes_all_three_checks(row: Graded) -> None:
     """N: emitted AND graded green against the schema the class itself names.
@@ -633,8 +659,7 @@ def test_every_class_passes_all_three_checks(row: Graded) -> None:
     if rep.outcome == "no_instrument":
         assert rep.no_instrument, rep.name
         for cause in rep.no_instrument:
-            assert "Unsatisfiable" in cause, cause
-            assert ": format " in cause or "contradicted by" in cause, cause
+            _grades_a_cause(cause)
     elif rep.outcome != "pass":
         assert rep.outcome == "no_constraint_to_step", rep.outcome
         assert steps(pair.schema) == []
@@ -1091,7 +1116,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
                 assert fmt not in annotated_formats, (document, pointer, fmt)
                 arms.setdefault(fmt, set()).add(name)
 
-    assert seen == {"date-time": 28, "uri": 28, "email": 2, "date": 4}, seen
+    assert seen == {"date-time": 44, "uri": 39, "email": 2, "date": 4}, seen
     # **BOTH branches of D5's `uri` row are reached by this population**, so neither
     # is graded by an empty loop: `AdCPUrl` at the one position whose document states
     # `^https://` (core/platform-extension-ref.json) and `HttpUrl` at the other 26.
@@ -1120,7 +1145,7 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             mine = _unwrap(emitted["properties"][compiler.field_name(key)], emitted.get("$defs", {}))
             assert mine.get("format") == sub["format"], (g.ref, key, mine)
             stated += 1
-    assert stated == 62, stated
+    assert stated == 89, stated
 
 
 def _model_schema(model: Any) -> dict:
@@ -1287,7 +1312,7 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
             pattern = node.get("pattern")
             if isinstance(pattern, str):
                 distinct[pattern] = distinct.get(pattern, 0) + 1
-    assert (len(distinct), sum(distinct.values())) == (29, 85), distinct
+    assert (len(distinct), sum(distinct.values())) == (40, 118), distinct
 
     no_build: dict[str, int] = {}
     diverges: dict[str, int] = {}
@@ -1312,9 +1337,9 @@ def test_the_regex_engine_is_the_documents_and_the_two_engines_do_not_agree() ->
                 where = diverges
         where[pattern] = sites
 
-    assert (len(no_build), sum(no_build.values())) == (1, 2), no_build
-    assert (len(diverges), sum(diverges.values())) == (27, 82), diverges
-    assert (len(agrees), sum(agrees.values())) == (1, 1), agrees
+    assert (len(no_build), sum(no_build.values())) == (2, 3), no_build
+    assert (len(diverges), sum(diverges.values())) == (36, 110), diverges
+    assert (len(agrees), sum(agrees.values())) == (2, 5), agrees
     # The ones that agree are the ones with no `$` to disagree about.
     assert all("$" not in p for p in agrees), agrees
     assert all("$" in p for p in diverges), diverges
@@ -1445,8 +1470,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     for rep in instrument:
         assert rep.no_instrument, rep.name
         for cause in rep.no_instrument:
-            assert "Unsatisfiable" in cause, (rep.name, cause)
-            assert ": format " in cause or "contradicted by" in cause, (rep.name, cause)
+            _grades_a_cause(cause, rep.name)
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
     # rather than schema facts, and seven careful readings of it, on trees whose
@@ -1530,7 +1554,7 @@ def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default()
     # root that states its own ``additionalProperties``, so a base never has one to
     # carry and takes this default.  The other members are mapping and container
     # roots whose own document is silent too.
-    assert counted["silent"] == 22, counted
+    assert counted["silent"] == 30, counted
 
 
 # --------------------------------------------------------------------------- #
@@ -1690,10 +1714,20 @@ def test_a_cross_document_reference_is_an_import_and_not_a_copy() -> None:
     graded_properties = 0
     for document in documents:
         doc = bundle.read(BUNDLE, document)
+        # CROSS-document only, which is what P2 is about here: a LOCAL reference
+        # names a node of this same document, so it resolves to a symbol the module
+        # DECLARES rather than to an import, and ``document_for`` answers ``None``
+        # for it by design (``bundle.split_ref``).  Measured over the graded
+        # documents: 134 property references are cross-document and 1 is local
+        # (``core/response-payload-jws-envelope.json``'s ``payload`` ->
+        # ``#/definitions/response_payload``), reachable at all since
+        # salesagent-j3k2l.20.  The local half is graded by
+        # ``tests/test_fragment_ref.py``, which is .20's own instrument; selecting on
+        # it here would make this test assert an import for a node that has none.
         refd = {
             key: sub["$ref"]
             for key, sub in doc.get("properties", {}).items()
-            if isinstance(sub, dict) and "$ref" in sub
+            if isinstance(sub, dict) and "$ref" in sub and bundle.split_ref(sub["$ref"])[0]
         }
         if not refd:
             continue
@@ -2140,8 +2174,8 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
     # 156: roots emit only once another step's row is beside this one -- a nested
     # ``enum`` (step 3), a nested container (step 6) -- and the 30 presence-only
     # combinators left for step 7.  Joint unblocking, which no single lane reaches.
-    assert len(emitted) == 16, emitted
-    assert len(refused) == 110
+    assert len(emitted) == 17, emitted
+    assert len(refused) == 109
     assert len(emitted) + len(refused) == len(roots)
     assert emitted == emitted_unions()
 
@@ -2161,10 +2195,15 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "enum": 2,  # a member type no enumeration base exists for
         # The `const` row is GONE: D2's const row lowers the keyword in full
         # (`codegen.lower.const`), so a branch that pinned a value is now reported
-        # against the keyword that actually stops it -- its own scalar `type`.
+        # against the keyword that actually stops it -- its own scalar `type`, below.
         "oneOf": 1,
         "additionalProperties": 1,
-        "type": 1,  # a root stating no type whose branch states none either
+        # **2 and not 1**: D2's `const` row (salesagent-j3k2l.16) lands the keyword 2
+        # of these roots used to refuse on, and each is reported against its own
+        # SCALAR type instead -- a `const` at a BRANCH node pins the branch's whole
+        # value, so the branch is a scalar and step 6's row owns it.
+        # `core/start-timing.json` is one ("a branch of type 'string' is step 6").
+        "type": 2,
         "enumMetadata": 1,
         "maxLength": 1,  # D5: a string bound beside a format: uri
         # **``type`` is 1 and was 12**: 10 of these roots declared ``type: object``
@@ -2269,10 +2308,10 @@ def test_a_model_only_type_is_excused_only_where_the_document_forces_it() -> Non
     # One per union base whose root states no ``type`` of its own, plus the 2
     # const-pinned branch properties of ``core/destination.json`` whose node states
     # only the ``const``.
-    assert len(excused) == 12, excused
+    assert len(excused) == 14, excused
     assert kinds == {"object", "string"}, kinds
-    assert sum(1 for _, where, _ in excused if where == "") == 10, excused
-    assert sum(1 for _, where, _ in excused if where != "") == 2, excused
+    assert sum(1 for _, where, _ in excused if where == "") == 11, excused
+    assert sum(1 for _, where, _ in excused if where != "") == 3, excused
 
     # direction 2: nothing forcing a type is still reported
     assert _entails_type({"properties": {"a": {"type": "string"}}}, "object") is False
@@ -2589,8 +2628,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     # array node: an array nested inside another array's ``items`` has no property
     # node of its own to compare at and is graded by the schema comparison instead.
     # Stated so the number is not read as "every array".
-    assert arrays == 64, arrays
-    assert bounded == 30, bounded
+    assert arrays == 68, arrays
+    assert bounded == 35, bounded
 
 
 def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
@@ -2635,7 +2674,7 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     # 47 and not 46: `salesagent-j3k2l.20` admits a `definitions` section, so
     # `core/reporting-coverage.json` reaches its own `uniqueItems` instead of stopping
     # at the section it declares beside its properties.
-    assert len(blocked) == 48, sorted(blocked)
+    assert len(blocked) == 58, sorted(blocked)
     assert "core/acceptance-policy-profile-ids.json" in out.refusals
 
 
@@ -2695,7 +2734,7 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
                 mappings += 1
                 constrained += bool({"propertyNames", "patternProperties"} & set(node))
                 del pointer
-    assert mappings == 138, mappings
+    assert mappings == 151, mappings
     assert constrained == 0, constrained
 
     # A $ref key: the key IS that type, imported, and it refuses what the type
@@ -3211,13 +3250,13 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 62, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
+    assert len(declared) == 76, len(declared)  # 60 derived + AdCPUrl + the HttpUrl re-export
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
-    assert sum(len(where) for where in imported.values()) == 201, imported
+    assert sum(len(where) for where in imported.values()) == 251, imported
     # And the one name that is a decision really is annotating fields.
-    assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
-    assert len(imported[constraints_module.HTTP_URL]) == 23, sorted(imported[constraints_module.HTTP_URL])
+    assert len(imported[constraints_module.URL]) == 4, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 30, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
