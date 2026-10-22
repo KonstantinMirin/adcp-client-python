@@ -51,10 +51,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from datamodel_code_generator import PythonVersion
+from datamodel_code_generator.model import DataModelFieldBase
+from datamodel_code_generator.model.enum import Enum as DmcgEnum
+from datamodel_code_generator.model.enum import EnumMemberValue, IntEnum, StrEnum
 from datamodel_code_generator.model.pydantic_v2 import BaseModel, DataModelField
 from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 from datamodel_code_generator.model.pydantic_v2.types import DataTypeManager
 from datamodel_code_generator.reference import Reference
+from datamodel_code_generator.types import DataType
 
 from adcp.types._base import SchemaRef
 
@@ -62,7 +66,14 @@ from adcp.types._base import SchemaRef
 #: optional (``T | None`` rather than ``Optional[T]``), so it is named once here
 #: and never inferred from the interpreter running the emitter -- the output is a
 #: function of (bundle, document set, this package) and of nothing else (P7).
-TARGET = PythonVersion.PY_310
+#:
+#: It MOVED with the floor rather than being left behind: D2's ``StrEnum`` is
+#: 3.11, so ``pyproject`` raised ``requires-python`` and this would otherwise
+#: have stated a floor the project no longer has.  Measured byte-neutral over the
+#: whole emitted population -- 0 of 575 files differ between PY_310 and PY_311 --
+#: so the two can be kept in agreement for free, which is the only reason to
+#: touch it at all.
+TARGET = PythonVersion.PY_311
 
 #: The JSON Schema keywords this module passes to ``constraints=``, in the
 #: document's own spelling, which is gate 1.  Everything else a document can say
@@ -249,6 +260,99 @@ def render_alias(
         if imp.from_ and imp.import_:
             out.imports.add((imp.from_, imp.import_))
     out.imports.add(("adcp.types._base", "SchemaRef"))
+    return out
+
+
+#: D2's two enumeration bases, keyed by the member type the WALK decided, in the
+#: document's own vocabulary (``codegen.lower.enum.BASES`` produces the key).
+#:
+#: The class is chosen rather than derived from a ``type_`` argument: dmcg's
+#: ``Enum.__init__`` reads ``type_`` only to ADD a ``str``/``int`` base class
+#: beside the enumeration one, so passing it renders ``class X(str, StrEnum)`` --
+#: which is the pre-3.11 spelling ``StrEnum`` exists to replace, and whose members
+#: ``str()`` as ``"X.BROAD"`` rather than as ``"broad"``.
+#:
+#: ``boolean`` and ``number`` are absent because the compiler has no base for
+#: them; ``codegen.lower.enum`` refuses such a node by name, with ``bool``
+#: carrying its own reason.
+_ENUM_BASES: dict[str, type[DmcgEnum]] = {"string": StrEnum, "integer": IntEnum}
+
+
+@dataclass(frozen=True)
+class Member:
+    """One decided enumeration member: the name the walk chose, and its value."""
+
+    name: str
+    value: Any
+    #: The document's ``enumDescriptions`` entry for this value, where it has one.
+    #: It reaches the rendered class as the member's own docstring, which is the
+    #: compiler's own slot for it -- 137 of the bundle's enum nodes carry the
+    #: block and a previous attempt dropped every one of them, for the same
+    #: reason the hand-rolled renderer dropped 142 property descriptions: nothing
+    #: compares an annotation that changes no accepted set.
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class Enumeration:
+    """One decided enumeration.  ``kind`` names the base, in JSON Schema's words.
+
+    No ``ref``, and that is the one place an enumeration differs from
+    :class:`Class`: ``Enum.jinja2`` has no ``class_body_lines`` slot, so an
+    ``__adcp_schema__`` line cannot reach an enum's class body through the
+    compiler at all -- and D9 forbids writing it in afterwards.  A ROOT enum
+    therefore binds the reference and ``strict_validate`` at module level, which
+    is what D2's root-scalar row already does for the same reason (a node with no
+    ``AdCPBaseModel`` to hang a classmethod on).  An INLINE enum is a type its
+    parent's field names, like any annotation.
+    """
+
+    name: str
+    kind: str
+    members: tuple[Member, ...]
+    description: str | None = None
+
+
+def _member(member: Member) -> DataModelFieldBase:
+    """One member as the compiler's field.
+
+    ``EnumMemberValue`` is dmcg's own carrier for a string member, and it is what
+    renders the value as a Python literal with the escaping the compiler owns
+    (quotes, backslashes, newlines, the null byte).  A bare ``str`` would reach
+    the template as that text and would be read as a rendered default.
+
+    ``use_inline_field_description`` is what puts the description in the class
+    body: a single-line one becomes ``\"\"\"text\"\"\"`` under the member, and a
+    multi-line one an indented triple-quoted block.
+    """
+    return DataModelFieldBase(
+        name=member.name,
+        data_type=DataType(),
+        default=EnumMemberValue(member.value) if isinstance(member.value, str) else member.value,
+        required=True,
+        extras={"description": member.description} if member.description else {},
+        use_inline_field_description=True,
+    )
+
+
+def render_enum(decided: Enumeration) -> Rendered:
+    """The Python for one decided enumeration, and the imports it needs.
+
+    The members' NAMES are rendered verbatim (``{{ field.name }}``): the compiler
+    names nothing here, which is why ``codegen.lower.enum`` owns the naming and
+    why the injectivity check binds to its function.
+    """
+    model = _ENUM_BASES[decided.kind](
+        reference=Reference(
+            path=f"#/{decided.name}", original_name=decided.name, name=decided.name
+        ),
+        fields=[_member(m) for m in decided.members],
+        description=decided.description or None,
+    )
+    out = Rendered(text=model.render().rstrip("\n"))
+    for imp in model.imports:
+        if imp.from_ and imp.import_:
+            out.imports.add((imp.from_, imp.import_))
     return out
 
 
