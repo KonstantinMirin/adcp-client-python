@@ -63,21 +63,27 @@ extras=, alias=)`. Each input has exactly one channel:
 the JSON-Schema spelling is the only one that sets anything. The fork may add
 `populate_by_name` so both spellings work; until it does, write `minimum`/`maximum`.
 
-### What the fork adds
+### Where a gap is fixed
 
-Each of these is a gap in the upstream compiler and a change we make in the fork, not a
-workaround in our walk.
+A gap in the compiler is fixed in the fork (D10), never routed around in our walk and never in
+the emitted output. Before reaching for the fork, check whether the gap is one of these, which
+are not compiler gaps at all:
 
-- **A constraint on a nested container.** `DataType` carries no constraints, so `min_items` on
-  an array used as a mapping value renders `List[Any]` and the bound is lost. The fork gives
-  `DataType` a `constraints` field so `dict[str, Annotated[list[str], Field(min_length=1)]]`
-  renders. A field-level constraint is not the fix: on a mapping field it bounds the key count,
-  which is a different keyword on a different node.
-- **A statement beside a module-level alias.** No alias template has a place for a sibling
-  statement, and a root scalar needs one to bind its entry point. The fork adds the slot.
+- **A constraint that will not nest.** Naming the type is the fix, not a compiler change.
+  `DataType` carries no constraints, so an inline `min_items` on an array used as a mapping
+  value renders `List[Any]` and loses the bound — but under D5 that type has a symbol, so
+  `dict[str, Tags]` is a plain reference. A field-level constraint is never the fix here: on a
+  mapping field it bounds the key count, which is a different keyword on a different node.
+- **A statement beside a module-level alias.** Our module writer owns module text, so it emits
+  the statement around the compiler's output.
 - **A union discriminated by requiredness.** `DataType.discriminator` expresses a union tagged
-  by a `const` property, which covers the roots where the tag is present and required on every
-  branch. Requiredness as a discriminant has no expression; it is a rule (D5).
+  by a `const` property that every branch declares and requires. Requiredness as a discriminant
+  is not a rendering problem; it is a rule (D6).
+
+A fork change is therefore the answer to a rendering the compiler genuinely cannot produce. No
+such gap is open: the one convenience available is teaching `Constraints` to accept the pydantic
+spelling as well as the JSON-Schema one, which the specification does not need because §3 fixes
+the spelling.
 
 ## 4. The emitted class
 
@@ -139,6 +145,20 @@ A step that wants to change one of these reports it and stops.
   `dict[str, ...]`, can be aliased and reused, and works under `TypeAdapter` on its own; a
   field-bound constraint does none of those. It also keeps `= 50` meaning a default rather than
   conflating the default with metadata.
+
+  **A constrained type is named once and referenced.** The walk resolves every constrained
+  scalar and container it meets to one type, in this order: a type the bundle itself names — a
+  titled root carrying those constraints, reached by `$ref` as an import; then a type pydantic
+  names, such as `PositiveInt` for `{integer, minimum: 1}`, `NonNegativeInt`, `PositiveFloat`,
+  `NonNegativeFloat`, `AnyUrl` for `{string, format: uri}` and `AwareDatetime` for
+  `{string, format: date-time}`, a standard type always in preference to one of ours; and
+  otherwise an alias we emit in one module.
+
+  **An alias names a constraint, never a concept.** Its name is derived from the constraint it
+  carries, never from a property name or a domain word, because two fields sharing a bound are
+  not thereby the same idea. Naming the type is also what keeps a constrained container usable
+  as a mapping value: once it has a symbol, `dict[str, Tags]` is a plain reference and needs
+  nothing from the compiler.
 - **D6 — rules are after-validators, hand-written once** in `src/adcp/types/_runtime.py`,
   reading a class-level tuple the emitter writes. A rule exists only for a keyword that has no
   field-level annotation, which is exactly the set spanning fields or collections: `oneOf` and
@@ -152,12 +172,20 @@ A step that wants to change one of these reports it and stops.
 - **D7 — bases are derived.** An `allOf` of `$ref`s makes those classes the bases. There is no
   marker-class policy: anything a caller wants to test with `isinstance` is a schema the
   document composes.
-- **D8 — `extra` is derived, and its default is environment-driven.** A document that declares
-  `additionalProperties` decides its own class: `false` → `forbid`; `true` → `allow`; typed →
-  `allow` with a typed `__pydantic_extra__`. Where the document is silent, the base default is
-  `forbid` in development and `ignore` in production. In development an unknown field raises, so
-  a field the SDK has not implemented is loud; in production it is inert, so a newer sender is
-  served rather than refused.
+- **D8 — `extra` follows the schema, and nothing else.** `additionalProperties: false` →
+  `forbid`; `true` → `allow`; typed → `allow` with a typed `__pydantic_extra__`; **absent →
+  `allow`**, because JSON Schema permits additional properties by default. `allow` rather than
+  `ignore`, so a field a newer sender adds survives a round trip instead of being dropped.
+
+  A consumer who wants stricter or looser behaviour than the schema sets it on a subclass. The
+  SDK does not read an environment to decide, and no generated class carries a policy that is
+  not in its document.
+
+  **No test-only setting either.** Harness instances are drawn by `hypothesis_jsonschema` from
+  the same document the class was generated from, so an undeclared field has nowhere to come
+  from. The one place one appears is where the refuses check deliberately adds it to a document
+  declaring `additionalProperties: false`, and the `forbid` derived from that document is what
+  refuses it.
 - **D9 — nothing rewrites emitted output.** A defect is fixed in the schema input before the
   compiler reads it, or in the fork. `make validate-generated` byte-compares the committed tree
   to a fresh run.
