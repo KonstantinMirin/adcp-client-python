@@ -200,6 +200,14 @@ A step that wants to change one of these reports it and stops.
   `required`-only, `not`, conditional, `dependencies`, `min`/`maxProperties` and `uniqueItems` →
   a rule on the nearest class. A root array → `RootModel[list[X]]`; a root scalar or mapping →
   a module-level alias.
+
+  **A `RootModel` is avoided wherever anything else will do, and is admissible only when it
+  wraps exactly one value.** A root array is that case: the document IS a list and there is no
+  field to hang it on. Everywhere else a wrapper is a second name for a node that already has
+  one — so a scalar root is an `Annotated` alias and never `RootModel[str]`, and a node whose
+  only untitled branch has no derivable name **refuses** rather than being wrapped, because a
+  wrapper changes what the class is called and leaves the naming problem untouched. Needing a
+  name produces the wrapper, not the constraint.
 - **D3 — names.** Root: `pascal_case(title)`, keeping acronyms. Nested: parent name +
   `pascal_case(property)`. Union branch: title, else the discriminator `const`, else the sorted
   required set, else refuse the document by name and pointer. Nodes with identical content are
