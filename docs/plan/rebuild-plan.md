@@ -332,15 +332,41 @@ A step that wants to change one of these reports it and stops.
   as a mapping value: once it has a symbol, `dict[str, Tags]` is a plain reference and needs
   nothing from the compiler.
 
+  **The key census, re-measured.** Over the 1,054 portable documents at TYPE positions — never
+  under `not`, `if`, `then` or `else`, where a `required` or a `propertyNames` is a rule and no
+  mapping is lowered — two independent instruments agree on `propertyNames` with a `pattern`
+  (13), with a length bound (3), with an `anyOf` (1), and with an `enum` (1), and differ on
+  `propertyNames` with a `$ref` (5 or 7), `patternProperties` (12 or 14) and the sites saying
+  nothing about keys (63 or 128). Where they differ the plan carries the range, because a
+  figure two instruments disagree about is not a fact yet.
+
+  An earlier revision of this paragraph gave 16, 22, 9, 38, 4, 86, 1 and 193. Those were
+  counted over all 1,625 files including the `bundled/` and `mcp/` projections, which are the
+  same documents again, so each was inflated between three and twenty times.
+
+  **The mechanism's reachable population is zero today.** Over the keyword-clean documents the
+  emitter currently reaches there are 0 `propertyNames` and 0 `patternProperties` sites, so
+  every mapping in the emitted tree is `dict[str, ...]` — which is each document's own reading
+  rather than a default. The key rule is live code graded on constructed documents, and it
+  starts deciding real output as later steps make more documents emittable. Typed
+  `additionalProperties` is the same: 51 documents carry one, 0 reach an emittable document, and
+  `__pydantic_extra__` appears in no emitted module.
+
   **A mapping's key is typed from the schema too, and `str` is the last resort.** The key type
   comes from `propertyNames` where the document has one: a `$ref` names it, so the key is that
   type; a `pattern`, `minLength` or `maxLength` constrains it, so the key is an annotated
   `str`; an `anyOf` makes it a union of those. A `patternProperties` key carries the pattern
-  that selected it. An `enum` under `propertyNames` closes the key set, and **a closed key set
-  is a model and not a mapping** — the keys are its fields. Only where the document says
-  nothing about keys is the key `str`, and that is a faithful reading rather than a default:
-  typing it further would be the SDK inventing a constraint. Measured over the bundle, a key is
-  constrained at roughly 176 mapping sites and unconstrained at 193.
+  that selected it. Only where the document says nothing about keys is the key `str`, and that
+  is a faithful reading rather than a default: typing it further would be the SDK inventing a
+  constraint. The counts, and the one row where two instruments disagree, are in D5.
+
+  **An `enum` under `propertyNames` closes the key set, and the document is refused by name
+  with the key set in the detail.** An earlier revision made it a model whose keys are its
+  fields. Its single TYPE-position site is `core/store-item.json#/properties/hours`, and that
+  document refuses on another keyword before any mapping is lowered — so the model would reach
+  no document and no pair would grade it, which is the same reasoning that refuses the
+  root-array row rather than emitting a class nothing reaches. Build it when a document reaches
+  it.
 - **D6 — rules are after-validators, hand-written once** in `src/adcp/types/_runtime.py`,
   reading a class-level tuple the emitter writes. A rule exists only for a keyword that has no
   field-level annotation, which is exactly the set spanning fields or collections: `oneOf` and
