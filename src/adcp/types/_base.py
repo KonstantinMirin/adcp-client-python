@@ -79,8 +79,9 @@ from importlib import resources
 from typing import Any, ClassVar, Literal, NamedTuple, TypeVar
 
 import jsonschema
-from pydantic import BaseModel, ConfigDict, TypeAdapter
-from pydantic_core import InitErrorDetails, PydanticCustomError, ValidationError
+from pydantic import ConfigDict, TypeAdapter
+
+from adcp.types._runtime import RuleBound, refuse
 
 #: The package the emitter writes both the modules and the documents into.  One
 #: JSON file per document, at the document's own bundle-relative path, so
@@ -201,29 +202,26 @@ def _refuse(schema: dict, payload: Any, name: str) -> None:
     no checker installed asserts nothing, silently, which is why
     ``codegen.emit`` gates its type selection on the same set rather than on a
     list of formats someone wrote down.
+
+    The raise goes through ``_runtime.refuse``, which is also what the rule half
+    raises through (D6).  A keyword like ``not`` or ``dependencies`` is refused by
+    BOTH halves -- the schema half for a ``strict_validate`` caller, the
+    after-validator for a ``model_validate`` one -- and two spellings of one
+    refusal is one place for them to grow two error shapes for one keyword.
     """
     validator = jsonschema.validators.validator_for(schema, jsonschema.Draft7Validator)
     errors = sorted(
         validator(schema, format_checker=validator.FORMAT_CHECKER).iter_errors(payload),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
-    if not errors:
-        return
-    raise ValidationError.from_exception_data(
+    refuse(
         name,
         [
-            InitErrorDetails(
-                type=PydanticCustomError(
-                    e.validator if isinstance(e.validator, str) else "schema",
-                    # A fixed template with the text in the context: a jsonschema
-                    # message carries braces of its own ("{'a': 1} is not of type
-                    # 'string'") and a message used AS the template would be read
-                    # as placeholders.
-                    "{detail}",
-                    {"detail": e.message},
-                ),
-                loc=tuple(e.absolute_path),
-                input=e.instance,
+            (
+                e.validator if isinstance(e.validator, str) else "schema",
+                tuple(e.absolute_path),
+                e.message,
+                e.instance,
             )
             for e in errors
         ],
@@ -270,7 +268,15 @@ def strict_alias(ref: SchemaRef, symbol: str, alias: Any) -> Callable[[Any], Any
     return strict_validate
 
 
-class AdCPBaseModel(BaseModel):
+class AdCPBaseModel(RuleBound):
+    """The base every emitted class inherits.
+
+    ``RuleBound`` rather than ``BaseModel`` directly: it carries the one
+    ``model_validator(mode="after")`` that evaluates ``_adcp_rules``, so a class
+    the emitter writes a rule tuple onto needs no validator of its own and a class
+    with no rule inherits the empty tuple and pays one attribute lookup (D6).
+    """
+
     model_config = ConfigDict(extra="ignore", regex_engine=REGEX_ENGINE)
 
     #: Declared and not assigned: every emitted class writes its own, and a
