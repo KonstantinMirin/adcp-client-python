@@ -47,7 +47,7 @@ from unittest.mock import patch
 from pydantic import BaseModel, ConfigDict, Field, RootModel, TypeAdapter, ValidationError
 
 from adcp.types._base import AdCPBaseModel, REGEX_ENGINE, SchemaRef, schema_at
-from codegen import bundle, compiler, emit
+from codegen import bundle, compiler, emit, harness
 from codegen.refusal import Refusal
 from codegen.harness import (
     AcceptsResult,
@@ -1503,6 +1503,39 @@ def test_a_mapping_is_a_dict_whose_key_comes_from_the_document() -> None:
             )
         assert caught.value.keyword == keyword, (key_node, caught.value.keyword)
 
+    # A ``patternProperties`` key carries the pattern that selected it, which is the
+    # same annotated ``str`` and so the same refusal -- one owner for the key rule, so
+    # a ``propertyNames`` pattern and a ``patternProperties`` pattern cannot come to be
+    # read two different ways.
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "pp.json",
+            {
+                "title": "PP",
+                "type": "object",
+                "properties": {
+                    "m": {"type": "object", "patternProperties": {"^x_": {"type": "integer"}}}
+                },
+            },
+        )
+    assert caught.value.keyword == "pattern", caught.value.keyword
+    # Two patterns are two key types with two value types, which is not a dict[K, V].
+    with pytest.raises(Refusal) as caught:
+        emit.lower_document(
+            "pp2.json",
+            {
+                "title": "PP2",
+                "type": "object",
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "patternProperties": {"^x_": {"type": "integer"}, "^y_": {"type": "string"}},
+                    }
+                },
+            },
+        )
+    assert caught.value.keyword == "patternProperties", caught.value.keyword
+
     # A closed key set is a MODEL and not a mapping (D5), and its one type-position
     # site in this bundle sits in a document that refuses on `enum` first.
     with pytest.raises(Refusal) as caught:
@@ -1603,6 +1636,28 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         # ... and the harness's own normalization folds it to the document's spelling,
         # which is what makes the schema comparison pass on these two.
         assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
+
+    # **THE FOLD IS NOT A SILENCER**, and this is the assertion of it rather than the
+    # argument.  A normalization that makes a red pair green is only correct if it
+    # still reports the two ways a model can be wrong about a type list, so both are
+    # measured against the same document: a model offering a type the document does
+    # not is reported, and one offering fewer is reported too.  Without this a fold
+    # that simply dropped the ``type`` comparison would pass every test above.
+    listed = {"type": "object", "properties": {"v": {"type": ["number", "string"]}}}
+
+    class Wider(AdCPBaseModel):
+        v: float | str | bool | None = None
+
+    class Narrower(AdCPBaseModel):
+        v: float | None = None
+
+    assert compare_schema(listed, Wider).outcome == "model_drops_a_fact"
+    assert compare_schema(listed, Narrower).outcome == "model_drops_a_fact"
+    # And a branch carrying more than a type is NOT folded, so a union of constrained
+    # types keeps its branches and its constraints are still compared.
+    assert harness._normalize(  # noqa: SLF001 -- the normalization under test
+        {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}, {}
+    ) == {"anyOf": [{"type": "string", "minLength": 2}, {"type": "integer"}]}
 
     # The bare case renders as a union of the document's own types, and nothing else.
     doc = {
