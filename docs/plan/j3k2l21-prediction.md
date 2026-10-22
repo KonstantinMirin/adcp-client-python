@@ -396,3 +396,81 @@ writing the serializer the brief says already exists.
   text contained "null". It is gone rather than corrected; noting it because the
   shape — a type test written as a substring search — is worth grepping for
   elsewhere.
+
+---
+
+# Rebased onto `5d92cf2c0`
+
+Everything above was measured on base
+`63dc1bb68c181d5bbc233a44f42dcecb0f9efab7`. The branch is now rebased onto
+`5d92cf2c0` ("a SchemaRef names a node as the document applies it"), which
+carries `salesagent-j3k2l.20` and `salesagent-j3k2l.24`. **Every number in this
+section is on `5d92cf2c0`.**
+
+## The deltas are IDENTICAL on both bases, which is the independence result
+
+| | base `63dc1bb68` | my tip on it | base `5d92cf2c0` | my tip on it | my delta |
+|---|---|---|---|---|---|
+| portable emitted | 401 | 420 | 406 | **425** | **+19 both** |
+| emitted modules | 390 | 409 | 395 | **414** | **+19 both** |
+| graded pairs | 462 | 484 | 481 | **503** | **+22 both** |
+
+Three independent quantities, two different bases, the same delta each time. So
+`.20`/`.24` and this row do not interact: they each add documents and the sets
+are disjoint. That is the measurement, not an argument from the diffs.
+
+Unchanged by the rebase, re-measured: `composes_at_the_root` **301**,
+`population()` **991**, rows claiming one / none / two **1,047 / 7 / 0**, and the
+step populations 85 / 249 / 535 / 126 / 9 / 5.
+
+Re-measured on `5d92cf2c0`: compared **6,167**, model-only facts **1,624**,
+`missing` / `differs` / `added` **0 / 0 / 0**, `url_typed` **76**,
+comparison-red pairs **0**.
+
+## The EXIT is unchanged on the rebased base
+
+The 24 are pinned BY NAME (they are the row's population, not whatever a later
+base happens to refuse the same way). 2 emit, 22 refuse on a real keyword, **0
+deferrals** — the same split, document for document: `anyOf` 14, `type` 4,
+`if` 2, `$ref` 1, `allOf` 1.
+
+## The `schema_at` re-check the brief asked for, and why it comes out clean
+
+`salesagent-j3k2l.24` replaced `_base.schema_at`'s bare pointer walk with
+`applied_schema`, which conjoins the `type` an enclosing node applies. **My
+null-vs-optional fix did not assume the old resolution, and the reason is a
+property of `applied_schema` rather than luck:**
+
+* it conjoins a `type` only when the node's own `type` is **absent**
+  (`if "type" in node or enclosing is None: return node`), and every node this row
+  cares about declares its own `type` — that is what "declares null" means. So for
+  every declared-null position `applied_schema` returns the node UNCHANGED, as the
+  same object.
+* it propagates only a **string** `type` (`enclosing = declared if
+  isinstance(declared, str) else enclosing`), so it can never manufacture a
+  multi-type node. The one shape it could in principle introduce is the scalar
+  `type: "null"`, from an enclosing combinator node declaring it; the bundle has no
+  such root, and such a root would admit only `null` anyway.
+
+And `_declares_null(doc)` reads the SAME dict whose `doc["type"]` the comparison
+then compares — `harness.py` line 2132 and line 2151, both after `_composed` — so
+a resolution change moves both together and they cannot come to disagree about
+what the document declares. That is the failure mode `.24` found (a check
+admitting a node while the resolution still returned the bare one), and this fix
+is not exposed to it.
+
+**Measured, not just argued:** on the rebased tree the declared-null census is
+unchanged — 5 positions, **all 5 `anyOf`, 0 `$ref`** (`core/error.json`'s
+discriminator `value`, and `core/webhook-activity-record.json`'s `completed_at`,
+`error_message`, `http_status_code`, `response_time_ms`) — and
+`added`/`missing`/`differs` are `0 / 0 / 0` over all 503 pairs.
+
+## The rebase's own conflicts, and how they were resolved
+
+Three commits conflicted, every hunk a metric constant both lanes had moved. **No
+side was picked and no minimum was taken** — a ratchet or a count merged by
+choosing is loosened by the choice — so each conflicted figure was resolved
+structurally and then RE-MEASURED on the merged tree. The trunk side of
+`test_emit_product.py` also carried a duplicated
+`assert len(with_row.emitted) == 218` line, an artifact of its own resolution;
+that duplicate was not reproduced.
