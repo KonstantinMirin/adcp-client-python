@@ -231,3 +231,100 @@ instances, so it is folded out in `harness._closed`.
 Direction: one, document -> model.  The reverse needs no leg, as predicted --
 direction 1 generates an instance the schema admits and a narrower annotation
 refuses it there.
+
+---
+
+# Appendix: what the specification rewrite changed
+
+Written after rebasing onto `emit/from-scratch` (`15868573d`), which rewrote the
+specification and renumbered the decisions.  The prediction above stands as
+written -- it was made before the measurement -- and nothing in it is edited.
+What follows is the part of the grade the rewrite touched.
+
+## The three checks have names now
+
+"Leg 1 / leg 2 / leg 3" was a coined word and is gone.  The checks are **the
+accepts check** (`check_accepts`), **the refuses check** (`check_refuses`) and
+**the schema comparison** (`compare_schema`).  Everything the grade says about
+the third still holds under the new name; the identifiers moved with it
+(`ComparisonResult`, `PairReport.comparison`).
+
+The specification's §6 states the blindness the same way §4 did -- a wide model
+passing "with a refuses-check denominator of zero instances" -- so the
+correction in the grade above applies unchanged: the zero is the probe's
+wrapper, not the model, and both models get 75 through the production entry
+point.
+
+## D8 is not what the dispatch message said, and the specification wins
+
+The dispatch message asked for an environment-driven default: `forbid` in
+development, `ignore` in production.  `15868573d` is later and titled "extra
+follows the schema alone"; its D8 says **absent -> `allow`**, and that "the SDK
+does not read an environment to decide".  The specification is the authority, so
+`AdCPBaseModel` defaults to `extra="allow"` and nothing reads an environment.
+
+Measured, because the default only matters where a document is silent: of the 44
+object nodes in this population, **23 declare `additionalProperties: true`, 15
+declare `false`, and 1 declares nothing** (`core/version-envelope.json`).  So the
+base default decides one class.  `allow` and `ignore` accept the same payloads,
+so the change is about retention and not about the accepted set -- which is why
+the accepts and refuses checks are unmoved by it and the test asserts the config
+directly.  Probed by setting the base back to `ignore`: the assertion fails.
+
+## D5 names a type that the schema comparison refuses
+
+D5 asks for the type a standard library already names in preference to one of
+ours, and names `PositiveInt` for `{integer, minimum: 1}`.  **That one makes the
+schema comparison red**, and the reason is not arguable: pydantic's
+`PositiveInt` is `Annotated[int, Gt(0)]` and renders `exclusiveMinimum: 0`, while
+the document states `minimum: 1`.  The two admit the same integers and are not
+the same fact, and the comparison grades facts.  Measured on all four:
+
+| document | D5's type | renders | comparison |
+|---|---|---|---|
+| `{integer, minimum: 1}` | `PositiveInt` | `exclusiveMinimum: 0` | **red**, `/minimum` missing |
+| `{number, minimum: 1}` | `PositiveFloat` | `exclusiveMinimum: 0` | **red**, `/minimum` missing |
+| `{integer, minimum: 0}` | `NonNegativeInt` | `minimum: 0` | pass |
+| `{number, minimum: 0}` | `NonNegativeFloat` | `minimum: 0` | pass |
+
+In this population that is 4 sites for `{integer, minimum: 1}`, 7 for
+`{integer, minimum: 0}` and 5 for `{number, minimum: 0}`.
+
+**I did not implement D5's naming order in this step**, and did not re-decide it
+either.  §4 and the step-1 row both give the inline form -- `max_results:
+Annotated[int | None, Field(description=..., ge=1, le=100)] = 50` -- and the
+dispatch message restates it as the requirement, so the naming order is
+machinery the later steps need (it is what makes a constrained container usable
+as a mapping value, which is step 6).  The measurement above is for whichever
+step adopts it: two of the four named types cannot be used without either
+changing the comparison to treat `minimum: n` and `exclusiveMinimum: n-1` as one
+fact for integers, or dropping those two rows from the order.
+
+The two format rows of the same order ARE adopted, because both are faithful on
+the fact axis: `date-time` is now `AwareDatetime` and `uri` stays `AnyUrl`.
+
+## Both format types are narrower than the document, and no check sees it
+
+`AwareDatetime` refuses a value with no UTC offset; `AnyUrl` refuses the empty
+string (it renders `minLength: 1`).  Both are narrower than the document as
+`jsonschema` grades it, because draft-07 `format` is an annotation a validator
+asserts nothing for without a format checker -- so `strict_validate` passes such
+a payload through its schema half and the constructor refuses it.  The accepts
+check does not reach either: `hypothesis_jsonschema` honours the format and
+produced an offset in 200 of 200 instances.  Recorded here because it is a
+difference the three checks cannot see, and `datetime.datetime` already had the
+weaker form of it (it refuses any string that is not a date-time at all).
+
+## The metric no longer carries a bundle total
+
+`len(bundle.portable(BUNDLE)) == 1054` is gone.  The bundle's size is a property
+of the bundle version and the directory is an argument (D11), so the assertion is
+now that the step's population is a proper part of the bundle, read at run time.
+The step's OWN population counts stay pinned -- 85 leaf objects, 249 referencing
+a property, 334 named -- because they are the denominators the step's result is
+stated over, and a silent change to a selector would otherwise move the result
+without moving any number anyone reads.
+
+## D11 is now D12
+
+Same rule, new number. The code and the probe are unchanged.
