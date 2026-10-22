@@ -322,6 +322,30 @@ def _decide(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided:
         mod.add(name_hint, pointer, compiler.render_enum(decided))
         return Decided(compiler.Type(name_hint, local=True))
 
+    if isinstance(node.get("allOf"), list):
+        # **D7's composition, at a node that is NOT a root.**  The same lowering the
+        # root reaches through :data:`ROWS` -- the conjunct list is the same list and
+        # the merge rule is the same rule at every depth -- and it is reached here
+        # rather than through a seventh row because ``ROWS`` dispatches on ROOT KIND
+        # and is a partition by it: a keyword that does not appear at a root has no
+        # row to be and no selector to select it.  Measured on the 3.2 bundle: of the
+        # 67 documents whose composition the product row was deferring, 26 carry it
+        # at a property or deeper and 0 of those 26 are claimed by
+        # ``composes_at_the_root``, so a row would have claimed none of them.
+        #
+        # Read BEFORE ``type``, for the reason ``bundle.declares_its_own_root_kind``
+        # reads a root's ``allOf`` before its ``type``: a draft-07 ``allOf`` applies
+        # to the whole instance, so a node that composes is a composition whatever
+        # else it declares, and lowering the ``properties`` without the conjuncts
+        # would drop the bases.  After ``$ref`` and ``enum``, which both close the
+        # node ahead of it: a ``$ref``'s siblings are ignored by draft-07 (the arm
+        # above refuses one), and an ``enum`` closes the value set.
+        return Decided(
+            compiler.Type(
+                lower_product.lower_composition(node, name_hint, pointer, mod), local=True
+            )
+        )
+
     kind = node.get("type")
 
     if kind is None:
