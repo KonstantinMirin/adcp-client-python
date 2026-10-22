@@ -56,8 +56,11 @@ DRAFT = "http://json-schema.org/draft-07/schema#"
 #: a ``$ref``.
 NOW_EMITTED = (
     "core/activation-key.json",
+    "core/canonical-account-ref.json",
+    "core/canonical-reporting-commitment.json",
     "core/deployment.json",
     "core/reporting-write-destination.json",
+    "media-buy/acceptance-policy-requirement.json",
 )
 
 #: The other 8 of the 10, with the keyword and pointer each one reports NOW.  Every
@@ -67,18 +70,12 @@ NOW_EMITTED = (
 #: rather than as a silent change of population.
 STILL_REFUSED = {
     "core/account-ref.json": ("$ref", "/oneOf/1/properties/brand"),
-    "core/canonical-account-ref.json": ("$ref", "/anyOf/1/properties/brand"),
-    "core/canonical-reporting-commitment.json": ("$ref", "/oneOf/1/properties/vendor"),
     "core/committed-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
     "core/missing-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
     "core/performance-feedback-metric.json": ("$ref", "/oneOf/1/properties/vendor"),
     "error-details/governance-agent-not-accepted.json": (
         "maxLength",
         "/oneOf/0/properties/attempted_agent_origin",
-    ),
-    "media-buy/acceptance-policy-requirement.json": (
-        "uniqueItems",
-        "/oneOf/2/properties/criteria",
     ),
 }
 
@@ -272,7 +269,7 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         and g.ref.pointer.lstrip("#")
         in bundle.constrained_to_object(bundle.read(BUNDLE, g.ref.document))
     ]
-    assert len(rows) == 6, [g.ref for g in rows]
+    assert len(rows) == 27, [g.ref for g in rows]
     assert {g.ref.document for g in rows} == {
         "core/activation-key.json",
         "core/reporting-write-destination.json",
@@ -281,6 +278,16 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
         # node its own root constrains -- so it joins this population rather than
         # changing what the population means.
         "core/reporting-dataset-share-destination.json",
+        # Three more since `salesagent-j3k2l.19`: a `uniqueItems` is lowered on the
+        # class that holds the array, so these emit and each carries classes at
+        # nodes its own root constrains.  `media-buy/acceptance-policy-requirement.json`
+        # is the direct one -- it refused on `uniqueItems` at
+        # `/oneOf/2/properties/criteria` -- and the other two chain off newly
+        # emitted targets.  The POPULATION of this refusal is what grew; what it
+        # means is unchanged, and the per-row loop below still grades every one.
+        "core/canonical-account-ref.json",
+        "core/canonical-reporting-commitment.json",
+        "media-buy/acceptance-policy-requirement.json",
     }
     for g in rows:
         bare = _node(bundle.read(BUNDLE, g.ref.document), g.ref.pointer.lstrip("#"))
@@ -290,15 +297,22 @@ def test_every_class_at_a_constrained_node_refuses_a_non_object_its_own_node_adm
             g.accept("a string")
 
 
-def test_three_of_the_ten_emit_and_the_other_eight_refuse_on_another_rows_keyword() -> None:
+def test_six_of_the_eleven_emit_and_the_other_five_refuse_on_another_rows_keyword() -> None:
     """The outcome, with the honest residue.
 
     10 documents were refused at a node their own root constrains to an object.
-    **2 of them now emit, 1 more emits because it chained off one of those two, and 8
-    still refuse** -- every one on a keyword of a later row, measured here by name.
-    "Every document whose root constrains the instance to an object emits" is
-    therefore true of THIS refusal and not of those 8 documents, and that distinction
-    is the content of this assertion.
+    **6 of the 11 named here now emit and 5 still refuse** -- every one of the 5 on a
+    keyword of a later row, measured here by name.  "Every document whose root
+    constrains the instance to an object emits" is therefore true of THIS refusal and
+    not of those 5 documents, and that distinction is the content of this assertion.
+
+    It was 3 and 8 until `salesagent-j3k2l.19` lowered `uniqueItems` on the class
+    holding the array: `media-buy/acceptance-policy-requirement.json` refused on that
+    keyword directly, and `core/canonical-account-ref.json` and
+    `core/canonical-reporting-commitment.json` chain off newly emitted targets.  The
+    residue shrinking is what a later row landing looks like from here, which is why
+    this is pinned by NAME rather than by a count alone -- and the test's own name
+    carries the two numbers, so it moved with them.
     """
     out = emit.emit(BUNDLE, sorted(set(NOW_EMITTED) | set(STILL_REFUSED)))
     assert set(NOW_EMITTED) <= set(out.emitted), sorted(set(NOW_EMITTED) - set(out.emitted))

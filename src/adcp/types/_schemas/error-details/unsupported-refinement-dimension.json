@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Recommended details shape for UNSUPPORTED_FEATURE errors rejecting a refine_proposals request that uses a typed dimension omitted from the seller's explicit proposal_refinement.supported_dimensions. Lets an authorized buyer remove or translate the unsupported fields without another capability round trip.",
+  "examples": [
+    {
+      "supported_dimensions": [
+        "total_budget",
+        "alternatives"
+      ],
+      "unsupported_dimension": "criteria"
+    },
+    {
+      "supported_dimensions": [],
+      "unsupported_dimension": "total_budget"
+    }
+  ],
+  "properties": {
+    "supported_dimensions": {
+      "description": "The seller's complete supported_dimensions declaration, echoed so the buyer can reconstruct a valid request. An empty array means ask-only refinement.",
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "unsupported_dimension": {
+      "description": "The first typed revision dimension in the request that the seller does not support, named with the supported_dimensions vocabulary.",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "unsupported_dimension",
+    "supported_dimensions"
+  ],
+  "title": "Unsupported Refinement Dimension Details",
+  "type": "object"
+}

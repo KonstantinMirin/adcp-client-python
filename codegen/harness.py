@@ -1906,12 +1906,49 @@ def _uncanonicalized(doc: dict) -> tuple[dict, bool]:
     This is the third canonicalization the comparison folds out, beside ``_closed``
     and the ``additionalProperties: true`` arm of ``_narrows_nothing``.  Reached for
     the first time by ``core/demographic-predicate.json``, whose referenced
-    ``include_unknown`` is a plain boolean.
+    ``include_unknown`` is a plain boolean.  :func:`_derived_max_items` is the
+    fourth, and the only one that folds out a fact the resolver ADDS.
     """
     for canonical, kind in _FINITE:
         if doc == canonical:
             return {"type": kind}, True
+    if _derived_max_items(doc):
+        return {k: v for k, v in doc.items() if k != "maxItems"}, False
     return doc, False
+
+
+def _derived_max_items(doc: Mapping[str, Any]) -> bool:
+    """Is this node's ``maxItems`` one the RESOLVER DERIVED from its ``uniqueItems``?
+
+    The FOURTH canonicalization, and the only one that folds out a fact the resolver
+    ADDS rather than one it drops or rewrites.  ``uniqueItems: true`` over a
+    countable item set bounds an instance's length at the number of distinct values
+    the items admit, and ``canonicalish`` writes that bound out as a ``maxItems``
+    the document's own text does not state.  The mechanism was already measured in
+    this module -- :func:`violated_keywords`'s docstring records
+    ``uniqueItems: true`` over a 2-member enum becoming ``maxItems: 2`` -- and it
+    became reachable by the COMPARISON only once a document carrying ``uniqueItems``
+    emitted a class (``salesagent-j3k2l.19``).  Measured at 3 pairs:
+    ``core/principal-declarations-state.json`` (twice, ``maxItems: 2`` over a
+    2-member enum), ``core/requirements/vast-asset-requirements.json`` (the same),
+    and ``property/property-error.json`` (``maxItems: 20`` over the 20-member
+    channel enum).
+
+    **A HAND-WRITTEN ROW, gated on the exact derivation and not on "a bound beside a
+    uniqueItems".**  The value must equal :func:`_distinct_values` of the items, so a
+    document's own ``maxItems`` is still compared: measured over the bundle, 28 raw
+    nodes state both keywords and 21 of them state a bound BELOW their item count,
+    which this does not touch.  At the 7 where the two coincide -- all in
+    ``protocol/get-adcp-capabilities-response.json``, refused today for another
+    keyword -- the model's own ``uniqueItems`` over the same item set already forbids
+    a longer instance, so no accepted set goes ungraded either way.  A rule reading
+    "a maxItems beside a uniqueItems is admitted" would be shorter and would excuse a
+    genuine dropped bound, invisibly and for good.
+    """
+    if doc.get("uniqueItems") is not True:
+        return False
+    bound = _distinct_values(doc.get("items"))
+    return bound is not None and doc.get("maxItems") == bound
 
 
 def _closed(x: Any) -> Any:

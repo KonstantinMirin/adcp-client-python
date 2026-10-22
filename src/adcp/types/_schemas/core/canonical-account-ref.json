@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "anyOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "account_id": {
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "account"
+        }
+      },
+      "required": [
+        "account_id"
+      ]
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "brand": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Stable brand identity used to resolve the canonical brand manifest, optionally qualified by the countries of a commercial advertiser entity. The manifest URL is derived from domain; callers do not send brand assets or per-call brand overrides. Countries do not target delivery.",
+          "maxProperties": 3,
+          "properties": {
+            "brand_id": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "description": "Brand within a house-of-brands manifest. Omit for a single-brand domain.",
+              "examples": [
+                "tide",
+                "cheerios",
+                "air_jordan",
+                "nike",
+                "pampers"
+              ],
+              "pattern": "^[a-z0-9_]+$",
+              "title": "Brand ID",
+              "type": "string",
+              "x-entity": "advertiser_brand"
+            },
+            "countries": {
+              "description": "Canonical set of ISO 3166-1 alpha-2 countries for this advertiser identity. Omit when the identity is global or the house does not split the brand geographically. Array order is not meaningful; producers MUST sort codes lexicographically before computing keys or signatures. This qualifies account and proposal identity and is not delivery targeting.",
+              "items": {
+                "pattern": "^[A-Z]{2}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "domain": {
+              "description": "Domain that hosts /.well-known/brand.json or is registered for the brand.",
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "title": "Brand Key",
+          "type": "object"
+        },
+        "currency": {
+          "description": "Immutable ISO 4217 transaction currency when the advertiser object is currency-bound. When present, this is part of the natural key and all media buys on the account use it. Omit for per-media-buy currency selection.",
+          "pattern": "^[A-Z]{3}$",
+          "type": "string"
+        },
+        "operator": {
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+          "type": "string",
+          "x-entity": "operator"
+        },
+        "operator_unit": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": {
+            "not": {}
+          },
+          "description": "Optional operator-owned business unit, agency seat, or platform account. Only id participates in identity; name is mutable display metadata.",
+          "examples": [
+            {
+              "id": "234284238",
+              "name": "Nova EMEA"
+            },
+            {
+              "id": "benelux-seat",
+              "name": "Nova Benelux"
+            }
+          ],
+          "maxProperties": 2,
+          "properties": {
+            "id": {
+              "description": "Stable identifier assigned by the operator. Numeric platform IDs and durable slugs are both valid. Scoped by the enclosing operator domain.",
+              "maxLength": 255,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+              "type": "string"
+            },
+            "name": {
+              "description": "Human-readable seat or business-unit name, such as Nova EMEA. This label may change and is not part of the natural account key.",
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "Operator Unit",
+          "type": "object",
+          "x-entity": "operator_unit"
+        },
+        "sandbox": {
+          "default": false,
+          "type": "boolean"
+        },
+        "timezone": {
+          "description": "Immutable account timezone. Include it in the natural key only for buyer-selected account_fixed provisioning.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "brand",
+        "operator"
+      ]
+    }
+  ],
+  "description": "Compact advertiser-account identity for canonical 3.2 tools. Uses either the seller/storefront account_id returned by list_accounts or the buyer-declared natural key without BrandRef inline overrides. The natural key is brand + operator + optional operator_unit.id + optional fixed currency + optional buyer-selected account timezone + sandbox. brand.countries qualifies the commercial advertiser identity without targeting delivery; operator_unit identifies the operator-owned buying context. operator_unit.name is display metadata and is excluded from identity.",
+  "examples": [
+    {
+      "account_id": "acc_nova_nl"
+    },
+    {
+      "brand": {
+        "countries": [
+          "NL"
+        ],
+        "domain": "nova-athletics.example"
+      },
+      "currency": "EUR",
+      "operator": "nova-athletics.example",
+      "operator_unit": {
+        "id": "234284238",
+        "name": "Nova EMEA"
+      },
+      "timezone": "Europe/Amsterdam"
+    }
+  ],
+  "title": "Canonical Account Reference",
+  "type": "object"
+}

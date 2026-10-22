@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Identifier of one seller-advertised managed reporting-delivery offering, matching get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id. Shared by the legacy and canonical product reporting capabilities.",
+  "maxLength": 128,
+  "minLength": 1,
+  "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+  "title": "Reporting Delivery Offering ID",
+  "type": "string",
+  "x-entity": "reporting_offering"
+}

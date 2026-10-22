@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Product-scoped spot-level as-run reporting capability. Presence means the seller can report stable spot identities and actual airing timestamps. available_metrics declares which delivery metrics may eventually be populated at spot grain; an empty array means the product provides airing evidence only.",
+  "properties": {
+    "available_metrics": {
+      "description": "Metrics available at spot grain. A declared metric may be absent from a provisional measurement window and appear when a later window supersedes it. A metric omitted from this declaration is not promised at spot grain even when it is available at package grain.",
+      "items": {
+        "enum": [
+          "cpm",
+          "ctr",
+          "grps",
+          "roas",
+          "leads",
+          "plays",
+          "reach",
+          "saves",
+          "spend",
+          "views",
+          "clicks",
+          "follows",
+          "downloads",
+          "frequency",
+          "brand_lift",
+          "units_sold",
+          "conversions",
+          "engagements",
+          "impressions",
+          "ooh_metrics",
+          "quartile_25",
+          "quartile_50",
+          "quartile_75",
+          "viewability",
+          "dooh_metrics",
+          "foot_traffic",
+          "quartile_100",
+          "quartile_data",
+          "viewable_rate",
+          "cost_per_click",
+          "profile_visits",
+          "viewed_seconds",
+          "completed_views",
+          "completion_rate",
+          "conversion_lift",
+          "engagement_rate",
+          "conversion_value",
+          "time_based_views",
+          "brand_search_lift",
+          "new_to_brand_rate",
+          "new_to_brand_units",
+          "commissionable_value",
+          "cost_per_acquisition",
+          "viewable_impressions",
+          "incremental_sales_lift",
+          "measurable_impressions",
+          "cost_per_completed_view",
+          "viewed_seconds_histogram",
+          "viewed_seconds_percentiles"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "available_metrics"
+  ],
+  "title": "Spot Reporting Capability",
+  "type": "object"
+}

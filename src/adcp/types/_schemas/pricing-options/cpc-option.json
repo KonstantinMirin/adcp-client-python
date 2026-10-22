@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Cost Per Click pricing. If fixed_price is present, it's fixed pricing. If absent, it's auction-based.",
+  "properties": {
+    "currency": {
+      "description": "ISO 4217 currency code",
+      "examples": [
+        "USD",
+        "EUR",
+        "GBP",
+        "JPY"
+      ],
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "eligible_adjustments": {
+      "description": "Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared \u2014 the buyer should check price_breakdown if present.",
+      "items": {
+        "enum": [
+          "fee",
+          "discount",
+          "commission",
+          "settlement"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "fixed_price": {
+      "description": "Fixed price per click. If present, this is fixed pricing. If absent, auction-based.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "floor_price": {
+      "description": "Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_bid": {
+      "default": false,
+      "deprecated": true,
+      "description": "DEPRECATED in 3.2 and removed in the next major. Legacy hint used only to normalize package bid_price to bidding.max_bid (true) or bidding.bid_amount (false/absent). New buyers express intent directly in bidding.",
+      "type": "boolean"
+    },
+    "min_spend_per_package": {
+      "description": "Minimum spend requirement per package using this pricing option, in the specified currency",
+      "minimum": 0,
+      "type": "number"
+    },
+    "price_breakdown": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.",
+      "properties": {
+        "adjustments": {
+          "description": "Ordered list of price adjustments. Fee and discount adjustments walk list_price to fixed_price \u2014 fees increase the running price, discounts reduce it. Commission and settlement adjustments are disclosed for transparency but do not affect the buyer's committed price.",
+          "items": {
+            "oneOf": [
+              {
+                "required": [
+                  "amount"
+                ]
+              },
+              {
+                "required": [
+                  "rate"
+                ]
+              }
+            ],
+            "properties": {
+              "amount": {
+                "description": "Adjustment as a fixed monetary amount in the pricing option's currency. Always positive \u2014 kind determines the economic effect. Mutually exclusive with rate.",
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              "beneficiary": {
+                "description": "Identifies who receives this adjustment's value. For commissions, the intermediary (e.g., a sellers.json domain, an AdCP account ID, or a human-readable party name). Optional but recommended for multi-intermediary transparency.",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "description": {
+                "description": "Human-readable description of this adjustment (e.g., 'Malstaffel 12x', '2% Skonto 10 Tage')",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "fee",
+                  "discount",
+                  "commission",
+                  "settlement"
+                ]
+              },
+              "name": {
+                "description": "Specific adjustment name. Use well-known values where applicable for interoperability.",
+                "examples": [
+                  "ad_serving",
+                  "data_targeting",
+                  "brand_safety",
+                  "volume",
+                  "negotiated",
+                  "early_booking",
+                  "agency",
+                  "intermediary",
+                  "cash_discount",
+                  "early_payment"
+                ],
+                "maxLength": 64,
+                "type": "string"
+              },
+              "rate": {
+                "description": "Adjustment as a decimal proportion (e.g., 0.15 for 15%). Always positive \u2014 kind determines the economic effect. Mutually exclusive with amount.",
+                "exclusiveMaximum": 1,
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "name"
+            ],
+            "type": "object"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "type": "array"
+        },
+        "list_price": {
+          "description": "Rate card or base price before any adjustments. The starting point from which fixed_price is derived by applying fee and discount adjustments sequentially.",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "adjustments",
+        "list_price"
+      ],
+      "title": "Price Breakdown",
+      "type": "object"
+    },
+    "price_guidance": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Optional pricing guidance for auction-based bidding",
+      "properties": {
+        "p25": {
+          "description": "25th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p50": {
+          "description": "Median of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p75": {
+          "description": "75th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        },
+        "p90": {
+          "description": "90th percentile of recent winning bids",
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "title": "Price Guidance",
+      "type": "object"
+    },
+    "pricing_model": {
+      "const": "cpc",
+      "description": "Cost per click",
+      "type": "string"
+    },
+    "pricing_option_id": {
+      "description": "Unique identifier for this pricing option within the product",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pricing_option_id",
+    "pricing_model",
+    "currency"
+  ],
+  "title": "CPC Pricing Option",
+  "type": "object"
+}
