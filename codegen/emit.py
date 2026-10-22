@@ -525,7 +525,7 @@ ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, str, Module], str
     (bundle.is_object_root, _object_root),
     (bundle.is_scalar_root, _scalar_root),
     (bundle.is_enum_root, _enum_root),
-    (bundle.composes_at_the_root, lower_product.lower_root),
+    (bundle.composes_at_the_root, lower_product.lower_composition),
     (bundle.union_root, _union_root),
     (bundle.is_container_root, lower_containers.root),
 )
