@@ -93,4 +93,92 @@ grade says whether it was the smallest thing that worked.
 
 ## The grade
 
-*(written after measuring; empty until then)*
+### The merged N: predicted 430, measured 383. Inside the interval, over a smaller denominator.
+
+| | predicted | measured |
+|---|---|---|
+| N | 430 (interval 350–560) | **383** |
+| named population | 900–1,000 | **981** |
+| whole-bundle arithmetic | holds | **394 + 660 = 1,054**, read at run time |
+
+**The range was right and the reasoning behind it was right.** 383 is above the
+43 + 279 = 322 floor, which is the part the brief's "between 282 and 322" gets wrong:
+the five ΔN sets are disjoint, so the sum is a floor and the merge adds the documents
+no single lane could emit. Measured instances of exactly that, each one named in its
+merge commit:
+
+- step 5 emits **10** union roots where it measured 6 alone — `core/reporting-control-total.json`
+  needs step 3's enum row and `core/inventory-list-application.json` needs step 6's
+  container row;
+- step 4 emits **21** composing documents where it measured **0** alone, and removing
+  its row from the merged table loses 29 modules. Its own 0 was a fact about which
+  other rows existed, not about the row.
+
+**I was wrong about the denominator's direction.** I predicted the named population
+would only grow; it both grew and shrank. Step 6's `is_container_root` lost 28 of its
+37 documents to the union row, and step 5's `union_root` lost 30 more to step 7 once
+a presence-only combinator stopped counting as a union — so 21 documents are now
+claimed by NO row and belong to no step's population. That is the honest answer and
+the refusal names each one, but "only grows" was an assumption I should not have made.
+
+### The adaptation ranking: predicted exactly.
+
+| lowering | predicted | what it cost |
+|---|---|---|
+| `containers.py` | **most** | the `_emit()` accessor removed and ~12 call sites rewired; `root()` re-signed. The hack existed to dodge the very cycle D13 removes. |
+| `union.py` | second | 8 `emit` symbols rewritten to `compiler`, plus `union_keyword` inverted out of `bundle`. A move, not an inversion, as predicted. |
+| `product.py` | one import block | exactly that: six names, one block. |
+| `enum.py` | 0 imports | 0. Its row needed a 3-arg → 4-arg wrapper. |
+| `rules.py` | 0 — "already at the bottom" | one line: `ANNOTATIONS` now reads `compiler`'s. |
+
+### `Module.decide`: predicted, and it is what the seam needed.
+
+D13 does not place `decide_type`, and the prediction said `Module` would carry it on
+`bind`'s terms. It does. `compiler.fields` calls `mod.decide`, `emit.decide_type` is
+supplied once by `lower_document`, and the default refuses — so a node lowered outside
+`lower_document` is not silently widened. One carrier field, no new seam.
+
+### The perturbations: both reddened, and one of them found a real hole.
+
+- **A lowering importing `emit`.** `from codegen import compiler, emit` added to
+  `codegen/lower/containers.py` reddens exactly
+  `test_a_lowering_imports_only_the_compiler_and_the_refusal[containers.py]`, 1 failed
+  / 7 passed, naming the module. Predicted: one test, one failure. Correct.
+- **A weakened selector.** Dropping the `allOf` clause from
+  `bundle.declares_its_own_root_kind` makes 227 documents selected by two rows, and
+  `emit.emit` raises `AmbiguousRoot` naming the first — `account/get-account-financials-request.json:
+  is_object_root, composes_at_the_root`. Two tests redden. Predicted: it reddens, and
+  not as a refusal. Correct.
+
+### What the measurement contradicts, beyond the brief's range
+
+Three claims the lanes made that are false on the merged tree, each corrected in its
+merge commit:
+
+1. **`bundle.is_container_root` "needs no exclusion."** It needed one: 28 of its 32
+   mapping roots declare a union at the root too.
+2. **Step 4's row "emits nothing yet."** It emits 21.
+3. **`ANNOTATIONS` can only live in `lower.rules` "without a cycle."** True of the seam
+   step 7 was written against; `compiler` sits below both `lower` and `bundle` under D13.
+
+And two cross-lane DEFECTS no lane could have seen, because each needs one step's row
+to make a node another step's row answers for reachable:
+
+1. `compare_schema` compared a typed `additionalProperties` as an opaque value, so
+   step 6's mapping row (which makes the model's side a `$ref` into `$defs`) reported
+   `model_drops_a_fact` for a faithful model — and left the facts inside the value
+   schema ungraded. It recurses now; 20 more document facts are graded.
+2. The resolver's finite-type rewrite. Step 6 and step 7 found it independently; step
+   7's `_uncanonicalized` is the better fix and is the one kept. It still had a gap —
+   it admitted a model-only `description` at a rewritten node but not a `default`, and
+   this population reaches two booleans that state one. The admission now covers
+   `default`, gated on the value being one the restored type admits.
+
+### The suite
+
+110 of the suite's 560 tests run in 78 s and are green; the three that drive the
+harness over every graded pair were measured directly with the same `check_pair` the
+tests call — 428 pairs, 417 `pass`, 11 `no_constraint_to_step`, **0 narrowings** — and
+their expectations set from that measurement. The full 560-test run takes upwards of
+45 minutes on a contended machine, because it drives the harness over every pair three
+times and the merged N is 9x the base's.
