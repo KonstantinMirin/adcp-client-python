@@ -279,14 +279,20 @@ def render(decided: Class) -> Rendered:
     for imp in model.imports:
         if imp.from_ and imp.import_:
             out.imports.add((imp.from_, imp.import_))
-    if not config:
-        # dmcg reports ``ConfigDict`` for a model whose rendering MIGHT need one;
-        # with no config rendered the import would be unused.  When a config IS
-        # rendered the import is added unconditionally below, so dropping it here
-        # cannot lose it.
-        out.imports.discard(("pydantic", "ConfigDict"))
-    else:
+    # ``ConfigDict`` is kept exactly when the rendered text uses the name, read
+    # off the text rather than off what we asked for.  dmcg reports the import
+    # for a model whose rendering MIGHT need one, and it also renders a config
+    # WE did not ask for: a class with a look-around ``pattern`` gets
+    # ``regex_engine="python-re"`` -- the same decision ``AdCPBaseModel`` makes,
+    # reached independently.  Deciding by our own ``config`` argument instead
+    # deleted the import that line needs, and the only class it affected
+    # (``core/sla-window.json``) happened to declare ``additionalProperties`` as
+    # well, so the module imported anyway and the defect was latent.  A
+    # perturbation that stopped deriving ``extra`` turned it into a NameError.
+    if "ConfigDict(" in out.text:
         out.imports.add(("pydantic", "ConfigDict"))
+    else:
+        out.imports.discard(("pydantic", "ConfigDict"))
     out.imports.add(("typing", "ClassVar"))
     out.imports.add(("adcp.types._base", "SchemaRef"))
     return out
