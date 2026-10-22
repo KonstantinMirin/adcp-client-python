@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Recommended details shape for RATE_LIMITED errors. Provides rate limit window information so agents can plan request pacing.",
+  "properties": {
+    "limit": {
+      "description": "Maximum requests allowed in the window",
+      "type": "number"
+    },
+    "remaining": {
+      "description": "Requests remaining in the current window",
+      "type": "number"
+    },
+    "scope": {
+      "description": "What the limit applies to",
+      "enum": [
+        "account",
+        "tool",
+        "global"
+      ],
+      "type": "string"
+    },
+    "window_seconds": {
+      "description": "Duration of the rate-limit window in seconds",
+      "type": "number"
+    }
+  },
+  "title": "Rate Limited Details",
+  "type": "object"
+}

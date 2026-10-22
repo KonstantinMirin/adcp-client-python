@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Common limit and ordering controls for an opt-in delivery-reporting dimension.",
+  "properties": {
+    "limit": {
+      "default": 25,
+      "description": "Maximum number of rows to return. Defaults to 25.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "sort_by": {
+      "enum": [
+        "cpm",
+        "ctr",
+        "grps",
+        "roas",
+        "leads",
+        "plays",
+        "reach",
+        "saves",
+        "spend",
+        "views",
+        "clicks",
+        "follows",
+        "downloads",
+        "frequency",
+        "units_sold",
+        "conversions",
+        "engagements",
+        "impressions",
+        "quartile_25",
+        "quartile_50",
+        "quartile_75",
+        "quartile_100",
+        "viewable_rate",
+        "cost_per_click",
+        "profile_visits",
+        "viewed_seconds",
+        "completed_views",
+        "completion_rate",
+        "engagement_rate",
+        "conversion_value",
+        "new_to_brand_rate",
+        "new_to_brand_units",
+        "commissionable_value",
+        "cost_per_acquisition",
+        "viewable_impressions",
+        "measurable_impressions",
+        "cost_per_completed_view"
+      ]
+    },
+    "sort_direction": {
+      "enum": [
+        "asc",
+        "desc"
+      ]
+    }
+  },
+  "title": "Delivery Breakdown Controls",
+  "type": "object"
+}

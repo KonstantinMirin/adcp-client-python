@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Readback lineage from a seller-bound manifest or CreativeAsset to the exact CreativeRepresentationSet revision and representation selected for it. This is selection lineage, not served-variant identity.",
+  "properties": {
+    "creative_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "creative"
+    },
+    "execution_daast_version": {
+      "enum": [
+        "1.0",
+        "1.1"
+      ]
+    },
+    "execution_vast_version": {
+      "enum": [
+        "2.0",
+        "3.0",
+        "4.0",
+        "4.1",
+        "4.2",
+        "4.3"
+      ]
+    },
+    "resolved_by": {
+      "description": "Who performed deterministic compatibility resolution. A buyer may resolve locally from seller discovery. Seller resolution is valid only on the destination sales agent when it advertised representation_resolution; an independent creative agent cannot claim seller-bound compatibility.",
+      "enum": [
+        "buyer",
+        "seller"
+      ],
+      "type": "string"
+    },
+    "revision_content_digest": {
+      "description": "Verified digest from the complete source representation set. A downstream seller uses this value, not the selected manifest bytes alone, to enforce immutable revision reuse.",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "revision_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Buyer-assigned identity for one immutable input-content state of a durable creative. Scoped to the parent creative_id. Seller transcoding, normalization, and delivery representations do not change this identity.",
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Creative Revision ID",
+      "type": "string",
+      "x-entity": "creative_revision"
+    },
+    "selected_output_digest": {
+      "description": "Digest of the derived seller-bound manifest projection, computed with RFC 8785 JCS after removing exactly top-level `$schema`, `representation_selection`, `creative_id`, `revision_id`, `name`, `tags`, `status`, `weight`, `placement_refs`, `placement_ids`, and `inputs`. Every other field, including unknown delivery fields, is included. The identical exclusion list applies to the returned CreativeManifest and its later CreativeAsset sync wrapper. A selected sync item cannot carry localization in this version. This is the review/execution fingerprint for the projection, distinct from revision_content_digest, which binds the complete source set.",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "selected_representation_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "creative_representation"
+    },
+    "strategy": {
+      "enum": [
+        "representation_order",
+        "highest_compatible_vast"
+      ]
+    }
+  },
+  "required": [
+    "creative_id",
+    "revision_id",
+    "revision_content_digest",
+    "selected_representation_id",
+    "strategy",
+    "selected_output_digest",
+    "resolved_by"
+  ],
+  "title": "Representation Selection",
+  "type": "object",
+  "x-adcp-validation": {
+    "spec": "docs/creative/representation-sets.mdx#seller-bound-resolution",
+    "verifier_constraints": {
+      "derived_output": {
+        "approval_boundary": "the exact selected output MUST complete the receiving seller's ordinary validation and review before serving; approval of one candidate never approves another",
+        "canonical_content": "RFC 8785 JCS of the manifest projection after removing exactly top-level $schema, representation_selection, creative_id, revision_id, name, tags, status, weight, placement_refs, placement_ids, and inputs properties; every other field, including unknown delivery fields, is included",
+        "execution_version": "each execution version MUST equal the verified representation destination and later immutable package snapshot; a package mismatch requires re-resolution and ordinary re-review rather than silent rebinding",
+        "review_identity": "the receiving seller tracks (selected_representation_id, selected_output_digest, execution_vast_version-or-null, execution_daast_version-or-null) separately from the source revision; changing any member is an updated execution that follows ordinary re-review without minting a buyer revision",
+        "runtime_selection": "selection is pinned at trafficking time and MUST NOT be changed per viewer or device; device and player fallback stays within the selected manifest or VAST document",
+        "selected_output_digest": "must equal lowercase-hex SHA-256 of derived-output canonical content before receiving-seller normalization",
+        "selection_stability": "after sync_creatives accepts this lineage, later product, placement, VAST, macro, or seller-capability changes MUST NOT cause implicit re-resolution, lineage replacement, or buyer re-review; only an explicit buyer-submitted selected output may replace it",
+        "seller_inability": "if the seller can no longer serve the pinned execution, it MUST preserve this lineage and use ordinary seller/system creative-status and media-buy impairment surfaces rather than silently substituting another representation",
+        "shared_projection": "apply the same exclusion list to the returned CreativeManifest and to its later CreativeAsset sync wrapper so library metadata never changes the digest",
+        "source_revision_unchanged": "selection, macro binding, translation, and transcoding MUST NOT change the source revision binding"
+      },
+      "source_set": {
+        "creative_id": "must equal the source CreativeRepresentationSet creative_id",
+        "revision_content_digest": "must equal the verified digest of the complete source CreativeRepresentationSet",
+        "revision_id": "must equal the source CreativeRepresentationSet revision_id",
+        "selected_representation_id": "must identify exactly one member of the complete source representations array",
+        "strategy": "must equal the capability-advertised strategy requested for this resolution"
+      }
+    }
+  }
+}

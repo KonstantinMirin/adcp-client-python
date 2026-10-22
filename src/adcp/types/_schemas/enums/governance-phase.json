@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "The phase of the governed action's lifecycle that triggered the governance check.",
+  "enum": [
+    "purchase",
+    "modification",
+    "delivery"
+  ],
+  "title": "Governance Phase",
+  "type": "string"
+}

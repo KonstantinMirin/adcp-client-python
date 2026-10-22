@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "A keyword and match-mode identity used by canonical package targeting controls.",
+  "properties": {
+    "bid_price": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "keyword": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "match_type": {
+      "enum": [
+        "broad",
+        "exact",
+        "phrase"
+      ]
+    }
+  },
+  "required": [
+    "keyword",
+    "match_type"
+  ],
+  "title": "Keyword Target",
+  "type": "object"
+}

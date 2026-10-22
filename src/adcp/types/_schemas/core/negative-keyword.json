@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "An excluded keyword.",
+  "properties": {
+    "keyword": {
+      "description": "The keyword to exclude",
+      "minLength": 1,
+      "type": "string"
+    },
+    "match_type": {
+      "enum": [
+        "broad",
+        "exact",
+        "phrase"
+      ]
+    }
+  },
+  "required": [
+    "keyword",
+    "match_type"
+  ],
+  "title": "Negative Keyword",
+  "type": "object"
+}
