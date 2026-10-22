@@ -76,10 +76,17 @@ def referencing() -> list[str]:
     ]
 
 
+def composing() -> list[str]:
+    """Step 4's population: a root ``allOf`` with no union beside it."""
+    return [
+        d for d in bundle.portable(BUNDLE) if bundle.composes_at_the_root(bundle.read(BUNDLE, d))
+    ]
+
+
 def population() -> list[str]:
     """What the committed tree is emitted from.  A reference TARGET is not here and
     does not need to be: ``emit`` walks ``$ref`` and emits the closure."""
-    return sorted(set(leaves()) | set(referencing()))
+    return sorted(set(leaves()) | set(referencing()) | set(composing()))
 
 
 # --------------------------------------------------------------------------- #
@@ -163,7 +170,12 @@ def test_the_population_is_the_one_the_step_is_stated_over() -> None:
     whole = bundle.portable(BUNDLE)
     assert len(leaves()) == 85
     assert len(referencing()) == 249
-    assert len(population()) == 334
+    assert len(composing()) == 287
+    # Not 85 + 249 + 287: step 2's and step 4's selectors overlap on 34 documents
+    # (a root allOf whose conjuncts are all inline, with every reference at a
+    # property).  The union is the denominator; neither selector is a ROW for the
+    # other's shape, so nothing is counted twice by the table.
+    assert len(population()) == 587
     assert set(population()) < set(whole), "the step's population is not a part of the bundle"
     assert PAGINATION in leaves()
     assert "error-details/creative-revision-content-mismatch.json" in referencing()

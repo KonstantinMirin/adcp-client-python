@@ -207,6 +207,29 @@ def references_a_property(doc: dict) -> bool:
     return bool(rs) and all(_is_property_or_items(p) for p, _ in rs)
 
 
+def composes_at_the_root(doc: dict) -> bool:
+    """Step 4's population: a root carrying ``allOf`` with NO union beside it.
+
+    **287 documents**, and the definition is what lands on that number: the other
+    readings give 342 (any root ``allOf``, union or not), 401 (``allOf`` anywhere
+    in the document) and 257 (``allOf`` at the root and nowhere else).  A verdict
+    read off a population nobody counted is a verdict over however many documents
+    there turned out to be.
+
+    The union clause is not a convenience: a ``oneOf``/``anyOf`` root is step 5's
+    row whatever ELSE it carries, because the root ``allOf`` of a draft-07
+    document applies to the whole instance and therefore to every branch, and a
+    row that lowered the conjuncts without the branches would apply the bases to
+    some branches and not others.  So the two populations are DISJOINT by this
+    clause -- 55 documents carry both -- and ``emit.lower_document`` fails on a
+    document two rows select rather than letting a table order decide.
+
+    This is the row's selector and the predicate its metric is stated over, so it
+    cannot come to claim a document the step does not count.
+    """
+    return isinstance(doc.get("allOf"), list) and not any(k in doc for k in ("oneOf", "anyOf"))
+
+
 def _is_property_or_items(pointer: str) -> bool:
     parts = [p for p in pointer.split("/") if p]
     if not parts or parts[0] != "properties":

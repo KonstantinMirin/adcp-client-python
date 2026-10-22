@@ -9,7 +9,8 @@ grades the tree against exactly this):
     python -m codegen.emit --bundle schemas/cache/3.2 $(python -c 'from pathlib \
       import Path; from codegen import bundle; b = Path("schemas/cache/3.2"); \
       print(*[d for d in bundle.portable(b) if bundle.is_leaf_object(bundle.read(b, d)) \
-      or bundle.references_a_property(bundle.read(b, d))])')
+      or bundle.references_a_property(bundle.read(b, d)) \
+      or bundle.composes_at_the_root(bundle.read(b, d))])')
 
 A document this command does not name is still emitted when a named one
 REFERENCES it: a module cannot import a symbol from a module no run wrote, so

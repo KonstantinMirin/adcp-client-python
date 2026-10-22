@@ -25,6 +25,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, NamedTuple
 
+from codegen import bundle
+from codegen.lower import product
+
 if TYPE_CHECKING:
     from codegen.emit import Module
 
@@ -42,4 +45,6 @@ class Row(NamedTuple):
 
 
 #: Every shape with a lowering, one line each, order-independent.
-ROWS: tuple[Row, ...] = ()
+ROWS: tuple[Row, ...] = (
+    Row(bundle.composes_at_the_root, product.lower_root),  # step 4
+)
