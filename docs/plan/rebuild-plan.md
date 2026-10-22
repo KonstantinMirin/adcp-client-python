@@ -12,9 +12,15 @@ req = PaginationRequest.strict_validate(payload)  # the schema decides, then con
 req = PaginationRequest(max_results=50)           # pydantic constructs, annotations only
 ```
 
-There is **one import path per class**, mirroring the document's own place in the bundle.
-There is no aggregate re-export: `adcp.types` is a package, not a namespace holding a thousand
-names, because a second spelling is a second thing to keep in agreement for no gain.
+There is **one import path per class**, mirroring the document's own place in the bundle, and
+**the SDK never offers a second way to reach the same class.** `adcp.types` is a package, not a
+namespace holding a thousand names. Two spellings for one class is two things to keep in
+agreement, and it makes an import non-deterministic in the only way that matters: a reader
+cannot tell from the import which document a class came from.
+
+The build emits a **mapping** from class name to its module, so a consumer migrating or
+generating code can resolve a name mechanically. The mapping is a lookup table, not a second
+import surface — nothing imports through it.
 
 Three properties hold for every emitted class:
 
@@ -108,7 +114,7 @@ That reference is what makes the runtime contract and the test instrument generi
 - **`strict_validate`**, once on `AdCPBaseModel`: read `cls.__adcp_schema__`, validate the
   payload against that schema, then construct through `model_validate`. A schema refusal raises
   pydantic's `ValidationError` with the JSON Schema keyword as `type` and the instance pointer
-  as `loc`, so a caller reads one error shape whichever half refused.
+  as `loc`, so a caller reads the same error whichever half refused.
 - **The harness**: take a class, read `__adcp_schema__`, grade the class against that document.
 
 So there is **no adapter, no binding table, and no name-keyed lookup**. A class cannot be paired
@@ -146,8 +152,8 @@ identically. Direct construction therefore validates twice and is idempotent; `m
 stays single-pass.
 
 **Which class gets the union is decided by `"_branch_models" not in cls.__dict__`** — the base
-is the class that *declares* `_branch_models`, and a class that inherits it gets its own shape
-back. That is the whole of subclass support: a branch keeps its own schema, and so does a
+is the class that *declares* `_branch_models`, and a class that inherits it keeps its own
+schema. That is the whole of subclass support: a branch keeps its own schema, and so does a
 consumer's refinement declared elsewhere. Membership (`cls in branches`) is not enough, because
 it admits both "is a branch" and "is an unrelated subclass", and only the second matters once
 the schema is being replaced.
@@ -400,15 +406,15 @@ the schema each class names. Steps 3–7 share only the dispatch table.
 
 | # | step | done when | parallel |
 |---|---|---|---|
-| 1 | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — trunk |
-| 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — trunk |
+| 1 | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — runs alone |
+| 2 | **A cross-document `$ref`** — the referencing module imports its target's type and copies no constraint, asserted on the AST; the target emits as an alias | both documents pass all three checks | no — runs alone |
 | 3 | **Enumerations**, root and inline — members upper-cased, since `pass` and `global` are live values and a lower-cased member emits a module that does not parse; the injectivity check binds to the name function the compiler runs | every root enum emits or is refused by name; `enumDescriptions` carried | yes — `lower/enum.py` |
 | 4 | **`allOf` roots** — `$ref` conjuncts become bases, and a subclass never redeclares an inherited field | no emitted field shadows a typed base field; a composed `ge`/`le` inherits | yes — `lower/product.py` |
 | 5 | **Union roots** — the base carries `BranchDispatchMixin` and declares `_branch_models`, `_ROOT_REQUIRED` and `_branch_combinator`; one subclass per branch; the declaring module calls `model_rebuild(force=True)`; the root name binds the base (§4) | a payload resolves to its branch on all four paths — nested field, `TypeAdapter`, `model_validate`, `Base(**data)`; a consumer's subclass of the base keeps its own schema; `model_dump_json` on a base instance does not raise; a branch with no derivable name refuses its document by name and pointer | yes — `lower/union.py` |
 | 6 | **Containers and mappings** — a constrained container value is a named type (D5), so a mapping is a plain reference; a mapping's key is typed from `propertyNames`; a multi-type property applies each keyword to its own branch | a mapping value's bound survives into the annotation, and a key the document constrains is not `str` | yes — `lower/containers.py` |
 | 7 | **Rules** — D6's six keyword families as class-level tuples read by `_runtime.py` | the harness steps every one of the six | yes — `lower/rules.py` |
 | 8 | **The whole bundle** — `--all` emits or refuses every document | emitted plus refused equals the bundle size, asserted; every refusal named | after 3–7 |
-| 9 | **Public surface** — one per-domain package per bundle directory, generated, PEP 562 lazy; no aggregate re-export; a class name bound to two nodes in one domain is a build failure | `from adcp.types.<domain> import X` is the only spelling and resolves to the class the domain's document names | after 8 |
+| 9 | **Public surface** — one per-domain package per bundle directory, generated, PEP 562 lazy; no aggregate re-export; a class name bound to two nodes in one domain is a build failure; the build emits a class-name-to-module mapping as a lookup table | `from adcp.types.<domain> import X` is the only spelling that reaches a class, and the mapping resolves any class name to exactly one module | after 8 |
 | 10 | **Closeout** — the bundle version derived rather than written; `make validate-generated` wired; any compiler patch we carry filed upstream | `tox` green | last |
 
 **Order is by risk.** Step 1 comes first because it is the only step that can invalidate the
