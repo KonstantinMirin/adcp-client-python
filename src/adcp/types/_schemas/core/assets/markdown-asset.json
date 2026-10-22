@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Markdown-formatted text content following CommonMark specification",
+  "properties": {
+    "allow_raw_html": {
+      "default": false,
+      "description": "Whether raw HTML blocks are allowed in the markdown. False recommended for security.",
+      "type": "boolean"
+    },
+    "asset_type": {
+      "const": "markdown",
+      "description": "Discriminator identifying this as a markdown asset. See /schemas/creative/asset-types for the registry.",
+      "type": "string"
+    },
+    "content": {
+      "description": "Markdown content following CommonMark spec with optional GitHub Flavored Markdown extensions",
+      "type": "string"
+    },
+    "language": {
+      "description": "Optional language claim for this markdown. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.",
+      "type": "string"
+    },
+    "markdown_flavor": {
+      "enum": [
+        "gfm",
+        "commonmark"
+      ]
+    }
+  },
+  "required": [
+    "asset_type",
+    "content"
+  ],
+  "title": "Markdown Asset",
+  "type": "object"
+}
