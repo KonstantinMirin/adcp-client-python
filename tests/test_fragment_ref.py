@@ -280,9 +280,13 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     assert named["core/version-envelope.json"] == frozenset(
         {"/properties/adcp_version", "/properties/adcp_major_version"}
     )
-    # A local reference is not here: it names a node of its own document, so there is
-    # no import and no cross-module symbol.
-    assert all(d != "" for d in named)
+    # A LOCAL reference contributes nothing here: it names a node of its own document,
+    # so there is no import and no cross-module symbol.
+    # ``core/bidding-policy-capability.json`` references only itself, 4 times, and a
+    # scan that read a local ref as naming a document would list it with those four
+    # pointers -- so its ABSENCE is the assertion, and the 76 above is the other half
+    # (counting the bundle's 154 local refs in would not leave 76).
+    assert "core/bidding-policy-capability.json" not in named, sorted(named)
 
     document = "core/version-envelope.json"
     alone = emit.emit(BUNDLE, [document])
