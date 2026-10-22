@@ -527,7 +527,15 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
             try:
                 mod, symbol = lower(target)  # the target emits first, or this refuses with it
             except Refusal as r:
-                raise Refusal("$ref", pointer, f"its target {target} is refused: {r}") from r
+                # **The fragment is NAMED here, not only the document.**  The chain
+                # fires before the node is looked up -- the target refuses as a whole,
+                # so the reference never reaches the node -- and a message naming only
+                # the document sends the reader to a file without saying which of its
+                # nodes was wanted.  Bundle-relative, so it reads as a pointer into
+                # this bundle rather than as the URI's own base; a reference with no
+                # fragment is unchanged, which is all 214 of the existing chains.
+                wanted = f"{target}#{into}" if into else target
+                raise Refusal("$ref", pointer, f"its target {wanted} is refused: {r}") from r
             if into:
                 # The fragment names a NODE, so the symbol is the one the target
                 # module declared AT THAT POINTER rather than its root.  The target

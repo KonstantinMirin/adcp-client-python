@@ -545,8 +545,21 @@ def test_a_fragment_whose_target_document_is_refused_names_the_targets_own_keywo
     r = refusal_for(root, "core/chains.json")
     assert r["keyword"] == "$ref", r
     assert r["pointer"] == "/properties/x", r
-    assert "core/refuses.json is refused" in r["detail"], r
+    # The FRAGMENT is named, not only the document: the chain fires before the node is
+    # looked up, and a message naming only the file does not say which of its nodes
+    # was wanted.
+    assert "core/refuses.json#/properties/a is refused" in r["detail"], r
     assert "const" in r["detail"], r
+
+    # A reference with NO fragment names the document alone, unchanged -- which is
+    # every one of the bundle's 214 existing chain refusals.
+    plain = {
+        "title": "Chains Plainly",
+        "type": "object",
+        "properties": {"x": {"$ref": f"{BASE}core/refuses.json"}},
+    }
+    root = write_bundle(tmp_path / "b", {"core/refuses.json": target, "core/plain.json": plain})
+    assert "core/refuses.json is refused" in refusal_for(root, "core/plain.json")["detail"]
 
 
 def test_a_local_fragment_reference_is_refused_by_name_pointer_and_keyword(
