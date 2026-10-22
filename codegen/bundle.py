@@ -500,7 +500,7 @@ def carries_an_enum(doc: dict) -> bool:
 def composes_at_the_root(doc: dict) -> bool:
     """Step 4's population: a root carrying ``allOf`` with NO union beside it.
 
-    **287 documents**, and the definition is what lands on that number: the other
+    **301 documents**, and the definition is what lands on that number: the other
     readings give 342 (any root ``allOf``, union or not), 401 (``allOf`` anywhere
     in the document) and 257 (``allOf`` at the root and nowhere else).  A verdict
     read off a population nobody counted is a verdict over however many documents
@@ -511,13 +511,30 @@ def composes_at_the_root(doc: dict) -> bool:
     document applies to the whole instance and therefore to every branch, and a
     row that lowered the conjuncts without the branches would apply the bases to
     some branches and not others.  So the two populations are DISJOINT by this
-    clause -- 55 documents carry both -- and ``emit.lower_document`` fails on a
-    document two rows select rather than letting a table order decide.
+    clause and ``emit.lower_document`` fails on a document two rows select rather
+    than letting a table order decide.
+
+    **"A union beside it" IS :func:`union_root`, and reading it any other way left
+    a 14-document hole in the partition.**  This clause used to ask whether the key
+    ``oneOf`` or ``anyOf`` was PRESENT, while ``union_root`` asks the lowering
+    (``union.keyword`` plus ``rules.presence_only``) and answers no for a
+    combinator of ``required`` GROUPS -- which is a rule on one class, not a union
+    of shapes.  So a root carrying ``allOf`` beside a presence-only ``anyOf`` was
+    refused by this row for having a union and by step 5's row for not having one,
+    and ``emit.lower_document`` reported "no D2 row selects this root" for all 14
+    of them.  Those 14 were 14 of the 21 documents ``salesagent-j3k2l.21`` was
+    filed over.
+
+    The fix is the one ``union_root``'s own docstring already states for the other
+    direction -- ONE implementation of the keyword read, and it is the LOWERING'S.
+    Measured over all 1,054 portable documents: 287 -> 301, **0 documents lost**,
+    and **0 of the 301 claimed by any other row**, so the table is still a
+    partition.
 
     This is the row's selector and the predicate its metric is stated over, so it
     cannot come to claim a document the step does not count.
     """
-    return isinstance(doc.get("allOf"), list) and not any(k in doc for k in ("oneOf", "anyOf"))
+    return isinstance(doc.get("allOf"), list) and not union_root(doc)
 
 
 def union_root(doc: dict) -> bool:
