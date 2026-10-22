@@ -150,10 +150,26 @@ A step that wants to change one of these reports it and stops.
   **A constrained type is named once and referenced.** The walk resolves every constrained
   scalar and container it meets to one type, in this order: a type the bundle itself names — a
   titled root carrying those constraints, reached by `$ref` as an import; then a type pydantic
-  names, such as `PositiveInt` for `{integer, minimum: 1}`, `NonNegativeInt`, `PositiveFloat`,
-  `NonNegativeFloat`, `AnyUrl` for `{string, format: uri}` and `AwareDatetime` for
-  `{string, format: date-time}`, a standard type always in preference to one of ours; and
-  otherwise an alias we emit in one module.
+  names, where one qualifies; and otherwise an alias we emit in one module.
+
+  **A standard type qualifies only when it states the document's own facts and accepts the
+  document's own set.** Both halves are required and the schema comparison enforces the first,
+  so this is a rule rather than a list of blessed types. Measured against pydantic's set:
+  `NonNegativeInt` for `{integer, minimum: 0}` and `NonNegativeFloat` for `{number, minimum: 0}`
+  both render `minimum: 0` and qualify. `PositiveInt` for `{integer, minimum: 1}` renders
+  `exclusiveMinimum: 0` — the same integers, a different fact, so it does not qualify.
+  `PositiveFloat` for `{number, minimum: 1}` renders the same and **accepts `0.5`, which the
+  document refuses**, so it is a widening and is banned rather than merely unqualified.
+  `AnyUrl` adds `minLength: 1`, which its document does not state.
+
+  A type derived from `format` is a separate question, because draft-07 `format` is an
+  annotation and `jsonschema` asserts nothing for it without a checker — and the checker
+  available here covers `date`, `email`, `ipv4`, `ipv6`, `regex`, `time` and `uuid`, not
+  `date-time` or `uri`. So `AwareDatetime` refuses a timestamp with no offset that the document
+  as graded accepts, and that is a narrowing no check reports: the accepts check draws through
+  `hypothesis_jsonschema`, which honours the format and produced an offset in 200 of 200
+  instances. Until `format` is asserted on both sides, a format keyword stays an annotation on
+  a `str` and does not select a Python type.
 
   **An alias names a constraint, never a concept.** Its name is derived from the constraint it
   carries, never from a property name or a domain word, because two fields sharing a bound are
