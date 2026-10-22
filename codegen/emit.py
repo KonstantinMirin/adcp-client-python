@@ -576,6 +576,8 @@ def lower_document(
         # a node nothing names needs no entry, and 11 of this bundle's 157 local-section
         # entries are in that position (``compiler.local_reference``).
         local={p: n for p, n in bundle.nodes(doc) if p in named},
+
+        object_constrained=bundle.constrained_to_object(doc),
     )
     claimed = [(selects, lower) for selects, lower in ROWS if selects(doc)]
     if len(claimed) > 1:

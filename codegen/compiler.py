@@ -733,6 +733,17 @@ class Module:
     #: rule for a ``~0``/``~1`` in a key.  Empty by default: a document lowered outside
     #: ``lower_document`` resolves no local reference rather than inventing a symbol.
     local: Mapping[str, dict] = field(default_factory=dict)
+
+    #: The pointers of this document's nodes an ENCLOSING node already constrains to
+    #: ``type: "object"``; see ``bundle.constrained_to_object``.  A fact about the
+    #: DOCUMENT, computed once per document rather than re-derived per node, which is
+    #: the same arrangement as ``named`` and for the same reason: a lowering reads a
+    #: set and no two readings of the enclosing structure can disagree.
+    #:
+    #: Empty by default, which refuses rather than admits -- a node lowered outside
+    #: ``lower_document`` states its own ``type`` or is refused, which is exactly what
+    #: :func:`lower_object` did before this set existed.
+    object_constrained: frozenset[str] = frozenset()
     imports: set[tuple[str, str]] = field(default_factory=set)  # (module, name)
     blocks: list[str] = field(default_factory=list)
     names: set[str] = field(default_factory=set)
@@ -1011,7 +1022,8 @@ def lower_object(
             *rules.KEYWORDS,
         },
     )
-    if node.get("type") != "object":
+    declared = node.get("type")
+    if declared != "object" and not (declared is None and pointer in mod.object_constrained):
         # A node carrying ``properties`` and no ``type`` ADMITS A NON-OBJECT: JSON
         # Schema applies ``properties`` only to objects and asserts nothing about
         # anything else, so ``{"properties": {"a": {"type": "string"}}, "required":
@@ -1026,12 +1038,27 @@ def lower_object(
         # and they reach it in the worst way: the accepts check reports
         # ``model_type`` on a valid instance, which is the model refusing a payload
         # the document admits.
+        #
+        # **``mod.object_constrained`` is what keeps it from reading the node in
+        # ISOLATION, which was the other half of the defect.**  draft-07 applies a
+        # root's assertions and its combinator branch's to the SAME instance, so
+        # ``{"type": "object", "oneOf": [{"properties": ...}]}`` admits only objects
+        # and the branch at ``/oneOf/0`` restates nothing: there is no non-object for
+        # the class to be narrower than.  This refusal fired for 11 documents whose
+        # own root declares ``type: object`` three lines above the branch, and for 33
+        # whose node is a PROPERTY's own schema -- where nothing constrains the value
+        # and the refusal is right.  ``bundle.constrained_to_object`` is the one
+        # reading of which is which.
+        #
+        # A node declaring a type that is NOT ``object`` is still refused whatever
+        # encloses it: a conjunction of ``object`` and ``string`` admits nothing, and
+        # a class for it would accept what the document refuses.
         raise Refusal(
             "type",
             pointer,
             f"an object node must declare type: object; this one declares "
-            f"{node.get('type', '<absent>')!r}, so the document admits a non-object that "
-            "no class can",
+            f"{node.get('type', '<absent>')!r} and nothing enclosing it constrains the "
+            "instance to an object, so the document admits a non-object that no class can",
         )
     props = node["properties"]
     if not isinstance(props, dict) or not props:

@@ -174,7 +174,8 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     # refusal off the root -- it stopped at `$defs` before any of its 8 property
     # references was read -- so the closure now reaches the three enum documents its
     # earlier properties name. The row itself still moves N by 0.
-    assert len(with_row.emitted) == 217, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 218, "N, over a bundle of 1,054"
+    assert len(with_row.emitted) == 218, "N, over a bundle of 1,054"
     # **The row DOES emit now, and it did not when this lane measured alone.**  On
     # its own branch the conjuncts' targets refused and took their referrers with
     # them, so the delta was 0 and the row's value was the attribution it moved.  On

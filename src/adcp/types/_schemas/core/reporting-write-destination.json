@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Storage or warehouse destination for durable reporting. The caller either references an existing seller-issued immutable destination generation or asks the seller to validate and bind a provider-native location. A destination_ref is owned by the stable authenticated principal's relationship with this seller and may be reused across accounts; each account delivery configuration separately authorizes its feed and scope. Changing proof-bound coordinates or the accepted delivery contract produces a new destination_ref. Access grants name advertised producer identities; credentials never transit AdCP.",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "destination_ref": {
+          "description": "Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.",
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string",
+          "x-entity": "reporting_destination"
+        },
+        "mode": {
+          "const": "existing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "destination_ref"
+      ],
+      "title": "Existing binding"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "access_mode": {
+          "description": "Optional provider access family used for capability matching.",
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "type": "string"
+        },
+        "location": {
+          "description": "Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.",
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "mode": {
+          "const": "provision",
+          "type": "string"
+        },
+        "provider": {
+          "additionalProperties": false,
+          "description": "Platform hosting the destination.",
+          "properties": {
+            "domain": {
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "domain"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "mode",
+        "provider",
+        "location"
+      ],
+      "title": "Provision binding"
+    }
+  ],
+  "title": "Reporting Write Destination",
+  "type": "object",
+  "x-adcp-validation": {
+    "authorization": "Bind every destination_ref to the stable authenticated caller. Reuse across that caller's accounts is permitted only after each account configuration independently verifies disclosure authority for its feed and media-buy scope. Reject unknown, unauthorized, and cross-caller refs indistinguishably.",
+    "destination_proof": "Before ready, prove destination control and caller authority for every selected account, feed, and media-buy scope. A proof-bound coordinate or delivery-contract change creates a new destination_ref; old references remain stable for retained configurations and history. Revoke grants when the configuration, caller authorization, or account becomes inactive."
+  },
+  "x-status": "experimental"
+}

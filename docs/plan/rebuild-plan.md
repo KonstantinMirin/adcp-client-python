@@ -676,6 +676,34 @@ denominator is healthy in both, so nothing looks wrong.
 **The schema comparison is what grades the generated code.** It is also the only check that
 sees a default or a description, because neither changes the accepted set.
 
+**The comparison folds out the RESOLVER's canonicalizations, and that is a named category
+rather than a series of patches.** The harness grades against the document as
+`hypothesis-jsonschema`'s own resolver inlines it — deliberately, so the schema the runtime
+decides with is the schema the harness grades — and that resolver rewrites while it inlines. So
+a faithful model can read as dropping a fact the DOCUMENT never stated. Four are known:
+
+1. `_closed` — `additionalProperties` as the resolver spells it.
+2. The `additionalProperties: true` branch of `_narrows_nothing`.
+3. The finite-type rewrite (`_uncanonicalized`): a type whose value set is finite is written out
+   as that set and **every annotation at the node is dropped** — `{"type": "boolean",
+   "description": ...}` resolves to `{"enum": [false, true]}`. The `type` is restored because
+   `enum: [false, true]` IS `type: boolean`; the `description` cannot be and is **not** copied
+   off the model, because a fixture derived from the thing it grades falsifies nothing.
+4. `uniqueItems: true` over a countable item set derives a `maxItems`: a two-member `enum` with
+   `uniqueItems` resolves to the same node plus `maxItems: 2`.
+
+**Each fold-out is GATED to its own shape and is not a licence.** The rule is that the fold
+applies only where the resolver's rewrite is provably what produced the difference — the
+finite-type fold admits a model-only `description` at a rewritten node and nowhere else, and the
+`maxItems` fold applies only where the value equals exactly the item set's distinct-value count
+beside `uniqueItems: true`. A fold that cannot state the equality it rests on is a widening
+wearing this category's clothes.
+
+**Expect more of these, and expect each to appear when a document first reaches it.** Number 3
+was unreachable until a referenced plain boolean emitted and number 4 until a document carrying
+`uniqueItems` did, so the arrival of a fifth is a sign the emitted population grew rather than
+that the comparison is wrong.
+
 **Determinism is a precondition of grading, not something to fix later.** Two runs over the
 same bundle emit the same bytes, and a run that does not is ungraded rather than nearly right.
 

@@ -17,6 +17,8 @@ import json
 from collections.abc import Collection, Iterator
 from pathlib import Path
 
+from adcp.types._base import applied_schema
+
 from codegen import compiler
 from codegen.harness import resolve
 from codegen.lower import rules, union
@@ -230,6 +232,46 @@ def named_nodes(bundle_dir: Path) -> dict[str, frozenset[str]]:
             if target is not None:
                 out.setdefault(target, set()).add(pointer)
     return {d: frozenset(p) for d, p in out.items()}
+
+
+def constrained_to_object(doc: dict) -> frozenset[str]:
+    """The pointers of nodes that state no ``type`` and that the DOCUMENT applies
+    ``type: "object"`` to anyway.
+
+    draft-07 applies a root's assertions and its combinator branch's to the SAME
+    instance, so ``{"type": "object", "oneOf": [{"properties": {...}}]}`` admits only
+    objects and the branch at ``/oneOf/0`` does not have to restate it.  Read in
+    ISOLATION that branch admits a non-object, which is what ``compiler.lower_object``
+    refused it for -- a fact three lines up in its own document.  10 documents of the
+    3.2 bundle were refused for exactly that, and another 34 chained off them through
+    a ``$ref``.
+
+    **The rule is ``_base.applied_schema``'s and is not restated here.**  That
+    function is what the RUNTIME resolves a class's ``__adcp_schema__`` through, so
+    deriving the lowering's answer from it is what makes it impossible for the
+    emitter to admit a node whose class would then be narrower than the schema it
+    names.  Two spellings of "which hop keeps the instance" is precisely how that
+    divergence would arrive, and it would arrive silently.
+
+    A function of the DOCUMENT alone, like every other derived fact here, over
+    :func:`nodes` -- the one walk -- so there is no second table of what a schema
+    position is either.
+
+    The node's own ``type`` always wins, so this set holds only nodes that declare
+    none: a node declaring ``string`` under a root declaring ``object`` states a
+    contradiction and stays refused rather than being quietly rewritten.  A
+    ``["object", "null"]`` enclosing type admits a null, so it is not a string and
+    constrains nothing here.
+
+    Measured on the 3.2 bundle over all 1,054 portable documents: 1,390 nodes declare
+    a non-empty ``properties`` without ``type: "object"``; 556 of them, in 151
+    documents, are in this set and 834, in 206 documents, are not.
+    """
+    return frozenset(
+        p
+        for p, n in nodes(doc)
+        if "type" not in n and applied_schema(doc, p).get("type") == "object"
+    )
 
 
 def resolved(bundle_dir: Path, document: str) -> dict:

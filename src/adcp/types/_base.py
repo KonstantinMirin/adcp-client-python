@@ -158,23 +158,90 @@ def _document(document: str) -> dict:
     return json.loads(resource.read_text())
 
 
+#: The pointer segments through which a subschema applies to the SAME INSTANCE its
+#: parent does, so an assertion the parent makes about that instance binds the child
+#: too.  ``allOf``/``anyOf``/``oneOf`` hold a LIST, so the hop spans two segments.
+#:
+#: ``if`` and ``not`` are excluded ON PURPOSE, and the exclusion is where this rule's
+#: correctness lives: both apply at the same instance location, but a ``type`` under
+#: ``if`` is a CONDITION the instance may fail without the document refusing it, and a
+#: ``type`` under ``not`` is a type the instance must NOT have.  Neither asserts what
+#: the instance IS.
+#:
+#: Declared here, in the package, rather than in ``codegen``: the emitter decides
+#: whether a node can become a class from exactly this rule and the runtime decides
+#: what that class's schema is, so two spellings would be a lowering admitting a node
+#: the runtime does not constrain -- a model narrower than the schema it names, which
+#: is the defect :func:`applied_schema` exists to prevent.  ``codegen.bundle`` reads
+#: this function; it does not restate the rule.
+SAME_INSTANCE_LIST = ("allOf", "anyOf", "oneOf")
+SAME_INSTANCE_ONE = ("then", "else")
+
+
+def applied_schema(root: dict, pointer: str) -> dict:
+    """The node at ``pointer``, carrying the ``type`` the document applies to it.
+
+    A node is not validated in isolation.  draft-07 applies a root's assertions and
+    its combinator branch's to the SAME instance, so in
+    ``{"type": "object", "oneOf": [{"properties": {...}}]}`` every instance that
+    reaches ``/oneOf/0`` is already an object and the branch restates nothing.  Read
+    as the bare node that branch admits a string, which is a schema no class can be
+    paired with: the class refuses the string and is narrower than the schema it
+    names.  Measured on ``core/activation-key.json``: the two branch pairs reported
+    ``accepts:model_refused_valid`` and ``model_adds_a_fact`` at ``/type`` with the
+    bare node, and pass with this.
+
+    **``type`` is the ONE fact conjoined, and the population says why that is
+    exhaustive rather than a selection.**  The only nodes this changes anything for
+    are the ones whose own ``type`` is absent and whose enclosing node asserts one,
+    and every such node a class is declared at today is a union branch --
+    ``lower.union.ROOT_CONJUNCTS`` refuses a union root that carries ``properties``,
+    ``required`` or ``additionalProperties``, so ``type`` is the only assertion such a
+    root can make about the instance.  KNOWN CEILING: a row whose root asserts more
+    than a type about the same instance needs this extended, and the node's own facts
+    always win -- a node declaring ``string`` under a root declaring ``object`` keeps
+    ``string`` and is refused for stating a contradiction, not silently rewritten.
+
+    The node is returned UNCHANGED, as the same object, wherever nothing is
+    conjoined, so every pointer that resolved to a document's own node before this
+    existed still resolves to that exact node.
+    """
+    node: Any = root
+    enclosing: str | None = None  # the type an enclosing node asserts about THIS instance
+    parts = [p for p in pointer.lstrip("#").lstrip("/").split("/") if p != ""]
+    for part in parts:
+        if isinstance(node, list):
+            # the index half of a combinator hop, whose keyword was read already
+            node = node[int(part)]
+            continue
+        if part in SAME_INSTANCE_LIST or part in SAME_INSTANCE_ONE:
+            declared = node.get("type") if isinstance(node, dict) else None
+            # INHERITED through a chain of such hops: a node asserting nothing passes
+            # its own enclosing assertion down.
+            enclosing = declared if isinstance(declared, str) else enclosing
+        else:
+            enclosing = None  # the hop moves to a different instance
+        node = node[part.replace("~1", "/").replace("~0", "~")]
+    if not isinstance(node, dict):
+        raise LookupError(f"{pointer} is {type(node).__name__}, not a schema")
+    if "type" in node or enclosing is None:
+        return node
+    return {**node, "type": enclosing}
+
+
 def schema_at(ref: SchemaRef) -> dict:
-    """The subschema ``ref`` names.
+    """The subschema ``ref`` names, as the document applies it.
 
     The pointer is resolved here and not at emit time, because the document is
     what the package carries: a nested class's node is part of its document's
     meaning, and writing each node out separately would put the same subschema
     in the package twice and let the two drift.
+
+    :func:`applied_schema` is what makes "its own node" mean the node as the document
+    applies it rather than the node read alone; it says which fact that adds and why
+    that is the only one.
     """
-    node: Any = _document(ref.document)
-    for part in ref.pointer.lstrip("#").lstrip("/").split("/"):
-        if part == "":
-            continue
-        part = part.replace("~1", "/").replace("~0", "~")
-        node = node[int(part)] if isinstance(node, list) else node[part]
-    if not isinstance(node, dict):
-        raise LookupError(f"{ref.document}{ref.pointer} is {type(node).__name__}, not a schema")
-    return node
+    return applied_schema(_document(ref.document), ref.pointer)
 
 
 def _refuse(schema: dict, payload: Any, name: str) -> None:
