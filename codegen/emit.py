@@ -612,7 +612,12 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for pkg in packages:
         out.files[f"{pkg}/__init__.py"] = ""
     out.files["__init__.py"] = ""
-    out.files["_refusals.json"] = json.dumps(out.refusals, indent=2, sort_keys=True) + "\n"
+    # The refusal REPORT is not a file in the tree.  It was, and the documented
+    # one-document command then rewrote it with that run's refusals -- which are
+    # none -- so running the command in the README damaged the committed tree and
+    # reddened the gate.  A report about documents this package does NOT contain
+    # has no place inside the shipped package anyway: `main` prints it, and the
+    # suite reads `Emitted.refusals` from the run it just made.
     return out
 
 
