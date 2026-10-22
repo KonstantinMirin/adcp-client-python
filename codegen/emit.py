@@ -352,7 +352,9 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
 
     if kind == "object":
         if "properties" not in node:
-            raise Refusal("type", pointer, "an object node with no properties is a mapping, step 6")
+            raise Refusal(
+                "type", pointer, "an object node with no properties is a mapping, step 6"
+            )
         return Decided(compiler.Type(lower_object(node, name_hint, pointer, mod), local=True))
 
     if kind == "array":
@@ -374,6 +376,16 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
         return Decided(compiler.Type(FORMAT_TYPES[fmt]), constraints)
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
+
+
+def _key_statement(node: dict) -> dict:
+    """Whatever the node says about its KEYS, for the extras store to read.
+
+    A class with a typed ``additionalProperties`` and a ``propertyNames`` states the
+    undeclared properties' keys as well as their values, and D5 types both.  Carried
+    across as the document wrote it so ``containers.mapping`` makes the one decision.
+    """
+    return {k: node[k] for k in ("propertyNames",) if k in node}
 
 
 def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
@@ -447,7 +459,10 @@ def lower_object(node: dict, name: str, pointer: str, mod: Module) -> str:
             ref=schema_ref(mod.document, pointer),
             properties=tuple(decided),
             description=description if isinstance(description, str) and description else None,
-            # D7; absent leaves the base's default in place
+            # D7; absent leaves the base's default in place.  A TYPED
+            # ``additionalProperties`` is ``allow`` with the type beside it: the
+            # properties are part of the document, so they are retained, and
+            # ``__pydantic_extra__`` is what validates them.
             extra={False: "forbid", True: "allow"}.get(node.get("additionalProperties")),
         )
     )
@@ -489,6 +504,91 @@ def render(mod: Module, symbol: str) -> str:
     return "\n".join([*out, "", classes, "", "", f'__all__ = ["{symbol}"]', ""])
 
 
+def declare_alias(mod: Module, symbol: str, doc: dict, decided: Decided) -> None:
+    """Declare the module for a root D2 makes an ALIAS rather than a class.
+
+    A scalar root, a mapping root and a multi-type root all take this shape: the
+    node has no field to hang itself on, so a class would be a second name for the
+    same node (P2) and would put an object on the wire where the document carries a
+    string or a map.  One function for all three because the module shape is
+    identical -- the reference, the alias, and the bound ``strict_validate`` -- and
+    two copies of it would be two places for the ``strict_validate`` line to drift.
+
+    The ANNOTATION is still the compiler's: the same field rendering a class property
+    gets, read off the field instead of out of a class body, so a constraint on an
+    alias and a constraint on a property cannot come to be spelled two ways.  What is
+    ours is the two module-level STATEMENTS, and §1 says why: no compiler template has
+    a slot for a line beside an alias.
+
+    KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the per-class
+    ``regex_engine`` a look-around pattern needs, and ``strict_alias`` builds its
+    ``TypeAdapter`` at import.  A root carrying look-around would therefore fail to
+    IMPORT once the base stops forcing ``python-re``.  Measured over this step's
+    population: 5 scalar roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``,
+    which the default engine compiles) and 0 carrying look-around, so no document
+    here reaches it.  The failure is an ImportError at the gate rather than a silent
+    widening, so the upgrade path is for the step whose population reaches one:
+    either refuse such a document by name, or wrap the alias in a ``RootModel`` that
+    has a config slot.
+    """
+    description = doc.get("description")
+    rendered = compiler.render_alias(
+        symbol,
+        decided.type,
+        decided.constraints,
+        description=description if isinstance(description, str) and description else None,
+        format=decided.format,
+    )
+    mod.imports |= rendered.imports
+    mod.imports.add((BASE_MODULE, "strict_alias"))
+    ref = schema_ref(mod.document, "")
+    mod.declare(
+        symbol,
+        "",
+        f"__adcp_schema__ = {ref!r}\n\n"
+        f"{rendered.text}\n\n\n"
+        f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
+    )
+
+
+def _object_root(doc: dict, symbol: str, mod: Module) -> None:
+    """D2's object row: a root with ``properties`` is a model, named by its title."""
+    lower_object(doc, symbol, "", mod)
+
+
+def _scalar_root(doc: dict, symbol: str, mod: Module) -> None:
+    """D2's root-scalar row, which steps 1 and 2 need because a reference TARGET is
+    one 100 times over: ``core/creative-revision-id.json`` is a string with
+    ``minLength``/``maxLength`` and has no field to hang itself on."""
+    declare_alias(mod, symbol, doc, decide_type(doc, "", symbol, mod))
+
+
+#: **D2's rows, as ``(selector, lowering)`` pairs, and the table is UNORDERED.**
+#:
+#: A selector reads a DOCUMENT and says whether this row lowers its root; the
+#: lowering declares the module.  Dispatch is on the ROOT KIND and not on the
+#: document's whole content, and that is what makes the table a partition rather
+#: than a precedence puzzle: a root is exactly one kind, so two rows selecting one
+#: document is a contradiction between two selectors and :func:`lower_document`
+#: raises rather than picking.  It is a build failure and not a ``Refusal``,
+#: because a refusal is a designed outcome for a document and this is a defect in
+#: the table.
+#:
+#: Keying it on the root is also what keeps the rows from duplicating each other.
+#: Keyed on a document's whole content instead, a container row would have to claim
+#: the 95 named documents whose root is an object with properties and whose
+#: PROPERTIES hold containers -- and lowering an object root with properties is the
+#: object row's job, so the table would hold two copies of ``lower_object``.
+#:
+#: The per-NODE walk is ``decide_type``, which every row shares and which reaches
+#: the container arms in ``lower.containers``.  Those arms are not rows here for the
+#: same reason ``decide_type`` is not one: they are the walk, not a root's owner.
+ROWS: tuple[tuple[Callable[[dict], bool], Callable[[dict, str, Module], None]], ...] = (
+    (bundle.is_object_root, _object_root),
+    (bundle.is_scalar_root, _scalar_root),
+)
+
+
 def lower_document(
     document: str, doc: dict, bind: Callable[[str, str], tuple[str, str]] = _no_binder
 ) -> tuple[Module, str]:
@@ -499,58 +599,18 @@ def lower_document(
     if not symbol.isidentifier():
         raise Refusal("title", "", f"the title {title!r} derives {symbol!r}, not an identifier")
     mod = Module(document=document, bind=bind, asserted=asserted_formats(doc))
-    kind = doc.get("type")
-    if "properties" in doc and kind in (None, "object"):
-        lower_object(doc, symbol, "", mod)
-    elif isinstance(kind, str) and kind in SCALAR:
-        # D2's root-scalar row, which this step needs because a reference TARGET is
-        # one 100 times over: `core/creative-revision-id.json` is a string with
-        # `minLength`/`maxLength` and has no field to hang itself on.  An alias,
-        # not a class -- a wrapper class would be a second name for the same node
-        # (P2) and would make every referencing model carry an object where the
-        # document carries a string.  A root array and a root mapping are step 6's
-        # rows and still refuse below.
-        #
-        # The ANNOTATION is still the compiler's: the same field rendering a class
-        # property gets, read off the field instead of out of a class body, so a
-        # constraint on an alias and a constraint on a property cannot come to be
-        # spelled two ways.  What is ours is the two module-level STATEMENTS, and
-        # §1 says why: no compiler template has a slot for a line beside an alias.
-        #
-        # KNOWN CEILING: an alias has no ``ConfigDict``, so it cannot carry the
-        # per-class ``regex_engine`` a look-around pattern needs, and
-        # ``strict_alias`` builds its ``TypeAdapter`` at import.  A scalar root
-        # carrying look-around would therefore fail to IMPORT once the base stops
-        # forcing ``python-re``.  Measured over this step's population: 5 scalar
-        # roots, 2 carrying a ``pattern`` (both ``^[a-z0-9_]+$``, which the
-        # default engine compiles) and 0 carrying look-around, so no document
-        # here reaches it.  The failure is an ImportError at the gate rather than
-        # a silent widening, so the upgrade path is for the step whose population
-        # reaches one: either refuse such a document by name, or wrap the alias
-        # in a ``RootModel`` that has a config slot.
-        decided_type = decide_type(doc, "", symbol, mod)
-        description = doc.get("description")
-        rendered = compiler.render_alias(
-            symbol,
-            decided_type.type,
-            decided_type.constraints,
-            description=description if isinstance(description, str) and description else None,
-            format=decided_type.format,
+    chosen = [(sel, low) for sel, low in ROWS if sel(doc)]
+    if len(chosen) > 1:
+        raise RuntimeError(
+            f"{document}: {len(chosen)} rows of the dispatch table select this document "
+            f"({', '.join(sel.__name__ for sel, _ in chosen)}); the table is unordered, so "
+            "two selectors disagreeing about one root is a defect in the selectors"
         )
-        mod.imports |= rendered.imports
-        mod.imports.add((BASE_MODULE, "strict_alias"))
-        ref = schema_ref(document, "")
-        mod.declare(
-            symbol,
-            "",
-            f"__adcp_schema__ = {ref!r}\n\n"
-            f"{rendered.text}\n\n\n"
-            f'strict_validate = strict_alias(__adcp_schema__, "{symbol}", {symbol})',
-        )
-    else:
+    if not chosen:
         raise Refusal(
-            "type", "", "this step emits an object root with properties, or a scalar root"
+            "type", "", "no row of the dispatch table lowers this document's root"
         )
+    chosen[0][1](doc, symbol, mod)
     return mod, symbol
 
 

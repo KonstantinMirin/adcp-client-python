@@ -183,6 +183,34 @@ def resolved(bundle_dir: Path, document: str) -> dict:
     return resolve(doc, store=store) if store else doc
 
 
+# --------------------------------------------------------------------------- #
+# the dispatch table's selectors: which ROW lowers a document's root
+# --------------------------------------------------------------------------- #
+# One predicate per D2 root row, and together they are a PARTITION of the bundle's
+# documents by what their root IS -- so ``emit.ROWS`` is unordered and two rows
+# selecting one document is a defect in these predicates rather than a question of
+# precedence.  They live beside the population selectors below because a selector
+# and the population a step's result is stated over are the same kind of thing, and
+# for step 6 they are literally the same predicate: ``is_container_root`` is both the
+# row's selector and the list of documents step 6 names.
+#
+# Disjointness is by construction and is asserted in ``tests/test_emit.py``: a root
+# with ``properties`` is an object and a root whose ``type`` is one scalar name is a
+# scalar.  A root that is neither -- an array, a propertyless object, an enum, a
+# ``oneOf``, an ``allOf`` -- has no row yet and is refused by name, which is steps
+# 3 to 6.
+
+
+def is_object_root(doc: dict) -> bool:
+    """D2's object row: a root declaring ``properties``."""
+    return "properties" in doc and doc.get("type") in (None, "object")
+
+
+def is_scalar_root(doc: dict) -> bool:
+    """D2's root-scalar row: a root whose ``type`` names one scalar."""
+    return doc.get("type") in ("string", "integer", "number", "boolean")
+
+
 def is_leaf_object(doc: dict) -> bool:
     """Step 1's population: an object root with no reference, composition,
     conditional or definition section anywhere in it."""
