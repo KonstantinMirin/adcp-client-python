@@ -2830,11 +2830,18 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         doc = schema_at(ref)
         model = next(r.model for r in graded() if r.ref == ref)
         node = model.model_json_schema()["properties"][compiler.field_name(key)]
+        declared = doc["properties"][key]["type"]
         # pydantic has no spelling for a type LIST but a union, so the document's
-        # ``["number", "string"]`` comes back as branches.  Compared on the branch
-        # types, with D4's null branch (presence, not a type claim) dropped.
-        branches = [b["type"] for b in node["anyOf"] if b.get("type") != "null"]
-        assert sorted(branches) == sorted(doc["properties"][key]["type"]), (ref, key, node)
+        # types come back as branches.  **A ``null`` the DOCUMENT DECLARES is one of
+        # them**, and D4's null for a merely optional property is not -- the two are
+        # the same branch and different facts, which is the conflation
+        # ``test_a_declared_null_is_never_read_as_absence`` grades.  So the branch set
+        # is compared against the document's own list, and the presence branch is
+        # dropped only where the document declares no null to account for it.
+        branches = [b["type"] for b in node["anyOf"]]
+        if "null" not in declared:
+            branches = [b for b in branches if b != "null"]
+        assert sorted(branches) == sorted(declared), (ref, key, node)
         # ... and the harness's own normalization folds it to the document's spelling,
         # which is what makes the schema comparison pass on these two.
         assert compare_schema(doc, model).outcome == "pass", compare_schema(doc, model).missing
@@ -2928,8 +2935,12 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         emit.lower_document("ms.json", armed)
     assert caught.value.keyword == "minLength", caught.value.keyword
     assert "every branch is a bare type" in caught.value.detail, caught.value.detail
-    # And it costs no document: 0 multi-type node in an EMITTED document states
-    # anything beyond its ``type``, which is why this is graded on a constructed one.
+    # And it costs no document: 0 multi-type node in an EMITTED document states a
+    # constraint WITH TWO OR MORE LIVE ARMS, which is why this is graded on a
+    # constructed one. The live count is the whole of the condition -- with one live
+    # arm the node is ``T | None``, which the comparison reads exactly (see
+    # ``test_a_declared_null_is_never_read_as_absence``) -- so a node with one live
+    # arm and a constraint is emitted and is NOT a violation here.
     from codegen.lower import containers as lower_containers
 
     emitted = emit.emit(BUNDLE, population()).emitted
@@ -2938,21 +2949,21 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         (d, p)
         for d in emitted
         for p, node in bundle.nodes(bundle.read(BUNDLE, d))
-        if isinstance(node.get("type"), list) and set(node) & carried
+        if isinstance(node.get("type"), list)
+        and set(node) & carried
+        and len([k for k in node["type"] if k != "null"]) > 1
     ] == []
 
-    # A null arm refuses too, and for the grader rather than the rendering.
-    with pytest.raises(Refusal) as caught:
-        emit.lower_document(
-            "mn.json",
-            {
-                "title": "MN",
-                "type": "object",
-                "properties": {"v": {"type": ["string", "null"]}},
-            },
-        )
-    assert caught.value.keyword == "type"
-    assert "cannot tell a DECLARED null" in caught.value.detail
+    # **A null arm no longer refuses: it is an ARM.** The refusal stood on the
+    # grader, and the grader reads it now -- so the cell asserts the EMISSION and the
+    # annotation, because a cell that only stopped asserting the refusal would pass
+    # for a row that silently dropped the arm.
+    mod, symbol = emit.lower_document(
+        "mn.json",
+        {"title": "MN", "type": "object", "properties": {"v": {"type": ["string", "null"]}}},
+    )
+    assert symbol == "MN"
+    assert "v: str | None" in "\n".join(mod.blocks), mod.blocks
 
     # A keyword no arm can carry constrains nothing, so it refuses by name.
     with pytest.raises(Refusal) as caught:
