@@ -57,6 +57,7 @@ from adcp.types._base import (
 from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
 from codegen import constraints as constraints_module
+from codegen.lower import enum as lower_enum
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -1403,8 +1404,13 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 481, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 469
+    # 482 and 470, each one more than before `salesagent-j3k2l.23`: that bead admitted
+    # `notes` as the bundle annotation it is, which emits `enums/task-type.json` and so
+    # pairs `TaskType` with its document. One pair, one pass, 3 more document facts
+    # compared, and no change to `model_facts` or `url_typed` -- an enumeration states
+    # no URL type and the class states no fact its document does not.
+    assert len(reports) == 482, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 470
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
     # THE ONE FIGURE HERE THAT IS A FLOOR, and the only one that is not
     # reproducible. The refuses-check instance total counts hypothesis DRAWS
@@ -1423,7 +1429,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
     assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4859  # document facts compared
+    assert sum(r.comparison.compared for r in reports) == 4862  # document facts compared
     assert sum(r.comparison.model_facts for r in reports) == 1128  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
@@ -2111,7 +2117,11 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         profile[row["keyword"]] = profile.get(row["keyword"], 0) + 1
     assert profile == {
         "allOf": 52,  # step 4
-        "$ref": 16,  # a bare-$ref branch has no node to declare a subclass from
+        # 17 and not 16, and the `enumMetadata` row below is GONE: `salesagent-j3k2l.23`
+        # admits that annotation globally, so `core/media-buy-available-action-id.json`
+        # no longer stops at a non-keyword at its root and refuses on the bare `$ref`
+        # at `/anyOf/0` this row already names for 16 others.
+        "$ref": 17,  # a bare-$ref branch has no node to declare a subclass from
         "properties": 13,  # a root conjunct; see lower/union.py's docstring
         "not": 7,  # step 7 (D6) at a position the rules row does not reach
         "uniqueItems": 6,  # step 7 (D6)
@@ -2122,7 +2132,6 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         "oneOf": 1,
         "additionalProperties": 1,
         "type": 1,  # a root stating no type whose branch states none either
-        "enumMetadata": 1,
         "maxLength": 1,  # D5: a string bound beside a format: uri
         # **``type`` is 1 and was 12**: 10 of these roots declared ``type: object``
         # and were refused at a branch of their own combinator, which
@@ -3747,3 +3756,285 @@ def test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded() -> 
     assert carried == [], carried
     assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
     assert not any("UniqueItems" in source for source in RULE_KIND_POPULATION)
+
+
+# --------------------------------------------------------------------------- #
+# `salesagent-j3k2l.23`: a bundle ANNOTATION is not an unlowered schema keyword
+# --------------------------------------------------------------------------- #
+#: Every key at a SCHEMA POSITION that draft-07 does not define, with its sites and
+#: its documents, over the whole portable population.  **The enumeration IS the
+#: mechanism**: ``compiler.BUNDLE_ANNOTATIONS`` admits two of these by NAME, and an
+#: unknown keyword that could constrain an instance must keep refusing -- so the
+#: census is pinned here rather than derived from a prefix or a shape, and a name the
+#: bundle starts using arrives as a failure of this test and a decision for a reader
+#: rather than as a silent admission.
+NON_KEYWORD_CENSUS = {
+    # Three were already admitted before this bead, and they are in the census because
+    # the census is "not a draft-07 name" and not "refused": ``deprecated`` and
+    # ``writeOnly`` are ANNOTATION keywords of a later draft that
+    # ``compiler._DRAFT_ANNOTATIONS`` already names, and ``$defs`` is a later draft's
+    # definition section that ``compiler.DEFINITION_SECTIONS`` already names.
+    "deprecated": (179, 95),
+    "writeOnly": (1, 1),
+    "$defs": (5, 5),
+    "enumDescriptions": (137, 135),
+    "discriminator": (81, 73),
+    "enumMetadata": (4, 4),
+    "version": (4, 4),
+    "lastUpdated": (3, 3),
+    "errorMessage": (2, 1),
+    "notes": (2, 2),
+    "vocabulary": (2, 2),
+    "_generated": (1, 1),
+    "_generatedAt": (1, 1),
+    "adcp_version": (1, 1),
+    "architecture": (1, 1),
+    "asset_types": (1, 1),
+    "baseUrl": (1, 1),
+    "extensions": (1, 1),
+    "governance": (1, 1),
+    "last_updated": (1, 1),
+    "mappings": (1, 1),
+    "prerelease": (1, 1),
+    "protocol_layers": (1, 1),
+    "published_version": (1, 1),
+    "stability": (1, 1),
+    "usage_notes": (1, 1),
+    "versioning": (1, 1),
+}
+
+#: The 21 of the 24 that keep refusing, named, so dropping one into the admitted set
+#: is a visible edit of a list rather than the side effect of a widened rule.
+STILL_REFUSED = [
+    "_generated",
+    "_generatedAt",
+    "adcp_version",
+    "architecture",
+    "asset_types",
+    "baseUrl",
+    "discriminator",
+    "errorMessage",
+    "extensions",
+    "governance",
+    "lastUpdated",
+    "last_updated",
+    "mappings",
+    "prerelease",
+    "protocol_layers",
+    "published_version",
+    "stability",
+    "usage_notes",
+    "version",
+    "versioning",
+    "vocabulary",
+]
+
+
+def test_every_name_the_bundle_uses_that_draft_07_does_not_define_is_classified() -> None:
+    """The census, with its denominators, and the partition it is read into.
+
+    Five disjoint answers, and every name has exactly one:
+
+    * a later draft's ANNOTATION keyword, which ``compiler._DRAFT_ANNOTATIONS``
+      already named before this bead (``deprecated``, ``writeOnly``);
+    * a later draft's DEFINITION SECTION, likewise (``$defs``);
+    * ADMITTED as a bundle annotation (``compiler.BUNDLE_ANNOTATIONS``) -- it
+      annotates a node and constrains no instance, so the walk ignores it;
+    * CARRIED by a row (``lower.enum.HANDLED``) -- the SDK emits a fact from it;
+    * REFUSED -- everything else, including every name that could constrain an
+      instance.
+
+    Measured off the bundle rather than off the sets, so a name the bundle starts
+    using fails here instead of landing in whichever answer its spelling picks.
+    """
+    draft07 = frozenset(jsonschema.Draft7Validator.META_SCHEMA["properties"])
+    assert "enum" in draft07 and "notes" not in draft07  # the instrument itself
+
+    sites: dict[str, int] = {}
+    documents: dict[str, set[str]] = {}
+    drafts = set()
+    for document in bundle.portable(BUNDLE):
+        doc = bundle.read(BUNDLE, document)
+        drafts.add(doc.get("$schema"))
+        for _, node in bundle.nodes(doc):
+            for key in node:
+                if key in draft07 or key.startswith("x-"):
+                    continue
+                sites[key] = sites.get(key, 0) + 1
+                documents.setdefault(key, set()).add(document)
+
+    # One draft decides the vocabulary, which is what makes ``draft07`` the right set.
+    assert drafts == {"http://json-schema.org/draft-07/schema#"}, drafts
+    assert len(bundle.portable(BUNDLE)) == 1054
+
+    measured = {k: (n, len(documents[k])) for k, n in sites.items()}
+    assert measured == NON_KEYWORD_CENSUS, {
+        k: v for k, v in measured.items() if NON_KEYWORD_CENSUS.get(k) != v
+    }
+    assert sum(n for n, _ in measured.values()) == 436
+
+    already = (compiler._DRAFT_ANNOTATIONS | compiler.DEFINITION_SECTIONS) & set(measured)
+    admitted = set(compiler.BUNDLE_ANNOTATIONS)
+    carried = set(lower_enum.HANDLED) - draft07
+    refused = set(measured) - already - admitted - carried
+    assert sorted(already) == ["$defs", "deprecated", "writeOnly"], sorted(already)
+    assert admitted == {"notes", "enumMetadata"}, sorted(admitted)
+    assert carried == {"enumDescriptions"}, sorted(carried)
+    assert not (already | admitted) & carried, "one name, one answer"
+    assert not already & admitted, "one name, one answer"
+    assert already | admitted | carried | refused == set(measured)
+    assert sorted(refused) == sorted(STILL_REFUSED), sorted(refused)
+
+
+def test_no_refusal_promises_a_row_for_a_name_draft_07_does_not_define() -> None:
+    """The bead's invariant, over the whole population and in both directions.
+
+    "Refused by name, pointer and keyword with a reason that does not promise an
+    unscheduled row" is the rule, and 11 of the base tree's 653 refusals broke it:
+    ``discriminator`` 7, ``notes`` 2, ``enumMetadata`` 1, ``last_updated`` 1 -- each
+    answering "a later D2 row does" about a name draft-07 does not define, for which
+    no row can exist, because a lowering lowers a KEYWORD and there is none there.
+
+    The second direction is the denominator: 8 refusals are still ON such a name, so
+    the branch writing the honest reason is reached rather than dead.
+    """
+    draft07 = frozenset(jsonschema.Draft7Validator.META_SCHEMA["properties"])
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+    assert len(out.emitted) + len(out.refusals) == 1054
+
+    non_keyword = {d: r for d, r in out.refusals.items() if r["keyword"] not in draft07}
+    assert len(non_keyword) == 8, non_keyword
+    assert sorted({r["keyword"] for r in non_keyword.values()}) == [
+        "discriminator",
+        "last_updated",
+    ]
+    for document, r in sorted(non_keyword.items()):
+        assert r["keyword"] and r["pointer"] and r["detail"], (document, r)
+        assert "a later D2 row does" not in r["detail"], (document, r)
+        assert "draft-07 defines no such keyword" in r["detail"], (document, r)
+
+    # And the other way: a refusal on a name draft-07 DOES define still says a row is
+    # scheduled, because one is.
+    scheduled = {d: r for d, r in out.refusals.items() if r["keyword"] in draft07}
+    assert len(scheduled) == 639, len(scheduled)
+
+
+def test_the_four_documents_refusing_on_a_non_keyword_at_a_root() -> None:
+    """The bead's population, document by document, and what each one became.
+
+    The bead reads as four documents held by an annotation.  **Three of them were
+    held by TWO things**: the annotation sorted first, so it is the keyword the
+    refusal reported, and it MASKED a blocker another step owns.  One emits.
+
+    Asserted per document rather than as a count, because the four verdicts are three
+    different outcomes and a sum over them says nothing about any of them.
+    """
+    out = emit.emit(BUNDLE, sorted(bundle.portable(BUNDLE)))
+
+    # `notes` admitted, and nothing else was blocking.
+    assert "enums/task-type.json" in out.emitted
+    assert schema_at(SchemaRef("enums/task-type.json", "#"))["notes"]  # it really carries one
+
+    # `notes` admitted, and a cascade on a target another step owns is underneath.
+    envelope = out.refusals["core/protocol-envelope.json"]
+    assert (envelope["keyword"], envelope["pointer"]) == ("$ref", "/properties/adcp_error")
+    assert "core/error.json is refused" in envelope["detail"]
+
+    # `enumMetadata` admitted, and step 5's bare-$ref branch rule is underneath.
+    action = out.refusals["core/media-buy-available-action-id.json"]
+    assert (action["keyword"], action["pointer"]) == ("$ref", "/anyOf/0")
+    assert "a bare $ref branch" in action["detail"]
+
+    # NOT admitted, by decision: `last_updated`, `mappings` and `version` are this
+    # registry's own instance data at its schema root, not annotations of a node --
+    # which the document says itself, by declaring all three as its own properties.
+    registry = out.refusals["registries/v1-canonical-mapping.json"]
+    assert (registry["keyword"], registry["pointer"]) == ("last_updated", "/")
+    assert "draft-07 defines no such keyword" in registry["detail"]
+    root = bundle.read(BUNDLE, "registries/v1-canonical-mapping.json")
+    assert {"last_updated", "mappings", "version"} <= set(root["properties"]), (
+        "the stray root keys are the document's own property names: it is an instance of itself"
+    )
+
+
+#: A document that emits on its own, so a planted keyword beside it is the only
+#: difference between the two halves of the probe below.
+PLANTED = {
+    "title": "Planted",
+    "type": "object",
+    "properties": {"a": {"type": "string"}},
+}
+
+
+def _planted(tmp_path: Path, doc: dict) -> dict[str, str] | None:
+    """Emit a one-document bundle holding ``doc``, and give back its refusal or
+    ``None``."""
+    root = tmp_path / "bundle"
+    (root / "core").mkdir(parents=True, exist_ok=True)
+    (root / "core" / "planted.json").write_text(
+        json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", **doc}, indent=1)
+    )
+    return emit.emit(root, ["core/planted.json"]).refusals.get("core/planted.json")
+
+
+def test_an_admitted_annotation_lets_a_document_through(tmp_path: Path) -> None:
+    """The FIRST half of the probe, on a planted document rather than on the bundle's
+    own two, so the admission is graded at a position the bundle happens not to use.
+
+    The control is ``PLANTED`` with nothing added, which the parametrized test below
+    shows refusing the moment one unknown keyword joins it.
+    """
+    assert _planted(tmp_path / "bare", PLANTED) is None
+    assert _planted(tmp_path / "notes", {**PLANTED, "notes": ["a sentence"]}) is None
+    assert _planted(tmp_path / "meta", {**PLANTED, "enumMetadata": {"a": {"b": 1}}}) is None
+    # And not only at a root: the screen runs at every node and the reason is about
+    # the NAME, so an annotation on a nested node is admitted too.
+    nested = {
+        "title": "Planted",
+        "type": "object",
+        "properties": {"a": {"type": "string", "notes": ["why this field exists"]}},
+    }
+    assert _planted(tmp_path / "nested", nested) is None
+
+
+@pytest.mark.parametrize(
+    "keyword, value",
+    [
+        # Five keywords of a LATER draft.  draft-07 ignores them, so the schema half
+        # enforces nothing and only the refusal stands between an author who meant to
+        # constrain and a class quietly wider than the document.
+        ("minContains", 2),
+        ("maxContains", 2),
+        ("prefixItems", [{"type": "string"}]),
+        ("unevaluatedProperties", False),
+        ("dependentRequired", {"a": ["b"]}),
+        # The OpenAPI keyword this bundle really uses, 81 sites: it selects which
+        # branch a payload resolves to, which §4 gives to `DataType.discriminator`.
+        ("discriminator", {"propertyName": "a"}),
+        # And a name nobody defines at all.
+        ("wibble", {"anything": True}),
+    ],
+)
+def test_a_planted_unknown_keyword_that_could_constrain_still_refuses(
+    tmp_path: Path, keyword: str, value: object
+) -> None:
+    """The SECOND half of the probe, and the half that keeps the generator honest.
+
+    ``PLANTED`` plus ONE unknown keyword is REFUSED by name, pointer and keyword, at
+    a root and at a nested node alike. Without this half the first half is satisfied
+    by admitting everything, which is the failure mode this bead exists to avoid.
+    """
+    at_root = _planted(tmp_path / "root", {**PLANTED, keyword: value})
+    assert at_root is not None, f"{keyword} was admitted at a root"
+    assert (at_root["keyword"], at_root["pointer"]) == (keyword, "/"), at_root
+    assert "draft-07 defines no such keyword" in at_root["detail"], at_root
+    assert "BUNDLE_ANNOTATIONS" in at_root["detail"], at_root
+
+    nested = {
+        "title": "Planted",
+        "type": "object",
+        "properties": {"a": {"type": "string", keyword: value}},
+    }
+    at_node = _planted(tmp_path / "node", nested)
+    assert at_node is not None, f"{keyword} was admitted on a nested node"
+    assert (at_node["keyword"], at_node["pointer"]) == (keyword, "/properties/a"), at_node
