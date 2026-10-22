@@ -546,6 +546,10 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
     excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
         "core/context.json#",
+        # Added by D5's alias module: `core/creative-brief.json` was refused on a
+        # constrained scalar inside a container, and this nested class of it
+        # states no keyword `steps()` can step.
+        "core/creative-brief.json#/properties/messaging",
         "core/ext.json#",
         "core/media-buy-legacy-terms-ref.json#",
         "error-details/account-setup-required.json#",
@@ -1310,13 +1314,21 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     """One number for the step, with its denominators, because a per-pair green
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
-    assert len(reports) == 448, len(reports)
-    assert sum(1 for r in reports if r.outcome == "pass") == 437
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 11
-    assert sum(r.graded_instances for r in reports) == 31923  # refuses-check instances
-    assert sum(r.comparison.compared for r in reports) == 4276  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 896  # model-only facts examined
+    assert len(reports) == 462, len(reports)
+    assert sum(1 for r in reports if r.outcome == "pass") == 450
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
+    assert sum(r.graded_instances for r in reports) == 34935  # refuses-check instances
+    assert sum(r.comparison.compared for r in reports) == 4658  # document facts compared
+    assert sum(r.comparison.model_facts for r in reports) == 1069  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
+    assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
+    assert sum(len(r.comparison.differs) for r in reports) == 0
+    # D5's URL-type row, the one admission that excuses a fact the model does not
+    # state: 36 of the `minLength: 1` any URL type renders, and the ONE `pattern`
+    # the bundle states on a `format: uri` node.  A position inside a nested class
+    # is graded twice -- once at its own pair and once at its parent's -- so this
+    # is larger than the 30 positions the bundle has.
+    assert sum(len(r.comparison.url_typed) for r in reports) == 37
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
