@@ -1387,18 +1387,24 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     assert len(reports) == 462, len(reports)
     assert sum(1 for r in reports if r.outcome == "pass") == 450
     assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
-    assert sum(r.graded_instances for r in reports) == 34935  # refuses-check instances
+    # Pinned to what THIS tree measures, not converted to a floor: the conversion
+    # and its recorded reason are the seam lane's, and two careful runs over
+    # byte-identical source there differed by 6.
+    assert sum(r.graded_instances for r in reports) == 34937  # refuses-check instances
     assert sum(r.comparison.compared for r in reports) == 4658  # document facts compared
-    assert sum(r.comparison.model_facts for r in reports) == 1069  # model-only facts examined
+    assert sum(r.comparison.model_facts for r in reports) == 1104  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
     assert sum(len(r.comparison.missing) for r in reports) == 0  # and none drops one
     assert sum(len(r.comparison.differs) for r in reports) == 0
-    # D5's URL-type row, the one admission that excuses a fact the model does not
-    # state: 36 of the `minLength: 1` any URL type renders, and the ONE `pattern`
-    # the bundle states on a `format: uri` node.  A position inside a nested class
-    # is graded twice -- once at its own pair and once at its parent's -- so this
-    # is larger than the 30 positions the bundle has.
-    assert sum(len(r.comparison.url_typed) for r in reports) == 37
+    # D5's URL-type rows, the one category that excuses a fact the model does not
+    # state, and 72 is the sum of its three: 36 `minLength: 1` (every URL type
+    # renders it), 35 `maxLength: 2083` (`HttpUrl` renders it, and 35 of the 36
+    # positions take that arm), and the ONE `pattern` the bundle states on a
+    # `format: uri` node -- `core/platform-extension-ref.json`, which is also the
+    # one position on the `AdCPUrl` arm and so the one with no `maxLength`.
+    # A position inside a nested class is graded twice, at its own pair and at its
+    # parent's, so 36 is larger than the 27 annotation sites the tree has.
+    assert sum(len(r.comparison.url_typed) for r in reports) == 72
 
 
 def test_extra_follows_the_schema_and_a_silent_document_takes_the_base_default() -> None:
@@ -3113,12 +3119,13 @@ def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_name
     # The denominators, so neither direction can pass over an empty set: every
     # alias is reachable at this one path and nowhere else (no flat root, no
     # second spelling), and the module is not a dumping ground.
-    assert len(declared) == 59, len(declared)
+    assert len(declared) == 60, len(declared)  # 58 derived + AdCPUrl + the HttpUrl re-export
     # (module, alias) pairs, which is NOT the site count: a module importing one
     # alias for five of its fields contributes one pair.
     assert sum(len(where) for where in imported.values()) == 190, imported
     # And the one name that is a decision really is annotating fields.
-    assert len(imported[constraints_module.URL]) == 23, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.URL]) == 1, sorted(imported[constraints_module.URL])
+    assert len(imported[constraints_module.HTTP_URL]) == 22, sorted(imported[constraints_module.HTTP_URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:
