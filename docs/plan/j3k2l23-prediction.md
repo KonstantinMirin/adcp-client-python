@@ -179,4 +179,53 @@ to one frozenset, in the WALK.
 
 ## Grading
 
-Filled in after the measurement, in this file, in a commit of its own.
+Measured on `0964a8157`, bundle `schemas/cache/3.2`, and compared against the
+`5d92cf2c0` run above. **13 of 14 right, and the one that was wrong was wrong about
+the suite rather than about the emitter.**
+
+| # | predicted | measured | verdict |
+|---|---|---|---|
+| P1 | `enums/task-type.json` emits | emits; `class TaskType(StrEnum)`, 38 members | RIGHT |
+| P2 | protocol-envelope does not emit; refuses `$ref` at `/properties/adcp_error` naming `core/error.json`; 0 of the 35 | exactly that; request/response emitted stays **12 of 179** | RIGHT |
+| P3 | `core/media-buy-available-action-id.json` refuses `$ref` at `/anyOf/0`, bare-`$ref` branch | exactly that | RIGHT |
+| P4 | registry stays refused on `last_updated` at `/` with the new reason | exactly that | RIGHT |
+| P5 | the 7 `discriminator` refusals keep keyword and pointer, take the new reason | 7, new reason | RIGHT |
+| P6 | emitted **407** (406–410), refused **647** (644–648) | **407 / 647** of 1,054 | RIGHT, point estimate exact |
+| P7 | added / missing / differs stay 0 | 0 / 0 / 0 over 482 pairs | RIGHT |
+| P8 | pairs **482** (481–484), pass **470** | **482 / 470** | RIGHT, point estimate exact |
+| P9 | modules 395 → **396**, only `enums/task_type.py` and its `.json` | 396; those two files and no other byte of the tree moved | RIGHT |
+| P10 | 0 refusals promise a row for a non-keyword; **8** are on one | 0 and 8 (`discriminator` 7, `last_updated` 1), against 639 on a draft-07 name | RIGHT |
+| P11 | a planted admitted annotation emits, at a root and nested | emits | RIGHT |
+| P12 | a planted unknown constraining keyword still refuses, 7 cases, root and nested | refuses by name, pointer and keyword | RIGHT |
+| P13 | census unchanged by the change: 27 names at 436 sites | 27 / 436 either side | RIGHT |
+| P14 | no existing expectation needs editing except the metric constants and the tree | **WRONG** — 8 assertions in 4 modules | WRONG |
+
+### P14, and what it got wrong
+
+The named risk fired (`test_enum` asserted `enumMetadata in lower_enum.HANDLED`), but
+naming a risk is not predicting it, and the SHAPE was wrong as well. Emitting ONE
+document moved eight assertions in four modules, because this suite counts the emitted
+tree from four directions:
+
+- `tests/test_emit.py` — pairs 481→482, pass 469→470, compared 4,859→4,862, and the
+  union row's keyword profile (`$ref` 16→17, the `enumMetadata` row gone);
+- `tests/test_enum.py` — root enums 213→214 with the refusal branch emptied, the
+  `enumMetadata` decision's location, enum classes 270→271, injective enum nodes
+  270→271, member names 1,954→1,992, `enumDescriptions` (132, 1097, 10)→(133, 1135, 10);
+- `tests/test_applied_schema.py` — 406→407 emitted of 1,054;
+- `tests/test_emit_product.py` — N over its 587-document population 218→219.
+
+Each one is the same document counted again. "The metric constants" named one of the
+four places; the cost of emitting a document in this suite is a count in every module
+that has a denominator, and that is the figure to predict next time.
+
+### What the measurement says about the leverage, which the bead does not
+
+The 35 request/response documents that reported `notes` on `core/protocol-envelope.json`
+now report **`core/error.json`, `type` at
+`/properties/issues/items/properties/discriminator/items/properties/value`** — a
+`['boolean','null','number','string']` type list beside a declared `null`. That is a
+keyword a SCHEDULED step owns, which is the bead's exit condition met. It also makes
+that one node the single highest-leverage item left on the request/response surface:
+**35 of the 167 refused documents, 21%, behind one `type` list in one document.**
+`core/brand-ref.json`'s `uniqueItems` at `/properties/countries` is second at 30.
