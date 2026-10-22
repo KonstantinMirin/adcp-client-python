@@ -278,18 +278,18 @@ class Step:
 
     So ``positions`` holds every position stating the fact and ``materialize``
     rewrites all of them, which pushes the instance out of the document once.
-    ``pointer`` is the first of them, kept because a report names one site.
+    ``pointer`` is the outermost of them, because a report names one site.
     """
 
     keyword: str  # the constraint that was stepped, as the document spells it
-    pointer: str  # JSON Pointer to the first subschema it was stepped at
     describe: str  # human-readable "before -> after"
     _rewrite: Callable[[dict], None]
-    positions: tuple[str, ...] = ()  # every position stating this fact
+    positions: tuple[str, ...]  # every position stating this fact, outermost first
 
-    def __post_init__(self) -> None:
-        if not self.positions:
-            object.__setattr__(self, "positions", (self.pointer,))
+    @property
+    def pointer(self) -> str:
+        """The one position a report names.  Derived, so the two cannot disagree."""
+        return self.positions[0]
 
     def materialize(self, schema: dict, *, force: bool = True) -> dict:
         """The stepped document to GENERATE from. The original still decides.
@@ -299,8 +299,14 @@ class Step:
         ``force=False`` exists so a measurement can draw the unforced case from
         the same inputs in the same process, and nothing else passes it.
 
-        Every position is forced BEFORE any is rewritten, because forcing a path
-        adds a name to a ``required`` list and a ``required`` step takes one away.
+        EVERY position is forced, not only the one a report names, and what that
+        buys is a DENOMINATOR rather than a verdict.  Measured on a fact stated in
+        two union branches that neither branch requires: forcing the first
+        position alone makes the key mandatory in that branch only, the generator
+        satisfies the OTHER branch and omits the key, and 8 of 25 examples grade
+        nothing.  Forcing every position makes it 25 of 25.  Both report ``pass``,
+        so no outcome separates them -- which is why the test for it asserts the
+        control count and not the verdict.
         """
         doc = copy.deepcopy(schema)
         if force:
@@ -706,7 +712,7 @@ def steps(schema: dict) -> list[Step]:
         # first -- `rec` follows the document's own key order, which would make
         # the reported pointer a function of how the file was written.
         ordered = sorted(positions, key=lambda p: (p.count("/"), p))
-        out.append(Step(keyword, ordered[0], describe, rewrites[key], tuple(ordered)))
+        out.append(Step(keyword, describe, rewrites[key], tuple(ordered)))
     return out
 
 

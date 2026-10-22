@@ -374,14 +374,16 @@ def test_an_unsteppable_site_is_reported_rather_than_passed() -> None:
 # --------------------------------------------------------------------------- #
 # the mechanics the group needs
 # --------------------------------------------------------------------------- #
-def test_every_position_is_forced_before_any_is_rewritten() -> None:
-    """Forcing adds a name to ``required`` and a ``required`` step takes one away.
+def test_a_required_step_drops_the_key_at_every_position() -> None:
+    """A ``required`` step over two positions removes the key from both lists.
 
-    So the order is not cosmetic: force one position, rewrite it, then force the
-    second, and the second forcing puts back the key the first rewrite removed --
-    the stepped document would demand the key it was stepped to forbid, and no
-    instance satisfies it.  Read off the materialized document rather than off
-    the call order.
+    An earlier draft of this claimed the FORCE/REWRITE ORDER was load-bearing
+    here -- force one position, rewrite it, force the second and the second
+    forcing puts the key back.  Perturbing the order reddened nothing, and the
+    claim is wrong: forcing adds a name to the ``required`` of each PROPERTY HOP
+    on the way DOWN to a position, and every position in one group addresses the
+    node itself, so no position in the group descends through the key the step
+    drops.  What this grades is the rewrite reaching both lists.
     """
     document = restating()
     (step,) = [s for s in steps(document) if s.keyword == "required"]
@@ -391,6 +393,36 @@ def test_every_position_is_forced_before_any_is_rewritten() -> None:
     assert stepped["not"] == {"required": ["label"]}
     assert stepped["allOf"][0]["not"] == {"required": ["label"]}
     assert conforms(stepped, {"tags": ["a", "b"]}) is True
+
+
+def test_forcing_every_position_leaves_no_example_ungraded() -> None:
+    """Why ``materialize`` forces EVERY position and not only the reported one.
+
+    Neither union branch requires ``label`` and the root states nothing about its
+    length, so forcing the first position alone makes the key mandatory in that
+    branch only: the generator satisfies the OTHER branch, omits the key, and
+    those examples grade nothing.  Measured 8 of 25 in that state.
+
+    The verdict is ``pass`` either way -- one graded example is enough for it --
+    so this asserts the CONTROL COUNT, which is the thing that moves.  It is a
+    property and not a blessed number: every instance of the stepped document
+    carries ``label`` at two characters or fewer, and the original refuses that in
+    both branches, so no example can fail to violate.
+    """
+    branch = {"properties": {"label": {"type": "string", "minLength": 3}}}
+    document = {
+        "$schema": DRAFT,
+        "type": "object",
+        "properties": {"label": {"type": "string"}, "k": {"type": "string"}},
+        "anyOf": [dict(branch), {**branch, "required": ["k"]}],
+    }
+    (step,) = [s for s in steps(document) if s.keyword == "minLength"]
+    assert step.positions == ("/anyOf/0/properties/label", "/anyOf/1/properties/label")
+
+    res = check_refuses(document, Faithful.model_validate, step, examples=25)
+    assert res.outcome == "pass"
+    assert res.control_fired == 0
+    assert res.refused == res.examples
 
 
 def test_materialize_leaves_the_original_document_untouched() -> None:
