@@ -724,6 +724,40 @@ reached the class. That guards a pair nothing exercised; it does not catch a wid
 Each step ends with Python that `codegen.emit` emitted and that passes all three checks against
 the schema each class names. Steps 3–7 share only the dispatch table.
 
+**This table listed eleven steps and the work is twenty.** The eleven below do not reach the
+population §6's exit condition declares: measured on the bundle, **385 documents refused with a
+detail saying a later row would cover them, and no later row existed** — step 9 adds no lowering
+rule by its own text, step 10 is the public surface and step 11 is closeout. So after step 11
+the generator would have stopped near 400 of 1,054 with `emitted + refused == 1,054` asserted and
+green. Nine more rows close that gap, filed as `salesagent-j3k2l.16` through `.24` and each
+gating step 9:
+
+| row | keyword, and where it sits | measured refusals |
+|---|---|---|
+| `.16` | `const`, at a property or nested — never at a root | 82 |
+| `.17` | `if`/`then`/`else`, in a conjunct or at a root | 76 |
+| `.18` | the `allOf` shapes step 4's row defers | 68 |
+| `.19` | `uniqueItems`, at a property or a root | 50 |
+| `.20` | `definitions` and `$defs` — **closed**; a section is not a root kind, so it is the walk and not a row | 40 |
+| `.21` | a root `type` list, and the declared-`null` arm the comparison could not tell from an optional | 24 |
+| `.22` | `not`, `dependencies`, and the remaining object-size keywords | 60 |
+| `.23` | a bundle annotation (`notes`, `enumMetadata`, `last_updated`) is IGNORED, not lowered — there is nothing to lower | 4 |
+| `.24` | read a branch's type from its root before refusing the branch — **closed**; a bug, not a row | 10 |
+
+**A row's refusal count is not its value.** Measured by an independent audit over the 179
+`-request`/`-response` documents — the only ones a consumer imports — `notes` is rank 20 by
+refusal count and **gates 35** of the 167 uncovered, while `const` is rank 1 and gates 3. Two
+leaf documents gate 65 of the 167: `core/protocol-envelope.json` on `notes` and
+`core/brand-ref.json` on `uniqueItems`.
+
+**And the rows compose multiplicatively on that surface, not additively.** A tool document needs
+EVERY blocker in its `$ref` chain cleared, so a single row moves the bundle count while the task
+surface stays flat, then jumps when the last blocker falls. Measured: `.19` removes
+`core/brand-ref.json`'s `uniqueItems` blocker and the document still does not emit, because its
+next blocker is a `const` that `.16` owns — the 30 documents it gates need both rows and neither
+alone buys one. A step-by-step bundle count cannot show this, which is why §6 reports the
+refusal partition and the task surface beside the total.
+
 | # | step | done when | parallel |
 |---|---|---|---|
 | 1 (`salesagent-j3k2l.1`) | **One leaf object document, end to end** — `core/pagination-request.json`: our walk decides what the node becomes, the compiler renders it, the class carries `__adcp_schema__`, `strict_validate` reads it, the harness runs all three checks off it | the module imports; `max_results` carries `ge=1, le=100` **and `= 50`**; the schema comparison passes; all three checks are generic over any class | no — runs alone |
