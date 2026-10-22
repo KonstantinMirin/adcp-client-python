@@ -565,7 +565,13 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
     than off a list.  A pair that landed there for any other reason -- a model
     defect, a generator failure -- would not satisfy this.
     """
-    excused = [g for g in graded() if check_pair(pair_of(g), max_steps=None).outcome != "pass"]
+    graded_reports = [(g, check_pair(pair_of(g), max_steps=None)) for g in graded()]
+    # Selected on the OUTCOME and no longer on "not pass", because the population has
+    # a second non-pass exit now: ``no_instrument``, for a pair whose accepts or
+    # refuses check could not DRAW. The assertion under the list is what keeps this a
+    # selection rather than a hole -- it says those two are the only exits there are,
+    # so a third could not hide behind this one.
+    excused = [g for g, r in graded_reports if r.outcome == "no_constraint_to_step"]
     assert [f"{g.ref.document}{g.ref.pointer}" for g in excused] == [
         "core/context.json#",
         # Added by D5's alias module: `core/creative-brief.json` was refused on a
@@ -574,15 +580,29 @@ def test_the_pairs_with_no_constraint_to_step_are_the_documents_that_state_none(
         "core/creative-brief.json#/properties/messaging",
         "core/ext.json#",
         "core/media-buy-legacy-terms-ref.json#",
+        # Added by D2's const row (salesagent-j3k2l.16): each of these states a
+        # `const` and nothing else `steps()` can step.
+        "creative/preview-render.json#/oneOf/0/properties/embedding",
+        "creative/preview-render.json#/oneOf/1/properties/embedding",
+        "creative/preview-render.json#/oneOf/2/properties/embedding",
         "error-details/account-setup-required.json#",
         "error-details/audience-too-small.json#",
         "error-details/budget-too-low.json#",
         "error-details/conflict.json#",
         "error-details/creative-rejected.json#",
+        "error-details/stale-response.json#/properties/upstream",
+        "error-details/stale-response.json#/properties/original_error",
         "sponsored-intelligence/si-identity.json#/properties/privacy_policy_acknowledged",
         "sponsored-intelligence/si-identity.json#/properties/user/properties/shipping_address",
         "sponsored-intelligence/si-identity.json#/properties/user",
     ]
+    # The two exits are the only two, so the list above is exhaustive over the
+    # non-pass population rather than one slice of it.
+    assert {r.outcome for _, r in graded_reports} == {
+        "pass",
+        "no_constraint_to_step",
+        "no_instrument",
+    }, {r.outcome for _, r in graded_reports}
     # Step 6 added two of them and they are the two it ought to add: a mapping root
     # is ``dict[str, Any]`` over an ``additionalProperties: true`` document, which
     # states no keyword ``steps()`` can step.  The accepts check and the schema
@@ -1450,16 +1470,12 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     mark does not add up to one and nobody can sum 44 of them by eye."""
     reports = [check_pair(pair_of(g), max_steps=None) for g in graded()]
     assert len(reports) == 528, len(reports)
-    # UNMEASURED at this tip, and these three plus the `graded_instances` floor below
-    # are the LAST values rather than measured ones. Each needs the accepts and
-    # refuses checks over all 528 pairs -- roughly half an hour of CPU -- and this
-    # machine gave such a process 34 seconds of CPU per 30 minutes of wall clock at
-    # load 23, measured twice. The PARTITION below grades the population meanwhile and
-    # needs no figure; the comparison half of this test (compared / model_facts /
-    # url_typed / added / missing / differs) IS measured, because it needs no
-    # generator. Re-measure these on a quiet machine with `codegen.report`.
-    assert sum(1 for r in reports if r.outcome == "pass") == 469
-    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 12
+    # 507 + 17 + 4 = 528, which is the partition asserted below. Measured by
+    # ``codegen.report`` over one emit, and its ``facts_compared`` (5,878) and
+    # ``model_only_facts`` (1,352) agree exactly with a comparison-only pass run
+    # separately -- two instruments, one answer.
+    assert sum(1 for r in reports if r.outcome == "pass") == 507
+    assert sum(1 for r in reports if r.outcome == "no_constraint_to_step") == 17
     # **`no_instrument` IS COUNTED AND IS NOT RATCHETED**, and that is the decision
     # rather than a gap. The three outcomes PARTITION the population, which is the
     # invariant asserted here; the no_instrument COUNT is reported by the partition
@@ -1495,7 +1511,7 @@ def test_the_step_result_is_counted_over_the_whole_population() -> None:
     # reddens. An equality would assert a reproducibility the instrument does not
     # have, and a test that fails when nothing changed teaches the next reader to
     # edit the number instead of reading it.
-    assert sum(r.graded_instances for r in reports) >= 39500  # refuses-check instances
+    assert sum(r.graded_instances for r in reports) >= 48900  # refuses-check instances
     assert sum(r.comparison.compared for r in reports) == 5878  # document facts compared
     assert sum(r.comparison.model_facts for r in reports) == 1352  # model-only facts examined
     assert sum(len(r.comparison.added) for r in reports) == 0  # none of them narrows
