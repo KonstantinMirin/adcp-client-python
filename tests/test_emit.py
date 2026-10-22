@@ -325,7 +325,14 @@ def test_a_reference_target_is_emitted_even_though_no_one_named_it() -> None:
     pulled_in = set(out.emitted) - set(population())
     assert pulled_in, "no document was reached through a reference; the walk graded nothing"
     assert "core/creative-revision-id.json" in pulled_in
-    # every reference of every emitted document resolves to a document also emitted
+    # every CROSS-DOCUMENT reference of every emitted document resolves to a document
+    # also emitted.  A LOCAL reference names a node of the document being written and
+    # so has no target to emit -- ``compiler.local_reference`` resolves it against the
+    # module's own declarations -- and the document half is how ``bundle.split_ref``
+    # tells the two apart, which is the same one reading the walk and the binder use.
+    # Asserted non-empty, so the skip is a population and not a silent hole: this loop
+    # read a local reference as a document and failed on it the first time one reached
+    # an EMITTED document (``core/reporting-coverage.json#/definitions/...``).
     known = set(bundle.portable(BUNDLE))
     local_seen = 0
     for document in out.emitted:
@@ -2138,6 +2145,12 @@ def test_every_union_root_the_step_does_not_emit_is_refused_by_name_pointer_and_
         # `salesagent-j3k2l.20` admits a section at every node and declares the entries
         # a `$ref` names, so each of the 9 now refuses on the keyword that actually
         # stopped it -- in a branch, in a conjunct, or inside the section itself.
+        #
+        # The `uniqueItems` (5) row is GONE too, and its 5 documents are redistributed
+        # rather than emitted: `salesagent-j3k2l.19` lowers the keyword on the class
+        # that holds the array, so a branch stating it reaches its NEXT blocker --
+        # `allOf` (2), `$ref` (2), `anyOf` (1).  `emitted` is unchanged at 11, which is
+        # the measurement that says this row was never the only thing in their way.
     }, profile
 
 
@@ -2550,8 +2563,8 @@ def test_an_arrays_bound_is_the_lists_and_not_its_elements() -> None:
     assert bounded == 30, bounded
 
 
-def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> None:
-    """Why ``uniqueItems`` is step 7's rule (D6) and not this row's constraint.
+def test_unique_items_is_a_rule_on_the_holder_because_no_constraint_renders_it() -> None:
+    """Why ``uniqueItems`` is D6's rule on the nearest class and not a constraint.
 
     The reason is a measurement and not a reading of D6: ``Constraints`` declares
     ``unique_items`` under the alias ``uniqueItems``, so the keyword is ACCEPTED and
@@ -2559,9 +2572,15 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     pydantic v2 removed ``unique_items``.  Carrying it through ``constraints=`` would
     therefore be a model wider than its document, silently.
 
-    Three cells: the keyword sets the constraints model, the rendering drops it, and
-    the walk refuses rather than emitting the drop.  The first two are what make the
-    third the only safe answer, so deleting any of them leaves the reason unstated.
+    So the keyword takes two channels, both of them the class's and neither of them
+    the array's: the RULE narrows the constructor (D6), and
+    ``json_schema_extra`` states the fact on the field, which is the same channel
+    ``Property.format`` takes for the same reason -- the schema comparison reads
+    ``uniqueItems`` off the model's rendered schema (``harness.FACTS``), so a fact
+    only a validator enforces would read as ``missing``.
+
+    Four cells: the keyword sets the constraints model, the rendering drops it, the
+    class states both halves, and an array NO class holds is still refused by name.
     """
     from datamodel_code_generator.model.pydantic_v2.base_model import Constraints
 
@@ -2574,26 +2593,55 @@ def test_unique_items_refuses_because_the_compiler_renders_nothing_for_it() -> N
     assert "min_length=1" in kept.text, kept.text
     assert "Field" not in dropped.text, dropped.text  # the fact has no rendering
 
+    held = {
+        "title": "U",
+        "type": "object",
+        "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
+    }
+    mod, symbol = emit.lower_document("u.json", held)
+    text = emit.render(mod, symbol)
+    assert "UniqueItems('a')" in text, text
+    assert "json_schema_extra={'uniqueItems': True}" in text, text
+
+    # The array row's own screen is UNTOUCHED, which is what keeps an array with no
+    # class above it refused rather than widened.  A mapping value is the shape that
+    # still costs a document (`core/account-authorization.json`).
     with pytest.raises(Refusal) as caught:
         emit.lower_document(
-            "u.json",
+            "v.json",
             {
-                "title": "U",
+                "title": "V",
                 "type": "object",
-                "properties": {"a": {"type": "array", "items": {"type": "string"}, "uniqueItems": True}},
+                "properties": {
+                    "m": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "uniqueItems": True,
+                        },
+                    }
+                },
             },
         )
-    assert (caught.value.keyword, caught.value.pointer) == ("uniqueItems", "/properties/a")
+    assert caught.value.keyword == "uniqueItems", caught.value
+    assert caught.value.pointer == "/properties/m/additionalProperties", caught.value
 
-    # And it is load-bearing on the bundle: these documents are refused for this
-    # keyword and no other, so admitting it would emit them wide.
+    # And on the bundle: the keyword is down to the positions no class holds, each
+    # named.  4 root arrays (D2's unimplemented `RootModel[list[X]]` row), one
+    # mapping value, and one composing root -- `product.lower_root` writes no rule of
+    # any D6 family, which is step 4's row and not this keyword's.
     out = emit.emit(BUNDLE, population())
     blocked = {d for d, r in out.refusals.items() if r["keyword"] == "uniqueItems"}
-    # 47 and not 46: `salesagent-j3k2l.20` admits a `definitions` section, so
-    # `core/reporting-coverage.json` reaches its own `uniqueItems` instead of stopping
-    # at the section it declares beside its properties.
-    assert len(blocked) == 48, sorted(blocked)
-    assert "core/acceptance-policy-profile-ids.json" in out.refusals
+    assert sorted(blocked) == [
+        "core/acceptance-policy-profile-ids.json",
+        "core/account-authorization.json",
+        "core/forecast-point-dimensions.json",
+        "core/reporting-verification-profile-set.json",
+        "media-buy/list-creative-formats-request.json",
+        "media-buy/product-fields.json",
+    ], sorted(blocked)
+    assert {out.refusals[d]["pointer"] for d in blocked if d.endswith("-ids.json")} == {"/"}
 
 
 def test_a_root_array_refuses_by_name_with_the_element_type_it_would_have_wrapped() -> None:
@@ -3592,10 +3640,19 @@ def test_only_the_model_validate_path_observes_a_rule() -> None:
 #: with ``properties``).  The second number is why three kinds have no emitted
 #: carrier in this tree: a node inside an ``allOf`` conjunct is not a class here.
 RULE_KIND_POPULATION = {
+    #: The one kind whose keyword sits BELOW the node that carries the rule: an array
+    #: a property holds.  So its reachable count equals its site count by
+    #: construction -- a node with a ``properties`` map is the only node it is read
+    #: off at all -- and that identity is the assertion, not a coincidence.
+    "UniqueItems": (464, 188, 464),
     "ForbiddenGroups": (398, 171, 167),
     "RequiredGroups": (297, 161, 70),
     "ConditionalRequired": (294, 128, 12),
-    "PropertyCount": (61, 44, 29),
+    #: 57 and not 61: ``_count`` writes the MINIMUM only where the document states
+    #: ``additionalProperties``, because under D8's ``ignore`` a dropped key makes
+    #: the rule refuse an instance the document ACCEPTS.  4 nodes state a
+    #: ``minProperties`` and nothing else countable, so they now write no rule.
+    "PropertyCount": (57, 40, 27),
     "Dependencies": (60, 27, 58),
     "NegatedConditional": (42, 37, 0),
 }
@@ -3613,11 +3670,12 @@ def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
 
     So they are graded where they CAN be: the lowering against real nodes (here),
     and each dataclass against two plain arguments (below), which is exactly why
-    ``Rule.errors`` takes ``keys`` and ``values`` and never a model.  That is a
-    different situation from ``uniqueItems``, which has no rule kind at all
-    because there is no array lowering to carry one -- a rule nothing writes is
-    dead code, and a rule written from 294 real nodes with no class to sit on yet
-    is a rule waiting for step 6.
+    ``Rule.errors`` takes ``keys`` and ``values`` and never a model.
+
+    ``UniqueItems`` is the opposite case and the reason it is a seventh kind rather
+    than a seventh ambition: its keyword is read off a property's own declaration, so
+    every node it is written at HAS a ``properties`` map and its reachable count
+    equals its site count -- asserted below rather than remarked on.
     """
     everywhere: dict[str, int] = {}
     documents: dict[str, set[str]] = {}
@@ -3638,7 +3696,12 @@ def test_every_rule_kind_is_written_from_a_real_bundle_node() -> None:
         for kind in everywhere
     }
     assert measured == RULE_KIND_POPULATION, measured
-    assert len(measured) == 6, "a rule kind nothing writes is dead code"
+    assert len(measured) == 7, "a rule kind nothing writes is dead code"
+    # ``uniqueItems``'s own identity, stated so a lowering that started reading the
+    # keyword off a node with no ``properties`` map would redden here: the kind is
+    # read off a property's declaration, so every site it is written at is reachable.
+    sites, _documents, reachable = measured["UniqueItems"]
+    assert sites == reachable, measured["UniqueItems"]
 
 
 def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
@@ -3658,6 +3721,7 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         NegatedConditional,
         PropertyCount,
         RequiredGroups,
+        UniqueItems,
     )
 
     cases = [
@@ -3687,6 +3751,25 @@ def test_each_rule_kind_refuses_on_two_plain_arguments() -> None:
         got = [e[0] for e in rule.errors(frozenset(keys), values)]
         assert got == ([keyword] if keyword else []), (rule, keys, got)
         seen.add(type(rule).__name__)
+
+    # ``UniqueItems`` is judged on the VALUE and not on which keys arrived, so its
+    # fixture is a values map.  Six rows, each a reading this kind has to get right:
+    # distinct, repeated, draft-07's ``true != 1`` against Python's ``True == 1``,
+    # the unhashable items that rule ``set[X]`` out as an annotation, a non-array
+    # value (a union arm the keyword says nothing about), and an absent key.
+    for rule, values, keyword in [
+        (UniqueItems("t"), {"t": ["a", "b"]}, None),
+        (UniqueItems("t"), {"t": ["a", "a"]}, "uniqueItems"),
+        (UniqueItems("t"), {"t": [True, 1, 1.0]}, "uniqueItems"),  # 1 == 1.0, true != 1
+        (UniqueItems("t"), {"t": [True, 1]}, None),
+        (UniqueItems("t"), {"t": [{"a": 1}, {"a": 1}]}, "uniqueItems"),
+        (UniqueItems("t"), {"t": "not an array"}, None),
+        (UniqueItems("t"), {}, None),
+    ]:
+        got = [e[0] for e in rule.errors(frozenset(values), values)]
+        assert got == ([keyword] if keyword else []), (rule, values, got)
+        seen.add(type(rule).__name__)
+
     assert seen == set(RULE_KIND_POPULATION), seen
 
 
@@ -3723,27 +3806,79 @@ def test_a_conditional_that_narrows_a_value_is_the_schemas_and_not_a_rules() -> 
     assert document in emit.emit(BUNDLE, [document]).refusals
 
 
-def test_the_uniqueItems_step_grades_no_emitted_class_and_that_is_recorded() -> None:
-    """A bad probe, recorded as one.
+def test_the_uniqueItems_step_grades_an_emitted_class_and_its_rule_holds_it() -> None:
+    """The keyword is stepped, the tree now carries it, and a rule holds every site.
 
-    ``uniqueItems`` is 479 stepped sites over 198 documents and **0 of them is on
-    an emitted pair**: every host is an array node, which is step 6's row, or sits
-    behind an ``allOf``.  So breaking the step's duplicate forcing reddens its own
-    exclusivity assertion and leaves every binding grade green -- which is a
-    finding about the instrument's REACH and not a pass, and the reason there is
-    no ``UniqueItems`` rule kind to write.
+    This test replaces one that recorded a BAD PROBE: ``uniqueItems`` was stepped at
+    462 sites over 198 documents and 0 of them was on an emitted pair, so breaking
+    the step's duplicate forcing reddened only its own exclusivity assertion.  Both
+    halves of that recording are kept and the second is inverted rather than
+    dropped -- the keyword is still stepped, and every site the tree now carries is
+    held by a class whose rule refuses a duplicate.
 
-    Asserted both ways so the claim cannot go stale silently: the keyword is
-    stepped, and no document the tree emits carries it.
+    Three directions, because the second alone would pass for a class that renders
+    the fact and enforces nothing:
+
+    1. the step census still finds the keyword (the instrument did not go quiet);
+    2. the tree carries it, at a NON-EMPTY set of sites, and every one of them is a
+       ``properties/<name>`` array whose holding class states ``UniqueItems`` for
+       that field -- so a site the lowering missed reddens here;
+    3. one of those classes REFUSES a duplicate through ``model_validate``, which is
+       the only path a rule is observable on (D4 leaves acceptance to the schema).
     """
     census = _step_census()
     assert census["uniqueItems"] == (462, 198)
+
     carried = [
         f"{document}{pointer or '/'}"
         for document in sorted({g.ref.document for g in graded()})
         for pointer, node in bundle.nodes(schema_at(SchemaRef(document, "#")))
         if isinstance(node, dict) and "uniqueItems" in node
     ]
-    assert carried == [], carried
+    assert carried, "the tree emits no document carrying the keyword; the step is unreached"
+
+    # Direction 2, over EVERY class the tree ships rather than over the carried sites:
+    # the ``UniqueItems`` keys a class states and the keys its own node's properties
+    # declare distinct are the SAME SET.  Read off the raw bundle document at the
+    # class's own pointer, not off the packaged one -- a resolved document inlines a
+    # ``$ref``'s nodes, so a site at ``/properties/vendor/properties/countries`` there
+    # belongs to the TARGET's class and is graded on the target's own pair (14 of the
+    # carried sites are that).  The gate is spelled here rather than called, so a
+    # lowering that stopped reading the keyword reddens.
+    wrong: list[str] = []
+    for g in graded():
+        if not isinstance(g.model, type):
+            continue  # D2's root-scalar alias: no class, and no rule tuple to read
+        raw = dict(bundle.nodes(bundle.read(BUNDLE, g.ref.document)))
+        node = raw.get(g.ref.pointer.removeprefix("#"))
+        if not isinstance(node, dict):
+            continue  # a class at a pointer the raw walk does not reach
+        want = sorted(
+            key
+            for key, declaration in (node.get("properties") or {}).items()
+            if isinstance(declaration, dict)
+            and declaration.get("type") == "array"
+            and declaration.get("uniqueItems") is True
+        )
+        got = sorted(
+            r.key for r in getattr(g.model, "_adcp_rules", ()) if type(r).__name__ == "UniqueItems"
+        )
+        if got != want:
+            wrong.append(f"{g.ref.document}{g.ref.pointer}: states {got}, the document {want}")
+    assert wrong == [], wrong
+    held = [g for g in graded() if any(
+        type(r).__name__ == "UniqueItems" for r in getattr(g.model, "_adcp_rules", ())
+    )]
+    assert len(held) >= 19, len(held)  # the keyword's own population, not an empty loop
+
+    # Direction 3: the rule, on the constructor, on a class the tree ships.
+    from adcp.types._schemas.core.property import Property as PropertyModel
+
+    ok = {"property_type": "website", "name": "n", "identifiers": [{"type": "domain", "value": "a"}]}
+    assert PropertyModel.model_validate({**ok, "tags": ["a", "b"]}).tags == ["a", "b"]
+    with pytest.raises(ValidationError) as caught:
+        PropertyModel.model_validate({**ok, "tags": ["a", "a"]})
+    assert caught.value.errors()[0]["type"] == "uniqueItems", caught.value.errors()
+
     assert "uniqueItems" in rules.KEYWORDS, "the keyword must not block an object lowering"
-    assert not any("UniqueItems" in source for source in RULE_KIND_POPULATION)
+    assert any("UniqueItems" in kind for kind in RULE_KIND_POPULATION)
