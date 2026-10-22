@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Exact reference to a reusable acceptance profile embedded in a version-pinned shared policy-registry entry. Sellers add separate local profiles to narrow it; they do not copy and mutate a registry profile under the same identity.",
+  "properties": {
+    "policy_digest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "policy_id": {
+      "minLength": 1,
+      "type": "string",
+      "x-entity": "governance_registry_policy"
+    },
+    "policy_version": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "profile_digest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "profile_id": {
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "type": "string",
+      "x-entity": "acceptance_policy_profile"
+    },
+    "profile_version": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_id",
+    "policy_version",
+    "policy_digest",
+    "profile_id",
+    "profile_version",
+    "profile_digest"
+  ],
+  "title": "Registry Acceptance Policy Profile Reference",
+  "type": "object",
+  "x-adcp-validation": {
+    "resolver_integrity": "Resolve the exact policy_id/policy_version. The resolver returns canonical_content and content_digest; RFC 8785-canonicalize canonical_content, verify that its SHA-256 equals both content_digest and policy_digest, then select the embedded profile_id/profile_version and verify profile_digest before use. A null digest or canonical_content is not sufficient for a pinned registry profile."
+  }
+}

@@ -2,12 +2,23 @@
 name = "adcp-emit"
 version = "0.0.0"
 description = "Emit the AdCP SDK types from the schema bundle."
-requires-python = ">=3.10"
+# Capped because the two pins have to hold together: `datamodel-code-generator`
+# requires `pydantic>=2.14` on 3.15 and up, and the pydantic pin below is exact
+# to a minor because the rendered annotation and the error shape are both a
+# function of it. 3.15 is unreleased; the cap is lifted by moving the pydantic
+# pin, not by floating the compiler.
+requires-python = ">=3.10,<3.15"
 dependencies = [
     # The harness grades a (JSON Schema document, Python class) pair. These four
     # are everything it imports, and the emitter adds nothing to them.
     "pydantic>=2.13.0,<2.14",
     "jsonschema>=4.20.0",
+    # D10: the compiler. `f(schemas, pinned compiler)` has two arguments and this
+    # is the second, so it is pinned exactly rather than floated -- the rendered
+    # text is a function of the version, and the byte compare in `test_emit` is
+    # stated over one. Driven through its pydantic-v2 MODEL layer only; its
+    # parser never runs (`codegen/compiler.py`).
+    "datamodel-code-generator==0.86.0",
     # Pinned exactly. A hypothesis example stream is a function of the version:
     # the same control pair measured 30/40 at 6.98.0, 24 at 6.112.0, 25 at
     # 6.125.0, 28 at 6.140.0 and 6.168.5, 20 at 6.170.5. 6.169.0 raises the
@@ -29,12 +40,14 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# The binding table is not documentation of the build: `strict_validate` reads it
-# at runtime to find the document that decides acceptance (D4). A wheel without
-# it imports and then raises on the first validation, which is the one failure
-# mode a test run from the source tree cannot see.
+# The schema documents are not documentation of the build: `strict_validate`
+# reads the one its own class names (`__adcp_schema__`) to decide acceptance
+# (D4). A wheel without them imports and then raises on the first validation,
+# which is the one failure mode a test run from the source tree cannot see. One
+# file per document, named by the document's own bundle-relative path, so the
+# read is of that document and never of a table.
 [tool.setuptools.package-data]
-"adcp.types._schemas" = ["_bindings.json"]
+"adcp.types._schemas" = ["*.json", "**/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

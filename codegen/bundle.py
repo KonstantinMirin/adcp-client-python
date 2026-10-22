@@ -44,7 +44,7 @@ def read(bundle: Path, document: str) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# the shape census this step's population is selected by
+# the census of node kinds this step's population is selected by
 # --------------------------------------------------------------------------- #
 # Descend only where a subschema can legally appear.  The same reason
 # ``harness.formats_used`` does: ``examples``, ``default``, ``const`` and ``enum``
@@ -110,7 +110,7 @@ def references(node: object) -> list[tuple[str, str]]:
 def document_for(uri: str, documents: Collection[str]) -> str | None:
     """The bundle document an absolute ``$ref`` URI names, or ``None``.
 
-    Derived from the bundle's own file set rather than from the URI's shape: the
+    Derived from the bundle's own file set rather than from the URI's spelling: the
     longest trailing run of path segments that IS a document in this bundle.  That
     is what keeps a version out of ``codegen/`` (D9).  Every reference in the 3.2
     bundle is spelled ``.../schemas/3.2.4/<path>``, and a rule that stripped "the
@@ -136,18 +136,20 @@ def resolved(bundle_dir: Path, document: str) -> dict:
 
     THE SELF-CONTAINED FORM, and both consumers need exactly it:
 
-    * ``AdCPBaseModel.strict_validate`` decides acceptance against the schema the
-      emitter wrote into the binding row (D4).  A row carrying the RAW document of
-      a referencing class is not decidable: ``jsonschema`` meets an absolute
-      ``$ref``, finds no store, and FETCHES IT OVER THE NETWORK -- measured at
-      4.4 s per validation against a live URL, on a code path ``jsonschema``
-      deprecates and says "will shortly become an error".  Offline it raises
-      instead.  So the row carries this.
+    * ``AdCPBaseModel.strict_validate`` decides acceptance against the document
+      the emitter wrote into the package beside the module, which is the one its
+      class names on ``__adcp_schema__`` (D4).  The RAW document of a referencing
+      class is not decidable there: ``jsonschema`` meets an absolute ``$ref``,
+      finds no store, and FETCHES IT OVER THE NETWORK -- measured at 4.4 s per
+      validation against a live URL, on a code path ``jsonschema`` deprecates and
+      says "will shortly become an error".  Offline it raises instead.  So the
+      package carries this.
     * ``check_pair``'s whole input is a document with no reference left in it.
 
-    One function for both, so the schema the runtime decides with and the schema
-    the harness grades cannot be two different schemas (``adapter.pairs``
-    asserts they are not).
+    One function for both, and the class names ONE document, so the schema the
+    runtime decides with and the schema the harness grades cannot be two
+    different schemas -- there is no second artifact for them to disagree
+    through.
 
     ``harness.resolve`` does the inlining -- the resolution the harness itself
     uses, rather than a second cheaper one, because a cheaper resolution that

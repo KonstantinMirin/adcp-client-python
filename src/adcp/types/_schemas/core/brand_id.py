@@ -5,13 +5,15 @@ from typing import Annotated
 
 from pydantic import Field
 
-from adcp.types._base import strict_alias
+from adcp.types._base import SchemaRef, strict_alias
 
 
-BrandID = Annotated[str, Field(pattern='^[a-z0-9_]+$')]
+__adcp_schema__ = SchemaRef(document='core/brand-id.json', pointer='#')
+
+BrandID = Annotated[str, Field(description='Identifier for a brand within a house portfolio. Must be lowercase alphanumeric with underscores only. The house chooses this identifier.', pattern='^[a-z0-9_]+$')]
 
 
-strict_validate = strict_alias(__name__, "BrandID", BrandID)
+strict_validate = strict_alias(__adcp_schema__, "BrandID", BrandID)
 
 
 __all__ = ["BrandID"]
