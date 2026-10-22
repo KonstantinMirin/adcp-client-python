@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
+from adcp.types.constraints import AdCPUrl
 
 
 class OverlayVisual(AdCPBaseModel):
@@ -21,9 +22,9 @@ class OverlayVisual(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    url: Annotated[str | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.', json_schema_extra={'format': 'uri'})] = None
-    light: Annotated[str | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)', json_schema_extra={'format': 'uri'})] = None
-    dark: Annotated[str | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[AdCPUrl | None, Field(description='URL to a theme-neutral overlay graphic (SVG or PNG). Use when a single file works for all backgrounds, e.g. an SVG using CSS custom properties or currentColor.')] = None
+    light: Annotated[AdCPUrl | None, Field(description='URL to the overlay graphic for use on light/bright backgrounds (SVG or PNG)')] = None
+    dark: Annotated[AdCPUrl | None, Field(description='URL to the overlay graphic for use on dark backgrounds (SVG or PNG)')] = None
 
 
 class OverlayBoundsUnit(StrEnum):
@@ -48,8 +49,8 @@ class OverlayBounds(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/overlay.json', pointer='#/properties/bounds')
     x: Annotated[float, Field(description="Horizontal offset from the asset's left edge")]
     y: Annotated[float, Field(description="Vertical offset from the asset's top edge")]
-    width: Annotated[float, Field(description='Width of the overlay', ge=0.0)]
-    height: Annotated[float, Field(description='Height of the overlay', ge=0.0)]
+    width: Annotated[NonNegativeFloat, Field(description='Width of the overlay')]
+    height: Annotated[NonNegativeFloat, Field(description='Height of the overlay')]
     unit: Annotated[OverlayBoundsUnit, Field(description="'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.")]
 
 

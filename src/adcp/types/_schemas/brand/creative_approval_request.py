@@ -6,6 +6,7 @@ from typing import Annotated, Any, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import SchemaRef
+from adcp.types.constraints import AdCPUrl, StrMinLen16MaxLen255Matching1E5CF9EB
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -23,11 +24,11 @@ class CreativeApprovalRequest(AdCPVersionEnvelope):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-request.json', pointer='#')
     rights_id: Annotated[str, Field(description='Rights grant this creative was produced under')]
     creative_id: Annotated[str | None, Field(description='Buyer-assigned creative identifier. Equivalent to OpenRTB crid. Used to track approval status across resubmissions.')] = None
-    creative_url: Annotated[str, Field(description='URL where the creative asset can be retrieved for review', json_schema_extra={'format': 'uri'})]
+    creative_url: Annotated[AdCPUrl, Field(description='URL where the creative asset can be retrieved for review')]
     creative_format: Annotated[FormatReferenceStructuredObject | None, Field(description='Format of the creative being submitted')] = None
     description: Annotated[str | None, Field(description='Description of the creative for reviewer context')] = None
     metadata: Annotated[dict[str, Any] | None, Field(description='Additional creative metadata (duration, dimensions, target audience, etc.)')] = None
-    idempotency_key: Annotated[str, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.', max_length=255, min_length=16, pattern='^[A-Za-z0-9_.:-]{16,255}$')]
+    idempotency_key: Annotated[StrMinLen16MaxLen255Matching1E5CF9EB, Field(description='Client-generated key for safe retries. Resubmitting with the same key returns the original response. MUST be unique per (seller, request) pair to prevent cross-seller correlation. Use a fresh UUID v4 for each request.')]
     context: ContextObject | None = None
     ext: ExtensionObject | None = None
 

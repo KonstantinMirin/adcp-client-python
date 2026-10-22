@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching4D6E1599, StrMaxLen500
 
 from ..enums.impairment_offline_state import ImpairmentOfflineState
 from ..enums.impairment_reason_code import ImpairmentReasonCode
@@ -31,7 +32,7 @@ class ImpairmentTransition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/impairment.json', pointer='#/properties/transition')
-    from_: Annotated[str | None, Field(alias='from', description="Prior status of the resource (e.g., 'ready', 'approved', 'good'). Optional — sellers SHOULD include when known, MAY omit when the resource was discovered already in an offline state (e.g., a property depublished via brand.json crawl with no prior snapshot). Open string at the schema layer because each resource_type has its own serviceable-state vocabulary; the pattern constraint blocks free-form garbage, and the impairment.coherence assertion validates that 'from' is a known serviceable value for the resource_type.", pattern='^[a-z][a-z0-9_]*$')] = None
+    from_: Annotated[StrMatching4D6E1599 | None, Field(alias='from', description="Prior status of the resource (e.g., 'ready', 'approved', 'good'). Optional — sellers SHOULD include when known, MAY omit when the resource was discovered already in an offline state (e.g., a property depublished via brand.json crawl with no prior snapshot). Open string at the schema layer because each resource_type has its own serviceable-state vocabulary; the pattern constraint blocks free-form garbage, and the impairment.coherence assertion validates that 'from' is a known serviceable value for the resource_type.")] = None
     to: Annotated[ImpairmentOfflineState, Field(description="Current (offline) status of the resource. Drawn from the resource_type's canonical lifecycle enum; see impairment-offline-state for per-value resource_type pairing. The pairing is validated by impairment.coherence.")]
 
 
@@ -49,9 +50,9 @@ class Impairment(AdCPBaseModel):
     package_ids: Annotated[list[str], Field(description="Packages within this media buy whose delivery is degraded by the impairment. MUST list at least one package — cosmetic effects that do not degrade any package's ability to serve MUST NOT be reported as impairments.", min_length=1)]
     transition: Annotated[ImpairmentTransition, Field(description='The resource-level status transition that triggered this impairment.')]
     reason_code: Annotated[ImpairmentReasonCode, Field(description='Categorical reason for the offline transition. Drives buyer-side remediation logic.')]
-    reason: Annotated[str | None, Field(description='Human-readable explanation. Supplements reason_code with seller-specific detail.', max_length=500)] = None
+    reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation. Supplements reason_code with seller-specific detail.')] = None
     observed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the resource transition to its offline state.')]
-    remediation: Annotated[str | None, Field(description='Action the buyer can take to clear the impairment, if any. Free text. Absent when no buyer-side remediation is possible (e.g., seller-initiated withdrawal pending re-publication).', max_length=500)] = None
+    remediation: Annotated[StrMaxLen500 | None, Field(description='Action the buyer can take to clear the impairment, if any. Free text. Absent when no buyer-side remediation is possible (e.g., seller-initiated withdrawal pending re-publication).')] = None
 
 
 __all__ = ["Impairment"]

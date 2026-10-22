@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching32F5291C
 
 
 class CollectionSelector(AdCPBaseModel):
@@ -16,7 +17,7 @@ class CollectionSelector(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-selector.json', pointer='#')
-    publisher_domain: Annotated[str, Field(description="Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.", pattern='^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$')]
+    publisher_domain: Annotated[StrMatching32F5291C, Field(description="Domain where the adagents.json declaring these collections is hosted (e.g., 'mrbeast.com'). The collections array in that file contains the authoritative collection definitions.")]
     collection_ids: Annotated[list[str] | None, Field(description='Collection IDs from the adagents.json collections array. Each ID must match a collection_id declared in that file. Omit to reference all collections declared in that file.', min_length=1)] = None
 
 

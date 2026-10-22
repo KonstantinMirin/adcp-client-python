@@ -56,6 +56,7 @@ from adcp.types._base import (
 )
 from adcp.types._runtime import RuleBound
 from codegen import bundle, compiler, emit, harness
+from codegen import constraints as constraints_module
 from codegen.lower import union as lower_union
 from codegen.refusal import Refusal
 from codegen.harness import (
@@ -677,6 +678,75 @@ def test_the_schema_comparison_sees_a_fact_the_model_adds_as_well() -> None:
             stamp, format_checker=jsonschema.Draft7Validator.FORMAT_CHECKER
         ).validate(naive)
     assert refused.value.validator == "format"
+
+
+def test_the_url_type_row_is_its_own_category_and_each_half_is_gated() -> None:
+    """D5's URL-type row, broken on purpose at every gate it has.
+
+    The row admits two facts and NOTHING ELSE, each gated, and it counts them in a
+    field of their own (``ComparisonResult.url_typed``) rather than in ``missing``
+    or in ``added`` -- because it is the one admission here that excuses a fact the
+    model does not state at all, and folding it into the implied-fact rows would
+    make a genuine omission look like a derivation.
+
+    Six cells.  The first two are what the row is for; the next three are the
+    perturbations that must still redden, and each of them passed before the gates
+    were written as they are; the last says the counting is separate.
+    """
+    from pydantic import AnyUrl, UrlConstraints
+
+    AdCPUrl = Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]
+    bare = {"type": "string", "format": "uri"}
+    patterned = {**bare, "pattern": "^https://"}
+
+    # 1. the model-only ``minLength: 1`` any URL type renders, over a document
+    #    that states only the type and the format.
+    one = compare_schema(bare, AdCPUrl)
+    assert one.outcome == "pass", (one.added, one.missing, one.differs)
+    assert one.url_typed == ["/minLength: the model says 1, which any URL type renders"]
+    assert one.added == [] and one.missing == []
+
+    # 2. the document's own ``pattern``, which the annotation cannot carry at all
+    #    -- ``Annotated[AnyUrl, Field(pattern=...)]`` raises when pydantic builds
+    #    the schema -- and which the schema half enforces instead.
+    two = compare_schema(patterned, AdCPUrl)
+    assert two.outcome == "pass", (two.added, two.missing, two.differs)
+    assert len(two.url_typed) == 2, two.url_typed
+    assert any("the schema half enforces it" in line for line in two.url_typed)
+    assert two.missing == [] and two.added == []
+    # The fact was still COUNTED as looked for: the row stops it landing in
+    # ``missing``, it does not stop it being graded.
+    assert two.compared == one.compared + 1
+
+    # 3. BROKEN ON PURPOSE -- a plain ``str`` cannot wear the row.  It renders the
+    #    type and the format and no ``minLength``, so it is not a URL type and the
+    #    dropped ``pattern`` is reported.
+    plain = compare_schema(patterned, Annotated[str, Field(json_schema_extra={"format": "uri"})])
+    assert plain.outcome == "model_drops_a_fact"
+    assert plain.url_typed == []
+    assert any("/pattern" in m for m in plain.missing), plain.missing
+
+    # 4. BROKEN ON PURPOSE -- any OTHER keyword the document states is still
+    #    reported, because the row names ``pattern`` and nothing else.  This is
+    #    the gate that keeps ``emit.decide_type``'s refusal honest: a
+    #    ``format: uri`` node stating a ``maxLength`` refuses at emission rather
+    #    than going missing here.
+    capped = compare_schema({**bare, "maxLength": 20}, AdCPUrl)
+    assert capped.outcome == "model_drops_a_fact"
+    assert any("/maxLength" in m for m in capped.missing), capped.missing
+
+    # 5. BROKEN ON PURPOSE -- the ``minLength`` half is gated on the VALUE, so a
+    #    bound the type did not render is a fact the model adds.
+    floored = compare_schema(bare, Annotated[AnyUrl, UrlConstraints(max_length=2083)])
+    assert floored.outcome == "model_adds_a_fact", floored.url_typed
+    assert any("/maxLength" in a for a in floored.added), floored.added
+
+    # 6. and a document that states the ``minLength`` ITSELF is compared, not
+    #    excused: the row is about a fact the document does not state.
+    stated = compare_schema({**bare, "minLength": 1}, AdCPUrl)
+    assert stated.outcome == "pass"
+    assert stated.url_typed == [], stated.url_typed
+    assert stated.compared == one.compared + 1
 
 
 def test_the_comparison_reads_a_root_allof_the_way_the_schema_half_reads_it() -> None:
@@ -2772,7 +2842,12 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
     change rather than the inputs.
     """
     out = emit.emit(BUNDLE, population())
-    emit.write(out, tmp_path)
+    # The alias module is written BESIDE the tree, because an alias belongs to no
+    # document and so has no domain to live under (D5), and it is public where
+    # ``_schemas`` is not.  ``write`` takes that directory explicitly and has no
+    # default for it, so a run over part of the population cannot replace the
+    # committed module with a shorter one -- see ``emit.write``.
+    emit.write(out, tmp_path / "_schemas", tmp_path)
 
     def tree(root: Path) -> dict[str, str]:
         return {
@@ -2781,10 +2856,92 @@ def test_the_committed_tree_is_what_a_fresh_run_emits(tmp_path) -> None:
             if p.is_file() and "__pycache__" not in p.parts
         }
 
-    committed, fresh = tree(TREE), tree(tmp_path)
+    committed, fresh = tree(TREE), tree(tmp_path / "_schemas")
     assert sorted(fresh) == sorted(committed)
     for rel in sorted(fresh):
         assert fresh[rel] == committed[rel], rel
+    assert sorted(out.beside) == ["constraints.py"], sorted(out.beside)
+    for rel in sorted(out.beside):
+        assert (tmp_path / rel).read_text() == (TREE.parent / rel).read_text(), rel
+
+
+def test_two_constraints_deriving_one_alias_name_fail_the_build(monkeypatch) -> None:
+    """Broken on purpose, because the guard cannot otherwise be reached.
+
+    An alias's name is DERIVED, so two distinct constraints colliding is possible
+    in principle -- a SHA-256 prefix collision is the realistic way -- and the
+    damage is the worst kind: one alias annotating two fields, stating on one of
+    them a constraint its own document does not. No bundle input can produce the
+    collision, so the digest is forced to a constant and the real emitter is run.
+
+    The ``_digest`` patch is also the control for the opposite mistake. The
+    collision is caught at the ASSIGNMENT: a dict keyed by name cannot catch it
+    afterwards, because the second write replaces the first and any later check
+    re-derives the survivor and agrees with itself. Before ``record`` existed
+    this run emitted a tree with one alias at two shapes and a GREEN suite.
+    """
+    monkeypatch.setattr(constraints_module, "_digest", lambda pattern: "C0111DED")
+    with pytest.raises(constraints_module.AliasCollision) as caught:
+        emit.emit(BUNDLE, population())
+    assert "StrMatchingC0111DED" in str(caught.value), str(caught.value)
+    assert "two distinct constraints" in str(caught.value)
+
+    # The control: with the real digest, the same run resolves the same shapes and
+    # does not raise -- so the guard is firing on the collision and not on the run.
+    monkeypatch.undo()
+    assert len(emit.emit(BUNDLE, population()).beside) == 1
+
+
+def test_every_alias_the_tree_names_is_declared_and_every_declared_alias_is_named() -> None:
+    """D5's alias module, in BOTH directions, with its denominators.
+
+    ``test_the_emitted_tree_still_declares_every_module_it_imports`` (in
+    ``tests/test_enum.py``) holds this obligation for a RELATIVE import and skips
+    an absolute one, and an emitted module names ``adcp.types.constraints``
+    absolutely -- so that test does not cover this edge and this one does. The
+    failure it exists for is real and was met: a run whose alias module was not
+    written left every module importing a symbol that did not exist, and the
+    probe trees raised ``ImportError`` on ``StrMinLen2``.
+
+    PROBED, by deleting one declared alias: the import direction reddens, but as
+    an ``ImportError`` while this MODULE is collected rather than here -- the
+    tree is imported at module scope to build the pairing. So that direction is
+    a second statement of something already loud, and what this test adds is the
+    REVERSE direction, the absolute-import spelling, and the denominators.
+
+    The reverse direction is the one that catches the opposite defect: a module
+    holding an alias no document needs. It is EMPTY today, and ``AdCPUrl`` is
+    the one name that could legitimately sit in it -- D5 declares that one
+    whatever the run met, so a consumer can import it -- but it does not,
+    because ``FORMAT_TYPES`` points 23 modules' fields at it.
+    """
+    imported: dict[str, set[str]] = {}
+    for module in sorted(TREE.rglob("*.py")):
+        tree = ast.parse(module.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == constraints_module.MODULE:
+                assert not node.level, (module, "an alias is imported absolutely")
+                for alias in node.names:
+                    imported.setdefault(alias.name, set()).add(str(module.relative_to(TREE)))
+
+    declared = {
+        node.targets[0].id
+        for node in ast.parse((TREE.parent / "constraints.py").read_text()).body
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+    }
+    assert declared, "the alias module declares nothing"
+    assert set(imported) - declared == set(), "imported and not declared"
+    assert declared - set(imported) == set(), "declared and never named"
+
+    # The denominators, so neither direction can pass over an empty set: every
+    # alias is reachable at this one path and nowhere else (no flat root, no
+    # second spelling), and the module is not a dumping ground.
+    assert len(declared) == 59, len(declared)
+    # (module, alias) pairs, which is NOT the site count: a module importing one
+    # alias for five of its fields contributes one pair.
+    assert sum(len(where) for where in imported.values()) == 190, imported
+    # And the one name that is a decision really is annotating fields.
+    assert len(imported[constraints_module.URL]) == 23, sorted(imported[constraints_module.URL])
 
 
 def test_the_output_is_a_function_of_its_inputs_and_of_nothing_else() -> None:

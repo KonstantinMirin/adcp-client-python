@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 
 class VendorErrorCodeRegistryVendorsValueCodesValueRecovery(StrEnum):
@@ -24,7 +25,7 @@ class VendorErrorCodeRegistryVendorsValueCodesValue(AdCPBaseModel):
 class VendorErrorCodeRegistryVendorsValue(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties')
     name: Annotated[str, Field(description='Full vendor name')]
-    url: Annotated[str | None, Field(description='Vendor website or documentation URL', json_schema_extra={'format': 'uri'})] = None
+    url: Annotated[AdCPUrl | None, Field(description='Vendor website or documentation URL')] = None
     codes: Annotated[dict[str, VendorErrorCodeRegistryVendorsValueCodesValue], Field(description='Map of code suffix to description and recovery classification')]
 
 

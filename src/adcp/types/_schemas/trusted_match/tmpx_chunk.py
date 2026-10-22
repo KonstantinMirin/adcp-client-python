@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMinLen1MaxLen1024, StrMinLen1MaxLen64Matching06580F6D
 
 
 class TMPXChunk(AdCPBaseModel):
@@ -16,8 +17,8 @@ class TMPXChunk(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/tmpx-chunk.json', pointer='#')
-    slot_id: Annotated[str, Field(description="Provider-local slot identifier from the emitting provider's registered `tmpx_slots` (provider-registration.json). Opaque provider-namespaced token; publishers map `(provider_id, slot_id)` → local destination via `tmpx_macro_mapping`. NOT an ad-server macro name.", max_length=64, min_length=1, pattern='^[a-zA-Z][a-zA-Z0-9_]*$')]
-    value: Annotated[str, Field(description="Opaque, URL-safe wire string the publisher substitutes verbatim into the destination the publisher's mapping resolves for this `(provider_id, slot_id)` pair. Publishers MUST NOT parse, decode, or transform this value.", max_length=1024, min_length=1)]
+    slot_id: Annotated[StrMinLen1MaxLen64Matching06580F6D, Field(description="Provider-local slot identifier from the emitting provider's registered `tmpx_slots` (provider-registration.json). Opaque provider-namespaced token; publishers map `(provider_id, slot_id)` → local destination via `tmpx_macro_mapping`. NOT an ad-server macro name.")]
+    value: Annotated[StrMinLen1MaxLen1024, Field(description="Opaque, URL-safe wire string the publisher substitutes verbatim into the destination the publisher's mapping resolves for this `(provider_id, slot_id)` pair. Publishers MUST NOT parse, decode, or transform this value.")]
 
 
 __all__ = ["TMPXChunk"]

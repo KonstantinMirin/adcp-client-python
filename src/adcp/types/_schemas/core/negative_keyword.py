@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMinLen1
 
 from ..enums.match_type import MatchType
 
@@ -18,7 +19,7 @@ class NegativeKeyword(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/negative-keyword.json', pointer='#')
-    keyword: Annotated[str, Field(description='The keyword to exclude', min_length=1)]
+    keyword: Annotated[StrMinLen1, Field(description='The keyword to exclude')]
     match_type: MatchType
 
 

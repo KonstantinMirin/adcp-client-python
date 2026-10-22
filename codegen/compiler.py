@@ -696,6 +696,15 @@ class Module:
     names: set[str] = field(default_factory=set)
     #: class name -> its :class:`Shape`, for a class declared in THIS module.
     shapes: dict[str, Shape] = field(default_factory=dict)
+    #: D5's rung 3: ``alias symbol -> (the document's type word, its constraints)``
+    #: for every constrained scalar this module resolved to a name in
+    #: ``adcp.types.constraints``.  Recorded on the module the walk met it in, and
+    #: the RUN unions them -- the alias module is one module for the whole run, and
+    #: a per-document record is the only place the walk can write one without the
+    #: decider taking run-level state.  The IMPORT needs nothing from here: a
+    #: dotted path on :class:`Type` produces it through the field, like
+    #: ``pydantic.AwareDatetime``.
+    aliases: dict[str, tuple[str, dict[str, Any]]] = field(default_factory=dict)
 
     def declare(self, name: str, pointer: str, block: str) -> None:
         if name in self.names:

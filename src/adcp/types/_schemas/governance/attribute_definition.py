@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import StrMatching4D6E1599
 
 
 class AttributeDefinitionRegulatoryBasisItem(AdCPBaseModel):
@@ -26,7 +27,7 @@ class AttributeDefinition(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/attribute-definition.json', pointer='#')
-    attribute_id: Annotated[str, Field(description='Unique identifier for this attribute. Used in plan.restricted_attributes, signal-definition.restricted_attributes, and data marketplace catalog entries.', pattern='^[a-z][a-z0-9_]*$')]
+    attribute_id: Annotated[StrMatching4D6E1599, Field(description='Unique identifier for this attribute. Used in plan.restricted_attributes, signal-definition.restricted_attributes, and data marketplace catalog entries.')]
     name: Annotated[str, Field(description="Human-readable name (e.g., 'Health Data').")]
     description: Annotated[str, Field(description='What this attribute category covers. Defines the boundary — what is and is not included.')]
     regulatory_basis: Annotated[list[AttributeDefinitionRegulatoryBasisItem] | None, Field(description='Regulations that define or restrict this attribute category.')] = None

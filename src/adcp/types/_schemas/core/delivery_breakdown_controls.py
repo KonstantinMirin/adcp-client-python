@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import IntMin1
 
 from ..enums.sort_direction import SortDirection
 from ..enums.sort_metric import SortMetric
@@ -19,7 +20,7 @@ class DeliveryBreakdownControls(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/delivery-breakdown-controls.json', pointer='#')
-    limit: Annotated[int | None, Field(description='Maximum number of rows to return. Defaults to 25.', ge=1)] = 25
+    limit: Annotated[IntMin1 | None, Field(description='Maximum number of rows to return. Defaults to 25.')] = 25
     sort_by: Annotated[SortMetric | None, Field(description='Metric used to order rows. Falls back to spend when unavailable at this row grain; on fallback sort_direction resets to desc. Rows lacking a value for the applied sort metric order last regardless of direction.')] = 'spend'
     sort_direction: Annotated[SortDirection | None, Field(description='Direction for sort_by ordering. Sellers MUST apply the requested direction to the applied sort metric; direction has no availability fallback.')] = 'desc'
 

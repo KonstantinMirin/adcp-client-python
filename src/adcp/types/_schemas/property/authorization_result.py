@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 
 class AuthorizationResultStatus(StrEnum):
@@ -40,7 +41,7 @@ class AuthorizationResult(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/authorization-result.json', pointer='#')
     status: Annotated[AuthorizationResultStatus, Field(description='Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)')]
     publisher_domain: Annotated[str | None, Field(description='The publisher domain where adagents.json was checked')] = None
-    sales_agent_url: Annotated[str | None, Field(description='The sales agent URL that was validated', json_schema_extra={'format': 'uri'})] = None
+    sales_agent_url: Annotated[AdCPUrl | None, Field(description='The sales agent URL that was validated')] = None
     violation: Annotated[AuthorizationResultViolation | None, Field(description='Details about the authorization failure (only present for unauthorized status)')] = None
 
 

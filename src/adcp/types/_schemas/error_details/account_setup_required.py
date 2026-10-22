@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 
 class AccountSetupRequiredDetails(AdCPBaseModel):
@@ -16,7 +17,7 @@ class AccountSetupRequiredDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/account-setup-required.json', pointer='#')
-    setup_url: Annotated[str | None, Field(description='URL where account setup can be completed', json_schema_extra={'format': 'uri'})] = None
+    setup_url: Annotated[AdCPUrl | None, Field(description='URL where account setup can be completed')] = None
     setup_steps: Annotated[list[str] | None, Field(description='Steps remaining before the account is ready')] = None
 
 

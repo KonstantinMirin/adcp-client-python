@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 from ..enums.talent_role import TalentRole
 
@@ -20,7 +21,7 @@ class Talent(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/talent.json', pointer='#')
     role: Annotated[TalentRole, Field(description='Role of this person on the collection or installment')]
     name: Annotated[str, Field(description="Person's name as credited on the collection")]
-    brand_url: Annotated[str | None, Field(description="URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.", json_schema_extra={'format': 'uri'})] = None
+    brand_url: Annotated[AdCPUrl | None, Field(description="URL to this person's brand.json entry. Enables buyer agents to evaluate the talent's brand identity and associations.")] = None
 
 
 __all__ = ["Talent"]

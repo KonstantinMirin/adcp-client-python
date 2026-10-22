@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Requirements for video creative assets. These define the technical constraints for video files.",
+  "properties": {
+    "aspect_ratio": {
+      "description": "Required aspect ratio (e.g., '16:9', '9:16')",
+      "pattern": "^\\d+:\\d+$",
+      "type": "string"
+    },
+    "audio_channels": {
+      "description": "Accepted audio channel configurations",
+      "items": {
+        "enum": [
+          "5.1",
+          "7.1",
+          "mono",
+          "stereo"
+        ]
+      },
+      "type": "array"
+    },
+    "audio_codecs": {
+      "description": "Accepted audio codecs (e.g., ['aac', 'pcm', 'ac3'])",
+      "items": {
+        "enum": [
+          "aac",
+          "pcm",
+          "ac3",
+          "eac3",
+          "mp3",
+          "opus",
+          "vorbis",
+          "flac"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "audio_required": {
+      "description": "Whether the video must include an audio track",
+      "type": "boolean"
+    },
+    "audio_sample_rates": {
+      "description": "Accepted audio sample rates in Hz (e.g., [44100, 48000])",
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    "codecs": {
+      "description": "Accepted video codecs",
+      "items": {
+        "enum": [
+          "h264",
+          "h265",
+          "vp8",
+          "vp9",
+          "av1",
+          "prores"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "containers": {
+      "description": "Accepted video container formats",
+      "items": {
+        "enum": [
+          "mp4",
+          "webm",
+          "mov",
+          "avi",
+          "mkv"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "frame_rate_type": {
+      "enum": [
+        "constant",
+        "variable"
+      ]
+    },
+    "frame_rates": {
+      "description": "Accepted frame rates in frames per second (e.g., [24, 30, 60])",
+      "items": {
+        "minimum": 1,
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "gop_type": {
+      "enum": [
+        "open",
+        "closed"
+      ]
+    },
+    "loudness_lufs": {
+      "description": "Target integrated loudness in LUFS (e.g., -24 for broadcast, -16 for streaming)",
+      "type": "number"
+    },
+    "loudness_tolerance_db": {
+      "description": "Acceptable deviation from loudness_lufs target in dB (e.g., 2 means -22 to -26 LUFS for a -24 target)",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_bitrate_kbps": {
+      "description": "Maximum video bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_duration_ms": {
+      "description": "Maximum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_file_size_kb": {
+      "description": "Maximum file size, where 1 KB is exactly 1,000 bytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_gop_interval_seconds": {
+      "description": "Maximum keyframe interval in seconds. SSAI typically requires 1-2 second intervals.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_height": {
+      "description": "Maximum height in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_width": {
+      "description": "Maximum width in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_bitrate_kbps": {
+      "description": "Minimum video bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_duration_ms": {
+      "description": "Minimum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_gop_interval_seconds": {
+      "description": "Minimum keyframe interval in seconds",
+      "minimum": 0,
+      "type": "number"
+    },
+    "min_height": {
+      "description": "Minimum height in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_width": {
+      "description": "Minimum width in pixels",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "moov_atom_position": {
+      "enum": [
+        "end",
+        "start"
+      ]
+    },
+    "scan_type": {
+      "enum": [
+        "interlaced",
+        "progressive"
+      ]
+    },
+    "true_peak_dbfs": {
+      "description": "Maximum true peak level in dBFS (e.g., -2 for broadcast)",
+      "type": "number"
+    }
+  },
+  "title": "Video Asset Requirements",
+  "type": "object"
+}

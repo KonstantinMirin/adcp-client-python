@@ -6,11 +6,12 @@ from typing import Annotated
 from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
+from adcp.types.constraints import StrMatching71E52EB8
 
 
 __adcp_schema__ = SchemaRef(document='core/media-buy-change-term-id.json', pointer='#')
 
-MediaBuyChangeTermID = Annotated[str, Field(description='The accepted proposal change_terms[].term_id from which this current-state action projection was derived.', pattern='^[A-Za-z0-9_.:-]+$')]
+MediaBuyChangeTermID = Annotated[StrMatching71E52EB8, Field(description='The accepted proposal change_terms[].term_id from which this current-state action projection was derived.')]
 
 
 strict_validate = strict_alias(__adcp_schema__, "MediaBuyChangeTermID", MediaBuyChangeTermID)

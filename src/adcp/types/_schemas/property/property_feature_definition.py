@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 from ..core.ext import ExtensionObject
 
@@ -59,7 +60,7 @@ class PropertyFeatureDefinition(AdCPBaseModel):
     range: Annotated[PropertyFeatureDefinitionRange | None, Field(description='For quantitative features, the valid range of values')] = None
     allowed_values: Annotated[list[str] | None, Field(description='For categorical features, the set of valid values')] = None
     coverage: Annotated[PropertyFeatureDefinitionCoverage | None, Field(description='What this feature covers (empty arrays = all)')] = None
-    methodology_url: Annotated[str, Field(description='URL to documentation explaining how this feature is calculated/measured', json_schema_extra={'format': 'uri'})]
+    methodology_url: Annotated[AdCPUrl, Field(description='URL to documentation explaining how this feature is calculated/measured')]
     methodology_version: Annotated[str | None, Field(description='Version identifier for the methodology (for audit trails)')] = None
     ext: ExtensionObject | None = None
 

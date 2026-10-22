@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": true,
+  "description": "Requirements for audio creative assets.",
+  "properties": {
+    "channels": {
+      "description": "Accepted audio channel configurations",
+      "items": {
+        "enum": [
+          "mono",
+          "stereo"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "formats": {
+      "description": "Accepted audio file formats",
+      "items": {
+        "enum": [
+          "mp3",
+          "aac",
+          "wav",
+          "ogg",
+          "flac"
+        ],
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "loudness_lufs": {
+      "description": "Target integrated loudness in LUFS. LKFS is the equivalent unit name under ITU-R BS.1770; values expressed in LUFS and LKFS are directly comparable without conversion.",
+      "type": "number"
+    },
+    "loudness_tolerance_db": {
+      "description": "Acceptable deviation from the loudness_lufs target in dB.",
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_bitrate_kbps": {
+      "description": "Maximum audio bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_duration_ms": {
+      "description": "Maximum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_file_size_kb": {
+      "description": "Maximum file size in kilobytes",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_bitrate_kbps": {
+      "description": "Minimum audio bitrate in kilobits per second",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "min_duration_ms": {
+      "description": "Minimum duration in milliseconds",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "sample_rates": {
+      "description": "Accepted sample rates in Hz (e.g., [44100, 48000])",
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    "true_peak_dbfs": {
+      "description": "Maximum true-peak level in dBFS.",
+      "type": "number"
+    }
+  },
+  "title": "Audio Asset Requirements",
+  "type": "object"
+}

@@ -6,11 +6,12 @@ from typing import Annotated
 from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
+from adcp.types.constraints import StrMinLen1MaxLen1024
 
 
 __adcp_schema__ = SchemaRef(document='core/reporting-file-object-ref.json', pointer='#')
 
-ReportingFileObjectReference = Annotated[str, Field(description='Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.', max_length=1024, min_length=1)]
+ReportingFileObjectReference = Annotated[StrMinLen1MaxLen1024, Field(description='Credential-free, destination-relative reference to one reporting data object. For an object store, this is the decoded object key relative to the configured destination, not an absolute URI and not a URI with a version query parameter. Providers URI-encode this value only when constructing their own storage request. The 1024-character limit accommodates an S3 object key of up to 1024 UTF-8 bytes because every Unicode character occupies at least one UTF-8 byte; JSON Schema maxLength counts characters rather than bytes.')]
 
 
 strict_validate = strict_alias(__adcp_schema__, "ReportingFileObjectReference", ReportingFileObjectReference)

@@ -21,20 +21,19 @@ name instead, and the refusal carries what the document said:
   its ``items``.  So a ``RootModel`` base would be a class no document reaches and no
   pair grades.  :func:`root` lowers the element FIRST, so the refusal names the
   element type the row would have wrapped rather than just the shape.
-* **D5's shared alias module for a constraint the bundle does not name.**  A
-  constraint on what is INSIDE a container has no slot in the compiler's
-  ``DataType``, and D5's answer is to resolve the inner type to a name: one the
-  bundle itself gives a titled root, then one pydantic gives, then an alias we emit
-  in one module.  Measured over the reachable population: **1 distinct constraint at
-  3 sites in 3 documents**, ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` under
-  ``brand/rights-terms.json``, ``brand/search-brands-request.json`` and
-  ``property/property-list-filters.json``.  The bundle names it at no titled scalar
-  root (checked by content equality over all 229 of them, which is D3's only
-  deduplication) and pydantic names no type for it, so only the third rung covers it
-  -- a new emitted module, a new import path, and a name D5 requires to be derived
-  from the constraint and never from a concept.  Landing that for one constraint is
-  the wrong size for this row, so an inner constraint refuses by name with the
-  constraint in the detail and D5's alias module is its own step.
+* **An inner constraint this module cannot name.**  A constraint on what is INSIDE
+  a container has no slot in the compiler's ``DataType``, and D5's answer is to
+  resolve the inner type to a NAME -- one the bundle itself gives a titled root,
+  then one pydantic gives, then an alias emitted in ``adcp.types.constraints``.
+  **That module now exists** (``codegen/constraints.py``), so ``decide_type``
+  hands this module an inner type whose constraints are already on the type and
+  :func:`_inner` sees none: ``dict[str, StrMinLen1]`` and
+  ``list[StrMatchingEFC12812]`` are plain references and need nothing from the
+  compiler, which is what D5 says naming the type buys.  :func:`_inner` still
+  refuses what is still unnameable -- a constraint keyword
+  ``codegen.constraints.SPELLING`` has no word for, and a ``format`` no type is
+  selected for -- because those would be DROPPED rather than carried, and the
+  detail names the constraint so the refusal says what would have to be named.
 * **A closed key set as a model.**  ``propertyNames`` with an ``enum`` closes the
   keys, and D5 reads a closed key set as a model whose keys are its fields.  Its one
   type-position site is ``core/store-item.json#/properties/hours``, and that document
@@ -94,9 +93,12 @@ def _inner(decided: Decided, pointer: str, what: str) -> compiler.Type:
     A constraint or a format on an inner node has nowhere to go: the compiler's
     ``DataType`` carries neither, so putting the node inside ``list[...]`` or
     ``dict[str, ...]`` would drop the fact and widen the model.  D5's answer is to
-    name the inner type; this module's docstring says why that module is not built
-    here and what its population is.  Refusing names the constraint, so the detail
-    says what would have to be named.
+    name the inner type, and ``codegen.constraints`` now does -- so what reaches
+    here with constraints still on it is a shape that module has no spelling for,
+    and what reaches here with a ``format`` still on it is a format no type is
+    selected for.  Both would be dropped, so both refuse, and the detail names the
+    constraint that would have to be named.  This module's docstring carries the
+    population.
     """
     if decided.constraints or decided.format is not None:
         stated = {**decided.constraints, **({"format": decided.format} if decided.format else {})}
@@ -258,10 +260,11 @@ def multi_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decided
     FIELD instead and bound the whole union: ``Annotated[str | int,
     Field(min_length=4)]``, which applies the string's bound to the integer arm.
     Measured on a constructed ``["string", "integer"]`` with ``minLength: 4``, which
-    is exactly the narrowing this row exists to remove, so it refuses until D5's
-    alias module can name the arm.  It costs nothing today: both multi-type sites in
-    the emitted population are bare ``["number", "string"]`` with no other keyword,
-    and the 31 others sit in documents refused for another reason.
+    is exactly the narrowing this row exists to remove.  **D5's alias module now
+    names the arm**, so ``StrMinLen4 | int`` is what an arm carrying a constraint
+    lowers to and the split works as the docstring above describes; :func:`_inner`
+    refuses only an arm whose constraint ``codegen.constraints`` has no spelling
+    for.
 
     **A ``null`` arm REFUSES, and the reason is the grader rather than the
     rendering.**  ``None`` is a perfectly good arm and the compiler folds it with

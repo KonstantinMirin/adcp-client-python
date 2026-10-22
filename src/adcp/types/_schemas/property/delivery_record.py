@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import AdCPUrl
 
 from ..core.ext import ExtensionObject
 from ..core.identifier import Identifier
@@ -20,9 +21,9 @@ class DeliveryRecord(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/delivery-record.json', pointer='#')
     identifier: Annotated[Identifier, Field(description='The property identifier where impressions were delivered')]
-    impressions: Annotated[int, Field(description='Number of impressions delivered to this identifier', ge=0)]
+    impressions: Annotated[NonNegativeInt, Field(description='Number of impressions delivered to this identifier')]
     record_id: Annotated[str | None, Field(description='Optional client-provided ID for correlating results back to source data')] = None
-    sales_agent_url: Annotated[str | None, Field(description="URL of the sales agent that sold this inventory. If provided, authorization is validated against the property's adagents.json.", json_schema_extra={'format': 'uri'})] = None
+    sales_agent_url: Annotated[AdCPUrl | None, Field(description="URL of the sales agent that sold this inventory. If provided, authorization is validated against the property's adagents.json.")] = None
     ext: ExtensionObject | None = None
 
 

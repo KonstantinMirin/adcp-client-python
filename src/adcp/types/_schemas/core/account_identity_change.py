@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types.constraints import StrMinLen1MaxLen1000
 
 from .operator_identity import OperatorIdentity
 
@@ -40,7 +41,7 @@ class AccountIdentityChangeRejected(AccountIdentityChange):
     status: Annotated[Literal['rejected'], Field(description='The seller rejected the transition and retained the current canonical identity.')]
     requested_operator_identity: Annotated[OperatorIdentity, Field(description='Complete desired operator identity submitted by the buyer.')]
     requested_at: Annotated[AwareDatetime | None, Field(description='When the seller recorded the request.')] = None
-    reason: Annotated[str, Field(description='Human-readable rejection reason.', max_length=1000, min_length=1)]
+    reason: Annotated[StrMinLen1MaxLen1000, Field(description='Human-readable rejection reason.')]
 
 
 AccountIdentityChange._branch_models = (AccountIdentityChangePending, AccountIdentityChangeRejected,)

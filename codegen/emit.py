@@ -79,8 +79,10 @@ import sys
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from codegen import bundle, compiler, harness
+from codegen import constraints as constraints_module
 from codegen.compiler import (
     BASE_MODULE,
     CONSTRAINTS,
@@ -127,23 +129,40 @@ PACKAGE = "adcp.types._schemas"
 #: narrowing behind: the row stops selecting and the node falls back to its own
 #: scalar type with the format as an annotation.
 #:
-#: **``uri`` is not here on purpose, and the omission is a decision.**  D5 admits
-#: a standard type only when it states the document's own facts AND accepts the
-#: document's own set, and ``AnyUrl`` fails both halves.  It renders
-#: ``minLength: 1``, which no ``format: uri`` document states, so the SYMMETRIC
-#: schema comparison reports it as a fact the model adds -- a narrowing.  It also
-#: NORMALIZES (``HTTP://A.example/X`` comes back ``http://a.example/X``), so the
-#: SDK would hand a consumer a value the sender did not send.  And ``uri`` is the
-#: one format in this bundle that co-occurs with a string constraint -- at 1 of
-#: this population's 5 ``uri`` sites and 73 of the bundle's 300 -- where a
-#: ``pattern`` has no rendering against a URL type at all.  So ``uri`` keeps the
-#: node's own ``str`` with the format as an annotation, which states exactly the
-#: document's two facts and accepts exactly the set ``rfc3987`` decides.
-#: Silencing the comparison instead -- a ``WithJsonSchema`` hiding the
-#: ``minLength`` -- would make the model's rendered schema a claim nobody graded.
+#: **``uri`` selects ``AdCPUrl``, and it is rung 3 rather than rung 2.**  D5 admits
+#: a STANDARD type only when it states the document's own facts AND accepts the
+#: document's own set, and no pydantic URL type passes: ``AnyUrl`` and
+#: ``AnyHttpUrl`` both render a ``minLength: 1`` no ``format: uri`` document
+#: states, ``HttpUrl`` adds a ``maxLength: 2083`` as well, and all three admit
+#: ``http://``.  So the type is one we emit --
+#: ``Annotated[AnyUrl, UrlConstraints(allowed_schemes=["https"])]``, declared once
+#: in ``codegen.constraints`` -- and the ``minLength: 1`` it renders is admitted
+#: by a comparison row of its own kind (``harness.compare_schema``) rather than
+#: hidden with a ``WithJsonSchema``, which would make the model's rendered schema
+#: a claim nobody graded.
+#:
+#: The document's own ``pattern`` stays with the SCHEMA half: the bundle states
+#: eight distinct patterns across 73 of its 300 ``uri`` uses and
+#: ``UrlConstraints`` expresses only the first (``^https://``, at 47 sites), so
+#: letting the field type vary by how strict a schema author happened to be is
+#: what this avoids.  ``strict_validate`` applies the document before the
+#: constructor runs, so nothing widens.
+#:
+#: **KNOWN CEILING, measured here and not graded by any check in this harness.**
+#: ``format: uri`` is RFC 3986, which admits every scheme, so a bare
+#: ``{"type": "string", "format": "uri"}`` node admits ``http://x.example``,
+#: ``urn:isbn:0451450523`` and ``file:///etc/passwd`` -- all three of which
+#: ``AdCPUrl`` refuses.  At the 29 of this population's 30 ``uri`` positions whose
+#: document states no ``pattern``, the SDK is therefore NARROWER than its
+#: document.  The accepts check cannot see it: ``hypothesis_jsonschema``'s own
+#: ``uri`` strategy drew ``https://`` in 40 of 40 distinct instances, which is the
+#: same blindness ``_validating`` already records for ``date-time``.  D5 decides
+#: this knowingly -- a parsed URL is what the field is for -- and the measurement
+#: is recorded here because no test reports it.
 FORMAT_TYPES = {
     "date-time": "pydantic.AwareDatetime",
     "date": "datetime.date",
+    "uri": f"{constraints_module.MODULE}.{constraints_module.URL}",
 }
 
 
@@ -271,7 +290,54 @@ def decide_type(node: dict, pointer: str, name_hint: str, mod: Module) -> Decide
     # an annotation on the node's own scalar type, and the schema comparison
     # grades it there.
     if fmt is not None and fmt in mod.asserted and fmt in FORMAT_TYPES:
-        return Decided(compiler.Type(FORMAT_TYPES[fmt]), constraints)
+        selected = FORMAT_TYPES[fmt]
+        if selected == FORMAT_TYPES["uri"] and constraints:
+            # **A URL type carries NO string constraint, and that is a measurement
+            # rather than a choice.**  ``Annotated[AnyUrl, Field(pattern=...)]``
+            # raises at validation -- "Unable to apply constraint 'pattern' ... for
+            # schema of type 'function-wrap'" -- so the class does not even build,
+            # which is how this was found: the module failed to import.  It is a
+            # loud failure and not a silent drop, so type-plus-pattern is genuinely
+            # unavailable.
+            #
+            # D5 decides the either/or: the field is ``AdCPUrl`` and the document's
+            # ``pattern`` stays with the SCHEMA half, which ``strict_validate``
+            # applies before the constructor runs. ``harness.compare_schema``'s
+            # URL-type row is what grades the omission, and it is gated on
+            # ``pattern`` alone -- so any OTHER string constraint has no decision
+            # covering it and refuses by name rather than going missing. Measured
+            # over the emitted population: 1 of 30 ``format: uri`` positions states
+            # a ``pattern`` and 0 state anything else, so the refusal costs no
+            # document and exists for the one the bundle has not written yet.
+            unowned = sorted(set(constraints) - {"pattern"})
+            if unowned:
+                raise Refusal(
+                    unowned[0],
+                    pointer,
+                    f"a format: uri node states {unowned}, and D5's AdCPUrl carries no "
+                    "string constraint at all -- pydantic refuses to apply one to a URL "
+                    "type -- while the comparison's URL-type row admits only a dropped "
+                    "pattern, so this keyword would go missing ungraded",
+                )
+            return Decided(compiler.Type(selected))
+        return Decided(compiler.Type(selected), constraints)
+    # D5: **a constrained type is NAMED once and referenced.**  The name is a pure
+    # function of (the document's type word, its constraints) -- rung 2 where a
+    # pydantic type qualifies on both halves, rung 3 otherwise -- so the same shape
+    # in two documents is the same symbol without any census over the run, and the
+    # constraints then ride on the TYPE rather than on the field.  Two things follow
+    # from the constraints coming back empty, and both are D5's own point rather
+    # than a side effect: a bound inside ``list[...]`` or ``dict[str, ...]`` now has
+    # somewhere to go (``lower.containers._inner`` refused exactly this), and so
+    # does a bound on one arm of a multi-type node.
+    #
+    # ``resolve`` returns ``None`` for a shape it has no spelling for, and the site
+    # then stays inline, which is what every site did before this row existed.
+    path = constraints_module.resolve(kind, constraints)
+    if path is not None:
+        if path.startswith(f"{constraints_module.MODULE}."):
+            constraints_module.record(mod.aliases, path.rsplit(".", 1)[1], kind, constraints)
+        return Decided(compiler.Type(path), format=fmt)
     return Decided(compiler.Type(SCALAR[kind]), constraints, format=fmt)
 
 
@@ -284,7 +350,7 @@ def _import_rank(module: str) -> int:
     ``.``-prefixed)."""
     if module.startswith("."):
         return 3
-    if module in (BASE_MODULE, lower_rules.RUNTIME_MODULE):
+    if module in (BASE_MODULE, lower_rules.RUNTIME_MODULE, constraints_module.MODULE):
         return 2
     return 1 if module == "pydantic" else 0
 
@@ -431,6 +497,15 @@ def lower_document(
 @dataclass
 class Emitted:
     files: dict[str, str] = field(default_factory=dict)  # path -> text
+    #: Files written BESIDE the tree, in the package the tree lives in, keyed by a
+    #: path relative to THAT directory.  D5's alias module is the whole population:
+    #: an alias belongs to no document, so it has no domain and cannot live under
+    #: ``_schemas/<domain>/``, and it is PUBLIC -- ``adcp.types.constraints`` is the
+    #: one path a consumer reaches an alias at -- so it cannot live inside the
+    #: private tree either.  A second dict rather than a ``..`` key in
+    #: :attr:`files`, so no caller of :func:`write` can be handed a path that
+    #: escapes the directory it passed.
+    beside: dict[str, str] = field(default_factory=dict)
     #: document -> the module it was written to.  The run's own record of what it
     #: emitted, for the refusal arithmetic and the CLI report.  It is NOT a
     #: binding table and nothing reads it at runtime: a class finds its schema
@@ -538,6 +613,17 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     for pkg in packages:
         out.files[f"{pkg}/__init__.py"] = ""
     out.files["__init__.py"] = ""
+    # D5's alias module, unioned over the run.  A shape resolved in two documents
+    # is one symbol, and ``check_injective`` (inside ``declare``) fails the build
+    # if two shapes ever derive one name -- which would annotate two fields with
+    # one alias, one of them stating a constraint its document does not.
+    aliases: dict[str, tuple[str, dict[str, Any]]] = {}
+    for document in sorted(lowered):
+        for name, (kind, cons) in lowered[document][0].aliases.items():
+            constraints_module.record(aliases, name, kind, cons)
+    out.beside[f"{constraints_module.MODULE.rsplit('.', 1)[1]}.py"] = constraints_module.declare(
+        aliases
+    )
     # The refusal REPORT is not a file in the tree.  It was, and the documented
     # one-document command then rewrote it with that run's refusals -- which are
     # none -- so running the command in the README damaged the committed tree and
@@ -547,7 +633,7 @@ def emit(bundle_dir: Path, documents: list[str]) -> Emitted:
     return out
 
 
-def write(out: Emitted, tree: Path) -> None:
+def write(out: Emitted, tree: Path, package: Path | None = None) -> None:
     """Write this run's files, and delete nothing.
 
     A stale module -- one emitted by an earlier run over a different document set
@@ -561,22 +647,49 @@ def write(out: Emitted, tree: Path) -> None:
     tree with a fresh emission of the derived population, so a file no run
     produces is a failure at the gate and never a silent survivor.  Probed by
     planting one.
+
+    **``package`` is REQUIRED for :attr:`Emitted.beside` and has no default, for
+    the reason the refusal report was moved out of the tree.**  D5's alias module
+    is ONE file over the WHOLE run: a run over one document resolves that
+    document's shapes and no others, so writing it would replace the committed
+    module with a shorter one and leave every other module importing a symbol
+    that is gone -- which is damage, where a partial run's effect on the tree
+    itself is a rewrite with identical bytes.  The README's one-document command
+    passes no ``package`` and so cannot do it; the full run passes one.
     """
     for rel in sorted(out.files):
         path = tree / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(out.files[rel])
+    if package is None:
+        return
+    for rel in sorted(out.beside):
+        path = package / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(out.beside[rel])
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="codegen.emit", description=__doc__)
     ap.add_argument("--bundle", type=Path, required=True, help="the schema bundle directory")
     ap.add_argument("--tree", type=Path, default=TREE, help="where the modules are written")
+    ap.add_argument(
+        "--package",
+        type=Path,
+        default=None,
+        help="where D5's alias module is written; a WHOLE-RUN artifact, so a run over "
+        "part of the population must leave it out (see `write`)",
+    )
     ap.add_argument("document", nargs="+", help="bundle-relative document paths")
     ns = ap.parse_args(argv)
 
     out = emit(ns.bundle, ns.document)
-    write(out, ns.tree)
+    write(out, ns.tree, ns.package)
+    if ns.package is None:
+        print(
+            f"not written: {', '.join(sorted(out.beside))} "
+            f"(D5's alias module is a whole-run artifact; pass --package to write it)"
+        )
     for document in sorted(out.refusals):
         r = out.refusals[document]
         print(f"refused {document} at {r['pointer']} on {r['keyword']}: {r['detail']}")

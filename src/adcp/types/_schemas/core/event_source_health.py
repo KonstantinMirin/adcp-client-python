@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import FloatMin0Max1, FloatMin1
 
 from ..enums.assessment_status import AssessmentStatus
 from .diagnostic_issue import DiagnosticIssue
@@ -19,8 +20,8 @@ class EventSourceHealthDetail(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-source-health.json', pointer='#/properties/detail')
-    score: Annotated[float, Field(description='Seller-defined quality score. Scale varies by seller — only compare within the same seller.', ge=0.0)]
-    max_score: Annotated[float, Field(description="Maximum possible score on this seller's scale.", ge=1.0)]
+    score: Annotated[NonNegativeFloat, Field(description='Seller-defined quality score. Scale varies by seller — only compare within the same seller.')]
+    max_score: Annotated[FloatMin1, Field(description="Maximum possible score on this seller's scale.")]
     label: Annotated[str | None, Field(description="Seller's name for this score (e.g., 'Event Quality Score', 'Event Match Quality').")] = None
 
 
@@ -34,10 +35,10 @@ class EventSourceHealth(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-source-health.json', pointer='#')
     status: Annotated[AssessmentStatus, Field(description="Overall health status. Use this for cross-seller decisions — do not rely on detail.score for comparability. 'insufficient' covers the source-offline case (zero events received over the seller's evaluation window) — disambiguate via `events_received_24h: 0` and a stale `last_event_at`. Sellers MUST surface a corresponding impairment (reason_code: source_offline) on any active media buy whose conversion goals depend on an event source that has gone offline.")]
     detail: Annotated[EventSourceHealthDetail | None, Field(description='Seller-specific scoring detail. Only present when the seller has a native quality score to relay. Buyer agents should use status (not detail) for cross-seller decisions. Detail is supplementary context for human review or advanced diagnostics.')] = None
-    match_rate: Annotated[float | None, Field(description='Fraction of events from this source that the seller successfully matched to ad interactions (0.0-1.0). Low match rates indicate weak user_match identifiers. Absent when the seller does not compute match rates.', ge=0.0, le=1.0)] = None
+    match_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of events from this source that the seller successfully matched to ad interactions (0.0-1.0). Low match rates indicate weak user_match identifiers. Absent when the seller does not compute match rates.')] = None
     last_event_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of the most recent event received from this source. Absent when no events have been received.')] = None
     evaluated_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when this health assessment was computed. When health is derived from reporting data, this may lag real-time. Buyer agents can use this to decide whether to trust stale assessments or re-request.')] = None
-    events_received_24h: Annotated[int | None, Field(description='Number of events received from this source in the last 24 hours. Zero indicates the source is configured but not firing.', ge=0)] = None
+    events_received_24h: Annotated[NonNegativeInt | None, Field(description='Number of events received from this source in the last 24 hours. Zero indicates the source is configured but not firing.')] = None
     issues: Annotated[list[DiagnosticIssue] | None, Field(description='Actionable issues detected with this event source. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.')] = None
 
 

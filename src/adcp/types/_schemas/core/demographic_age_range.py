@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types.constraints import IntMin0Max150
 
 
 class DemographicAgeRange(AdCPBaseModel):
@@ -20,8 +21,8 @@ class DemographicAgeRange(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('min',), ('max',)), 'anyOf'),
     )
-    min: Annotated[int | None, Field(description='Inclusive minimum age in completed years. Omit for an open lower bound.', ge=0, le=150)] = None
-    max: Annotated[int | None, Field(description='Inclusive maximum age in completed years. Omit for an open upper bound.', ge=0, le=150)] = None
+    min: Annotated[IntMin0Max150 | None, Field(description='Inclusive minimum age in completed years. Omit for an open lower bound.')] = None
+    max: Annotated[IntMin0Max150 | None, Field(description='Inclusive maximum age in completed years. Omit for an open upper bound.')] = None
     include_unknown: Annotated[bool, Field(description='Whether delivery to people whose age is unavailable is part of this predicate. This field has no default and MUST be supplied.')]
 
 

@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types.constraints import IntMin1
 
 
 class MarkdownAssetRequirements(AdCPBaseModel):
@@ -16,7 +17,7 @@ class MarkdownAssetRequirements(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/markdown-asset-requirements.json', pointer='#')
-    max_length: Annotated[int | None, Field(description='Maximum character length', ge=1)] = None
+    max_length: Annotated[IntMin1 | None, Field(description='Maximum character length')] = None
 
 
 __all__ = ["MarkdownAssetRequirements"]
